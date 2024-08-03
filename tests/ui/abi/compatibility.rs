@@ -188,7 +188,7 @@ mod prelude {
 #[cfg(not(host))]
 use prelude::*;
 
-macro_rules! assert_abi_compatible {
+macro_rules! test_abi_compatible {
     ($name:ident, $t1:ty, $t2:ty) => {
         mod $name {
             use super::*;
@@ -232,55 +232,75 @@ union ReprCUnion<T> {
     something: ManuallyDrop<T>,
 }
 
-macro_rules! test_abi_compatible {
+macro_rules! test_abi_compatible_nested {
     ($name:ident, $t1:ty, $t2:ty) => {
         mod $name {
             use super::*;
-            assert_abi_compatible!(plain, $t1, $t2);
+            test_abi_compatible!(plain, $t1, $t2);
             // We also do some tests with differences in fields of `repr(C)` types.
-            assert_abi_compatible!(repr_c_1, ReprC1<$t1>, ReprC1<$t2>);
-            assert_abi_compatible!(repr_c_2_int, ReprC2Int<$t1>, ReprC2Int<$t2>);
-            assert_abi_compatible!(repr_c_2_float, ReprC2Float<$t1>, ReprC2Float<$t2>);
-            assert_abi_compatible!(repr_c_4, ReprC4<$t1>, ReprC4<$t2>);
-            assert_abi_compatible!(repr_c_4mixed, ReprC4Mixed<$t1>, ReprC4Mixed<$t2>);
-            assert_abi_compatible!(repr_c_enum, ReprCEnum<$t1>, ReprCEnum<$t2>);
-            assert_abi_compatible!(repr_c_union, ReprCUnion<$t1>, ReprCUnion<$t2>);
+            // This is not guaranteed, but it's still good to know when there are differences here.
+            test_abi_compatible!(repr_c_1, ReprC1<$t1>, ReprC1<$t2>);
+            test_abi_compatible!(repr_c_2_int, ReprC2Int<$t1>, ReprC2Int<$t2>);
+            test_abi_compatible!(repr_c_2_float, ReprC2Float<$t1>, ReprC2Float<$t2>);
+            test_abi_compatible!(repr_c_4, ReprC4<$t1>, ReprC4<$t2>);
+            test_abi_compatible!(repr_c_4mixed, ReprC4Mixed<$t1>, ReprC4Mixed<$t2>);
+            test_abi_compatible!(repr_c_enum, ReprCEnum<$t1>, ReprCEnum<$t2>);
+            test_abi_compatible!(repr_c_union, ReprCUnion<$t1>, ReprCUnion<$t2>);
         }
     };
 }
 
 // Compatibility of pointers.
-test_abi_compatible!(ptr_mut, *const i32, *mut i32);
-test_abi_compatible!(ptr_pointee, *const i32, *const Vec<i32>);
-test_abi_compatible!(ref_mut, &i32, &mut i32);
-test_abi_compatible!(ref_ptr, &i32, *const i32);
-test_abi_compatible!(box_ptr, Box<i32>, *const i32);
-test_abi_compatible!(nonnull_ptr, NonNull<i32>, *const i32);
-test_abi_compatible!(fn_fn, fn(), fn(i32) -> i32);
+test_abi_compatible_nested!(ptr_mut, *const i32, *mut i32);
+test_abi_compatible_nested!(ptr_pointee, *const i32, *const Vec<i32>);
+test_abi_compatible_nested!(ref_mut, &i32, &mut i32);
+test_abi_compatible_nested!(ref_ptr, &i32, *const i32);
+test_abi_compatible_nested!(box_ptr, Box<i32>, *const i32);
+test_abi_compatible_nested!(nonnull_ptr, NonNull<i32>, *const i32);
+test_abi_compatible_nested!(fn_fn, fn(), fn(i32) -> i32);
 
 // Compatibility of integer types.
-test_abi_compatible!(char_uint, char, u32);
+test_abi_compatible_nested!(char_uint, char, u32);
 #[cfg(target_pointer_width = "32")]
-test_abi_compatible!(isize_int, isize, i32);
+test_abi_compatible_nested!(isize_int, isize, i32);
 #[cfg(target_pointer_width = "64")]
-test_abi_compatible!(isize_int, isize, i64);
+test_abi_compatible_nested!(isize_int, isize, i64);
+
+// Compatibility of enums with `repr($int)`.
+#[repr(i16)]
+enum I16 {
+    Var1,
+    Var2,
+}
+test_abi_compatible_nested!(enum_i16, I16, i16);
+#[repr(u64)]
+enum U64 {
+    Var1,
+    Var2,
+}
+#[cfg(not(target_arch = "m68k"))]
+test_abi_compatible_nested!(enum_u64, U64, u64);
+// On m68k, the nested case does not work out. We don't guarantee that case
+// so this is not a bug.
+#[cfg(target_arch = "m68k")]
+test_abi_compatible!(enum_u64, U64, u64);
 
 // Compatibility of 1-ZST.
-test_abi_compatible!(zst_unit, Zst, ());
-#[cfg(not(any(target_arch = "sparc64")))]
-test_abi_compatible!(zst_array, Zst, [u8; 0]);
-test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
+test_abi_compatible_nested!(zst_unit, Zst, ());
+#[cfg(not(target_arch = "sparc64"))]
+test_abi_compatible_nested!(zst_array, Zst, [u8; 0]);
+test_abi_compatible_nested!(nonzero_int, NonZero<i32>, i32);
 
 // `#[repr(C)]` enums should not change ABI based on individual variant inhabitedness.
 // (However, this is *not* a guarantee. We only guarantee same layout, not same ABI.)
 enum Void {}
-test_abi_compatible!(repr_c_enum_void, ReprCEnum<Void>, ReprCEnum<ReprCUnion<Void>>);
+test_abi_compatible_nested!(repr_c_enum_void, ReprCEnum<Void>, ReprCEnum<ReprCUnion<Void>>);
 
 // `DispatchFromDyn` relies on ABI compatibility.
 // This is interesting since these types are not `repr(transparent)`. So this is not part of our
 // public ABI guarantees, but is relied on by the compiler.
-test_abi_compatible!(rc, Rc<i32>, *mut i32);
-test_abi_compatible!(arc, Arc<i32>, *mut i32);
+test_abi_compatible_nested!(rc, Rc<i32>, *mut i32);
+test_abi_compatible_nested!(arc, Arc<i32>, *mut i32);
 
 // `repr(transparent)` compatibility.
 #[repr(transparent)]
@@ -299,10 +319,10 @@ macro_rules! test_transparent {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            test_abi_compatible!(wrap1, $t, Wrapper1<$t>);
-            test_abi_compatible!(wrap2, $t, Wrapper2<$t>);
-            test_abi_compatible!(wrap3, $t, Wrapper3<$t>);
-            test_abi_compatible!(wrap4, $t, WrapperUnion<$t>);
+            test_abi_compatible_nested!(wrap1, $t, Wrapper1<$t>);
+            test_abi_compatible_nested!(wrap2, $t, Wrapper2<$t>);
+            test_abi_compatible_nested!(wrap3, $t, Wrapper3<$t>);
+            test_abi_compatible_nested!(wrap4, $t, WrapperUnion<$t>);
         }
     };
 }
@@ -341,10 +361,10 @@ macro_rules! test_transparent_unsized {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            assert_abi_compatible!(wrap1, $t, Wrapper1<$t>);
-            assert_abi_compatible!(wrap1_reprc, ReprC1<$t>, ReprC1<Wrapper1<$t>>);
-            assert_abi_compatible!(wrap2, $t, Wrapper2<$t>);
-            assert_abi_compatible!(wrap2_reprc, ReprC1<$t>, ReprC1<Wrapper2<$t>>);
+            test_abi_compatible!(wrap1, $t, Wrapper1<$t>);
+            test_abi_compatible!(wrap1_reprc, ReprC1<$t>, ReprC1<Wrapper1<$t>>);
+            test_abi_compatible!(wrap2, $t, Wrapper2<$t>);
+            test_abi_compatible!(wrap2_reprc, ReprC1<$t>, ReprC1<Wrapper2<$t>>);
         }
     };
 }
@@ -363,13 +383,13 @@ macro_rules! test_nonnull {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            test_abi_compatible!(option, Option<$t>, $t);
-            test_abi_compatible!(result_err_unit, Result<$t, ()>, $t);
-            test_abi_compatible!(result_ok_unit, Result<(), $t>, $t);
-            test_abi_compatible!(result_err_zst, Result<$t, Zst>, $t);
-            test_abi_compatible!(result_ok_zst, Result<Zst, $t>, $t);
-            test_abi_compatible!(result_err_arr, Result<$t, [i8; 0]>, $t);
-            test_abi_compatible!(result_ok_arr, Result<[i8; 0], $t>, $t);
+            test_abi_compatible_nested!(option, Option<$t>, $t);
+            test_abi_compatible_nested!(result_err_unit, Result<$t, ()>, $t);
+            test_abi_compatible_nested!(result_ok_unit, Result<(), $t>, $t);
+            test_abi_compatible_nested!(result_err_zst, Result<$t, Zst>, $t);
+            test_abi_compatible_nested!(result_ok_zst, Result<Zst, $t>, $t);
+            test_abi_compatible_nested!(result_err_arr, Result<$t, [i8; 0]>, $t);
+            test_abi_compatible_nested!(result_ok_arr, Result<[i8; 0], $t>, $t);
         }
     }
 }
