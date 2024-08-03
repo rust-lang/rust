@@ -6,7 +6,7 @@
 
 use std::mem;
 
-use base_db::{salsa::Database, SourceDatabase, SourceDatabaseExt};
+use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
 use hir::{
     sym, AsAssocItem, DefWithBody, DescendPreference, FileRange, HasAttrs, HasSource, HirFileIdExt,
     InFile, InRealFile, ModuleSource, PathResolution, Semantics, Visibility,

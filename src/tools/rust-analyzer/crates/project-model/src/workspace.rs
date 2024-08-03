@@ -1349,12 +1349,13 @@ fn add_target_crate_root(
     );
     if let TargetKind::Lib { is_proc_macro: true } = kind {
         let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
-            Some(it) => it.cloned().map(|path| Ok((cargo_name.to_owned(), path))),
-            None => Some(Err("proc-macro crate is missing its build data".to_owned())),
+            Some(it) => match it {
+                Some(path) => Ok((cargo_name.to_owned(), path.clone())),
+                None => Err("proc-macro crate build data is missing dylib path".to_owned()),
+            },
+            None => Err("proc-macro crate is missing its build data".to_owned()),
         };
-        if let Some(proc_macro) = proc_macro {
-            proc_macros.insert(crate_id, proc_macro);
-        }
+        proc_macros.insert(crate_id, proc_macro);
     }
 
     crate_id

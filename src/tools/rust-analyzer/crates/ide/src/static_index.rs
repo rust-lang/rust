@@ -3,7 +3,7 @@
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
-    base_db::SourceDatabaseExt, defs::Definition, documentation::Documentation,
+    base_db::SourceRootDatabase, defs::Definition, documentation::Documentation,
     famous_defs::FamousDefs, helpers::get_definition, FileId, FileRange, FxHashMap, FxHashSet,
     RootDatabase,
 };

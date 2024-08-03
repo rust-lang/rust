@@ -4,7 +4,7 @@ use std::iter;
 
 use hir::{HirFileIdExt, Module};
 use ide_db::{
-    base_db::{SourceDatabaseExt, VfsPath},
+    base_db::{SourceRootDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
 use stdx::IsNoneOr;
