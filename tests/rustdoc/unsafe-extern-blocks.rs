@@ -1,6 +1,5 @@
 // Test to ensure the feature is working as expected.
 
-#![feature(unsafe_extern_blocks)]
 #![crate_name = "foo"]
 
 // @has 'foo/index.html'
@@ -13,7 +12,7 @@
 // @count - '//ul[@class="item-table"]//sup[@title="unsafe function"]' 1
 // @has - '//ul[@class="item-table"]//sup[@title="unsafe function"]' '⚠'
 
-unsafe extern {
+unsafe extern "C" {
     // @has 'foo/static.FOO.html'
     // @has - '//pre[@class="rust item-decl"]' 'pub static FOO: i32'
     pub safe static FOO: i32;

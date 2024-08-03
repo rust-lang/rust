@@ -202,7 +202,7 @@ impl CfgEval<'_> {
         }
 
         // Now that we have our re-parsed `AttrTokenStream`, recursively configuring
-        // our attribute target will correctly the tokens as well.
+        // our attribute target will correctly configure the tokens as well.
         flat_map_annotatable(self, annotatable)
     }
 }

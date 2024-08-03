@@ -877,7 +877,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         body: &'tcx mir::Body<'tcx>,
     ) -> InterpResult<'tcx> {
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
-        for &const_ in &body.required_consts {
+        for &const_ in body.required_consts() {
             let c =
                 self.instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
             c.eval(*self.tcx, self.param_env, const_.span).map_err(|err| {

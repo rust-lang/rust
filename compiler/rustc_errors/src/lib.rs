@@ -50,7 +50,7 @@ pub use diagnostic_impls::{
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
-use emitter::{is_case_difference, DynEmitter, Emitter};
+use emitter::{is_case_difference, is_different, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
@@ -357,10 +357,16 @@ impl CodeSuggestion {
                             _ => 1,
                         })
                         .sum();
-                    line_highlight.push(SubstitutionHighlight {
-                        start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len) as usize,
-                    });
+                    if !is_different(sm, &part.snippet, part.span) {
+                        // Account for cases where we are suggesting the same code that's already
+                        // there. This shouldn't happen often, but in some cases for multipart
+                        // suggestions it's much easier to handle it here than in the origin.
+                    } else {
+                        line_highlight.push(SubstitutionHighlight {
+                            start: (cur_lo.col.0 as isize + acc) as usize,
+                            end: (cur_lo.col.0 as isize + acc + len) as usize,
+                        });
+                    }
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
                     // Account for the difference between the width of the current code and the
@@ -392,7 +398,11 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
-                Some((buf, substitution.parts, highlights, only_capitalization))
+                if highlights.iter().all(|parts| parts.is_empty()) {
+                    None
+                } else {
+                    Some((buf, substitution.parts, highlights, only_capitalization))
+                }
             })
             .collect()
     }

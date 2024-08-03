@@ -588,7 +588,7 @@ pub fn report_cycle<'a>(
         cycle_stack,
         stack_bottom: stack[0].query.description.to_owned(),
         alias,
-        cycle_usage: cycle_usage,
+        cycle_usage,
         stack_count,
         note_span: (),
     };

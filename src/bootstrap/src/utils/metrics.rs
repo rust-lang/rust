@@ -13,7 +13,7 @@ use build_helper::metrics::{
     JsonInvocation, JsonInvocationSystemStats, JsonNode, JsonRoot, JsonStepSystemStats, Test,
     TestOutcome, TestSuite, TestSuiteMetadata,
 };
-use sysinfo::System;
+use sysinfo::{CpuRefreshKind, RefreshKind, System};
 
 use crate::core::builder::{Builder, Step};
 use crate::utils::helpers::t;
@@ -55,7 +55,9 @@ impl BuildMetrics {
             finished_steps: Vec::new(),
             running_steps: Vec::new(),
 
-            system_info: System::new(),
+            system_info: System::new_with_specifics(
+                RefreshKind::new().with_cpu(CpuRefreshKind::everything()),
+            ),
             timer_start: None,
             invocation_timer_start: Instant::now(),
             invocation_start: SystemTime::now(),
@@ -77,7 +79,7 @@ impl BuildMetrics {
             self.collect_stats(&mut *state);
         }
 
-        state.system_info.refresh_cpu();
+        state.system_info.refresh_cpu_usage();
         state.timer_start = Some(Instant::now());
 
         state.running_steps.push(StepMetrics {
@@ -110,7 +112,7 @@ impl BuildMetrics {
             state.running_steps.last_mut().unwrap().children.push(step);
 
             // Start collecting again for the parent step.
-            state.system_info.refresh_cpu();
+            state.system_info.refresh_cpu_usage();
             state.timer_start = Some(Instant::now());
         }
     }
@@ -148,7 +150,7 @@ impl BuildMetrics {
         let elapsed = state.timer_start.unwrap().elapsed();
         step.duration_excluding_children_sec += elapsed;
 
-        state.system_info.refresh_cpu();
+        state.system_info.refresh_cpu_usage();
         let cpu = state.system_info.cpus().iter().map(|p| p.cpu_usage()).sum::<f32>();
         step.cpu_usage_time_sec += cpu as f64 / 100.0 * elapsed.as_secs_f64();
     }
@@ -159,8 +161,9 @@ impl BuildMetrics {
 
         let dest = build.out.join("metrics.json");
 
-        let mut system = System::new();
-        system.refresh_cpu();
+        let mut system =
+            System::new_with_specifics(RefreshKind::new().with_cpu(CpuRefreshKind::everything()));
+        system.refresh_cpu_usage();
         system.refresh_memory();
 
         let system_stats = JsonInvocationSystemStats {

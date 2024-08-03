@@ -85,6 +85,7 @@ pub trait IntoRawHandle {
     /// However, transferring ownership is not strictly required. Use a
     /// `Into<OwnedHandle>::into` implementation for an API which strictly
     /// transfers ownership.
+    #[must_use = "losing the raw handle may leak resources"]
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_handle(self) -> RawHandle;
 }
@@ -228,6 +229,7 @@ pub trait IntoRawSocket {
     /// However, transferring ownership is not strictly required. Use a
     /// `Into<OwnedSocket>::into` implementation for an API which strictly
     /// transfers ownership.
+    #[must_use = "losing the raw socket may leak resources"]
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_socket(self) -> RawSocket;
 }

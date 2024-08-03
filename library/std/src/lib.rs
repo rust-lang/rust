@@ -269,10 +269,6 @@
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
 #![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
-#![cfg_attr(
-    all(any(target_arch = "x86_64", target_arch = "x86"), target_os = "uefi"),
-    feature(stdarch_x86_has_cpuid)
-)]
 //
 // Language features:
 // tidy-alphabetical-start
@@ -302,6 +298,7 @@
 #![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
@@ -670,7 +667,6 @@ mod panicking;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
-// Re-export macros defined in core.
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use core::cfg_match;
 #[unstable(
@@ -689,6 +685,7 @@ pub use core::{
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
+// Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{

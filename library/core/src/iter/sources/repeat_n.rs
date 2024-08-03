@@ -114,19 +114,12 @@ impl<A: Clone> Iterator for RepeatN<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if self.count == 0 {
-            return None;
-        }
-
-        self.count -= 1;
-        Some(if self.count == 0 {
-            // SAFETY: the check above ensured that the count used to be non-zero,
-            // so element hasn't been dropped yet, and we just lowered the count to
-            // zero so it won't be dropped later, and thus it's okay to take it here.
-            unsafe { ManuallyDrop::take(&mut self.element) }
+        if self.count > 0 {
+            // SAFETY: Just checked it's not empty
+            unsafe { Some(self.next_unchecked()) }
         } else {
-            A::clone(&self.element)
-        })
+            None
+        }
     }
 
     #[inline]
@@ -194,4 +187,18 @@ impl<A: Clone> FusedIterator for RepeatN<A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A: Clone> TrustedLen for RepeatN<A> {}
 #[unstable(feature = "trusted_len_next_unchecked", issue = "37572")]
-impl<A: Clone> UncheckedIterator for RepeatN<A> {}
+impl<A: Clone> UncheckedIterator for RepeatN<A> {
+    #[inline]
+    unsafe fn next_unchecked(&mut self) -> Self::Item {
+        // SAFETY: The caller promised the iterator isn't empty
+        self.count = unsafe { self.count.unchecked_sub(1) };
+        if self.count == 0 {
+            // SAFETY: the check above ensured that the count used to be non-zero,
+            // so element hasn't been dropped yet, and we just lowered the count to
+            // zero so it won't be dropped later, and thus it's okay to take it here.
+            unsafe { ManuallyDrop::take(&mut self.element) }
+        } else {
+            A::clone(&self.element)
+        }
+    }
+}

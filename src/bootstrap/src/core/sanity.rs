@@ -260,7 +260,9 @@ than building it.
 
             if !has_target {
                 // This might also be a custom target, so check the target file that could have been specified by the user.
-                if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
+                if target.filepath().is_some_and(|p| p.exists()) {
+                    has_target = true;
+                } else if let Some(custom_target_path) = env::var_os("RUST_TARGET_PATH") {
                     let mut target_filename = OsString::from(&target_str);
                     // Target filename ends with `.json`.
                     target_filename.push(".json");
@@ -275,8 +277,12 @@ than building it.
 
             if !has_target {
                 panic!(
-                    "No such target exists in the target list,
-                specify a correct location of the JSON specification file for custom targets!"
+                    "No such target exists in the target list,\n\
+                     make sure to correctly specify the location \
+                     of the JSON specification file \
+                     for custom targets!\n\
+                     Use BOOTSTRAP_SKIP_TARGET_SANITY=1 to \
+                     bypass this check."
                 );
             }
         }
