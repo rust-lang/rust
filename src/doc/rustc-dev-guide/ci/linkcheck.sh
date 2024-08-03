@@ -19,14 +19,14 @@ elif [ "$GITHUB_EVENT_NAME" = "pull_request" ] ; then # running in PR CI build
     exit 1
   fi
 
-  CHANGED_FILES=$(git diff --name-only $BASE_SHA... | tr '\n' ' ')
+  CHANGED_FILES=$(git diff --name-only $BASE_SHA... | sed 's#^src/##' | tr '\n' ' ')
   FLAGS="--no-cache -f $CHANGED_FILES"
   USE_TOKEN=1
 
   echo "Checking files changed since $BASE_SHA: $CHANGED_FILES"
 else # running locally
   COMMIT_RANGE=master...
-  CHANGED_FILES=$(git diff --name-only $COMMIT_RANGE | tr '\n' ' ')
+  CHANGED_FILES=$(git diff --name-only $COMMIT_RANGE | sed 's#^src/##' | tr '\n' ' ')
   FLAGS="-f $CHANGED_FILES"
 
   echo "Checking files changed in $COMMIT_RANGE: $CHANGED_FILES"
