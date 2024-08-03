@@ -2099,10 +2099,14 @@ fn add_library_search_dirs(
 
     // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
     // library directory instead of the self-contained directories.
+    // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
     // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
-    // FIXME: implement `-Clink-self-contained=+/-unwind`, move the shipped libunwind
-    // to self-contained directory, and stop adding this search path.
-    if sess.target.vendor == "fortanix" || sess.target.os == "linux" || sess.target.os == "fuchsia"
+    // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
+    // and sanitizers to self-contained directory, and stop adding this search path.
+    if sess.target.vendor == "fortanix"
+        || sess.target.os == "linux"
+        || sess.target.os == "fuchsia"
+        || sess.target.is_like_osx && !sess.opts.unstable_opts.sanitizer.is_empty()
     {
         let lib_path = sess.target_filesearch(PathKind::Native).get_lib_path();
         cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
