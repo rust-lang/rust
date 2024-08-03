@@ -71,6 +71,23 @@ fn main() {
         test_abi_compat(0isize, 0i64);
     }
     test_abi_compat(42u32, num::NonZero::new(1u32).unwrap());
+    // - `repr(int)` enums and the corresponding integer.
+    #[repr(i16)]
+    #[derive(Copy, Clone)]
+    enum I16 {
+        Var1 = 0,
+        Var2 = -5,
+    }
+    test_abi_compat(I16::Var1, 0i16);
+    test_abi_compat(I16::Var2, -5i16);
+    #[repr(u64)]
+    #[derive(Copy, Clone)]
+    enum U64 {
+        Var1 = 0,
+        Var2 = u64::MAX,
+    }
+    test_abi_compat(U64::Var1, 0u64);
+    test_abi_compat(U64::Var2, u64::MAX);
     // - `char` and `u32`.
     test_abi_compat(42u32, 'x');
     // - Reference/pointer types with the same pointee.
