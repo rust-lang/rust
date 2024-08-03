@@ -854,7 +854,16 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     })
                     .collect::<Vec<_>>();
 
-                PatKind::StructLike { enum_info, subpatterns }
+                let mut s = String::new();
+                print::write_struct_like(
+                    &mut s,
+                    self.tcx,
+                    pat.ty().inner(),
+                    &enum_info,
+                    &subpatterns,
+                )
+                .unwrap();
+                PatKind::Print(s)
             }
             Ref => PatKind::Deref { subpattern: hoist(&pat.fields[0]) },
             Slice(slice) => {

@@ -32,11 +32,6 @@ pub(crate) struct Pat<'tcx> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatKind<'tcx> {
-    StructLike {
-        enum_info: EnumInfo<'tcx>,
-        subpatterns: Vec<FieldPat<'tcx>>,
-    },
-
     Box {
         subpattern: Box<Pat<'tcx>>,
     },
@@ -69,9 +64,6 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
         match self.kind {
             PatKind::Never => write!(f, "!"),
             PatKind::Box { ref subpattern } => write!(f, "box {subpattern}"),
-            PatKind::StructLike { ref enum_info, ref subpatterns } => {
-                ty::tls::with(|tcx| write_struct_like(f, tcx, self.ty, enum_info, subpatterns))
-            }
             PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(ref range) => write!(f, "{range}"),
@@ -104,7 +96,7 @@ pub(crate) enum EnumInfo<'tcx> {
     NotEnum,
 }
 
-fn write_struct_like<'tcx>(
+pub(crate) fn write_struct_like<'tcx>(
     f: &mut impl fmt::Write,
     tcx: TyCtxt<'_>,
     ty: Ty<'tcx>,
