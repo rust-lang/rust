@@ -2890,14 +2890,14 @@ impl<T> [T] {
     /// slice and any possible modifications via interior mutability are observed in the input. Same
     /// is true if the implementation of [`Ord`] for `T` panics.
     ///
-    /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] requires
-    /// additional precautions. For example Rust defines `NaN != NaN`, which doesn't fulfill the
-    /// reflexivity requirement posed by [`Ord`]. By using an alternative comparison function with
+    /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] require
+    /// additional precautions. For example, `f32::NAN != f32::NAN`, which doesn't fulfill the
+    /// reflexivity requirement of [`Ord`]. By using an alternative comparison function with
     /// [`slice::sort_unstable_by`] such as [`f32::total_cmp`] or [`f64::total_cmp`] that defines a
-    /// [total order] users can sort slices containing floating point numbers. Alternatively, if one
-    /// can guarantee that all values in the slice are comparable with [`PartialOrd::partial_cmp`]
-    /// *and* the implementation forms a [total order], it's possible to sort the slice with
-    /// `sort_unstable_by(|a, b| a.partial_cmp(b).unwrap())`.
+    /// [total order] users can sort slices containing floating-point values. Alternatively, if all
+    /// values in the slice are guaranteed to be in a subset for which [`PartialOrd::partial_cmp`]
+    /// forms a [total order], it's possible to sort the slice with `sort_unstable_by(|a, b|
+    /// a.partial_cmp(b).unwrap())`.
     ///
     /// # Current implementation
     ///
