@@ -342,6 +342,7 @@ pub trait IntoRawFd {
     /// This function **transfers ownership** of the underlying file descriptor
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
+    #[must_use = "losing the raw file descriptor may leak resources"]
     fn into_raw_fd(self) -> RawFd;
 }
 
