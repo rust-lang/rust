@@ -4,8 +4,6 @@
 //@[edition2024] compile-flags: -Zunstable-options
 //@ check-pass
 
-#![feature(unsafe_extern_blocks)]
-
 unsafe extern "C" {
     safe static TEST1: i32;
     safe fn test1(i: i32);

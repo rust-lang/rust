@@ -1,5 +1,5 @@
 error: expected one of `!` or `::`, found keyword `impl`
-  --> $DIR/safe-impl-trait.rs:5:6
+  --> $DIR/safe-impl-trait.rs:2:6
    |
 LL | safe impl Bar for () { }
    |      ^^^^ expected one of `!` or `::`
