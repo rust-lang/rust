@@ -115,6 +115,8 @@ declare_features! (
     (accepted, conservative_impl_trait, "1.26.0", Some(34511)),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456)),
+    /// Allows basic arithmetic on floating point types in a `const fn`.
+    (accepted, const_fn_floating_point_arithmetic, "CURRENT_RUSTC_VERSION", Some(57241)),
     /// Allows using and casting function pointers in a `const fn`.
     (accepted, const_fn_fn_ptr_basics, "1.61.0", Some(57563)),
     /// Allows trait bounds in `const fn`.

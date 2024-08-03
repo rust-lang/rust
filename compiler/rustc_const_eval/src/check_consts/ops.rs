@@ -55,28 +55,6 @@ pub trait NonConstOp<'tcx>: std::fmt::Debug {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx>;
 }
 
-#[derive(Debug)]
-pub struct FloatingPointOp;
-impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
-    fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-        if ccx.const_kind() == hir::ConstContext::ConstFn {
-            Status::Unstable(sym::const_fn_floating_point_arithmetic)
-        } else {
-            Status::Allowed
-        }
-    }
-
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        feature_err(
-            &ccx.tcx.sess,
-            sym::const_fn_floating_point_arithmetic,
-            span,
-            format!("floating point arithmetic is not allowed in {}s", ccx.const_kind()),
-        )
-    }
-}
-
 /// A function call where the callee is a pointer.
 #[derive(Debug)]
 pub struct FnCallIndirect;
@@ -440,22 +418,12 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
         DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        // FIXME: Maybe a more elegant solution to this if else case
-        if let hir::ConstContext::Static(_) = ccx.const_kind() {
-            ccx.dcx().create_err(errors::InteriorMutableDataRefer {
-                span,
-                opt_help: true,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0492),
-            })
-        } else {
-            ccx.dcx().create_err(errors::InteriorMutableDataRefer {
-                span,
-                opt_help: false,
-                kind: ccx.const_kind(),
-                teach: ccx.tcx.sess.teach(E0492),
-            })
-        }
+        ccx.dcx().create_err(errors::InteriorMutableDataRefer {
+            span,
+            opt_help: matches!(ccx.const_kind(), hir::ConstContext::Static(_)),
+            kind: ccx.const_kind(),
+            teach: ccx.tcx.sess.teach(E0492),
+        })
     }
 }
 
