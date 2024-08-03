@@ -17,30 +17,10 @@ use rustc_span::sym;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Clone, Debug)]
-pub(crate) struct FieldPat<'tcx> {
+pub(crate) struct FieldPat {
     pub(crate) field: FieldIdx,
-    pub(crate) pattern: Box<Pat<'tcx>>,
+    pub(crate) pattern: String,
     pub(crate) is_wildcard: bool,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct Pat<'tcx> {
-    #[allow(dead_code)]
-    pub(crate) ty: Ty<'tcx>,
-    pub(crate) kind: PatKind,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum PatKind {
-    Print(String),
-}
-
-impl<'tcx> fmt::Display for Pat<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            PatKind::Print(ref string) => write!(f, "{string}"),
-        }
-    }
 }
 
 /// Returns a closure that will return `""` when called the first time,
@@ -69,7 +49,7 @@ pub(crate) fn write_struct_like<'tcx>(
     tcx: TyCtxt<'_>,
     ty: Ty<'tcx>,
     enum_info: &EnumInfo<'tcx>,
-    subpatterns: &[FieldPat<'tcx>],
+    subpatterns: &[FieldPat],
 ) -> fmt::Result {
     let variant_and_name = match *enum_info {
         EnumInfo::Enum { adt_def, variant_index } => {
@@ -148,7 +128,7 @@ pub(crate) fn write_struct_like<'tcx>(
 pub(crate) fn write_ref_like<'tcx>(
     f: &mut impl fmt::Write,
     ty: Ty<'tcx>,
-    subpattern: &Pat<'tcx>,
+    subpattern: &str,
 ) -> fmt::Result {
     match ty.kind() {
         ty::Ref(_, _, mutbl) => {
@@ -159,11 +139,11 @@ pub(crate) fn write_ref_like<'tcx>(
     write!(f, "{subpattern}")
 }
 
-pub(crate) fn write_slice_like<'tcx>(
+pub(crate) fn write_slice_like(
     f: &mut impl fmt::Write,
-    prefix: &[Box<Pat<'tcx>>],
+    prefix: &[String],
     has_dot_dot: bool,
-    suffix: &[Box<Pat<'tcx>>],
+    suffix: &[String],
 ) -> fmt::Result {
     let mut start_or_comma = start_or_comma();
     write!(f, "[")?;
