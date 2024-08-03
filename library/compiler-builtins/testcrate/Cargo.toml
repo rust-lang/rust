@@ -15,7 +15,7 @@ doctest = false
 # `xoshiro128**` is used for its quality, size, and speed at generating `u32` shift amounts.
 rand_xoshiro = "0.6"
 # To compare float builtins against
-rustc_apfloat = "0.2.0"
+rustc_apfloat = "0.2.1"
 
 [dependencies.compiler_builtins]
 path = ".."
