@@ -1,4 +1,4 @@
-//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes
+//@ compile-flags: -Zvalidate-mir -Zinline-mir=yes
 //@ known-bug: #122909
 
 
