@@ -158,9 +158,7 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 #[cfg(test)]
 mod tests {
     use intern::{sym, Symbol};
-    use la_arena::RawIdx;
-    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
-    use text_size::{TextRange, TextSize};
+    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TextSize};
     use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Subtree, TokenTree};
 
     use super::*;
@@ -171,7 +169,7 @@ mod tests {
                 span::FileId::from_raw(0xe4e4e),
                 span::Edition::CURRENT,
             ),
-            ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
+            ast_id: ErasedFileAstId::from_raw(0),
         };
 
         let token_trees = Box::new([

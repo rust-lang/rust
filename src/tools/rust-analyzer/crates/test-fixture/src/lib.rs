@@ -3,7 +3,7 @@ use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
-    FileSet, LangCrateOrigin, SourceRootDatabase, SourceRoot, Version, VfsPath,
+    FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
