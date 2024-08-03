@@ -31,10 +31,6 @@ pub struct Std {
 }
 
 impl Std {
-    pub fn new(target: TargetSelection) -> Self {
-        Self::new_with_build_kind(target, None)
-    }
-
     pub fn new_with_build_kind(target: TargetSelection, kind: Option<Kind>) -> Self {
         Self { target, crates: vec![], override_build_kind: kind }
     }
