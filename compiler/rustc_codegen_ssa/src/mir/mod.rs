@@ -88,7 +88,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached terminate upon unwinding block and its reason
     terminate_block: Option<(Bx::BasicBlock, UnwindTerminateReason)>,
 
-    /// A bool flag for each basic blocks, indicating whether it is a cold block.
+    /// A bool flag for each basic block indicating whether it is a cold block.
     /// A cold block is a block that is unlikely to be executed at runtime.
     cold_blocks: IndexVec<mir::BasicBlock, bool>,
 
@@ -495,11 +495,10 @@ fn find_cold_blocks<'tcx>(
             && attrs.flags.contains(CodegenFnAttrFlags::COLD)
         {
             cold_blocks[bb] = true;
-            continue; // No need to check for other conditions.
+            continue;
         }
 
-        // If a BB has at least one successor and all successors (including the one) are cold,
-        // mark this BB as cold.
+        // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
         let mut succ = terminator.successors();
         if let Some(first) = succ.next()
             && cold_blocks[first]
