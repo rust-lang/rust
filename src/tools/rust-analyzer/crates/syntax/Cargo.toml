@@ -2,7 +2,7 @@
 name = "syntax"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Comment and whitespace preserving parser for the Rust language"
+description = "Concrete syntax tree definitions for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

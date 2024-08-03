@@ -2,7 +2,7 @@
 name = "proc-macro-api"
 version = "0.0.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-description = "Client-side proc-macros for rust-analyzer."
+description = "RPC Api for the `proc-macro-srv` crate of rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
