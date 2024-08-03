@@ -27,19 +27,11 @@ pub(crate) struct FieldPat<'tcx> {
 pub(crate) struct Pat<'tcx> {
     #[allow(dead_code)]
     pub(crate) ty: Ty<'tcx>,
-    pub(crate) kind: PatKind<'tcx>,
+    pub(crate) kind: PatKind,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum PatKind<'tcx> {
-    Slice {
-        prefix: Box<[Box<Pat<'tcx>>]>,
-        /// True if this slice-like pattern should include a `..` between the
-        /// prefix and suffix.
-        has_dot_dot: bool,
-        suffix: Box<[Box<Pat<'tcx>>]>,
-    },
-
+pub(crate) enum PatKind {
     Never,
 
     Print(String),
@@ -49,9 +41,6 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             PatKind::Never => write!(f, "!"),
-            PatKind::Slice { ref prefix, has_dot_dot, ref suffix } => {
-                write_slice_like(f, prefix, has_dot_dot, suffix)
-            }
             PatKind::Print(ref string) => write!(f, "{string}"),
         }
     }
@@ -173,7 +162,7 @@ pub(crate) fn write_ref_like<'tcx>(
     write!(f, "{subpattern}")
 }
 
-fn write_slice_like<'tcx>(
+pub(crate) fn write_slice_like<'tcx>(
     f: &mut impl fmt::Write,
     prefix: &[Box<Pat<'tcx>>],
     has_dot_dot: bool,

@@ -897,10 +897,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                 }
 
-                let prefix = prefix.iter().map(hoist).collect();
-                let suffix = suffix.iter().map(hoist).collect();
+                let prefix = prefix.iter().map(hoist).collect::<Vec<_>>();
+                let suffix = suffix.iter().map(hoist).collect::<Vec<_>>();
 
-                PatKind::Slice { prefix, has_dot_dot, suffix }
+                let mut s = String::new();
+                print::write_slice_like(&mut s, &prefix, has_dot_dot, &suffix).unwrap();
+                PatKind::Print(s)
             }
             Never if self.tcx.features().never_patterns => PatKind::Never,
             Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => {
