@@ -144,7 +144,7 @@ fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bo
     let mut found: u64 = 0;
     for export in file.exports().unwrap() {
         let name = std::str::from_utf8(export.name()).unwrap();
-        if has_symbol(name, symbol_check_type) {
+        if !name.contains("__imp_") && has_symbol(name, symbol_check_type) {
             found += 1;
         }
     }
@@ -153,7 +153,7 @@ fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bo
 
 fn has_symbol(name: &str, symbol_check_type: SymbolCheckType) -> bool {
     if let SymbolCheckType::StrSymbol(expected) = symbol_check_type {
-        !name.contains("__imp_") && name.contains(expected)
+        name.contains(expected)
     } else {
         let regex = regex::Regex::new(r#"_ZN.*h.*E\|_R[a-zA-Z0-9_]+"#).unwrap();
         regex.is_match(name)
