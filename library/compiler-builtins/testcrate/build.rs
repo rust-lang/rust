@@ -51,6 +51,7 @@ fn main() {
         || target.starts_with("powerpc-")
         || target.starts_with("powerpc64-")
         || target.starts_with("powerpc64le-")
+        || target.starts_with("i586-")
         || target.contains("windows-")
         // Linking says "error: function signature mismatch: __extendhfsf2" and seems to
         // think the signature is either `(i32) -> f32` or `(f32) -> f32`

@@ -82,6 +82,7 @@ float_bench! {
     asm: [],
 }
 
+#[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 criterion_group!(
     float_extend,
     extend_f16_f32,
@@ -90,4 +91,14 @@ criterion_group!(
     extend_f32_f128,
     extend_f64_f128,
 );
+
+// FIXME(#655): `f16` tests disabled until we can bootstrap symbols
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+criterion_group!(
+    float_extend,
+    extend_f32_f64,
+    extend_f32_f128,
+    extend_f64_f128,
+);
+
 criterion_main!(float_extend);

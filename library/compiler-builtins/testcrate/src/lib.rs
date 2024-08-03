@@ -282,6 +282,8 @@ macro_rules! apfloat_fallback {
         // The expression to run. This expression may use `FloatTy` for its signature.
         // Optionally, the final conversion back to a float can be suppressed using
         // `=> no_convert` (for e.g. operations that return a bool).
+        //
+        // If the apfloat needs a different operation, it can be provided here.
         $op:expr $(=> $convert:ident)? $(; $apfloat_op:expr)?,
         // Arguments that get passed to `$op` after converting to a float
         $($arg:expr),+
@@ -318,7 +320,7 @@ macro_rules! apfloat_fallback {
 
     // Some apfloat operations return a `StatusAnd` that we need to extract the value from. This
     // is the default.
-    (@inner  fty: $float_ty:ty, op_res: $val:expr, args: $($_arg:expr),+) => {{
+    (@inner fty: $float_ty:ty, op_res: $val:expr, args: $($_arg:expr),+) => {{
         // ignore the status, just get the value
         let unwrapped = $val.value;
 
@@ -326,7 +328,7 @@ macro_rules! apfloat_fallback {
     }};
 
     // This is the case where we can't use the same expression for the default builtin and
-    // nonstandard apfloat fallbac (e.g. `as` casts in std are normal functions in apfloat, so
+    // nonstandard apfloat fallback (e.g. `as` casts in std are normal functions in apfloat, so
     // two separate expressions must be specified.
     (@inner
         fty: $float_ty:ty, op_res: $_val:expr,
