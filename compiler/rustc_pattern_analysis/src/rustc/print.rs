@@ -32,8 +32,6 @@ pub(crate) struct Pat<'tcx> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatKind<'tcx> {
-    Wild,
-
     StructLike {
         enum_info: EnumInfo<'tcx>,
         subpatterns: Vec<FieldPat<'tcx>>,
@@ -69,7 +67,6 @@ pub(crate) enum PatKind<'tcx> {
 impl<'tcx> fmt::Display for Pat<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
-            PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
             PatKind::Box { ref subpattern } => write!(f, "box {subpattern}"),
             PatKind::StructLike { ref enum_info, ref subpatterns } => {

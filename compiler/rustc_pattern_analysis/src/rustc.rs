@@ -780,7 +780,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         use MaybeInfiniteInt::*;
         let cx = self;
         let kind = if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
-            PatKind::Wild
+            PatKind::Print("_".to_string())
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
             let value = lo.as_finite().unwrap();
@@ -890,7 +890,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             &Str(value) => PatKind::Constant { value },
             Never if self.tcx.features().never_patterns => PatKind::Never,
-            Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
+            Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => {
+                PatKind::Print("_".to_string())
+            }
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`"
