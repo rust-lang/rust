@@ -1,8 +1,8 @@
 error: a `const` item should not be interior mutable
-  --> tests/ui/borrow_interior_mutable_const/projections.rs:27:1
+  --> tests/ui/borrow_interior_mutable_const/projections.rs:27:7
    |
 LL | const CELL: Assoc<u8> = UnsafeCell::new(0);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^
    |
    = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
 note: the lint level is defined here
@@ -12,18 +12,18 @@ LL | #![deny(clippy::declare_interior_mutable_const)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/borrow_interior_mutable_const/projections.rs:29:1
+  --> tests/ui/borrow_interior_mutable_const/projections.rs:29:7
    |
 LL | const MUTABLE: MaybeMutable = MaybeMutable::Mutable(CELL);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^
    |
    = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/projections.rs:38:16
+  --> tests/ui/borrow_interior_mutable_const/projections.rs:38:15
    |
 LL |     print_ref(&CELL);
-   |                ^^^^
+   |               ^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 note: the lint level is defined here
@@ -33,10 +33,10 @@ LL | #![deny(clippy::borrow_interior_mutable_const)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/projections.rs:40:16
+  --> tests/ui/borrow_interior_mutable_const/projections.rs:40:15
    |
 LL |     print_ref(&MUTABLE);
-   |                ^^^^^^^
+   |               ^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 

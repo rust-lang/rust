@@ -1,8 +1,8 @@
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:15:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:15:17
    |
 LL |         let _ = &Self::ATOMIC;
-   |                  ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 note: the lint level is defined here
@@ -12,131 +12,133 @@ LL | #![deny(clippy::borrow_interior_mutable_const)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:27:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:26:17
    |
 LL |         let _ = &Self::ATOMIC;
-   |                  ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:53:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:51:17
    |
 LL |         let _ = &Self::TO_BE_CONCRETE;
-   |                  ^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:89:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:86:17
    |
 LL |         let _ = &Self::TO_BE_UNFROZEN;
-   |                  ^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:91:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:87:17
    |
 LL |         let _ = &Self::WRAPPED_TO_BE_UNFROZEN;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:114:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:109:17
    |
 LL |         let _ = &Self::BOUNDED;
-   |                  ^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:128:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:122:17
    |
 LL |         let _ = &Self::BOUNDED;
-   |                  ^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:158:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:151:17
    |
 LL |         let _ = &Self::SELF;
-   |                  ^^^^^^^^^^
+   |                 ^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:160:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:152:17
    |
 LL |         let _ = &Self::WRAPPED_SELF;
-   |                  ^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:170:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:161:17
    |
 LL |         let _ = &Self::DIRECT;
-   |                  ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:172:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:162:17
    |
 LL |         let _ = &Self::INDIRECT;
-   |                  ^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:182:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:171:17
    |
 LL |         let _ = &Self::DIRECT;
-   |                  ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:184:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:172:17
    |
 LL |         let _ = &Self::INDIRECT;
-   |                  ^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:204:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:191:17
    |
 LL |         let _ = &Self::ATOMIC;
-   |                  ^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:209:18
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:195:17
    |
 LL |         let _ = &Self::BOUNDED_ASSOC_TYPE;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:215:5
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:200:5
    |
 LL |     u64::ATOMIC.store(5, Ordering::SeqCst);
    |     ^^^^^^^^^^^
    |
+   = note: there is a compiler inserted borrow here
    = help: assign this const to a local or static variable, and use the variable here
 
 error: a `const` item with interior mutability should not be borrowed
-  --> tests/ui/borrow_interior_mutable_const/traits.rs:217:16
+  --> tests/ui/borrow_interior_mutable_const/traits.rs:201:16
    |
 LL |     assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9);
    |                ^^^^^^^^^^^
    |
+   = note: there is a compiler inserted borrow here
    = help: assign this const to a local or static variable, and use the variable here
 
 error: aborting due to 17 previous errors

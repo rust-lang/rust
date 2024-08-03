@@ -7,20 +7,17 @@ use std::ptr;
 use std::sync::Once;
 use std::sync::atomic::AtomicUsize;
 
-const ATOMIC: AtomicUsize = AtomicUsize::new(5);
-//~^ declare_interior_mutable_const
-const CELL: Cell<usize> = Cell::new(6);
-//~^ declare_interior_mutable_const
+const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ declare_interior_mutable_const
+const CELL: Cell<usize> = Cell::new(6); //~ declare_interior_mutable_const
 const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
 //~^ declare_interior_mutable_const
 
 macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
-        //~^ declare_interior_mutable_const
     };
 }
-declare_const!(_ONCE: Once = Once::new());
+declare_const!(_ONCE: Once = Once::new()); //~ declare_interior_mutable_const
 
 // const ATOMIC_REF: &AtomicUsize = &AtomicUsize::new(7); // This will simply trigger E0492.
 
