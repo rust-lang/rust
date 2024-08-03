@@ -818,8 +818,14 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
+
+    // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
+    // (either its `mir_for_ctfe` or `optimized_mir`) since that helps uncover any bugs
+    // in MIR optimizations that may only be reachable through codegen, or other codepaths
+    // that requires the optimized/ctfe MIR, such as polymorphization, coroutine bodies,
+    // or evaluating consts.
     if tcx.sess.opts.unstable_opts.validate_mir {
-        sess.time("ensuring_optimized_MIR_is_computable", || {
+        sess.time("ensuring_final_MIR_is_computable", || {
             tcx.hir().par_body_owners(|def_id| {
                 tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
             });
