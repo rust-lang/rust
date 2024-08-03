@@ -144,7 +144,7 @@ fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bo
     let mut found: u64 = 0;
     for export in file.exports().unwrap() {
         let name = std::str::from_utf8(export.name()).unwrap();
-        if !name.contains("__imp_") && has_symbol(name, symbol_check_type) {
+        if has_symbol(name, symbol_check_type) {
             found += 1;
         }
     }
