@@ -784,7 +784,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
             let value = lo.as_finite().unwrap();
-            PatKind::Constant { value }
+            PatKind::Print(value.to_string())
         } else {
             // We convert to an inclusive range for diagnostics.
             let mut end = rustc_hir::RangeEnd::Included;
@@ -827,7 +827,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let cx = self;
         let hoist = |p| Box::new(cx.hoist_witness_pat(p));
         let kind = match pat.ctor() {
-            Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
+            Bool(b) => PatKind::Print(b.to_string()),
+            Str(s) => PatKind::Print(s.to_string()),
             IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
             Struct if pat.ty().is_box() => {
                 // Outside of the `alloc` crate, the only way to create a struct pattern
@@ -901,7 +902,6 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
                 PatKind::Slice { prefix, has_dot_dot, suffix }
             }
-            &Str(value) => PatKind::Constant { value },
             Never if self.tcx.features().never_patterns => PatKind::Never,
             Never | Wildcard | NonExhaustive | Hidden | PrivateUninhabited => {
                 PatKind::Print("_".to_string())

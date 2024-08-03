@@ -11,9 +11,9 @@
 
 use std::fmt;
 
+use rustc_middle::bug;
 use rustc_middle::thir::PatRange;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
 use rustc_span::sym;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -33,10 +33,6 @@ pub(crate) struct Pat<'tcx> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatKind<'tcx> {
-    Constant {
-        value: mir::Const<'tcx>,
-    },
-
     Range(Box<PatRange<'tcx>>),
 
     Slice {
@@ -56,7 +52,6 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             PatKind::Never => write!(f, "!"),
-            PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(ref range) => write!(f, "{range}"),
             PatKind::Slice { ref prefix, has_dot_dot, ref suffix } => {
                 write_slice_like(f, prefix, has_dot_dot, suffix)
