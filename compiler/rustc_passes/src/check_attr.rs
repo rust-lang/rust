@@ -20,13 +20,13 @@ use rustc_hir::{
     TraitItem, CRATE_HIR_ID, CRATE_OWNER_ID,
 };
 use rustc_macros::LintDiagnostic;
-use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
@@ -239,7 +239,59 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_generic_attr(hir_id, attr, target, Target::Fn);
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
-                _ => {}
+                [sym::coroutine] => {
+                    self.check_coroutine(attr, target);
+                }
+                [
+                    // ok
+                    sym::allow
+                    | sym::expect
+                    | sym::warn
+                    | sym::deny
+                    | sym::forbid
+                    | sym::cfg
+                    // need to be fixed
+                    | sym::cfi_encoding // FIXME(cfi_encoding)
+                    | sym::may_dangle // FIXME(dropck_eyepatch)
+                    | sym::pointee // FIXME(derive_smart_pointer)
+                    | sym::linkage // FIXME(linkage)
+                    | sym::no_sanitize // FIXME(no_sanitize)
+                    | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
+                    | sym::used // handled elsewhere to restrict to static items
+                    | sym::repr // handled elsewhere to restrict to type decls items
+                    | sym::instruction_set // broken on stable!!!
+                    | sym::windows_subsystem // broken on stable!!!
+                    | sym::patchable_function_entry // FIXME(patchable_function_entry)
+                    | sym::deprecated_safe // FIXME(deprecated_safe)
+                    // internal
+                    | sym::prelude_import
+                    | sym::panic_handler
+                    | sym::allow_internal_unsafe
+                    | sym::fundamental
+                    | sym::lang
+                    | sym::needs_allocator
+                    | sym::default_lib_allocator
+                    | sym::start
+                    | sym::custom_mir,
+                ] => {}
+                [name, ..] => {
+                    match BUILTIN_ATTRIBUTE_MAP.get(name) {
+                        // checked below
+                        Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) => {}
+                        Some(_) => {
+                            // FIXME: differentiate between unstable and internal attributes just like we do with features instead
+                            // of just accepting `rustc_` attributes by name. That should allow trimming the above list, too.
+                            if !name.as_str().starts_with("rustc_") {
+                                span_bug!(
+                                    attr.span,
+                                    "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
+                                )
+                            }
+                        }
+                        None => (),
+                    }
+                }
+                [] => unreachable!(),
             }
 
             let builtin = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
@@ -376,6 +428,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
+    // FIXME(#128488): this should probably be elevated to an error?
     fn check_optimize(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         match target {
             Target::Fn
@@ -2277,6 +2330,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
+        }
+    }
+
+    fn check_coroutine(&self, attr: &Attribute, target: Target) {
+        match target {
+            Target::Closure => return,
+            _ => {
+                self.dcx().emit_err(errors::CoroutineOnNonClosure { span: attr.span });
+            }
         }
     }
 }
