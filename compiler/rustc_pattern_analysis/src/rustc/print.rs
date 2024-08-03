@@ -32,10 +32,6 @@ pub(crate) struct Pat<'tcx> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatKind<'tcx> {
-    Box {
-        subpattern: Box<Pat<'tcx>>,
-    },
-
     Deref {
         subpattern: Box<Pat<'tcx>>,
     },
@@ -63,7 +59,6 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             PatKind::Never => write!(f, "!"),
-            PatKind::Box { ref subpattern } => write!(f, "box {subpattern}"),
             PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
             PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(ref range) => write!(f, "{range}"),

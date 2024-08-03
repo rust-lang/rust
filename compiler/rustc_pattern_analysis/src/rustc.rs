@@ -832,7 +832,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             Struct if pat.ty().is_box() => {
                 // Outside of the `alloc` crate, the only way to create a struct pattern
                 // of type `Box` is to use a `box` pattern via #[feature(box_patterns)].
-                PatKind::Box { subpattern: hoist(&pat.fields[0]) }
+                PatKind::Print(format!("box {}", hoist(&pat.fields[0])))
             }
             Struct | Variant(_) | UnionField => {
                 let enum_info = match *pat.ty().kind() {
