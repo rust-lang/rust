@@ -1255,6 +1255,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             );
         }
 
+        sym::cold_path => {
+            // This is a no-op. The intrinsic is just a hint to the optimizer.
+        }
+
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
         // by converting the `InstanceKind::Intrinsic` to an `InstanceKind::Item`.
         _ => {
