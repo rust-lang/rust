@@ -579,6 +579,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().end_with_conditional(self.location, cond, then_block, else_block)
     }
 
+    fn cond_br_with_expect(
+        &mut self,
+        mut cond: RValue<'gcc>,
+        then_block: Block<'gcc>,
+        else_block: Block<'gcc>,
+        expect: Option<bool>,
+    ) {
+        if let Some(expect) = expect {
+            cond = self.expect(args[0].immediate(), expect);
+        }
+        self.cond_br(cond, then_llbb, else_llbb)
+    }
+
     fn switch(
         &mut self,
         value: RValue<'gcc>,
