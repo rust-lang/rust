@@ -197,6 +197,6 @@ fn sleep_with(nanos: u64, clock_id: wasi::Clockid, flags: u16) {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }
