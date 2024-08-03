@@ -1114,8 +1114,7 @@ function preLoadCss(cssUrl) {
         wrapper.style.left = 0;
         wrapper.style.right = "auto";
         wrapper.style.visibility = "hidden";
-        const body = document.getElementsByTagName("body")[0];
-        body.appendChild(wrapper);
+        document.body.appendChild(wrapper);
         const wrapperPos = wrapper.getBoundingClientRect();
         // offset so that the arrow points at the center of the "(i)"
         const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
@@ -1234,8 +1233,7 @@ function preLoadCss(cssUrl) {
                 }
                 window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
             }
-            const body = document.getElementsByTagName("body")[0];
-            body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
+            document.body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             window.CURRENT_TOOLTIP_ELEMENT = null;
         }
@@ -1832,7 +1830,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         let elem = event.target;
         while (!hasClass(elem, "example-wrap")) {
             elem = elem.parentElement;
-            if (elem.tagName === "body" || hasClass(elem, "docblock")) {
+            if (elem === document.body || hasClass(elem, "docblock")) {
                 return null;
             }
         }
