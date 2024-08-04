@@ -227,7 +227,7 @@ pub trait Printer<'tcx>: Sized {
             Some(trait_ref) => self.tcx().parent(trait_ref.def_id) == parent_def_id,
         };
 
-        if !in_self_mod && !in_trait_mod {
+        if !in_self_mod && !in_trait_mod && !self.for_suggestion() {
             // If the impl is not co-located with either self-type or
             // trait-type, then fallback to a format that identifies
             // the module more clearly.
@@ -242,6 +242,10 @@ pub trait Printer<'tcx>: Sized {
             // syntax. Preferably using associated item notation.
             self.path_qualified(self_ty, impl_trait_ref)
         }
+    }
+
+    fn for_suggestion(&self) -> bool {
+        false
     }
 }
 

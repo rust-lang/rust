@@ -2010,6 +2010,7 @@ pub struct FmtPrinterData<'a, 'tcx> {
 
     pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<Symbol> + 'a>>,
     pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid) -> Option<Symbol> + 'a>>,
+    pub for_suggestion: bool,
 }
 
 impl<'a, 'tcx> Deref for FmtPrinter<'a, 'tcx> {
@@ -2060,6 +2061,7 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
             region_highlight_mode: RegionHighlightMode::default(),
             ty_infer_name_resolver: None,
             const_infer_name_resolver: None,
+            for_suggestion: false,
         }))
     }
 
@@ -2310,6 +2312,9 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         } else {
             Ok(())
         }
+    }
+    fn for_suggestion(&self) -> bool {
+        self.0.for_suggestion
     }
 }
 

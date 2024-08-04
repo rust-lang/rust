@@ -205,6 +205,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
+    printer.for_suggestion = true;
     let const_getter =
         move |ct_vid| Some(infcx.tcx.item_name(infcx.const_var_origin(ct_vid)?.param_def_id?));
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
