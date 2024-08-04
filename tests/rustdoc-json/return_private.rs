@@ -6,7 +6,7 @@ mod secret {
 }
 
 //@ has "$.index[*][?(@.name=='get_secret')].inner.function"
-//@ is "$.index[*][?(@.name=='get_secret')].inner.function.decl.output.resolved_path.name" \"secret::Secret\"
+//@ is "$.index[*][?(@.name=='get_secret')].inner.function.sig.output.resolved_path.name" \"secret::Secret\"
 pub fn get_secret() -> secret::Secret {
     secret::Secret
 }

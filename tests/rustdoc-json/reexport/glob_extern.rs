@@ -12,8 +12,8 @@ mod mod1 {
     //@ set mod1_id = "$.index[*][?(@.name=='mod1')].id"
 }
 
-//@ is "$.index[*][?(@.inner.import)].inner.import.glob" true
-//@ is "$.index[*][?(@.inner.import)].inner.import.id" $mod1_id
-//@ set use_id = "$.index[*][?(@.inner.import)].id"
+//@ is "$.index[*][?(@.inner.use)].inner.use.is_glob" true
+//@ is "$.index[*][?(@.inner.use)].inner.use.id" $mod1_id
+//@ set use_id = "$.index[*][?(@.inner.use)].id"
 //@ ismany "$.index[*][?(@.name=='glob_extern')].inner.module.items[*]" $use_id
 pub use mod1::*;

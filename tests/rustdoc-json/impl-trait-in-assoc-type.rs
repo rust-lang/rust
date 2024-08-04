@@ -9,11 +9,11 @@ impl IntoIterator for AlwaysTrue {
     /// type Item
     type Item = bool;
 
-    //@ count '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.default.impl_trait[*]' 1
-    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.default.impl_trait[0].trait_bound.trait.name' '"Iterator"'
-    //@ count '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.default.impl_trait[0].trait_bound.trait.args.angle_bracketed.bindings[*]' 1
-    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.default.impl_trait[0].trait_bound.trait.args.angle_bracketed.bindings[0].name' '"Item"'
-    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.default.impl_trait[0].trait_bound.trait.args.angle_bracketed.bindings[0].binding.equality.type.primitive' '"bool"'
+    //@ count '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[*]' 1
+    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.name' '"Iterator"'
+    //@ count '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.args.angle_bracketed.constraints[*]' 1
+    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.args.angle_bracketed.constraints[0].name' '"Item"'
+    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.args.angle_bracketed.constraints[0].binding.equality.type.primitive' '"bool"'
 
     //@ set IntoIter = '$.index[*][?(@.docs=="type IntoIter")].id'
     /// type IntoIter

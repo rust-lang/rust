@@ -6,5 +6,5 @@ mod inner {
     pub struct Public;
 }
 
-//@ is "$.index[*][?(@.inner.import)].inner.import.name" \"NewName\"
+//@ is "$.index[*][?(@.inner.use)].inner.use.name" \"NewName\"
 pub use inner::Public as NewName;

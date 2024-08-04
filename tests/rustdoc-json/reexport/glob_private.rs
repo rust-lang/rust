@@ -12,7 +12,7 @@ mod mod1 {
     }
 
     //@ set mod2_use_id = "$.index[*][?(@.docs=='Mod2 re-export')].id"
-    //@ is "$.index[*][?(@.docs=='Mod2 re-export')].inner.import.name" \"mod2\"
+    //@ is "$.index[*][?(@.docs=='Mod2 re-export')].inner.use.name" \"mod2\"
     /// Mod2 re-export
     pub use self::mod2::*;
 
@@ -23,7 +23,7 @@ mod mod1 {
 }
 
 //@ set mod1_use_id = "$.index[*][?(@.docs=='Mod1 re-export')].id"
-//@ is "$.index[*][?(@.docs=='Mod1 re-export')].inner.import.name" \"mod1\"
+//@ is "$.index[*][?(@.docs=='Mod1 re-export')].inner.use.name" \"mod1\"
 /// Mod1 re-export
 pub use mod1::*;
 
