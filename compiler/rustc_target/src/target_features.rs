@@ -118,13 +118,15 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // FEAT_FLAGM
     ("flagm", Stable, &[]),
     // FEAT_FP16
-    ("fp16", Stable, &[]),
+    // Rust ties FP and Neon: https://github.com/rust-lang/rust/pull/91608
+    ("fp16", Stable, &["neon"]),
     // FEAT_FRINTTS
     ("frintts", Stable, &[]),
     // FEAT_I8MM
     ("i8mm", Stable, &[]),
     // FEAT_JSCVT
-    ("jsconv", Stable, &[]),
+    // Rust ties FP and Neon: https://github.com/rust-lang/rust/pull/91608
+    ("jsconv", Stable, &["neon"]),
     // FEAT_LOR
     ("lor", Stable, &[]),
     // FEAT_LSE

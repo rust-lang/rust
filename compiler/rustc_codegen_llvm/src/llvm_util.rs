@@ -239,40 +239,8 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
         }
         // In LLVM neon implicitly enables fp, but we manually enable
         // neon when a feature only implicitly enables fp
-        ("aarch64", "f32mm") => {
-            LLVMFeature::with_dependency("f32mm", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "f64mm") => {
-            LLVMFeature::with_dependency("f64mm", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "fhm") => {
-            LLVMFeature::with_dependency("fp16fml", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "fp16") => {
-            LLVMFeature::with_dependency("fullfp16", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "jsconv") => {
-            LLVMFeature::with_dependency("jsconv", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "sve") => {
-            LLVMFeature::with_dependency("sve", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "sve2") => {
-            LLVMFeature::with_dependency("sve2", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "sve2-aes") => {
-            LLVMFeature::with_dependency("sve2-aes", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "sve2-sm4") => {
-            LLVMFeature::with_dependency("sve2-sm4", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "sve2-sha3") => {
-            LLVMFeature::with_dependency("sve2-sha3", TargetFeatureFoldStrength::EnableOnly("neon"))
-        }
-        ("aarch64", "sve2-bitperm") => LLVMFeature::with_dependency(
-            "sve2-bitperm",
-            TargetFeatureFoldStrength::EnableOnly("neon"),
-        ),
+        ("aarch64", "fhm") => LLVMFeature::new("fp16fml"),
+        ("aarch64", "fp16") => LLVMFeature::new("fullfp16"),
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single feature called
         // `fast-unaligned-access`. In LLVM 19, it was split back out.
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
