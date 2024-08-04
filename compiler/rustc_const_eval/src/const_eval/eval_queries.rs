@@ -396,7 +396,7 @@ fn const_validate_mplace<'tcx>(
     let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
     let mut ref_tracking = RefTracking::new(mplace.clone());
     let mut inner = false;
-    while let Some((mplace, path)) = ref_tracking.todo.pop() {
+    while let Some((mplace, path)) = ref_tracking.next() {
         let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {
             _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`
