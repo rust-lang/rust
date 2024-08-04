@@ -1097,6 +1097,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
                         write!(fmt, "ContractChecks()")
                     }
+                    NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
+                        write!(fmt, "OverflowChecks()")
+                    }
                 }
             }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {

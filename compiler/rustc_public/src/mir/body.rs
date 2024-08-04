@@ -1033,6 +1033,8 @@ pub enum RuntimeChecks {
     UbChecks,
     /// cfg!(contract_checks), but at codegen time
     ContractChecks,
+    /// cfg!(overflow_checks), but at codegen time
+    OverflowChecks,
 }
 
 impl Operand {
