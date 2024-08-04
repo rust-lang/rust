@@ -8,7 +8,7 @@ use rustc_span::Span;
 
 use crate::traits::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum IntPredicate {
     IntEQ,
     IntNE,
@@ -22,7 +22,7 @@ pub enum IntPredicate {
     IntSLE,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RealPredicate {
     RealPredicateFalse,
     RealOEQ,
@@ -42,7 +42,7 @@ pub enum RealPredicate {
     RealPredicateTrue,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AtomicRmwBinOp {
     AtomicXchg,
     AtomicAdd,
@@ -57,7 +57,7 @@ pub enum AtomicRmwBinOp {
     AtomicUMin,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum AtomicOrdering {
     Unordered,
     Relaxed,
@@ -67,7 +67,7 @@ pub enum AtomicOrdering {
     SequentiallyConsistent,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum SynchronizationScope {
     SingleThread,
     CrossThread,

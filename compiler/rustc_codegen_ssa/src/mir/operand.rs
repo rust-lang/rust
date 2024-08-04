@@ -131,7 +131,7 @@ impl<V: CodegenObject> OperandValue<V> {
 /// to avoid nasty edge cases. In particular, using `Builder::store`
 /// directly is sure to cause problems -- use `OperandRef::store`
 /// instead.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct OperandRef<'tcx, V> {
     /// The value.
     pub val: OperandValue<V>,
