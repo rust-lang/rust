@@ -336,6 +336,14 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for ty::List<Ty
 }
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
+    for rustc_ast::tokenstream::TokenStream
+{
+    fn decode(_decoder: &mut D) -> &'tcx Self {
+        todo!("felix foobar next")
+    }
+}
+
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
     for ty::List<ty::PolyExistentialPredicate<'tcx>>
 {
     fn decode(decoder: &mut D) -> &'tcx Self {

@@ -790,6 +790,13 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx rustc_ast::tokenstream::TokenStream {
+    #[inline]
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
 macro_rules! impl_ref_decoder {
     (<$tcx:tt> $($ty:ty,)*) => {
         $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {

@@ -111,8 +111,9 @@ rustc_queries! {
     }
 
     query expand_legacy_bang(key: (LocalExpnId, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
-        eval_always
         no_hash
+        // eval_always
+        cache_on_disk_if { true }
         desc { "expand legacy bang" }
     }
 
