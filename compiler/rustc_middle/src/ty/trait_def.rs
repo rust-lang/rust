@@ -168,9 +168,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` while using
-        // `TreatParams::AsCandidateKey` while actually adding them.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::ForLookup) {
+        // Note that we're using `TreatParams::AsRigid` to query `non_blanket_impls` while using
+        // `TreatParams::InstantiateWithInfer` while actually adding them.
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsRigid) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     f(impl_def_id);
@@ -190,7 +190,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> + 'tcx {
         let impls = self.trait_impls_of(trait_def_id);
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsCandidateKey) {
+        if let Some(simp) =
+            fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
+        {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
             }
@@ -239,7 +241,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
 
         if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsCandidateKey)
+            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::InstantiateWithInfer)
         {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
