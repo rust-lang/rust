@@ -19,8 +19,16 @@ LL |     if let &[a, b] = Zeroes.into() {
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     if let &[a, b] = <Zeroes as Into<&_>>::into(Zeroes) {
-   |                      +++++++++++++++++++++++++++      ~
+LL |     if let &[a, b] = <_ as Into<_>>::into(Zeroes) {
+   |                      +++++++++++++++++++++      ~
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let &[a, b] = <Zeroes as Into<&'static [usize; 2]>>::into(Zeroes) {
+   |                      ++++++++++++++++++++++++++++++++++++++++++++      ~
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let &[a, b] = <Zeroes as Into<&'static [usize]>>::into(Zeroes) {
+   |                      +++++++++++++++++++++++++++++++++++++++++      ~
 
 error[E0282]: type annotations needed
   --> $DIR/slice-patterns-ambiguity.rs:39:29
@@ -32,8 +40,16 @@ LL |     if let &[a, b] = Zeroes.into() {
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     if let &[a, b] = <Zeroes as Into<&_>>::into(Zeroes) {
-   |                      +++++++++++++++++++++++++++      ~
+LL |     if let &[a, b] = <_ as Into<_>>::into(Zeroes) {
+   |                      +++++++++++++++++++++      ~
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let &[a, b] = <Zeroes as Into<&'static [usize; 2]>>::into(Zeroes) {
+   |                      ++++++++++++++++++++++++++++++++++++++++++++      ~
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let &[a, b] = <Zeroes as Into<&'static [usize]>>::into(Zeroes) {
+   |                      +++++++++++++++++++++++++++++++++++++++++      ~
 
 error: aborting due to 3 previous errors
 

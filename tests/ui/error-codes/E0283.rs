@@ -33,5 +33,6 @@ fn main() {
 fn buzz() {
     let foo_impl = Impl::new();
     let bar = foo_impl.into() * 1u32; //~ ERROR E0283
+    // let bar = <Impl as Into<u32>>::into(foo_impl) * 1u32;
     foo(bar);
 }

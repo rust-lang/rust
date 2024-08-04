@@ -25,7 +25,7 @@ use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
-use crate::infer::InferCtxt;
+use crate::infer::{InferCtxt, InferCtxtExt};
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -557,12 +557,83 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         _ => "",
                     };
 
-                    multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
-                        receiver.span,
-                        def_path,
-                        adjustment,
-                        successor,
-                    ));
+                    let mut paths = vec![];
+                    let param_env = ty::ParamEnv::reveal_all();
+                    let name = self.infcx.tcx.item_name(def_id);
+                    // Look for all the possible implementations to suggest, otherwise we'll show
+                    // just suggest the syntax for the fully qualified path with placeholders.
+                    self.infcx.tcx.for_each_relevant_impl(
+                        self.infcx.tcx.parent(def_id), // Trait `DefId`
+                        args.type_at(0),               // `Self` type
+                        |impl_def_id| {
+                            let impl_args = self.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                            let impl_trait_ref = self
+                                .infcx
+                                .tcx
+                                .impl_trait_ref(impl_def_id)
+                                .unwrap()
+                                .instantiate(self.infcx.tcx, impl_args);
+                            let impl_self_ty = impl_trait_ref.self_ty();
+                            if self.infcx.can_eq(param_env, impl_self_ty, args.type_at(0)) {
+                                // The expr's self type could conform to this impl's self type.
+                            } else {
+                                // Nope, don't bother.
+                                return;
+                            }
+                            let assocs = self.infcx.tcx.associated_items(impl_def_id);
+
+                            // We're at the `impl` level, but we want to get the same method we
+                            // called *on this `impl`*, in order to get the right DefId and args.
+                            let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
+                                // The method isn't in this `impl`? Not useful to us then.
+                                return;
+                            };
+                            // Let's ignore the generic params and replace them with `_` in the
+                            // suggested path.
+                            let identity_method = ty::GenericArgs::for_item(
+                                self.infcx.tcx,
+                                assoc.def_id,
+                                |param, _| {
+                                    // We don't want to name the arguments, we just want to give an
+                                    // idea of what the syntax is.
+                                    match param.kind {
+                                        ty::GenericParamDefKind::Lifetime => {
+                                            self.infcx.tcx.lifetimes.re_erased.into()
+                                        }
+                                        ty::GenericParamDefKind::Type { .. } => {
+                                            self.next_ty_var(DUMMY_SP).into()
+                                        }
+                                        ty::GenericParamDefKind::Const { .. } => {
+                                            self.next_const_var(DUMMY_SP).into()
+                                        }
+                                    }
+                                },
+                            );
+                            let mut printer = fmt_printer(self, Namespace::ValueNS);
+                            printer.print_def_path(assoc.def_id, identity_method).unwrap();
+                            paths.push(printer.into_buffer());
+                        },
+                    );
+                    if paths.len() > 20 || paths.is_empty() {
+                        // This will show the fallback impl, so the expression will have type
+                        // parameter placeholders, but it's better than nothing.
+                        multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                            receiver.span,
+                            def_path,
+                            adjustment,
+                            successor,
+                        ));
+                    } else {
+                        // These are the paths to specific impls.
+                        for path in paths {
+                            multi_suggestions.push(SourceKindMultiSuggestion::new_fully_qualified(
+                                receiver.span,
+                                path,
+                                adjustment,
+                                successor,
+                            ));
+                        }
+                    }
                 }
             }
             InferSourceKind::ClosureReturn { ty, data, should_wrap_expr } => {
