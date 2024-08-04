@@ -1984,8 +1984,11 @@ impl<T, E> ops::Try for Result<T, E> {
 impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
     #[inline]
     #[track_caller]
+    #[allow(unreachable_patterns)]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
+            // SAFETY: the safety contract must be upheld by the caller.
+            Ok(_) => unsafe { hint::unreachable_unchecked() },
             Err(e) => Err(From::from(e)),
         }
     }
