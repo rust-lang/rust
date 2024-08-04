@@ -240,6 +240,19 @@ fn test() {
       //^ 'do_a
     }
   //^ 'end
+
+    'a: loop {
+        'b: for i in 0..5 {
+            'c: while true {
+
+
+            }
+          //^ 'c
+        }
+      //^ 'b
+    }
+  //^ 'a
+
   }
 //^ fn test
 "#,
