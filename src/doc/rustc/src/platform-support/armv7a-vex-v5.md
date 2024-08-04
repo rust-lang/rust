@@ -5,7 +5,7 @@
 
 Allows compiling user programs for the [VEX V5 Brain](https://www.vexrobotics.com/276-4810.html), a microcontroller for educational and competitive robotics.
 
-Rust support for this target is not affiliated with VEX Robotics or IFI, and is not derived from nor used with any official VEX SDK.
+Rust support for this target is not affiliated with VEX Robotics or IFI.
 
 ## Target maintainers
 
@@ -29,7 +29,7 @@ This target generates binaries in the ELF format that may uploaded to the brain 
 
 ## Building the target
 
-Rust does not ship pre-compiled artifacts for this target. You can use `build-std` feature to build ELF binaries with `std` support.
+Rust does not ship pre-compiled artifacts for this target. You can use the `build-std` feature to build ELF binaries with `std` support.
 
 `.cargo/config.toml`:
 
@@ -44,9 +44,9 @@ build-std-features = ["compiler-builtins-mem"]
 
 ## Building Rust programs
 
-The recommended way to build artifacts that can be installed and run on V5 Brain is by using the [cargo-v5](https://github.com/vexide/cargo-v5) tool. This tool wraps the `cargo build` command by supplying arguments necessary to build the target, while also providing uploading functionality.
+The recommended way to build artifacts that run on V5 Brain is by using the [cargo-v5](https://github.com/vexide/cargo-v5) tool. This tool wraps the `cargo build` command by supplying arguments necessary to build the target, while also providing functionality for uploading over USB to a V5 Controller or Brain.
 
-To install the tool run:
+To install the tool, run:
 
 ```sh
 cargo install cargo-v5
@@ -70,7 +70,7 @@ To build an uploadable BIN file using the release profile, run:
 cargo v5 build --release
 ```
 
-Programs can also be directly uploaded to the brain over a USB connection after building:
+Programs can also be directly uploaded to the brain over a USB connection immediately after building:
 
 ```sh
 cargo v5 upload --release
@@ -78,7 +78,7 @@ cargo v5 upload --release
 
 ## Testing
 
-Binaries built for this target can be run in an emulator (such as [vex-v5-qemu](https://github.com/vexide/vex-v5-qemu)), or uploaded to a device over a USB or bluetooth connection.
+Binaries built for this target can be run in an emulator (such as [vex-v5-qemu](https://github.com/vexide/vex-v5-qemu)), or uploaded to a physical device over a serial (USB) connection.
 
 The default Rust test runner is not supported.
 
