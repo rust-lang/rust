@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_hir_and_then};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::{expr_or_init, is_trait_method, pat_is_wild};
 use rustc_errors::Applicability;
@@ -97,10 +97,8 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
             enumerate_span,
             "you seem to use `.enumerate()` and immediately discard the index",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "remove the `.enumerate()` call",
-                    Applicability::MachineApplicable,
                     vec![
                         (closure_param.span, new_closure_param),
                         (
@@ -108,6 +106,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
                             String::new(),
                         ),
                     ],
+                    Applicability::MachineApplicable,
                 );
             },
         );
