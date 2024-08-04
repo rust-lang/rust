@@ -264,6 +264,7 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
+#![feature(x86_amx_intrinsics)]
 // tidy-alphabetical-end
 
 // allow using `core::` in intra-doc links
