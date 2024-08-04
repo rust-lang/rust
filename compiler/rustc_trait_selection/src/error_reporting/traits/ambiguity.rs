@@ -233,6 +233,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 trait_pred.self_ty().skip_binder().into(),
                                 TypeAnnotationNeeded::E0282,
                                 false,
+                                obligation.param_env,
+                                None,
                             )
                             .emit(),
                         Some(e) => e,
@@ -287,6 +289,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         term,
                         TypeAnnotationNeeded::E0283,
                         true,
+                        obligation.param_env,
+                        None,
                         match &candidates[..] {
                             [candidate] => Some(*candidate),
                             _ => None,
@@ -547,6 +551,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     term,
                     TypeAnnotationNeeded::E0282,
                     false,
+                    obligation.param_env,
+                    None,
                 )
             }
 
@@ -566,6 +572,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     a.into(),
                     TypeAnnotationNeeded::E0282,
                     true,
+                    obligation.param_env,
+                    None,
                 )
             }
 
@@ -601,6 +609,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         term,
                         TypeAnnotationNeeded::E0284,
                         true,
+                        obligation.param_env,
+                        Some(data),
                     )
                     .with_note(format!("cannot satisfy `{predicate}`"))
                     .with_long_ty_path(long_ty_path)
@@ -633,6 +643,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         term,
                         TypeAnnotationNeeded::E0284,
                         true,
+                        obligation.param_env,
+                        None,
                     )
                 } else {
                     // If we can't find a generic parameter, just print a generic error
@@ -655,6 +667,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ct.into(),
                     TypeAnnotationNeeded::E0284,
                     true,
+                    obligation.param_env,
+                    None,
                 ),
 
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
