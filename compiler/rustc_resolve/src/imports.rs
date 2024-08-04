@@ -48,6 +48,7 @@ pub(crate) enum ImportKind<'a> {
         /// `source` in `use prefix::source as target`.
         source: Ident,
         /// `target` in `use prefix::source as target`.
+        /// It will directly use `source` when the format is `use prefix::source`.
         target: Ident,
         /// Bindings to which `source` refers to.
         source_bindings: PerNS<Cell<Result<NameBinding<'a>, Determinacy>>>,
