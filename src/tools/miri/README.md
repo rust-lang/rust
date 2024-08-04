@@ -398,6 +398,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
+* `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
+  recurse below references.
 * `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
   fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
   without an explicit value), `none` means it never recurses, `scalar` means it only recurses for

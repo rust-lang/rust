@@ -1006,8 +1006,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// Runs the close in "validation" mode, which means the machine's memory read hooks will be
+    /// Runs the closure in "validation" mode, which means the machine's memory read hooks will be
     /// suppressed. Needless to say, this must only be set with great care! Cannot be nested.
+    ///
+    /// We do this so Miri's allocation access tracking does not show the validation
+    /// reads as spurious accesses.
     pub(super) fn run_for_validation<R>(&self, f: impl FnOnce() -> R) -> R {
         // This deliberately uses `==` on `bool` to follow the pattern
         // `assert!(val.replace(new) == old)`.
