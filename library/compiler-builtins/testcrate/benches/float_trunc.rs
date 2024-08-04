@@ -32,7 +32,7 @@ float_bench! {
     sig: (a: f64) -> f16,
     crate_fn: trunc::__truncdfhf2,
     sys_fn: __truncdfhf2,
-    sys_available: not(feature = "no-sys-f128"),
+    sys_available: not(feature = "no-sys-f16"),
     asm: [
         #[cfg(target_arch = "aarch64")] {
             // FIXME(f16_f128): remove `from_bits()` after f16 asm support (rust-lang/rust/#116909)
@@ -115,6 +115,7 @@ float_bench! {
     asm: [],
 }
 
+#[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 criterion_group!(
     float_trunc,
     trunc_f32_f16,
@@ -124,4 +125,9 @@ criterion_group!(
     trunc_f128_f32,
     trunc_f128_f64,
 );
+
+// FIXME(#655): `f16` tests disabled until we can bootstrap symbols
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+criterion_group!(float_trunc, trunc_f64_f32, trunc_f128_f32, trunc_f128_f64,);
+
 criterion_main!(float_trunc);

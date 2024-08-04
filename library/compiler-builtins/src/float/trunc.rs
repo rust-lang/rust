@@ -131,17 +131,18 @@ intrinsics! {
     }
 }
 
-#[cfg(not(feature = "no-f16-f128"))]
 intrinsics! {
     #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_f2h]
+    #[cfg(f16_enabled)]
     pub extern "C" fn __truncsfhf2(a: f32) -> f16 {
         trunc(a)
     }
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[cfg(f16_enabled)]
     pub extern "C" fn __gnu_f2h_ieee(a: f32) -> f16 {
         trunc(a)
     }
@@ -149,6 +150,7 @@ intrinsics! {
     #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_d2h]
+    #[cfg(f16_enabled)]
     pub extern "C" fn __truncdfhf2(a: f64) -> f16 {
         trunc(a)
     }
@@ -156,6 +158,7 @@ intrinsics! {
     #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __trunckfhf2]
+    #[cfg(all(f16_enabled, f128_enabled))]
     pub extern "C" fn __trunctfhf2(a: f128) -> f16 {
         trunc(a)
     }
@@ -163,6 +166,7 @@ intrinsics! {
     #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __trunckfsf2]
+    #[cfg(f128_enabled)]
     pub extern "C" fn __trunctfsf2(a: f128) -> f32 {
         trunc(a)
     }
@@ -170,6 +174,7 @@ intrinsics! {
     #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __trunckfdf2]
+    #[cfg(f128_enabled)]
     pub extern "C" fn __trunctfdf2(a: f128) -> f64 {
         trunc(a)
     }

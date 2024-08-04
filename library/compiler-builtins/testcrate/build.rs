@@ -44,10 +44,21 @@ fn main() {
         features.insert(Feature::NoSysF16F128Convert);
     }
 
-    if target.starts_with("wasm32-") {
+    // These platforms do not have f16 symbols available in their system libraries, so
+    // skip related tests. Most of these are missing `f16 <-> f32` conversion routines.
+    if (target.starts_with("aarch64-") && target.contains("linux"))
+        || target.starts_with("arm")
+        || target.starts_with("powerpc-")
+        || target.starts_with("powerpc64-")
+        || target.starts_with("powerpc64le-")
+        || target.starts_with("i586-")
+        || target.contains("windows-")
         // Linking says "error: function signature mismatch: __extendhfsf2" and seems to
         // think the signature is either `(i32) -> f32` or `(f32) -> f32`
+        || target.starts_with("wasm32-")
+    {
         features.insert(Feature::NoSysF16);
+        features.insert(Feature::NoSysF16F128Convert);
     }
 
     for feature in features {

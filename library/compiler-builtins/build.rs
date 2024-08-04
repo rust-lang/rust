@@ -1,11 +1,52 @@
 use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
 
+#[allow(dead_code)]
+struct Target {
+    triple: String,
+    os: String,
+    arch: String,
+    vendor: String,
+    env: String,
+    pointer_width: u8,
+    little_endian: bool,
+    features: Vec<String>,
+}
+
+impl Target {
+    fn from_env() -> Self {
+        let little_endian = match env::var("CARGO_CFG_TARGET_ENDIAN").unwrap().as_str() {
+            "little" => true,
+            "big" => false,
+            x => panic!("unknown endian {x}"),
+        };
+
+        Self {
+            triple: env::var("TARGET").unwrap(),
+            os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
+            arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+            vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
+            env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
+            pointer_width: env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
+                .unwrap()
+                .parse()
+                .unwrap(),
+            little_endian,
+            features: env::var("CARGO_CFG_TARGET_FEATURE")
+                .unwrap_or_default()
+                .split(",")
+                .map(ToOwned::to_owned)
+                .collect(),
+        }
+    }
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    configure_check_cfg();
-
-    let target = env::var("TARGET").unwrap();
+    let target = Target::from_env();
     let cwd = env::current_dir().unwrap();
+
+    configure_check_cfg();
+    configure_f16_f128(&target);
 
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
@@ -14,12 +55,12 @@ fn main() {
     println!("cargo:rustc-cfg=feature=\"unstable\"");
 
     // Emscripten's runtime includes all the builtins
-    if target.contains("emscripten") {
+    if target.env == "emscripten" {
         return;
     }
 
     // OpenBSD provides compiler_rt by default, use it instead of rebuilding it from source
-    if target.contains("openbsd") {
+    if target.os == "openbsd" {
         println!("cargo:rustc-link-search=native=/usr/lib");
         println!("cargo:rustc-link-lib=compiler_rt");
         return;
@@ -27,22 +68,22 @@ fn main() {
 
     // Forcibly enable memory intrinsics on wasm & SGX as we don't have a libc to
     // provide them.
-    if (target.contains("wasm") && !target.contains("wasi"))
-        || (target.contains("sgx") && target.contains("fortanix"))
-        || target.contains("-none")
-        || target.contains("nvptx")
-        || target.contains("uefi")
-        || target.contains("xous")
+    if (target.triple.contains("wasm") && !target.triple.contains("wasi"))
+        || (target.triple.contains("sgx") && target.triple.contains("fortanix"))
+        || target.triple.contains("-none")
+        || target.triple.contains("nvptx")
+        || target.triple.contains("uefi")
+        || target.triple.contains("xous")
     {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
     // These targets have hardware unaligned access support.
     println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
-    if target.contains("x86_64")
-        || target.contains("i686")
-        || target.contains("aarch64")
-        || target.contains("bpf")
+    if target.arch.contains("x86_64")
+        || target.arch.contains("i686")
+        || target.arch.contains("aarch64")
+        || target.arch.contains("bpf")
     {
         println!("cargo:rustc-cfg=feature=\"mem-unaligned\"");
     }
@@ -50,7 +91,7 @@ fn main() {
     // NOTE we are going to assume that llvm-target, what determines our codegen option, matches the
     // target triple. This is usually correct for our built-in targets but can break in presence of
     // custom targets, which can have arbitrary names.
-    let llvm_target = target.split('-').collect::<Vec<_>>();
+    let llvm_target = target.triple.split('-').collect::<Vec<_>>();
 
     // Build missing intrinsics from compiler-rt C source code. If we're
     // mangling names though we assume that we're also in test mode so we don't
@@ -60,7 +101,7 @@ fn main() {
         // Don't use a C compiler for these targets:
         //
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust
-        if !target.contains("nvptx") {
+        if !target.arch.contains("nvptx") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }
@@ -86,7 +127,7 @@ fn main() {
     println!("cargo::rustc-check-cfg=cfg(kernel_user_helpers)");
     if llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
-        || target == "arm-linux-androideabi"
+        || target.triple == "arm-linux-androideabi"
     {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
@@ -219,6 +260,47 @@ fn configure_check_cfg() {
     println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
 }
 
+/// Configure whether or not `f16` and `f128` support should be enabled.
+fn configure_f16_f128(target: &Target) {
+    // Set whether or not `f16` and `f128` are supported at a basic level by LLVM. This only means
+    // that the backend will not crash when using these types. This does not mean that the
+    // backend does the right thing, or that the platform doesn't have ABI bugs.
+    //
+    // We do this here rather than in `rust-lang/rust` because configuring via cargo features is
+    // not straightforward.
+    //
+    // Original source of this list:
+    // <https://github.com/rust-lang/compiler-builtins/pull/652#issuecomment-2266151350>
+    let (f16_ok, f128_ok) = match target.arch.as_str() {
+        // `f16` and `f128` both crash <https://github.com/llvm/llvm-project/issues/94434>
+        "arm64ec" => (false, false),
+        // `f16` crashes <https://github.com/llvm/llvm-project/issues/50374>
+        "s390x" => (false, true),
+        // `f128` crashes <https://github.com/llvm/llvm-project/issues/96432>
+        "mips64" | "mips64r6" => (true, false),
+        // `f128` crashes <https://github.com/llvm/llvm-project/issues/101545>
+        "powerpc64" if &target.os == "aix" => (true, false),
+        // `f128` crashes <https://github.com/llvm/llvm-project/issues/41838>
+        "sparc" | "sparcv9" => (true, false),
+        // Most everything else works as of LLVM 19
+        _ => (true, true),
+    };
+
+    // If the feature is set, disable these types.
+    let disable_both = env::var_os("CARGO_FEATURE_NO_F16_F128").is_some();
+
+    println!("cargo::rustc-check-cfg=cfg(f16_enabled)");
+    println!("cargo::rustc-check-cfg=cfg(f128_enabled)");
+
+    if f16_ok && !disable_both {
+        println!("cargo::rustc-cfg=f16_enabled");
+    }
+
+    if f128_ok && !disable_both {
+        println!("cargo::rustc-cfg=f128_enabled");
+    }
+}
+
 #[cfg(feature = "c")]
 mod c {
     use std::collections::{BTreeMap, HashSet};
@@ -226,6 +308,8 @@ mod c {
     use std::fs::{self, File};
     use std::io::Write;
     use std::path::{Path, PathBuf};
+
+    use super::Target;
 
     struct Sources {
         // SYMBOL -> PATH TO SOURCE
@@ -267,11 +351,7 @@ mod c {
     }
 
     /// Compile intrinsics from the compiler-rt C source code
-    pub fn compile(llvm_target: &[&str], target: &String) {
-        let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-        let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap();
-        let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-        let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
+    pub fn compile(llvm_target: &[&str], target: &Target) {
         let mut consider_float_intrinsics = true;
         let cfg = &mut cc::Build::new();
 
@@ -280,8 +360,8 @@ mod c {
         //
         // Therefore, evaluate if those flags are present and set a boolean that causes any
         // compiler-rt intrinsics that contain floating point source to be excluded for this target.
-        if target_arch == "aarch64" {
-            let cflags_key = String::from("CFLAGS_") + &(target.to_owned().replace("-", "_"));
+        if target.arch == "aarch64" {
+            let cflags_key = String::from("CFLAGS_") + &(target.triple.replace("-", "_"));
             if let Ok(cflags_value) = env::var(cflags_key) {
                 if cflags_value.contains("+nofp") || cflags_value.contains("+nosimd") {
                     consider_float_intrinsics = false;
@@ -299,7 +379,7 @@ mod c {
 
         cfg.warnings(false);
 
-        if target_env == "msvc" {
+        if target.env == "msvc" {
             // Don't pull in extra libraries on MSVC
             cfg.flag("/Zl");
 
@@ -328,7 +408,7 @@ mod c {
         // at odds with compiling with `-ffreestanding`, as the header
         // may be incompatible or not present. Create a minimal stub
         // header to use instead.
-        if target_os == "uefi" {
+        if target.os == "uefi" {
             let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
             let include_dir = out_dir.join("include");
             if !include_dir.exists() {
@@ -373,7 +453,7 @@ mod c {
 
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
         // include them.
-        if target_vendor != "apple" || target_arch != "x86" {
+        if target.vendor != "apple" || target.arch != "x86" {
             sources.extend(&[
                 ("__absvti2", "absvti2.c"),
                 ("__addvti3", "addvti3.c"),
@@ -392,7 +472,7 @@ mod c {
             }
         }
 
-        if target_vendor == "apple" {
+        if target.vendor == "apple" {
             sources.extend(&[
                 ("atomic_flag_clear", "atomic_flag_clear.c"),
                 ("atomic_flag_clear_explicit", "atomic_flag_clear_explicit.c"),
@@ -406,8 +486,8 @@ mod c {
             ]);
         }
 
-        if target_env != "msvc" {
-            if target_arch == "x86" {
+        if target.env != "msvc" {
+            if target.arch == "x86" {
                 sources.extend(&[
                     ("__ashldi3", "i386/ashldi3.S"),
                     ("__ashrdi3", "i386/ashrdi3.S"),
@@ -421,7 +501,7 @@ mod c {
             }
         }
 
-        if target_arch == "arm" && target_vendor != "apple" && target_env != "msvc" {
+        if target.arch == "arm" && target.vendor != "apple" && target.env != "msvc" {
             sources.extend(&[
                 ("__aeabi_div0", "arm/aeabi_div0.c"),
                 ("__aeabi_drsub", "arm/aeabi_drsub.c"),
@@ -441,7 +521,7 @@ mod c {
                 ("__umodsi3", "arm/umodsi3.S"),
             ]);
 
-            if target_os == "freebsd" {
+            if target.os == "freebsd" {
                 sources.extend(&[("__clear_cache", "clear_cache.c")]);
             }
 
@@ -513,7 +593,7 @@ mod c {
             ]);
         }
 
-        if (target_arch == "aarch64" || target_arch == "arm64ec") && consider_float_intrinsics {
+        if (target.arch == "aarch64" || target.arch == "arm64ec") && consider_float_intrinsics {
             sources.extend(&[
                 ("__comparetf2", "comparetf2.c"),
                 ("__floatditf", "floatditf.c"),
@@ -526,16 +606,16 @@ mod c {
                 ("__fe_raise_inexact", "fp_mode.c"),
             ]);
 
-            if target_os != "windows" {
+            if target.os != "windows" {
                 sources.extend(&[("__multc3", "multc3.c")]);
             }
         }
 
-        if target_arch == "mips" || target_arch == "riscv32" || target_arch == "riscv64" {
+        if target.arch == "mips" || target.arch == "riscv32" || target.arch == "riscv64" {
             sources.extend(&[("__bswapsi2", "bswapsi2.c")]);
         }
 
-        if target_arch == "mips64" {
+        if target.arch == "mips64" {
             sources.extend(&[
                 ("__netf2", "comparetf2.c"),
                 ("__floatsitf", "floatsitf.c"),
@@ -544,7 +624,7 @@ mod c {
             ]);
         }
 
-        if target_arch == "loongarch64" {
+        if target.arch == "loongarch64" {
             sources.extend(&[
                 ("__netf2", "comparetf2.c"),
                 ("__floatsitf", "floatsitf.c"),
@@ -554,7 +634,7 @@ mod c {
         }
 
         // Remove the assembly implementations that won't compile for the target
-        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" || target_os == "uefi"
+        if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" || target.os == "uefi"
         {
             let mut to_remove = Vec::new();
             for (k, v) in sources.map.iter() {
@@ -570,7 +650,7 @@ mod c {
         }
 
         // Android uses emulated TLS so we need a runtime support function.
-        if target_os == "android" {
+        if target.os == "android" {
             sources.extend(&[("__emutls_get_address", "emutls.c")]);
 
             // Work around a bug in the NDK headers (fixed in
@@ -580,7 +660,7 @@ mod c {
         }
 
         // OpenHarmony also uses emulated TLS.
-        if target_env == "ohos" {
+        if target.env == "ohos" {
             sources.extend(&[("__emutls_get_address", "emutls.c")]);
         }
 
@@ -607,7 +687,7 @@ mod c {
         // sets of flags to the same source file.
         // Note: Out-of-line aarch64 atomics are not supported by the msvc toolchain (#430).
         let src_dir = root.join("lib/builtins");
-        if target_arch == "aarch64" && target_env != "msvc" {
+        if target.arch == "aarch64" && target.env != "msvc" {
             // See below for why we're building these as separate libraries.
             build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
 
