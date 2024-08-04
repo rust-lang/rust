@@ -365,4 +365,8 @@ fn conjunctive_blocks() -> String {
     return { "a".to_string() } + "b" + { "c" };
 }
 
+fn issue12907() -> String {
+    return "".split("").next().unwrap().to_string();
+}
+
 fn main() {}

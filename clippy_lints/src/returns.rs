@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{for_each_expr, for_each_unconsumed_temporary, Descend};
 use clippy_utils::{
     binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res,
     path_to_local_id, span_contains_cfg, span_find_starting_semi,
@@ -384,10 +384,24 @@ fn check_final_expr<'tcx>(
                 }
             };
 
-            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
-            if borrows {
-                return;
+            if let Some(inner) = inner {
+                if for_each_unconsumed_temporary(cx, inner, |temporary_ty| {
+                    if temporary_ty.has_significant_drop(cx.tcx, cx.param_env)
+                        && temporary_ty
+                            .walk()
+                            .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+                    {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                })
+                .is_break()
+                {
+                    return;
+                }
             }
+
             if ret_span.from_expansion() {
                 return;
             }

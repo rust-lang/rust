@@ -665,5 +665,17 @@ LL -     return { "a".to_string() } + "b" + { "c" };
 LL +     ({ "a".to_string() } + "b" + { "c" })
    |
 
-error: aborting due to 53 previous errors
+error: unneeded `return` statement
+  --> tests/ui/needless_return.rs:369:5
+   |
+LL |     return "".split("").next().unwrap().to_string();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `return`
+   |
+LL -     return "".split("").next().unwrap().to_string();
+LL +     "".split("").next().unwrap().to_string()
+   |
+
+error: aborting due to 54 previous errors
 
