@@ -338,8 +338,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             if default.is_some() {
                 match allow_defaults {
                     Defaults::Allowed => {}
-                    Defaults::FutureCompatDisallowed
-                        if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
                         tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
