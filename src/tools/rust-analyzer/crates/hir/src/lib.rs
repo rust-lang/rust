@@ -1828,6 +1828,9 @@ impl DefWithBody {
                     is_bang: true,
                 }
                 .into(),
+                BodyDiagnostic::AwaitOutsideOfAsync { node, location } => {
+                    AwaitOutsideOfAsync { node: *node, location: location.clone() }.into()
+                }
                 BodyDiagnostic::UnreachableLabel { node, name } => {
                     UnreachableLabel { node: *node, name: name.clone() }.into()
                 }
