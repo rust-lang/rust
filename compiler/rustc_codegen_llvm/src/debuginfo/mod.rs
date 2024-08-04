@@ -20,7 +20,7 @@ use rustc_session::config::{self, DebugInfo};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_span::{
-    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId,
+    BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, DUMMY_SP,
 };
 use rustc_target::abi::Size;
 use smallvec::SmallVec;
@@ -570,7 +570,12 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         inlined_at: Option<&'ll DILocation>,
         span: Span,
     ) -> &'ll DILocation {
-        let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+        let (line, col) = if span == DUMMY_SP && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
 
         unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
     }
