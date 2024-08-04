@@ -41,64 +41,23 @@ where
     })
 }
 
-fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, abi: ABI)
+fn classify<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI, is_ret: bool)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !ret.layout.is_sized() {
-        // Not touching this...
-        return;
-    }
-    if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(64);
-        return;
-    }
-
-    // The ELFv1 ABI doesn't return aggregates in registers
-    if abi == ELFv1 {
-        ret.make_indirect();
-        return;
-    }
-
-    if let Some(uniform) = is_homogeneous_aggregate(cx, ret, abi) {
-        ret.cast_to(uniform);
-        return;
-    }
-
-    let size = ret.layout.size;
-    let bits = size.bits();
-    if bits <= 128 {
-        let unit = if cx.data_layout().endian == Endian::Big {
-            Reg { kind: RegKind::Integer, size }
-        } else if bits <= 8 {
-            Reg::i8()
-        } else if bits <= 16 {
-            Reg::i16()
-        } else if bits <= 32 {
-            Reg::i32()
-        } else {
-            Reg::i64()
-        };
-
-        ret.cast_to(Uniform::new(unit, size));
-        return;
-    }
-
-    ret.make_indirect();
-}
-
-fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI)
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout,
-{
-    if !arg.layout.is_sized() {
+    if arg.is_ignore() || !arg.layout.is_sized() {
         // Not touching this...
         return;
     }
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
+        return;
+    }
+
+    // The ELFv1 ABI doesn't return aggregates in registers
+    if is_ret && abi == ELFv1 {
+        arg.make_indirect();
         return;
     }
 
@@ -108,7 +67,10 @@ where
     }
 
     let size = arg.layout.size;
-    if size.bits() <= 64 {
+    if is_ret && size.bits() > 128 {
+        // Non-homogeneous aggregates larger than two doublewords are returned indirectly.
+        arg.make_indirect();
+    } else if size.bits() <= 64 {
         // Aggregates smaller than a doubleword should appear in
         // the least-significant bits of the parameter doubleword.
         arg.cast_to(Reg { kind: RegKind::Integer, size })
@@ -138,14 +100,9 @@ where
         }
     };
 
-    if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, abi);
-    }
+    classify(cx, &mut fn_abi.ret, abi, true);
 
     for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
-        }
-        classify_arg(cx, arg, abi);
+        classify(cx, arg, abi, false);
     }
 }
