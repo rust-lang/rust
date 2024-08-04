@@ -74,13 +74,13 @@ impl<HCX: Clone, DefId: HashStable<HCX>> ToStableHashKey<HCX> for SimplifiedType
 pub enum TreatParams {
     /// Treat parameters as infer vars. This is the correct mode for caching
     /// an impl's type for lookup.
-    AsCandidateKey,
+    InstantiateWithInfer,
     /// Treat parameters as placeholders in the given environment. This is the
     /// correct mode for *lookup*, as during candidate selection.
     ///
     /// This also treats projections with inference variables as infer vars
     /// since they could be further normalized.
-    ForLookup,
+    AsRigid,
 }
 
 /// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
@@ -140,18 +140,16 @@ pub fn simplify_type<I: Interner>(
         }
         ty::Placeholder(..) => Some(SimplifiedType::Placeholder),
         ty::Param(_) => match treat_params {
-            TreatParams::ForLookup => Some(SimplifiedType::Placeholder),
-            TreatParams::AsCandidateKey => None,
+            TreatParams::AsRigid => Some(SimplifiedType::Placeholder),
+            TreatParams::InstantiateWithInfer => None,
         },
         ty::Alias(..) => match treat_params {
             // When treating `ty::Param` as a placeholder, projections also
             // don't unify with anything else as long as they are fully normalized.
             // FIXME(-Znext-solver): Can remove this `if` and always simplify to `Placeholder`
             // when the new solver is enabled by default.
-            TreatParams::ForLookup if !ty.has_non_region_infer() => {
-                Some(SimplifiedType::Placeholder)
-            }
-            TreatParams::ForLookup | TreatParams::AsCandidateKey => None,
+            TreatParams::AsRigid if !ty.has_non_region_infer() => Some(SimplifiedType::Placeholder),
+            TreatParams::AsRigid | TreatParams::InstantiateWithInfer => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id)),
         ty::Error(_) => Some(SimplifiedType::Error),
@@ -173,29 +171,49 @@ impl<DefId> SimplifiedType<DefId> {
     }
 }
 
-/// Given generic arguments from an obligation and an impl,
-/// could these two be unified after replacing parameters in the
-/// the impl with inference variables.
+/// Given generic arguments, could they be unified after
+/// replacing parameters with inference variables or placeholders.
+/// This behavior is toggled using the const generics.
 ///
-/// For obligations, parameters won't be replaced by inference
-/// variables and only unify with themselves. We treat them
-/// the same way we treat placeholders.
+/// We use this to quickly reject impl/wc candidates without needing
+/// to instantiate generic arguments/having to enter a probe.
 ///
 /// We also use this function during coherence. For coherence the
 /// impls only have to overlap for some value, so we treat parameters
-/// on both sides like inference variables. This behavior is toggled
-/// using the `treat_obligation_params` field.
+/// on both sides like inference variables.
 #[derive(Debug, Clone, Copy)]
-pub struct DeepRejectCtxt<I: Interner> {
-    treat_obligation_params: TreatParams,
+pub struct DeepRejectCtxt<
+    I: Interner,
+    const INSTANTIATE_LHS_WITH_INFER: bool,
+    const INSTANTIATE_RHS_WITH_INFER: bool,
+> {
     _interner: PhantomData<I>,
 }
 
-impl<I: Interner> DeepRejectCtxt<I> {
-    pub fn new(_interner: I, treat_obligation_params: TreatParams) -> Self {
-        DeepRejectCtxt { treat_obligation_params, _interner: PhantomData }
+impl<I: Interner> DeepRejectCtxt<I, false, false> {
+    /// Treat parameters in both the lhs and the rhs as rigid.
+    pub fn relate_rigid_rigid(_interner: I) -> DeepRejectCtxt<I, false, false> {
+        DeepRejectCtxt { _interner: PhantomData }
     }
+}
 
+impl<I: Interner> DeepRejectCtxt<I, true, true> {
+    /// Treat parameters in both the lhs and the rhs as infer vars.
+    pub fn relate_infer_infer(_interner: I) -> DeepRejectCtxt<I, true, true> {
+        DeepRejectCtxt { _interner: PhantomData }
+    }
+}
+
+impl<I: Interner> DeepRejectCtxt<I, false, true> {
+    /// Treat parameters in the lhs as rigid, and in rhs as infer vars.
+    pub fn relate_rigid_infer(_interner: I) -> DeepRejectCtxt<I, false, true> {
+        DeepRejectCtxt { _interner: PhantomData }
+    }
+}
+
+impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_WITH_INFER: bool>
+    DeepRejectCtxt<I, INSTANTIATE_LHS_WITH_INFER, INSTANTIATE_RHS_WITH_INFER>
+{
     pub fn args_may_unify(
         self,
         obligation_args: I::GenericArgs,
@@ -216,11 +234,18 @@ impl<I: Interner> DeepRejectCtxt<I> {
         })
     }
 
-    pub fn types_may_unify(self, obligation_ty: I::Ty, impl_ty: I::Ty) -> bool {
-        match impl_ty.kind() {
-            // Start by checking whether the type in the impl may unify with
+    pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
+        match rhs.kind() {
+            // Start by checking whether the `rhs` type may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) | ty::Error(_) | ty::Alias(..) => return true,
+            ty::Param(_) => {
+                if INSTANTIATE_RHS_WITH_INFER {
+                    return true;
+                }
+            }
+            ty::Error(_) | ty::Alias(..) | ty::Bound(..) => return true,
+            ty::Infer(var) => return self.var_and_ty_may_unify(var, lhs),
+
             // These types only unify with inference variables or their own
             // variant.
             ty::Bool
@@ -238,108 +263,48 @@ impl<I: Interner> DeepRejectCtxt<I> {
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..)
+            | ty::FnDef(..)
             | ty::FnPtr(..)
-            | ty::Foreign(..) => debug_assert!(impl_ty.is_known_rigid()),
-            ty::FnDef(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
-            | ty::Placeholder(..)
-            | ty::Bound(..)
-            | ty::Infer(_) => panic!("unexpected impl_ty: {impl_ty:?}"),
-        }
+            | ty::Foreign(_)
+            | ty::Placeholder(_) => {}
+        };
 
-        let k = impl_ty.kind();
-        match obligation_ty.kind() {
-            // Purely rigid types, use structural equivalence.
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Str
-            | ty::Never
-            | ty::Foreign(_) => obligation_ty == impl_ty,
-            ty::Ref(_, obl_ty, obl_mutbl) => match k {
-                ty::Ref(_, impl_ty, impl_mutbl) => {
-                    obl_mutbl == impl_mutbl && self.types_may_unify(obl_ty, impl_ty)
+        // For purely rigid types, use structural equivalence.
+        match lhs.kind() {
+            ty::Ref(_, lhs_ty, lhs_mutbl) => match rhs.kind() {
+                ty::Ref(_, rhs_ty, rhs_mutbl) => {
+                    lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
                 }
                 _ => false,
             },
-            ty::Adt(obl_def, obl_args) => match k {
-                ty::Adt(impl_def, impl_args) => {
-                    obl_def == impl_def && self.args_may_unify(obl_args, impl_args)
+
+            ty::Adt(lhs_def, lhs_args) => match rhs.kind() {
+                ty::Adt(rhs_def, rhs_args) => {
+                    lhs_def == rhs_def && self.args_may_unify(lhs_args, rhs_args)
                 }
                 _ => false,
             },
-            ty::Pat(obl_ty, _) => {
-                // FIXME(pattern_types): take pattern into account
-                matches!(k, ty::Pat(impl_ty, _) if self.types_may_unify(obl_ty, impl_ty))
+
+            // Depending on the value of const generics, we either treat generic parameters
+            // like placeholders or like inference variables.
+            ty::Param(lhs) => {
+                INSTANTIATE_LHS_WITH_INFER
+                    || match rhs.kind() {
+                        ty::Param(rhs) => lhs == rhs,
+                        _ => false,
+                    }
             }
-            ty::Slice(obl_ty) => {
-                matches!(k, ty::Slice(impl_ty) if self.types_may_unify(obl_ty, impl_ty))
+
+            // Placeholder types don't unify with anything on their own.
+            ty::Placeholder(lhs) => {
+                matches!(rhs.kind(), ty::Placeholder(rhs) if lhs == rhs)
             }
-            ty::Array(obl_ty, obl_len) => match k {
-                ty::Array(impl_ty, impl_len) => {
-                    self.types_may_unify(obl_ty, impl_ty)
-                        && self.consts_may_unify(obl_len, impl_len)
-                }
-                _ => false,
-            },
-            ty::Tuple(obl) => match k {
-                ty::Tuple(imp) => {
-                    obl.len() == imp.len()
-                        && iter::zip(obl.iter(), imp.iter())
-                            .all(|(obl, imp)| self.types_may_unify(obl, imp))
-                }
-                _ => false,
-            },
-            ty::RawPtr(obl_ty, obl_mutbl) => match k {
-                ty::RawPtr(imp_ty, imp_mutbl) => {
-                    obl_mutbl == imp_mutbl && self.types_may_unify(obl_ty, imp_ty)
-                }
-                _ => false,
-            },
-            ty::Dynamic(obl_preds, ..) => {
-                // Ideally we would walk the existential predicates here or at least
-                // compare their length. But considering that the relevant `Relate` impl
-                // actually sorts and deduplicates these, that doesn't work.
-                matches!(k, ty::Dynamic(impl_preds, ..) if
-                    obl_preds.principal_def_id() == impl_preds.principal_def_id()
-                )
-            }
-            ty::FnPtr(obl_sig_tys, obl_hdr) => match k {
-                ty::FnPtr(impl_sig_tys, impl_hdr) => {
-                    let obl_sig_tys = obl_sig_tys.skip_binder().inputs_and_output;
-                    let impl_sig_tys = impl_sig_tys.skip_binder().inputs_and_output;
 
-                    obl_hdr == impl_hdr
-                        && obl_sig_tys.len() == impl_sig_tys.len()
-                        && iter::zip(obl_sig_tys.iter(), impl_sig_tys.iter())
-                            .all(|(obl, imp)| self.types_may_unify(obl, imp))
-                }
-                _ => false,
-            },
-
-            // Impls cannot contain these types as these cannot be named directly.
-            ty::FnDef(..) | ty::Closure(..) | ty::CoroutineClosure(..) | ty::Coroutine(..) => false,
-
-            // Placeholder types don't unify with anything on their own
-            ty::Placeholder(..) | ty::Bound(..) => false,
-
-            // Depending on the value of `treat_obligation_params`, we either
-            // treat generic parameters like placeholders or like inference variables.
-            ty::Param(_) => match self.treat_obligation_params {
-                TreatParams::ForLookup => false,
-                TreatParams::AsCandidateKey => true,
-            },
-
-            ty::Infer(ty::IntVar(_)) => impl_ty.is_integral(),
-
-            ty::Infer(ty::FloatVar(_)) => impl_ty.is_floating_point(),
-
-            ty::Infer(_) => true,
+            ty::Infer(var) => self.var_and_ty_may_unify(var, rhs),
 
             // As we're walking the whole type, it may encounter projections
             // inside of binders and what not, so we're just going to assume that
@@ -348,49 +313,167 @@ impl<I: Interner> DeepRejectCtxt<I> {
             // Looking forward to lazy normalization this is the safer strategy anyways.
             ty::Alias(..) => true,
 
-            ty::Error(_) => true,
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Bool
+            | ty::Char
+            | ty::Never
+            | ty::Foreign(_) => lhs == rhs,
 
-            ty::CoroutineWitness(..) => {
-                panic!("unexpected obligation type: {:?}", obligation_ty)
+            ty::Tuple(lhs) => match rhs.kind() {
+                ty::Tuple(rhs) => {
+                    lhs.len() == rhs.len()
+                        && iter::zip(lhs.iter(), rhs.iter())
+                            .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
+                }
+                _ => false,
+            },
+
+            ty::Array(lhs_ty, lhs_len) => match rhs.kind() {
+                ty::Array(rhs_ty, rhs_len) => {
+                    self.types_may_unify(lhs_ty, rhs_ty) && self.consts_may_unify(lhs_len, rhs_len)
+                }
+                _ => false,
+            },
+
+            ty::RawPtr(lhs_ty, lhs_mutbl) => match rhs.kind() {
+                ty::RawPtr(rhs_ty, rhs_mutbl) => {
+                    lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
+                }
+                _ => false,
+            },
+
+            ty::Slice(lhs_ty) => {
+                matches!(rhs.kind(), ty::Slice(rhs_ty) if self.types_may_unify(lhs_ty, rhs_ty))
             }
+
+            ty::Dynamic(lhs_preds, ..) => {
+                // Ideally we would walk the existential predicates here or at least
+                // compare their length. But considering that the relevant `Relate` impl
+                // actually sorts and deduplicates these, that doesn't work.
+                matches!(rhs.kind(), ty::Dynamic(rhs_preds, ..) if
+                    lhs_preds.principal_def_id() == rhs_preds.principal_def_id()
+                )
+            }
+
+            ty::FnPtr(lhs_sig_tys, lhs_hdr) => match rhs.kind() {
+                ty::FnPtr(rhs_sig_tys, rhs_hdr) => {
+                    let lhs_sig_tys = lhs_sig_tys.skip_binder().inputs_and_output;
+                    let rhs_sig_tys = rhs_sig_tys.skip_binder().inputs_and_output;
+
+                    lhs_hdr == rhs_hdr
+                        && lhs_sig_tys.len() == rhs_sig_tys.len()
+                        && iter::zip(lhs_sig_tys.iter(), rhs_sig_tys.iter())
+                            .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
+                }
+                _ => false,
+            },
+
+            ty::Bound(..) => true,
+
+            ty::FnDef(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::FnDef(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::Closure(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::Closure(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::CoroutineClosure(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::CoroutineClosure(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::Coroutine(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::Coroutine(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::CoroutineWitness(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::CoroutineWitness(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::Pat(lhs_ty, _) => {
+                // FIXME(pattern_types): take pattern into account
+                matches!(rhs.kind(), ty::Pat(rhs_ty, _) if self.types_may_unify(lhs_ty, rhs_ty))
+            }
+
+            ty::Error(..) => true,
         }
     }
 
-    pub fn consts_may_unify(self, obligation_ct: I::Const, impl_ct: I::Const) -> bool {
-        let impl_val = match impl_ct.kind() {
+    pub fn consts_may_unify(self, lhs: I::Const, rhs: I::Const) -> bool {
+        match rhs.kind() {
+            ty::ConstKind::Param(_) => {
+                if INSTANTIATE_RHS_WITH_INFER {
+                    return true;
+                }
+            }
+
             ty::ConstKind::Expr(_)
-            | ty::ConstKind::Param(_)
             | ty::ConstKind::Unevaluated(_)
-            | ty::ConstKind::Error(_) => {
+            | ty::ConstKind::Error(_)
+            | ty::ConstKind::Infer(_)
+            | ty::ConstKind::Bound(..) => {
                 return true;
             }
-            ty::ConstKind::Value(_, impl_val) => impl_val,
-            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
-                panic!("unexpected impl arg: {:?}", impl_ct)
-            }
+
+            ty::ConstKind::Value(..) | ty::ConstKind::Placeholder(_) => {}
         };
 
-        match obligation_ct.kind() {
-            ty::ConstKind::Param(_) => match self.treat_obligation_params {
-                TreatParams::ForLookup => false,
-                TreatParams::AsCandidateKey => true,
+        match lhs.kind() {
+            ty::ConstKind::Value(_, lhs_val) => match rhs.kind() {
+                ty::ConstKind::Value(_, rhs_val) => lhs_val == rhs_val,
+                _ => false,
             },
 
+            ty::ConstKind::Param(lhs) => {
+                INSTANTIATE_LHS_WITH_INFER
+                    || match rhs.kind() {
+                        ty::ConstKind::Param(rhs) => lhs == rhs,
+                        _ => false,
+                    }
+            }
+
             // Placeholder consts don't unify with anything on their own
-            ty::ConstKind::Placeholder(_) => false,
+            ty::ConstKind::Placeholder(lhs) => {
+                matches!(rhs.kind(), ty::ConstKind::Placeholder(rhs) if lhs == rhs)
+            }
 
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
             ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
                 true
             }
-            ty::ConstKind::Value(_, obl_val) => obl_val == impl_val,
 
-            ty::ConstKind::Infer(_) => true,
+            ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) => true,
+        }
+    }
 
-            ty::ConstKind::Bound(..) => {
-                panic!("unexpected obl const: {:?}", obligation_ct)
-            }
+    fn var_and_ty_may_unify(self, var: ty::InferTy, ty: I::Ty) -> bool {
+        if !ty.is_known_rigid() {
+            return true;
+        }
+
+        match var {
+            ty::IntVar(_) => ty.is_integral(),
+            ty::FloatVar(_) => ty.is_floating_point(),
+            _ => true,
         }
     }
 }
