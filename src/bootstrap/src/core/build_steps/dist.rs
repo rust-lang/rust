@@ -110,11 +110,17 @@ impl Step for JsonDocs {
         ));
 
         let dest = "share/doc/rust/json";
+        let out = builder.json_doc_out(host);
+
+        // Make sure these are present in the component.
+        for f in ["alloc.json", "core.json", "std.json"] {
+            assert!(out.join(f).exists(), "rust-docs-json is missing `{f}`.");
+        }
 
         let mut tarball = Tarball::new(builder, "rust-docs-json", &host.triple);
         tarball.set_product_name("Rust Documentation In JSON Format");
         tarball.is_preview(true);
-        tarball.add_bulk_dir(builder.json_doc_out(host), dest);
+        tarball.add_bulk_dir(out, dest);
         Some(tarball.generate())
     }
 }
