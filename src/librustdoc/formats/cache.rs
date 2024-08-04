@@ -486,10 +486,30 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
                 ParentStackItem::Type(item_id) => item_id.as_def_id(),
             };
             let Some(parent_did) = parent_did else { return };
-            // The current stack not necessarily has correlation
-            // for where the type was defined. On the other
-            // hand, `paths` always has the right
-            // information if present.
+            // The current stack reflects the CacheBuilder's recursive
+            // walk over HIR. For associated items, this is the module
+            // where the `impl` block is defined. That's an implementation
+            // detail that we don't want to affect the search engine.
+            //
+            // In particular, you can arrange things like this:
+            //
+            //     #![crate_name="me"]
+            //     mod private_mod {
+            //         impl Clone for MyThing { fn clone(&self) -> MyThing { MyThing } }
+            //     }
+            //     pub struct MyThing;
+            //
+            // When that happens, we need to:
+            // - ignore the `cache.stripped_mod` flag, since the Clone impl is actually
+            //   part of the public API even though it's defined in a private module
+            // - present the method as `me::MyThing::clone`, its publicly-visible path
+            // - deal with the fact that the recursive walk hasn't actually reached `MyThing`
+            //   until it's already past `private_mod`, since that's first, and doesn't know
+            //   yet if `MyThing` will actually be public or not (it could be re-exported)
+            //
+            // We accomplish the last two points by recording children of "orphan impls"
+            // in a field of the cache whose elements are added to the search index later,
+            // after cache building is complete (see `handle_orphan_impl_child`).
             match cache.paths.get(&parent_did) {
                 Some((fqp, _)) => (Some(parent_did), &fqp[..fqp.len() - 1]),
                 None => {
@@ -500,7 +520,8 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         }
         _ => {
             // Don't index if item is crate root, which is inserted later on when serializing the index.
-            if item_def_id.is_crate_root() {
+            // Don't index if containing module is stripped (i.e., private),
+            if item_def_id.is_crate_root() || cache.stripped_mod {
                 return;
             }
             (None, &*cache.stack)
