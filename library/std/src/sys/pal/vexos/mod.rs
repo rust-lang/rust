@@ -52,6 +52,16 @@ pub unsafe extern "C" fn _start() -> ! {
     abort_internal()
 }
 
+#[link_section = ".code_signature"]
+#[linkage = "weak"]
+#[used]
+static CODE_SIGNATURE: vex_sdk::vcodesig = vex_sdk::vcodesig {
+    magic: u32::from_le_bytes(*b"XVX5"),
+    r#type: 2,
+    owner: 0,
+    options: 0,
+};
+
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
@@ -61,8 +71,12 @@ pub extern "C" fn __rust_abort() -> ! {
     abort_internal()
 }
 
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {}
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
@@ -83,6 +97,7 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
 
 pub fn abort_internal() -> ! {
     unsafe {
+        vex_sdk::vexTasksRun();
         vex_sdk::vexSystemExitRequest();
     }
 
