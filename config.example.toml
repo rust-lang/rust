@@ -472,7 +472,8 @@
 # This is mostly useful for tools; if you have changes to `compiler/` or `library/` they will be ignored.
 #
 # Set this to "if-unchanged" to only download if the compiler and standard library have not been modified.
-# Set this to `true` to download unconditionally (useful if e.g. you are only changing doc-comments).
+# Set this to `true` to download unconditionally. This is useful if you are working on tools, doc-comments,
+# or library (you will be able to build the standard library without needing to build the compiler).
 #download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
