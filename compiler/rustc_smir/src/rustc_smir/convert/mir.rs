@@ -295,6 +295,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
             RuntimeChecks(kind) => stable_mir::mir::NullOp::RuntimeChecks(match kind {
                 UbChecks => stable_mir::mir::RuntimeChecks::UbChecks,
                 ContractChecks => stable_mir::mir::RuntimeChecks::ContractChecks,
+                OverflowChecks => stable_mir::mir::RuntimeChecks::OverflowChecks,
             }),
         }
     }

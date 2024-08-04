@@ -1600,6 +1600,9 @@ pub enum RuntimeChecks {
     /// Returns whether we should perform contract-checking at runtime.
     /// See the `contract_checks` intrinsic docs for details.
     ContractChecks,
+    /// Returns whether we should perform some overflow-checking at runtime.
+    /// See the `overflow_checks` intrinsic docs for details.
+    OverflowChecks,
 }
 
 impl RuntimeChecks {
