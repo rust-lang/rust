@@ -583,6 +583,37 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                             let assocs = self.infcx.tcx.associated_items(impl_def_id);
 
+                            if self
+                                .infcx
+                                .tcx
+                                .is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
+                                && let Some(did) = self.infcx.tcx.get_diagnostic_item(sym::From)
+                            {
+                                let mut found = false;
+                                self.infcx.tcx.for_each_impl(did, |impl_def_id| {
+                                    // We had an `<A as Into<B>::into` and we've hit the blanket
+                                    // impl for `From<A>`. So we try and look for the right `From`
+                                    // impls that *would* apply. We *could* do this in a generalized
+                                    // version by evaluating the `where` clauses, but that would be
+                                    // way too involved to implement. Instead we special case the
+                                    // arguably most common case of `expr.into()`.
+                                    let Some(header) =
+                                        self.infcx.tcx.impl_trait_header(impl_def_id)
+                                    else {
+                                        return;
+                                    };
+                                    let target = header.trait_ref.skip_binder().args.type_at(0);
+                                    let ty = header.trait_ref.skip_binder().args.type_at(1);
+                                    if ty == args.type_at(0) {
+                                        paths.push(format!("<{ty} as Into<{target}>>::into"));
+                                        found = true;
+                                    }
+                                });
+                                if found {
+                                    return;
+                                }
+                            }
+
                             // We're at the `impl` level, but we want to get the same method we
                             // called *on this `impl`*, in order to get the right DefId and args.
                             let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
