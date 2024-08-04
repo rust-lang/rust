@@ -8,6 +8,10 @@ help: consider giving this pattern a type
    |
 LL |     let [a, b, c]: /* Type */ = Zeroes.into() else {
    |                  ++++++++++++
+help: consider giving this pattern a type
+   |
+LL |     let [a, b, c]: [usize; 3] = Zeroes.into() else {
+   |                  ++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/slice-pattern-refutable.rs:21:31
@@ -19,8 +23,12 @@ LL |     if let [a, b, c] = Zeroes.into() {
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     if let [a, b, c] = <Zeroes as Into<T>>::into(Zeroes) {
-   |                        ++++++++++++++++++++++++++      ~
+LL |     if let [a, b, c] = <_ as Into<_>>::into(Zeroes) {
+   |                        +++++++++++++++++++++      ~
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let [a, b, c] = <Zeroes as Into<[usize; 3]>>::into(Zeroes) {
+   |                        +++++++++++++++++++++++++++++++++++      ~
 
 error[E0282]: type annotations needed
   --> $DIR/slice-pattern-refutable.rs:28:31
@@ -32,8 +40,12 @@ LL |     if let [a, b, c] = Zeroes.into() {
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     if let [a, b, c] = <Zeroes as Into<T>>::into(Zeroes) {
-   |                        ++++++++++++++++++++++++++      ~
+LL |     if let [a, b, c] = <_ as Into<_>>::into(Zeroes) {
+   |                        +++++++++++++++++++++      ~
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let [a, b, c] = <Zeroes as Into<[usize; 3]>>::into(Zeroes) {
+   |                        +++++++++++++++++++++++++++++++++++      ~
 
 error: aborting due to 3 previous errors
 
