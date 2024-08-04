@@ -67,7 +67,7 @@ fn might_permit_raw_init_strict<'tcx>(
     // This does *not* actually check that references are dereferenceable, but since all types that
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
-    Ok(cx.validate_operand(&ot).is_ok())
+    Ok(cx.validate_operand(&ot, /*recursive*/ false).is_ok())
 }
 
 /// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for
