@@ -3282,20 +3282,22 @@ dependencies = [
 
 [[package]]
 name = "rinja"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2d47a46d7729e891c8accf260e9daa02ae6d570aa2a94fb1fb27eb5364a2323"
+checksum = "6d3762e3740cdbf2fd2be465cc2c26d643ad17353cc2e0223d211c1b096118bd"
 dependencies = [
+ "itoa",
  "rinja_derive",
 ]
 
 [[package]]
 name = "rinja_derive"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44dae9afe59d58ed8d988d67d1945f3638125d2fd2104058399382e11bd3ea2a"
+checksum = "fd01fd8e15e7d19c8b8052c1d428325131e02ff1633cdcf695190c2e56ab682c"
 dependencies = [
  "basic-toml",
+ "memchr",
  "mime",
  "mime_guess",
  "once_map",
@@ -3308,10 +3310,11 @@ dependencies = [
 
 [[package]]
 name = "rinja_parser"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1771c78cd5d3b1646ef8d8f2ed100db936e8b291d3cc06e92a339ff346858c"
+checksum = "a2f6bf7cef118c6de21206edf0b3f19f5ede60006be674a58ca21b6e003a1b57"
 dependencies = [
+ "memchr",
  "nom",
 ]
 
