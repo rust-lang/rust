@@ -19,7 +19,7 @@ pub unsafe extern "C" fn inline_hint() {
 #[naked]
 #[inline(always)]
 //~^ ERROR [E0736]
-pub unsafe extern "C" fn inline_always() {
+<<<<<<< HEAD
     naked_asm!("");
 }
 
