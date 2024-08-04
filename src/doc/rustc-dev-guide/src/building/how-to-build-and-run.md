@@ -25,10 +25,29 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
+### Partial clone the repository
+
+Due to the size of the repository, cloning on a slower internet connection can take a long time,
+and requires disk space to store the full history of every file and directory.
+Instead, it is possible to tell git to perform a _partial clone_, which will only fully retrieve
+the current file contents, but will automatically retrieve further file contents when you, e.g.,
+jump back in the history.
+All git commands will continue to work as usual, at the price of requiring an internet connection
+to visit not-yet-loaded points in history.
+
+```bash
+git clone --filter='blob:none' https://github.com/rust-lang/rust.git
+cd rust
+```
+
+> **NOTE**: [This link](https://github.blog/open-source/git/get-up-to-speed-with-partial-clone-and-shallow-clone/)
+> describes this type of checkout in more detail, and also compares it to other modes, such as
+> shallow cloning.
+
 ### Shallow clone the repository
 
-Due to the size of the repository, cloning on a slower internet connection can take a long time.
-To sidestep this, you can use the `--depth N` option with the `git clone` command.
+An older alternative to partial clones is to use shallow clone the repository instead.
+To do so, you can use the `--depth N` option with the `git clone` command.
 This instructs `git` to perform a "shallow clone", cloning the repository but truncating it to
 the last `N` commits.
 
@@ -43,8 +62,9 @@ cd rust
 
 > **NOTE**: A shallow clone limits which `git` commands can be run.
 > If you intend to work on and contribute to the compiler, it is
-> generally recommended to fully clone the repository [as shown above](#get-the-source-code).
-> 
+> generally recommended to fully clone the repository [as shown above](#get-the-source-code),
+> or to perform a [partial clone](#shallow-clone-the-repository) instead.
+>
 > For example, `git bisect` and `git blame` require access to the commit history,
 > so they don't work if the repository was cloned with `--depth 1`.
 
