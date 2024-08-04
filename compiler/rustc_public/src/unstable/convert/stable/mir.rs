@@ -335,6 +335,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
             RuntimeChecks(op) => crate::mir::NullOp::RuntimeChecks(match op {
                 UbChecks => crate::mir::RuntimeChecks::UbChecks,
                 ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
+                OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
             }),
         }
     }
