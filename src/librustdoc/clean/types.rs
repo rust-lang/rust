@@ -1677,13 +1677,16 @@ impl Type {
         }
     }
 
-    fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
+    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
+    ///
+    /// [clean]: crate::clean
+    pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
         let t: PrimitiveType = match *self {
             Type::Path { ref path } => return Some(path.def_id()),
             DynTrait(ref bounds, _) => return bounds.get(0).map(|b| b.trait_.def_id()),
-            Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
+            Primitive(p) => return cache.primitive_locations.get(&p).cloned(),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
-            BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
+            BorrowedRef { ref type_, .. } => return type_.def_id(cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
                     PrimitiveType::Unit
@@ -1696,17 +1699,10 @@ impl Type {
             Array(..) => PrimitiveType::Array,
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
+            QPath(box QPathData { ref self_type, .. }) => return self_type.def_id(cache),
             Generic(_) | Infer | ImplTrait(_) => return None,
         };
-        cache.and_then(|c| Primitive(t).def_id(c))
-    }
-
-    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
-    ///
-    /// [clean]: crate::clean
-    pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
-        self.inner_def_id(Some(cache))
+        Primitive(t).def_id(cache)
     }
 }
 
