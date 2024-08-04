@@ -852,6 +852,15 @@ pub(crate) struct GlobalAsmUnsupportedOption {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_global_asm_unsupported_operand)]
+pub(crate) struct GlobalAsmUnsupportedOperand<'a> {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_invalid)]
 pub(crate) struct TestRunnerInvalid {
     #[primary_span]

@@ -28,6 +28,29 @@ pub struct AsmArgs {
     pub options_spans: Vec<Span>,
 }
 
+/// Used for better error messages when operand types are used that are not
+/// supported by the current macro (e.g. `in` or `out` for `global_asm!`)
+///
+/// returns
+///
+/// - `Ok(true)` if the current token matches the keyword, and was expected
+/// - `Ok(false)` if the current token does not match the keyword
+/// - `Err(_)` if the current token matches the keyword, but was not expected
+fn eat_operand_keyword<'a>(p: &mut Parser<'a>, symbol: Symbol, expect: bool) -> PResult<'a, bool> {
+    if expect {
+        Ok(p.eat_keyword(symbol))
+    } else {
+        let span = p.token.span;
+        if p.eat_keyword_noexpect(symbol) {
+            // in gets printed as `r#in` otherwise
+            let symbol = if symbol == kw::In { "in" } else { symbol.as_str() };
+            Err(p.dcx().create_err(errors::GlobalAsmUnsupportedOperand { span, symbol }))
+        } else {
+            Ok(false)
+        }
+    }
+}
+
 fn parse_args<'a>(
     ecx: &ExtCtxt<'a>,
     sp: Span,
@@ -105,7 +128,7 @@ pub fn parse_asm_args<'a>(
         };
 
         let mut explicit_reg = false;
-        let op = if !is_global_asm && p.eat_keyword(kw::In) {
+        let op = if eat_operand_keyword(p, kw::In, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
@@ -113,15 +136,15 @@ pub fn parse_asm_args<'a>(
             }
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::In { reg, expr }
-        } else if !is_global_asm && p.eat_keyword(sym::out) {
+        } else if eat_operand_keyword(p, sym::out, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: false }
-        } else if !is_global_asm && p.eat_keyword(sym::lateout) {
+        } else if eat_operand_keyword(p, sym::lateout, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: true }
-        } else if !is_global_asm && p.eat_keyword(sym::inout) {
+        } else if eat_operand_keyword(p, sym::inout, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
@@ -135,7 +158,7 @@ pub fn parse_asm_args<'a>(
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: false }
             }
-        } else if !is_global_asm && p.eat_keyword(sym::inlateout) {
+        } else if eat_operand_keyword(p, sym::inlateout, !is_global_asm)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
             if p.eat_keyword(kw::Underscore) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
@@ -149,6 +172,9 @@ pub fn parse_asm_args<'a>(
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: true }
             }
+        } else if eat_operand_keyword(p, sym::label, !is_global_asm)? {
+            let block = p.parse_block()?;
+            ast::InlineAsmOperand::Label { block }
         } else if p.eat_keyword(kw::Const) {
             let anon_const = p.parse_expr_anon_const()?;
             ast::InlineAsmOperand::Const { anon_const }
@@ -164,9 +190,6 @@ pub fn parse_asm_args<'a>(
                 path: path.clone(),
             };
             ast::InlineAsmOperand::Sym { sym }
-        } else if !is_global_asm && p.eat_keyword(sym::label) {
-            let block = p.parse_block()?;
-            ast::InlineAsmOperand::Label { block }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other
