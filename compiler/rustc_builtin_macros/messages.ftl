@@ -196,6 +196,9 @@ builtin_macros_format_use_positional = consider using a positional formatting ar
 
 builtin_macros_global_asm_clobber_abi = `clobber_abi` cannot be used with `global_asm!`
 
+builtin_macros_global_asm_unsupported_operand = the `{$symbol}` operand cannot be used with `global_asm!`
+    .label = the `{$symbol}` operand is not meaningful for global-scoped inline assembly, remove it
+
 builtin_macros_global_asm_unsupported_option = the `{$symbol}` option cannot be used with `global_asm!`
     .label = the `{$symbol}` option is not meaningful for global-scoped inline assembly
     .suggestion = remove this option

@@ -44,7 +44,7 @@ use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 
-use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
+use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -421,7 +421,9 @@ fn main() {
         } else if arg == "--" {
             after_dashdash = true;
         } else if arg == "-Zmiri-disable-validation" {
-            miri_config.validate = false;
+            miri_config.validation = ValidationMode::No;
+        } else if arg == "-Zmiri-recursive-validation" {
+            miri_config.validation = ValidationMode::Deep;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {
