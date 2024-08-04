@@ -1034,6 +1034,8 @@ impl Step for PlainSourceTarball {
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
                 .arg("--sync")
+                .arg(builder.src.join("./library/Cargo.toml"))
+                .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
