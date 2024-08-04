@@ -12,9 +12,9 @@ builtin_macros_asm_duplicate_arg = duplicate argument named `{$name}`
 builtin_macros_asm_expected_comma = expected token: `,`
     .label = expected `,`
 
-builtin_macros_asm_expected_other = expected operand, {$is_global_asm ->
-    [true] options
-    *[false] clobber_abi, options
+builtin_macros_asm_expected_other = expected operand, {$is_inline_asm ->
+    [false] options
+    *[true] clobber_abi, options
     }, or additional template string
 
 builtin_macros_asm_expected_string_literal = expected string literal
@@ -50,6 +50,15 @@ builtin_macros_asm_requires_template = requires at least a template string argum
 builtin_macros_asm_sym_no_path = expected a path for argument to `sym`
 
 builtin_macros_asm_underscore_input = _ cannot be used for input operands
+
+builtin_macros_asm_unsupported_clobber_abi = `clobber_abi` cannot be used with `{$macro_name}!`
+
+builtin_macros_asm_unsupported_operand = the `{$symbol}` operand cannot be used with `{$macro_name}!`
+    .label = the `{$symbol}` operand is not meaningful for global-scoped inline assembly, remove it
+
+builtin_macros_asm_unsupported_option = the `{$symbol}` option cannot be used with `{$macro_name}!`
+    .label = the `{$symbol}` option is not meaningful for global-scoped inline assembly
+    .suggestion = remove this option
 
 builtin_macros_assert_missing_comma = unexpected string literal
     .suggestion = try adding a comma
@@ -193,15 +202,6 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
     .label = multiple missing formatting specifiers
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
-
-builtin_macros_global_asm_clobber_abi = `clobber_abi` cannot be used with `global_asm!`
-
-builtin_macros_global_asm_unsupported_operand = the `{$symbol}` operand cannot be used with `global_asm!`
-    .label = the `{$symbol}` operand is not meaningful for global-scoped inline assembly, remove it
-
-builtin_macros_global_asm_unsupported_option = the `{$symbol}` option cannot be used with `global_asm!`
-    .label = the `{$symbol}` option is not meaningful for global-scoped inline assembly
-    .suggestion = remove this option
 
 builtin_macros_invalid_crate_attribute = invalid crate attribute
 
