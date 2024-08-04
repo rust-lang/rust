@@ -452,17 +452,134 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
         match kind {
-            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id } => {
-                infer_subdiags.push(SourceKindSubdiag::LetLike {
-                    span: insert_span,
-                    name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: arg_data.where_x_is_kind(ty),
-                    prefix_kind: arg_data.kind.clone(),
-                    prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
-                    arg_name: arg_data.name,
-                    kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
-                    type_name: ty_to_string(self, ty, def_id),
-                });
+            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id, hir_id } => {
+                let mut paths = vec![];
+                let param_env = ty::ParamEnv::reveal_all();
+                if let Some(def_id) = def_id
+                    && let name = self.infcx.tcx.item_name(def_id)
+                    && let Some(hir_id) = hir_id
+                    && let expr = self.infcx.tcx.hir().expect_expr(hir_id)
+                    && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
+                    && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
+                {
+                    // Look for all the possible implementations to suggest, otherwise we'll show
+                    // just suggest the syntax for the fully qualified path with placeholders.
+                    self.infcx.tcx.for_each_relevant_impl(
+                        self.infcx.tcx.parent(def_id), // Trait `DefId`
+                        ty,                            // `Self` type
+                        |impl_def_id| {
+                            let impl_args = self.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                            let impl_trait_ref = self
+                                .infcx
+                                .tcx
+                                .impl_trait_ref(impl_def_id)
+                                .unwrap()
+                                .instantiate(self.infcx.tcx, impl_args);
+                            let impl_self_ty = impl_trait_ref.self_ty();
+                            if self.infcx.can_eq(param_env, impl_self_ty, ty) {
+                                // The expr's self type could conform to this impl's self type.
+                            } else {
+                                // Nope, don't bother.
+                                return;
+                            }
+                            let assocs = self.infcx.tcx.associated_items(impl_def_id);
+
+                            if self
+                                .infcx
+                                .tcx
+                                .is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
+                                && let Some(did) = self.infcx.tcx.get_diagnostic_item(sym::From)
+                            {
+                                let mut found = false;
+                                self.infcx.tcx.for_each_impl(did, |impl_def_id| {
+                                    // We had an `<A as Into<B>::into` and we've hit the blanket
+                                    // impl for `From<A>`. So we try and look for the right `From`
+                                    // impls that *would* apply. We *could* do this in a generalized
+                                    // version by evaluating the `where` clauses, but that would be
+                                    // way too involved to implement. Instead we special case the
+                                    // arguably most common case of `expr.into()`.
+                                    let Some(header) =
+                                        self.infcx.tcx.impl_trait_header(impl_def_id)
+                                    else {
+                                        return;
+                                    };
+                                    let target = header.trait_ref.skip_binder().args.type_at(0);
+                                    let _ty = header.trait_ref.skip_binder().args.type_at(1);
+                                    if _ty == ty {
+                                        paths.push(format!("{target}"));
+                                        found = true;
+                                    }
+                                });
+                                if found {
+                                    return;
+                                }
+                            }
+
+                            // We're at the `impl` level, but we want to get the same method we
+                            // called *on this `impl`*, in order to get the right DefId and args.
+                            let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
+                                // The method isn't in this `impl`? Not useful to us then.
+                                return;
+                            };
+                            // Let's ignore the generic params and replace them with `_` in the
+                            // suggested path.
+                            let identity_method = ty::GenericArgs::for_item(
+                                self.infcx.tcx,
+                                assoc.def_id,
+                                |param, _| {
+                                    // We don't want to name the arguments, we just want to give an
+                                    // idea of what the syntax is.
+                                    match param.kind {
+                                        ty::GenericParamDefKind::Lifetime => {
+                                            self.infcx.tcx.lifetimes.re_erased.into()
+                                        }
+                                        ty::GenericParamDefKind::Type { .. } => {
+                                            self.next_ty_var(DUMMY_SP).into()
+                                        }
+                                        ty::GenericParamDefKind::Const { .. } => {
+                                            self.next_const_var(DUMMY_SP).into()
+                                        }
+                                    }
+                                },
+                            );
+                            let fn_sig = self
+                                .infcx
+                                .tcx
+                                .fn_sig(assoc.def_id)
+                                .instantiate(self.infcx.tcx, identity_method);
+                            let ret = fn_sig.skip_binder().output();
+                            paths.push(format!("{ret}"));
+                        },
+                    );
+                }
+
+                if paths.is_empty() {
+                    infer_subdiags.push(SourceKindSubdiag::LetLike {
+                        span: insert_span,
+                        name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
+                        x_kind: arg_data.where_x_is_kind(ty),
+                        prefix_kind: arg_data.kind.clone(),
+                        prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                        arg_name: arg_data.name,
+                        kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
+                        type_name: ty_to_string(self, ty, def_id),
+                    });
+                } else {
+                    for type_name in paths {
+                        infer_subdiags.push(SourceKindSubdiag::LetLike {
+                            span: insert_span,
+                            name: pattern_name
+                                .map(|name| name.to_string())
+                                .unwrap_or_else(String::new),
+                            x_kind: arg_data.where_x_is_kind(ty),
+                            prefix_kind: arg_data.kind.clone(),
+                            prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
+                            arg_name: arg_data.name.clone(),
+                            kind: if pattern_name.is_some() { "with_pattern" } else { "other" },
+                            type_name,
+                        });
+                    }
+                }
             }
             InferSourceKind::ClosureArg { insert_span, ty } => {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
@@ -731,6 +848,7 @@ enum InferSourceKind<'tcx> {
         pattern_name: Option<Ident>,
         ty: Ty<'tcx>,
         def_id: Option<DefId>,
+        hir_id: Option<HirId>,
     },
     ClosureArg {
         insert_span: Span,
@@ -916,8 +1034,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         let cost = self.source_cost(&new_source) + self.attempt;
         debug!(?cost);
         self.attempt += 1;
-        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, .. }, .. }) =
-            self.infer_source
+        if let Some(InferSource { kind: InferSourceKind::GenericArg { def_id: did, .. }, .. })
+        | Some(InferSource {
+            kind: InferSourceKind::FullyQualifiedMethodCall { def_id: did, .. },
+            ..
+        }) = self.infer_source
             && let InferSourceKind::LetBinding { ref ty, ref mut def_id, .. } = new_source.kind
             && ty.is_ty_or_numeric_infer()
         {
@@ -1226,6 +1347,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                                 pattern_name: local.pat.simple_ident(),
                                 ty,
                                 def_id: None,
+                                hir_id: local.init.map(|e| e.hir_id),
                             },
                         })
                     }
