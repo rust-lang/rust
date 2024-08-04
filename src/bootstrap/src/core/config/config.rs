@@ -1845,6 +1845,23 @@ impl Config {
             config.llvm_from_ci = config.parse_download_ci_llvm(download_ci_llvm, asserts);
 
             if config.llvm_from_ci {
+                let warn = |option: &str| {
+                    println!(
+                        "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
+                    );
+                    println!(
+                        "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
+                    );
+                };
+
+                if static_libstdcpp.is_some() {
+                    warn("static-libstdcpp");
+                }
+
+                if link_shared.is_some() {
+                    warn("link-shared");
+                }
+
                 // None of the LLVM options, except assertions, are supported
                 // when using downloaded LLVM. We could just ignore these but
                 // that's potentially confusing, so force them to not be
@@ -1854,9 +1871,6 @@ impl Config {
                 check_ci_llvm!(optimize_toml);
                 check_ci_llvm!(thin_lto);
                 check_ci_llvm!(release_debuginfo);
-                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
-                check_ci_llvm!(link_shared);
-                check_ci_llvm!(static_libstdcpp);
                 check_ci_llvm!(targets);
                 check_ci_llvm!(experimental_targets);
                 check_ci_llvm!(clang_cl);
