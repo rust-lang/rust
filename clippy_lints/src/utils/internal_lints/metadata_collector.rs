@@ -85,10 +85,6 @@ const SUGGESTION_DIAG_METHODS: [(&str, bool); 9] = [
     ("tool_only_multipart_suggestion", true),
     ("span_suggestions", true),
 ];
-const SUGGESTION_FUNCTIONS: [&[&str]; 2] = [
-    &["clippy_utils", "diagnostics", "multispan_sugg"],
-    &["clippy_utils", "diagnostics", "multispan_sugg_with_applicability"],
-];
 const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "ClippyDeprecatedLint"];
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
@@ -1060,33 +1056,21 @@ impl<'a, 'hir> Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
             return;
         }
 
-        match &expr.kind {
-            ExprKind::Call(fn_expr, _args) => {
-                let found_function = SUGGESTION_FUNCTIONS
-                    .iter()
-                    .any(|func_path| match_function_call(self.cx, fn_expr, func_path).is_some());
-                if found_function {
-                    // These functions are all multi part suggestions
-                    self.add_single_span_suggestion();
-                }
-            },
-            ExprKind::MethodCall(path, recv, _, _arg_span) => {
-                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
-                if match_type(self.cx, self_ty, &paths::DIAG) {
-                    let called_method = path.ident.name.as_str().to_string();
-                    for (method_name, is_multi_part) in &SUGGESTION_DIAG_METHODS {
-                        if *method_name == called_method {
-                            if *is_multi_part {
-                                self.add_multi_part_suggestion();
-                            } else {
-                                self.add_single_span_suggestion();
-                            }
-                            break;
+        if let ExprKind::MethodCall(path, recv, _, _arg_span) = &expr.kind {
+            let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
+            if match_type(self.cx, self_ty, &paths::DIAG) {
+                let called_method = path.ident.name.as_str().to_string();
+                for (method_name, is_multi_part) in &SUGGESTION_DIAG_METHODS {
+                    if *method_name == called_method {
+                        if *is_multi_part {
+                            self.add_multi_part_suggestion();
+                        } else {
+                            self.add_single_span_suggestion();
                         }
+                        break;
                     }
                 }
-            },
-            _ => {},
+            }
         }
 
         intravisit::walk_expr(self, expr);
