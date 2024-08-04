@@ -262,8 +262,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Index this method for searching later on.
         let search_name = if !item.is_stripped() {
             item.name.or_else(|| {
-                if let clean::ImportItem(ref i) = *item.kind
-                    && let clean::ImportKind::Simple(s) = i.kind
+                if let clean::UseItem(ref i) = *item.kind
+                    && let clean::UseKind::Simple(s) = i.kind
                 {
                     Some(s)
                 } else {
@@ -299,7 +299,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::ConstantItem(..)
             | clean::StaticItem(..)
             | clean::UnionItem(..)
-            | clean::ForeignTypeItem
+            | clean::ExternTypeItem
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
@@ -330,7 +330,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             }
 
             clean::ExternCrateItem { .. }
-            | clean::ImportItem(..)
+            | clean::UseItem(..)
             | clean::ImplItem(..)
             | clean::TyMethodItem(..)
             | clean::MethodItem(..)
@@ -352,7 +352,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         let (item, parent_pushed) = match *item.kind {
             clean::TraitItem(..)
             | clean::EnumItem(..)
-            | clean::ForeignTypeItem
+            | clean::ExternTypeItem
             | clean::StructItem(..)
             | clean::UnionItem(..)
             | clean::VariantItem(..)
@@ -528,7 +528,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     // - It's got the same name
     // - Both of them have the same exact path
     let defid = match &*item.kind {
-        clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
+        clean::ItemKind::UseItem(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
     let path = join_with_double_colon(parent_path);

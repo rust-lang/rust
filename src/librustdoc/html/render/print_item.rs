@@ -200,7 +200,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::PrimitiveItem(..) => "Primitive Type ",
         clean::StaticItem(..) | clean::ForeignStaticItem(..) => "Static ",
         clean::ConstantItem(..) => "Constant ",
-        clean::ForeignTypeItem => "Foreign Type ",
+        clean::ExternTypeItem => "Foreign Type ",
         clean::KeywordItem => "Keyword ",
         clean::TraitAliasItem(..) => "Trait Alias ",
         _ => {
@@ -267,7 +267,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
         clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
         clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
         clean::ConstantItem(ci) => item_constant(buf, cx, item, &ci.generics, &ci.type_, &ci.kind),
-        clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
+        clean::ExternTypeItem => item_extern_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta),
         _ => {
@@ -321,7 +321,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
     fn reorder(ty: ItemType) -> u8 {
         match ty {
             ItemType::ExternCrate => 0,
-            ItemType::Import => 1,
+            ItemType::Use => 1,
             ItemType::Primitive => 2,
             ItemType::Module => 3,
             ItemType::Macro => 4,
@@ -434,7 +434,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
 
-            clean::ImportItem(ref import) => {
+            clean::UseItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
                     // Just need an item with the correct def_id and attrs
                     let import_item =
@@ -448,10 +448,10 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 let id = match import.kind {
-                    clean::ImportKind::Simple(s) => {
+                    clean::UseKind::Simple(s) => {
                         format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
                     }
-                    clean::ImportKind::Glob => String::new(),
+                    clean::UseKind::Glob => String::new(),
                 };
                 let stab_tags = stab_tags.unwrap_or_default();
                 let (stab_tags_before, stab_tags_after) = if stab_tags.is_empty() {
@@ -1943,7 +1943,7 @@ fn item_static(
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
-fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_extern_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
     wrap_item(w, |buffer| {
         buffer.write_str("extern {\n").unwrap();
         render_attributes_in_code(buffer, it, cx);

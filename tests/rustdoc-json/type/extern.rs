@@ -6,4 +6,4 @@ extern "C" {
 }
 
 //@ is "$.index[*][?(@.docs=='No inner information')].name" '"Foo"'
-//@ is "$.index[*][?(@.docs=='No inner information')].inner" \"foreign_type\"
+//@ is "$.index[*][?(@.docs=='No inner information')].inner" \"extern_type\"

@@ -65,7 +65,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::StaticItem(_)
                 | clean::ConstantItem(..)
                 | clean::ExternCrateItem { .. }
-                | clean::ImportItem(_)
+                | clean::UseItem(_)
                 | clean::PrimitiveItem(_)
                 | clean::KeywordItem
                 // check for trait impl

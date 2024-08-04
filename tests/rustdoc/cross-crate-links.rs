@@ -18,7 +18,7 @@ pub use all_item_types::foo_ffn;
 #[doc(no_inline)]
 pub use all_item_types::FOO_FSTATIC;
 
-//@ has 'foo/index.html' '//a[@href="../all_item_types/foreigntype.FooFType.html"]' 'FooFType'
+//@ has 'foo/index.html' '//a[@href="../all_item_types/externtype.FooFType.html"]' 'FooFType'
 #[doc(no_inline)]
 pub use all_item_types::FooFType;
 

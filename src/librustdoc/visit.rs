@@ -23,7 +23,7 @@ pub(crate) trait DocVisitor: Sized {
                 VariantKind::CLike => {}
             },
             ExternCrateItem { src: _ }
-            | ImportItem(_)
+            | UseItem(_)
             | FunctionItem(_)
             | TypeAliasItem(_)
             | StaticItem(_)
@@ -34,7 +34,7 @@ pub(crate) trait DocVisitor: Sized {
             | StructFieldItem(_)
             | ForeignFunctionItem(..)
             | ForeignStaticItem(..)
-            | ForeignTypeItem
+            | ExternTypeItem
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)

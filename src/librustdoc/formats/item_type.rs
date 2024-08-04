@@ -33,7 +33,7 @@ pub(crate) enum ItemType {
     Primitive = 1,
     Module = 2,
     ExternCrate = 3,
-    Import = 4,
+    Use = 4,
     Struct = 5,
     Enum = 6,
     Function = 7,
@@ -50,7 +50,7 @@ pub(crate) enum ItemType {
     Constant = 18,
     AssocConst = 19,
     Union = 20,
-    ForeignType = 21,
+    ExternType = 21,
     // OpaqueTy used to be here, but it was removed in #127276
     ProcAttribute = 23,
     ProcDerive = 24,
@@ -78,7 +78,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
         match *kind {
             clean::ModuleItem(..) => ItemType::Module,
             clean::ExternCrateItem { .. } => ItemType::ExternCrate,
-            clean::ImportItem(..) => ItemType::Import,
+            clean::UseItem(..) => ItemType::Use,
             clean::StructItem(..) => ItemType::Struct,
             clean::UnionItem(..) => ItemType::Union,
             clean::EnumItem(..) => ItemType::Enum,
@@ -98,7 +98,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::PrimitiveItem(..) => ItemType::Primitive,
             clean::TyAssocConstItem(..) | clean::AssocConstItem(..) => ItemType::AssocConst,
             clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
-            clean::ForeignTypeItem => ItemType::ForeignType,
+            clean::ExternTypeItem => ItemType::ExternType,
             clean::KeywordItem => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
             clean::ProcMacroItem(ref mac) => match mac.kind {
@@ -137,7 +137,7 @@ impl ItemType {
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
             },
-            DefKind::ForeignTy => Self::ForeignType,
+            DefKind::ForeignTy => Self::ExternType,
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,
             DefKind::AssocTy => Self::AssocType,
@@ -162,7 +162,7 @@ impl ItemType {
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::Closure => Self::ForeignType,
+            | DefKind::Closure => Self::ExternType,
         }
     }
 
@@ -170,7 +170,7 @@ impl ItemType {
         match *self {
             ItemType::Module => "mod",
             ItemType::ExternCrate => "externcrate",
-            ItemType::Import => "import",
+            ItemType::Use => "use",
             ItemType::Struct => "struct",
             ItemType::Union => "union",
             ItemType::Enum => "enum",
@@ -188,7 +188,7 @@ impl ItemType {
             ItemType::AssocType => "associatedtype",
             ItemType::Constant => "constant",
             ItemType::AssocConst => "associatedconstant",
-            ItemType::ForeignType => "foreigntype",
+            ItemType::ExternType => "externtype",
             ItemType::Keyword => "keyword",
             ItemType::ProcAttribute => "attr",
             ItemType::ProcDerive => "derive",

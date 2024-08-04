@@ -75,7 +75,7 @@ pub(crate) trait DocFolder: Sized {
                 TypeAliasItem(typealias)
             }
             ExternCrateItem { src: _ }
-            | ImportItem(_)
+            | UseItem(_)
             | FunctionItem(_)
             | StaticItem(_)
             | ConstantItem(..)
@@ -85,7 +85,7 @@ pub(crate) trait DocFolder: Sized {
             | StructFieldItem(_)
             | ForeignFunctionItem(..)
             | ForeignStaticItem(..)
-            | ForeignTypeItem
+            | ExternTypeItem
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)

@@ -1317,7 +1317,7 @@ impl clean::Impl {
                 print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
                 bare_fn.safety.print_with_space().fmt(f)?;
                 print_abi_with_space(bare_fn.abi).fmt(f)?;
-                let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
+                let ellipsis = if bare_fn.decl.is_c_variadic { ", ..." } else { "" };
                 primitive_link_fragment(
                     f,
                     PrimitiveType::Tuple,
@@ -1381,13 +1381,13 @@ impl Display for Indent {
     }
 }
 
-impl clean::FnDecl {
+impl clean::FunctionSignature {
     pub(crate) fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'b + Captures<'tcx> {
         display_fn(move |f| {
-            let ellipsis = if self.c_variadic { ", ..." } else { "" };
+            let ellipsis = if self.is_c_variadic { ", ..." } else { "" };
             if f.alternate() {
                 write!(
                     f,
@@ -1487,7 +1487,7 @@ impl clean::FnDecl {
             }
         }
 
-        if self.c_variadic {
+        if self.is_c_variadic {
             match line_wrapping_indent {
                 None => write!(f, ", ...")?,
                 Some(n) => write!(f, "{}...\n", Indent(n + 4))?,
@@ -1662,20 +1662,20 @@ pub(crate) fn print_constness_with_space(
     }
 }
 
-impl clean::Import {
+impl clean::Use {
     pub(crate) fn print<'a, 'tcx: 'a>(
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.kind {
-            clean::ImportKind::Simple(name) => {
+            clean::UseKind::Simple(name) => {
                 if name == self.source.path.last() {
                     write!(f, "use {};", self.source.print(cx))
                 } else {
                     write!(f, "use {source} as {name};", source = self.source.print(cx))
                 }
             }
-            clean::ImportKind::Glob => {
+            clean::UseKind::Glob => {
                 if self.source.path.segments.is_empty() {
                     write!(f, "use *;")
                 } else {

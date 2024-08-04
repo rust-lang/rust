@@ -22,11 +22,11 @@ pub mod l1 {
         //@ ismany "$.index[*][?(@.name=='l3')].inner.module.items[*]" $l4_id
         pub struct L4;
     }
-    //@ is "$.index[*][?(@.inner.import)].inner.import.glob" false
-    //@ is "$.index[*][?(@.inner.import)].inner.import.source" '"l3::L4"'
-    //@ is "$.index[*][?(@.inner.import)].inner.import.glob" false
-    //@ is "$.index[*][?(@.inner.import)].inner.import.id" $l4_id
-    //@ set l4_use_id = "$.index[*][?(@.inner.import)].id"
+    //@ is "$.index[*][?(@.inner.use)].inner.use.is_glob" false
+    //@ is "$.index[*][?(@.inner.use)].inner.use.source" '"l3::L4"'
+    //@ is "$.index[*][?(@.inner.use)].inner.use.is_glob" false
+    //@ is "$.index[*][?(@.inner.use)].inner.use.id" $l4_id
+    //@ set l4_use_id = "$.index[*][?(@.inner.use)].id"
     pub use l3::L4;
 }
 //@ ismany "$.index[*][?(@.name=='l1')].inner.module.items[*]" $l3_id $l4_use_id

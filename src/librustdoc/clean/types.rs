@@ -546,7 +546,7 @@ impl Item {
         self.type_() == ItemType::Union
     }
     pub(crate) fn is_import(&self) -> bool {
-        self.type_() == ItemType::Import
+        self.type_() == ItemType::Use
     }
     pub(crate) fn is_extern_crate(&self) -> bool {
         self.type_() == ItemType::ExternCrate
@@ -557,7 +557,7 @@ impl Item {
     pub(crate) fn is_stripped(&self) -> bool {
         match *self.kind {
             StrippedItem(..) => true,
-            ImportItem(ref i) => !i.should_be_displayed,
+            UseItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
@@ -816,7 +816,7 @@ pub(crate) enum ItemKind {
         /// The crate's name, *not* the name it's imported as.
         src: Option<Symbol>,
     },
-    ImportItem(Import),
+    UseItem(Use),
     StructItem(Struct),
     UnionItem(Union),
     EnumItem(Enum),
@@ -840,7 +840,7 @@ pub(crate) enum ItemKind {
     /// `static`s from an extern block
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
-    ForeignTypeItem,
+    ExternTypeItem,
     MacroItem(Macro),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
@@ -877,7 +877,7 @@ impl ItemKind {
             ImplItem(i) => i.items.iter(),
             ModuleItem(m) => m.items.iter(),
             ExternCrateItem { .. }
-            | ImportItem(_)
+            | UseItem(_)
             | FunctionItem(_)
             | TypeAliasItem(_)
             | StaticItem(_)
@@ -888,7 +888,7 @@ impl ItemKind {
             | StructFieldItem(_)
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
-            | ForeignTypeItem
+            | ExternTypeItem
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
@@ -918,7 +918,7 @@ impl ItemKind {
                 | TraitAliasItem(_)
                 | ForeignFunctionItem(_, _)
                 | ForeignStaticItem(_, _)
-                | ForeignTypeItem
+                | ExternTypeItem
                 | MacroItem(_)
                 | ProcMacroItem(_)
                 | PrimitiveItem(_)
@@ -1313,9 +1313,9 @@ impl WherePredicate {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: ThinVec<Lifetime> },
-    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, is_synthetic: bool },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, synthetic: bool },
+    Const { ty: Box<Type>, default: Option<Box<String>>, is_synthetic: bool },
 }
 
 impl GenericParamDefKind {
@@ -1339,8 +1339,8 @@ impl GenericParamDef {
     pub(crate) fn is_synthetic_param(&self) -> bool {
         match self.kind {
             GenericParamDefKind::Lifetime { .. } => false,
-            GenericParamDefKind::Const { synthetic: is_host_effect, .. } => is_host_effect,
-            GenericParamDefKind::Type { synthetic, .. } => synthetic,
+            GenericParamDefKind::Const { is_synthetic: is_host_effect, .. } => is_host_effect,
+            GenericParamDefKind::Type { is_synthetic, .. } => is_synthetic,
         }
     }
 
@@ -1371,18 +1371,18 @@ impl Generics {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Function {
-    pub(crate) decl: FnDecl,
+    pub(crate) decl: FunctionSignature,
     pub(crate) generics: Generics,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct FnDecl {
+pub(crate) struct FunctionSignature {
     pub(crate) inputs: Arguments,
     pub(crate) output: Type,
-    pub(crate) c_variadic: bool,
+    pub(crate) is_c_variadic: bool,
 }
 
-impl FnDecl {
+impl FunctionSignature {
     pub(crate) fn receiver_type(&self) -> Option<&Type> {
         self.inputs.values.get(0).and_then(|v| v.to_receiver())
     }
@@ -2321,7 +2321,7 @@ pub(crate) struct TypeAlias {
 pub(crate) struct BareFunctionDecl {
     pub(crate) safety: hir::Safety,
     pub(crate) generic_params: Vec<GenericParamDef>,
-    pub(crate) decl: FnDecl,
+    pub(crate) decl: FunctionSignature,
     pub(crate) abi: Abi,
 }
 
@@ -2478,24 +2478,24 @@ impl ImplKind {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Import {
-    pub(crate) kind: ImportKind,
+pub(crate) struct Use {
+    pub(crate) kind: UseKind,
     /// The item being re-exported.
     pub(crate) source: ImportSource,
     pub(crate) should_be_displayed: bool,
 }
 
-impl Import {
+impl Use {
     pub(crate) fn new_simple(
         name: Symbol,
         source: ImportSource,
         should_be_displayed: bool,
     ) -> Self {
-        Self { kind: ImportKind::Simple(name), source, should_be_displayed }
+        Self { kind: UseKind::Simple(name), source, should_be_displayed }
     }
 
     pub(crate) fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
-        Self { kind: ImportKind::Glob, source, should_be_displayed }
+        Self { kind: UseKind::Glob, source, should_be_displayed }
     }
 
     pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
@@ -2504,7 +2504,7 @@ impl Import {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum ImportKind {
+pub(crate) enum UseKind {
     // use source as str;
     Simple(Symbol),
     // use source::*;

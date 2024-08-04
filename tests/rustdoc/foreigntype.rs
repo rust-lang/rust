@@ -1,7 +1,7 @@
 #![feature(extern_types)]
 
 extern "C" {
-    //@ has foreigntype/foreigntype.ExtType.html
+    //@ has foreigntype/externtype.ExtType.html
     pub type ExtType;
 }
 
@@ -12,7 +12,7 @@ impl ExtType {
 
 pub trait Trait {}
 
-//@ has foreigntype/trait.Trait.html '//a[@class="foreigntype"]' 'ExtType'
+//@ has foreigntype/trait.Trait.html '//a[@class="externtype"]' 'ExtType'
 impl Trait for ExtType {}
 
-//@ has foreigntype/index.html '//a[@class="foreigntype"]' 'ExtType'
+//@ has foreigntype/index.html '//a[@class="externtype"]' 'ExtType'

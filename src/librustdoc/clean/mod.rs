@@ -540,7 +540,7 @@ fn clean_generic_param_def<'tcx>(
                 GenericParamDefKind::Type {
                     bounds: ThinVec::new(), // These are filled in from the where-clauses.
                     default: default.map(Box::new),
-                    synthetic,
+                    is_synthetic: synthetic,
                 },
             )
         }
@@ -567,7 +567,7 @@ fn clean_generic_param_def<'tcx>(
                 } else {
                     None
                 },
-                synthetic,
+                is_synthetic: synthetic,
             },
         ),
     };
@@ -619,7 +619,7 @@ fn clean_generic_param<'tcx>(
                 GenericParamDefKind::Type {
                     bounds,
                     default: default.map(|t| clean_ty(t, cx)).map(Box::new),
-                    synthetic,
+                    is_synthetic: synthetic,
                 },
             )
         }
@@ -630,7 +630,7 @@ fn clean_generic_param<'tcx>(
                 default: default.map(|ct| {
                     Box::new(ty::Const::from_const_arg(cx.tcx, ct, ty::FeedConstTy::No).to_string())
                 }),
-                synthetic,
+                is_synthetic: synthetic,
             },
         ),
     };
@@ -743,7 +743,7 @@ pub(crate) fn clean_generics<'tcx>(
                     }
                 }
             }
-            GenericParamDefKind::Type { bounds, synthetic: false, .. } => {
+            GenericParamDefKind::Type { bounds, is_synthetic: false, .. } => {
                 if let Some(bound_pred) = bound_predicates.get_mut(&Type::Generic(p.name)) {
                     // We merge bounds in the `where` clause.
                     for bound in bounds.drain(..) {
@@ -1143,7 +1143,7 @@ fn clean_fn_decl_with_args<'tcx>(
     decl: &hir::FnDecl<'tcx>,
     header: Option<&hir::FnHeader>,
     args: Arguments,
-) -> FnDecl {
+) -> FunctionSignature {
     let mut output = match decl.output {
         hir::FnRetTy::Return(typ) => clean_ty(typ, cx),
         hir::FnRetTy::DefaultReturn(..) => Type::Tuple(Vec::new()),
@@ -1153,14 +1153,14 @@ fn clean_fn_decl_with_args<'tcx>(
     {
         output = output.sugared_async_return_type();
     }
-    FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
+    FunctionSignature { inputs: args, output, is_c_variadic: decl.c_variadic }
 }
 
 fn clean_poly_fn_sig<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: Option<DefId>,
     sig: ty::PolyFnSig<'tcx>,
-) -> FnDecl {
+) -> FunctionSignature {
     let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_names(did)).iter();
 
     // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
@@ -1177,9 +1177,9 @@ fn clean_poly_fn_sig<'tcx>(
         output = output.sugared_async_return_type();
     }
 
-    FnDecl {
+    FunctionSignature {
         output,
-        c_variadic: sig.skip_binder().c_variadic,
+        is_c_variadic: sig.skip_binder().c_variadic,
         inputs: Arguments {
             values: sig
                 .inputs()
@@ -2094,7 +2094,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             Type::Path { path }
         }
         ty::Foreign(did) => {
-            inline::record_extern_fqn(cx, did, ItemType::ForeignType);
+            inline::record_extern_fqn(cx, did, ItemType::ExternType);
             let path = clean_middle_path(
                 cx,
                 did,
@@ -3052,7 +3052,7 @@ fn clean_use_statement_inner<'tcx>(
                 return items;
             }
         }
-        Import::new_glob(resolve_use_source(cx, path), true)
+        Use::new_glob(resolve_use_source(cx, path), true)
     } else {
         if inline_attr.is_none()
             && let Res::Def(DefKind::Mod, did) = path.res
@@ -3075,15 +3075,15 @@ fn clean_use_statement_inner<'tcx>(
             items.push(Item::from_def_id_and_parts(
                 import_def_id,
                 None,
-                ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
+                UseItem(Use::new_simple(name, resolve_use_source(cx, path), false)),
                 cx,
             ));
             return items;
         }
-        Import::new_simple(name, resolve_use_source(cx, path), true)
+        Use::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(import_def_id, None, ImportItem(inner), cx)]
+    vec![Item::from_def_id_and_parts(import_def_id, None, UseItem(inner), cx)]
 }
 
 fn clean_maybe_renamed_foreign_item<'tcx>(
@@ -3108,7 +3108,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                 Static { type_: Box::new(clean_ty(ty, cx)), mutability, expr: None },
                 safety,
             ),
-            hir::ForeignItemKind::Type => ForeignTypeItem,
+            hir::ForeignItemKind::Type => ExternTypeItem,
         };
 
         Item::from_def_id_and_parts(
@@ -3158,7 +3158,7 @@ fn clean_bound_vars<'tcx>(
                     kind: GenericParamDefKind::Type {
                         bounds: ThinVec::new(),
                         default: None,
-                        synthetic: false,
+                        is_synthetic: false,
                     },
                 })
             }

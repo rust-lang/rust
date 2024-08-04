@@ -11,15 +11,15 @@
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[1][0]" '"r"'
 
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[0][1].borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[0][1].borrowed_ref.mutable" false
+//@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[0][1].borrowed_ref.is_mutable" false
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[0][1].borrowed_ref.type.primitive" \"str\"
 
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[1][1].borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[1][1].borrowed_ref.mutable" false
+//@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[1][1].borrowed_ref.is_mutable" false
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.inputs[1][1].borrowed_ref.type.primitive" \"str\"
 
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.output.borrowed_ref.lifetime" \"\'a\"
-//@ is "$.index[*][?(@.name=='longest')].inner.function.decl.output.borrowed_ref.mutable" false
+//@ is "$.index[*][?(@.name=='longest')].inner.function.decl.output.borrowed_ref.is_mutable" false
 //@ is "$.index[*][?(@.name=='longest')].inner.function.decl.output.borrowed_ref.type.primitive" \"str\"
 
 pub fn longest<'a>(l: &'a str, r: &'a str) -> &'a str {
