@@ -5,12 +5,12 @@
 //@ set Parametrized = '$.index[*][?(@.name=="Parametrized")].id'
 pub struct Parametrized<T>(T);
 
-//@ count "$.index[*][?(@.name=='test')].inner.function.decl.inputs[*]" 1
-//@ is "$.index[*][?(@.name=='test')].inner.function.decl.inputs[0][0]" '"_"'
-//@ is '$.index[*][?(@.name=="test")].inner.function.decl.inputs[0][1].qualified_path.self_type.resolved_path.id' $Parametrized
-//@ is '$.index[*][?(@.name=="test")].inner.function.decl.inputs[0][1].qualified_path.self_type.resolved_path.args.angle_bracketed.args[0].type.primitive' \"i32\"
-//@ is '$.index[*][?(@.name=="test")].inner.function.decl.inputs[0][1].qualified_path.name' '"Proj"'
-//@ is '$.index[*][?(@.name=="test")].inner.function.decl.inputs[0][1].qualified_path.trait' null
+//@ count "$.index[*][?(@.name=='test')].inner.function.sig.inputs[*]" 1
+//@ is "$.index[*][?(@.name=='test')].inner.function.sig.inputs[0][0]" '"_"'
+//@ is '$.index[*][?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.self_type.resolved_path.id' $Parametrized
+//@ is '$.index[*][?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.self_type.resolved_path.args.angle_bracketed.args[0].type.primitive' \"i32\"
+//@ is '$.index[*][?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.name' '"Proj"'
+//@ is '$.index[*][?(@.name=="test")].inner.function.sig.inputs[0][1].qualified_path.trait' null
 pub fn test(_: Parametrized<i32>::Proj) {}
 
 /// param_bool
