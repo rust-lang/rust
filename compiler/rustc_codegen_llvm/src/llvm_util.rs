@@ -308,19 +308,10 @@ pub fn check_tied_features(
 /// Used to generate cfg variables and apply features
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-    let rust_features = sess
-        .target
-        .supported_target_features()
-        .iter()
-        .map(|(feature, _, _)| {
-            (to_llvm_features(sess, feature).llvm_feature_name, Symbol::intern(feature))
-        })
-        .collect::<FxHashMap<_, _>>();
-
     let mut features = FxHashSet::default();
 
     // Add base features for the target
-    let target_machine = create_informational_target_machine(sess, false);
+    let target_machine = create_informational_target_machine(sess, true);
     features.extend(
         sess.target
             .supported_target_features()
@@ -343,13 +334,16 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     );
 
     // Add enabled features
-    for llvm_feature in global_llvm_features(sess, false) {
-        let (add, llvm_feature) = llvm_feature.split_at(1);
-        let feature =
-            rust_features.get(llvm_feature).cloned().unwrap_or(Symbol::intern(llvm_feature));
-        if add == "+" {
+    for (enabled, feature) in
+        sess.opts.cg.target_feature.split(',').filter_map(|s| match s.chars().next() {
+            Some('+') => Some((true, Symbol::intern(&s[1..]))),
+            Some('-') => Some((false, Symbol::intern(&s[1..]))),
+            _ => None,
+        })
+    {
+        if enabled {
             features.extend(sess.target.implied_target_features(std::iter::once(feature)));
-        } else if add == "-" {
+        } else {
             features.remove(&feature);
         }
     }
@@ -475,7 +469,7 @@ fn print_target_features(out: &mut String, sess: &Session, tm: &llvm::TargetMach
 
 pub(crate) fn print(req: &PrintRequest, mut out: &mut String, sess: &Session) {
     require_inited();
-    let tm = create_informational_target_machine(sess, true);
+    let tm = create_informational_target_machine(sess, false);
     match req.kind {
         PrintKind::TargetCPUs => {
             // SAFETY generate a C compatible string from a byte slice to pass
@@ -523,7 +517,11 @@ pub fn target_cpu(sess: &Session) -> &str {
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
-pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<String> {
+pub(crate) fn global_llvm_features(
+    sess: &Session,
+    diagnostics: bool,
+    only_base_features: bool,
+) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -583,96 +581,109 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     }
 
     // -Ctarget-features
-    let supported_features = sess.target.supported_target_features();
-    let (llvm_major, _, _) = get_version();
-    let mut featsmap = FxHashMap::default();
-    let feats = sess
-        .opts
-        .cg
-        .target_feature
-        .split(',')
-        .filter_map(|s| {
-            let enable_disable = match s.chars().next() {
-                None => return None,
-                Some(c @ ('+' | '-')) => c,
-                Some(_) => {
-                    if diagnostics {
-                        sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
+    if !only_base_features {
+        let supported_features = sess.target.supported_target_features();
+        let (llvm_major, _, _) = get_version();
+        let mut featsmap = FxHashMap::default();
+        let feats = sess
+            .opts
+            .cg
+            .target_feature
+            .split(',')
+            .filter_map(|s| {
+                let enable_disable = match s.chars().next() {
+                    None => return None,
+                    Some(c @ ('+' | '-')) => c,
+                    Some(_) => {
+                        if diagnostics {
+                            sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
+                        }
+                        return None;
                     }
+                };
+
+                let feature = backend_feature_name(sess, s)?;
+                // Warn against use of LLVM specific feature names and unstable features on the CLI.
+                if diagnostics {
+                    let feature_state = supported_features.iter().find(|&&(v, _, _)| v == feature);
+                    if feature_state.is_none() {
+                        let rust_feature =
+                            supported_features.iter().find_map(|&(rust_feature, _, _)| {
+                                let llvm_features = to_llvm_features(sess, rust_feature);
+                                if llvm_features.contains(feature)
+                                    && !llvm_features.contains(rust_feature)
+                                {
+                                    Some(rust_feature)
+                                } else {
+                                    None
+                                }
+                            });
+                        let unknown_feature = if let Some(rust_feature) = rust_feature {
+                            UnknownCTargetFeature {
+                                feature,
+                                rust_feature: PossibleFeature::Some { rust_feature },
+                            }
+                        } else {
+                            UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                        };
+                        sess.dcx().emit_warn(unknown_feature);
+                    } else if feature_state
+                        .is_some_and(|(_name, feature_gate, _implied)| !feature_gate.is_stable())
+                    {
+                        // An unstable feature. Warn about using it.
+                        sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                    }
+                }
+
+                if diagnostics {
+                    // FIXME(nagisa): figure out how to not allocate a full hashset here.
+                    featsmap.insert(feature, enable_disable == '+');
+                }
+
+                // rustc-specific features do not get passed down to LLVM…
+                if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
                     return None;
                 }
-            };
 
-            let feature = backend_feature_name(sess, s)?;
-            // Warn against use of LLVM specific feature names and unstable features on the CLI.
-            if diagnostics {
-                let feature_state = supported_features.iter().find(|&&(v, _, _)| v == feature);
-                if feature_state.is_none() {
-                    let rust_feature =
-                        supported_features.iter().find_map(|&(rust_feature, _, _)| {
-                            let llvm_features = to_llvm_features(sess, rust_feature);
-                            if llvm_features.contains(feature)
-                                && !llvm_features.contains(rust_feature)
-                            {
-                                Some(rust_feature)
-                            } else {
-                                None
-                            }
-                        });
-                    let unknown_feature = if let Some(rust_feature) = rust_feature {
-                        UnknownCTargetFeature {
-                            feature,
-                            rust_feature: PossibleFeature::Some { rust_feature },
-                        }
-                    } else {
-                        UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                    };
-                    sess.dcx().emit_warn(unknown_feature);
-                } else if feature_state
-                    .is_some_and(|(_name, feature_gate, _implied)| !feature_gate.is_stable())
-                {
-                    // An unstable feature. Warn about using it.
-                    sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                // if the target-feature is "backchain" and LLVM version is greater than 18
+                // then we also need to add "+backchain" to the target-features attribute.
+                // otherwise, we will only add the naked `backchain` attribute to the attribute-group.
+                if feature == "backchain" && llvm_major < 18 {
+                    return None;
                 }
-            }
+                // ... otherwise though we run through `to_llvm_features` when
+                // passing requests down to LLVM. This means that all in-language
+                // features also work on the command line instead of having two
+                // different names when the LLVM name and the Rust name differ.
+                let llvm_feature = to_llvm_features(sess, feature);
 
-            if diagnostics {
-                // FIXME(nagisa): figure out how to not allocate a full hashset here.
-                featsmap.insert(feature, enable_disable == '+');
-            }
-
-            // rustc-specific features do not get passed down to LLVM…
-            if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-                return None;
-            }
-
-            // if the target-feature is "backchain" and LLVM version is greater than 18
-            // then we also need to add "+backchain" to the target-features attribute.
-            // otherwise, we will only add the naked `backchain` attribute to the attribute-group.
-            if feature == "backchain" && llvm_major < 18 {
-                return None;
-            }
-            // ... otherwise though we run through `to_llvm_features` when
-            // passing requests down to LLVM. This means that all in-language
-            // features also work on the command line instead of having two
-            // different names when the LLVM name and the Rust name differ.
-            let llvm_feature = to_llvm_features(sess, feature);
-
-            Some(
-                std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name))
-                    .chain(llvm_feature.dependency.into_iter().filter_map(move |feat| {
-                        match (enable_disable, feat) {
+                Some(
+                    std::iter::once(format!(
+                        "{}{}",
+                        enable_disable, llvm_feature.llvm_feature_name
+                    ))
+                    .chain(llvm_feature.dependency.into_iter().filter_map(
+                        move |feat| match (enable_disable, feat) {
                             ('-' | '+', TargetFeatureFoldStrength::Both(f))
                             | ('+', TargetFeatureFoldStrength::EnableOnly(f)) => {
                                 Some(format!("{enable_disable}{f}"))
                             }
                             _ => None,
-                        }
-                    })),
-            )
-        })
-        .flatten();
-    features.extend(feats);
+                        },
+                    )),
+                )
+            })
+            .flatten();
+        features.extend(feats);
+
+        if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
+            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
+                features: f,
+                span: None,
+                missing_features: None,
+            });
+        }
+    }
 
     // -Zfixed-x18
     if sess.opts.unstable_opts.fixed_x18 {
@@ -681,14 +692,6 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         } else {
             features.push("+reserve-x18".into());
         }
-    }
-
-    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
-            features: f,
-            span: None,
-            missing_features: None,
-        });
     }
 
     features

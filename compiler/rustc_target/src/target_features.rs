@@ -164,7 +164,13 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // FEAT_SSBS & FEAT_SSBS2
     ("ssbs", Stable, &[]),
     // FEAT_SVE
-    ("sve", Stable, &[]),
+    // It was decided that SVE requires Neon: https://github.com/rust-lang/rust/pull/91608
+    //
+    // LLVM doesn't enable Neon for SVE. ARM indicates that they're separate, but probably always
+    // exist together: https://developer.arm.com/documentation/102340/0100/New-features-in-SVE2
+    //
+    // "For backwards compatibility, Neon and VFP are required in the latest architectures."
+    ("sve", Stable, &["neon"]),
     // FEAT_SVE2
     ("sve2", Stable, &["sve"]),
     // FEAT_SVE2_AES
