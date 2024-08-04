@@ -43,15 +43,16 @@ fn commit_hash() -> Option<String> {
         .args(["rev-parse", "HEAD"])
         .output()
         .ok()?;
-    let mut stdout = String::from_utf8(output.stdout).ok()?;
+    let mut stdout = output.status.success().then_some(output.stdout)?;
     stdout.truncate(10);
-    Some(stdout)
+    String::from_utf8(stdout).ok()
 }
 
 fn commit_date() -> Option<String> {
-    Command::new("git")
+    let output = Command::new("git")
         .args(["log", "-1", "--date=short", "--pretty=format:%cd"])
         .output()
-        .ok()
-        .and_then(|r| String::from_utf8(r.stdout).ok())
+        .ok()?;
+    let stdout = output.status.success().then_some(output.stdout)?;
+    String::from_utf8(stdout).ok()
 }
