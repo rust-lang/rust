@@ -316,8 +316,12 @@ impl<T> Trait<T> for X {
                     {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::new(tcx, TreatParams::ForLookup)
-                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            if DeepRejectCtxt::new(
+                                tcx,
+                                TreatParams::AsRigid,
+                                TreatParams::InstantiateWithInfer,
+                            )
+                            .types_may_unify(values.found, tcx.type_of(did).skip_binder())
                             {
                                 has_matching_impl = true;
                             }
@@ -337,8 +341,12 @@ impl<T> Trait<T> for X {
                     {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.expected, |did| {
-                            if DeepRejectCtxt::new(tcx, TreatParams::ForLookup)
-                                .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
+                            if DeepRejectCtxt::new(
+                                tcx,
+                                TreatParams::AsRigid,
+                                TreatParams::InstantiateWithInfer,
+                            )
+                            .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
                             {
                                 has_matching_impl = true;
                             }
@@ -357,8 +365,12 @@ impl<T> Trait<T> for X {
                     {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::new(tcx, TreatParams::ForLookup)
-                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            if DeepRejectCtxt::new(
+                                tcx,
+                                TreatParams::AsRigid,
+                                TreatParams::InstantiateWithInfer,
+                            )
+                            .types_may_unify(values.found, tcx.type_of(did).skip_binder())
                             {
                                 has_matching_impl = true;
                             }

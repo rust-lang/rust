@@ -507,7 +507,11 @@ else if (window.initSearch) window.initSearch(searchIndex);
                 // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might regress.
                 let Some(impl_did) = impl_item_id.as_def_id() else { continue };
                 let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
-                let reject_cx = DeepRejectCtxt::new(self.cx.tcx(), TreatParams::AsCandidateKey);
+                let reject_cx = DeepRejectCtxt::new(
+                    self.cx.tcx(),
+                    TreatParams::InstantiateWithInfer,
+                    TreatParams::InstantiateWithInfer,
+                );
                 if !reject_cx.types_may_unify(aliased_ty, for_ty) {
                     continue;
                 }

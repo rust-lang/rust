@@ -47,7 +47,7 @@ where
         let cx = ecx.cx();
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::ForLookup)
+        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::AsRigid, TreatParams::InstantiateWithInfer)
             .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
         {
             return Err(NoSolution);

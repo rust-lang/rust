@@ -580,7 +580,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let drcx = DeepRejectCtxt::new(self.tcx(), TreatParams::ForLookup);
+        let drcx = DeepRejectCtxt::new(
+            self.tcx(),
+            TreatParams::AsRigid,
+            TreatParams::InstantiateWithInfer,
+        );
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
