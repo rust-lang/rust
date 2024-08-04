@@ -8,6 +8,7 @@ use libc::c_int;
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::unord::UnordSet;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::config::{PrintKind, PrintRequest};
@@ -553,11 +554,26 @@ pub(crate) fn global_llvm_features(
         let supported_features = sess.target.supported_target_features();
         let (llvm_major, _, _) = get_version();
         let mut featsmap = FxHashMap::default();
-        let feats = sess
-            .opts
-            .cg
-            .target_feature
-            .split(',')
+
+        // insert implied features
+        let mut all_rust_features = vec![];
+        for feature in sess.opts.cg.target_feature.split(',') {
+            match feature.strip_prefix('+') {
+                Some(feature) => all_rust_features.extend(
+                    UnordSet::from(
+                        sess.target
+                            .implied_target_features(std::iter::once(Symbol::intern(feature))),
+                    )
+                    .to_sorted_stable_ord()
+                    .iter()
+                    .map(|s| format!("+{}", s.as_str())),
+                ),
+                _ => all_rust_features.push(feature.to_string()),
+            }
+        }
+
+        let feats = all_rust_features
+            .iter()
             .filter_map(|s| {
                 let enable_disable = match s.chars().next() {
                     None => return None,
