@@ -23,10 +23,11 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
-                    sym::ub_checks | sym::contract_checks => {
+                    sym::ub_checks | sym::overflow_checks | sym::contract_checks => {
                         let op = match intrinsic.name {
                             sym::ub_checks => RuntimeChecks::UbChecks,
                             sym::contract_checks => RuntimeChecks::ContractChecks,
+                            sym::overflow_checks => RuntimeChecks::OverflowChecks,
                             _ => unreachable!(),
                         };
                         let target = target.unwrap();
