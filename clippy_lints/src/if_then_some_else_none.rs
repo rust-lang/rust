@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
@@ -81,32 +81,39 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && self.msrv.meets(msrvs::BOOL_THEN)
             && !contains_return(then_block.stmts)
         {
-            let mut app = Applicability::Unspecified;
-            let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
-                .maybe_par()
-                .to_string();
-            let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
-            let mut method_body = if then_block.stmts.is_empty() {
-                arg_snip.into_owned()
-            } else {
-                format!("{{ /* snippet */ {arg_snip} }}")
-            };
             let method_name = if switch_to_eager_eval(cx, expr) && self.msrv.meets(msrvs::BOOL_THEN_SOME) {
                 "then_some"
             } else {
-                method_body.insert_str(0, "|| ");
                 "then"
             };
 
-            let help =
-                format!("consider using `bool::{method_name}` like: `{cond_snip}.{method_name}({method_body})`",);
-            span_lint_and_help(
+            span_lint_and_then(
                 cx,
                 IF_THEN_SOME_ELSE_NONE,
                 expr.span,
                 format!("this could be simplified with `bool::{method_name}`"),
-                None,
-                help,
+                |diag| {
+                    let mut app = Applicability::Unspecified;
+                    let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
+                        .maybe_par()
+                        .to_string();
+                    let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
+                    let method_body = if let Some(first_stmt) = then_block.stmts.first() {
+                        let (block_snippet, _) =
+                            snippet_with_context(cx, first_stmt.span.until(then_arg.span), ctxt, "..", &mut app);
+                        let closure = if method_name == "then" { "|| " } else { "" };
+                        format!("{closure} {{ {block_snippet}; {arg_snip} }}")
+                    } else {
+                        arg_snip.into_owned()
+                    };
+
+                    diag.span_suggestion(
+                        expr.span,
+                        "try",
+                        format!("{cond_snip}.{method_name}({method_body})"),
+                        app,
+                    );
+                },
             );
         }
     }

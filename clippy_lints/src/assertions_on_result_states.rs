@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{find_assert_args, root_macro_call_first_node, PanicExpn};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_debug_impl, is_copy, is_type_diagnostic_item};
@@ -68,39 +68,28 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                     return;
                 }
             }
-            let semicolon = if is_expr_final_block_expr(cx.tcx, e) { ";" } else { "" };
-            let mut app = Applicability::MachineApplicable;
-            match method_segment.ident.as_str() {
+            let (message, replacement) = match method_segment.ident.as_str() {
                 "is_ok" if type_suitable_to_unwrap(cx, args.type_at(1)) => {
-                    span_lint_and_sugg(
-                        cx,
-                        ASSERTIONS_ON_RESULT_STATES,
-                        macro_call.span,
-                        "called `assert!` with `Result::is_ok`",
-                        "replace with",
-                        format!(
-                            "{}.unwrap(){semicolon}",
-                            snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0
-                        ),
-                        app,
-                    );
+                    ("called `assert!` with `Result::is_ok`", "unwrap")
                 },
                 "is_err" if type_suitable_to_unwrap(cx, args.type_at(0)) => {
-                    span_lint_and_sugg(
-                        cx,
-                        ASSERTIONS_ON_RESULT_STATES,
-                        macro_call.span,
-                        "called `assert!` with `Result::is_err`",
-                        "replace with",
-                        format!(
-                            "{}.unwrap_err(){semicolon}",
-                            snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0
-                        ),
-                        app,
-                    );
+                    ("called `assert!` with `Result::is_err`", "unwrap_err")
                 },
-                _ => (),
+                _ => return,
             };
+            span_lint_and_then(cx, ASSERTIONS_ON_RESULT_STATES, macro_call.span, message, |diag| {
+                let semicolon = if is_expr_final_block_expr(cx.tcx, e) { ";" } else { "" };
+                let mut app = Applicability::MachineApplicable;
+                diag.span_suggestion(
+                    macro_call.span,
+                    "replace with",
+                    format!(
+                        "{}.{replacement}(){semicolon}",
+                        snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0
+                    ),
+                    app,
+                );
+            });
         }
     }
 }
