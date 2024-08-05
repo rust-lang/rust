@@ -55,6 +55,8 @@ fn adt_of<'tcx>(ty: &hir::Ty<'tcx>) -> Option<(LocalDefId, DefKind)> {
                 None
             }
         }
+        TyKind::Slice(ty) | TyKind::Array(ty, _) => adt_of(ty),
+        TyKind::Ptr(ty) | TyKind::Ref(_, ty) => adt_of(ty.ty),
         _ => None,
     }
 }
