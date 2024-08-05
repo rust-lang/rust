@@ -1,6 +1,7 @@
 #![warn(clippy::uninit_vec)]
 
 use std::mem::MaybeUninit;
+use std::cell::UnsafeCell;
 
 #[derive(Default)]
 struct MyVec {
@@ -10,6 +11,12 @@ struct MyVec {
 union MyOwnMaybeUninit {
     value: u8,
     uninit: (),
+}
+
+// https://github.com/rust-lang/rust/issues/119620
+unsafe fn requires_paramenv<S>() {
+    let mut vec = Vec::<UnsafeCell<*mut S>>::with_capacity(1);
+    vec.set_len(1);
 }
 
 fn main() {
