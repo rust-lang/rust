@@ -223,7 +223,6 @@ extern "C" {
 
     // x86_64-windows: declare void @natural_align_2(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 2{{.*}})
 
     // i686-linux: declare void @natural_align_2({{.*}}byval([34 x i8]) align 4{{.*}})
 
@@ -238,7 +237,6 @@ extern "C" {
 
     // x86_64-windows: declare void @force_align_4(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 4{{.*}})
 
     // i686-linux: declare void @force_align_4({{.*}}byval([20 x i8]) align 4{{.*}})
 
@@ -253,7 +251,6 @@ extern "C" {
 
     // x86_64-windows: declare void @natural_align_8(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
 
     // i686-linux: declare void @natural_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
 
@@ -268,13 +265,11 @@ extern "C" {
 
     // x86_64-windows: declare void @force_align_8(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
 
     // i686-linux: declare void @force_align_8({{.*}}byval([24 x i8]) align 4{{.*}})
 
     // i686-windows: declare void @force_align_8(
     // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
     fn force_align_8(x: ForceAlign8);
 
     // m68k: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
@@ -285,7 +280,6 @@ extern "C" {
 
     // x86_64-windows: declare void @lower_fa8(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
 
     // i686-linux: declare void @lower_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
@@ -300,13 +294,11 @@ extern "C" {
 
     // x86_64-windows: declare void @wrapped_fa8(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
 
     // i686-linux: declare void @wrapped_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
     // i686-windows: declare void @wrapped_fa8(
     // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
     fn wrapped_fa8(x: WrappedFA8);
 
     // m68k: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 8{{.*}})
@@ -317,13 +309,11 @@ extern "C" {
 
     // x86_64-windows: declare void @transparent_fa8(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 8{{.*}})
 
     // i686-linux: declare void @transparent_fa8({{.*}}byval([24 x i8]) align 4{{.*}})
 
     // i686-windows: declare void @transparent_fa8(
     // i686-windows-NOT: byval
-    // i686-windows-SAME: align 8{{.*}})
     fn transparent_fa8(x: TransparentFA8);
 
     // m68k: declare void @force_align_16({{.*}}byval([80 x i8]) align 16{{.*}})
@@ -334,12 +324,10 @@ extern "C" {
 
     // x86_64-windows: declare void @force_align_16(
     // x86_64-windows-NOT: byval
-    // x86_64-windows-SAME: align 16{{.*}})
 
     // i686-linux: declare void @force_align_16({{.*}}byval([80 x i8]) align 4{{.*}})
 
     // i686-windows: declare void @force_align_16(
     // i686-windows-NOT: byval
-    // i686-windows-SAME: align 16{{.*}})
     fn force_align_16(x: ForceAlign16);
 }

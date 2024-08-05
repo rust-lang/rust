@@ -25,7 +25,14 @@ use crate::value::Value;
 use crate::{attributes, llvm_util};
 
 pub trait ArgAttributesExt {
-    fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
+    fn apply_attrs_to_llfn(
+        &self,
+        idx: AttributePlace,
+        cx: &CodegenCx<'_, '_>,
+        llfn: &Value,
+        is_foreign_fn: bool,
+        force_set_align: bool,
+    );
     fn apply_attrs_to_callsite(
         &self,
         idx: AttributePlace,
@@ -45,7 +52,16 @@ const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
 ];
 
-fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
+/// `is_foreign_fn_decl` indicates whether the attributes should be computed for a foreign function declaration,
+/// where we emit non-essential attributes.
+/// See <https://github.com/rust-lang/rust/issues/46188> for background and discussion.
+/// `force_set_align` indicates whether the alignment is ABI-relevant.
+fn get_attrs<'ll>(
+    this: &ArgAttributes,
+    cx: &CodegenCx<'ll, '_>,
+    is_foreign_fn_decl: bool,
+    force_set_align: bool,
+) -> SmallVec<[&'ll Attribute; 8]> {
     let mut regular = this.regular;
 
     let mut attrs = SmallVec::new();
@@ -56,13 +72,29 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
             attrs.push(llattr.create_attr(cx.llcx));
         }
     }
-    if let Some(align) = this.pointee_align {
-        attrs.push(llvm::CreateAlignmentAttr(cx.llcx, align.bytes()));
+    if force_set_align {
+        if let Some(align) = this.pointee_align {
+            attrs.push(llvm::CreateAlignmentAttr(cx.llcx, align.bytes()));
+        }
     }
     match this.arg_ext {
         ArgExtension::None => {}
         ArgExtension::Zext => attrs.push(llvm::AttributeKind::ZExt.create_attr(cx.llcx)),
         ArgExtension::Sext => attrs.push(llvm::AttributeKind::SExt.create_attr(cx.llcx)),
+    }
+
+    // For foreign function declarations, this is it.
+    if is_foreign_fn_decl {
+        return attrs;
+    }
+
+    // If we didn't add alignment yet, do it now.
+    // HACK: this should really be inside the "only if optimizations" below,
+    // but to avoid tedious codegen test changes, we have it here.
+    if !force_set_align {
+        if let Some(align) = this.pointee_align {
+            attrs.push(llvm::CreateAlignmentAttr(cx.llcx, align.bytes()));
+        }
     }
 
     // Only apply remaining attributes when optimizing
@@ -94,8 +126,15 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
 }
 
 impl ArgAttributesExt for ArgAttributes {
-    fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value) {
-        let attrs = get_attrs(self, cx);
+    fn apply_attrs_to_llfn(
+        &self,
+        idx: AttributePlace,
+        cx: &CodegenCx<'_, '_>,
+        llfn: &Value,
+        is_foreign_fn: bool,
+        force_set_align: bool,
+    ) {
+        let attrs = get_attrs(self, cx, is_foreign_fn, force_set_align);
         attributes::apply_to_llfn(llfn, idx, &attrs);
     }
 
@@ -105,7 +144,10 @@ impl ArgAttributesExt for ArgAttributes {
         cx: &CodegenCx<'_, '_>,
         callsite: &Value,
     ) {
-        let attrs = get_attrs(self, cx);
+        // It's not a declaration at all, so in particular not a foreign function declaration.
+        // We also don't need to force setting the alignment.
+        let attrs =
+            get_attrs(self, cx, /*is_foreign_fn_decl*/ false, /*force_set_align*/ false);
         attributes::apply_to_callsite(callsite, idx, &attrs);
     }
 }
@@ -310,7 +352,7 @@ pub trait FnAbiLlvmExt<'ll, 'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
+    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, is_foreign_fn: bool);
     fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
 }
 
@@ -396,13 +438,15 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         self.conv.into()
     }
 
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
+    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, is_foreign_fn: bool) {
         let mut func_attrs = SmallVec::<[_; 3]>::new();
-        if self.ret.layout.abi.is_uninhabited() {
-            func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
-        }
-        if !self.can_unwind {
-            func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(cx.llcx));
+        if !is_foreign_fn {
+            if self.ret.layout.abi.is_uninhabited() {
+                func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
+            }
+            if !self.can_unwind {
+                func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(cx.llcx));
+            }
         }
         if let Conv::RiscvInterrupt { kind } = self.conv {
             func_attrs.push(llvm::CreateAttrStringValue(cx.llcx, "interrupt", kind.as_str()));
@@ -410,18 +454,30 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &{ func_attrs });
 
         let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes| {
-            attrs.apply_attrs_to_llfn(llvm::AttributePlace::Argument(i), cx, llfn);
+        let mut apply_next_arg = |attrs: &ArgAttributes, force_set_align: bool| {
+            attrs.apply_attrs_to_llfn(
+                llvm::AttributePlace::Argument(i),
+                cx,
+                llfn,
+                is_foreign_fn,
+                force_set_align,
+            );
             i += 1;
             i - 1
         };
         match &self.ret.mode {
             PassMode::Direct(attrs) => {
-                attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+                attrs.apply_attrs_to_llfn(
+                    llvm::AttributePlace::ReturnValue,
+                    cx,
+                    llfn,
+                    is_foreign_fn,
+                    /*force_set_align*/ false,
+                );
             }
             PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
                 assert!(!on_stack);
-                let i = apply(attrs);
+                let i = apply_next_arg(attrs, /*force_set_align*/ false);
                 let sret = llvm::CreateStructRetAttr(
                     cx.llcx,
                     cx.type_array(cx.type_i8(), self.ret.layout.size.bytes()),
@@ -441,7 +497,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
             }
             PassMode::Cast { cast, pad_i32: _ } => {
-                cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+                cast.attrs.apply_attrs_to_llfn(
+                    llvm::AttributePlace::ReturnValue,
+                    cx,
+                    llfn,
+                    is_foreign_fn,
+                    /*force_set_align*/ false,
+                );
             }
             _ => {}
         }
@@ -449,7 +511,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             match &arg.mode {
                 PassMode::Ignore => {}
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: true } => {
-                    let i = apply(attrs);
+                    let i = apply_next_arg(attrs, /*force_set_align*/ true);
                     let byval = llvm::CreateByValAttr(
                         cx.llcx,
                         cx.type_array(cx.type_i8(), arg.layout.size.bytes()),
@@ -458,22 +520,22 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Direct(attrs)
                 | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
-                    apply(attrs);
+                    apply_next_arg(attrs, /*force_set_align*/ false);
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);
-                    apply(attrs);
-                    apply(meta_attrs);
+                    apply_next_arg(attrs, /*force_set_align*/ false);
+                    apply_next_arg(meta_attrs, /*force_set_align*/ false);
                 }
                 PassMode::Pair(a, b) => {
-                    apply(a);
-                    apply(b);
+                    apply_next_arg(a, /*force_set_align*/ false);
+                    apply_next_arg(b, /*force_set_align*/ false);
                 }
                 PassMode::Cast { cast, pad_i32 } => {
                     if *pad_i32 {
-                        apply(&ArgAttributes::new());
+                        apply_next_arg(&ArgAttributes::new(), /*force_set_align*/ false);
                     }
-                    apply(&cast.attrs);
+                    apply_next_arg(&cast.attrs, /*force_set_align*/ false);
                 }
             }
         }

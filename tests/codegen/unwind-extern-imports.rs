@@ -4,18 +4,25 @@
 #![crate_type = "lib"]
 
 extern "C" {
-    // CHECK: Function Attrs:{{.*}}nounwind
-    // CHECK-NEXT: declare{{.*}}void @extern_fn
     fn extern_fn();
 }
 
 extern "C-unwind" {
-    // CHECK-NOT: nounwind
-    // CHECK: declare{{.*}}void @c_unwind_extern_fn
     fn c_unwind_extern_fn();
 }
 
+// The attributes are at the call sites, not the declaration.
+
+// CHECK-LABEL: @force_declare
+#[no_mangle]
 pub unsafe fn force_declare() {
+    // Attributes with `nounwind` here (also see check below).
+    // CHECK: call void @extern_fn() #1
     extern_fn();
+    // No attributes here.
+    // CHECK: call void @c_unwind_extern_fn()
     c_unwind_extern_fn();
 }
+
+// CHECK: attributes #1
+// CHECK-SAME: nounwind
