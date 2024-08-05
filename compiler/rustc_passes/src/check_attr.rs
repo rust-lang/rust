@@ -242,6 +242,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::coroutine, ..] => {
                     self.check_coroutine(attr, target);
                 }
+                [sym::pointee, ..] => {
+                    self.check_pointee(attr, target);
+                }
                 [
                     // ok
                     sym::allow
@@ -253,7 +256,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // need to be fixed
                     | sym::cfi_encoding // FIXME(cfi_encoding)
                     | sym::may_dangle // FIXME(dropck_eyepatch)
-                    | sym::pointee // FIXME(derive_smart_pointer)
                     | sym::linkage // FIXME(linkage)
                     | sym::no_sanitize // FIXME(no_sanitize)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
@@ -2340,6 +2342,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Closure => return,
             _ => {
                 self.dcx().emit_err(errors::CoroutineOnNonClosure { span: attr.span });
+            }
+        }
+    }
+
+    fn check_pointee(&self, attr: &Attribute, target: Target) {
+        match target {
+            Target::GenericParam(hir::target::GenericParamKind::Type) => return,
+            _ => {
+                self.dcx().emit_err(errors::PointeeOnNonGenericTy { attr_span: attr.span });
             }
         }
     }

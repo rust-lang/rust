@@ -1,0 +1,50 @@
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:3:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:6:5
+   |
+LL |     #[pointee]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:9:5
+   |
+LL |     #[pointee]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:13:5
+   |
+LL |     #[pointee]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:18:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:21:5
+   |
+LL |     #[pointee]
+   |     ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:26:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+
+error: attribute should be applied to generic type parameters
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:30:1
+   |
+LL | #[pointee]
+   | ^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

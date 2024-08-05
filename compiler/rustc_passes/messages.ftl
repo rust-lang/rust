@@ -584,6 +584,10 @@ passes_pass_by_value =
     `pass_by_value` attribute should be applied to a struct, enum or type alias
     .label = is not a struct, enum or type alias
 
+passes_pointee_on_non_generic_ty =
+    attribute should be applied to generic type parameters
+    .label = not a generic type parameter
+
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
 passes_remove_fields =

@@ -26,7 +26,7 @@ pub mod intravisit;
 pub mod lang_items;
 pub mod pat_util;
 mod stable_hash_impls;
-mod target;
+pub mod target;
 pub mod weak_lang_items;
 
 #[cfg(test)]
