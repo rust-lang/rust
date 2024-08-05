@@ -340,7 +340,7 @@ impl File {
                 map_fresult(vex_sdk::vexFileSeek(self.fd.0, try_convert_offset(offset)?, SEEK_SET))?
             },
 
-            // vexOS does not allow seeking with negative offsets.
+            // VEXos does not allow seeking with negative offsets.
             // That means we need to calculate the offset from the start for both of these.
             SeekFrom::End(offset) => unsafe {
                 // If our offset is positive, everything is easy
@@ -430,7 +430,7 @@ impl Drop for File {
 pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     // While there *is* a userspace function for reading file directories,
     // the necessary implementation cannot currently be done cleanly, as
-    // vexOS does not expose directory length to user programs.
+    // VEXos does not expose directory length to user programs.
     //
     // This means that we would need to create a large fixed-length buffer
     // and hope that the folder's contents didn't exceed that buffer's length,
@@ -458,7 +458,7 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn try_exists(path: &Path) -> io::Result<bool> {
+pub fn exists(path: &Path) -> io::Result<bool> {
     let path = CString::new(path.as_os_str().as_encoded_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
 

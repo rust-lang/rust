@@ -16,8 +16,6 @@ pub mod process;
 pub mod stdio;
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
-#[path = "../unsupported/thread_local_key.rs"]
-pub mod thread_local_key;
 pub mod time;
 
 use crate::{arch::asm, ptr::{self, addr_of_mut}};
@@ -37,7 +35,7 @@ pub unsafe extern "C" fn _start() -> ! {
     // Setup the stack
     asm!("ldr sp, =__stack_top", options(nostack));
 
-    // vexOS doesn't explicitly clean out .bss, so as a sanity
+    // VEXos doesn't explicitly clean out .bss, so as a sanity
     // check we'll fill it with zeroes.
     ptr::slice_from_raw_parts_mut(
         addr_of_mut!(__bss_start),
