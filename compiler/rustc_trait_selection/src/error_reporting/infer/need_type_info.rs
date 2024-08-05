@@ -683,87 +683,82 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
         };
         let args = args.unwrap_or_else(|| empty_args(def_id));
-        tcx.for_each_relevant_impl(
-            tcx.parent(def_id), // Trait `DefId`
-            self_ty,
-            |impl_def_id| {
-                let impl_args = empty_args(impl_def_id);
-                let impl_trait_ref =
-                    tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
-                let impl_self_ty = impl_trait_ref.self_ty();
-                if self.infcx.can_eq(param_env, impl_self_ty, self_ty) {
-                    // The expr's self type could conform to this impl's self type.
-                } else {
-                    // Nope, don't bother.
-                    return;
-                }
-                let assocs = tcx.associated_items(impl_def_id);
+        let trait_def_id = tcx.parent(def_id);
+        tcx.for_each_relevant_impl(trait_def_id, self_ty, |impl_def_id| {
+            let impl_args = empty_args(impl_def_id);
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
+            let impl_self_ty = impl_trait_ref.self_ty();
+            if self.infcx.can_eq(param_env, impl_self_ty, self_ty) {
+                // The expr's self type could conform to this impl's self type.
+            } else {
+                // Nope, don't bother.
+                return;
+            }
+            let assocs = tcx.associated_items(impl_def_id);
 
-                if tcx.is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
-                    && let Some(did) = tcx.get_diagnostic_item(sym::From)
-                {
-                    let mut found = false;
-                    tcx.for_each_impl(did, |impl_def_id| {
-                        // We had an `<A as Into<B>::into` and we've hit the blanket
-                        // impl for `From<A>`. So we try and look for the right `From`
-                        // impls that *would* apply. We *could* do this in a generalized
-                        // version by evaluating the `where` clauses, but that would be
-                        // way too involved to implement. Instead we special case the
-                        // arguably most common case of `expr.into()`.
-                        let Some(header) = tcx.impl_trait_header(impl_def_id) else {
-                            return;
-                        };
-                        let target = header.trait_ref.skip_binder().args.type_at(0);
-                        let ty = header.trait_ref.skip_binder().args.type_at(1);
-                        if ty == self_ty {
-                            if target_type {
-                                paths.push(format!("{target}"));
-                            } else {
-                                paths.push(format!("<{self_ty} as Into<{target}>>::into"));
-                            }
-                            found = true;
-                        }
-                    });
-                    if found {
+            if tcx.is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
+                && let Some(did) = tcx.get_diagnostic_item(sym::From)
+            {
+                let mut found = false;
+                tcx.for_each_impl(did, |impl_def_id| {
+                    // We had an `<A as Into<B>::into` and we've hit the blanket
+                    // impl for `From<A>`. So we try and look for the right `From`
+                    // impls that *would* apply. We *could* do this in a generalized
+                    // version by evaluating the `where` clauses, but that would be
+                    // way too involved to implement. Instead we special case the
+                    // arguably most common case of `expr.into()`.
+                    let Some(header) = tcx.impl_trait_header(impl_def_id) else {
                         return;
-                    }
-                }
-
-                // We're at the `impl` level, but we want to get the same method we
-                // called *on this `impl`*, in order to get the right DefId and args.
-                let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
-                    // The method isn't in this `impl`? Not useful to us then.
-                    return;
-                };
-                let Some(trait_assoc_item) = assoc.trait_item_def_id else {
-                    return;
-                };
-                let trait_assoc_substs =
-                    impl_trait_ref.args.extend_to(tcx, trait_assoc_item, |def, _| {
-                        // We don't want to name the arguments, we just want to give an
-                        // idea of what the syntax is.
-                        match def.kind {
-                            ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                            ty::GenericParamDefKind::Type { .. } => {
-                                self.next_ty_var(DUMMY_SP).into()
-                            }
-                            ty::GenericParamDefKind::Const { .. } => {
-                                self.next_const_var(DUMMY_SP).into()
-                            }
+                    };
+                    let target = header.trait_ref.skip_binder().args.type_at(0);
+                    let ty = header.trait_ref.skip_binder().args.type_at(1);
+                    if ty == self_ty {
+                        if target_type {
+                            paths.push(format!("{target}"));
+                        } else {
+                            paths.push(format!("<{self_ty} as Into<{target}>>::into"));
                         }
-                    });
-                let identity_method = args.rebase_onto(tcx, def_id, trait_assoc_substs);
-                if target_type {
-                    let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, identity_method);
-                    let ret = fn_sig.skip_binder().output();
-                    paths.push(format!("{ret}"));
-                } else {
-                    let mut printer = fmt_printer(self, Namespace::ValueNS);
-                    printer.print_def_path(def_id, identity_method).unwrap();
-                    paths.push(printer.into_buffer());
+                        found = true;
+                    }
+                });
+                if found {
+                    return;
                 }
-            },
-        );
+            }
+
+            // We're at the `impl` level, but we want to get the same method we
+            // called *on this `impl`*, in order to get the right DefId and args.
+            let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
+                // The method isn't in this `impl`? Not useful to us then.
+                return;
+            };
+            let Some(trait_assoc_item) = assoc.trait_item_def_id else {
+                return;
+            };
+            let trait_assoc_substs =
+                impl_trait_ref.args.extend_to(tcx, trait_assoc_item, |def, _| {
+                    // We don't want to name the arguments, we just want to give an
+                    // idea of what the syntax is.
+                    match def.kind {
+                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                        ty::GenericParamDefKind::Type { .. } => self.next_ty_var(DUMMY_SP).into(),
+                        ty::GenericParamDefKind::Const { .. } => {
+                            self.next_const_var(DUMMY_SP).into()
+                        }
+                    }
+                });
+            let identity_method = args.rebase_onto(tcx, def_id, trait_assoc_substs);
+            if target_type {
+                let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, identity_method);
+                let ret = fn_sig.skip_binder().output();
+                paths.push(format!("{ret}"));
+            } else {
+                let mut printer = fmt_printer(self, Namespace::ValueNS);
+                printer.print_def_path(def_id, identity_method).unwrap();
+                paths.push(printer.into_buffer());
+            }
+        });
         paths
     }
 }
