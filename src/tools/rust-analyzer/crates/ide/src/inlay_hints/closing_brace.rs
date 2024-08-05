@@ -7,7 +7,7 @@ use hir::{HirDisplay, Semantics};
 use ide_db::{FileRange, RootDatabase};
 use span::EditionedFileId;
 use syntax::{
-    ast::{self, AstNode, HasName},
+    ast::{self, AstNode, HasLoopBody, HasName},
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
@@ -57,9 +57,24 @@ pub(super) fn hints(
         // the actual number of lines in this case should be the line count of the parent BlockExpr,
         // which the `min_lines` config cares about
         node = node.parent()?;
-        let block = label.syntax().parent().and_then(ast::BlockExpr::cast)?;
-        closing_token = block.stmt_list()?.r_curly_token()?;
+
+        let parent = label.syntax().parent()?;
+        let block;
+        match_ast! {
+            match parent {
+                ast::BlockExpr(block_expr) => {
+                    block = block_expr.stmt_list()?;
+                },
+                ast::AnyHasLoopBody(loop_expr) => {
+                    block = loop_expr.loop_body()?.stmt_list()?;
+                },
+                _ => return None,
+            }
+        }
+        closing_token = block.r_curly_token()?;
+
         let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+
         (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
         closing_token = block.stmt_list()?.r_curly_token()?;
@@ -219,6 +234,19 @@ fn test() {
       //^ 'do_a
     }
   //^ 'end
+
+    'a: loop {
+        'b: for i in 0..5 {
+            'c: while true {
+
+
+            }
+          //^ 'c
+        }
+      //^ 'b
+    }
+  //^ 'a
+
   }
 //^ fn test
 "#,
