@@ -455,124 +455,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id, hir_id } => {
                 let mut paths = vec![];
                 if let Some(def_id) = def_id
-                    && let name = self.infcx.tcx.item_name(def_id)
                     && let Some(hir_id) = hir_id
                     && let expr = self.infcx.tcx.hir().expect_expr(hir_id)
                     && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
                     && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 {
-                    // Look for all the possible implementations to suggest, otherwise we'll show
-                    // just suggest the syntax for the fully qualified path with placeholders.
-                    self.infcx.tcx.for_each_relevant_impl(
-                        self.infcx.tcx.parent(def_id), // Trait `DefId`
-                        ty,                            // `Self` type
-                        |impl_def_id| {
-                            let impl_args = ty::GenericArgs::for_item(
-                                self.infcx.tcx,
-                                impl_def_id,
-                                |param, _| {
-                                    // We don't want to name the arguments, we just want to give an
-                                    // idea of what the syntax is.
-                                    match param.kind {
-                                        ty::GenericParamDefKind::Lifetime => {
-                                            self.infcx.tcx.lifetimes.re_erased.into()
-                                        }
-                                        ty::GenericParamDefKind::Type { .. } => {
-                                            self.next_ty_var(DUMMY_SP).into()
-                                        }
-                                        ty::GenericParamDefKind::Const { .. } => {
-                                            self.next_const_var(DUMMY_SP).into()
-                                        }
-                                    }
-                                },
-                            );
-                            let impl_trait_ref = self
-                                .infcx
-                                .tcx
-                                .impl_trait_ref(impl_def_id)
-                                .unwrap()
-                                .instantiate(self.infcx.tcx, impl_args);
-                            let impl_self_ty = impl_trait_ref.self_ty();
-                            if self.infcx.can_eq(param_env, impl_self_ty, ty) {
-                                // The expr's self type could conform to this impl's self type.
-                            } else {
-                                // Nope, don't bother.
-                                return;
-                            }
-                            let assocs = self.infcx.tcx.associated_items(impl_def_id);
-
-                            if self
-                                .infcx
-                                .tcx
-                                .is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
-                                && let Some(did) = self.infcx.tcx.get_diagnostic_item(sym::From)
-                            {
-                                let mut found = false;
-                                self.infcx.tcx.for_each_impl(did, |impl_def_id| {
-                                    // We had an `<A as Into<B>::into` and we've hit the blanket
-                                    // impl for `From<A>`. So we try and look for the right `From`
-                                    // impls that *would* apply. We *could* do this in a generalized
-                                    // version by evaluating the `where` clauses, but that would be
-                                    // way too involved to implement. Instead we special case the
-                                    // arguably most common case of `expr.into()`.
-                                    let Some(header) =
-                                        self.infcx.tcx.impl_trait_header(impl_def_id)
-                                    else {
-                                        return;
-                                    };
-                                    let target = header.trait_ref.skip_binder().args.type_at(0);
-                                    let _ty = header.trait_ref.skip_binder().args.type_at(1);
-                                    if _ty == ty {
-                                        paths.push(format!("{target}"));
-                                        found = true;
-                                    }
-                                });
-                                if found {
-                                    return;
-                                }
-                            }
-
-                            // We're at the `impl` level, but we want to get the same method we
-                            // called *on this `impl`*, in order to get the right DefId and args.
-                            let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
-                                // The method isn't in this `impl`? Not useful to us then.
-                                return;
-                            };
-                            let Some(trait_assoc_item) = assoc.trait_item_def_id else {
-                                return;
-                            };
-                            // Let's ignore the generic params and replace them with `_` in the
-                            // suggested path.
-                            let trait_assoc_substs = impl_trait_ref.args.extend_to(
-                                self.infcx.tcx,
-                                trait_assoc_item,
-                                |def, _| {
-                                    // We don't want to name the arguments, we just want to give an
-                                    // idea of what the syntax is.
-                                    match def.kind {
-                                        ty::GenericParamDefKind::Lifetime => {
-                                            self.infcx.tcx.lifetimes.re_erased.into()
-                                        }
-                                        ty::GenericParamDefKind::Type { .. } => {
-                                            self.next_ty_var(DUMMY_SP).into()
-                                        }
-                                        ty::GenericParamDefKind::Const { .. } => {
-                                            self.next_const_var(DUMMY_SP).into()
-                                        }
-                                    }
-                                },
-                            );
-                            let identity_method =
-                                impl_args.rebase_onto(self.infcx.tcx, def_id, trait_assoc_substs);
-                            let fn_sig = self
-                                .infcx
-                                .tcx
-                                .fn_sig(def_id)
-                                .instantiate(self.infcx.tcx, identity_method);
-                            let ret = fn_sig.skip_binder().output();
-                            paths.push(format!("{ret}"));
-                        },
-                    );
+                    paths = self.get_suggestions(ty, def_id, true, param_env, None);
                 }
 
                 if paths.is_empty() {
@@ -697,114 +585,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         _ => "",
                     };
 
-                    let mut paths = vec![];
-                    let name = self.infcx.tcx.item_name(def_id);
                     // Look for all the possible implementations to suggest, otherwise we'll show
                     // just suggest the syntax for the fully qualified path with placeholders.
-                    self.infcx.tcx.for_each_relevant_impl(
-                        self.infcx.tcx.parent(def_id), // Trait `DefId`
-                        args.type_at(0),               // `Self` type
-                        |impl_def_id| {
-                            let impl_args = ty::GenericArgs::for_item(
-                                self.infcx.tcx,
-                                impl_def_id,
-                                |param, _| {
-                                    // We don't want to name the arguments, we just want to give an
-                                    // idea of what the syntax is.
-                                    match param.kind {
-                                        ty::GenericParamDefKind::Lifetime => {
-                                            self.infcx.tcx.lifetimes.re_erased.into()
-                                        }
-                                        ty::GenericParamDefKind::Type { .. } => {
-                                            self.next_ty_var(DUMMY_SP).into()
-                                        }
-                                        ty::GenericParamDefKind::Const { .. } => {
-                                            self.next_const_var(DUMMY_SP).into()
-                                        }
-                                    }
-                                },
-                            );
-                            let impl_trait_ref = self
-                                .infcx
-                                .tcx
-                                .impl_trait_ref(impl_def_id)
-                                .unwrap()
-                                .instantiate(self.infcx.tcx, impl_args);
-                            let impl_self_ty = impl_trait_ref.self_ty();
-                            if self.infcx.can_eq(param_env, impl_self_ty, args.type_at(0)) {
-                                // The expr's self type could conform to this impl's self type.
-                            } else {
-                                // Nope, don't bother.
-                                return;
-                            }
-                            let assocs = self.infcx.tcx.associated_items(impl_def_id);
-
-                            if self
-                                .infcx
-                                .tcx
-                                .is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
-                                && let Some(did) = self.infcx.tcx.get_diagnostic_item(sym::From)
-                            {
-                                let mut found = false;
-                                self.infcx.tcx.for_each_impl(did, |impl_def_id| {
-                                    // We had an `<A as Into<B>::into` and we've hit the blanket
-                                    // impl for `From<A>`. So we try and look for the right `From`
-                                    // impls that *would* apply. We *could* do this in a generalized
-                                    // version by evaluating the `where` clauses, but that would be
-                                    // way too involved to implement. Instead we special case the
-                                    // arguably most common case of `expr.into()`.
-                                    let Some(header) =
-                                        self.infcx.tcx.impl_trait_header(impl_def_id)
-                                    else {
-                                        return;
-                                    };
-                                    let target = header.trait_ref.skip_binder().args.type_at(0);
-                                    let ty = header.trait_ref.skip_binder().args.type_at(1);
-                                    if ty == args.type_at(0) {
-                                        paths.push(format!("<{ty} as Into<{target}>>::into"));
-                                        found = true;
-                                    }
-                                });
-                                if found {
-                                    return;
-                                }
-                            }
-
-                            // We're at the `impl` level, but we want to get the same method we
-                            // called *on this `impl`*, in order to get the right DefId and args.
-                            let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
-                                // The method isn't in this `impl`? Not useful to us then.
-                                return;
-                            };
-                            let Some(trait_assoc_item) = assoc.trait_item_def_id else {
-                                return;
-                            };
-                            let trait_assoc_substs = impl_trait_ref.args.extend_to(
-                                self.infcx.tcx,
-                                trait_assoc_item,
-                                |def, _| {
-                                    // We don't want to name the arguments, we just want to give an
-                                    // idea of what the syntax is.
-                                    match def.kind {
-                                        ty::GenericParamDefKind::Lifetime => {
-                                            self.infcx.tcx.lifetimes.re_erased.into()
-                                        }
-                                        ty::GenericParamDefKind::Type { .. } => {
-                                            self.next_ty_var(DUMMY_SP).into()
-                                        }
-                                        ty::GenericParamDefKind::Const { .. } => {
-                                            self.next_const_var(DUMMY_SP).into()
-                                        }
-                                    }
-                                },
-                            );
-                            let identity_method =
-                                args.rebase_onto(self.infcx.tcx, def_id, trait_assoc_substs);
-                            let mut printer = fmt_printer(self, Namespace::ValueNS);
-                            printer.print_def_path(def_id, identity_method).unwrap();
-                            paths.push(printer.into_buffer());
-                        },
-                    );
+                    let paths =
+                        self.get_suggestions(args.type_at(0), def_id, false, param_env, Some(args));
                     if paths.len() > 20 || paths.is_empty() {
                         // This will show the fallback impl, so the expression will have type
                         // parameter placeholders, but it's better than nothing.
@@ -874,6 +658,113 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 path: path.unwrap_or_default(),
             }),
         }
+    }
+
+    fn get_suggestions(
+        &self,
+        ty: Ty<'tcx>, // args.type_at(0) / ty
+        def_id: DefId,
+        target_type: bool, // false / true
+        param_env: ty::ParamEnv<'tcx>,
+        args: Option<&ty::GenericArgs<'tcx>>,
+    ) -> Vec<String> {
+        let tcx = self.infcx.tcx;
+        let mut paths = vec![];
+        let name = tcx.item_name(def_id);
+        let empty_args = |def_id| {
+            ty::GenericArgs::for_item(tcx, def_id, |param, _| {
+                // We don't want to name the arguments, we just want to give an
+                // idea of what the syntax is.
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                    ty::GenericParamDefKind::Type { .. } => self.next_ty_var(DUMMY_SP).into(),
+                    ty::GenericParamDefKind::Const { .. } => self.next_const_var(DUMMY_SP).into(),
+                }
+            })
+        };
+        let args = args.unwrap_or_else(|| empty_args(def_id));
+        tcx.for_each_relevant_impl(
+            tcx.parent(def_id), // Trait `DefId`
+            ty,                 // `Self` type
+            |impl_def_id| {
+                let impl_args = empty_args(impl_def_id);
+                let impl_trait_ref =
+                    tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
+                let impl_self_ty = impl_trait_ref.self_ty();
+                if self.infcx.can_eq(param_env, impl_self_ty, ty) {
+                    // The expr's self type could conform to this impl's self type.
+                } else {
+                    // Nope, don't bother.
+                    return;
+                }
+                let assocs = tcx.associated_items(impl_def_id);
+
+                if tcx.is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
+                    && let Some(did) = tcx.get_diagnostic_item(sym::From)
+                {
+                    let mut found = false;
+                    tcx.for_each_impl(did, |impl_def_id| {
+                        // We had an `<A as Into<B>::into` and we've hit the blanket
+                        // impl for `From<A>`. So we try and look for the right `From`
+                        // impls that *would* apply. We *could* do this in a generalized
+                        // version by evaluating the `where` clauses, but that would be
+                        // way too involved to implement. Instead we special case the
+                        // arguably most common case of `expr.into()`.
+                        let Some(header) = tcx.impl_trait_header(impl_def_id) else {
+                            return;
+                        };
+                        let target = header.trait_ref.skip_binder().args.type_at(0);
+                        let _ty = header.trait_ref.skip_binder().args.type_at(1);
+                        if _ty == ty {
+                            if target_type {
+                                paths.push(format!("{target}"));
+                            } else {
+                                paths.push(format!("<{ty} as Into<{target}>>::into"));
+                            }
+                            found = true;
+                        }
+                    });
+                    if found {
+                        return;
+                    }
+                }
+
+                // We're at the `impl` level, but we want to get the same method we
+                // called *on this `impl`*, in order to get the right DefId and args.
+                let Some(assoc) = assocs.filter_by_name_unhygienic(name).next() else {
+                    // The method isn't in this `impl`? Not useful to us then.
+                    return;
+                };
+                let Some(trait_assoc_item) = assoc.trait_item_def_id else {
+                    return;
+                };
+                let trait_assoc_substs =
+                    impl_trait_ref.args.extend_to(tcx, trait_assoc_item, |def, _| {
+                        // We don't want to name the arguments, we just want to give an
+                        // idea of what the syntax is.
+                        match def.kind {
+                            ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                            ty::GenericParamDefKind::Type { .. } => {
+                                self.next_ty_var(DUMMY_SP).into()
+                            }
+                            ty::GenericParamDefKind::Const { .. } => {
+                                self.next_const_var(DUMMY_SP).into()
+                            }
+                        }
+                    });
+                let identity_method = args.rebase_onto(tcx, def_id, trait_assoc_substs);
+                if target_type {
+                    let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, identity_method);
+                    let ret = fn_sig.skip_binder().output();
+                    paths.push(format!("{ret}"));
+                } else {
+                    let mut printer = fmt_printer(self, Namespace::ValueNS);
+                    printer.print_def_path(def_id, identity_method).unwrap();
+                    paths.push(printer.into_buffer());
+                }
+            },
+        );
+        paths
     }
 }
 
