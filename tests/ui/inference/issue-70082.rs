@@ -7,10 +7,4 @@ fn main() {
     let y: f64 = 0.01f64 * 1i16.into();
     //~^ ERROR type annotations needed
     //~| HELP try using a fully qualified path
-    //~| HELP try using a fully qualified path
-    //~| HELP try using a fully qualified path
-    //~| HELP try using a fully qualified path
-    //~| HELP try using a fully qualified path
-    //~| HELP try using a fully qualified path
-    //~| HELP try using a fully qualified path
 }

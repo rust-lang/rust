@@ -419,6 +419,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
         param_env: ty::ParamEnv<'tcx>,
+        predicate: Option<ty::Predicate<'tcx>>,
     ) -> Diag<'a> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
@@ -460,7 +461,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
                     && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 {
-                    paths = self.get_suggestions(ty, def_id, true, param_env, None);
+                    paths = self.get_suggestions(ty, def_id, true, param_env, None, predicate);
                 }
 
                 if paths.is_empty() {
@@ -587,8 +588,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     // Look for all the possible implementations to suggest, otherwise we'll show
                     // just suggest the syntax for the fully qualified path with placeholders.
-                    let paths =
-                        self.get_suggestions(args.type_at(0), def_id, false, param_env, Some(args));
+                    let paths = self.get_suggestions(
+                        args.type_at(0),
+                        def_id,
+                        false,
+                        param_env,
+                        Some(args),
+                        predicate,
+                    );
                     if paths.len() > 20 || paths.is_empty() {
                         // This will show the fallback impl, so the expression will have type
                         // parameter placeholders, but it's better than nothing.
@@ -667,6 +674,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         target_type: bool,
         param_env: ty::ParamEnv<'tcx>,
         args: Option<&ty::GenericArgs<'tcx>>,
+        predicate: Option<ty::Predicate<'tcx>>,
     ) -> Vec<String> {
         let tcx = self.infcx.tcx;
         let mut paths = vec![];
@@ -695,6 +703,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Nope, don't bother.
                 return;
             }
+
+            let filter = if let Some(ty::ProjectionPredicate {
+                projection_term: ty::AliasTerm { def_id, .. },
+                term,
+            }) =
+                predicate.and_then(|p| p.as_projection_clause()).map(|p| p.skip_binder())
+                && let ty::TermKind::Ty(assoc_ty) = term.unpack()
+                && tcx.item_name(def_id) == sym::Output
+            {
+                // If the predicate that failed to be inferred is an associated type called
+                // "Output" (presumably from one of the math traits), we will only mention the
+                // `Into` and `From` impls that correspond to the self type as well, so as to
+                // avoid showing multiple conversion options.
+                Some(assoc_ty)
+            } else {
+                None
+            };
             let assocs = tcx.associated_items(impl_def_id);
 
             if tcx.is_diagnostic_item(sym::blanket_into_impl, impl_def_id)
@@ -709,6 +734,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // way too involved to implement. Instead we special case the
                     // arguably most common case of `expr.into()`.
                     let Some(header) = tcx.impl_trait_header(impl_def_id) else {
+                        return;
+                    };
+                    let target = header.trait_ref.skip_binder().args.type_at(0);
+                    if filter.is_some() && filter != Some(target) {
                         return;
                     };
                     let target = header.trait_ref.skip_binder().args.type_at(0);

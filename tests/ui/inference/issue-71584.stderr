@@ -11,30 +11,6 @@ help: try using a fully qualified path to specify the expected types
    |
 LL |     d = d % <u32 as Into<u64>>::into(n);
    |             +++++++++++++++++++++++++ ~
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     d = d % <u32 as Into<u128>>::into(n);
-   |             ++++++++++++++++++++++++++ ~
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     d = d % <u32 as Into<i64>>::into(n);
-   |             +++++++++++++++++++++++++ ~
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     d = d % <u32 as Into<i128>>::into(n);
-   |             ++++++++++++++++++++++++++ ~
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     d = d % <u32 as Into<f64>>::into(n);
-   |             +++++++++++++++++++++++++ ~
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     d = d % <u32 as Into<Ipv4Addr>>::into(n);
-   |             ++++++++++++++++++++++++++++++ ~
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     d = d % <u32 as Into<AtomicU32>>::into(n);
-   |             +++++++++++++++++++++++++++++++ ~
 
 error: aborting due to 1 previous error
 

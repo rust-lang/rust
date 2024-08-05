@@ -1540,6 +1540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         TypeAnnotationNeeded::E0282,
                         true,
                         self.param_env,
+                        None,
                     )
                     .emit()
             });
