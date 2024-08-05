@@ -400,7 +400,8 @@ pub fn expand_legacy_bang<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (LocalExpnId, LocalExpnId),
 ) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
-    let (invoc_id, current_expansion) = key;
+    let (invoc_id, current_expansion) = dbg!(key);
+    dbg!(invoc_id.to_expn_id().expn_hash(), current_expansion.to_expn_id().expn_hash());
     let map = tcx.macro_map.borrow();
     let (arg, span, expander) = map.get(&invoc_id).as_ref().unwrap();
     expander

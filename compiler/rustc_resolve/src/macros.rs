@@ -539,6 +539,11 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         invoc_id: LocalExpnId,
         current_expansion: LocalExpnId,
     ) -> Result<(TokenStream, usize), (Span, ErrorGuaranteed)> {
+        dbg!((
+            "resolver",
+            invoc_id.to_expn_id().expn_hash(),
+            current_expansion.to_expn_id().expn_hash()
+        ));
         self.tcx()
             .expand_legacy_bang((invoc_id, current_expansion))
             .map(|(tts, i)| (tts.clone(), i))
