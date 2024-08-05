@@ -65,14 +65,8 @@ pub(super) fn hints(
                 ast::BlockExpr(block_expr) => {
                     block = block_expr.stmt_list()?;
                 },
-                ast::LoopExpr(loop_expr) => {
+                ast::AnyHasLoopBody(loop_expr) => {
                     block = loop_expr.loop_body()?.stmt_list()?;
-                },
-                ast::WhileExpr(while_expr) => {
-                    block = while_expr.loop_body()?.stmt_list()?;
-                },
-                ast::ForExpr(for_expr) => {
-                    block = for_expr.loop_body()?.stmt_list()?;
                 },
                 _ => return None,
             }
