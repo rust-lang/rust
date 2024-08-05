@@ -22,7 +22,7 @@ where
     };
 
     let ty = place.ty(local_decls, tcx).ty;
-    let unsized_tail = || tcx.struct_tail_with_normalize(ty, |ty| ty, || {});
+    let unsized_tail = || tcx.struct_tail_erasing_lifetimes(ty, param_env);
     match tcx.layout_of(param_env.and(ty)) {
         Ok(layout)
             if layout.align.abi <= pack
