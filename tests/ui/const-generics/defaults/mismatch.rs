@@ -6,17 +6,17 @@ pub struct Example4<const N: usize = 13, const M: usize = 4>;
 fn main() {
     let e: Example<13> = ();
     //~^ Error: mismatched types
-    //~| expected struct `Example`
+    //~| expected struct `Example<13>`
     let e: Example2<u32, 13> = ();
     //~^ Error: mismatched types
-    //~| expected struct `Example2`
+    //~| expected struct `Example2<u32, 13>`
     let e: Example3<13, u32> = ();
     //~^ Error: mismatched types
-    //~| expected struct `Example3`
+    //~| expected struct `Example3<13>`
     let e: Example3<7> = ();
     //~^ Error: mismatched types
     //~| expected struct `Example3<7>`
     let e: Example4<7> = ();
     //~^ Error: mismatched types
-    //~| expected struct `Example4<7>`
+    //~| expected struct `Example4<7, 4>`
 }

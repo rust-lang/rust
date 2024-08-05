@@ -9,17 +9,6 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error: overly complex generic constant
-  --> $DIR/issue-90318.rs:22:8
-   |
-LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
-   |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
-   |          |
-   |          borrowing is not supported in generic constants
-   |
-   = help: consider moving this anonymous constant into a `const` function
-   = note: this operation may be supported in the future
-
 error[E0015]: cannot call non-const operator in constants
   --> $DIR/issue-90318.rs:14:10
    |
@@ -33,6 +22,17 @@ help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    |
 LL + #![feature(const_trait_impl)]
    |
+
+error: overly complex generic constant
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
 
 error[E0015]: cannot call non-const operator in constants
   --> $DIR/issue-90318.rs:22:10

@@ -1,34 +1,34 @@
-error: symbol-name(_ZN1c21Unsigned$LT$11_u8$GT$1f17h[HASH]E)
+error: symbol-name(_ZN1c17Unsigned$LT$_$GT$1f17h[HASH]E)
   --> $DIR/const-generics-demangling.rs:13:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(c::Unsigned<11_u8>::f::h[HASH])
+error: demangling(c::Unsigned<_>::f::h[HASH])
   --> $DIR/const-generics-demangling.rs:13:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(c::Unsigned<11_u8>::f)
+error: demangling-alt(c::Unsigned<_>::f)
   --> $DIR/const-generics-demangling.rs:13:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN1c22Signed$LT$.152_i16$GT$1f17h[HASH]E)
+error: symbol-name(_ZN1c15Signed$LT$_$GT$1f17h[HASH]E)
   --> $DIR/const-generics-demangling.rs:26:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(c::Signed<.152_i16>::f::h[HASH])
+error: demangling(c::Signed<_>::f::h[HASH])
   --> $DIR/const-generics-demangling.rs:26:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(c::Signed<.152_i16>::f)
+error: demangling-alt(c::Signed<_>::f)
   --> $DIR/const-generics-demangling.rs:26:5
    |
 LL |     #[rustc_symbol_name]

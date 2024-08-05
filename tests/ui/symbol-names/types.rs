@@ -232,9 +232,9 @@ pub fn b() {
     impl Type<&mut str> {}
 
     #[rustc_symbol_name]
-    //[legacy,verbose-legacy]~^ ERROR symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$0$u5d$$GT$
-    //[legacy,verbose-legacy]~| ERROR demangling(a::b::Type<[u8; 0]>::
-    //[legacy,verbose-legacy]~| ERROR demangling-alt(a::b::Type<[u8; 0]>)
+    //[legacy,verbose-legacy]~^ ERROR symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$_$u5d$$GT$
+    //[legacy,verbose-legacy]~| ERROR demangling(a::b::Type<[u8; _]>::
+    //[legacy,verbose-legacy]~| ERROR demangling-alt(a::b::Type<[u8; _]>)
     //[v0]~^^^^ ERROR symbol-name(_RMsm_NvCsCRATE_HASH_1a1bINtB<REF>_4TypeAhj0_E)
     //[v0]~| ERROR ::b::Type<[u8; 0usize]>>)
     //[v0]~| ERROR demangling-alt(<a::b::Type<[u8; 0]>>)
