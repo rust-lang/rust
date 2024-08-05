@@ -2422,8 +2422,9 @@ impl Config {
                             ci_config_toml,
                         );
 
-                        let disable_ci_rustc_if_incompatible =
-                            env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        // Primarily used by CI runners to avoid handling download-rustc incompatible
+                        // options one by one on shell scripts.
+                        let disable_ci_rustc_if_incompatible = env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
                             .is_some_and(|s| s == "1" || s == "true");
 
                         if disable_ci_rustc_if_incompatible && res.is_err() {

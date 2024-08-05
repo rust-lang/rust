@@ -55,7 +55,7 @@ ENV SCRIPT \
            git config --global user.name \"dummy\" && \
            git add ../compiler/rustc/src/main.rs && \
            git commit -m \"test commit for rust.download-rustc=if-unchanged logic\" && \
-           python3 ../x.py test bootstrap -- core::builder::tests::ci_rustc_if_unchanged_logic && \
+           DISABLE_CI_RUSTC_IF_INCOMPATIBLE=0 python3 ../x.py test bootstrap -- core::builder::tests::ci_rustc_if_unchanged_logic && \
            # Revert the dummy commit
            git reset --hard HEAD~1 && \
 

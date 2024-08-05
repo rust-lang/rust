@@ -1,5 +1,7 @@
 use std::thread;
 
+use build_helper::git::get_closest_merge_commit;
+
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
@@ -223,12 +225,12 @@ fn ci_rustc_if_unchanged_logic() {
         |&_| Ok(Default::default()),
     );
 
-    let build = Build::new(config.clone());
-    let builder = Builder::new(&build);
-
     if config.rust_info.is_from_tarball() {
         return;
     }
+
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
 
     if config.out.exists() {
         fs::remove_dir_all(&config.out).unwrap();
@@ -236,18 +238,17 @@ fn ci_rustc_if_unchanged_logic() {
 
     builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);
 
-    let commit = helpers::get_closest_merge_base_commit(
+    let compiler_path = build.src.join("compiler");
+    let library_path = build.src.join("compiler");
+
+    let commit = get_closest_merge_commit(
         Some(&builder.config.src),
         &builder.config.git_config(),
-        &builder.config.stage0_metadata.config.git_merge_commit_email,
-        &[],
+        &[compiler_path.clone(), library_path.clone()],
     )
     .unwrap();
 
-    let compiler_path = build.src.join("compiler");
-    let library_path = build.src.join("library");
-
-    let has_changes = helpers::git(Some(&builder.src))
+    let has_changes = !helpers::git(Some(&builder.src))
         .args(["diff-index", "--quiet", &commit])
         .arg("--")
         .args([compiler_path, library_path])
@@ -256,9 +257,7 @@ fn ci_rustc_if_unchanged_logic() {
         .unwrap()
         .success();
 
-    assert!(
-        has_changes != config.out.join(config.build.to_string()).join("ci-rustc-sysroot").exists()
-    );
+    assert!(has_changes == config.download_rustc_commit.is_none());
 }
 
 mod defaults {
