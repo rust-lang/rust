@@ -148,10 +148,10 @@ dependencies = [
  "derive_arbitrary",
  "expect-test",
  "intern",
- "mbe",
  "oorandom",
  "rustc-hash",
  "syntax",
+ "syntax-bridge",
  "tt",
 ]
 
@@ -554,6 +554,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "syntax-bridge",
  "test-fixture",
  "test-utils",
  "tracing",
@@ -582,6 +583,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "syntax-bridge",
  "tracing",
  "triomphe",
  "tt",
@@ -1056,6 +1058,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "syntax-bridge",
  "test-utils",
  "tracing",
  "tt",
@@ -1350,7 +1353,6 @@ dependencies = [
  "expect-test",
  "intern",
  "libloading",
- "mbe",
  "memmap2",
  "object 0.33.0",
  "paths",
@@ -1360,6 +1362,7 @@ dependencies = [
  "snap",
  "span",
  "stdx",
+ "syntax-bridge",
  "tt",
 ]
 
@@ -1665,7 +1668,6 @@ dependencies = [
  "load-cargo",
  "lsp-server 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
- "mbe",
  "memchr",
  "mimalloc",
  "nohash-hasher",
@@ -1685,6 +1687,7 @@ dependencies = [
  "serde_json",
  "stdx",
  "syntax",
+ "syntax-bridge",
  "test-fixture",
  "test-utils",
  "tikv-jemallocator",
@@ -1965,6 +1968,21 @@ dependencies = [
  "text-edit",
  "tracing",
  "triomphe",
+]
+
+[[package]]
+name = "syntax-bridge"
+version = "0.0.0"
+dependencies = [
+ "intern",
+ "parser",
+ "rustc-hash",
+ "span",
+ "stdx",
+ "syntax",
+ "test-utils",
+ "tracing",
+ "tt",
 ]
 
 [[package]]

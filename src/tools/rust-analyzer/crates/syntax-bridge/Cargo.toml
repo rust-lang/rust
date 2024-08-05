@@ -1,5 +1,5 @@
 [package]
-name = "mbe"
+name = "syntax-bridge"
 version = "0.0.0"
 description = "TBD"
 
@@ -12,11 +12,8 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-cov-mark = "2.0.0-pre.1"
 rustc-hash.workspace = true
-smallvec.workspace = true
 tracing.workspace = true
-arrayvec.workspace = true
 
 # local deps
 syntax.workspace = true
@@ -25,7 +22,6 @@ tt.workspace = true
 stdx.workspace = true
 span.workspace = true
 intern.workspace = true
-syntax-bridge.workspace = true
 
 [dev-dependencies]
 test-utils.workspace = true

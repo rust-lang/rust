@@ -317,9 +317,9 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         _: Span,
         _: Span,
     ) -> Result<Subtree, ProcMacroExpansionError> {
-        let (parse, _) = ::mbe::token_tree_to_syntax_node(
+        let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
-            ::mbe::TopEntryPoint::MacroItems,
+            syntax_bridge::TopEntryPoint::MacroItems,
             span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {

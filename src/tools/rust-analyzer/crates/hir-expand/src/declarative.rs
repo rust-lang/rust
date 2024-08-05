@@ -2,10 +2,10 @@
 
 use base_db::CrateId;
 use intern::sym;
-use mbe::DocCommentDesugarMode;
 use span::{Edition, MacroCallId, Span, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{ast, AstNode};
+use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 
 use crate::{
@@ -112,7 +112,7 @@ impl DeclarativeMacroExpander {
             ast::Macro::MacroRules(macro_rules) => (
                 match macro_rules.token_tree() {
                     Some(arg) => {
-                        let tt = mbe::syntax_node_to_token_tree(
+                        let tt = syntax_bridge::syntax_node_to_token_tree(
                             arg.syntax(),
                             map.as_ref(),
                             map.span_for_range(
@@ -135,14 +135,14 @@ impl DeclarativeMacroExpander {
                         let span =
                             map.span_for_range(macro_def.macro_token().unwrap().text_range());
                         let args = macro_def.args().map(|args| {
-                            mbe::syntax_node_to_token_tree(
+                            syntax_bridge::syntax_node_to_token_tree(
                                 args.syntax(),
                                 map.as_ref(),
                                 span,
                                 DocCommentDesugarMode::Mbe,
                             )
                         });
-                        let body = mbe::syntax_node_to_token_tree(
+                        let body = syntax_bridge::syntax_node_to_token_tree(
                             body.syntax(),
                             map.as_ref(),
                             span,

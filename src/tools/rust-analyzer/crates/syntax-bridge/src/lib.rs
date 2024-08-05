@@ -14,11 +14,13 @@ use syntax::{
 };
 use tt::{
     buffer::{Cursor, TokenBuffer},
-    iter::TtIter,
     token_to_literal,
 };
 
-use crate::to_parser_input::to_parser_input;
+mod to_parser_input;
+pub use to_parser_input::to_parser_input;
+// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
+pub use ::parser::TopEntryPoint;
 
 #[cfg(test)]
 mod tests;
@@ -43,7 +45,7 @@ impl<S: Copy, SM: SpanMapper<S>> SpanMapper<S> for &SM {
 }
 
 /// Dummy things for testing where spans don't matter.
-pub(crate) mod dummy_test_span_utils {
+pub mod dummy_test_span_utils {
 
     use span::{Span, SyntaxContextId};
 
@@ -209,50 +211,6 @@ where
     let mut conv =
         StaticRawConverter { lexed, pos: 0, span, mode: DocCommentDesugarMode::ProcMacro };
     Some(convert_tokens(&mut conv))
-}
-
-/// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep(
-    tt: &tt::Subtree<span::Span>,
-    sep: char,
-    span: span::Span,
-    edition: Edition,
-) -> Vec<tt::Subtree<span::Span>> {
-    if tt.token_trees.is_empty() {
-        return Vec::new();
-    }
-
-    let mut iter = TtIter::new(tt);
-    let mut res = Vec::new();
-
-    while iter.peek_n(0).is_some() {
-        let expanded = crate::expect_fragment(
-            &mut iter,
-            parser::PrefixEntryPoint::Expr,
-            edition,
-            tt::DelimSpan { open: tt.delimiter.open, close: tt.delimiter.close },
-        );
-
-        res.push(match expanded.value {
-            None => break,
-            Some(tt) => tt.subtree_or_wrap(tt::DelimSpan { open: span, close: span }),
-        });
-
-        let mut fork = iter.clone();
-        if fork.expect_char(sep).is_err() {
-            break;
-        }
-        iter = fork;
-    }
-
-    if iter.peek_n(0).is_some() {
-        res.push(tt::Subtree {
-            delimiter: tt::Delimiter::invisible_spanned(span),
-            token_trees: iter.cloned().collect(),
-        });
-    }
-
-    res
 }
 
 fn convert_tokens<S, C>(conv: &mut C) -> tt::Subtree<S>
@@ -479,7 +437,6 @@ fn convert_doc_comment<S: Copy>(
     span: S,
     mode: DocCommentDesugarMode,
 ) -> Option<Vec<tt::TokenTree<S>>> {
-    cov_mark::hit!(test_meta_doc_comments);
     let comment = ast::Comment::cast(token.clone())?;
     let doc = comment.kind().doc?;
 
