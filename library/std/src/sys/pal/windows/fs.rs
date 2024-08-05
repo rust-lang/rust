@@ -14,7 +14,7 @@ use crate::sys::handle::Handle;
 use crate::sys::path::maybe_verbatim;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt, Align8};
-use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
+use crate::sys_common::{ignore_notfound, AsInner, FromInner, IntoInner};
 use crate::{fmt, ptr, slice, thread};
 
 pub struct File {
