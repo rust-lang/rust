@@ -5,7 +5,7 @@ macro_rules! define_vec {
     () => (
         mod foo {
             #[derive(PartialEq)]
-            pub struct bar;
+            pub struct bar; //~ WARN struct `bar` is never constructed
         }
     )
 }

@@ -1,5 +1,5 @@
 error: you might have meant to write `impl` instead of `fn`
-  --> $DIR/issue-105366.rs:5:1
+  --> $DIR/issue-105366.rs:6:1
    |
 LL | fn From<i32> for Foo {
    | ^^
