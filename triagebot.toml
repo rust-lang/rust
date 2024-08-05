@@ -778,6 +778,14 @@ If this was unintentional then you should revert the changes before this PR is m
 Otherwise, you can ignore this comment.
 """
 
+[mentions."library/Cargo.lock"]
+message = """
+These commits modify the `library/Cargo.lock` file. Unintentional changes to `library/Cargo.lock` can be introduced when switching branches and rebasing PRs.
+
+If this was unintentional then you should revert the changes before this PR is merged.
+Otherwise, you can ignore this comment.
+"""
+
 [mentions."src/tools/x"]
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
