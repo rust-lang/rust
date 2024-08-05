@@ -65,7 +65,6 @@ mod declare_clippy_lint;
 #[macro_use]
 extern crate clippy_utils;
 
-#[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
 pub mod ctfe; // Very important lint, do not remove (rust#125116)
@@ -412,21 +411,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 use utils::attr_collector::{AttrCollector, AttrStorage};
 
-/// Register all pre expansion lints
-///
-/// Pre-expansion lints run before any macro expansion has happened.
-///
-/// Note that due to the architecture of the compiler, currently `cfg_attr` attributes on crate
-/// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
-///
-/// Used in `./src/driver.rs`.
-pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
-    // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
-    store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes::new(conf)));
-
-    store.register_early_pass(move || Box::new(attrs::PostExpansionEarlyAttributes::new(conf)));
-}
-
 #[derive(Default)]
 struct RegistrationGroups {
     all: Vec<LintId>,
@@ -439,8 +423,6 @@ struct RegistrationGroups {
     restriction: Vec<LintId>,
     style: Vec<LintId>,
     suspicious: Vec<LintId>,
-    #[cfg(feature = "internal")]
-    internal: Vec<LintId>,
 }
 
 impl RegistrationGroups {
@@ -456,8 +438,6 @@ impl RegistrationGroups {
         store.register_group(true, "clippy::restriction", Some("clippy_restriction"), self.restriction);
         store.register_group(true, "clippy::style", Some("clippy_style"), self.style);
         store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), self.suspicious);
-        #[cfg(feature = "internal")]
-        store.register_group(true, "clippy::internal", Some("clippy_internal"), self.internal);
     }
 }
 
@@ -472,8 +452,6 @@ pub(crate) enum LintCategory {
     Restriction,
     Style,
     Suspicious,
-    #[cfg(feature = "internal")]
-    Internal,
 }
 
 #[allow(clippy::enum_glob_use)]
@@ -495,8 +473,6 @@ impl LintCategory {
             Restriction => &mut groups.restriction,
             Style => &mut groups.style,
             Suspicious => &mut groups.suspicious,
-            #[cfg(feature = "internal")]
-            Internal => &mut groups.internal,
         }
     }
 }
@@ -530,8 +506,6 @@ impl LintInfo {
             Restriction => "restriction",
             Style => "style",
             Suspicious => "suspicious",
-            #[cfg(feature = "internal")]
-            Internal => "internal",
         }
     }
 }
@@ -589,6 +563,13 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         store.register_removed(name, reason);
     }
 
+    // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
+    // Due to the architecture of the compiler, currently `cfg_attr` attributes on crate
+    // level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
+    store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes::new(conf)));
+
+    store.register_early_pass(move || Box::new(attrs::PostExpansionEarlyAttributes::new(conf)));
+
     let format_args_storage = FormatArgsStorage::default();
     let format_args = format_args_storage.clone();
     store.register_early_pass(move || {
@@ -600,30 +581,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     let attr_storage = AttrStorage::default();
     let attrs = attr_storage.clone();
     store.register_early_pass(move || Box::new(AttrCollector::new(attrs.clone())));
-
-    // all the internal lints
-    #[cfg(feature = "internal")]
-    {
-        store.register_early_pass(|| {
-            Box::new(utils::internal_lints::unsorted_clippy_utils_paths::UnsortedClippyUtilsPaths)
-        });
-        store.register_early_pass(|| Box::new(utils::internal_lints::produce_ice::ProduceIce));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::collapsible_calls::CollapsibleCalls));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::invalid_paths::InvalidPaths));
-        store.register_late_pass(|_| {
-            Box::<utils::internal_lints::interning_defined_symbol::InterningDefinedSymbol>::default()
-        });
-        store.register_late_pass(|_| {
-            Box::<utils::internal_lints::lint_without_lint_pass::LintWithoutLintPass>::default()
-        });
-        store.register_late_pass(|_| Box::<utils::internal_lints::unnecessary_def_path::UnnecessaryDefPath>::default());
-        store.register_late_pass(|_| Box::new(utils::internal_lints::outer_expn_data_pass::OuterExpnDataPass));
-        store.register_late_pass(|_| Box::new(utils::internal_lints::msrv_attr_impl::MsrvAttrImpl));
-        store.register_late_pass(|_| {
-            Box::new(utils::internal_lints::almost_standard_lint_formulation::AlmostStandardFormulation::new())
-        });
-        store.register_late_pass(|_| Box::new(utils::internal_lints::slow_symbol_comparisons::SlowSymbolComparisons));
-    }
 
     store.register_late_pass(|_| Box::new(ctfe::ClippyCtfe));
 

@@ -9,13 +9,14 @@ use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Ensures every lint is associated to a `LintPass`.
     ///
@@ -37,12 +38,14 @@ declare_clippy_lint! {
     /// declare_lint_pass!(Pass => [LINT_1, LINT_2]);
     /// // missing FORGOTTEN_LINT
     /// ```
-    pub LINT_WITHOUT_LINT_PASS,
-    internal,
-    "declaring a lint without associating it in a LintPass"
+    pub clippy::LINT_WITHOUT_LINT_PASS,
+    Warn,
+    "declaring a lint without associating it in a LintPass",
+    report_in_external_macro: true
+
 }
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for cases of an auto-generated lint without an updated description,
     /// i.e. `default lint description`.
@@ -59,30 +62,32 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// declare_lint! { pub COOL_LINT, nursery, "a great new lint" }
     /// ```
-    pub DEFAULT_LINT,
-    internal,
-    "found 'default lint description' in a lint declaration"
+    pub clippy::DEFAULT_LINT,
+    Warn,
+    "found 'default lint description' in a lint declaration",
+    report_in_external_macro: true
 }
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for invalid `clippy::version` attributes.
     ///
     /// Valid values are:
     /// * "pre 1.29.0"
     /// * any valid semantic version
-    pub INVALID_CLIPPY_VERSION_ATTRIBUTE,
-    internal,
-    "found an invalid `clippy::version` attribute"
+    pub clippy::INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    Warn,
+    "found an invalid `clippy::version` attribute",
+    report_in_external_macro: true
 }
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for declared clippy lints without the `clippy::version` attribute.
-    ///
-    pub MISSING_CLIPPY_VERSION_ATTRIBUTE,
-    internal,
-    "found clippy lint without `clippy::version` attribute"
+    pub clippy::MISSING_CLIPPY_VERSION_ATTRIBUTE,
+    Warn,
+    "found clippy lint without `clippy::version` attribute",
+    report_in_external_macro: true
 }
 
 #[derive(Clone, Debug, Default)]
@@ -100,10 +105,6 @@ impl_lint_pass!(LintWithoutLintPass => [
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if is_lint_allowed(cx, DEFAULT_LINT, item.hir_id()) {
-            return;
-        }
-
         if let hir::ItemKind::Static(ident, ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 check_invalid_clippy_version_attribute(cx, item);

@@ -8,6 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, LetStmt, Mutability, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc};
 use rustc_middle::ty::{self, Ty};
@@ -17,7 +18,7 @@ use rustc_span::symbol::Symbol;
 
 use std::str;
 
-declare_clippy_lint! {
+declare_tool_lint! {
     /// ### What it does
     /// Checks for usage of def paths when a diagnostic item or a `LangItem` could be used.
     ///
@@ -34,9 +35,10 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// utils::is_type_diagnostic_item(cx, ty, sym::Vec)
     /// ```
-    pub UNNECESSARY_DEF_PATH,
-    internal,
-    "using a def path when a diagnostic item or a `LangItem` is available"
+    pub clippy::UNNECESSARY_DEF_PATH,
+    Warn,
+    "using a def path when a diagnostic item or a `LangItem` is available",
+    report_in_external_macro: true
 }
 
 impl_lint_pass!(UnnecessaryDefPath => [UNNECESSARY_DEF_PATH]);
