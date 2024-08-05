@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //@ check-fail
 //
 // Make sure we can't trick the compiler by using a projection.

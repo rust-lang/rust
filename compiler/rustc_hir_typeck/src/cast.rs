@@ -97,6 +97,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(Some(PointerKind::Thin));
         }
 
+        let t = self.try_structurally_resolve_type(span, t);
+
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(tty, _, ty::Dyn) => Some(PointerKind::VTable(tty)),
