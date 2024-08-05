@@ -2,7 +2,7 @@
 // Use that command to update this file and do not edit by hand.
 // Manual edits will be overwritten.
 
-pub(crate) static LINTS: &[&crate::LintInfo] = &[
+pub static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
     #[cfg(feature = "internal")]
@@ -21,8 +21,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::metadata_collector::METADATA_COLLECTOR_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
     #[cfg(feature = "internal")]
