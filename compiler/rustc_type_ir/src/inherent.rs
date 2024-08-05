@@ -451,6 +451,8 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::TraitPredicate<I>>>
     + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>

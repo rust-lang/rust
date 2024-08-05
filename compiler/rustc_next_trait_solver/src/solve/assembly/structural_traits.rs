@@ -7,7 +7,7 @@ use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Upcast as _};
+use rustc_type_ir::{self as ty, elaborate, Interner, Upcast as _};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
@@ -671,11 +671,19 @@ where
 {
     let cx = ecx.cx();
     let mut requirements = vec![];
-    requirements.extend(
+    // Elaborating all supertrait outlives obligations here is not soundness critical,
+    // since if we just used the unelaborated set, then the transitive supertraits would
+    // be reachable when proving the former. However, since we elaborate all supertrait
+    // outlives obligations when confirming impls, we would end up with a different set
+    // of outlives obligations here if we didn't do the same, leading to ambiguity.
+    // FIXME(-Znext-solver=coinductive): Adding supertraits here can be removed once we
+    // make impls coinductive always, since they'll always need to prove their supertraits.
+    requirements.extend(elaborate::elaborate(
+        cx,
         cx.explicit_super_predicates_of(trait_ref.def_id)
             .iter_instantiated(cx, trait_ref.args)
             .map(|(pred, _)| pred),
-    );
+    ));
 
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.
