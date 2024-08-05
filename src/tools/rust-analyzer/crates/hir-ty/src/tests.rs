@@ -12,7 +12,7 @@ mod traits;
 
 use std::env;
 
-use base_db::SourceDatabaseExt2 as _;
+use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},

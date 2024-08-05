@@ -1,7 +1,7 @@
 use expect_test::{expect, Expect};
 use hir::{FilePosition, FileRange};
 use ide_db::{
-    base_db::{salsa::Durability, SourceDatabaseExt},
+    base_db::{salsa::Durability, SourceDatabase},
     EditionedFileId, FxHashSet,
 };
 use test_utils::RangeOrOffset;

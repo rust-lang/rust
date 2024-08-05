@@ -1,7 +1,7 @@
 #![allow(clippy::print_stderr)]
 
 use ide_db::{
-    assists::AssistResolveStrategy, base_db::SourceDatabaseExt, LineIndexDatabase, RootDatabase,
+    assists::AssistResolveStrategy, base_db::SourceDatabase, LineIndexDatabase, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;

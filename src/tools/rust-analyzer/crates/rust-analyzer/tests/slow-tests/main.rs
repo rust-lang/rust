@@ -1084,7 +1084,6 @@ fn resolve_proc_macro() {
     let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
-        false,
     );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
@@ -1125,7 +1124,6 @@ edition = "2021"
 proc-macro = true
 
 //- /bar/src/lib.rs
-extern crate proc_macro;
 use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 macro_rules! t {
     ($n:literal) => {

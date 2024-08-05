@@ -74,7 +74,7 @@ pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
 
 #[salsa::database(
-    base_db::SourceDatabaseExtStorage,
+    base_db::SourceRootDatabaseStorage,
     base_db::SourceDatabaseStorage,
     hir::db::ExpandDatabaseStorage,
     hir::db::DefDatabaseStorage,
@@ -125,9 +125,6 @@ impl Upcast<dyn HirDatabase> for RootDatabase {
 }
 
 impl FileLoader for RootDatabase {
-    fn file_text(&self, file_id: FileId) -> Arc<str> {
-        FileLoaderDelegate(self).file_text(file_id)
-    }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }

@@ -10,7 +10,7 @@ use std::{
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
 use flycheck::project_json;
-use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{SourceDatabase, SourceRootDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;

@@ -69,7 +69,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
-            ast_id: ErasedFileAstId::from_raw(From::from(1)),
+            ast_id: ErasedFileAstId::from_raw(1),
         },
         ctx: SyntaxContextId::ROOT,
     };
@@ -77,7 +77,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
-            ast_id: ErasedFileAstId::from_raw(From::from(2)),
+            ast_id: ErasedFileAstId::from_raw(2),
         },
         ctx: SyntaxContextId::ROOT,
     };

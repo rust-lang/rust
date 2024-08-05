@@ -1268,6 +1268,7 @@ name = "paths"
 version = "0.0.0"
 dependencies = [
  "camino",
+ "serde",
 ]
 
 [[package]]
@@ -1330,14 +1331,12 @@ dependencies = [
  "base-db",
  "indexmap",
  "intern",
- "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
  "rustc-hash",
  "serde",
  "serde_json",
  "span",
  "stdx",
- "text-size",
  "tracing",
  "tt",
 ]

@@ -23,7 +23,7 @@ use ide::{
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
-        SourceDatabase, SourceDatabaseExt,
+        SourceDatabase, SourceRootDatabase,
     },
     EditionedFileId, LineIndexDatabase, SnippetCap,
 };

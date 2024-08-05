@@ -22,12 +22,11 @@ indexmap.workspace = true
 paths = { workspace = true, features = ["serde1"] }
 tt.workspace = true
 stdx.workspace = true
-text-size.workspace = true
-span.workspace = true
 # Ideally this crate would not depend on salsa things, but we need span information here which wraps
 # InternIds for the syntax context
+span.workspace = true
+# only here due to the `Env` newtype :/
 base-db.workspace = true
-la-arena.workspace = true
 intern.workspace = true
 
 [lints]

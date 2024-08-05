@@ -65,7 +65,7 @@ use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceDatabaseExt, VfsPath,
+        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, SourceRootDatabase, VfsPath,
     },
     prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
 };
@@ -286,7 +286,7 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| SourceDatabaseExt::file_text(db, file_id))
+        self.with_db(|db| SourceDatabase::file_text(db, file_id))
     }
 
     /// Gets the syntax tree of the file.
