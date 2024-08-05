@@ -539,6 +539,10 @@ impl Waker {
     /// some futures, but are not expecting those futures to wake the waker or
     /// do not need to do anything specific if it happens.
     ///
+    /// More generally, using `Waker::noop()` to poll a future
+    /// means discarding the notification of when the future should be polled again.
+    /// So it should only be used when such a notification will not be needed to make progress.
+    ///
     /// If an owned `Waker` is needed, `clone()` this one.
     ///
     /// # Examples
@@ -795,6 +799,10 @@ impl LocalWaker {
     /// This is mostly useful for writing tests that need a [`Context`] to poll
     /// some futures, but are not expecting those futures to wake the waker or
     /// do not need to do anything specific if it happens.
+    ///
+    /// More generally, using `LocalWaker::noop()` to poll a future
+    /// means discarding the notification of when the future should be polled again,
+    /// So it should only be used when such a notification will not be needed to make progress.
     ///
     /// If an owned `LocalWaker` is needed, `clone()` this one.
     ///
