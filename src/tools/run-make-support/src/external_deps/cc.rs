@@ -115,6 +115,17 @@ impl Cc {
         self.cmd.arg(path.as_ref());
         self
     }
+
+    /// Optimize the output.
+    /// Equivalent to `-O3` for GNU-compatible linkers or `-O2` for MSVC linkers.
+    pub fn optimize(&mut self) -> &mut Self {
+        if is_msvc() {
+            self.cmd.arg("-O2");
+        } else {
+            self.cmd.arg("-O3");
+        }
+        self
+    }
 }
 
 /// `EXTRACFLAGS`
