@@ -3,6 +3,12 @@ use std::process::Command;
 use std::time::{Duration, SystemTime};
 use std::{env, thread};
 
+#[cfg(windows)]
+const PYTHON: &str = "python";
+
+#[cfg(not(windows))]
+const PYTHON: &str = "python3";
+
 /// # Panics
 ///
 /// Panics if the python commands could not be spawned
@@ -23,7 +29,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
         }
         if let Some(url) = url.take() {
             thread::spawn(move || {
-                Command::new("python3")
+                Command::new(PYTHON)
                     .arg("-m")
                     .arg("http.server")
                     .arg(port.to_string())
