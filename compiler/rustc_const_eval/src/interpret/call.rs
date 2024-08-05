@@ -317,19 +317,26 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             && attrs
                 .target_features
                 .iter()
-                .any(|feature| !self.tcx.sess.target_features.contains(feature))
+                .any(|feature| !self.tcx.sess.target_features.contains(&feature.name))
         {
+            // Don't include implicit features in the error, unless only implicit features are
+            // missing. This should be rare, because it can only happen when an implicit feature
+            // is disabled, e.g. `+avx2,-avx`
+            let missing_explicit_features = attrs.target_features.iter().any(|feature| {
+                !feature.implied && !self.tcx.sess.target_features.contains(&feature.name)
+            });
             throw_ub_custom!(
                 fluent::const_eval_unavailable_target_features_for_fn,
                 unavailable_feats = attrs
                     .target_features
                     .iter()
-                    .filter(|&feature| !self.tcx.sess.target_features.contains(feature))
+                    .filter(|&feature| !(missing_explicit_features && feature.implied)
+                        && !self.tcx.sess.target_features.contains(&feature.name))
                     .fold(String::new(), |mut s, feature| {
                         if !s.is_empty() {
                             s.push_str(", ");
                         }
-                        s.push_str(feature.as_str());
+                        s.push_str(feature.name.as_str());
                         s
                     }),
             );

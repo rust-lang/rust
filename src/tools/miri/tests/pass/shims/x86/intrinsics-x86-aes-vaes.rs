@@ -7,7 +7,7 @@
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
 //@ignore-target-wasm32
-//@compile-flags: -C target-feature=+aes,+vaes,+avx512f,+sse4.2
+//@compile-flags: -C target-feature=+aes,+vaes,+avx512f
 
 #![feature(avx512_target_feature, stdarch_x86_avx512)]
 
