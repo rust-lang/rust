@@ -1,4 +1,4 @@
-use crate::path::Dirs;
+use crate::path::{Dirs, RelPath};
 use crate::prepare::GitRepo;
 use crate::utils::{spawn_and_wait, CargoProject, Compiler};
 use crate::{build_sysroot, CodegenBackend, SysrootKind};
@@ -21,6 +21,7 @@ pub(crate) fn run(
     rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
 ) {
+    RelPath::DOWNLOAD.ensure_exists(dirs);
     ABI_CAFE_REPO.fetch(dirs);
     ABI_CAFE_REPO.patch(dirs);
 
