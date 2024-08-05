@@ -335,7 +335,7 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zkne", Stable, &[]),
     ("zknh", Stable, &[]),
     ("zkr", Stable, &[]),
-    ("zks", Stable, &["zbkb", "bzkc", "zbkx", "zksed", "zksh"]),
+    ("zks", Stable, &["zbkb", "zbkc", "zbkx", "zksed", "zksh"]),
     ("zksed", Stable, &[]),
     ("zksh", Stable, &[]),
     ("zkt", Stable, &[]),
