@@ -536,8 +536,7 @@ pub fn get_closest_merge_base_commit(
 
     let merge_base = get_git_merge_base(config, source_dir).unwrap_or_else(|_| "HEAD".into());
 
-    git.arg(Path::new("rev-list"));
-    git.args([&format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
+    git.args(["rev-list", &format!("--author={author}"), "-n1", "--first-parent", &merge_base]);
 
     if !target_paths.is_empty() {
         git.arg("--").args(target_paths);
