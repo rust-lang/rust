@@ -1,4 +1,3 @@
-// ignore-tidy-cr
 //@ check-pass
 
 // This file checks the spans of intra-link warnings in a file with CRLF line endings. The
