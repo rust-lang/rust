@@ -4,12 +4,8 @@
 // are exported, and that generics are only shown if explicitely requested.
 // See https://github.com/rust-lang/rust/issues/37530
 
-//@ ignore-windows-msvc
-
-//FIXME(Oneirical): This currently uses llvm-nm for symbol detection. However,
-// the custom Rust-based solution of #128314 may prove to be an interesting alternative.
-
-use run_make_support::{bin_name, dynamic_lib_name, is_darwin, is_windows, llvm_nm, regex, rustc};
+use run_make_support::object::read::Object;
+use run_make_support::{bin_name, dynamic_lib_name, is_msvc, object, regex, rfs, rustc};
 
 fn main() {
     let cdylib_name = dynamic_lib_name("a_cdylib");
@@ -64,16 +60,15 @@ fn main() {
     );
 
     // FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
-    // if is_windows() {
-    //     // Check that an executable does not export any dynamic symbols
-    //     symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib")
-    //, false);
-    //     symbols_check(
-    //         &exe_name,
-    //         SymbolCheckType::StrSymbol("public_rust_function_from_exe"),
-    //         false,
-    //     );
-    // }
+    if is_msvc() {
+        // Check that an executable does not export any dynamic symbols
+        symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), false);
+        symbols_check(
+            &exe_name,
+            SymbolCheckType::StrSymbol("public_rust_function_from_exe"),
+            false,
+        );
+    }
 
     // Check the combined case, where we generate a cdylib and an rlib in the same
     // compilation session:
@@ -131,44 +126,37 @@ fn main() {
     );
 
     // FIXME(nbdd0121): This is broken in MinGW, see https://github.com/rust-lang/rust/pull/95604#issuecomment-1101564032
-    // if is_windows() {
-    //     // Check that an executable does not export any dynamic symbols
-    //     symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib")
-    //, false);
-    //     symbols_check(
-    //         &exe_name,
-    //         SymbolCheckType::StrSymbol("public_rust_function_from_exe"),
-    //         false,
-    //     );
-    // }
+    if is_msvc() {
+        // Check that an executable does not export any dynamic symbols
+        symbols_check(&exe_name, SymbolCheckType::StrSymbol("public_c_function_from_rlib"), false);
+        symbols_check(
+            &exe_name,
+            SymbolCheckType::StrSymbol("public_rust_function_from_exe"),
+            false,
+        );
+    }
 }
 
 #[track_caller]
 fn symbols_check(path: &str, symbol_check_type: SymbolCheckType, exists_once: bool) {
-    let mut nm = llvm_nm();
-    if is_windows() {
-        nm.arg("--extern-only");
-    } else if is_darwin() {
-        nm.arg("--extern-only").arg("--defined-only");
-    } else {
-        nm.arg("--dynamic");
+    let binary_data = rfs::read(path);
+    let file = object::File::parse(&*binary_data).unwrap();
+    let mut found: u64 = 0;
+    for export in file.exports().unwrap() {
+        let name = std::str::from_utf8(export.name()).unwrap();
+        if has_symbol(name, symbol_check_type) {
+            found += 1;
+        }
     }
-    let out = nm.input(path).run().stdout_utf8();
-    assert_eq!(
-        out.lines()
-            .filter(|&line| !line.contains("__imp_") && has_symbol(line, symbol_check_type))
-            .count()
-            == 1,
-        exists_once
-    );
+    assert_eq!(found, exists_once as u64);
 }
 
-fn has_symbol(line: &str, symbol_check_type: SymbolCheckType) -> bool {
+fn has_symbol(name: &str, symbol_check_type: SymbolCheckType) -> bool {
     if let SymbolCheckType::StrSymbol(expected) = symbol_check_type {
-        line.contains(expected)
+        name.contains(expected)
     } else {
         let regex = regex::Regex::new(r#"_ZN.*h.*E\|_R[a-zA-Z0-9_]+"#).unwrap();
-        regex.is_match(line)
+        regex.is_match(name)
     }
 }
 
