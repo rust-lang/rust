@@ -310,16 +310,16 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // `public_items` map, so we can skip inserting into the
                     // paths map if there was already an entry present and we're
                     // not a public item.
-                    if !self.cache.paths.contains_key(&item.item_id.expect_def_id())
+                    let item_def_id = item.item_id.expect_def_id();
+                    if !self.cache.paths.contains_key(&item_def_id)
                         || self
                             .cache
                             .effective_visibilities
-                            .is_directly_public(self.tcx, item.item_id.expect_def_id())
+                            .is_directly_public(self.tcx, item_def_id)
                     {
-                        self.cache.paths.insert(
-                            item.item_id.expect_def_id(),
-                            (self.cache.stack.clone(), item.type_()),
-                        );
+                        self.cache
+                            .paths
+                            .insert(item_def_id, (self.cache.stack.clone(), item.type_()));
                     }
                 }
             }
@@ -381,9 +381,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         && adt.is_fundamental()
                     {
                         for ty in generics {
-                            if let Some(did) = ty.def_id(self.cache) {
-                                dids.insert(did);
-                            }
+                            dids.extend(ty.def_id(self.cache));
                         }
                     }
                 }
@@ -396,32 +394,26 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         .primitive_type()
                         .and_then(|t| self.cache.primitive_locations.get(&t).cloned());
 
-                    if let Some(did) = did {
-                        dids.insert(did);
-                    }
+                    dids.extend(did);
                 }
             }
 
             if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
                 for bound in generics {
-                    if let Some(did) = bound.def_id(self.cache) {
-                        dids.insert(did);
-                    }
+                    dids.extend(bound.def_id(self.cache));
                 }
             }
             let impl_item = Impl { impl_item: item };
-            if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
+            let impl_did = impl_item.def_id();
+            let trait_did = impl_item.trait_did();
+            if trait_did.map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
-                    if self.impl_ids.entry(did).or_default().insert(impl_item.def_id()) {
-                        self.cache
-                            .impls
-                            .entry(did)
-                            .or_insert_with(Vec::new)
-                            .push(impl_item.clone());
+                    if self.impl_ids.entry(did).or_default().insert(impl_did) {
+                        self.cache.impls.entry(did).or_default().push(impl_item.clone());
                     }
                 }
             } else {
-                let trait_did = impl_item.trait_did().expect("no trait did");
+                let trait_did = trait_did.expect("no trait did");
                 self.cache.orphan_trait_impls.push((trait_did, dids, impl_item));
             }
             None
