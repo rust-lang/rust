@@ -496,7 +496,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     to_add.extend(tune_cpu_attr(cx));
 
     let function_features =
-        codegen_fn_attrs.target_features.iter().map(|f| f.as_str()).collect::<Vec<&str>>();
+        codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
     if let Some(f) = llvm_util::check_tied_features(
         cx.tcx.sess,

@@ -4,7 +4,7 @@
 fn main() {
     assert!(!is_x86_feature_detected!("ssse3"));
     unsafe {
-        ssse3_fn(); //~ ERROR: calling a function that requires unavailable target features: sse3, ssse3
+        ssse3_fn(); //~ ERROR: calling a function that requires unavailable target features: ssse3
     }
 }
 
