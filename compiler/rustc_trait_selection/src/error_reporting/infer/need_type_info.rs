@@ -205,7 +205,6 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
-    printer.for_suggestion = true;
     let const_getter =
         move |ct_vid| Some(infcx.tcx.item_name(infcx.const_var_origin(ct_vid)?.param_def_id?));
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
@@ -419,6 +418,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> Diag<'a> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
@@ -454,7 +454,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         match kind {
             InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id, hir_id } => {
                 let mut paths = vec![];
-                let param_env = ty::ParamEnv::reveal_all();
                 if let Some(def_id) = def_id
                     && let name = self.infcx.tcx.item_name(def_id)
                     && let Some(hir_id) = hir_id
@@ -468,7 +467,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.infcx.tcx.parent(def_id), // Trait `DefId`
                         ty,                            // `Self` type
                         |impl_def_id| {
-                            let impl_args = self.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                            let impl_args = ty::GenericArgs::for_item(
+                                self.infcx.tcx,
+                                impl_def_id,
+                                |param, _| {
+                                    // We don't want to name the arguments, we just want to give an
+                                    // idea of what the syntax is.
+                                    match param.kind {
+                                        ty::GenericParamDefKind::Lifetime => {
+                                            self.infcx.tcx.lifetimes.re_erased.into()
+                                        }
+                                        ty::GenericParamDefKind::Type { .. } => {
+                                            self.next_ty_var(DUMMY_SP).into()
+                                        }
+                                        ty::GenericParamDefKind::Const { .. } => {
+                                            self.next_const_var(DUMMY_SP).into()
+                                        }
+                                    }
+                                },
+                            );
                             let impl_trait_ref = self
                                 .infcx
                                 .tcx
@@ -521,15 +538,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // The method isn't in this `impl`? Not useful to us then.
                                 return;
                             };
+                            let Some(trait_assoc_item) = assoc.trait_item_def_id else {
+                                return;
+                            };
                             // Let's ignore the generic params and replace them with `_` in the
                             // suggested path.
-                            let identity_method = ty::GenericArgs::for_item(
+                            let trait_assoc_substs = impl_trait_ref.args.extend_to(
                                 self.infcx.tcx,
-                                assoc.def_id,
-                                |param, _| {
+                                trait_assoc_item,
+                                |def, _| {
                                     // We don't want to name the arguments, we just want to give an
                                     // idea of what the syntax is.
-                                    match param.kind {
+                                    match def.kind {
                                         ty::GenericParamDefKind::Lifetime => {
                                             self.infcx.tcx.lifetimes.re_erased.into()
                                         }
@@ -542,10 +562,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     }
                                 },
                             );
+                            let identity_method =
+                                impl_args.rebase_onto(self.infcx.tcx, def_id, trait_assoc_substs);
                             let fn_sig = self
                                 .infcx
                                 .tcx
-                                .fn_sig(assoc.def_id)
+                                .fn_sig(def_id)
                                 .instantiate(self.infcx.tcx, identity_method);
                             let ret = fn_sig.skip_binder().output();
                             paths.push(format!("{ret}"));
@@ -676,7 +698,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
 
                     let mut paths = vec![];
-                    let param_env = ty::ParamEnv::reveal_all();
                     let name = self.infcx.tcx.item_name(def_id);
                     // Look for all the possible implementations to suggest, otherwise we'll show
                     // just suggest the syntax for the fully qualified path with placeholders.
@@ -684,7 +705,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.infcx.tcx.parent(def_id), // Trait `DefId`
                         args.type_at(0),               // `Self` type
                         |impl_def_id| {
-                            let impl_args = self.fresh_args_for_item(DUMMY_SP, impl_def_id);
+                            let impl_args = ty::GenericArgs::for_item(
+                                self.infcx.tcx,
+                                impl_def_id,
+                                |param, _| {
+                                    // We don't want to name the arguments, we just want to give an
+                                    // idea of what the syntax is.
+                                    match param.kind {
+                                        ty::GenericParamDefKind::Lifetime => {
+                                            self.infcx.tcx.lifetimes.re_erased.into()
+                                        }
+                                        ty::GenericParamDefKind::Type { .. } => {
+                                            self.next_ty_var(DUMMY_SP).into()
+                                        }
+                                        ty::GenericParamDefKind::Const { .. } => {
+                                            self.next_const_var(DUMMY_SP).into()
+                                        }
+                                    }
+                                },
+                            );
                             let impl_trait_ref = self
                                 .infcx
                                 .tcx
@@ -737,15 +776,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // The method isn't in this `impl`? Not useful to us then.
                                 return;
                             };
-                            // Let's ignore the generic params and replace them with `_` in the
-                            // suggested path.
-                            let identity_method = ty::GenericArgs::for_item(
+                            let Some(trait_assoc_item) = assoc.trait_item_def_id else {
+                                return;
+                            };
+                            let trait_assoc_substs = impl_trait_ref.args.extend_to(
                                 self.infcx.tcx,
-                                assoc.def_id,
-                                |param, _| {
+                                trait_assoc_item,
+                                |def, _| {
                                     // We don't want to name the arguments, we just want to give an
                                     // idea of what the syntax is.
-                                    match param.kind {
+                                    match def.kind {
                                         ty::GenericParamDefKind::Lifetime => {
                                             self.infcx.tcx.lifetimes.re_erased.into()
                                         }
@@ -758,8 +798,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     }
                                 },
                             );
+                            let identity_method =
+                                args.rebase_onto(self.infcx.tcx, def_id, trait_assoc_substs);
                             let mut printer = fmt_printer(self, Namespace::ValueNS);
-                            printer.print_def_path(assoc.def_id, identity_method).unwrap();
+                            printer.print_def_path(def_id, identity_method).unwrap();
                             paths.push(printer.into_buffer());
                         },
                     );

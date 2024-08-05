@@ -208,6 +208,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 trait_ref.self_ty().skip_binder().into(),
                                 TypeAnnotationNeeded::E0282,
                                 false,
+                                obligation.param_env,
                             );
                             return err.stash(span, StashKey::MaybeForgetReturn).unwrap();
                         }
@@ -237,6 +238,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         arg,
                         TypeAnnotationNeeded::E0283,
                         true,
+                        obligation.param_env,
                     )
                 } else {
                     struct_span_code_err!(
@@ -477,6 +479,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     arg,
                     TypeAnnotationNeeded::E0282,
                     false,
+                    obligation.param_env,
                 )
             }
 
@@ -496,6 +499,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     a.into(),
                     TypeAnnotationNeeded::E0282,
                     true,
+                    obligation.param_env,
                 )
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
@@ -526,6 +530,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         arg,
                         TypeAnnotationNeeded::E0284,
                         true,
+                        obligation.param_env,
                     )
                     .with_note(format!("cannot satisfy `{predicate}`"))
                 } else {
@@ -556,6 +561,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         arg,
                         TypeAnnotationNeeded::E0284,
                         true,
+                        obligation.param_env,
                     );
                     err
                 } else {
@@ -578,6 +584,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ct.into(),
                     TypeAnnotationNeeded::E0284,
                     true,
+                    obligation.param_env,
                 ),
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
                 if term.is_infer() =>
