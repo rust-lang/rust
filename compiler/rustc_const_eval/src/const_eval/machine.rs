@@ -458,7 +458,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         // Shared intrinsics.
-        if ecx.emulate_intrinsic(instance, args, dest, target)? {
+        if ecx.eval_intrinsic(instance, args, dest, target)? {
             return Ok(None);
         }
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
