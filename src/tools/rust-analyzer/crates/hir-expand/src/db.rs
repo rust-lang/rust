@@ -3,10 +3,11 @@
 use base_db::{salsa, CrateId, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode, MatchedArmIndex};
+use mbe::MatchedArmIndex;
 use rustc_hash::FxHashSet;
 use span::{AstIdMap, EditionedFileId, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
+use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
 use triomphe::Arc;
 
 use crate::{
@@ -165,7 +166,7 @@ pub fn expand_speculative(
     // Build the subtree and token mapping for the speculative args
     let (mut tt, undo_info) = match loc.kind {
         MacroCallKind::FnLike { .. } => (
-            mbe::syntax_node_to_token_tree(
+            syntax_bridge::syntax_node_to_token_tree(
                 speculative_args,
                 span_map,
                 span,
@@ -178,7 +179,7 @@ pub fn expand_speculative(
             SyntaxFixupUndoInfo::NONE,
         ),
         MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => (
-            mbe::syntax_node_to_token_tree(
+            syntax_bridge::syntax_node_to_token_tree(
                 speculative_args,
                 span_map,
                 span,
@@ -213,7 +214,7 @@ pub fn expand_speculative(
             fixups.remove.extend(censor_cfg);
 
             (
-                mbe::syntax_node_to_token_tree_modified(
+                syntax_bridge::syntax_node_to_token_tree_modified(
                     speculative_args,
                     span_map,
                     fixups.append,
@@ -459,7 +460,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
                 return dummy_tt(kind);
             }
 
-            let mut tt = mbe::syntax_node_to_token_tree(
+            let mut tt = syntax_bridge::syntax_node_to_token_tree(
                 tt.syntax(),
                 map.as_ref(),
                 span,
@@ -515,7 +516,7 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
         fixups.remove.extend(censor_cfg);
 
         (
-            mbe::syntax_node_to_token_tree_modified(
+            syntax_bridge::syntax_node_to_token_tree_modified(
                 syntax,
                 map,
                 fixups.append,
@@ -720,13 +721,13 @@ fn token_tree_to_syntax_node(
     edition: parser::Edition,
 ) -> (Parse<SyntaxNode>, ExpansionSpanMap) {
     let entry_point = match expand_to {
-        ExpandTo::Statements => mbe::TopEntryPoint::MacroStmts,
-        ExpandTo::Items => mbe::TopEntryPoint::MacroItems,
-        ExpandTo::Pattern => mbe::TopEntryPoint::Pattern,
-        ExpandTo::Type => mbe::TopEntryPoint::Type,
-        ExpandTo::Expr => mbe::TopEntryPoint::Expr,
+        ExpandTo::Statements => syntax_bridge::TopEntryPoint::MacroStmts,
+        ExpandTo::Items => syntax_bridge::TopEntryPoint::MacroItems,
+        ExpandTo::Pattern => syntax_bridge::TopEntryPoint::Pattern,
+        ExpandTo::Type => syntax_bridge::TopEntryPoint::Type,
+        ExpandTo::Expr => syntax_bridge::TopEntryPoint::Expr,
     };
-    mbe::token_tree_to_syntax_node(tt, entry_point, edition)
+    syntax_bridge::token_tree_to_syntax_node(tt, entry_point, edition)
 }
 
 fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<()>> {

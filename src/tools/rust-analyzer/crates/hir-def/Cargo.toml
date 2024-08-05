@@ -52,7 +52,7 @@ expect-test.workspace = true
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
-
+syntax-bridge.workspace = true
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]
 

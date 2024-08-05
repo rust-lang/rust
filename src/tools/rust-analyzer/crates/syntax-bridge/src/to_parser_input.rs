@@ -8,7 +8,7 @@ use syntax::{SyntaxKind, SyntaxKind::*, T};
 
 use tt::buffer::TokenBuffer;
 
-pub(crate) fn to_parser_input<S: Copy + fmt::Debug>(
+pub fn to_parser_input<S: Copy + fmt::Debug>(
     edition: Edition,
     buffer: &TokenBuffer<'_, S>,
 ) -> parser::Input {
