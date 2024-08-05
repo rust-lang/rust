@@ -15,7 +15,7 @@ use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
 use stdx::thread::ThreadIntent;
 use tracing::{error, span, Level};
-use vfs::{AbsPathBuf, FileId};
+use vfs::{loader::LoadingProgress, AbsPathBuf, FileId};
 
 use crate::{
     config::Config,
@@ -381,9 +381,14 @@ impl GlobalState {
             }
         }
         let event_handling_duration = loop_start.elapsed();
-
-        let state_changed = self.process_changes();
-        let memdocs_added_or_removed = self.mem_docs.take_changes();
+        let (state_changed, memdocs_added_or_removed) = if self.vfs_done {
+            if let Some(cause) = self.wants_to_switch.take() {
+                self.switch_workspaces(cause);
+            }
+            (self.process_changes(), self.mem_docs.take_changes())
+        } else {
+            (false, false)
+        };
 
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
@@ -691,7 +696,7 @@ impl GlobalState {
                         if let Err(e) = self.fetch_workspace_error() {
                             error!("FetchWorkspaceError:\n{e}");
                         }
-                        self.switch_workspaces("fetched workspace".to_owned());
+                        self.wants_to_switch = Some("fetched workspace".to_owned());
                         (Progress::End, None)
                     }
                 };
@@ -737,8 +742,9 @@ impl GlobalState {
                             error!("FetchBuildDataError:\n{e}");
                         }
 
-                        self.switch_workspaces("fetched build data".to_owned());
-
+                        if self.wants_to_switch.is_none() {
+                            self.wants_to_switch = Some("fetched build data".to_owned());
+                        }
                         (Some(Progress::End), None)
                     }
                 };
@@ -791,16 +797,14 @@ impl GlobalState {
                 let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
-                let state = match n_done {
-                    None => Progress::Begin,
-                    Some(done) if done == n_total => Progress::End,
-                    Some(_) => Progress::Report,
+                let (n_done, state) = match n_done {
+                    LoadingProgress::Started => (0, Progress::Begin),
+                    LoadingProgress::Progress(n_done) => (n_done.min(n_total), Progress::Report),
+                    LoadingProgress::Finished => (n_total, Progress::End),
                 };
-                let n_done = n_done.unwrap_or_default();
 
                 self.vfs_progress_config_version = config_version;
-                self.vfs_progress_n_total = n_total;
-                self.vfs_progress_n_done = n_done;
+                self.vfs_done = state == Progress::End;
 
                 let mut message = format!("{n_done}/{n_total}");
                 if let Some(dir) = dir {

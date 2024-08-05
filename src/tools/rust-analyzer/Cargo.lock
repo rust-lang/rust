@@ -2349,6 +2349,8 @@ dependencies = [
  "crossbeam-channel",
  "notify",
  "paths",
+ "rayon",
+ "rustc-hash",
  "stdx",
  "tracing",
  "vfs",

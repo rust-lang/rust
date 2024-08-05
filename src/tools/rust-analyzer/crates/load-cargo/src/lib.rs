@@ -19,7 +19,11 @@ use project_model::{
     CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
 };
 use span::Span;
-use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
+use vfs::{
+    file_set::FileSetConfig,
+    loader::{Handle, LoadingProgress},
+    AbsPath, AbsPathBuf, VfsPath,
+};
 
 pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
@@ -409,8 +413,8 @@ fn load_crate_graph(
     // wait until Vfs has loaded all roots
     for task in receiver {
         match task {
-            vfs::loader::Message::Progress { n_done, n_total, .. } => {
-                if n_done == Some(n_total) {
+            vfs::loader::Message::Progress { n_done, .. } => {
+                if n_done == LoadingProgress::Finished {
                     break;
                 }
             }

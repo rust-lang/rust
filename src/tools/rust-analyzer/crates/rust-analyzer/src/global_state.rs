@@ -33,7 +33,7 @@ use crate::{
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
-    op_queue::OpQueue,
+    op_queue::{Cause, OpQueue},
     reload,
     target_spec::{CargoTargetSpec, ProjectJsonTargetSpec, TargetSpec},
     task_pool::{TaskPool, TaskQueue},
@@ -108,8 +108,8 @@ pub(crate) struct GlobalState {
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
-    pub(crate) vfs_progress_n_total: usize,
-    pub(crate) vfs_progress_n_done: usize,
+    pub(crate) vfs_done: bool,
+    pub(crate) wants_to_switch: Option<Cause>,
 
     /// `workspaces` field stores the data we actually use, while the `OpQueue`
     /// stores the result of the last fetch.
@@ -252,8 +252,8 @@ impl GlobalState {
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
-            vfs_progress_n_total: 0,
-            vfs_progress_n_done: 0,
+            vfs_done: true,
+            wants_to_switch: None,
 
             workspaces: Arc::from(Vec::new()),
             crate_graph_file_dependencies: FxHashSet::default(),
