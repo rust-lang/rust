@@ -1,8 +1,9 @@
 use either::Either;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
+use rustc_middle::mir::NullOp;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, FloatTy, ScalarInt};
+use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::sym;
 use tracing::trace;
@@ -479,5 +480,39 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 bug!("Unexpected unary op argument {val:?}")
             }
         }
+    }
+
+    pub fn nullary_op(
+        &self,
+        null_op: NullOp<'tcx>,
+        arg_ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+        use rustc_middle::mir::NullOp::*;
+
+        let layout = self.layout_of(arg_ty)?;
+        let usize_layout = || self.layout_of(self.tcx.types.usize).unwrap();
+
+        Ok(match null_op {
+            SizeOf => {
+                if !layout.abi.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `NullaryOp::SizeOf`");
+                }
+                let val = layout.size.bytes();
+                ImmTy::from_uint(val, usize_layout())
+            }
+            AlignOf => {
+                if !layout.abi.is_sized() {
+                    span_bug!(self.cur_span(), "unsized type for `NullaryOp::AlignOf`");
+                }
+                let val = layout.align.abi.bytes();
+                ImmTy::from_uint(val, usize_layout())
+            }
+            OffsetOf(fields) => {
+                let val =
+                    self.tcx.offset_of_subfield(self.param_env, layout, fields.iter()).bytes();
+                ImmTy::from_uint(val, usize_layout())
+            }
+            UbChecks => ImmTy::from_bool(self.tcx.sess.ub_checks(), *self.tcx),
+        })
     }
 }
