@@ -20,6 +20,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use itertools::{Either, Itertools};
+use mut_visit::MutVisitor;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_list, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
@@ -1780,4 +1781,33 @@ pub fn check_crate(
     visit::walk_crate(&mut validator, krate);
 
     validator.has_proc_macro_decls
+}
+
+struct MarkDiagnosticAttributesAsUnstable<'a> {
+    features: &'a Features,
+}
+
+impl<'a> MutVisitor for MarkDiagnosticAttributesAsUnstable<'a> {
+    fn visit_attribute(&mut self, at: &mut Attribute) {
+        if at.is_doc_comment() {
+            return;
+        }
+        let diagnostic_item = match at.path().as_slice() {
+            [sym::diagnostic, item] => *item,
+            _ => return,
+        };
+        match diagnostic_item {
+            sym::on_unimplemented => at.allowed_diagnostic_attribute = true,
+            sym::do_not_recommend => {
+                at.allowed_diagnostic_attribute = self.features.do_not_recommend
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn apply_diagnostic_attribute_stablilty(features: &Features, krate: &mut Crate) {
+    let mut visitor = MarkDiagnosticAttributesAsUnstable { features };
+
+    mut_visit::walk_crate(&mut visitor, krate);
 }

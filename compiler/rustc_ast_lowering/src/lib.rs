@@ -945,7 +945,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+        Attribute {
+            kind,
+            id: attr.id,
+            style: attr.style,
+            span: self.lower_span(attr.span),
+            allowed_diagnostic_attribute: attr.allowed_diagnostic_attribute,
+        }
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {

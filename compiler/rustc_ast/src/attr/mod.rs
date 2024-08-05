@@ -566,7 +566,13 @@ pub fn mk_doc_comment(
     data: Symbol,
     span: Span,
 ) -> Attribute {
-    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
+    Attribute {
+        kind: AttrKind::DocComment(comment_kind, data),
+        id: g.mk_attr_id(),
+        style,
+        span,
+        allowed_diagnostic_attribute: false,
+    }
 }
 
 pub fn mk_attr(
@@ -592,6 +598,7 @@ pub fn mk_attr_from_item(
         id: g.mk_attr_id(),
         style,
         span,
+        allowed_diagnostic_attribute: false,
     }
 }
 
