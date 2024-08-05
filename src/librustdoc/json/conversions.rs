@@ -578,7 +578,7 @@ impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple,
         };
 
         match ty {
@@ -588,6 +588,8 @@ impl FromWithTcx<clean::Type> for Type {
                 traits: bounds.into_tcx(tcx),
             }),
             Generic(s) => Type::Generic(s.to_string()),
+            // FIXME: add dedicated variant to json Type?
+            SelfTy => Type::Generic("Self".to_owned()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),

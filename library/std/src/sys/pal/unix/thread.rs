@@ -455,8 +455,18 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
 
                 Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
+        } else if #[cfg(target_os = "vxworks")] {
+            // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
+            // expectations than the actual cores availability.
+            extern "C" {
+                fn vxCpuEnabledGet() -> libc::cpuset_t;
+            }
+
+            // always fetches a valid bitmask
+            let set = unsafe { vxCpuEnabledGet() };
+            Ok(NonZero::new_unchecked(set.count_ones() as usize))
         } else {
-            // FIXME: implement on vxWorks, Redox, l4re
+            // FIXME: implement on Redox, l4re
             Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
         }
     }
