@@ -30,7 +30,6 @@ use std::str::FromStr;
 
 use tracing::debug;
 
-use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -52,6 +51,8 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::spec::abi::Abi;
+
+use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -474,7 +475,9 @@ fn main() {
         } else if arg == "--" {
             after_dashdash = true;
         } else if arg == "-Zmiri-disable-validation" {
-            miri_config.validate = false;
+            miri_config.validation = ValidationMode::No;
+        } else if arg == "-Zmiri-recursive-validation" {
+            miri_config.validation = ValidationMode::Deep;
         } else if arg == "-Zmiri-disable-stacked-borrows" {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {

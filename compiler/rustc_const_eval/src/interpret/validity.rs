@@ -155,8 +155,8 @@ impl CtfeValidationMode {
 
 /// State for tracking recursive validation of references
 pub struct RefTracking<T, PATH = ()> {
-    pub seen: FxHashSet<T>,
-    pub todo: Vec<(T, PATH)>,
+    seen: FxHashSet<T>,
+    todo: Vec<(T, PATH)>,
 }
 
 impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> {
@@ -169,8 +169,11 @@ impl<T: Clone + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH>
         ref_tracking_for_consts.seen.insert(op);
         ref_tracking_for_consts
     }
+    pub fn next(&mut self) -> Option<(T, PATH)> {
+        self.todo.pop()
+    }
 
-    pub fn track(&mut self, op: T, path: impl FnOnce() -> PATH) {
+    fn track(&mut self, op: T, path: impl FnOnce() -> PATH) {
         if self.seen.insert(op.clone()) {
             trace!("Recursing below ptr {:#?}", op);
             let path = path();
@@ -435,93 +438,110 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         if self.ecx.scalar_may_be_null(Scalar::from_maybe_pointer(place.ptr(), self.ecx))? {
             throw_validation_failure!(self.path, NullPtr { ptr_kind })
         }
-        // Do not allow pointers to uninhabited types.
+        // Do not allow references to uninhabited types.
         if place.layout.abi.is_uninhabited() {
             let ty = place.layout.ty;
             throw_validation_failure!(self.path, PtrToUninhabited { ptr_kind, ty })
         }
         // Recursive checking
         if let Some(ref_tracking) = self.ref_tracking.as_deref_mut() {
-            // Determine whether this pointer expects to be pointing to something mutable.
-            let ptr_expected_mutbl = match ptr_kind {
-                PointerKind::Box => Mutability::Mut,
-                PointerKind::Ref(mutbl) => {
-                    // We do not take into account interior mutability here since we cannot know if
-                    // there really is an `UnsafeCell` inside `Option<UnsafeCell>` -- so we check
-                    // that in the recursive descent behind this reference (controlled by
-                    // `allow_immutable_unsafe_cell`).
-                    mutbl
-                }
-            };
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
-            if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr(), 0) {
+            if let Some(ctfe_mode) = self.ctfe_mode {
                 let mut skip_recursive_check = false;
-                if let Some(GlobalAlloc::Static(did)) = self.ecx.tcx.try_get_global_alloc(alloc_id)
+                // CTFE imposes restrictions on what references can point to.
+                if let Ok((alloc_id, _offset, _prov)) =
+                    self.ecx.ptr_try_get_alloc_id(place.ptr(), 0)
                 {
-                    let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else { bug!() };
-                    // Special handling for pointers to statics (irrespective of their type).
-                    assert!(!self.ecx.tcx.is_thread_local_static(did));
-                    assert!(self.ecx.tcx.is_static(did));
-                    // Mode-specific checks
-                    match self.ctfe_mode {
-                        Some(
-                            CtfeValidationMode::Static { .. } | CtfeValidationMode::Promoted { .. },
-                        ) => {
-                            // We skip recursively checking other statics. These statics must be sound by
-                            // themselves, and the only way to get broken statics here is by using
-                            // unsafe code.
-                            // The reasons we don't check other statics is twofold. For one, in all
-                            // sound cases, the static was already validated on its own, and second, we
-                            // trigger cycle errors if we try to compute the value of the other static
-                            // and that static refers back to us (potentially through a promoted).
-                            // This could miss some UB, but that's fine.
-                            // We still walk nested allocations, as they are fundamentally part of this validation run.
-                            // This means we will also recurse into nested statics of *other*
-                            // statics, even though we do not recurse into other statics directly.
-                            // That's somewhat inconsistent but harmless.
-                            skip_recursive_check = !nested;
-                        }
-                        Some(CtfeValidationMode::Const { .. }) => {
-                            // We can't recursively validate `extern static`, so we better reject them.
-                            if self.ecx.tcx.is_foreign_item(did) {
-                                throw_validation_failure!(self.path, ConstRefToExtern);
+                    if let Some(GlobalAlloc::Static(did)) =
+                        self.ecx.tcx.try_get_global_alloc(alloc_id)
+                    {
+                        let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
+                            bug!()
+                        };
+                        // Special handling for pointers to statics (irrespective of their type).
+                        assert!(!self.ecx.tcx.is_thread_local_static(did));
+                        assert!(self.ecx.tcx.is_static(did));
+                        // Mode-specific checks
+                        match ctfe_mode {
+                            CtfeValidationMode::Static { .. }
+                            | CtfeValidationMode::Promoted { .. } => {
+                                // We skip recursively checking other statics. These statics must be sound by
+                                // themselves, and the only way to get broken statics here is by using
+                                // unsafe code.
+                                // The reasons we don't check other statics is twofold. For one, in all
+                                // sound cases, the static was already validated on its own, and second, we
+                                // trigger cycle errors if we try to compute the value of the other static
+                                // and that static refers back to us (potentially through a promoted).
+                                // This could miss some UB, but that's fine.
+                                // We still walk nested allocations, as they are fundamentally part of this validation run.
+                                // This means we will also recurse into nested statics of *other*
+                                // statics, even though we do not recurse into other statics directly.
+                                // That's somewhat inconsistent but harmless.
+                                skip_recursive_check = !nested;
+                            }
+                            CtfeValidationMode::Const { .. } => {
+                                // We can't recursively validate `extern static`, so we better reject them.
+                                if self.ecx.tcx.is_foreign_item(did) {
+                                    throw_validation_failure!(self.path, ConstRefToExtern);
+                                }
                             }
                         }
-                        None => {}
                     }
-                }
 
-                // Dangling and Mutability check.
-                let (size, _align, alloc_kind) = self.ecx.get_alloc_info(alloc_id);
-                if alloc_kind == AllocKind::Dead {
-                    // This can happen for zero-sized references. We can't have *any* references to non-existing
-                    // allocations though, interning rejects them all as the rest of rustc isn't happy with them...
-                    // so we throw an error, even though this isn't really UB.
-                    // A potential future alternative would be to resurrect this as a zero-sized allocation
-                    // (which codegen will then compile to an aligned dummy pointer anyway).
-                    throw_validation_failure!(self.path, DanglingPtrUseAfterFree { ptr_kind });
-                }
-                // If this allocation has size zero, there is no actual mutability here.
-                if size != Size::ZERO {
-                    let alloc_actual_mutbl = mutability(self.ecx, alloc_id);
-                    // Mutable pointer to immutable memory is no good.
-                    if ptr_expected_mutbl == Mutability::Mut
-                        && alloc_actual_mutbl == Mutability::Not
-                    {
-                        throw_validation_failure!(self.path, MutableRefToImmutable);
+                    // Dangling and Mutability check.
+                    let (size, _align, alloc_kind) = self.ecx.get_alloc_info(alloc_id);
+                    if alloc_kind == AllocKind::Dead {
+                        // This can happen for zero-sized references. We can't have *any* references to
+                        // non-existing allocations in const-eval though, interning rejects them all as
+                        // the rest of rustc isn't happy with them... so we throw an error, even though
+                        // this isn't really UB.
+                        // A potential future alternative would be to resurrect this as a zero-sized allocation
+                        // (which codegen will then compile to an aligned dummy pointer anyway).
+                        throw_validation_failure!(self.path, DanglingPtrUseAfterFree { ptr_kind });
                     }
-                    // In a const, everything must be completely immutable.
-                    if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
+                    // If this allocation has size zero, there is no actual mutability here.
+                    if size != Size::ZERO {
+                        // Determine whether this pointer expects to be pointing to something mutable.
+                        let ptr_expected_mutbl = match ptr_kind {
+                            PointerKind::Box => Mutability::Mut,
+                            PointerKind::Ref(mutbl) => {
+                                // We do not take into account interior mutability here since we cannot know if
+                                // there really is an `UnsafeCell` inside `Option<UnsafeCell>` -- so we check
+                                // that in the recursive descent behind this reference (controlled by
+                                // `allow_immutable_unsafe_cell`).
+                                mutbl
+                            }
+                        };
+                        // Determine what it actually points to.
+                        let alloc_actual_mutbl = mutability(self.ecx, alloc_id);
+                        // Mutable pointer to immutable memory is no good.
                         if ptr_expected_mutbl == Mutability::Mut
-                            || alloc_actual_mutbl == Mutability::Mut
+                            && alloc_actual_mutbl == Mutability::Not
                         {
-                            throw_validation_failure!(self.path, ConstRefToMutable);
+                            throw_validation_failure!(self.path, MutableRefToImmutable);
+                        }
+                        // In a const, everything must be completely immutable.
+                        if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
+                            if ptr_expected_mutbl == Mutability::Mut
+                                || alloc_actual_mutbl == Mutability::Mut
+                            {
+                                throw_validation_failure!(self.path, ConstRefToMutable);
+                            }
                         }
                     }
                 }
                 // Potentially skip recursive check.
                 if skip_recursive_check {
+                    return Ok(());
+                }
+            } else {
+                // This is not CTFE, so it's Miri with recursive checking.
+                // FIXME: we do *not* check behind boxes, since creating a new box first creates it uninitialized
+                // and then puts the value in there, so briefly we have a box with uninit contents.
+                // FIXME: should we also skip `UnsafeCell` behind shared references? Currently that is not
+                // needed since validation reads bypass Stacked Borrows and data race checks.
+                if matches!(ptr_kind, PointerKind::Box) {
                     return Ok(());
                 }
             }
@@ -1072,11 +1092,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// `op` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
-    pub fn validate_operand(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+    pub fn validate_operand(
+        &self,
+        op: &OpTy<'tcx, M::Provenance>,
+        recursive: bool,
+    ) -> InterpResult<'tcx> {
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
-        // value, it rules out things like `UnsafeCell` in awkward places. It also can make checking
-        // recurse through references which, for now, we don't want here, either.
-        self.validate_operand_internal(op, vec![], None, None)
+        // value, it rules out things like `UnsafeCell` in awkward places.
+        if !recursive {
+            return self.validate_operand_internal(op, vec![], None, None);
+        }
+        // Do a recursive check.
+        let mut ref_tracking = RefTracking::empty();
+        self.validate_operand_internal(op, vec![], Some(&mut ref_tracking), None)?;
+        while let Some((mplace, path)) = ref_tracking.todo.pop() {
+            self.validate_operand_internal(&mplace.into(), path, Some(&mut ref_tracking), None)?;
+        }
+        Ok(())
     }
 }

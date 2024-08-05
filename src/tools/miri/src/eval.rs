@@ -68,7 +68,7 @@ pub enum IsolatedOp {
     Allow,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BacktraceStyle {
     /// Prints a terser backtrace which ideally only contains relevant information.
     Short,
@@ -78,6 +78,16 @@ pub enum BacktraceStyle {
     Off,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ValidationMode {
+    /// Do not perform any kind of validation.
+    No,
+    /// Validate the interior of the value, but not things behind references.
+    Shallow,
+    /// Fully recursively validate references.
+    Deep,
+}
+
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -85,7 +95,7 @@ pub struct MiriConfig {
     /// (This is still subject to isolation as well as `forwarded_env_vars`.)
     pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
-    pub validate: bool,
+    pub validation: ValidationMode,
     /// Determines if Stacked Borrows or Tree Borrows is enabled.
     pub borrow_tracker: Option<BorrowTrackerMethod>,
     /// Whether `core::ptr::Unique` receives special treatment.
@@ -162,7 +172,7 @@ impl Default for MiriConfig {
     fn default() -> MiriConfig {
         MiriConfig {
             env: vec![],
-            validate: true,
+            validation: ValidationMode::Shallow,
             borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
             unique_is_unique: false,
             check_alignment: AlignmentCheck::Int,

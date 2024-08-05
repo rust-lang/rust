@@ -617,8 +617,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -639,8 +637,6 @@ impl Duration {
     /// if overflow occurred.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::time::Duration;
@@ -700,8 +696,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -758,8 +752,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -813,8 +805,6 @@ impl Duration {
     /// if `other == 0`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::time::Duration;

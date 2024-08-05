@@ -26,7 +26,8 @@ use crate::core::builder::{
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
+    self, exe, get_clang_cl_resource_dir, get_closest_merge_base_commit, is_debug_info, is_dylib,
+    symlink_dir, t, up_to_date,
 };
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode, LLVM_TOOLS};
 
@@ -114,21 +115,43 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // When downloading stage1, the standard library has already been copied to the sysroot, so
-        // there's no need to rebuild it.
-        let builder = run.builder;
-        run.crate_or_deps("sysroot")
-            .path("library")
-            .lazy_default_condition(Box::new(|| !builder.download_rustc()))
+        run.crate_or_deps("sysroot").path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
+        let builder = run.builder;
+
+        // Force compilation of the standard library from source if the `library` is modified. This allows
+        // library team to compile the standard library without needing to compile the compiler with
+        // the `rust.download-rustc=true` option.
+        let force_recompile =
+            if builder.rust_info().is_managed_git_subrepository() && builder.download_rustc() {
+                let closest_merge_commit = get_closest_merge_base_commit(
+                    Some(&builder.src),
+                    &builder.config.git_config(),
+                    &builder.config.stage0_metadata.config.git_merge_commit_email,
+                    &[],
+                )
+                .unwrap();
+
+                // Check if `library` has changes (returns false otherwise)
+                !t!(helpers::git(Some(&builder.src))
+                    .args(["diff-index", "--quiet", &closest_merge_commit])
+                    .arg("--")
+                    .arg(builder.src.join("library"))
+                    .as_command_mut()
+                    .status())
+                .success()
+            } else {
+                false
+            };
+
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
             crates,
-            force_recompile: false,
+            force_recompile,
             extra_rust_args: &[],
             is_for_mir_opt_tests: false,
         });
