@@ -104,10 +104,11 @@ impl std::fmt::Debug for VersionInfo {
 #[must_use]
 pub fn get_commit_hash() -> Option<String> {
     let output = std::process::Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
+        .args(["rev-parse", "HEAD"])
         .output()
         .ok()?;
-    let stdout = output.status.success().then_some(output.stdout)?;
+    let mut stdout = output.status.success().then_some(output.stdout)?;
+    stdout.truncate(10);
     String::from_utf8(stdout).ok()
 }
 
