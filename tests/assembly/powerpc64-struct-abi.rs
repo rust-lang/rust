@@ -1,6 +1,6 @@
 //@ revisions: elfv1-be elfv2-be elfv2-le
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -O -Zlint-llvm-ir -Cllvm-args=-lint-abort-on-error
 //@[elfv1-be] compile-flags: --target powerpc64-unknown-linux-gnu
 //@[elfv1-be] needs-llvm-components: powerpc
 //@[elfv2-be] compile-flags: --target powerpc64-unknown-linux-musl

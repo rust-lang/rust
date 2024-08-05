@@ -33,7 +33,7 @@ use std::fmt;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
 use rustc_target::spec::HasTargetSpec;
 
-pub use self::abi::AbiBuilderMethods;
+pub use self::abi::{AbiBuilderMethods, CastTargetAbiExt};
 pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
 pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};

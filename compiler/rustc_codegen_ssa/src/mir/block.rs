@@ -23,8 +23,8 @@ use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
 use crate::common::{self, IntPredicate};
 use crate::errors::CompilerBuiltinsCannotCall;
+use crate::meth;
 use crate::traits::*;
-use crate::{meth, MemFlags};
 
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
@@ -462,7 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            PassMode::Cast { cast: cast_ty, pad_i32: _ } => {
+            PassMode::Cast { cast, pad_i32: _ } => {
                 let op = match self.locals[mir::RETURN_PLACE] {
                     LocalRef::Operand(op) => op,
                     LocalRef::PendingOperand => bug!("use of return before def"),
@@ -471,23 +471,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 };
-                let llslot = match op.val {
-                    Immediate(_) | Pair(..) => {
-                        let scratch = PlaceRef::alloca(bx, self.fn_abi.ret.layout);
-                        op.val.store(bx, scratch);
-                        scratch.val.llval
-                    }
-                    Ref(place_val) => {
-                        assert_eq!(
-                            place_val.align, op.layout.align.abi,
-                            "return place is unaligned!"
-                        );
-                        place_val.llval
-                    }
-                    ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
-                };
-                let ty = bx.cast_backend_type(cast_ty);
-                bx.load(ty, llslot, self.fn_abi.ret.layout.align.abi)
+                cast.cast_rust_abi_to_other(bx, op)
             }
         };
         bx.ret(llval);
@@ -1460,10 +1444,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => {}
         }
 
-        // Force by-ref if we have to load through a cast pointer.
-        let (mut llval, align, by_ref) = match op.val {
-            Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect { attrs, .. } => {
+        let llval = match arg.mode {
+            PassMode::Indirect { attrs, on_stack, .. } => match op.val {
+                Immediate(_) | Pair(..) => {
                     // Indirect argument may have higher alignment requirements than the type's alignment.
                     // This can happen, e.g. when passing types with <4 byte alignment on the stack on x86.
                     let required_align = match attrs.pointee_align {
@@ -1472,17 +1455,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     };
                     let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                     op.val.store(bx, scratch.with_type(arg.layout));
-                    (scratch.llval, scratch.align, true)
+                    scratch.llval
                 }
-                PassMode::Cast { .. } => {
-                    let scratch = PlaceRef::alloca(bx, arg.layout);
-                    op.val.store(bx, scratch);
-                    (scratch.val.llval, scratch.val.align, true)
-                }
-                _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
-            },
-            Ref(op_place_val) => match arg.mode {
-                PassMode::Indirect { attrs, .. } => {
+                Ref(op_place_val) => {
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
@@ -1493,15 +1468,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // to a higher-aligned alloca.
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.typed_place_copy(scratch, op_place_val, op.layout);
-                        (scratch.llval, scratch.align, true)
+                        scratch.llval
                     } else {
-                        (op_place_val.llval, op_place_val.align, true)
+                        op_place_val.llval
                     }
                 }
-                _ => (op_place_val.llval, op_place_val.align, true),
-            },
-            ZeroSized => match arg.mode {
-                PassMode::Indirect { on_stack, .. } => {
+                ZeroSized => {
                     if on_stack {
                         // It doesn't seem like any target can have `byval` ZSTs, so this assert
                         // is here to replace a would-be untested codepath.
@@ -1511,59 +1483,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // a pointer for `repr(C)` structs even when empty, so get
                     // one from an `alloca` (which can be left uninitialized).
                     let scratch = PlaceRef::alloca(bx, arg.layout);
-                    (scratch.val.llval, scratch.val.align, true)
+                    scratch.val.llval
                 }
-                _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
             },
-        };
-
-        if by_ref && !arg.is_indirect() {
-            // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast { cast, pad_i32: _ } = &arg.mode {
-                // The ABI mandates that the value is passed as a different struct representation.
-                // Spill and reload it from the stack to convert from the Rust representation to
-                // the ABI representation.
-                let scratch_size = cast.size(bx);
-                let scratch_align = cast.align(bx);
-                // Note that the ABI type may be either larger or smaller than the Rust type,
-                // due to the presence or absence of trailing padding. For example:
-                // - On some ABIs, the Rust layout { f64, f32, <f32 padding> } may omit padding
-                //   when passed by value, making it smaller.
-                // - On some ABIs, the Rust layout { u16, u16, u16 } may be padded up to 8 bytes
-                //   when passed by value, making it larger.
-                let copy_bytes = cmp::min(cast.unaligned_size(bx).bytes(), arg.layout.size.bytes());
-                // Allocate some scratch space...
-                let llscratch = bx.alloca(scratch_size, scratch_align);
-                bx.lifetime_start(llscratch, scratch_size);
-                // ...memcpy the value...
-                bx.memcpy(
-                    llscratch,
-                    scratch_align,
-                    llval,
-                    align,
-                    bx.const_usize(copy_bytes),
-                    MemFlags::empty(),
-                );
-                // ...and then load it with the ABI type.
-                let cast_ty = bx.cast_backend_type(cast);
-                llval = bx.load(cast_ty, llscratch, scratch_align);
-                bx.lifetime_end(llscratch, scratch_size);
-            } else {
-                // We can't use `PlaceRef::load` here because the argument
-                // may have a type we don't treat as immediate, but the ABI
-                // used for this call is passing it by-value. In that case,
-                // the load would just produce `OperandValue::Ref` instead
-                // of the `OperandValue::Immediate` we need for the call.
-                llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let abi::Abi::Scalar(scalar) = arg.layout.abi {
-                    if scalar.is_bool() {
+            PassMode::Cast { ref cast, .. } => cast.cast_rust_abi_to_other(bx, op),
+            _ => match op.val {
+                Immediate(_) | Pair(..) => op.immediate_or_packed_pair(bx),
+                Ref(op_place_val) => {
+                    // We can't use `PlaceRef::load` here because the argument
+                    // may have a type we don't treat as immediate, but the ABI
+                    // used for this call is passing it by-value. In that case,
+                    // the load would just produce `OperandValue::Ref` instead
+                    // of the `OperandValue::Immediate` we need for the call.
+                    let mut llval = bx.load(
+                        bx.backend_type(arg.layout),
+                        op_place_val.llval,
+                        op_place_val.align,
+                    );
+                    if let abi::Abi::Scalar(scalar) = arg.layout.abi
+                        && scalar.is_bool()
+                    {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
+                    // We store bools as `i8` so we need to truncate to `i1`.
+                    llval = bx.to_immediate(llval, arg.layout);
+                    llval
                 }
-                // We store bools as `i8` so we need to truncate to `i1`.
-                llval = bx.to_immediate(llval, arg.layout);
-            }
-        }
+                ZeroSized => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
+            },
+        };
 
         llargs.push(llval);
     }

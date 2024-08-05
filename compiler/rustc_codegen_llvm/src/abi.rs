@@ -1,10 +1,7 @@
-use std::cmp;
-
 use libc::c_uint;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::MemFlags;
 use rustc_middle::ty::layout::LayoutOf;
 pub(crate) use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
@@ -215,35 +212,8 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { attrs: _, meta_attrs: Some(_), on_stack: _ } => {
                 bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
             }
-            PassMode::Cast { cast, pad_i32: _ } => {
-                // The ABI mandates that the value is passed as a different struct representation.
-                // Spill and reload it from the stack to convert from the ABI representation to
-                // the Rust representation.
-                let scratch_size = cast.size(bx);
-                let scratch_align = cast.align(bx);
-                // Note that the ABI type may be either larger or smaller than the Rust type,
-                // due to the presence or absence of trailing padding. For example:
-                // - On some ABIs, the Rust layout { f64, f32, <f32 padding> } may omit padding
-                //   when passed by value, making it smaller.
-                // - On some ABIs, the Rust layout { u16, u16, u16 } may be padded up to 8 bytes
-                //   when passed by value, making it larger.
-                let copy_bytes =
-                    cmp::min(cast.unaligned_size(bx).bytes(), self.layout.size.bytes());
-                // Allocate some scratch space...
-                let llscratch = bx.alloca(scratch_size, scratch_align);
-                bx.lifetime_start(llscratch, scratch_size);
-                // ...store the value...
-                bx.store(val, llscratch, scratch_align);
-                // ... and then memcpy it to the intended destination.
-                bx.memcpy(
-                    dst.val.llval,
-                    self.layout.align.abi,
-                    llscratch,
-                    scratch_align,
-                    bx.const_usize(copy_bytes),
-                    MemFlags::empty(),
-                );
-                bx.lifetime_end(llscratch, scratch_size);
+            PassMode::Cast { cast, .. } => {
+                cast.cast_other_abi_to_rust(bx, val, dst.val.llval, self.layout);
             }
             _ => {
                 OperandRef::from_immediate_or_packed_pair(bx, val, self.layout).val.store(bx, dst);

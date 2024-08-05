@@ -5,26 +5,23 @@
 // CHECK-LABEL: @array_load
 #[no_mangle]
 pub fn array_load(a: &[u8; 4]) -> [u8; 4] {
-    // CHECK-NOT: alloca
-    // CHECK: %[[ALLOCA:.+]] = alloca [4 x i8], align 1
-    // CHECK-NOT: alloca
-    // CHECK: call void @llvm.memcpy.{{.+}}(ptr align 1 %[[ALLOCA]], ptr align 1 %a, {{.+}} 4, i1 false)
-    // CHECK: %[[TEMP:.+]] = load i32, ptr %[[ALLOCA]], align 1
-    // CHECK: ret i32 %[[TEMP]]
+    // CHECK-NEXT: [[START:.*:]]
+    // CHECK-NEXT: %[[ALLOCA:.+]] = alloca [4 x i8], align 1
+    // CHECK-NEXT: call void @llvm.memcpy.{{.+}}(ptr align 1 %[[ALLOCA]], ptr align 1 %a, {{.+}} 4, i1 false)
+    // CHECK-NEXT: %[[TEMP:.+]] = load i32, ptr %[[ALLOCA]], align 1
+    // CHECK-NEXT: ret i32 %[[TEMP]]
     *a
 }
 
 // CHECK-LABEL: @array_store
 #[no_mangle]
 pub fn array_store(a: [u8; 4], p: &mut [u8; 4]) {
-    // CHECK-NOT: alloca
-    // CHECK: %[[TEMP:.+]] = alloca [4 x i8], [[TEMPALIGN:align [0-9]+]]
-    // CHECK-NOT: alloca
-    // CHECK: %a = alloca [4 x i8]
-    // CHECK-NOT: alloca
-    // store i32 %0, ptr %[[TEMP]]
-    // CHECK: call void @llvm.memcpy.{{.+}}(ptr align 1 %a, ptr [[TEMPALIGN]] %[[TEMP]], {{.+}} 4, i1 false)
-    // CHECK: call void @llvm.memcpy.{{.+}}(ptr align 1 %p, ptr align 1 %a, {{.+}} 4, i1 false)
+    // CHECK-SAME: i32 [[TMP0:%.*]], ptr{{.*}} [[P:%.*]])
+    // CHECK-NEXT: [[START:.*:]]
+    // CHECK-NEXT: [[A:%.*]] = alloca [4 x i8], align 1
+    // CHECK-NEXT: store i32 [[TMP0]], ptr [[A]], align 1
+    // CHECK-NEXT: call void @llvm.memcpy.{{.+}}(ptr align 1 [[P]], ptr align 1 [[A]], {{.+}} 4, i1 false)
+    // CHECK-NEXT: ret void
     *p = a;
 }
 
