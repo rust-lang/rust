@@ -118,6 +118,7 @@ pub enum BodyDiagnostic {
     MacroError { node: InFile<AstPtr<ast::MacroCall>>, err: ExpandError },
     UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
     UnreachableLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
+    AwaitOutsideOfAsync { node: InFile<AstPtr<ast::AwaitExpr>>, location: String },
     UndeclaredLabel { node: InFile<AstPtr<ast::Lifetime>>, name: Name },
 }
 

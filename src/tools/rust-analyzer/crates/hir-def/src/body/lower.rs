@@ -72,6 +72,7 @@ pub(super) fn lower(
         is_lowering_coroutine: false,
         label_ribs: Vec::new(),
         current_binding_owner: None,
+        awaitable_context: None,
     }
     .collect(params, body, is_async_fn)
 }
@@ -100,6 +101,8 @@ struct ExprCollector<'a> {
     // resolution
     label_ribs: Vec<LabelRib>,
     current_binding_owner: Option<ExprId>,
+
+    awaitable_context: Option<Awaitable>,
 }
 
 #[derive(Clone, Debug)]
@@ -133,6 +136,11 @@ impl RibKind {
             RibKind::Closure | RibKind::Constant => true,
         }
     }
+}
+
+enum Awaitable {
+    Yes,
+    No(&'static str),
 }
 
 #[derive(Debug, Default)]
@@ -180,6 +188,18 @@ impl ExprCollector<'_> {
         body: Option<ast::Expr>,
         is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
+        self.awaitable_context.replace(if is_async_fn {
+            Awaitable::Yes
+        } else {
+            match self.owner {
+                DefWithBodyId::FunctionId(..) => Awaitable::No("non-async function"),
+                DefWithBodyId::StaticId(..) => Awaitable::No("static"),
+                DefWithBodyId::ConstId(..) | DefWithBodyId::InTypeConstId(..) => {
+                    Awaitable::No("constant")
+                }
+                DefWithBodyId::VariantId(..) => Awaitable::No("enum variant"),
+            }
+        });
         if let Some((param_list, mut attr_enabled)) = param_list {
             let mut params = vec![];
             if let Some(self_param) =
@@ -280,31 +300,40 @@ impl ExprCollector<'_> {
                 }
                 Some(ast::BlockModifier::Async(_)) => {
                     self.with_label_rib(RibKind::Closure, |this| {
-                        this.collect_block_(e, |id, statements, tail| Expr::Async {
-                            id,
-                            statements,
-                            tail,
+                        this.with_awaitable_block(Awaitable::Yes, |this| {
+                            this.collect_block_(e, |id, statements, tail| Expr::Async {
+                                id,
+                                statements,
+                                tail,
+                            })
                         })
                     })
                 }
                 Some(ast::BlockModifier::Const(_)) => {
                     self.with_label_rib(RibKind::Constant, |this| {
-                        let (result_expr_id, prev_binding_owner) =
-                            this.initialize_binding_owner(syntax_ptr);
-                        let inner_expr = this.collect_block(e);
-                        let it = this.db.intern_anonymous_const(ConstBlockLoc {
-                            parent: this.owner,
-                            root: inner_expr,
-                        });
-                        this.body.exprs[result_expr_id] = Expr::Const(it);
-                        this.current_binding_owner = prev_binding_owner;
-                        result_expr_id
+                        this.with_awaitable_block(Awaitable::No("constant block"), |this| {
+                            let (result_expr_id, prev_binding_owner) =
+                                this.initialize_binding_owner(syntax_ptr);
+                            let inner_expr = this.collect_block(e);
+                            let it = this.db.intern_anonymous_const(ConstBlockLoc {
+                                parent: this.owner,
+                                root: inner_expr,
+                            });
+                            this.body.exprs[result_expr_id] = Expr::Const(it);
+                            this.current_binding_owner = prev_binding_owner;
+                            result_expr_id
+                        })
                     })
                 }
                 // FIXME
-                Some(ast::BlockModifier::AsyncGen(_)) | Some(ast::BlockModifier::Gen(_)) | None => {
-                    self.collect_block(e)
+                Some(ast::BlockModifier::AsyncGen(_)) => {
+                    self.with_awaitable_block(Awaitable::Yes, |this| this.collect_block(e))
                 }
+                Some(ast::BlockModifier::Gen(_)) => self
+                    .with_awaitable_block(Awaitable::No("non-async gen block"), |this| {
+                        this.collect_block(e)
+                    }),
+                None => self.collect_block(e),
             },
             ast::Expr::LoopExpr(e) => {
                 let label = e.label().map(|label| self.collect_label(label));
@@ -469,6 +498,12 @@ impl ExprCollector<'_> {
             }
             ast::Expr::AwaitExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
+                if let Awaitable::No(location) = self.is_lowering_awaitable_block() {
+                    self.source_map.diagnostics.push(BodyDiagnostic::AwaitOutsideOfAsync {
+                        node: InFile::new(self.expander.current_file_id(), AstPtr::new(&e)),
+                        location: location.to_string(),
+                    });
+                }
                 self.alloc_expr(Expr::Await { expr }, syntax_ptr)
             }
             ast::Expr::TryExpr(e) => self.collect_try_operator(syntax_ptr, e),
@@ -527,7 +562,13 @@ impl ExprCollector<'_> {
                 let prev_is_lowering_coroutine = mem::take(&mut this.is_lowering_coroutine);
                 let prev_try_block_label = this.current_try_block_label.take();
 
-                let body = this.collect_expr_opt(e.body());
+                let awaitable = if e.async_token().is_some() {
+                    Awaitable::Yes
+                } else {
+                    Awaitable::No("non-async closure")
+                };
+                let body =
+                    this.with_awaitable_block(awaitable, |this| this.collect_expr_opt(e.body()));
 
                 let closure_kind = if this.is_lowering_coroutine {
                     let movability = if e.static_token().is_some() {
@@ -2081,6 +2122,21 @@ impl ExprCollector<'_> {
     // FIXME: desugared labels don't have ptr, that's wrong and should be fixed somehow.
     fn alloc_label_desugared(&mut self, label: Label) -> LabelId {
         self.body.labels.alloc(label)
+    }
+
+    fn is_lowering_awaitable_block(&self) -> &Awaitable {
+        self.awaitable_context.as_ref().unwrap_or(&Awaitable::No("unknown"))
+    }
+
+    fn with_awaitable_block<T>(
+        &mut self,
+        awaitable: Awaitable,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let orig = self.awaitable_context.replace(awaitable);
+        let res = f(self);
+        self.awaitable_context = orig;
+        res
     }
 }
 

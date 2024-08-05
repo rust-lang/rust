@@ -48,6 +48,7 @@ macro_rules! diagnostics {
 // ]
 
 diagnostics![
+    AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
     ExpectedFunction,
     InactiveCode,
@@ -133,6 +134,12 @@ pub struct UnresolvedMacroCall {
 pub struct UnreachableLabel {
     pub node: InFile<AstPtr<ast::Lifetime>>,
     pub name: Name,
+}
+
+#[derive(Debug)]
+pub struct AwaitOutsideOfAsync {
+    pub node: InFile<AstPtr<ast::AwaitExpr>>,
+    pub location: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

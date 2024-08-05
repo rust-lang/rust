@@ -24,6 +24,7 @@
 //! don't yet have a great pattern for how to do them properly.
 
 mod handlers {
+    pub(crate) mod await_outside_of_async;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod expected_function;
     pub(crate) mod inactive_code;
@@ -379,6 +380,7 @@ pub fn semantic_diagnostics(
 
     for diag in diags {
         let d = match diag {
+            AnyDiagnostic::AwaitOutsideOfAsync(d) => handlers::await_outside_of_async::await_outside_of_async(&ctx, &d),
             AnyDiagnostic::ExpectedFunction(d) => handlers::expected_function::expected_function(&ctx, &d),
             AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
