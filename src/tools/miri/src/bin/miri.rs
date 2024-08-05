@@ -14,11 +14,14 @@ extern crate tracing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
+extern crate rustc_hir_analysis;
 extern crate rustc_interface;
 extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
+extern crate rustc_span;
+extern crate rustc_target;
 
 use std::env::{self, VarError};
 use std::num::NonZero;
@@ -29,7 +32,9 @@ use tracing::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
+use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
 use rustc_middle::{
     middle::{
@@ -37,12 +42,15 @@ use rustc_middle::{
         exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel},
     },
     query::LocalCrate,
-    ty::TyCtxt,
+    traits::{ObligationCause, ObligationCauseCode},
+    ty::{self, Ty, TyCtxt},
     util::Providers,
 };
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
+use rustc_span::def_id::DefId;
+use rustc_target::spec::abi::Abi;
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields, ValidationMode};
 
@@ -82,11 +90,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.dcx().fatal("miri only makes sense on bin crates");
             }
 
-            let (entry_def_id, entry_type) = if let Some(entry_def) = tcx.entry_fn(()) {
-                entry_def
-            } else {
-                tcx.dcx().fatal("miri can only run programs that have a main function");
-            };
+            let (entry_def_id, entry_type) = entry_fn(tcx);
             let mut config = self.miri_config.clone();
 
             // Add filename to `miri` arguments.
@@ -348,6 +352,56 @@ fn jemalloc_magic() {
 
         #[used]
         static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+    }
+}
+
+fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
+    if let Some(entry_def) = tcx.entry_fn(()) {
+        return entry_def;
+    }
+    // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
+    let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
+        if sym.symbol_name_for_local_instance(tcx).name == "miri_start" { Some(sym) } else { None }
+    });
+    if let Some(ExportedSymbol::NonGeneric(id)) = sym {
+        let start_def_id = id.expect_local();
+        let start_span = tcx.def_span(start_def_id);
+
+        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+            [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
+            tcx.types.isize,
+            false,
+            hir::Safety::Safe,
+            Abi::Rust,
+        ));
+
+        let correct_func_sig = check_function_signature(
+            tcx,
+            ObligationCause::new(start_span, start_def_id, ObligationCauseCode::Misc),
+            *id,
+            expected_sig,
+        )
+        .is_ok();
+
+        if correct_func_sig {
+            (*id, EntryFnType::Start)
+        } else {
+            tcx.dcx().fatal(
+                "`miri_start` must have the following signature:\n\
+                        fn miri_start(argc: isize, argv: *const *const u8) -> isize",
+            );
+        }
+    } else {
+        tcx.dcx().fatal(
+            "Miri can only run programs that have a main function.\n\
+            Alternatively, you can export a `miri_start` function:\n\
+            \n\
+            #[cfg(miri)]\n\
+            #[no_mangle]\n\
+            fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
+            \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
+            }"
+        );
     }
 }
 

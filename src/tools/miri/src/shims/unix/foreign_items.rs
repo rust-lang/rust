@@ -62,13 +62,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "unsetenv" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.unsetenv(name)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "setenv" => {
                 let [name, value, overwrite] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(overwrite)?.to_i32()?;
                 let result = this.setenv(name, value)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "getcwd" => {
                 let [buf, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -78,12 +78,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "chdir" => {
                 let [path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.chdir(path)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "getpid" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
                 let result = this.getpid()?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // File descriptors
@@ -93,7 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf = this.read_pointer(buf)?;
                 let count = this.read_target_usize(count)?;
                 let result = this.read(fd, buf, count, None)?;
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "write" => {
                 let [fd, buf, n] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -103,7 +103,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
                 let result = this.write(fd, buf, count, None)?;
                 // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pread" => {
                 let [fd, buf, count, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -112,7 +112,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let count = this.read_target_usize(count)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off_t").size)?;
                 let result = this.read(fd, buf, count, Some(offset))?;
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pwrite" => {
                 let [fd, buf, n, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -123,7 +123,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Called pwrite({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 let result = this.write(fd, buf, count, Some(offset))?;
                 // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pread64" => {
                 let [fd, buf, count, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -132,7 +132,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let count = this.read_target_usize(count)?;
                 let offset = this.read_scalar(offset)?.to_int(this.libc_ty_layout("off64_t").size)?;
                 let result = this.read(fd, buf, count, Some(offset))?;
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pwrite64" => {
                 let [fd, buf, n, offset] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -143,7 +143,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 trace!("Called pwrite64({:?}, {:?}, {:?}, {:?})", fd, buf, count, offset);
                 let result = this.write(fd, buf, count, Some(offset))?;
                 // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "close" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -155,20 +155,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // in `this.fcntl()`, so we do not use `check_shim` here.
                 this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
                 let result = this.fcntl(args)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "dup" => {
                 let [old_fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let old_fd = this.read_scalar(old_fd)?.to_i32()?;
                 let new_fd = this.dup(old_fd)?;
-                this.write_scalar(Scalar::from_i32(new_fd), dest)?;
+                this.write_scalar(new_fd, dest)?;
             }
             "dup2" => {
                 let [old_fd, new_fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let old_fd = this.read_scalar(old_fd)?.to_i32()?;
                 let new_fd = this.read_scalar(new_fd)?.to_i32()?;
                 let result = this.dup2(old_fd, new_fd)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
+            }
+            "flock" => {
+                let [fd, op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let op = this.read_scalar(op)?.to_i32()?;
+                let result = this.flock(fd, op)?;
+                this.write_scalar(result, dest)?;
             }
 
             // File and file system access
@@ -176,32 +183,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `open` is variadic, the third argument is only present when the second argument has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
                 this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
                 let result = this.open(args)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "unlink" => {
                 let [path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.unlink(path)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "symlink" => {
                 let [target, linkpath] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.symlink(target, linkpath)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "rename" => {
                 let [oldpath, newpath] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.rename(oldpath, newpath)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "mkdir" => {
                 let [path, mode] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.mkdir(path, mode)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "rmdir" => {
                 let [path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.rmdir(path)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "opendir" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -211,7 +218,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "closedir" => {
                 let [dirp] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.closedir(dirp)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "lseek64" => {
                 let [fd, offset, whence] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -248,12 +255,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "fsync" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.fsync(fd)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "fdatasync" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.fdatasync(fd)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "readlink" => {
                 let [pathname, buf, bufsize] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -278,7 +285,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "mkstemp" => {
                 let [template] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.mkstemp(template)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Sockets
@@ -294,7 +301,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "gettimeofday" => {
                 let [tv, tz] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.gettimeofday(tv, tz)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "localtime_r" => {
                 let [timep, result_op] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
@@ -466,23 +473,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Synchronization primitives
             "pthread_mutexattr_init" => {
                 let [attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_mutexattr_init(attr)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_mutexattr_init(attr)?;
+                this.write_null(dest)?;
             }
             "pthread_mutexattr_settype" => {
                 let [attr, kind] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_mutexattr_settype(attr, kind)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_mutexattr_destroy" => {
                 let [attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_mutexattr_destroy(attr)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_mutexattr_destroy(attr)?;
+                this.write_null(dest)?;
             }
             "pthread_mutex_init" => {
                 let [mutex, attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_mutex_init(mutex, attr)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_mutex_init(mutex, attr)?;
+                this.write_null(dest)?;
             }
             "pthread_mutex_lock" => {
                 let [mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -491,17 +498,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_mutex_trylock" => {
                 let [mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_mutex_trylock(mutex)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_mutex_unlock" => {
                 let [mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_mutex_unlock(mutex)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_mutex_destroy" => {
                 let [mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_mutex_destroy(mutex)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_mutex_destroy(mutex)?;
+                this.write_int(0, dest)?;
             }
             "pthread_rwlock_rdlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -510,7 +517,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_rwlock_tryrdlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_rwlock_tryrdlock(rwlock)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_rwlock_wrlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -519,22 +526,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_rwlock_trywrlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_rwlock_trywrlock(rwlock)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_rwlock_unlock" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_rwlock_unlock(rwlock)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_rwlock_unlock(rwlock)?;
+                this.write_null(dest)?;
             }
             "pthread_rwlock_destroy" => {
                 let [rwlock] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_rwlock_destroy(rwlock)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_rwlock_destroy(rwlock)?;
+                this.write_null(dest)?;
             }
             "pthread_condattr_init" => {
                 let [attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_condattr_init(attr)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_condattr_init(attr)?;
+                this.write_null(dest)?;
             }
             "pthread_condattr_setclock" => {
                 let [attr, clock_id] =
@@ -545,28 +552,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "pthread_condattr_getclock" => {
                 let [attr, clock_id] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_condattr_getclock(attr, clock_id)?;
-                this.write_scalar(result, dest)?;
+                this.pthread_condattr_getclock(attr, clock_id)?;
+                this.write_null(dest)?;
             }
             "pthread_condattr_destroy" => {
                 let [attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_condattr_destroy(attr)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_condattr_destroy(attr)?;
+                this.write_null(dest)?;
             }
             "pthread_cond_init" => {
                 let [cond, attr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_cond_init(cond, attr)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_cond_init(cond, attr)?;
+                this.write_null(dest)?;
             }
             "pthread_cond_signal" => {
                 let [cond] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_cond_signal(cond)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_cond_signal(cond)?;
+                this.write_null(dest)?;
             }
             "pthread_cond_broadcast" => {
                 let [cond] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_cond_broadcast(cond)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_cond_broadcast(cond)?;
+                this.write_null(dest)?;
             }
             "pthread_cond_wait" => {
                 let [cond, mutex] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -578,25 +585,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_cond_destroy" => {
                 let [cond] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_cond_destroy(cond)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_cond_destroy(cond)?;
+                this.write_null(dest)?;
             }
 
             // Threading
             "pthread_create" => {
                 let [thread, attr, start, arg] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_create(thread, attr, start, arg)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_create(thread, attr, start, arg)?;
+                this.write_null(dest)?;
             }
             "pthread_join" => {
                 let [thread, retval] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_join(thread, retval)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_join(thread, retval)?;
+                this.write_null(dest)?;
             }
             "pthread_detach" => {
                 let [thread] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.pthread_detach(thread)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.pthread_detach(thread)?;
+                this.write_null(dest)?;
             }
             "pthread_self" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -605,13 +612,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "sched_yield" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.sched_yield()?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.sched_yield()?;
+                this.write_null(dest)?;
             }
             "nanosleep" => {
                 let [req, rem] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.nanosleep(req, rem)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "sched_getaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
@@ -640,23 +647,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if this.ptr_is_null(mask)? {
                     let einval = this.eval_libc("EFAULT");
                     this.set_last_error(einval)?;
-                    this.write_scalar(Scalar::from_i32(-1), dest)?;
+                    this.write_int(-1, dest)?;
                 } else if cpusetsize == 0 || cpusetsize.checked_rem(chunk_size).unwrap() != 0 {
                     // we only copy whole chunks of size_of::<c_ulong>()
                     let einval = this.eval_libc("EINVAL");
                     this.set_last_error(einval)?;
-                    this.write_scalar(Scalar::from_i32(-1), dest)?;
+                    this.write_int(-1, dest)?;
                 } else if let Some(cpuset) = this.machine.thread_cpu_affinity.get(&thread_id) {
                     let cpuset = cpuset.clone();
                     // we only copy whole chunks of size_of::<c_ulong>()
                     let byte_count = Ord::min(cpuset.as_slice().len(), cpusetsize.try_into().unwrap());
                     this.write_bytes_ptr(mask, cpuset.as_slice()[..byte_count].iter().copied())?;
-                    this.write_scalar(Scalar::from_i32(0), dest)?;
+                    this.write_null(dest)?;
                 } else {
                     // The thread whose ID is pid could not be found
                     let einval = this.eval_libc("ESRCH");
                     this.set_last_error(einval)?;
-                    this.write_scalar(Scalar::from_i32(-1), dest)?;
+                    this.write_int(-1, dest)?;
                 }
             }
             "sched_setaffinity" => {
@@ -683,7 +690,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if this.ptr_is_null(mask)? {
                     let einval = this.eval_libc("EFAULT");
                     this.set_last_error(einval)?;
-                    this.write_scalar(Scalar::from_i32(-1), dest)?;
+                    this.write_int(-1, dest)?;
                 } else {
                     // NOTE: cpusetsize might be smaller than `CpuAffinityMask::CPU_MASK_BYTES`.
                     // Any unspecified bytes are treated as zero here (none of the CPUs are configured).
@@ -695,13 +702,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     match CpuAffinityMask::from_array(this, this.machine.num_cpus, bits_array) {
                         Some(cpuset) => {
                             this.machine.thread_cpu_affinity.insert(thread_id, cpuset);
-                            this.write_scalar(Scalar::from_i32(0), dest)?;
+                            this.write_null(dest)?;
                         }
                         None => {
                             // The intersection between the mask and the available CPUs was empty.
                             let einval = this.eval_libc("EINVAL");
                             this.set_last_error(einval)?;
-                            this.write_scalar(Scalar::from_i32(-1), dest)?;
+                            this.write_int(-1, dest)?;
                         }
                     }
                 }
@@ -759,10 +766,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if bufsize > 256 {
                     let err = this.eval_libc("EIO");
                     this.set_last_error(err)?;
-                    this.write_scalar(Scalar::from_i32(-1), dest)?;
+                    this.write_int(-1, dest)?;
                 } else {
                     this.gen_random(buf, bufsize)?;
-                    this.write_scalar(Scalar::from_i32(0), dest)?;
+                    this.write_null(dest)?;
                 }
             }
             "getrandom" => {

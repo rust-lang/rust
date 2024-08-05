@@ -16,6 +16,8 @@ use crate::shims::unix::*;
 use crate::*;
 use shims::time::system_time_to_duration;
 
+use self::fd::FlockOp;
+
 #[derive(Debug)]
 struct FileHandle {
     file: File,
@@ -124,6 +126,97 @@ impl FileDescription for FileHandle {
             // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
             // for a deeper discussion.
             Ok(Ok(()))
+        }
+    }
+
+    fn flock<'tcx>(
+        &self,
+        communicate_allowed: bool,
+        op: FlockOp,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        #[cfg(target_family = "unix")]
+        {
+            use std::os::fd::AsRawFd;
+
+            use FlockOp::*;
+            // We always use non-blocking call to prevent interpreter from being blocked
+            let (host_op, lock_nb) = match op {
+                SharedLock { nonblocking } => (libc::LOCK_SH | libc::LOCK_NB, nonblocking),
+                ExclusiveLock { nonblocking } => (libc::LOCK_EX | libc::LOCK_NB, nonblocking),
+                Unlock => (libc::LOCK_UN, false),
+            };
+
+            let fd = self.file.as_raw_fd();
+            let ret = unsafe { libc::flock(fd, host_op) };
+            let res = match ret {
+                0 => Ok(()),
+                -1 => {
+                    let err = io::Error::last_os_error();
+                    if !lock_nb && err.kind() == io::ErrorKind::WouldBlock {
+                        throw_unsup_format!("blocking `flock` is not currently supported");
+                    }
+                    Err(err)
+                }
+                ret => panic!("Unexpected return value from flock: {ret}"),
+            };
+            Ok(res)
+        }
+
+        #[cfg(target_family = "windows")]
+        {
+            use std::os::windows::io::AsRawHandle;
+            use windows_sys::Win32::{
+                Foundation::{ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE},
+                Storage::FileSystem::{
+                    LockFileEx, UnlockFile, LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY,
+                },
+            };
+            let fh = self.file.as_raw_handle() as HANDLE;
+
+            use FlockOp::*;
+            let (ret, lock_nb) = match op {
+                SharedLock { nonblocking } | ExclusiveLock { nonblocking } => {
+                    // We always use non-blocking call to prevent interpreter from being blocked
+                    let mut flags = LOCKFILE_FAIL_IMMEDIATELY;
+                    if matches!(op, ExclusiveLock { .. }) {
+                        flags |= LOCKFILE_EXCLUSIVE_LOCK;
+                    }
+                    let ret = unsafe { LockFileEx(fh, flags, 0, !0, !0, &mut std::mem::zeroed()) };
+                    (ret, nonblocking)
+                }
+                Unlock => {
+                    let ret = unsafe { UnlockFile(fh, 0, 0, !0, !0) };
+                    (ret, false)
+                }
+            };
+
+            let res = match ret {
+                TRUE => Ok(()),
+                FALSE => {
+                    let mut err = io::Error::last_os_error();
+                    let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
+                    if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
+                        if lock_nb {
+                            // The io error mapping does not know about these error codes,
+                            // so we translate it to `WouldBlock` manually.
+                            let desc = format!("LockFileEx wouldblock error: {err}");
+                            err = io::Error::new(io::ErrorKind::WouldBlock, desc);
+                        } else {
+                            throw_unsup_format!("blocking `flock` is not currently supported");
+                        }
+                    }
+                    Err(err)
+                }
+                _ => panic!("Unexpected return value: {ret}"),
+            };
+            Ok(res)
+        }
+
+        #[cfg(not(any(target_family = "unix", target_family = "windows")))]
+        {
+            let _ = op;
+            compile_error!("flock is supported only on UNIX and Windows hosts");
         }
     }
 
@@ -302,7 +395,7 @@ fn maybe_sync_file(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn open(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, i32> {
+    fn open(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
         if args.len() < 2 {
             throw_ub_format!(
                 "incorrect number of arguments for `open`: got {}, expected at least 2",
@@ -410,7 +503,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // if the flag contains `O_TMPFILE` then we return a graceful error
                 let eopnotsupp = this.eval_libc("EOPNOTSUPP");
                 this.set_last_error(eopnotsupp)?;
-                return Ok(-1);
+                return Ok(Scalar::from_i32(-1));
             }
         }
 
@@ -431,7 +524,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if path.is_symlink() {
                     let eloop = this.eval_libc("ELOOP");
                     this.set_last_error(eloop)?;
-                    return Ok(-1);
+                    return Ok(Scalar::from_i32(-1));
                 }
             }
             mirror |= o_nofollow;
@@ -447,14 +540,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`open`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let fd = options
             .open(path)
-            .map(|file| this.machine.fds.insert_fd(FileHandle { file, writable }));
+            .map(|file| this.machine.fds.insert_new(FileHandle { file, writable }));
 
-        this.try_unwrap_io_result(fd)
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
 
     fn lseek64(&mut self, fd: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
@@ -483,19 +576,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let communicate = this.machine.communicate();
 
-        let Some(mut file_descriptor) = this.machine.fds.get_mut(fd) else {
+        let Some(mut file_description) = this.machine.fds.get_mut(fd) else {
             return Ok(Scalar::from_i64(this.fd_not_found()?));
         };
-        let result = file_descriptor
+        let result = file_description
             .seek(communicate, seek_from)?
             .map(|offset| i64::try_from(offset).unwrap());
-        drop(file_descriptor);
+        drop(file_description);
 
         let result = this.try_unwrap_io_result(result)?;
         Ok(Scalar::from_i64(result))
     }
 
-    fn unlink(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn unlink(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
@@ -504,18 +597,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`unlink`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let result = remove_file(path).map(|_| 0);
-        this.try_unwrap_io_result(result)
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     fn symlink(
         &mut self,
         target_op: &OpTy<'tcx>,
         linkpath_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar> {
         #[cfg(unix)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
             std::os::unix::fs::symlink(src, dst)
@@ -535,11 +628,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`symlink`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let result = create_link(&target, &linkpath).map(|_| 0);
-        this.try_unwrap_io_result(result)
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     fn macos_fbsd_stat(
@@ -638,7 +731,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         flags_op: &OpTy<'tcx>,    // Should be an `int`
         mask_op: &OpTy<'tcx>,     // Should be an `unsigned int`
         statxbuf_op: &OpTy<'tcx>, // Should be a `struct statx *`
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "statx");
@@ -653,7 +746,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if this.ptr_is_null(statxbuf_ptr)? || this.ptr_is_null(pathname_ptr)? {
             let efault = this.eval_libc("EFAULT");
             this.set_last_error(efault)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let statxbuf = this.deref_pointer_as(statxbuf_op, this.libc_ty_layout("statx"))?;
@@ -695,7 +788,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.eval_libc("EBADF")
             };
             this.set_last_error(ecode)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         // the `_mask_op` parameter specifies the file information that the caller requested.
@@ -717,7 +810,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let metadata = match metadata {
             Some(metadata) => metadata,
-            None => return Ok(-1),
+            None => return Ok(Scalar::from_i32(-1)),
         };
 
         // The `mode` field specifies the type of the file and the permissions over the file for
@@ -810,14 +903,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             &this.project_field_named(&statxbuf, "stx_mtime")?,
         )?;
 
-        Ok(0)
+        Ok(Scalar::from_i32(0))
     }
 
     fn rename(
         &mut self,
         oldpath_op: &OpTy<'tcx>,
         newpath_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let oldpath_ptr = this.read_pointer(oldpath_op)?;
@@ -826,7 +919,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if this.ptr_is_null(oldpath_ptr)? || this.ptr_is_null(newpath_ptr)? {
             let efault = this.eval_libc("EFAULT");
             this.set_last_error(efault)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let oldpath = this.read_path_from_c_str(oldpath_ptr)?;
@@ -836,15 +929,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rename`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let result = rename(oldpath, newpath).map(|_| 0);
 
-        this.try_unwrap_io_result(result)
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn mkdir(&mut self, path_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn mkdir(&mut self, path_op: &OpTy<'tcx>, mode_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         #[cfg_attr(not(unix), allow(unused_variables))]
@@ -860,7 +953,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`mkdir`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         #[cfg_attr(not(unix), allow(unused_mut))]
@@ -876,10 +969,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let result = builder.create(path).map(|_| 0i32);
 
-        this.try_unwrap_io_result(result)
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn rmdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn rmdir(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
@@ -888,12 +981,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`rmdir`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied.into())?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let result = remove_dir(path).map(|_| 0i32);
 
-        this.try_unwrap_io_result(result)
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
     fn opendir(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -1143,27 +1236,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }))
     }
 
-    fn closedir(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn closedir(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let dirp = this.read_target_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
-        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+        Ok(Scalar::from_i32(if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`closedir`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.fd_not_found();
-        }
-
-        if let Some(open_dir) = this.machine.dirs.streams.remove(&dirp) {
+            this.fd_not_found()?
+        } else if let Some(open_dir) = this.machine.dirs.streams.remove(&dirp) {
             if let Some(entry) = open_dir.entry {
                 this.deallocate_ptr(entry, None, MiriMemoryKind::Runtime.into())?;
             }
             drop(open_dir);
-            Ok(0)
+            0
         } else {
-            this.fd_not_found()
-        }
+            this.fd_not_found()?
+        }))
     }
 
     fn ftruncate64(&mut self, fd: i32, length: i128) -> InterpResult<'tcx, Scalar> {
@@ -1176,30 +1266,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
+        let Some(file_description) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
 
         // FIXME: Support ftruncate64 for all FDs
         let FileHandle { file, writable } =
-            file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
             })?;
 
         if *writable {
             if let Ok(length) = length.try_into() {
                 let result = file.set_len(length);
-                drop(file_descriptor);
+                drop(file_description);
                 let result = this.try_unwrap_io_result(result.map(|_| 0i32))?;
                 Ok(Scalar::from_i32(result))
             } else {
-                drop(file_descriptor);
+                drop(file_description);
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
                 Ok(Scalar::from_i32(-1))
             }
         } else {
-            drop(file_descriptor);
+            drop(file_description);
             // The file is not writable
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -1207,7 +1297,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn fsync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn fsync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         // On macOS, `fsync` (unlike `fcntl(F_FULLFSYNC)`) does not wait for the
         // underlying disk to finish writing. In the interest of host compatibility,
         // we conservatively implement this with `sync_all`, which
@@ -1221,28 +1311,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fsync`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.fd_not_found();
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        return self.ffullsync_fd(fd);
+        self.ffullsync_fd(fd)
     }
 
-    fn ffullsync_fd(&mut self, fd: i32) -> InterpResult<'tcx, i32> {
+    fn ffullsync_fd(&mut self, fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
-            return Ok(this.fd_not_found()?);
+        let Some(file_description) = this.machine.fds.get(fd) else {
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         // Only regular files support synchronization.
         let FileHandle { file, writable } =
-            file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
             })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_all);
-        drop(file_descriptor);
-        this.try_unwrap_io_result(io_result)
+        drop(file_description);
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
-    fn fdatasync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn fdatasync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -1251,20 +1341,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fdatasync`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.fd_not_found();
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
-            return Ok(this.fd_not_found()?);
+        let Some(file_description) = this.machine.fds.get(fd) else {
+            return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         // Only regular files support synchronization.
         let FileHandle { file, writable } =
-            file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
             })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_data);
-        drop(file_descriptor);
-        this.try_unwrap_io_result(io_result)
+        drop(file_description);
+        Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
     fn sync_file_range(
@@ -1302,18 +1392,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         }
 
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
+        let Some(file_description) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         // Only regular files support synchronization.
         let FileHandle { file, writable } =
-            file_descriptor.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!(
                     "`sync_data_range` is only supported on file-backed file descriptors"
                 )
             })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_data);
-        drop(file_descriptor);
+        drop(file_description);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
     }
 
@@ -1441,7 +1531,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
     }
-    fn mkstemp(&mut self, template_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn mkstemp(&mut self, template_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         use rand::seq::SliceRandom;
 
         // POSIX defines the template string.
@@ -1472,7 +1562,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.reject_in_isolation("`mkstemp`", reject_with)?;
             let eacc = this.eval_libc("EACCES");
             this.set_last_error(eacc)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         // Get the bytes of the suffix we expect in _target_ encoding.
@@ -1490,7 +1580,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if last_six_char_bytes != suffix_bytes {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         // At this point we know we have 6 ASCII 'X' characters as a suffix.
@@ -1544,8 +1634,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             match file {
                 Ok(f) => {
-                    let fd = this.machine.fds.insert_fd(FileHandle { file: f, writable: true });
-                    return Ok(fd);
+                    let fd = this.machine.fds.insert_new(FileHandle { file: f, writable: true });
+                    return Ok(Scalar::from_i32(fd));
                 }
                 Err(e) =>
                     match e.kind() {
@@ -1556,7 +1646,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // "On error, -1 is returned, and errno is set to
                             // indicate the error"
                             this.set_last_error_from_io_error(e)?;
-                            return Ok(-1);
+                            return Ok(Scalar::from_i32(-1));
                         }
                     },
             }
@@ -1565,7 +1655,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // We ran out of attempts to create the file, return an error.
         let eexist = this.eval_libc("EEXIST");
         this.set_last_error(eexist)?;
-        Ok(-1)
+        Ok(Scalar::from_i32(-1))
     }
 }
 
@@ -1609,11 +1699,11 @@ impl FileMetadata {
         ecx: &mut MiriInterpCx<'tcx>,
         fd: i32,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
-        let Some(file_descriptor) = ecx.machine.fds.get(fd) else {
+        let Some(file_description) = ecx.machine.fds.get(fd) else {
             return ecx.fd_not_found().map(|_: i32| None);
         };
 
-        let file = &file_descriptor
+        let file = &file_description
             .downcast_ref::<FileHandle>()
             .ok_or_else(|| {
                 err_unsup_format!(
@@ -1623,7 +1713,7 @@ impl FileMetadata {
             .file;
 
         let metadata = file.metadata();
-        drop(file_descriptor);
+        drop(file_description);
         FileMetadata::from_meta(ecx, metadata)
     }
 

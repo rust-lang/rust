@@ -476,6 +476,19 @@ Miri provides some `extern` functions that programs can import to access
 Miri-specific functionality. They are declared in
 [/tests/utils/miri\_extern.rs](/tests/utils/miri_extern.rs).
 
+## Entry point for no-std binaries
+
+Binaries that do not use the standard library are expected to declare a function like this so that
+Miri knows where it is supposed to start execution:
+
+```rust
+#[cfg(miri)]
+#[no_mangle]
+fn miri_start(argc: isize, argv: *const *const u8) -> isize {
+    // Call the actual start function that your project implements, based on your target's conventions.
+}
+```
+
 ## Contributing and getting help
 
 If you want to contribute to Miri, great!  Please check out our

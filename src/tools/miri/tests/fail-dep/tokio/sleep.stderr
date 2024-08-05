@@ -2,7 +2,7 @@ error: unsupported operation: returning ready events from epoll_wait is not yet 
   --> CARGO_REGISTRY/.../epoll.rs:LL:CC
    |
 LL | /         syscall!(epoll_wait(
-LL | |             self.ep,
+LL | |             self.ep.as_raw_fd(),
 LL | |             events.as_mut_ptr(),
 LL | |             events.capacity() as i32,
 LL | |             timeout,

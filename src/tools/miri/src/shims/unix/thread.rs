@@ -10,7 +10,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         _attr: &OpTy<'tcx>,
         start_routine: &OpTy<'tcx>,
         arg: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
         let thread_info_place = this.deref_pointer_as(thread, this.libc_ty_layout("pthread_t"))?;
@@ -27,14 +27,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.layout_of(this.tcx.types.usize)?,
         )?;
 
-        Ok(0)
+        Ok(())
     }
 
-    fn pthread_join(
-        &mut self,
-        thread: &OpTy<'tcx>,
-        retval: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
+    fn pthread_join(&mut self, thread: &OpTy<'tcx>, retval: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
         if !this.ptr_is_null(this.read_pointer(retval)?)? {
@@ -45,10 +41,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
         this.join_thread_exclusive(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
-        Ok(0)
+        Ok(())
     }
 
-    fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn pthread_detach(&mut self, thread: &OpTy<'tcx>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
         let thread_id = this.read_scalar(thread)?.to_int(this.libc_ty_layout("pthread_t").size)?;
@@ -57,7 +53,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             /*allow_terminated_joined*/ false,
         )?;
 
-        Ok(0)
+        Ok(())
     }
 
     fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar> {
@@ -113,11 +109,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })
     }
 
-    fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {
+    fn sched_yield(&mut self) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
         this.yield_active_thread();
 
-        Ok(0)
+        Ok(())
     }
 }
