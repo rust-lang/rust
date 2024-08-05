@@ -48,6 +48,7 @@ build/
 /dist/
 /unicode-downloads
 /target
+/library/target
 /src/bootstrap/target
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`

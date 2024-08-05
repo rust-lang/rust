@@ -23,8 +23,6 @@ run-make/no-alloc-shim/Makefile
 run-make/pdb-buildinfo-cl-cmd/Makefile
 run-make/pgo-gen-lto/Makefile
 run-make/pgo-indirect-call-promotion/Makefile
-run-make/print-calling-conventions/Makefile
-run-make/print-target-list/Makefile
 run-make/raw-dylib-alt-calling-convention/Makefile
 run-make/raw-dylib-c/Makefile
 run-make/redundant-libs/Makefile

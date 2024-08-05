@@ -54,6 +54,7 @@ type ExceptionList = &'static [(&'static str, &'static str)];
 pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>, &[&str])] = &[
     // The root workspace has to be first for check_rustfix to work.
     (".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES)), &[]),
+    ("library", EXCEPTIONS_STDLIB, Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES)), &[]),
     // Outside of the alphabetical section because rustfmt formats it using multiple lines.
     (
         "compiler/rustc_codegen_cranelift",
@@ -90,7 +91,6 @@ const EXCEPTIONS: ExceptionList = &[
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
-    ("fortanix-sgx-abi", "MPL-2.0"),                         // libstd but only for `sgx` target. FIXME: this dependency violates the documentation comment above.
     ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
     ("mdbook", "MPL-2.0"),                                   // mdbook
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
@@ -105,6 +105,17 @@ const EXCEPTIONS: ExceptionList = &[
     ("wat", "Apache-2.0 WITH LLVM-exception"),               // rustc
     ("wit-component", "Apache-2.0 WITH LLVM-exception"),     // rustc
     ("wit-parser", "Apache-2.0 WITH LLVM-exception"),        // rustc
+    // tidy-alphabetical-end
+];
+
+/// These are exceptions to Rust's permissive licensing policy, and
+/// should be considered bugs. Exceptions are only allowed in Rust
+/// tooling. It is _crucial_ that no exception crates be dependencies
+/// of the Rust runtime (std/test).
+#[rustfmt::skip]
+const EXCEPTIONS_STDLIB: ExceptionList = &[
+    // tidy-alphabetical-start
+    ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target. FIXME: this dependency violates the documentation comment above.
     // tidy-alphabetical-end
 ];
 
@@ -228,10 +239,6 @@ const EXCEPTIONS_NON_STANDARD_LICENSE_DEPS: &[&str] = &[
     "ring",
 ];
 
-/// These are the root crates that are part of the runtime. The licenses for
-/// these and all their dependencies *must not* be in the exception list.
-const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
-
 const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
@@ -240,7 +247,6 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
@@ -256,7 +262,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "cc",
     "cfg-if",
     "cfg_aliases",
-    "compiler_builtins",
     "cpufeatures",
     "crc32fast",
     "crossbeam-channel",
@@ -276,7 +281,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "digest",
     "displaydoc",
     "dissimilar",
-    "dlmalloc",
     "either",
     "elsa",
     "ena",
@@ -291,7 +295,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
-    "fortanix-sgx-abi",
     "generic-array",
     "getopts",
     "getrandom",
@@ -354,12 +357,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pulldown-cmark-escape",
     "punycode",
     "quote",
-    "r-efi",
-    "r-efi-alloc",
     "rand",
     "rand_chacha",
     "rand_core",
-    "rand_xorshift",
     "rand_xoshiro",
     "redox_syscall",
     "regex",
@@ -429,7 +429,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-security",
     "unicode-width",
     "unicode-xid",
-    "unwinding",
     "valuable",
     "version_check",
     "wasi",
@@ -460,6 +459,46 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerofrom-derive",
     "zerovec",
     "zerovec-derive",
+    // tidy-alphabetical-end
+];
+
+const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
+    "addr2line",
+    "adler",
+    "allocator-api2",
+    "cc",
+    "cfg-if",
+    "compiler_builtins",
+    "dlmalloc",
+    "fortanix-sgx-abi",
+    "getopts",
+    "gimli",
+    "hashbrown",
+    "hermit-abi",
+    "libc",
+    "memchr",
+    "miniz_oxide",
+    "object",
+    "r-efi",
+    "r-efi-alloc",
+    "rand",
+    "rand_core",
+    "rand_xorshift",
+    "rustc-demangle",
+    "unicode-width",
+    "unwinding",
+    "wasi",
+    "windows-sys",
+    "windows-targets",
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_gnullvm",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
     // tidy-alphabetical-end
 ];
 
@@ -556,9 +595,8 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
             check_permitted_dependencies(&metadata, workspace, permitted_deps, crates, bad);
         }
 
-        if workspace == "." {
-            let runtime_ids = compute_runtime_crates(&metadata);
-            check_runtime_license_exceptions(&metadata, runtime_ids, bad);
+        if workspace == "library" {
+            check_runtime_license_exceptions(&metadata, bad);
             checked_runtime_licenses = true;
         }
     }
@@ -583,16 +621,8 @@ pub fn has_missing_submodule(root: &Path, submodules: &[&str]) -> bool {
 ///
 /// Unlike for tools we don't allow exceptions to the `LICENSES` list for the runtime with the sole
 /// exception of `fortanix-sgx-abi` which is only used on x86_64-fortanix-unknown-sgx.
-fn check_runtime_license_exceptions(
-    metadata: &Metadata,
-    runtime_ids: HashSet<&PackageId>,
-    bad: &mut bool,
-) {
+fn check_runtime_license_exceptions(metadata: &Metadata, bad: &mut bool) {
     for pkg in &metadata.packages {
-        if !runtime_ids.contains(&pkg.id) {
-            // Only checking dependencies of runtime libraries here.
-            continue;
-        }
         if pkg.source.is_none() {
             // No need to check local packages.
             continue;
@@ -610,20 +640,6 @@ fn check_runtime_license_exceptions(
             // In general, these should never be added and this exception
             // should not be taken as precedent for any new target.
             if pkg.name == "fortanix-sgx-abi" && pkg.license.as_deref() == Some("MPL-2.0") {
-                continue;
-            }
-
-            // This exception is due to the fact that the feature set of the
-            // `object` crate is different between rustc and libstd. In the
-            // standard library only a conservative set of features are enabled
-            // which notably does not include the `wasm` feature which pulls in
-            // this dependency. In the compiler, however, the `wasm` feature is
-            // enabled. This exception is intended to be here so long as the
-            // `EXCEPTIONS` above contains `wasmparser`, but once that goes away
-            // this can be removed.
-            if pkg.name == "wasmparser"
-                && pkg.license.as_deref() == Some("Apache-2.0 WITH LLVM-exception")
-            {
                 continue;
             }
 
@@ -756,16 +772,6 @@ fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package 
 
 fn pkg_from_id<'a>(metadata: &'a Metadata, id: &PackageId) -> &'a Package {
     metadata.packages.iter().find(|p| &p.id == id).unwrap()
-}
-
-/// Finds all the packages that are in the rust runtime.
-fn compute_runtime_crates<'a>(metadata: &'a Metadata) -> HashSet<&'a PackageId> {
-    let mut result = HashSet::new();
-    for name in RUNTIME_CRATES {
-        let id = &pkg_from_name(metadata, name).id;
-        deps_of(metadata, id, &mut result);
-    }
-    result
 }
 
 /// Recursively find all dependencies.

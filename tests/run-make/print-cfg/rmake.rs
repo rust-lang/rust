@@ -6,7 +6,6 @@
 //! It also checks that some targets have the correct set cfgs.
 
 use std::collections::HashSet;
-use std::ffi::OsString;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
@@ -91,10 +90,8 @@ fn check(PrintCfg { target, includes, disallow }: PrintCfg) {
     // --print=cfg=PATH
     {
         let tmp_path = PathBuf::from(format!("{target}.cfg"));
-        let mut print_arg = OsString::from("--print=cfg=");
-        print_arg.push(tmp_path.as_os_str());
 
-        rustc().target(target).arg(print_arg).run();
+        rustc().target(target).print(&format!("cfg={}", tmp_path.display())).run();
 
         let output = rfs::read_to_string(&tmp_path);
 
