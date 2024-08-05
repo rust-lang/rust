@@ -64,7 +64,6 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
-            sysroot_query_metadata: self.query_sysroot_metadata,
             ..Default::default()
         };
         let no_progress = &|_| ();

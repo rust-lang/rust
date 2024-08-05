@@ -16,7 +16,7 @@ use ide_db::{
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{
-    CargoConfig, ManifestPath, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
+    CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
 };
 use span::Span;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
@@ -247,7 +247,7 @@ impl ProjectFolders {
             let mut file_set_roots: Vec<VfsPath> = vec![];
             let mut entries = vec![];
 
-            if let Some(manifest) = ws.manifest().map(ManifestPath::as_ref) {
+            if let Some(manifest) = ws.manifest().map(|it| it.to_path_buf()) {
                 file_set_roots.push(VfsPath::from(manifest.to_owned()));
                 entries.push(manifest.to_owned());
             }

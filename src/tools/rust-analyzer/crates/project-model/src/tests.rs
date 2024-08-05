@@ -12,8 +12,8 @@ use span::FileId;
 use triomphe::Arc;
 
 use crate::{
-    workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides, ManifestPath, ProjectJson,
-    ProjectJsonData, ProjectWorkspace, Sysroot, WorkspaceBuildScripts,
+    sysroot::SysrootMode, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
+    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot, WorkspaceBuildScripts,
 };
 
 fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
@@ -146,7 +146,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir))
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
@@ -274,10 +274,9 @@ fn crate_graph_dedup() {
 }
 
 #[test]
+// FIXME Remove the ignore
+#[ignore = "requires nightly until the sysroot ships a cargo workspace for library on stable"]
 fn smoke_test_real_sysroot_cargo() {
-    if std::env::var("SYSROOT_CARGO_METADATA").is_err() {
-        return;
-    }
     let file_map = &mut FxHashMap::<AbsPathBuf, FileId>::default();
     let meta: Metadata = get_test_json_file("hello-world-metadata.json");
     let manifest_path =
@@ -286,8 +285,8 @@ fn smoke_test_real_sysroot_cargo() {
     let sysroot = Sysroot::discover(
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
-        true,
     );
+    assert!(matches!(sysroot.mode(), SysrootMode::Workspace(_)));
 
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
