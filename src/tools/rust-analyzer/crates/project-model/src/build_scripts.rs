@@ -78,7 +78,7 @@ impl WorkspaceBuildScripts {
                 cmd.args(&config.extra_args);
 
                 cmd.arg("--manifest-path");
-                cmd.arg(manifest_path.as_ref());
+                cmd.arg(manifest_path);
 
                 if let Some(target_dir) = &config.target_dir {
                     cmd.arg("--target-dir").arg(target_dir);

@@ -194,7 +194,7 @@ impl ProjectWorkspace {
     ) -> anyhow::Result<ProjectWorkspace> {
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
-                let file = fs::read_to_string(project_json.as_ref())
+                let file = fs::read_to_string(project_json)
                     .with_context(|| format!("Failed to read json file {project_json}"))?;
                 let data = serde_json::from_str(&file)
                     .with_context(|| format!("Failed to deserialize json file {project_json}"))?;
@@ -213,28 +213,22 @@ impl ProjectWorkspace {
             }
             ProjectManifest::CargoToml(cargo_toml) => {
                 let sysroot = match (&config.sysroot, &config.sysroot_src) {
-                    (Some(RustLibSource::Discover), None) => Sysroot::discover(
-                        cargo_toml.parent(),
-                        &config.extra_env,
-                        config.sysroot_query_metadata,
-                    ),
+                    (Some(RustLibSource::Discover), None) => {
+                        Sysroot::discover(cargo_toml.parent(), &config.extra_env)
+                    }
                     (Some(RustLibSource::Discover), Some(sysroot_src)) => {
                         Sysroot::discover_with_src_override(
                             cargo_toml.parent(),
                             &config.extra_env,
                             sysroot_src.clone(),
-                            config.sysroot_query_metadata,
                         )
                     }
-                    (Some(RustLibSource::Path(path)), None) => Sysroot::discover_sysroot_src_dir(
-                        path.clone(),
-                        config.sysroot_query_metadata,
-                    ),
-                    (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => Sysroot::load(
-                        Some(sysroot.clone()),
-                        Some(sysroot_src.clone()),
-                        config.sysroot_query_metadata,
-                    ),
+                    (Some(RustLibSource::Path(path)), None) => {
+                        Sysroot::discover_sysroot_src_dir(path.clone())
+                    }
+                    (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => {
+                        Sysroot::load(Some(sysroot.clone()), Some(sysroot_src.clone()))
+                    }
                     (None, _) => Sysroot::empty(),
                 };
                 tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
@@ -260,6 +254,7 @@ impl ProjectWorkspace {
                             ..config.clone()
                         },
                         &sysroot,
+                        false,
                         progress,
                     ) {
                         Ok(meta) => {
@@ -312,7 +307,8 @@ impl ProjectWorkspace {
                     cargo_toml.parent(),
                     config,
                     &sysroot,
-                    progress,
+                        false,
+                        progress,
                 )
                 .with_context(|| {
                     format!(
@@ -350,8 +346,7 @@ impl ProjectWorkspace {
         extra_env: &FxHashMap<String, String>,
         cfg_overrides: &CfgOverrides,
     ) -> ProjectWorkspace {
-        let sysroot =
-            Sysroot::load(project_json.sysroot.clone(), project_json.sysroot_src.clone(), false);
+        let sysroot = Sysroot::load(project_json.sysroot.clone(), project_json.sysroot_src.clone());
         let cfg_config = RustcCfgConfig::Rustc(&sysroot);
         let data_layout_config = RustcDataLayoutConfig::Rustc(&sysroot);
         let toolchain = match get_toolchain_version(
@@ -386,12 +381,8 @@ impl ProjectWorkspace {
     ) -> anyhow::Result<ProjectWorkspace> {
         let dir = detached_file.parent();
         let sysroot = match &config.sysroot {
-            Some(RustLibSource::Path(path)) => {
-                Sysroot::discover_sysroot_src_dir(path.clone(), config.sysroot_query_metadata)
-            }
-            Some(RustLibSource::Discover) => {
-                Sysroot::discover(dir, &config.extra_env, config.sysroot_query_metadata)
-            }
+            Some(RustLibSource::Path(path)) => Sysroot::discover_sysroot_src_dir(path.clone()),
+            Some(RustLibSource::Discover) => Sysroot::discover(dir, &config.extra_env),
             None => Sysroot::empty(),
         };
 
@@ -412,14 +403,14 @@ impl ProjectWorkspace {
         );
 
         let cargo_script =
-            CargoWorkspace::fetch_metadata(detached_file, dir, config, &sysroot, &|_| ()).ok().map(
-                |ws| {
+            CargoWorkspace::fetch_metadata(detached_file, dir, config, &sysroot, false, &|_| ())
+                .ok()
+                .map(|ws| {
                     (
                         CargoWorkspace::new(ws, detached_file.clone()),
                         WorkspaceBuildScripts::default(),
                     )
-                },
-            );
+                });
 
         let cargo_config_extra_env = cargo_config_env(detached_file, &config.extra_env, &sysroot);
         Ok(ProjectWorkspace {
@@ -651,7 +642,7 @@ impl ProjectWorkspace {
             ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, .. } => {
                 iter::once(PackageRoot {
                     is_local: true,
-                    include: vec![file.as_ref().to_owned()],
+                    include: vec![file.to_path_buf()],
                     exclude: Vec::new(),
                 })
                 .chain(cargo_script.iter().flat_map(|(cargo, build_scripts)| {

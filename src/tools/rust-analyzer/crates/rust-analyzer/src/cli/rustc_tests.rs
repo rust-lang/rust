@@ -69,7 +69,7 @@ impl Tester {
         let cargo_config =
             CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
 
-        let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env, false);
+        let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
         let data_layout = target_data_layout::get(
             RustcDataLayoutConfig::Rustc(&sysroot),
             None,

@@ -151,6 +151,10 @@ impl AbsPathBuf {
     pub fn push<P: AsRef<Utf8Path>>(&mut self, suffix: P) {
         self.0.push(suffix)
     }
+
+    pub fn join(&self, path: impl AsRef<Utf8Path>) -> Self {
+        Self(self.0.join(path))
+    }
 }
 
 impl fmt::Display for AbsPathBuf {
