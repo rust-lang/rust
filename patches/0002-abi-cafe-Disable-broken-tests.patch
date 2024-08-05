@@ -11,7 +11,7 @@ diff --git a/src/report.rs b/src/report.rs
 index 958ab43..dcf1044 100644
 --- a/src/report.rs
 +++ b/src/report.rs
-@@ -48,6 +48,42 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn Toolchain, callee: &dyn Toolc
+@@ -48,6 +48,58 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn Toolchain, callee: &dyn Toolc
      //
      // THIS AREA RESERVED FOR VENDORS TO APPLY PATCHES
  
@@ -39,12 +39,28 @@ index 958ab43..dcf1044 100644
 +        }
 +    }
 +
-+    if cfg!(target_arch = "x86_64") && test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::Rust {
-+        result.check = Busted(Run);
++    if cfg!(all(target_arch = "x86_64", unix)) {
++        if test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::Rust {
++            result.check = Busted(Run);
++        }
 +    }
 +
-+    if cfg!(windows) && (test.test == "OptionU128" || test.test == "I64Array" || test.test == "simple") {
-+        result.run = Skip; // Gives SIGILL on x86_64 windows.
++    if cfg!(all(target_arch = "x86_64", windows)) {
++        if test.test == "OptionU128" && test.options.convention == CallingConvention::Rust {
++            result.check = Busted(Check);
++        }
++
++        if test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && (test.caller == "rustc" || test.options.repr == LangRepr::Rust) {
++            result.check = Busted(Run);
++        }
++
++        if test.test == "simple" && test.options.convention == CallingConvention::Rust {
++            result.check = Busted(Check);
++        }
++
++        if test.test == "simple" && test.options.convention == CallingConvention::Rust && test.caller == "rustc" {
++            result.check = Busted(Run);
++        }
 +    }
 +
 +    if test.test == "f16" || test.test == "f128" {
