@@ -10,10 +10,7 @@ edition = "2021"
 
 [dependencies]
 core = { path = "../core" }
-compiler_builtins = { version = "0.1.114", features = ['rustc-dep-of-std'] }
-
-[target.'cfg(not(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64")))'.dependencies]
-compiler_builtins = { version = "0.1.114", features = ["no-f16-f128"] }
+compiler_builtins = { version = "0.1.117", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
