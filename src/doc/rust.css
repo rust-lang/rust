@@ -351,7 +351,11 @@ a.test-arrow {
 }
 
 .structfield {  
-    padding-bottom: 0.2rem; 
+    padding-bottom: 0.2rem;
+    margin-block-start: 1.33em;
+    margin-block-end: 1.33em;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
 }
 
 .error-described {
