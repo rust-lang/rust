@@ -662,9 +662,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn get_suggestions(
         &self,
-        ty: Ty<'tcx>, // args.type_at(0) / ty
+        self_ty: Ty<'tcx>,
         def_id: DefId,
-        target_type: bool, // false / true
+        target_type: bool,
         param_env: ty::ParamEnv<'tcx>,
         args: Option<&ty::GenericArgs<'tcx>>,
     ) -> Vec<String> {
@@ -685,13 +685,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let args = args.unwrap_or_else(|| empty_args(def_id));
         tcx.for_each_relevant_impl(
             tcx.parent(def_id), // Trait `DefId`
-            ty,                 // `Self` type
+            self_ty,
             |impl_def_id| {
                 let impl_args = empty_args(impl_def_id);
                 let impl_trait_ref =
                     tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
                 let impl_self_ty = impl_trait_ref.self_ty();
-                if self.infcx.can_eq(param_env, impl_self_ty, ty) {
+                if self.infcx.can_eq(param_env, impl_self_ty, self_ty) {
                     // The expr's self type could conform to this impl's self type.
                 } else {
                     // Nope, don't bother.
@@ -714,12 +714,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             return;
                         };
                         let target = header.trait_ref.skip_binder().args.type_at(0);
-                        let _ty = header.trait_ref.skip_binder().args.type_at(1);
-                        if _ty == ty {
+                        let ty = header.trait_ref.skip_binder().args.type_at(1);
+                        if ty == self_ty {
                             if target_type {
                                 paths.push(format!("{target}"));
                             } else {
-                                paths.push(format!("<{ty} as Into<{target}>>::into"));
+                                paths.push(format!("<{self_ty} as Into<{target}>>::into"));
                             }
                             found = true;
                         }
