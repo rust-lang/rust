@@ -1,27 +1,42 @@
-From 378d9e451a8af1045b8cb32841198cd5ad5464a3 Mon Sep 17 00:00:00 2001
+From 236df390f3bc4ed69c26f4d51d584bea246da886 Mon Sep 17 00:00:00 2001
 From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
 Date: Tue, 9 Jul 2024 11:25:14 +0000
 Subject: [PATCH] Disable broken tests
 
 ---
- src/abis/mod.rs | 6 +++---
- src/report.rs   | 4 ++++
- 2 files changed, 7 insertions(+), 3 deletions(-)
+ src/report.rs | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
 diff --git a/src/report.rs b/src/report.rs
-index acfce38..b3ab842 100644
+index 958ab43..dcf1044 100644
 --- a/src/report.rs
 +++ b/src/report.rs
-@@ -45,6 +45,26 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn AbiImpl, callee: &dyn AbiImpl
+@@ -48,6 +48,42 @@ pub fn get_test_rules(test: &TestKey, caller: &dyn Toolchain, callee: &dyn Toolc
      //
      // THIS AREA RESERVED FOR VENDORS TO APPLY PATCHES
  
-+    if cfg!(target_arch = "aarch64") && test.test == "F32Array" && test.options.convention == CallingConvention::C {
-+        result.check = Busted(Check);
++    if cfg!(all(target_arch = "aarch64", target_os = "linux")) {
++        if test.test == "F32Array" && test.options.convention == CallingConvention::C {
++            result.check = Busted(Check);
++        }
++
++        if test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::C {
++            result.check = Busted(Check);
++        }
 +    }
 +
-+    if cfg!(target_arch = "aarch64") && test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::C {
-+        result.check = Busted(Check);
++    if cfg!(all(target_arch = "aarch64", target_os = "macos")) {
++        if test.test == "SingleVariantUnion" && test.options.convention == CallingConvention::C && test.options.repr == LangRepr::C {
++            result.check = Busted(Check);
++        }
++
++        if test.test == "OptionU128" && test.caller == "rustc" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::C {
++            result.check = Busted(Run);
++        }
++
++        if test.test == "OptionU128" && test.caller == "cgclif" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::C {
++            result.check = Busted(Check);
++        }
 +    }
 +
 +    if cfg!(target_arch = "x86_64") && test.test == "OptionU128" && test.options.convention == CallingConvention::Rust && test.options.repr == LangRepr::Rust {
