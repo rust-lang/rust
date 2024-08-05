@@ -1,7 +1,7 @@
 [package]
 name = "vfs-notify"
 version = "0.0.0"
-repository = "https://github.com/rust-lang/rust-analyzer"
+repository.workspace = true
 description = "Implementation of `loader::Handle` for rust-analyzer."
 
 authors.workspace = true
