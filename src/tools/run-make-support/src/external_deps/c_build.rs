@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use super::cygpath::get_windows_path;
 use crate::artifact_names::{dynamic_lib_name, static_lib_name};
 use crate::external_deps::cc::{cc, cxx};
 use crate::external_deps::llvm::llvm_ar;
@@ -44,8 +43,7 @@ pub fn build_native_dynamic_lib(lib_name: &str) -> PathBuf {
     };
     let obj_file = if is_msvc() { format!("{lib_name}.obj") } else { format!("{lib_name}.o") };
     if is_msvc() {
-        let mut out_arg = "-out:".to_owned();
-        out_arg.push_str(&get_windows_path(&lib_path));
+        let out_arg = format!("-out:{lib_path}");
         cc().input(&obj_file).args(&["-link", "-dll", &out_arg]).run();
     } else if is_darwin() {
         cc().out_exe(&lib_path).input(&obj_file).args(&["-dynamiclib", "-Wl,-dylib"]).run();

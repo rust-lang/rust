@@ -1,7 +1,5 @@
 use std::path::Path;
 
-// FIXME(jieyouxu): can we get rid of the `cygpath` external dependency?
-use super::cygpath::get_windows_path;
 use crate::command::Command;
 use crate::{env_var, is_msvc, is_windows, uname};
 
@@ -97,12 +95,12 @@ impl Cc {
 
         if is_msvc() {
             path.set_extension("exe");
-            let fe_path = get_windows_path(&path);
+            let fe_path = path.clone();
             path.set_extension("");
             path.set_extension("obj");
-            let fo_path = get_windows_path(path);
-            self.cmd.arg(format!("-Fe:{fe_path}"));
-            self.cmd.arg(format!("-Fo:{fo_path}"));
+            let fo_path = path;
+            self.cmd.arg(format!("-Fe:{}", fe_path.to_str().unwrap()));
+            self.cmd.arg(format!("-Fo:{}", fo_path.to_str().unwrap()));
         } else {
             self.cmd.arg("-o");
             self.cmd.arg(name);
