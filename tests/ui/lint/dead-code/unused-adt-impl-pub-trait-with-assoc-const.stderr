@@ -21,7 +21,7 @@ LL | pub struct T2(i32);
    = help: consider removing this field
 
 error: trait `Trait1` is never used
-  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:7:7
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:6:7
    |
 LL | trait Trait1 {
    |       ^^^^^^
