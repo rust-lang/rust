@@ -541,16 +541,6 @@ impl Waker {
     ///
     /// If an owned `Waker` is needed, `clone()` this one.
     ///
-    /// # Warning
-    ///
-    /// When implementing a runtime-agnostic future which wraps other future(s),
-    /// do not use this function as a way to be able to call `poll` methods
-    /// when you don't have your caller's `Context` available.
-    ///
-    /// Using a no-op waker for that purpose would cause wakeups to be lost:
-    /// the inner future would store only the no-op waker,
-    /// replacing the proper waker for the waiting task.
-    ///
     /// # Examples
     ///
     /// ```
@@ -807,16 +797,6 @@ impl LocalWaker {
     /// do not need to do anything specific if it happens.
     ///
     /// If an owned `LocalWaker` is needed, `clone()` this one.
-    ///
-    /// # Warning
-    ///
-    /// When implementing a runtime-agnostic future which wraps other future(s),
-    /// do not use this function as a way to be able to call `poll` methods
-    /// when you don't have your caller's `Context` available.
-    ///
-    /// Using a no-op waker for that purpose would cause wakeups to be lost:
-    /// the inner future would store only the no-op waker,
-    /// replacing the proper waker for the waiting task.
     ///
     /// # Examples
     ///
