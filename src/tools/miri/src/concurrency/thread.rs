@@ -377,10 +377,6 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
             return_place,
             locals,
             extra,
-            body: _,
-            instance: _,
-            return_to_block: _,
-            loc: _,
             // There are some private fields we cannot access; they contain no tags.
             ..
         } = self;

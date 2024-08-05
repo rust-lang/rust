@@ -1105,12 +1105,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Make an attempt to get at the instance of the function this is inlined from.
         let instance: Option<_> = try {
             let scope = frame.current_source_info()?.scope;
-            let inlined_parent = frame.body.source_scopes[scope].inlined_parent_scope?;
-            let source = &frame.body.source_scopes[inlined_parent];
+            let inlined_parent = frame.body().source_scopes[scope].inlined_parent_scope?;
+            let source = &frame.body().source_scopes[inlined_parent];
             source.inlined.expect("inlined_parent_scope points to scope without inline info").0
         };
         // Fall back to the instance of the function itself.
-        let instance = instance.unwrap_or(frame.instance);
+        let instance = instance.unwrap_or(frame.instance());
         // Now check the crate it is in. We could try to be clever here and e.g. check if this is
         // the same crate as `start_fn`, but that would not work for running std tests in Miri, so
         // we'd need some more hacks anyway. So we just check the name of the crate. If someone
@@ -1350,9 +1350,9 @@ impl<'tcx> MiriMachine<'tcx> {
 
     /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
     pub fn is_user_relevant(&self, frame: &Frame<'tcx, Provenance>) -> bool {
-        let def_id = frame.instance.def_id();
+        let def_id = frame.instance().def_id();
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
-            && !frame.instance.def.requires_caller_location(self.tcx)
+            && !frame.instance().def.requires_caller_location(self.tcx)
     }
 }
 

@@ -48,7 +48,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn handle_miri_start_unwind(&mut self, payload: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        trace!("miri_start_unwind: {:?}", this.frame().instance);
+        trace!("miri_start_unwind: {:?}", this.frame().instance());
 
         let payload = this.read_immediate(payload)?;
         let thread = this.active_thread_mut();
@@ -124,7 +124,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // and we are unwinding, so we should catch that.
             trace!(
                 "unwinding: found catch_panic frame during unwinding: {:?}",
-                this.frame().instance
+                this.frame().instance()
             );
 
             // We set the return value of `try` to 1, since there was a panic.

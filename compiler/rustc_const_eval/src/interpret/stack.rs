@@ -61,10 +61,10 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
     /// The MIR for the function called on this frame.
-    pub body: &'tcx mir::Body<'tcx>,
+    pub(super) body: &'tcx mir::Body<'tcx>,
 
     /// The def_id and args of the current function.
-    pub instance: ty::Instance<'tcx>,
+    pub(super) instance: ty::Instance<'tcx>,
 
     /// Extra data for the machine.
     pub extra: Extra,
@@ -73,7 +73,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     // Return place and locals
     ////////////////////////////////////////////////////////////////////////////////
     /// Work to perform when returning from this function.
-    pub return_to_block: StackPopCleanup,
+    return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
@@ -101,7 +101,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// frames without cleanup code).
     ///
     /// Needs to be public because ConstProp does unspeakable things to it.
-    pub loc: Either<mir::Location, Span>,
+    pub(super) loc: Either<mir::Location, Span>,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug)] // Miri debug-prints these
@@ -267,6 +267,14 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     /// Used by priroda.
     pub fn current_loc(&self) -> Either<mir::Location, Span> {
         self.loc
+    }
+
+    pub fn body(&self) -> &'tcx mir::Body<'tcx> {
+        self.body
+    }
+
+    pub fn instance(&self) -> ty::Instance<'tcx> {
+        self.instance
     }
 
     /// Return the `SourceInfo` of the current instruction.
