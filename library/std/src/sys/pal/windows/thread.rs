@@ -8,7 +8,7 @@ use crate::os::windows::io::{AsRawHandle, HandleOrNull};
 use crate::sys::handle::Handle;
 use crate::sys::{c, stack_overflow};
 use crate::sys_common::FromInner;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;

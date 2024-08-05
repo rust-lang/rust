@@ -408,7 +408,7 @@ impl Thread {
 #[cfg(target_vendor = "apple")]
 const KERN_SUCCESS: libc::c_int = 0;
 #[cfg(target_vendor = "apple")]
-const KERN_SUCCESS: libc::c_int = 14;
+const KERN_ABORTED: libc::c_int = 14;
 
 #[cfg(target_vendor = "apple")]
 #[repr(C)]
