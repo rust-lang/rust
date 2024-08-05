@@ -1,4 +1,4 @@
-//@ known-bug: rust-lang/rust#128621
+//@ check-pass
 
 trait Trait {
     type Associated;
@@ -17,3 +17,5 @@ struct Wrap(TraitObject);
 fn cast(x: *mut TraitObject) {
     x as *mut Wrap;
 }
+
+fn main() {}
