@@ -82,6 +82,9 @@ declare_features! (
     /// Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
     (removed, custom_derive, "1.32.0", Some(29644),
      Some("subsumed by `#[proc_macro_derive]`")),
+    /// Allows default type parameters to influence type inference.
+    (removed, default_type_parameter_fallback, "CURRENT_RUSTC_VERSION", Some(27336),
+     Some("never properly implemented; requires significant design work")),
     /// Allows using `#[doc(keyword = "...")]`.
     (removed, doc_keyword, "1.28.0", Some(51315),
      Some("merged into `#![feature(rustdoc_internals)]`")),
