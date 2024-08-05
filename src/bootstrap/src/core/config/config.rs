@@ -1582,9 +1582,10 @@ impl Config {
             {
                 // Primarily used by CI runners to avoid handling download-rustc incompatible
                 // options one by one on shell scripts.
-                let disable_ci_rustc_if_incompatible =
-                    env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
-                        .is_some_and(|s| s == "1" || s == "true");
+                let disable_ci_rustc_if_incompatible = env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        .is_some_and(|s| s == "1" || s == "true")
+                        // ignore `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` while testing bootstrap for accurate results.
+                        && !cfg!(feature = "bootstrap-self-test");
 
                 if let Err(e) = check_incompatible_options_for_ci_rustc(&rust) {
                     if disable_ci_rustc_if_incompatible {
