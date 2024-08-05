@@ -29,7 +29,7 @@ use super::{
 /// This struct has its own module, to ensure that the parser code
 /// cannot directly access the `attrs` field.
 #[derive(Debug, Clone)]
-pub struct AttrWrapper {
+pub(super) struct AttrWrapper {
     attrs: AttrVec,
     // The start of the outer attributes in the parser's token stream.
     // This lets us create a `NodeReplacement` for the entire attribute
@@ -41,11 +41,11 @@ impl AttrWrapper {
     pub(super) fn new(attrs: AttrVec, start_pos: u32) -> AttrWrapper {
         AttrWrapper { attrs, start_pos }
     }
-    pub fn empty() -> AttrWrapper {
+    pub(super) fn empty() -> AttrWrapper {
         AttrWrapper { attrs: AttrVec::new(), start_pos: u32::MAX }
     }
 
-    pub(crate) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
+    pub(super) fn take_for_recovery(self, psess: &ParseSess) -> AttrVec {
         psess.dcx().span_delayed_bug(
             self.attrs.get(0).map(|attr| attr.span).unwrap_or(DUMMY_SP),
             "AttrVec is taken for recovery but no error is produced",
@@ -56,12 +56,12 @@ impl AttrWrapper {
 
     /// Prepend `self.attrs` to `attrs`.
     // FIXME: require passing an NT to prevent misuse of this method
-    pub(crate) fn prepend_to_nt_inner(mut self, attrs: &mut AttrVec) {
+    pub(super) fn prepend_to_nt_inner(mut self, attrs: &mut AttrVec) {
         mem::swap(attrs, &mut self.attrs);
         attrs.extend(self.attrs);
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.attrs.is_empty()
     }
 }
@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
     ///     }                               //  32..33
     /// }                                   //  33..34
     /// ```
-    pub fn collect_tokens_trailing_token<R: HasAttrs + HasTokens>(
+    pub(super) fn collect_tokens_trailing_token<R: HasAttrs + HasTokens>(
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
