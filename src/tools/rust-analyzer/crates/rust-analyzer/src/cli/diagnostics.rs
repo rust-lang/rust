@@ -63,7 +63,7 @@ impl flags::Diagnostics {
                     _vfs.file_path(file_id.into())
                 );
                 for diagnostic in analysis
-                    .diagnostics(
+                    .full_diagnostics(
                         &DiagnosticsConfig::test_sample(),
                         AssistResolveStrategy::None,
                         file_id.into(),

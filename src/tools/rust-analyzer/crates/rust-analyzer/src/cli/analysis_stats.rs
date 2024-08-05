@@ -976,7 +976,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
 
         for &file_id in &file_ids {
-            _ = analysis.diagnostics(
+            _ = analysis.full_diagnostics(
                 &DiagnosticsConfig {
                     enabled: true,
                     proc_macros_enabled: true,
