@@ -55,7 +55,7 @@ fn main() {
     println!("cargo:rustc-cfg=feature=\"unstable\"");
 
     // Emscripten's runtime includes all the builtins
-    if target.env == "emscripten" {
+    if target.os == "emscripten" {
         return;
     }
 
