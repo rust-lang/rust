@@ -4,12 +4,13 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use crate::attributes;
 use crate::common;
 use crate::context::CodegenCx;
+use crate::declare::declare_as_global;
 use crate::llvm;
 use crate::value::Value;
 
+use rustc_codegen_ssa::traits::BaseTypeMethods;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
@@ -47,39 +48,50 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
         llfn
     } else {
         let instance_def_id = instance.def_id();
-        let llfn = if tcx.sess.target.arch == "x86"
-            && let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
-        {
-            // Fix for https://github.com/rust-lang/rust/issues/104453
-            // On x86 Windows, LLVM uses 'L' as the prefix for any private
-            // global symbols, so when we create an undecorated function symbol
-            // that begins with an 'L' LLVM misinterprets that as a private
-            // global symbol that it created and so fails the compilation at a
-            // later stage since such a symbol must have a definition.
-            //
-            // To avoid this, we set the Storage Class to "DllImport" so that
-            // LLVM will prefix the name with `__imp_`. Ideally, we'd like the
-            // existing logic below to set the Storage Class, but it has an
-            // exemption for MinGW for backwards compatibility.
-            let llfn = cx.declare_fn(
-                &common::i686_decorated_name(
-                    dllimport,
-                    common::is_mingw_gnu_toolchain(&tcx.sess.target),
-                    true,
-                ),
-                fn_abi,
-                Some(instance),
-            );
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
+        let llfn = if declare_as_global(tcx, instance, sym) {
+            // If this is a foreign function, make the declaration not promise *anything*.
+            // The same foreign function could be declared multiple times in the same compilation
+            // unit, and the last declaration will overwrite the previous ones, leading
+            // to "action at a distance" -- including UB, if the last declaration adds attributes
+            // that not all call sites are prepared for.
+
+            // Declare this as an empty array of `i8`.
+            let ty = cx.type_array(cx.type_i8(), 0);
+
+            if tcx.sess.target.arch == "x86"
+                && let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
+            {
+                // Fix for https://github.com/rust-lang/rust/issues/104453
+                // On x86 Windows, LLVM uses 'L' as the prefix for any private
+                // global symbols, so when we create an undecorated function symbol
+                // that begins with an 'L' LLVM misinterprets that as a private
+                // global symbol that it created and so fails the compilation at a
+                // later stage since such a symbol must have a definition.
+                //
+                // To avoid this, we set the Storage Class to "DllImport" so that
+                // LLVM will prefix the name with `__imp_`. Ideally, we'd like the
+                // existing logic below to set the Storage Class, but it has an
+                // exemption for MinGW for backwards compatibility.
+                let llsym = cx.declare_global(
+                    &common::i686_decorated_name(
+                        dllimport,
+                        common::is_mingw_gnu_toolchain(&tcx.sess.target),
+                        true,
+                    ),
+                    ty,
+                );
+                unsafe {
+                    llvm::LLVMSetDLLStorageClass(llsym, llvm::DLLStorageClass::DllImport);
+                }
+                llsym
+            } else {
+                cx.declare_global(sym, ty)
             }
-            llfn
         } else {
-            cx.declare_fn(sym, fn_abi, Some(instance))
+            let llfn = cx.declare_fn(sym, fn_abi, Some(instance));
+            llfn
         };
         debug!("get_fn: not casting pointer!");
-
-        attributes::from_fn_attrs(cx, llfn, instance);
 
         // Apply an appropriate linkage/visibility value to our item that we
         // just declared.

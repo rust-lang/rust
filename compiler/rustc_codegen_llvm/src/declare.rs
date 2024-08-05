@@ -21,7 +21,7 @@ use crate::value::Value;
 use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_middle::ty::{Instance, Ty};
+use rustc_middle::ty::{Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
 use tracing::debug;
@@ -58,6 +58,18 @@ fn declare_raw_fn<'ll>(
     attributes::apply_to_llfn(llfn, Function, &attrs);
 
     llfn
+}
+
+/// Some functions are not declared as functions but as global names without any meaningful type.
+/// This is to deal with the fact that Rust can import the same external function with different
+/// signatures into the same compilation unit, but LLVM cannot.
+pub fn declare_as_global<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, name: &str) -> bool {
+    tcx.is_foreign_item(instance.def_id()) && {
+        // If this is calling an LLVM intrinsic, we can't use the `global` trick.
+        // These are also unstable to call so nobody but us can screw up their signature.
+        let is_llvm_intrinsic = name.starts_with("llvm.");
+        !is_llvm_intrinsic
+    }
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
@@ -127,6 +139,15 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
+        // If this is a foreign function, it should have been declared in a different way.
+        // We can't declare these as "functions" because they can be imported multiple times
+        // with different signatures, and any signature we tell LLVM might be wrong for
+        // call sites that use another signature.
+        assert!(
+            !instance.is_some_and(|i| declare_as_global(self.tcx, i, name)),
+            "{name} is a foreign function, it should be declared as a global",
+        );
+
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.
         let llfn = declare_raw_fn(
@@ -138,6 +159,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.llvm_type(self),
         );
         fn_abi.apply_attrs_llfn(self, llfn);
+        if let Some(instance) = instance {
+            attributes::llfn_attrs_from_fn(self, llfn, instance);
+        }
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {

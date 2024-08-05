@@ -1,4 +1,3 @@
-use crate::attributes;
 use crate::base;
 use crate::context::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
@@ -60,6 +59,21 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     ) {
         assert!(!instance.args.has_infer());
 
+        // If this is a foreign function, make the declaration not promise *anything*.
+        // The same foreign function could be declared multiple times in the same compilation
+        // unit, and the last declaration will overwrite the previous ones, leading
+        // to "action at a distance" -- including UB, if the last declaration adds attributes
+        // that not all call sites are prepared for.
+        let is_foreign_fn = self.tcx.is_foreign_item(instance.def_id());
+        if is_foreign_fn {
+            eprintln!("special treatment for extern fn {}", symbol_name);
+            // Declare this as an empty array of `i8`.
+            let ty = self.type_array(self.type_i8(), 0);
+            let lldecl = self.declare_global(symbol_name, ty);
+            self.instances.borrow_mut().insert(instance, lldecl);
+            return;
+        }
+
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
         unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
@@ -87,8 +101,6 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         }
 
         debug!("predefine_fn: instance = {:?}", instance);
-
-        attributes::from_fn_attrs(self, lldecl, instance);
 
         unsafe {
             if self.should_assume_dso_local(lldecl, false) {
