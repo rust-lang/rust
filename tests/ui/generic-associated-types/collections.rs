@@ -10,6 +10,7 @@ trait Collection<T> {
     type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter, Self: 'iter;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
+    #[allow(dead_code)]
     type Sibling<U>: Collection<U> =
         <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
 

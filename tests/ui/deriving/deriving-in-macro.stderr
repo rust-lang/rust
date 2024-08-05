@@ -1,0 +1,14 @@
+warning: struct `bar` is never constructed
+  --> $DIR/deriving-in-macro.rs:9:24
+   |
+LL |             pub struct bar;
+   |                        ^^^
+...
+LL | define_vec![];
+   | ------------- in this macro invocation
+   |
+   = note: `#[warn(dead_code)]` on by default
+   = note: this warning originates in the macro `define_vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 1 warning emitted
+
