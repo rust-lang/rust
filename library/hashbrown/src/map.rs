@@ -2447,6 +2447,14 @@ pub struct IntoKeys<K, V, A: Allocator = Global> {
     inner: IntoIter<K, V, A>,
 }
 
+impl<K, V, A: Allocator> Default for IntoKeys<K, V, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
 impl<K, V, A: Allocator> Iterator for IntoKeys<K, V, A> {
     type Item = K;
 
@@ -2517,6 +2525,14 @@ pub struct IntoValues<K, V, A: Allocator = Global> {
     inner: IntoIter<K, V, A>,
 }
 
+impl<K, V, A: Allocator> Default for IntoValues<K, V, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
 impl<K, V, A: Allocator> Iterator for IntoValues<K, V, A> {
     type Item = V;
 
@@ -4720,6 +4736,15 @@ impl<K, V, S, A: Allocator> IntoIterator for HashMap<K, V, S, A> {
     }
 }
 
+impl<'a, K, V> Default for Iter<'a, K, V> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
@@ -4759,6 +4784,15 @@ impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
 
 impl<K, V> FusedIterator for Iter<'_, K, V> {}
 
+impl<'a, K, V> Default for IterMut<'a, K, V> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
@@ -4807,6 +4841,14 @@ where
     }
 }
 
+impl<K, V, A: Allocator> Default for IntoIter<K, V, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
 impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {
     type Item = (K, V);
 
@@ -4841,6 +4883,14 @@ impl<K: Debug, V: Debug, A: Allocator> fmt::Debug for IntoIter<K, V, A> {
     }
 }
 
+impl<'a, K, V> Default for Keys<'a, K, V> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
@@ -4873,6 +4923,14 @@ impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
 }
 impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
+impl<'a, K, V> Default for Values<'a, K, V> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
@@ -4905,6 +4963,14 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
 }
 impl<K, V> FusedIterator for Values<'_, K, V> {}
 
+impl<'a, K, V> Default for ValuesMut<'a, K, V> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
 

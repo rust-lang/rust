@@ -1832,6 +1832,14 @@ impl<K> Clone for Iter<'_, K> {
         }
     }
 }
+impl<K> Default for Iter<'_, K> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        Iter {
+            iter: Default::default(),
+        }
+    }
+}
 impl<'a, K> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
@@ -1866,6 +1874,14 @@ impl<K: fmt::Debug> fmt::Debug for Iter<'_, K> {
     }
 }
 
+impl<K, A: Allocator> Default for IntoIter<K, A> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn default() -> Self {
+        IntoIter {
+            iter: Default::default(),
+        }
+    }
+}
 impl<K, A: Allocator> Iterator for IntoIter<K, A> {
     type Item = K;
 
