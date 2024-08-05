@@ -2333,6 +2333,7 @@ dependencies = [
  "notify",
  "paths",
  "rayon",
+ "rustc-hash",
  "stdx",
  "tracing",
  "vfs",

@@ -21,6 +21,7 @@ rayon = "1.10.0"
 stdx.workspace = true
 vfs.workspace = true
 paths.workspace = true
+rustc-hash.workspace = true
 
 [lints]
 workspace = true

@@ -17,6 +17,7 @@ use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator as _, ParallelIterator};
+use rustc_hash::FxHashSet;
 use vfs::loader::{self, LoadingProgress};
 use walkdir::WalkDir;
 
@@ -61,8 +62,8 @@ type NotifyEvent = notify::Result<notify::Event>;
 
 struct NotifyActor {
     sender: loader::Sender,
-    // FIXME: Consider hashset
-    watched_entries: Vec<loader::Entry>,
+    watched_file_entries: FxHashSet<AbsPathBuf>,
+    watched_dir_entries: Vec<loader::Directories>,
     // Drop order is significant.
     watcher: Option<(RecommendedWatcher, Receiver<NotifyEvent>)>,
 }
@@ -75,7 +76,12 @@ enum Event {
 
 impl NotifyActor {
     fn new(sender: loader::Sender) -> NotifyActor {
-        NotifyActor { sender, watched_entries: Vec::new(), watcher: None }
+        NotifyActor {
+            sender,
+            watched_dir_entries: Vec::new(),
+            watched_file_entries: FxHashSet::default(),
+            watcher: None,
+        }
     }
 
     fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
@@ -107,7 +113,8 @@ impl NotifyActor {
                         let config_version = config.version;
 
                         let n_total = config.load.len();
-                        self.watched_entries.clear();
+                        self.watched_dir_entries.clear();
+                        self.watched_file_entries.clear();
 
                         let send = |msg| (self.sender)(msg);
                         send(loader::Message::Progress {
@@ -154,7 +161,14 @@ impl NotifyActor {
                             self.watch(&path);
                         }
                         for entry in entry_rx {
-                            self.watched_entries.push(entry);
+                            match entry {
+                                loader::Entry::Files(files) => {
+                                    self.watched_file_entries.extend(files)
+                                }
+                                loader::Entry::Directories(dir) => {
+                                    self.watched_dir_entries.push(dir)
+                                }
+                            }
                         }
                         self.send(loader::Message::Progress {
                             n_total,
@@ -185,13 +199,13 @@ impl NotifyActor {
                                         .expect("path is absolute"),
                                     )
                                 })
-                                .filter_map(|path| {
+                                .filter_map(|path| -> Option<(AbsPathBuf, Option<Vec<u8>>)> {
                                     let meta = fs::metadata(&path).ok()?;
                                     if meta.file_type().is_dir()
                                         && self
-                                            .watched_entries
+                                            .watched_dir_entries
                                             .iter()
-                                            .any(|entry| entry.contains_dir(&path))
+                                            .any(|dir| dir.contains_dir(&path))
                                     {
                                         self.watch(path.as_ref());
                                         return None;
@@ -200,10 +214,12 @@ impl NotifyActor {
                                     if !meta.file_type().is_file() {
                                         return None;
                                     }
-                                    if !self
-                                        .watched_entries
-                                        .iter()
-                                        .any(|entry| entry.contains_file(&path))
+
+                                    if !(self.watched_file_entries.contains(&path)
+                                        || self
+                                            .watched_dir_entries
+                                            .iter()
+                                            .any(|dir| dir.contains_file(&path)))
                                     {
                                         return None;
                                     }
