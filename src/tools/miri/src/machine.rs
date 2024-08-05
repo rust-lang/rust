@@ -932,7 +932,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx.machine.validation != ValidationMode::No
     }
     #[inline(always)]
-    fn enforce_validity_recursively(ecx: &InterpCx<'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
+    fn enforce_validity_recursively(
+        ecx: &InterpCx<'tcx, Self>,
+        _layout: TyAndLayout<'tcx>,
+    ) -> bool {
         ecx.machine.validation == ValidationMode::Deep
     }
 
