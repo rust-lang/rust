@@ -13,6 +13,7 @@ use std::str::FromStr;
 use std::sync::OnceLock;
 use std::{cmp, env, fs};
 
+use build_helper::ci::CiEnv;
 use build_helper::exit;
 use build_helper::git::GitConfig;
 use serde::{Deserialize, Deserializer};
@@ -2497,13 +2498,15 @@ impl Config {
         download_rustc: Option<StringOrBool>,
         llvm_assertions: bool,
     ) -> Option<String> {
+        if !is_download_ci_available(&self.build.triple, llvm_assertions) {
+            return None;
+        }
+
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
             None | Some(StringOrBool::Bool(false)) => return None,
             Some(StringOrBool::Bool(true)) => false,
-            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-                is_download_ci_available(&self.build.triple, llvm_assertions)
-            }
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
             Some(StringOrBool::String(other)) => {
                 panic!("unrecognized option for download-rustc: {other}")
             }
@@ -2515,7 +2518,7 @@ impl Config {
             Some(&self.src),
             &self.git_config(),
             &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
+            &[self.src.join("compiler"), self.src.join("library")],
         )
         .unwrap();
         if commit.is_empty() {
@@ -2524,6 +2527,19 @@ impl Config {
             println!("HELP: consider disabling `download-rustc`");
             println!("HELP: or fetch enough history to include one upstream commit");
             crate::exit!(1);
+        }
+
+        if CiEnv::is_ci() && {
+            let head_sha =
+                output(helpers::git(Some(&self.src)).arg("rev-parse").arg("HEAD").as_command_mut());
+            let head_sha = head_sha.trim();
+            commit == head_sha
+        } {
+            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+            eprintln!(
+                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+            );
+            return None;
         }
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
