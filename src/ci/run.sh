@@ -52,6 +52,11 @@ if [ "$CI" != "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
 fi
 
+# If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined, switch to in-tree rustc.
+if [ "$FORCE_CI_RUSTC" == "" ]; then
+    DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
+fi
+
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
   isCiBranch automation/bors/try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
