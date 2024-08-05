@@ -127,16 +127,18 @@ value will be `true`, since our analysis is done as soon as we determine that
 `transmute` has been called. Our join operator will just be the boolean OR (`||`)
 operator. We use OR and not AND because of this case:
 
-```
-let x = if some_cond {
-    std::mem::transmute<i32, u32>(0_i32); // transmute was called!
-} else {
-    1_u32; // transmute was not called
-};
+```rust
+# unsafe fn example(some_cond: bool) {
+    let x = if some_cond {
+        std::mem::transmute::<i32, u32>(0_i32) // transmute was called!
+    } else {
+        1_u32 // transmute was not called
+    };
 
-// Has transmute been called by this point? We conservatively approximate that
-// as yes, and that is why we use the OR operator.
-println!("x: {}", x);
+    // Has transmute been called by this point? We conservatively approximate that
+    // as yes, and that is why we use the OR operator.
+    println!("x: {}", x);
+# }
 ```
 
 ## Inspecting the Results of a Dataflow Analysis
