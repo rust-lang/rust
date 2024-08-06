@@ -15,7 +15,9 @@ use rustc_ast::{
     NodeId, PatKind, StmtKind, TyKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
@@ -396,14 +398,32 @@ pub struct MacroExpander<'a, 'b> {
     monotonic: bool, // cf. `cx.monotonic_expander()`
 }
 
+#[tracing::instrument(level = "debug", skip(tcx))]
 pub fn expand_legacy_bang<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (LocalExpnId, LocalExpnId),
+    key: (LocalExpnId, LocalExpnId, Fingerprint),
 ) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
-    let (invoc_id, current_expansion) = dbg!(key);
-    dbg!(invoc_id.to_expn_id().expn_hash(), current_expansion.to_expn_id().expn_hash());
+    use tracing::debug;
+
+    let (invoc_id, current_expansion, arg_fingerprint) = key;
+
     let map = tcx.macro_map.borrow();
     let (arg, span, expander) = map.get(&invoc_id).as_ref().unwrap();
+    debug!(?arg);
+
+    // this (i.e., debug-printing `span`) somehow made the test pass??
+    // tracing::debug!(?span);
+
+    let arg_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+        let mut hasher = StableHasher::new();
+        arg.flattened().hash_stable(&mut hcx, &mut hasher);
+        hasher.finish()
+    });
+
+    // sanity-check, to make sure we're not running for (maybe) old arguments
+    // that were loaded from the cache. this would certainly be a bug.
+    assert_eq!(arg_fingerprint, arg_hash);
+
     expander
         .expand(&tcx.sess, *span, arg.clone(), current_expansion)
         .map(|(tts, i)| (tcx.arena.alloc(tts) as &TokenStream, i))

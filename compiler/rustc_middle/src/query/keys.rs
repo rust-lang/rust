@@ -1,5 +1,6 @@
 //! Defines the set of legal keys that can be used in queries.
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
@@ -592,7 +593,7 @@ impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
     }
 }
 
-impl Key for (LocalExpnId, LocalExpnId) {
+impl Key for (LocalExpnId, LocalExpnId, Fingerprint) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

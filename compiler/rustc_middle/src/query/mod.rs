@@ -110,7 +110,7 @@ rustc_queries! {
         desc { "triggering a delayed bug for testing incremental" }
     }
 
-    query expand_legacy_bang(key: (LocalExpnId, LocalExpnId)) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
+    query expand_legacy_bang(key: (LocalExpnId, LocalExpnId, Fingerprint)) -> Result<(&'tcx TokenStream, usize), (Span, ErrorGuaranteed)> {
         no_hash
         // eval_always
         cache_on_disk_if { true }
