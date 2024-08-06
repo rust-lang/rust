@@ -148,7 +148,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         &"--target",
         &config.target,
         &"--features",
-        &"compiler-builtins-no-f16-f128",
+        &"std/compiler-builtins-no-f16-f128",
     ];
 
     if config.no_default_features {
