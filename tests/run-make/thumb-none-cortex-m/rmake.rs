@@ -1,3 +1,7 @@
+//! Test building of the `cortex-m` crate, a foundational crate in the embedded ecosystem
+//! for a collection of thumb targets. This is a smoke test that verifies that both cargo
+//! and rustc work in this case.
+//!
 //! How to run this
 //! $ ./x.py clean
 //! $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi tests/run-make
@@ -13,13 +17,14 @@
 use std::path::PathBuf;
 
 use run_make_support::rfs::create_dir;
-use run_make_support::{cmd, env_var};
+use run_make_support::{cmd, env_var, target};
 
 const CRATE: &str = "cortex-m";
 const CRATE_URL: &str = "https://github.com/rust-embedded/cortex-m";
 const CRATE_SHA1: &str = "a448e9156e2cb1e556e5441fd65426952ef4b927"; // v0.5.0
 
 fn main() {
+    // FIXME: requires an internet connection https://github.com/rust-lang/rust/issues/128733
     // See below link for git usage:
     // https://stackoverflow.com/questions/3489173#14091182
     cmd("git").args(["clone", CRATE_URL, CRATE]).run();
@@ -27,13 +32,13 @@ fn main() {
     cmd("git").args(["reset", "--hard", CRATE_SHA1]).run();
 
     let target_dir = PathBuf::from("target");
-    let target = env_var("TARGET");
-
     let manifest_path = PathBuf::from("Cargo.toml");
 
     let path = env_var("PATH");
     let rustc = env_var("RUSTC");
     let bootstrap_cargo = env_var("BOOTSTRAP_CARGO");
+    // FIXME: extract bootstrap cargo invocations to a proper command
+    // https://github.com/rust-lang/rust/issues/128734
     let mut cmd = cmd(bootstrap_cargo);
     cmd.args(&[
         "build",
@@ -41,18 +46,14 @@ fn main() {
         manifest_path.to_str().unwrap(),
         "-Zbuild-std=core",
         "--target",
-        &target,
+        &target(),
     ])
     .env("PATH", path)
     .env("RUSTC", rustc)
+    .env("CARGO_TARGET_DIR", &target_dir)
     // Don't make lints fatal, but they need to at least warn
     // or they break Cargo's target info parsing.
-    .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes --cap-lints=warn")
-    .env("CARGO_TARGET_DIR", &target_dir)
-    .env("RUSTC_BOOTSTRAP", "1")
-    // Visual Studio 2022 requires that the LIB env var be set so it can
-    // find the Windows SDK.
-    .env("LIB", std::env::var("LIB").unwrap_or_default());
+    .env("RUSTFLAGS", "-Copt-level=0 -Cdebug-assertions=yes --cap-lints=warn");
 
     cmd.run();
 }
