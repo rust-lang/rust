@@ -58,7 +58,7 @@ use serde::{Serialize, Serializer};
 
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
-use crate::clean::{self, ItemId, RenderedLink, SelfTy};
+use crate::clean::{self, ItemId, RenderedLink};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -1372,21 +1372,20 @@ fn render_deref_methods(
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match *item.kind {
-        clean::MethodItem(ref method, _) => method.decl.self_type(),
-        clean::TyMethodItem(ref method) => method.decl.self_type(),
+        clean::MethodItem(ref method, _) => method.decl.receiver_type(),
+        clean::TyMethodItem(ref method) => method.decl.receiver_type(),
         _ => None,
     };
 
     if let Some(self_ty) = self_type_opt {
-        let (by_mut_ref, by_box, by_value) = match self_ty {
-            SelfTy::SelfBorrowed(_, mutability)
-            | SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
+        let (by_mut_ref, by_box, by_value) = match *self_ty {
+            clean::Type::BorrowedRef { mutability, .. } => {
                 (mutability == Mutability::Mut, false, false)
             }
-            SelfTy::SelfExplicit(clean::Type::Path { path }) => {
+            clean::Type::Path { ref path } => {
                 (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
             }
-            SelfTy::SelfValue => (false, false, true),
+            clean::Type::SelfTy => (false, false, true),
             _ => (false, false, false),
         };
 

@@ -265,11 +265,10 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
             | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                    hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
-                        // Inline assembly constants must be integers.
-                        Some(fcx.next_int_var())
-                    }
-                    hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == id => {
+                    hir::InlineAsmOperand::Const { anon_const }
+                    | hir::InlineAsmOperand::SymFn { anon_const }
+                        if anon_const.hir_id == id =>
+                    {
                         Some(fcx.next_ty_var(span))
                     }
                     _ => None,

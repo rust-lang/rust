@@ -264,15 +264,6 @@ pub fn supertraits<I: Interner>(
     elaborate(cx, [trait_ref.upcast(cx)]).filter_only_self().filter_to_traits()
 }
 
-pub fn transitive_bounds<I: Interner>(
-    cx: I,
-    trait_refs: impl Iterator<Item = ty::Binder<I, ty::TraitRef<I>>>,
-) -> FilterToTraits<I, Elaborator<I, I::Clause>> {
-    elaborate(cx, trait_refs.map(|trait_ref| trait_ref.upcast(cx)))
-        .filter_only_self()
-        .filter_to_traits()
-}
-
 impl<I: Interner> Elaborator<I, I::Clause> {
     fn filter_to_traits(self) -> FilterToTraits<I, Self> {
         FilterToTraits { _cx: PhantomData, base_iterator: self }

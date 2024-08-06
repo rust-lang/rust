@@ -4,8 +4,7 @@
 
 use either::Either;
 use rustc_index::IndexSlice;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::{bug, mir, span_bug};
+use rustc_middle::{bug, mir};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use tracing::{info, instrument, trace};
 
@@ -94,7 +93,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 M::retag_place_contents(self, *kind, &dest)?;
             }
 
-            Intrinsic(box intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
+            Intrinsic(box intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
 
             // Evaluate the place expression, without reading from it.
             PlaceMention(box place) => {
@@ -179,6 +178,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*result, &dest)?;
             }
 
+            NullaryOp(null_op, ty) => {
+                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
+                let val = self.nullary_op(null_op, ty)?;
+                self.write_immediate(*val, &dest)?;
+            }
+
             Aggregate(box ref kind, ref operands) => {
                 self.write_aggregate(kind, operands, &dest)?;
             }
@@ -228,38 +233,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
-            }
-
-            NullaryOp(ref null_op, ty) => {
-                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
-                let layout = self.layout_of(ty)?;
-                if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op
-                    && layout.is_unsized()
-                {
-                    span_bug!(
-                        self.frame().current_span(),
-                        "{null_op:?} MIR operator called for unsized type {ty}",
-                    );
-                }
-                let val = match null_op {
-                    mir::NullOp::SizeOf => {
-                        let val = layout.size.bytes();
-                        Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::AlignOf => {
-                        let val = layout.align.abi.bytes();
-                        Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::OffsetOf(fields) => {
-                        let val = self
-                            .tcx
-                            .offset_of_subfield(self.param_env, layout, fields.iter())
-                            .bytes();
-                        Scalar::from_target_usize(val, self)
-                    }
-                    mir::NullOp::UbChecks => Scalar::from_bool(self.tcx.sess.ub_checks()),
-                };
-                self.write_scalar(val, &dest)?;
             }
 
             ShallowInitBox(ref operand, _) => {

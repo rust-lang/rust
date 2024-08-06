@@ -774,18 +774,23 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // instantiation that replaces `Self` with the object type itself. Hence,
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
-        self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
-            this.push_candidate(
-                Candidate { item, kind: ObjectCandidate(new_trait_ref), import_ids: smallvec![] },
-                true,
-            );
-        });
+        self.assemble_candidates_for_bounds(
+            traits::supertraits(self.tcx, trait_ref),
+            |this, new_trait_ref, item| {
+                this.push_candidate(
+                    Candidate {
+                        item,
+                        kind: ObjectCandidate(new_trait_ref),
+                        import_ids: smallvec![],
+                    },
+                    true,
+                );
+            },
+        );
     }
 
     #[instrument(level = "debug", skip(self))]
     fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
-        // FIXME: do we want to commit to this behavior for param bounds?
-
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
@@ -806,7 +811,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         });
 
-        self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
+        self.assemble_candidates_for_bounds(bounds, |this, poly_trait_ref, item| {
             this.push_candidate(
                 Candidate {
                     item,
@@ -820,15 +825,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn elaborate_bounds<F>(
+    fn assemble_candidates_for_bounds<F>(
         &mut self,
         bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
         mut mk_cand: F,
     ) where
         F: for<'b> FnMut(&mut ProbeContext<'b, 'tcx>, ty::PolyTraitRef<'tcx>, ty::AssocItem),
     {
-        let tcx = self.tcx;
-        for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
+        for bound_trait_ref in bounds {
             debug!("elaborate_bounds(bound_trait_ref={:?})", bound_trait_ref);
             for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 if !self.has_applicable_self(&item) {

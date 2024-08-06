@@ -97,6 +97,14 @@ pub fn from_target_feature(
             Some(Symbol::intern(feature))
         }));
     }
+
+    for (feature, requires) in tcx.sess.target.implicit_target_features() {
+        if target_features.iter().any(|f| f.as_str() == *feature)
+            && !target_features.iter().any(|f| f.as_str() == *requires)
+        {
+            target_features.push(Symbol::intern(requires));
+        }
+    }
 }
 
 /// Computes the set of target features used in a function for the purposes of

@@ -2330,10 +2330,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Ptr(src)), Some(CastTy::Ptr(dst))) => {
                                 let mut normalize = |t| self.normalize(t, location);
+
+                                // N.B. `struct_tail_with_normalize` only "structurally resolves"
+                                // the type. It is not fully normalized, so we have to normalize it
+                                // afterwards.
                                 let src_tail =
                                     tcx.struct_tail_with_normalize(src.ty, &mut normalize, || ());
+                                let src_tail = normalize(src_tail);
                                 let dst_tail =
                                     tcx.struct_tail_with_normalize(dst.ty, &mut normalize, || ());
+                                let dst_tail = normalize(dst_tail);
 
                                 // This checks (lifetime part of) vtable validity for pointer casts,
                                 // which is irrelevant when there are aren't principal traits on both sides (aka only auto traits).

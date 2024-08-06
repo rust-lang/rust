@@ -97,7 +97,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
-    pub fn emulate_intrinsic(
+    pub fn eval_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
@@ -447,7 +447,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(true)
     }
 
-    pub(super) fn emulate_nondiverging_intrinsic(
+    pub(super) fn eval_nondiverging_intrinsic(
         &mut self,
         intrinsic: &NonDivergingIntrinsic<'tcx>,
     ) -> InterpResult<'tcx> {

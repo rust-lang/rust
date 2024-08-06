@@ -1351,11 +1351,11 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 let self_arg_ty =
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
                 if self_arg_ty == self_ty {
-                    item.decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
+                    item.decl.inputs.values[0].type_ = SelfTy;
                 } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
                     if ty == self_ty {
                         match item.decl.inputs.values[0].type_ {
-                            BorrowedRef { ref mut type_, .. } => **type_ = Generic(kw::SelfUpper),
+                            BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
                             _ => unreachable!(),
                         }
                     }
@@ -1439,9 +1439,8 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                         if trait_.def_id() != assoc_item.container_id(tcx) {
                             return true;
                         }
-                        match *self_type {
-                            Generic(ref s) if *s == kw::SelfUpper => {}
-                            _ => return true,
+                        if *self_type != SelfTy {
+                            return true;
                         }
                         match &assoc.args {
                             GenericArgs::AngleBracketed { args, constraints } => {
@@ -2228,6 +2227,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Param(ref p) => {
             if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
                 ImplTrait(bounds)
+            } else if p.name == kw::SelfUpper {
+                SelfTy
             } else {
                 Generic(p.name)
             }

@@ -333,11 +333,13 @@ const WASM_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("mutable-globals", Stable),
     ("nontrapping-fptoint", Stable),
     ("reference-types", Unstable(sym::wasm_target_feature)),
-    ("relaxed-simd", Unstable(sym::wasm_target_feature)),
+    ("relaxed-simd", Stable),
     ("sign-ext", Stable),
     ("simd128", Stable),
     // tidy-alphabetical-end
 ];
+
+const WASM_IMPLICIT_FEATURES: &[(&str, &str)] = &[("relaxed-simd", "simd128")];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Stability)] = &[("alu32", Unstable(sym::bpf_target_feature))];
 
@@ -452,6 +454,15 @@ impl super::spec::Target {
     pub fn tied_target_features(&self) -> &'static [&'static [&'static str]] {
         match &*self.arch {
             "aarch64" | "arm64ec" => AARCH64_TIED_FEATURES,
+            _ => &[],
+        }
+    }
+
+    /// Returns a list of target features. Each items first target feature
+    /// implicitly enables the second one.
+    pub fn implicit_target_features(&self) -> &'static [(&'static str, &'static str)] {
+        match &*self.arch {
+            "wasm32" | "wasm64" => WASM_IMPLICIT_FEATURES,
             _ => &[],
         }
     }
