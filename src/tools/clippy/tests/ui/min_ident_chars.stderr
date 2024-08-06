@@ -193,11 +193,5 @@ error: this ident consists of a single char
 LL | fn wrong_pythagoras(a: f32, b: f32) -> f32 {
    |                             ^
 
-error: this ident consists of a single char
-  --> tests/ui/min_ident_chars.rs:93:41
-   |
-LL |     struct Array<T, const N: usize>([T; N]);
-   |                                         ^
-
-error: aborting due to 33 previous errors
+error: aborting due to 32 previous errors
 

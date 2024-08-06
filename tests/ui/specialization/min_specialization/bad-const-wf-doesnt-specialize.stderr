@@ -1,11 +1,19 @@
 error[E0119]: conflicting implementations of trait `Copy` for type `S<_>`
-  --> $DIR/bad-const-wf-doesnt-specialize.rs:9:1
+  --> $DIR/bad-const-wf-doesnt-specialize.rs:10:1
    |
 LL | impl<const N: i32> Copy for S<N> {}
    | -------------------------------- first implementation here
+LL |
 LL | impl<const M: usize> Copy for S<M> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `S<_>`
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/bad-const-wf-doesnt-specialize.rs:8:31
+   |
+LL | impl<const N: i32> Copy for S<N> {}
+   |                               ^ expected `usize`, found `i32`
 
-For more information about this error, try `rustc --explain E0119`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0308.
+For more information about an error, try `rustc --explain E0119`.

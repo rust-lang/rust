@@ -954,7 +954,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             GenericParamKind::Const { ty, default, .. } => {
                 self.visit_ty(ty);
                 if let Some(default) = default {
-                    self.visit_const_arg(default);
+                    self.visit_body(self.tcx.hir().body(default.body));
                 }
             }
         }
@@ -1594,7 +1594,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     i += 1;
                 }
                 GenericArg::Const(ct) => {
-                    self.visit_const_arg(ct);
+                    self.visit_anon_const(&ct.value);
                     i += 1;
                 }
                 GenericArg::Infer(inf) => {
