@@ -2,10 +2,10 @@
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::solve::{Goal, NoSolution, SolverMode};
+use rustc_middle::traits::solve::SolverMode;
 use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
-use rustc_middle::ty::relate::{Relate, RelateResult};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed};
 
@@ -208,26 +208,6 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
         self.set_tainted_by_errors(e)
-    }
-
-    fn relate<T: Relate<TyCtxt<'tcx>>>(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        variance: ty::Variance,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.at(&ObligationCause::dummy(), param_env).relate_no_trace(lhs, variance, rhs)
-    }
-
-    fn eq_structurally_relating_aliases<T: Relate<TyCtxt<'tcx>>>(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
-        self.at(&ObligationCause::dummy(), param_env)
-            .eq_structurally_relating_aliases_no_trace(lhs, rhs)
     }
 
     fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {

@@ -1,7 +1,7 @@
 use crate::fold::TypeFoldable;
+use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::relate::{Relate, RelateResult};
-use crate::solve::{Goal, NoSolution, SolverMode};
+use crate::solve::SolverMode;
 use crate::{self as ty, Interner};
 
 pub trait InferCtxtLike: Sized {
@@ -97,21 +97,6 @@ pub trait InferCtxtLike: Sized {
     ) -> RelateResult<Self::Interner, ()>;
 
     fn set_tainted_by_errors(&self, e: <Self::Interner as Interner>::ErrorGuaranteed);
-
-    fn relate<T: Relate<Self::Interner>>(
-        &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
-        lhs: T,
-        variance: ty::Variance,
-        rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
-
-    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
-        &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
-        lhs: T,
-        rhs: T,
-    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
 
     fn shallow_resolve(
         &self,

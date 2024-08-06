@@ -1,12 +1,57 @@
 pub use rustc_type_ir::relate::*;
-use rustc_type_ir::solve::Goal;
+use rustc_type_ir::solve::{Goal, NoSolution};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 
 use self::combine::{InferCtxtCombineExt, PredicateEmittingRelation};
 use crate::data_structures::DelayedSet;
 
-#[allow(unused)]
+pub trait RelateExt: InferCtxtLike {
+    fn relate<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+
+    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>;
+}
+
+impl<Infcx: InferCtxtLike> RelateExt for Infcx {
+    fn relate<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>
+    {
+        let mut relate =
+            SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env);
+        relate.relate(lhs, rhs)?;
+        Ok(relate.goals)
+    }
+
+    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
+        &self,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        lhs: T,
+        rhs: T,
+    ) -> Result<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>, NoSolution>
+    {
+        let mut relate =
+            SolverRelating::new(self, StructurallyRelateAliases::Yes, ty::Invariant, param_env);
+        relate.relate(lhs, rhs)?;
+        Ok(relate.goals)
+    }
+}
+
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     infcx: &'infcx Infcx,
@@ -46,6 +91,21 @@ where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
 {
+    fn new(
+        infcx: &'infcx Infcx,
+        structurally_relate_aliases: StructurallyRelateAliases,
+        ambient_variance: ty::Variance,
+        param_env: I::ParamEnv,
+    ) -> Self {
+        SolverRelating {
+            infcx,
+            structurally_relate_aliases,
+            ambient_variance,
+            param_env,
+            goals: vec![],
+            cache: Default::default(),
+        }
+    }
 }
 
 impl<Infcx, I> TypeRelation<I> for SolverRelating<'_, Infcx, I>

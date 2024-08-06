@@ -6,7 +6,6 @@ pub use rustc_middle::ty::relate::RelateResult;
 pub use rustc_type_ir::relate::combine::PredicateEmittingRelation;
 pub use rustc_type_ir::relate::*;
 
-#[allow(hidden_glob_reexports)]
 mod generalize;
 mod higher_ranked;
 pub(super) mod lattice;
