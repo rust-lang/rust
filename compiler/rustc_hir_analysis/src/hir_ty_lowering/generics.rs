@@ -552,21 +552,34 @@ pub(crate) fn check_generic_arg_count(
                 synth_provided,
             }
         } else {
-            let num_missing_args = expected_max - provided;
+            // Check if associated type bounds are incorrectly written in impl block header like:
+            // ```
+            // trait Foo<T> {}
+            // impl Foo<T: Default> for u8 {}
+            // ```
+            let parent_is_impl_block = cx
+                .tcx()
+                .hir()
+                .parent_owner_iter(seg.hir_id)
+                .next()
+                .is_some_and(|(_, owner_node)| owner_node.is_impl_block());
+            if parent_is_impl_block {
+                let constraint_names: Vec<_> =
+                    gen_args.constraints.iter().map(|b| b.ident.name).collect();
+                let param_names: Vec<_> = gen_params
+                    .own_params
+                    .iter()
+                    .filter(|param| !has_self || param.index != 0) // Assumes `Self` will always be the first parameter
+                    .map(|param| param.name)
+                    .collect();
+                if constraint_names == param_names {
+                    // We set this to true and delay emitting `WrongNumberOfGenericArgs`
+                    // to provide a succinct error for cases like issue #113073
+                    all_params_are_binded = true;
+                };
+            }
 
-            let constraint_names: Vec<_> =
-                gen_args.constraints.iter().map(|b| b.ident.name).collect();
-            let param_names: Vec<_> = gen_params
-                .own_params
-                .iter()
-                .filter(|param| !has_self || param.index != 0) // Assumes `Self` will always be the first parameter
-                .map(|param| param.name)
-                .collect();
-            if constraint_names == param_names {
-                // We set this to true and delay emitting `WrongNumberOfGenericArgs`
-                // to provide a succinct error for cases like issue #113073
-                all_params_are_binded = true;
-            };
+            let num_missing_args = expected_max - provided;
 
             GenericArgsInfo::MissingTypesOrConsts {
                 num_missing_args,
