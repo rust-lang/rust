@@ -250,6 +250,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::deny
                     | sym::forbid
                     | sym::cfg
+                    | sym::cfg_attr
                     // need to be fixed
                     | sym::cfi_encoding // FIXME(cfi_encoding)
                     | sym::may_dangle // FIXME(dropck_eyepatch)
