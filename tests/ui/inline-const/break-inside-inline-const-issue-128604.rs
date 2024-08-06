@@ -15,4 +15,11 @@ fn main() {
         break;
         //~^ ERROR `break` outside of a loop or labeled block
     };
+
+    {
+        const {
+            break;
+            //~^ ERROR `break` outside of a loop or labeled block
+        }
+    }
 }
