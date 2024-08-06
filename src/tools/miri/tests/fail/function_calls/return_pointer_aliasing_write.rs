@@ -1,4 +1,4 @@
-// This does need an aliasing model.
+// This does need an aliasing model and protectors.
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(raw_ref_op)]
@@ -14,8 +14,8 @@ pub fn main() {
             let _x = 0;
             let ptr = &raw mut _x;
             // We arrange for `myfun` to have a pointer that aliases
-            // its return place. Even just reading from that pointer is UB.
-            Call(_x = myfun(ptr), ReturnTo(after_call), UnwindContinue())
+            // its return place. Writing to that pointer is UB.
+            Call(*ptr = myfun(ptr), ReturnTo(after_call), UnwindContinue())
         }
 
         after_call = {
@@ -27,7 +27,7 @@ pub fn main() {
 fn myfun(ptr: *mut i32) -> i32 {
     // This overwrites the return place, which shouldn't be possible through another pointer.
     unsafe { ptr.write(0) };
-    //~[stack]^ ERROR: tag does not exist in the borrow stack
+    //~[stack]^ ERROR: strongly protected
     //~[tree]| ERROR: /write access .* forbidden/
     13
 }
