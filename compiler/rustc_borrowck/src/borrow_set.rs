@@ -160,7 +160,7 @@ impl<'tcx> BorrowSet<'tcx> {
         self.location_map.len()
     }
 
-    pub(crate) fn indices(&self) -> impl Iterator<Item = BorrowIndex> + 'static {
+    pub(crate) fn indices(&self) -> impl Iterator<Item = BorrowIndex> + use<> {
         BorrowIndex::ZERO..BorrowIndex::from_usize(self.len())
     }
 

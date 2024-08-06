@@ -70,7 +70,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn indices(
         &self,
-    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
+    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + use<I, T> {
         (0..self.len()).map(|n| I::new(n))
     }
 

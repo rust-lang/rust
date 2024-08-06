@@ -1727,7 +1727,7 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
     suffixes: &'a [(Ident, Option<Ident>)],
     item_span: Span,
     from_glob: bool,
-) -> impl Iterator<Item = ast::Item<Node::ItemKind>> + 'a {
+) -> impl Iterator<Item = ast::Item<Node::ItemKind>> + use<'a, Node> {
     if suffixes.is_empty() {
         // Report an error for now, to avoid keeping stem for resolution and
         // stability checks.
