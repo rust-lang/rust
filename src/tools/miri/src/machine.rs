@@ -11,6 +11,7 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 
+use rustc_attr::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -47,10 +48,10 @@ pub const SIGRTMIN: i32 = 34;
 /// `SIGRTMAX` - `SIGRTMIN` >= 8 (which is the value of `_POSIX_RTSIG_MAX`)
 pub const SIGRTMAX: i32 = 42;
 
-/// Each const has multiple addresses, but only this many. Since const allocations are never
-/// deallocated, choosing a new [`AllocId`] and thus base address for each evaluation would
-/// produce unbounded memory usage.
-const ADDRS_PER_CONST: usize = 16;
+/// Each anonymous global (constant, vtable, function pointer, ...) has multiple addresses, but only
+/// this many. Since const allocations are never deallocated, choosing a new [`AllocId`] and thus
+/// base address for each evaluation would produce unbounded memory usage.
+const ADDRS_PER_ANON_GLOBAL: usize = 32;
 
 /// Extra data stored with each stack frame
 pub struct FrameExtra<'tcx> {
@@ -1372,7 +1373,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
-            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_CONST,
+            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
         };
 
         Ok(frame.with_extra(extra))
@@ -1516,6 +1517,42 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 Ok(op)
             }
             Entry::Occupied(oe) => Ok(oe.get().clone()),
+        }
+    }
+
+    fn get_global_alloc_salt(
+        ecx: &InterpCx<'tcx, Self>,
+        instance: Option<ty::Instance<'tcx>>,
+    ) -> usize {
+        let unique = if let Some(instance) = instance {
+            // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
+            // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
+            // duplicated across crates. We thus generate a new `AllocId` for every mention of a
+            // function. This means that `main as fn() == main as fn()` is false, while `let x = main as
+            // fn(); x == x` is true. However, as a quality-of-life feature it can be useful to identify
+            // certain functions uniquely, e.g. for backtraces. So we identify whether codegen will
+            // actually emit duplicate functions. It does that when they have non-lifetime generics, or
+            // when they can be inlined. All other functions are given a unique address.
+            // This is not a stable guarantee! The `inline` attribute is a hint and cannot be relied
+            // upon for anything. But if we don't do this, backtraces look terrible.
+            let is_generic = instance
+                .args
+                .into_iter()
+                .any(|kind| !matches!(kind.unpack(), ty::GenericArgKind::Lifetime(_)));
+            let can_be_inlined = match ecx.tcx.codegen_fn_attrs(instance.def_id()).inline {
+                InlineAttr::Never => false,
+                _ => true,
+            };
+            !is_generic && !can_be_inlined
+        } else {
+            // Non-functions are never unique.
+            false
+        };
+        // Always use the same salt if the allocation is unique.
+        if unique {
+            CTFE_ALLOC_SALT
+        } else {
+            ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
         }
     }
 }

@@ -2,7 +2,9 @@
 
 use rustc_ast as ast;
 use rustc_hir::LangItem;
-use rustc_middle::mir::interpret::{Allocation, LitToConstError, LitToConstInput, Scalar};
+use rustc_middle::mir::interpret::{
+    Allocation, LitToConstError, LitToConstInput, Scalar, CTFE_ALLOC_SALT,
+};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{
@@ -140,7 +142,7 @@ fn lit_to_mir_constant<'tcx>(
             ConstValue::Slice { data: allocation, meta: allocation.inner().size().bytes() }
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_array() => {
-            let id = tcx.allocate_bytes_dedup(data);
+            let id = tcx.allocate_bytes_dedup(data, CTFE_ALLOC_SALT);
             ConstValue::Scalar(Scalar::from_pointer(id.into(), &tcx))
         }
         (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
