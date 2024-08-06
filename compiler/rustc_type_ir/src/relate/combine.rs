@@ -1,8 +1,6 @@
-pub use rustc_type_ir::relate::*;
-use rustc_type_ir::solve::Goal;
-use rustc_type_ir::{InferCtxtLike, Interner, Upcast};
-
-use super::StructurallyRelateAliases;
+use super::{StructurallyRelateAliases, TypeRelation};
+use crate::solve::Goal;
+use crate::{InferCtxtLike, Interner, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
