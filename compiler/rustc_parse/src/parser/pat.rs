@@ -13,7 +13,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
 use thin_vec::{thin_vec, ThinVec};
 
-use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
+use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
 use crate::errors::{
     self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
@@ -403,7 +403,7 @@ impl<'a> Parser<'a> {
 
             // Parse an associative expression such as `+ expr`, `% expr`, ...
             // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
-            if let Ok(expr) =
+            if let Ok((expr, _)) =
                 snapshot.parse_expr_assoc_rest_with(0, false, expr).map_err(|err| err.cancel())
             {
                 // We got a valid expression.
@@ -1302,24 +1302,23 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let field =
-                self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-                    let field = match this.parse_pat_field(lo, attrs) {
-                        Ok(field) => Ok(field),
-                        Err(err) => {
-                            if let Some(delayed_err) = delayed_err.take() {
-                                delayed_err.emit();
-                            }
-                            return Err(err);
+            let field = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
+                let field = match this.parse_pat_field(lo, attrs) {
+                    Ok(field) => Ok(field),
+                    Err(err) => {
+                        if let Some(delayed_err) = delayed_err.take() {
+                            delayed_err.emit();
                         }
-                    }?;
-                    ate_comma = this.eat(&token::Comma);
+                        return Err(err);
+                    }
+                }?;
+                ate_comma = this.eat(&token::Comma);
 
-                    last_non_comma_dotdot_span = Some(this.prev_token.span);
+                last_non_comma_dotdot_span = Some(this.prev_token.span);
 
-                    // We just ate a comma, so there's no need to capture a trailing token.
-                    Ok((field, Trailing::No))
-                })?;
+                // We just ate a comma, so there's no need to capture a trailing token.
+                Ok((field, Trailing::No, UsePreAttrPos::No))
+            })?;
 
             fields.push(field)
         }

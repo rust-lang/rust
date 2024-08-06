@@ -51,14 +51,6 @@ macro_rules! c1 {
     };
 }
 
-// FIXME: temporary
-macro_rules! c2 {
-    ($frag:ident, [$($tt:tt)*], $s1:literal, $s2:literal) => {
-        assert_eq!($frag!($($tt)*), $s1);
-        assert_eq!(stringify!($($tt)*), $s2);
-    };
-}
-
 #[test]
 fn test_block() {
     c1!(block, [ {} ], "{}");
@@ -344,10 +336,10 @@ fn test_expr() {
     // Ones involving attributes.
     c1!(expr, [ #[aa] 1 ], "#[aa] 1");
     c1!(expr, [ #[aa] #[bb] x ], "#[aa] #[bb] x");
-    c2!(expr, [ #[aa] 1 + 2 ], "1 + 2", "#[aa] 1 + 2"); // FIXME
-    c2!(expr, [ #[aa] x + 2 ], "x + 2", "#[aa] x + 2"); // FIXME
-    c2!(expr, [ #[aa] 1 / #[bb] 2 ], "1 / #[bb] 2", "#[aa] 1 / #[bb] 2"); // FIXME
-    c2!(expr, [ #[aa] x / #[bb] 2 ], "x / #[bb] 2", "#[aa] x / #[bb] 2"); // FIXME
+    c1!(expr, [ #[aa] 1 + 2 ], "#[aa] 1 + 2");
+    c1!(expr, [ #[aa] x + 2 ], "#[aa] x + 2");
+    c1!(expr, [ #[aa] 1 / #[bb] 2 ], "#[aa] 1 / #[bb] 2");
+    c1!(expr, [ #[aa] x / #[bb] 2 ], "#[aa] x / #[bb] 2");
     c1!(expr, [ 1 << #[bb] 2 ], "1 << #[bb] 2");
     c1!(expr, [ x << #[bb] 2 ], "x << #[bb] 2");
     c1!(expr, [ #[aa] (1 + 2) ], "#[aa] (1 + 2)");
@@ -659,10 +651,10 @@ fn test_stmt() {
     // Ones involving attributes.
     c1!(stmt, [ #[aa] 1 ], "#[aa] 1");
     c1!(stmt, [ #[aa] #[bb] x ], "#[aa] #[bb] x");
-    c2!(stmt, [ #[aa] 1 as u32 ], "1 as u32", "#[aa] 1 as u32"); // FIXME
-    c2!(stmt, [ #[aa] x as u32 ], "x as u32", "#[aa] x as u32"); // FIXME
-    c2!(stmt, [ #[aa] 1 .. #[bb] 2 ], "1 .. #[bb] 2", "#[aa] 1 .. #[bb] 2"); // FIXME
-    c2!(stmt, [ #[aa] x .. #[bb] 2 ], "x .. #[bb] 2", "#[aa] x .. #[bb] 2"); // FIXME
+    c1!(stmt, [ #[aa] 1 as u32 ], "#[aa] 1 as u32");
+    c1!(stmt, [ #[aa] x as u32 ], "#[aa] x as u32");
+    c1!(stmt, [ #[aa] 1 .. #[bb] 2 ], "#[aa] 1 .. #[bb] 2");
+    c1!(stmt, [ #[aa] x .. #[bb] 2 ], "#[aa] x .. #[bb] 2");
     c1!(stmt, [ 1 || #[bb] 2 ], "1 || #[bb] 2");
     c1!(stmt, [ x || #[bb] 2 ], "x || #[bb] 2");
     c1!(stmt, [ #[aa] (1 + 2) ], "#[aa] (1 + 2)");
