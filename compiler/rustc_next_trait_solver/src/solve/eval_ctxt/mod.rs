@@ -14,6 +14,7 @@ use tracing::{instrument, trace};
 
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::relate::RelateExt;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
