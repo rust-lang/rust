@@ -381,9 +381,9 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         TyKind::Error.intern(Interner)
     }
 
-    fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
-        // FIXME: implement actual object safety
-        true
+    fn is_object_safe(&self, trait_id: chalk_ir::TraitId<Interner>) -> bool {
+        let trait_ = from_chalk_trait_id(trait_id);
+        crate::object_safety::object_safety(self.db, trait_).is_none()
     }
 
     fn closure_kind(

@@ -288,7 +288,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn, eq, index
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -428,7 +428,7 @@ impl core::ops::IndexMut for Struct {}
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn, eq, index
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
 fn main() {
 
     Struct.consume();

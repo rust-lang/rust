@@ -1065,7 +1065,7 @@ fn test() {
 fn bare_dyn_trait_binders_9639() {
     check_no_mismatches(
         r#"
-//- minicore: fn, coerce_unsized
+//- minicore: fn, coerce_unsized, dispatch_from_dyn
 fn infix_parse<T, S>(_state: S, _level_code: &Fn(S)) -> T {
     loop {}
 }

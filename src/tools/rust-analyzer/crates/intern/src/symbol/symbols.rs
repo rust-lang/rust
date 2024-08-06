@@ -242,6 +242,7 @@ define_symbols! {
     future_output,
     Future,
     ge,
+    generic_associated_type_extended,
     get_context,
     global_allocator,
     global_asm,

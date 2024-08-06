@@ -4,7 +4,8 @@ use std::{mem, ops::Not};
 use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout,
-    LayoutError, Name, Semantics, Trait, Type, TypeInfo,
+    LayoutError, MethodViolationCode, Name, ObjectSafetyViolation, Semantics, Trait, Type,
+    TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -526,6 +527,14 @@ pub(super) fn definition(
         _ => None,
     };
 
+    let object_safety_info = if let Definition::Trait(it) = def {
+        let mut object_safety_info = String::new();
+        render_object_safety(db, &mut object_safety_info, it.object_safety(db));
+        Some(object_safety_info)
+    } else {
+        None
+    };
+
     let mut desc = String::new();
     if let Some(notable_traits) = render_notable_trait_comment(db, notable_traits, edition) {
         desc.push_str(&notable_traits);
@@ -533,6 +542,10 @@ pub(super) fn definition(
     }
     if let Some(layout_info) = layout_info {
         desc.push_str(&layout_info);
+        desc.push('\n');
+    }
+    if let Some(object_safety_info) = object_safety_info {
+        desc.push_str(&object_safety_info);
         desc.push('\n');
     }
     desc.push_str(&label);
@@ -962,5 +975,64 @@ fn keyword_hints(
         }
         T![Self] => KeywordHint::new(token.text().to_owned(), "self_upper_keyword".into()),
         _ => KeywordHint::new(token.text().to_owned(), format!("{}_keyword", token.text())),
+    }
+}
+
+fn render_object_safety(
+    db: &RootDatabase,
+    buf: &mut String,
+    safety: Option<ObjectSafetyViolation>,
+) {
+    let Some(osv) = safety else {
+        buf.push_str("// Object Safety: Yes");
+        return;
+    };
+    buf.push_str("// Object Safety: No\n// - Reason: ");
+    match osv {
+        ObjectSafetyViolation::SizedSelf => {
+            buf.push_str("has a `Self: Sized` bound");
+        }
+        ObjectSafetyViolation::SelfReferential => {
+            buf.push_str("has a bound that references `Self`");
+        }
+        ObjectSafetyViolation::Method(func, mvc) => {
+            let name = hir::Function::from(func).name(db);
+            format_to!(
+                buf,
+                "has a method `{}` that is non dispatchable because of:\n//   - ",
+                name.as_str()
+            );
+            let desc = match mvc {
+                MethodViolationCode::StaticMethod => "missing a receiver",
+                MethodViolationCode::ReferencesSelfInput => "a parameter references `Self`",
+                MethodViolationCode::ReferencesSelfOutput => "the return type references `Self`",
+                MethodViolationCode::ReferencesImplTraitInTrait => {
+                    "the return type contains `impl Trait`"
+                }
+                MethodViolationCode::AsyncFn => "being async",
+                MethodViolationCode::WhereClauseReferencesSelf => {
+                    "a where clause references `Self`"
+                }
+                MethodViolationCode::Generic => "a non-lifetime generic parameter",
+                MethodViolationCode::UndispatchableReceiver => "a non-dispatchable receiver type",
+            };
+            buf.push_str(desc);
+        }
+        ObjectSafetyViolation::AssocConst(const_) => {
+            let name = hir::Const::from(const_).name(db);
+            if let Some(name) = name {
+                format_to!(buf, "has an associated constant `{}`", name.as_str());
+            } else {
+                buf.push_str("has an associated constant");
+            }
+        }
+        ObjectSafetyViolation::GAT(alias) => {
+            let name = hir::TypeAlias::from(alias).name(db);
+            format_to!(buf, "has a generic associated type `{}`", name.as_str());
+        }
+        ObjectSafetyViolation::HasNonSafeSuperTrait(super_trait) => {
+            let name = hir::Trait::from(super_trait).name(db);
+            format_to!(buf, "has a object unsafe supertrait `{}`", name.as_str());
+        }
     }
 }

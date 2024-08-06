@@ -2007,7 +2007,7 @@ fn function_traits() {
     );
     check_number(
         r#"
-    //- minicore: coerce_unsized, fn
+    //- minicore: coerce_unsized, fn, dispatch_from_dyn
     fn add2(x: u8) -> u8 {
         x + 2
     }
@@ -2062,7 +2062,7 @@ fn function_traits() {
 fn dyn_trait() {
     check_number(
         r#"
-    //- minicore: coerce_unsized, index, slice
+    //- minicore: coerce_unsized, index, slice, dispatch_from_dyn
     trait Foo {
         fn foo(&self) -> u8 { 10 }
     }
@@ -2085,7 +2085,7 @@ fn dyn_trait() {
     );
     check_number(
         r#"
-    //- minicore: coerce_unsized, index, slice
+    //- minicore: coerce_unsized, index, slice, dispatch_from_dyn
     trait Foo {
         fn foo(&self) -> i32 { 10 }
     }
@@ -2109,7 +2109,7 @@ fn dyn_trait() {
     );
     check_number(
         r#"
-    //- minicore: coerce_unsized, index, slice
+    //- minicore: coerce_unsized, index, slice, dispatch_from_dyn
     trait A {
         fn x(&self) -> i32;
     }

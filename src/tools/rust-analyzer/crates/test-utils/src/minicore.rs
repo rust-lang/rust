@@ -33,6 +33,7 @@
 //!     from: sized
 //!     future: pin
 //!     coroutine: pin
+//!     dispatch_from_dyn: unsize, pin
 //!     hash:
 //!     include:
 //!     index: sized
@@ -821,6 +822,24 @@ pub mod ops {
     }
     pub use self::coroutine::{Coroutine, CoroutineState};
     // endregion:coroutine
+
+    // region:dispatch_from_dyn
+    mod dispatch_from_dyn {
+        use crate::marker::Unsize;
+
+        #[lang = "dispatch_from_dyn"]
+        pub trait DispatchFromDyn<T> {}
+
+        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+
+        impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+    }
+    pub use self::dispatch_from_dyn::DispatchFromDyn;
+    // endregion:dispatch_from_dyn
 }
 
 // region:eq
@@ -1182,6 +1201,12 @@ pub mod pin {
         }
     }
     // endregion:deref
+    // region:dispatch_from_dyn
+    impl<Ptr, U> crate::ops::DispatchFromDyn<Pin<U>> for Pin<Ptr> where
+        Ptr: crate::ops::DispatchFromDyn<U>
+    {
+    }
+    // endregion:dispatch_from_dyn
 }
 // endregion:pin
 
@@ -1308,7 +1333,10 @@ pub mod iter {
                     self
                 }
                 // region:iterators
-                fn take(self, n: usize) -> crate::iter::Take<Self> {
+                fn take(self, n: usize) -> crate::iter::Take<Self>
+                where
+                    Self: Sized,
+                {
                     loop {}
                 }
                 fn filter_map<B, F>(self, _f: F) -> crate::iter::FilterMap<Self, F>

@@ -849,7 +849,7 @@ fn main() {
 fn regression_14966() {
     check_pass(
         r#"
-//- minicore: fn, copy, coerce_unsized
+//- minicore: fn, copy, coerce_unsized, dispatch_from_dyn
 trait A<T> {
     fn a(&self) {}
 }

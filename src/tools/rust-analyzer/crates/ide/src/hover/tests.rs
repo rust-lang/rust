@@ -5442,7 +5442,7 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
 fn hover_const_eval_dyn_trait() {
     check(
         r#"
-//- minicore: fmt, coerce_unsized, builtin_impls
+//- minicore: fmt, coerce_unsized, builtin_impls, dispatch_from_dyn
 use core::fmt::Debug;
 
 const FOO$0: &dyn Debug = &2i32;
@@ -7107,6 +7107,7 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: Yes
             trait T {}
             ```
         "#]],
@@ -7126,6 +7127,7 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: Yes
             trait T {}
             ```
         "#]],
@@ -7149,6 +7151,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T { /* … */ }
             ```
         "#]],
@@ -7172,6 +7177,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7199,6 +7207,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7226,6 +7237,9 @@ impl T$0 for () {}
             ```
 
             ```rust
+            // Object Safety: No
+            // - Reason: has a method `func` that is non dispatchable because of:
+            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -8465,8 +8479,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7800..8042,
-                                focus_range: 7865..7871,
+                                full_range: 7801..8043,
+                                focus_range: 7866..7872,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -8479,8 +8493,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 8672..9171,
-                                focus_range: 8749..8757,
+                                full_range: 8673..9172,
+                                focus_range: 8750..8758,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
