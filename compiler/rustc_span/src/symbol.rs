@@ -1216,6 +1216,7 @@ symbols! {
         mir_static_mut,
         mir_storage_dead,
         mir_storage_live,
+        mir_tail_call,
         mir_unreachable,
         mir_unwind_cleanup,
         mir_unwind_continue,

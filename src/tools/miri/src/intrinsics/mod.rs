@@ -33,7 +33,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // See if the core engine can handle this intrinsic.
-        if this.emulate_intrinsic(instance, args, dest, ret)? {
+        if this.eval_intrinsic(instance, args, dest, ret)? {
             return Ok(None);
         }
         let intrinsic_name = this.tcx.item_name(instance.def_id());

@@ -23,7 +23,7 @@ use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::{PlaceRef, PlaceValue};
 use crate::MemFlags;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum OverflowOp {
     Add,
     Sub,

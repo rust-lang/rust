@@ -468,7 +468,7 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
         Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } if path.segments.len() == 1 => {
-            Generic(kw::SelfUpper)
+            Type::SelfTy
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {

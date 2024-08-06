@@ -75,6 +75,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call(mir_call, args) => {
                 self.parse_call(args)
             },
+            @call(mir_tail_call, args) => {
+                self.parse_tail_call(args)
+            },
             ExprKind::Match { scrutinee, arms, .. } => {
                 let discr = self.parse_operand(*scrutinee)?;
                 self.parse_match(arms, expr.span).map(|t| TerminatorKind::SwitchInt { discr, targets: t })
@@ -181,6 +184,25 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     call_source: if *from_hir_call { CallSource::Normal } else {
                         CallSource::OverloadedOperator
                     },
+                    fn_span: *fn_span,
+                })
+            },
+        )
+    }
+
+    fn parse_tail_call(&self, args: &[ExprId]) -> PResult<TerminatorKind<'tcx>> {
+        parse_by_kind!(self, args[0], _, "tail call",
+            ExprKind::Call { fun, args, fn_span, .. } => {
+                let fun = self.parse_operand(*fun)?;
+                let args = args
+                    .iter()
+                    .map(|arg|
+                        Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
+                    )
+                    .collect::<PResult<Box<[_]>>>()?;
+                Ok(TerminatorKind::TailCall {
+                    func: fun,
+                    args,
                     fn_span: *fn_span,
                 })
             },

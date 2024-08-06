@@ -2,7 +2,7 @@ use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
+use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Symbol;
@@ -455,32 +455,22 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                // No special checking is needed for these:
-                // - Typeck has checked that Const operands are integers.
-                // - AST lowering guarantees that SymStatic points to a static.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymStatic { .. } => {}
-                // Check that sym actually points to a function. Later passes
-                // depend on this.
-                hir::InlineAsmOperand::SymFn { anon_const } => {
-                    let ty = self.tcx.type_of(anon_const.def_id).instantiate_identity();
-                    match ty.kind() {
-                        ty::Never | ty::Error(_) => {}
-                        ty::FnDef(..) => {}
-                        _ => {
-                            self.tcx
-                                .dcx()
-                                .struct_span_err(*op_sp, "invalid `sym` operand")
-                                .with_span_label(
-                                    self.tcx.def_span(anon_const.def_id),
-                                    format!("is {} `{}`", ty.kind().article(), ty),
-                                )
-                                .with_help(
-                                    "`sym` operands must refer to either a function or a static",
-                                )
-                                .emit();
-                        }
-                    };
+                // Typeck has checked that Const operands are integers.
+                hir::InlineAsmOperand::Const { anon_const } => {
+                    debug_assert!(matches!(
+                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
+                        ty::Error(_) | ty::Int(_) | ty::Uint(_)
+                    ));
                 }
+                // Typeck has checked that SymFn refers to a function.
+                hir::InlineAsmOperand::SymFn { anon_const } => {
+                    debug_assert!(matches!(
+                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
+                        ty::Error(_) | ty::FnDef(..)
+                    ));
+                }
+                // AST lowering guarantees that SymStatic points to a static.
+                hir::InlineAsmOperand::SymStatic { .. } => {}
                 // No special checking is needed for labels.
                 hir::InlineAsmOperand::Label { .. } => {}
             }

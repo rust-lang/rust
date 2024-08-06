@@ -646,6 +646,22 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         }
     }
 
+    // This is a workaround for a LLVM bug that doesn't implicitly enable
+    // `simd128` when `relaxed-simd` is.
+    // See <https://github.com/llvm/llvm-project/pull/99803>, which didn't make
+    // it into a released version of LLVM yet.
+    //
+    // This doesn't use the "implicit target feature" system because it is only
+    // used for function attributes in other targets, which fixes this bug as
+    // well on the function attribute level.
+    if sess.target.families.contains(&"wasm".into()) {
+        if features.iter().any(|f| f == "+relaxed-simd")
+            && !features.iter().any(|f| f == "+simd128")
+        {
+            features.push("+simd128".into());
+        }
+    }
+
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.dcx().emit_err(TargetFeatureDisableOrEnable {
             features: f,
