@@ -307,7 +307,8 @@ pub fn create_ecx<'tcx>(
     // First argument is constructed later, because it's skipped if the entry function uses #[start].
 
     // Second argument (argc): length of `config.args`.
-    let argc = Scalar::from_target_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
+    let argc =
+        ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
@@ -334,13 +335,11 @@ pub fn create_ecx<'tcx>(
             ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
-        // A pointer to that place is the 3rd argument for main.
-        let argv = argvs_place.to_ref(&ecx);
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
-            ecx.write_scalar(argc, &argc_place)?;
+            ecx.write_immediate(*argc, &argc_place)?;
             ecx.mark_immutable(&argc_place);
             ecx.machine.argc = Some(argc_place.ptr());
 
@@ -348,7 +347,7 @@ pub fn create_ecx<'tcx>(
                 ecx.layout_of(Ty::new_imm_ptr(tcx, tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
             )?;
-            ecx.write_immediate(argv, &argv_place)?;
+            ecx.write_pointer(argvs_place.ptr(), &argv_place)?;
             ecx.mark_immutable(&argv_place);
             ecx.machine.argv = Some(argv_place.ptr());
         }
@@ -369,7 +368,7 @@ pub fn create_ecx<'tcx>(
             }
             ecx.mark_immutable(&cmd_place);
         }
-        argv
+        ecx.mplace_to_ref(&argvs_place)?
     };
 
     // Return place (in static memory so that it does not count as leak).
@@ -405,10 +404,14 @@ pub fn create_ecx<'tcx>(
                 start_instance,
                 Abi::Rust,
                 &[
-                    Scalar::from_pointer(main_ptr, &ecx).into(),
-                    argc.into(),
+                    ImmTy::from_scalar(
+                        Scalar::from_pointer(main_ptr, &ecx),
+                        // FIXME use a proper fn ptr type
+                        ecx.machine.layouts.const_raw_ptr,
+                    ),
+                    argc,
                     argv,
-                    Scalar::from_u8(sigpipe).into(),
+                    ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
@@ -418,7 +421,7 @@ pub fn create_ecx<'tcx>(
             ecx.call_function(
                 entry_instance,
                 Abi::Rust,
-                &[argc.into(), argv],
+                &[argc, argv],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;

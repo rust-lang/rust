@@ -46,8 +46,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
             // Match behavior of debuginfo (`FunctionCx::adjusted_span_and_dbg_scope`).
-            let span = hygiene::walk_chain_collapsed(frame.current_span(), frame.body.span);
-            data.push((frame.instance, span.lo()));
+            let span = hygiene::walk_chain_collapsed(frame.current_span(), frame.body().span);
+            data.push((frame.instance(), span.lo()));
         }
 
         let ptrs: Vec<_> = data
