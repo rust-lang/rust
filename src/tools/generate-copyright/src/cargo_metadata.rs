@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Describes how this module can fail
 #[derive(Debug, thiserror::Error)]
@@ -15,6 +15,8 @@ pub enum Error {
     LaunchingVendor(std::io::Error),
     #[error("Failed to complete cargo vendor")]
     RunningVendor,
+    #[error("Bad path {0:?} whilst scraping files")]
+    Scraping(PathBuf),
 }
 
 /// Uniquely describes a package on crates.io
@@ -150,24 +152,38 @@ fn load_important_files(
         let entry = entry?;
         let metadata = entry.metadata()?;
         let path = entry.path();
-        if let Some(filename) = path.file_name() {
-            let lc_filename = filename.to_ascii_lowercase();
-            let lc_filename_str = lc_filename.to_string_lossy();
-            let mut keep = false;
-            for m in ["copyright", "licence", "license", "author", "notice"] {
-                if lc_filename_str.contains(m) {
-                    keep = true;
-                    break;
-                }
+        let Some(filename) = path.file_name() else {
+            return Err(Error::Scraping(path));
+        };
+        let lc_filename = filename.to_ascii_lowercase();
+        let lc_filename_str = lc_filename.to_string_lossy();
+        let mut keep = false;
+        for m in ["copyright", "licence", "license", "author", "notice"] {
+            if lc_filename_str.contains(m) {
+                keep = true;
+                break;
             }
-            if keep {
-                if metadata.is_dir() {
-                    // scoop up whole directory
-                } else if metadata.is_file() {
-                    let filename = filename.to_string_lossy();
-                    println!("Scraping {}", filename);
-                    dep.notices.insert(filename.to_string(), std::fs::read_to_string(path)?);
+        }
+        if keep {
+            if metadata.is_dir() {
+                for inner_entry in std::fs::read_dir(entry.path())? {
+                    let inner_entry = inner_entry?;
+                    if inner_entry.metadata()?.is_file() {
+                        let inner_filename = inner_entry.file_name();
+                        let inner_filename_str = inner_filename.to_string_lossy();
+                        let qualified_filename =
+                            format!("{}/{}", lc_filename_str, inner_filename_str);
+                        println!("Scraping {}", qualified_filename);
+                        dep.notices.insert(
+                            qualified_filename.to_string(),
+                            std::fs::read_to_string(inner_entry.path())?,
+                        );
+                    }
                 }
+            } else if metadata.is_file() {
+                let filename = filename.to_string_lossy();
+                println!("Scraping {}", filename);
+                dep.notices.insert(filename.to_string(), std::fs::read_to_string(path)?);
             }
         }
     }
