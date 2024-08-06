@@ -1,0 +1,39 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-unsafe-block-issue-128604.rs:2:28
+   |
+LL |     let a = ["_"; unsafe { break; 1 + 2 }];
+   |                            ^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL |     let a = ["_"; 'block: unsafe { break 'block; 1 + 2 }];
+   |                   +++++++                ++++++
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-unsafe-block-issue-128604.rs:8:13
+   |
+LL |             break;
+   |             ^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~         'block: {
+LL |
+LL ~             break 'block;
+   |
+
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-inside-unsafe-block-issue-128604.rs:14:9
+   |
+LL |         break;
+   |         ^^^^^ cannot `break` outside of a loop or labeled block
+   |
+help: consider labeling this block to be able to break within it
+   |
+LL ~     'block: unsafe {
+LL ~         break 'block;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0268`.
