@@ -14,6 +14,9 @@ if [ "$GITHUB_EVENT_NAME" = "schedule" ] ; then # running in scheduled job
 
   echo "Doing full link check."
 elif [ "$GITHUB_EVENT_NAME" = "pull_request" ] ; then # running in PR CI build
+  echo "*** WARNING: linkcheck temporarily disabled due to bugs ***"
+  exit 0
+
   if [ -z "$BASE_SHA" ]; then
     echo "error: unexpected state: BASE_SHA must be non-empty in CI"
     exit 1
@@ -25,6 +28,9 @@ elif [ "$GITHUB_EVENT_NAME" = "pull_request" ] ; then # running in PR CI build
 
   echo "Checking files changed since $BASE_SHA: $CHANGED_FILES"
 else # running locally
+  echo "*** WARNING: linkcheck temporarily disabled due to bugs ***"
+  exit 0
+
   COMMIT_RANGE=master...
   CHANGED_FILES=$(git diff --name-only $COMMIT_RANGE | sed 's#^src/##' | tr '\n' ' ')
   FLAGS="-f $CHANGED_FILES"
