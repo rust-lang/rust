@@ -10,7 +10,6 @@
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,

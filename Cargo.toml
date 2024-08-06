@@ -51,7 +51,6 @@ tokio = { version = "1", features = ["io-util"] }
 rustc_tools_util = "0.3.0"
 
 [features]
-deny-warnings = ["clippy_lints/deny-warnings"]
 integration = ["tempfile"]
 internal = ["clippy_lints/internal", "tempfile"]
 

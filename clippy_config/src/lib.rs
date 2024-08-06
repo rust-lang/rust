@@ -1,5 +1,4 @@
 #![feature(rustc_private, array_windows, let_chains)]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,

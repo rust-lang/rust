@@ -8,7 +8,6 @@
 //! Clippy doesn't produce an ICE. Lint warnings are ignored by this test.
 
 #![cfg(feature = "integration")]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
