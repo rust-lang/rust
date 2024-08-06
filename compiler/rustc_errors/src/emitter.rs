@@ -1365,6 +1365,14 @@ impl HumanEmitter {
                     );
                     line += 1;
                 }
+                // We add lines above, but if the last line has no explicit newline (which would
+                // yield an empty line), then we revert one line up to continue with the next
+                // styled text chunk on the same line as the last one from the prior one. Otherwise
+                // every `text` would appear on their own line (because even though they didn't end
+                // in '\n', they advanced `line` by one).
+                if line > 0 {
+                    line -= 1;
+                }
             }
             if self.short_message {
                 let labels = msp
