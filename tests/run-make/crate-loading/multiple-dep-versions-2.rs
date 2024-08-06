@@ -1,6 +1,5 @@
-#![crate_name="dependency"]
-//@ edition:2021
-//@ compile-flags: -C metadata=2 -C extra-filename=-2
+#![crate_name = "dependency"]
+#![crate_type = "rlib"]
 pub struct Type(pub i32);
 pub trait Trait {}
 impl Trait for Type {}
