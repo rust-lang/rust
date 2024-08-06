@@ -390,13 +390,18 @@ function preLoadCss(cssUrl) {
             if (splitAt !== -1) {
                 const implId = savedHash.slice(0, splitAt);
                 const assocId = savedHash.slice(splitAt + 1);
-                const implElem = document.getElementById(implId);
-                if (implElem && implElem.parentElement.tagName === "SUMMARY" &&
-                    implElem.parentElement.parentElement.tagName === "DETAILS") {
-                    onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
+                const implElems = document.querySelectorAll(
+                    `details > summary > section[id^="${implId}"]`,
+                );
+                onEachLazy(implElems, implElem => {
+                    const numbered = /^(.+?)-([0-9]+)$/.exec(implElem.id);
+                    if (implElem.id !== implId && (!numbered || numbered[1] !== implId)) {
+                        return false;
+                    }
+                    return onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
                         `[id^="${assocId}"]`),
                         item => {
-                            const numbered = /([^-]+)-([0-9]+)/.exec(item.id);
+                            const numbered = /^(.+?)-([0-9]+)$/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
                                 openParentDetails(item);
                                 item.scrollIntoView();
@@ -404,10 +409,11 @@ function preLoadCss(cssUrl) {
                                 setTimeout(() => {
                                     window.location.replace("#" + item.id);
                                 }, 0);
+                                return true;
                             }
                         },
                     );
-                }
+                });
             }
         }
     }
