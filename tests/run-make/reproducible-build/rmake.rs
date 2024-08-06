@@ -18,191 +18,60 @@
 // - Trait object shims
 // - Fn Pointer shims
 // See https://github.com/rust-lang/rust/pull/32293
+// Tracking Issue: https://github.com/rust-lang/rust/issues/129080
 
-// FIXME(Oneirical): ignore-musl
-// FIXME(Oneirical): two of these test blocks will apparently fail on windows
-// FIXME(Oneirical): try it on test-various
-// # FIXME: Builds of `bin` crate types are not deterministic with debuginfo=2 on
-// # Windows.
-// # See: https://github.com/rust-lang/rust/pull/87320#issuecomment-920105533
-// # Issue: https://github.com/rust-lang/rust/issues/88982
-
-use run_make_support::{bin_name, cwd, diff, rfs, run_in_tmpdir, rust_lib_name, rustc};
+use run_make_support::{
+    bin_name, cwd, diff, is_darwin, is_windows, rfs, run_in_tmpdir, rust_lib_name, rustc,
+};
 
 fn main() {
-    run_in_tmpdir(|| {
-        rustc().input("linker.rs").opt().run();
-        rustc().input("reproducible-build-aux.rs").run();
-        rustc()
-            .input("reproducible-build.rs")
-            .linker(&cwd().join(bin_name("linker")).display().to_string())
-            .run();
-        rustc()
-            .input("reproducible-build.rs")
-            .linker(&cwd().join(bin_name("linker")).display().to_string())
-            .run();
-        diff().actual_file("linker-arguments1").expected_file("linker-arguments2").run();
-    });
+    // Smoke tests. Simple flags, build should be reproducible.
+    eprintln!("smoke_test => None");
+    smoke_test(None);
+    eprintln!("smoke_test => SmokeFlag::Debug");
+    smoke_test(Some(SmokeFlag::Debug));
+    eprintln!("smoke_test => SmokeFlag::Opt");
+    smoke_test(Some(SmokeFlag::Opt));
 
-    run_in_tmpdir(|| {
-        rustc().input("linker.rs").opt().run();
-        rustc().arg("-g").input("reproducible-build-aux.rs").run();
-        rustc()
-            .arg("-g")
-            .input("reproducible-build.rs")
-            .linker(&cwd().join(bin_name("linker")).display().to_string())
-            .run();
-        rustc()
-            .arg("-g")
-            .input("reproducible-build.rs")
-            .linker(&cwd().join(bin_name("linker")).display().to_string())
-            .run();
-        diff().actual_file("linker-arguments1").expected_file("linker-arguments2").run();
-    });
+    // Builds should be reproducible even through custom library search paths
+    // or remap path prefixes.
+    eprintln!("paths_test => PathsFlag::Link");
+    paths_test(PathsFlag::Link);
+    eprintln!("paths_test => PathsFlag::Remap");
+    paths_test(PathsFlag::Remap);
 
-    run_in_tmpdir(|| {
-        rustc().input("linker.rs").opt().run();
-        rustc().opt().input("reproducible-build-aux.rs").run();
-        rustc()
-            .opt()
-            .input("reproducible-build.rs")
-            .linker(&cwd().join(bin_name("linker")).display().to_string())
-            .run();
-        rustc()
-            .opt()
-            .input("reproducible-build.rs")
-            .linker(&cwd().join(bin_name("linker")).display().to_string())
-            .run();
-        diff().actual_file("linker-arguments1").expected_file("linker-arguments2").run();
-    });
+    // Builds should be reproducible even if each build is done in a different directory,
+    // with both --remap-path-prefix and -Z remap-cwd-prefix.
 
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rustc().input("reproducible-build.rs").crate_type("rlib").library_search_path("b").run();
-        rfs::copy(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
-        rustc().input("reproducible-build.rs").crate_type("rlib").library_search_path("a").run();
-        assert_eq!(rfs::read(rust_lib_name("reproducible_build")), rfs::read(rust_lib_name("foo")));
-    });
+    // FIXME(Oneirical): Building with crate type set to `bin` AND having -Cdebuginfo=2
+    // (or `-g`, the shorthand form) enabled will cause reproducibility failures.
+    // See https://github.com/rust-lang/rust/issues/89911
 
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("--remap-path-prefix=/a=/c")
-            .run();
-        rfs::copy(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("--remap-path-prefix=/b=/c")
-            .run();
-        assert_eq!(rfs::read(rust_lib_name("reproducible_build")), rfs::read(rust_lib_name("foo")));
-    });
+    if !is_darwin() && !is_windows() {
+        // FIXME(Oneirical): Bin builds are not reproducible on non-Linux targets.
+        eprintln!("diff_dir_test => Bin, Path");
+        diff_dir_test(CrateType::Bin, RemapType::Path);
+    }
 
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rfs::create_dir("test");
-        rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("bin")
-            .arg(&format!("--remap-path-prefix={}=/b", cwd().display()))
-            .run();
-        eprintln!("{:#?}", rfs::shallow_find_dir_entries(cwd()));
-        rfs::copy(bin_name("reproducible_build"), bin_name("foo"));
-        rustc()
-            .input("test/reproducible-build.rs")
-            .crate_type("bin")
-            .arg("--remap-path-prefix=/test=/b")
-            .run();
-        assert_eq!(rfs::read(bin_name("reproducible_build")), rfs::read(bin_name("foo")));
-    });
+    eprintln!("diff_dir_test => Rlib, Path");
+    diff_dir_test(CrateType::Rlib, RemapType::Path);
 
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rfs::create_dir("test");
-        rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("rlib")
-            .arg(&format!("--remap-path-prefix={}=/b", cwd().display()))
-            .run();
-        rfs::copy(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
-        rustc()
-            .input("test/reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("--remap-path-prefix=/test=/b")
-            .run();
-        assert_eq!(rfs::read(rust_lib_name("reproducible_build")), rfs::read(rust_lib_name("foo")));
-    });
+    // FIXME(Oneirical): This specific case would fail on Linux, should -Cdebuginfo=2
+    // be added.
+    // FIXME(Oneirical): Bin builds are not reproducible on non-Linux targets.
+    // See https://github.com/rust-lang/rust/issues/89911
+    if !is_darwin() && !is_windows() {
+        eprintln!("diff_dir_test => Bin, Cwd false");
+        diff_dir_test(CrateType::Bin, RemapType::Cwd { is_empty: false });
+    }
 
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rfs::create_dir("test");
-        rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("bin")
-            .arg("-Zremap-path-prefix=.")
-            .arg("-Cdebuginfo=2")
-            .run();
-        rfs::copy(bin_name("reproducible_build"), bin_name("first"));
-        rustc()
-            .input("test/reproducible-build.rs")
-            .crate_type("bin")
-            .arg("-Zremap-path-prefix=.")
-            .arg("-Cdebuginfo=2")
-            .run();
-        assert_eq!(rfs::read(bin_name("first")), rfs::read(bin_name("reproducible_build")));
-    });
+    eprintln!("diff_dir_test => Rlib, Cwd false");
+    diff_dir_test(CrateType::Rlib, RemapType::Cwd { is_empty: false });
+    eprintln!("diff_dir_test => Rlib, Cwd true");
+    diff_dir_test(CrateType::Rlib, RemapType::Cwd { is_empty: true });
 
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rfs::create_dir("test");
-        rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("-Zremap-path-prefix=.")
-            .arg("-Cdebuginfo=2")
-            .run();
-        rfs::copy("reproducible_build", "first");
-        rustc()
-            .input("test/reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("-Zremap-path-prefix=.")
-            .arg("-Cdebuginfo=2")
-            .run();
-        assert_eq!(
-            rfs::read(rust_lib_name("first")),
-            rfs::read(rust_lib_name("reproducible_build"))
-        );
-    });
-
-    run_in_tmpdir(|| {
-        rustc().input("reproducible-build-aux.rs").run();
-        rfs::create_dir("test");
-        rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
-        rustc()
-            .input("reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("-Zremap-path-prefix=")
-            .arg("-Cdebuginfo=2")
-            .run();
-        rfs::copy(rust_lib_name("reproducible_build"), rust_lib_name("first"));
-        rustc()
-            .input("test/reproducible-build.rs")
-            .crate_type("rlib")
-            .arg("-Zremap-path-prefix=")
-            .arg("-Cdebuginfo=2")
-            .run();
-        assert_eq!(
-            rfs::read(rust_lib_name("first")),
-            rfs::read(rust_lib_name("reproducible_build"))
-        );
-    });
-
+    eprintln!("final extern test");
+    // Builds should be reproducible when using the --extern flag.
     run_in_tmpdir(|| {
         rustc().input("reproducible-build-aux.rs").run();
         rustc()
@@ -217,6 +86,155 @@ fn main() {
             .crate_type("rlib")
             .extern_("reproducible_build_aux", rust_lib_name("bar"))
             .run();
-        assert_eq!(rfs::read(rust_lib_name("foo")), rfs::read(rust_lib_name("reproducible_build")));
+        assert!(rfs::read(rust_lib_name("foo")) == rfs::read(rust_lib_name("reproducible_build")))
     });
+}
+
+#[track_caller]
+fn smoke_test(flag: Option<SmokeFlag>) {
+    run_in_tmpdir(|| {
+        rustc().input("linker.rs").opt().run();
+        rustc().input("reproducible-build-aux.rs").run();
+        let mut compiler1 = rustc();
+        let mut compiler2 = rustc();
+        if let Some(flag) = flag {
+            match flag {
+                SmokeFlag::Debug => {
+                    compiler1.arg("-g");
+                    compiler2.arg("-g");
+                }
+                SmokeFlag::Opt => {
+                    compiler1.opt();
+                    compiler2.opt();
+                }
+            };
+        };
+        compiler1
+            .input("reproducible-build.rs")
+            .linker(&cwd().join(bin_name("linker")).display().to_string())
+            .run();
+        compiler2
+            .input("reproducible-build.rs")
+            .linker(&cwd().join(bin_name("linker")).display().to_string())
+            .run();
+        diff().actual_file("linker-arguments1").expected_file("linker-arguments2").run();
+    });
+}
+
+#[track_caller]
+fn paths_test(flag: PathsFlag) {
+    run_in_tmpdir(|| {
+        rustc().input("reproducible-build-aux.rs").run();
+        let mut compiler1 = rustc();
+        let mut compiler2 = rustc();
+        match flag {
+            PathsFlag::Link => {
+                compiler1.library_search_path("a");
+                compiler2.library_search_path("b");
+            }
+            PathsFlag::Remap => {
+                compiler1.arg("--remap-path-prefix=/a=/c");
+                compiler2.arg("--remap-path-prefix=/b=/c");
+            }
+        }
+        compiler1.input("reproducible-build.rs").crate_type("rlib").run();
+        rfs::rename(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
+        compiler2.input("reproducible-build.rs").crate_type("rlib").run();
+        assert!(rfs::read(rust_lib_name("foo")) == rfs::read(rust_lib_name("reproducible_build")))
+    });
+}
+
+#[track_caller]
+fn diff_dir_test(crate_type: CrateType, remap_type: RemapType) {
+    run_in_tmpdir(|| {
+        let base_dir = cwd();
+        rustc().input("reproducible-build-aux.rs").run();
+        rfs::create_dir("test");
+        rfs::copy("reproducible-build.rs", "test/reproducible-build.rs");
+        let mut compiler1 = rustc();
+        let mut compiler2 = rustc();
+        match crate_type {
+            CrateType::Bin => {
+                compiler1.crate_type("bin");
+                compiler2.crate_type("bin");
+            }
+            CrateType::Rlib => {
+                compiler1.crate_type("rlib");
+                compiler2.crate_type("rlib");
+            }
+        }
+        match remap_type {
+            RemapType::Path => {
+                compiler1.arg(&format!("--remap-path-prefix={}=/b", cwd().display()));
+                compiler2
+                    .arg(format!("--remap-path-prefix={}=/b", base_dir.join("test").display()));
+            }
+            RemapType::Cwd { is_empty } => {
+                // FIXME(Oneirical): Building with crate type set to `bin` AND having -Cdebuginfo=2
+                // (or `-g`, the shorthand form) enabled will cause reproducibility failures
+                // for multiple platforms.
+                // See https://github.com/rust-lang/rust/issues/89911
+                // FIXME(#129117): Windows rlib + `-Cdebuginfo=2` + `-Z remap-cwd-prefix=.` seems
+                // to be unreproducible.
+                if !matches!(crate_type, CrateType::Bin) && !is_windows() {
+                    compiler1.arg("-Cdebuginfo=2");
+                    compiler2.arg("-Cdebuginfo=2");
+                }
+                if is_empty {
+                    compiler1.arg("-Zremap-cwd-prefix=");
+                    compiler2.arg("-Zremap-cwd-prefix=");
+                } else {
+                    compiler1.arg("-Zremap-cwd-prefix=.");
+                    compiler2.arg("-Zremap-cwd-prefix=.");
+                }
+            }
+        }
+        compiler1.input("reproducible-build.rs").run();
+        match crate_type {
+            CrateType::Bin => {
+                rfs::rename(bin_name("reproducible-build"), bin_name("foo"));
+            }
+            CrateType::Rlib => {
+                rfs::rename(rust_lib_name("reproducible_build"), rust_lib_name("foo"));
+            }
+        }
+        std::env::set_current_dir("test").unwrap();
+        compiler2
+            .input("reproducible-build.rs")
+            .library_search_path(&base_dir)
+            .out_dir(&base_dir)
+            .run();
+        std::env::set_current_dir(&base_dir).unwrap();
+        match crate_type {
+            CrateType::Bin => {
+                assert!(rfs::read(bin_name("reproducible-build")) == rfs::read(bin_name("foo")));
+            }
+            CrateType::Rlib => {
+                assert!(
+                    rfs::read(rust_lib_name("foo"))
+                        == rfs::read(rust_lib_name("reproducible_build"))
+                );
+            }
+        }
+    });
+}
+
+enum SmokeFlag {
+    Debug,
+    Opt,
+}
+
+enum PathsFlag {
+    Link,
+    Remap,
+}
+
+enum CrateType {
+    Bin,
+    Rlib,
+}
+
+enum RemapType {
+    Path,
+    Cwd { is_empty: bool },
 }
