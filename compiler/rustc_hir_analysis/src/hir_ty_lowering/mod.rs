@@ -472,10 +472,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::Param(param.def_id))
-                            .into()
+                        let did = ct.value.def_id;
+                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        ty::Const::from_anon_const(tcx, did).into()
                     }
-                    (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
+                    (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
                     }
                     (kind, arg) => span_bug!(
@@ -912,8 +913,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 let term: ty::Term<'_> = match term {
                                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                                     hir::Term::Const(ct) => {
-                                        ty::Const::from_const_arg(tcx, ct, ty::FeedConstTy::No)
-                                            .into()
+                                        ty::Const::from_anon_const(tcx, ct.def_id).into()
                                     }
                                 };
                                 // FIXME(#97583): This isn't syntactically well-formed!
@@ -2195,7 +2195,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = match length {
                     hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
                     hir::ArrayLen::Body(constant) => {
-                        ty::Const::from_const_arg(tcx, constant, ty::FeedConstTy::No)
+                        ty::Const::from_anon_const(tcx, constant.def_id)
                     }
                 };
 

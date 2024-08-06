@@ -5,7 +5,7 @@
 
 
 trait Trait {
-    fn func<const N: u32>() -> [ (); N ]; //~ ERROR the constant `N` is not of type `usize`
+    fn func<const N: u32>() -> [ (); N ]; //~ ERROR mismatched types
 }
 
 struct S {}
