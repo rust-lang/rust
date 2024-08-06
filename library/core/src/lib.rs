@@ -139,6 +139,9 @@
 #![feature(variant_count)]
 // tidy-alphabetical-end
 //
+// Features:
+#![cfg_attr(bootstrap, feature(no_sanitize))]
+//
 // Language features:
 // tidy-alphabetical-start
 #![feature(abi_unadjusted)]
@@ -177,7 +180,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(no_core)]
-#![feature(no_sanitize)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]

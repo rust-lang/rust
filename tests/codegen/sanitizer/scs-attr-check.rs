@@ -5,8 +5,6 @@
 //@ compile-flags: -Zunstable-options -Csanitize=shadow-call-stack
 
 #![crate_type = "lib"]
-#![feature(no_sanitize)]
-
 // CHECK: ; sanitizer_scs_attr_check::scs
 // CHECK-NEXT: ; Function Attrs:{{.*}}shadowcallstack
 pub fn scs() {}

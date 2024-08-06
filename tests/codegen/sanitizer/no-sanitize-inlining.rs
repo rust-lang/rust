@@ -9,8 +9,6 @@
 //@[LSAN] compile-flags: -Zunstable-options -Csanitize=leak
 
 #![crate_type = "lib"]
-#![feature(no_sanitize)]
-
 // ASAN-LABEL: define void @test
 // ASAN:         call {{.*}} @random_inline
 // ASAN:       }
