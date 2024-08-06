@@ -24,6 +24,7 @@ use rustc_middle::{
         Instance, Ty, TyCtxt,
     },
 };
+use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
@@ -1525,24 +1526,29 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         instance: Option<ty::Instance<'tcx>>,
     ) -> usize {
         let unique = if let Some(instance) = instance {
-            // Functions cannot be identified by pointers, as asm-equal functions can get deduplicated
-            // by the linker (we set the "unnamed_addr" attribute for LLVM) and functions can be
-            // duplicated across crates. We thus generate a new `AllocId` for every mention of a
-            // function. This means that `main as fn() == main as fn()` is false, while `let x = main as
-            // fn(); x == x` is true. However, as a quality-of-life feature it can be useful to identify
-            // certain functions uniquely, e.g. for backtraces. So we identify whether codegen will
-            // actually emit duplicate functions. It does that when they have non-lifetime generics, or
-            // when they can be inlined. All other functions are given a unique address.
-            // This is not a stable guarantee! The `inline` attribute is a hint and cannot be relied
-            // upon for anything. But if we don't do this, backtraces look terrible.
+            // Functions cannot be identified by pointers, as asm-equal functions can get
+            // deduplicated by the linker (we set the "unnamed_addr" attribute for LLVM) and
+            // functions can be duplicated across crates. We thus generate a new `AllocId` for every
+            // mention of a function. This means that `main as fn() == main as fn()` is false, while
+            // `let x = main as fn(); x == x` is true. However, as a quality-of-life feature it can
+            // be useful to identify certain functions uniquely, e.g. for backtraces. So we identify
+            // whether codegen will actually emit duplicate functions. It does that when they have
+            // non-lifetime generics, or when they can be inlined. All other functions are given a
+            // unique address. This is not a stable guarantee! The `inline` attribute is a hint and
+            // cannot be relied upon for anything. But if we don't do this, the
+            // `__rust_begin_short_backtrace`/`__rust_end_short_backtrace` logic breaks and panic
+            // backtraces look terrible.
             let is_generic = instance
                 .args
                 .into_iter()
                 .any(|kind| !matches!(kind.unpack(), ty::GenericArgKind::Lifetime(_)));
-            let can_be_inlined = match ecx.tcx.codegen_fn_attrs(instance.def_id()).inline {
-                InlineAttr::Never => false,
-                _ => true,
-            };
+            let can_be_inlined = matches!(
+                ecx.tcx.sess.opts.unstable_opts.cross_crate_inline_threshold,
+                InliningThreshold::Always
+            ) || !matches!(
+                ecx.tcx.codegen_fn_attrs(instance.def_id()).inline,
+                InlineAttr::Never
+            );
             !is_generic && !can_be_inlined
         } else {
             // Non-functions are never unique.
