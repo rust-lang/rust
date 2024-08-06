@@ -60,7 +60,6 @@ pub(crate) fn find_all_refs(
         move |def: Definition| {
             let mut usages =
                 def.usages(sema).set_scope(search_scope.as_ref()).include_self_refs().all();
-
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
@@ -813,6 +812,30 @@ impl<T> S<T> {
             FileId(0) 48..49
             FileId(0) 71..75
             FileId(0) 86..90
+            "#]],
+        )
+    }
+
+    #[test]
+    fn test_self_inside_not_adt_impl() {
+        check(
+            r#"
+pub trait TestTrait {
+    type Assoc;
+    fn stuff() -> Self;
+}
+impl TestTrait for () {
+    type Assoc$0 = u8;
+    fn stuff() -> Self {
+        let me: Self = ();
+        me
+    }
+}
+"#,
+            expect![[r#"
+                Assoc TypeAlias FileId(0) 92..108 97..102
+
+                FileId(0) 31..36
             "#]],
         )
     }
