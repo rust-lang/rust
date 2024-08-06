@@ -644,13 +644,6 @@ pub struct CoroutineOnNonClosure {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_pointee_on_non_generic_ty)]
-pub struct PointeeOnNonGenericTy {
-    #[primary_span]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_empty_confusables)]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
