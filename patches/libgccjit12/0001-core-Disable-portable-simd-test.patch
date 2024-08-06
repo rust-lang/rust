@@ -11,15 +11,15 @@ diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
 index b71786c..cf484d5 100644
 --- a/library/core/tests/lib.rs
 +++ b/library/core/tests/lib.rs
-@@ -95,7 +95,6 @@
- #![feature(never_type)]
- #![feature(unwrap_infallible)]
+@@ -87,7 +87,6 @@
+ #![feature(numfmt)]
+ #![feature(pattern)]
  #![feature(pointer_is_aligned_to)]
 -#![feature(portable_simd)]
  #![feature(ptr_metadata)]
- #![feature(unsized_tuple_coercion)]
- #![feature(const_option)]
-@@ -157,7 +156,6 @@ mod pin;
+ #![feature(slice_from_ptr_range)]
+ #![feature(slice_internals)]
+@@ -155,7 +154,6 @@ mod pin;
  mod pin_macro;
  mod ptr;
  mod result;
