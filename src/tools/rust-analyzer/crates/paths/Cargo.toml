@@ -1,7 +1,8 @@
 [package]
 name = "paths"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Path wrappers for absolute and relative paths rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

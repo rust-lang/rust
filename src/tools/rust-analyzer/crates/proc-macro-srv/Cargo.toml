@@ -1,7 +1,8 @@
 [package]
 name = "proc-macro-srv"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Proc-macro server for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

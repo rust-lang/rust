@@ -1,7 +1,8 @@
 [package]
 name = "vfs-notify"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Implementation of `loader::Handle` for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

@@ -1,7 +1,8 @@
 [package]
 name = "ide-db"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Core data structure representing IDE state for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

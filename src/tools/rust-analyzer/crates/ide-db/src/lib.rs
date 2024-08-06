@@ -1,4 +1,4 @@
-//! This crate defines the core datastructure representing IDE state -- `RootDatabase`.
+//! This crate defines the core data structure representing IDE state -- `RootDatabase`.
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 

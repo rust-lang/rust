@@ -8,6 +8,7 @@ rust-version = "1.78"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
+repository = "https://github.com/rust-lang/rust-analyzer"
 
 [profile.dev]
 debug = 1
