@@ -220,20 +220,15 @@ details[open] {
     --inline-code-bg: #191f26;
 }
 
-#settings {
+#settings-dropdown {
     position: absolute;
     margin: 0.7em;
     z-index: 10;
     display: flex;
 }
 
-.menu-container {
-    position: relative;
-    width: 28px;
-}
-
 /* Applying the mdBook theme */
-.theme-icon, .settings-icon {
+.settings-icon {
     text-align: center;
     width: 2em;
     height: 2em;
@@ -242,24 +237,20 @@ details[open] {
     border-radius: 5px;
     user-select: none;
     cursor: pointer;
-}
-.theme-icon:hover, .settings-icon:hover {
     background: var(--theme-hover);
 }
-.theme-choice, .settings-choice {
+.settings-menu {
     display: none;
     list-style: none;
     border: 1px solid var(--theme-popup-border);
     border-radius: 5px;
     color: var(--fg);
     background: var(--theme-popup-bg);
-    padding: 0 0;
     overflow: hidden;
+    padding: 9px;
+    width: 207px;
     position: absolute;
-}
-
-.settings-dropdown {
-    margin-left: 4px;
+    top: 28px;
 }
 
 .settings-icon::before {
@@ -285,28 +276,28 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
   padding-top: 3px;
 }
 
-.settings-choice {
-    padding: 4px;
-    width: 212px;
+.settings-menu * {
+    font-weight: normal;
 }
 
-.settings-choice label {
+.settings-menu label {
     cursor: pointer;
 }
 
-.theme-dropdown.open .theme-choice, .settings-dropdown.open .settings-choice {
+#settings-dropdown.open .settings-menu {
     display: block;
 }
 
-.theme-choice > li {
-    padding: 5px 10px;
-    font-size: 0.8em;
-    user-select: none;
+#theme-choice {
+    margin-bottom: 10px;
+    background: var(--searchbar-bg);
+    color: var(--searchbar-fg);
+    border-color: var(--theme-popup-border);
+    border-radius: 5px;
     cursor: pointer;
-}
-
-.theme-choice > li:hover {
-    background: var(--theme-hover);
+    width: 100%;
+    border-width: 1px;
+    padding: 5px;
 }
 
 .alert {
