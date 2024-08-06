@@ -458,8 +458,11 @@ fn lint_int_literal<'tcx>(
         }
 
         let span = if negative { type_limits.negated_expr_span.unwrap() } else { e.span };
-        let lit =
-            cx.sess().source_map().span_to_snippet(span).expect("must get snippet from literal");
+        let lit = cx
+            .sess()
+            .source_map()
+            .span_to_snippet(span)
+            .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
@@ -485,6 +488,7 @@ fn lint_uint_literal<'tcx>(
         ast::LitKind::Int(v, _) => v.get(),
         _ => bug!(),
     };
+
     if lit_val < min || lit_val > max {
         if let Node::Expr(par_e) = cx.tcx.parent_hir_node(e.hir_id) {
             match par_e.kind {
@@ -526,7 +530,7 @@ fn lint_uint_literal<'tcx>(
                     .sess()
                     .source_map()
                     .span_to_snippet(lit.span)
-                    .expect("must get snippet from literal"),
+                    .unwrap_or_else(|_| lit_val.to_string()),
                 min,
                 max,
             },
@@ -551,14 +555,14 @@ fn lint_literal<'tcx>(
         }
         ty::Uint(t) => lint_uint_literal(cx, e, lit, t),
         ty::Float(t) => {
-            let is_infinite = match lit.node {
+            let (is_infinite, sym) = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
                     // FIXME(f16_f128): add this check once `is_infinite` is reliable (ABI
                     // issues resolved).
-                    ty::FloatTy::F16 => Ok(false),
-                    ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                    ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                    ty::FloatTy::F128 => Ok(false),
+                    ty::FloatTy::F16 => (Ok(false), v),
+                    ty::FloatTy::F32 => (v.as_str().parse().map(f32::is_infinite), v),
+                    ty::FloatTy::F64 => (v.as_str().parse().map(f64::is_infinite), v),
+                    ty::FloatTy::F128 => (Ok(false), v),
                 },
                 _ => bug!(),
             };
@@ -572,7 +576,7 @@ fn lint_literal<'tcx>(
                             .sess()
                             .source_map()
                             .span_to_snippet(lit.span)
-                            .expect("must get snippet from literal"),
+                            .unwrap_or_else(|_| sym.to_string()),
                     },
                 );
             }
