@@ -31,7 +31,7 @@ fn main() -> Result<(), Error> {
     let workspace_paths = [
         Path::new("./Cargo.toml"),
         Path::new("./src/tools/cargo/Cargo.toml"),
-        Path::new("./library/std/Cargo.toml"),
+        Path::new("./library/Cargo.toml"),
     ];
     let mut collected_cargo_metadata =
         cargo_metadata::get_metadata_and_notices(&cargo, &out_dir, &root_path, &workspace_paths)?;
