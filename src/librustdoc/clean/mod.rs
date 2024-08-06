@@ -285,17 +285,10 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
 }
 
 pub(crate) fn clean_const<'tcx>(
-    constant: &hir::ConstArg<'tcx>,
+    constant: &hir::ConstArg<'_>,
     _cx: &mut DocContext<'tcx>,
 ) -> Constant {
-    match &constant.kind {
-        hir::ConstArgKind::Path(qpath) => {
-            Constant { kind: ConstantKind::Path { path: qpath_to_string(&qpath).into() } }
-        }
-        hir::ConstArgKind::Anon(anon) => {
-            Constant { kind: ConstantKind::Anonymous { body: anon.body } }
-        }
-    }
+    Constant { kind: ConstantKind::Anonymous { body: constant.value.body } }
 }
 
 pub(crate) fn clean_middle_const<'tcx>(
@@ -438,7 +431,7 @@ fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Te
     match term {
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => Term::Constant(clean_middle_const(
-            ty::Binder::dummy(ty::Const::from_const_arg(cx.tcx, c, ty::FeedConstTy::No)),
+            ty::Binder::dummy(ty::Const::from_anon_const(cx.tcx, c.def_id)),
             cx,
         )),
     }
@@ -634,9 +627,8 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
-                default: default.map(|ct| {
-                    Box::new(ty::Const::from_const_arg(cx.tcx, ct, ty::FeedConstTy::No).to_string())
-                }),
+                default: default
+                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
                 synthetic,
             },
         ),
@@ -1822,7 +1814,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Array(ty, ref length) => {
             let length = match length {
                 hir::ArrayLen::Infer(..) => "_".to_string(),
-                hir::ArrayLen::Body(const_arg) => {
+                hir::ArrayLen::Body(anon_const) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
                     // but do allow `ConstKind::Param`.
@@ -1830,18 +1822,9 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     // `const_eval_poly` tries to first substitute generic parameters which
                     // results in an ICE while manually constructing the constant and using `eval`
                     // does nothing for `ConstKind::Param`.
-                    let ct = ty::Const::from_const_arg(cx.tcx, const_arg, ty::FeedConstTy::No);
-                    let ct = if let hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) =
-                        const_arg.kind
-                    {
-                        // Only anon consts can implicitly capture params.
-                        // FIXME: is this correct behavior?
-                        let param_env = cx.tcx.param_env(*def_id);
-                        ct.normalize(cx.tcx, param_env)
-                    } else {
-                        ct
-                    };
-                    print_const(cx, ct)
+                    let ct = ty::Const::from_anon_const(cx.tcx, anon_const.def_id);
+                    let param_env = cx.tcx.param_env(anon_const.def_id);
+                    print_const(cx, ct.normalize(cx.tcx, param_env))
                 }
             };
 

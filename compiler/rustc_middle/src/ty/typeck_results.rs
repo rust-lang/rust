@@ -607,9 +607,7 @@ impl<'a, V> ::std::ops::Index<HirId> for LocalTableInContext<'a, V> {
     type Output = V;
 
     fn index(&self, key: HirId) -> &V {
-        self.get(key).unwrap_or_else(|| {
-            bug!("LocalTableInContext({:?}): key {:?} not found", self.hir_owner, key)
-        })
+        self.get(key).expect("LocalTableInContext: key not found")
     }
 }
 

@@ -672,21 +672,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
             }
 
-            ty::Array(subty, len) => {
+            ty::Array(subty, _) => {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
-                // Note that the len being WF is implicitly checked while visiting.
-                // Here we just check that it's of type usize.
-                let cause = self.cause(ObligationCauseCode::Misc);
-                self.out.push(traits::Obligation::with_depth(
-                    tcx,
-                    cause,
-                    self.recursion_depth,
-                    self.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
-                        len,
-                        tcx.types.usize,
-                    ))),
-                ));
+                // Note that we handle the len is implicitly checked while walking `arg`.
             }
 
             ty::Pat(subty, _) => {
