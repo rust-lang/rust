@@ -957,6 +957,8 @@ pub struct BadOptAccessDiag<'a> {
 pub enum NonBindingLet {
     #[diag(lint_non_binding_let_on_sync_lock)]
     SyncLock {
+        #[label]
+        pat: Span,
         #[subdiagnostic]
         sub: NonBindingLetSub,
     },
