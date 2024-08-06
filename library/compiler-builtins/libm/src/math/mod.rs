@@ -76,7 +76,7 @@ macro_rules! div {
 
 macro_rules! llvm_intrinsically_optimized {
     (#[cfg($($clause:tt)*)] $e:expr) => {
-        #[cfg(all(feature = "unstable", $($clause)*))]
+        #[cfg(all(feature = "unstable", not(feature = "only-soft-floats"), $($clause)*))]
         {
             if true { // thwart the dead code lint
                 $e
