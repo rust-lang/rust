@@ -82,11 +82,9 @@ pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
 }
 
 pub fn ignore_notfound<T>(result: crate::io::Result<T>) -> crate::io::Result<()> {
-    if let Err(err) = &result
-        && err.kind() == crate::io::ErrorKind::NotFound
-    {
-        Ok(())
-    } else {
-        result
+    match result {
+        Err(err) if err.kind() == crate::io::ErrorKind::NotFound => Ok(()),
+        Ok(_) => Ok(()),
+        Err(err) => Err(err),
     }
 }

@@ -9,8 +9,8 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
-use crate::sys_common::ignore_notfound;
 pub use crate::sys_common::fs::exists;
+use crate::sys_common::ignore_notfound;
 
 /// A file descriptor.
 #[derive(Clone, Copy)]

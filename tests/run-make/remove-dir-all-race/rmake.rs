@@ -1,10 +1,9 @@
 use std::fs::remove_dir_all;
 use std::path::Path;
-use std::sync::Once;
 use std::thread;
 use std::time::Duration;
 
-use run_make_support::fs_wrapper::{create_dir, write};
+use run_make_support::rfs::{create_dir, write};
 use run_make_support::run_in_tmpdir;
 
 fn main() {
