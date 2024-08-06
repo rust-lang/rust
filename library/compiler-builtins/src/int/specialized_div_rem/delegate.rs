@@ -185,7 +185,6 @@ macro_rules! impl_delegate {
     };
 }
 
-public_test_dep! {
 /// Returns `n / d` and sets `*rem = n % d`.
 ///
 /// This specialization exists because:
@@ -195,7 +194,7 @@ public_test_dep! {
 ///    delegate algorithm strategy the only reasonably fast way to perform `u128` division.
 // used on SPARC
 #[allow(dead_code)]
-pub(crate) fn u128_divide_sparc(duo: u128, div: u128, rem: &mut u128) -> u128 {
+pub fn u128_divide_sparc(duo: u128, div: u128, rem: &mut u128) -> u128 {
     use super::*;
     let duo_lo = duo as u64;
     let duo_hi = (duo >> 64) as u64;
@@ -315,5 +314,4 @@ pub(crate) fn u128_divide_sparc(duo: u128, div: u128, rem: &mut u128) -> u128 {
             }
         }
     }
-}
 }
