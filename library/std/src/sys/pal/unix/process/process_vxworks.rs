@@ -1,3 +1,4 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
 use libc::{self, c_char, c_int, RTP_ID};
 
 use crate::io::{self, ErrorKind};
