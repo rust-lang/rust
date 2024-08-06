@@ -418,7 +418,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // The "where they come from" part is easy, we expect the caller to do any special handling
             // that might be required here (e.g. for untupling).
             // If `with_caller_location` is set we pretend there is an extra argument (that
-            // we will not pass).
+            // we will not pass; our `caller_location` intrinsic implementation walks the stack instead).
             assert_eq!(
                 args.len() + if with_caller_location { 1 } else { 0 },
                 caller_fn_abi.args.len(),
@@ -502,14 +502,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Don't forget to mark "initially live" locals as live.
             self.storage_live_for_always_live_locals()?;
         };
-        match res {
-            Err(err) => {
-                // Don't show the incomplete stack frame in the error stacktrace.
-                self.stack_mut().pop();
-                Err(err)
-            }
-            Ok(()) => Ok(()),
-        }
+        res.inspect_err(|_| {
+            // Don't show the incomplete stack frame in the error stacktrace.
+            self.stack_mut().pop();
+        })
     }
 
     /// Initiate a call to this function -- pushing the stack frame and initializing the arguments.
@@ -907,7 +903,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .local_to_op(mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let err = if self.stack().len() == 1 {
+            let res = if self.stack().len() == 1 {
                 // The initializer of constants and statics will get validated separately
                 // after the constant has been fully evaluated. While we could fall back to the default
                 // code path, that will cause -Zenforce-validity to cycle on static initializers.
@@ -924,7 +920,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines
             // this transmute.
-            err
+            res
         } else {
             Ok(())
         };
@@ -953,14 +949,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = match stack_pop_info.return_to_block {
-                StackPopCleanup::Goto { unwind, .. } => unwind,
+            match stack_pop_info.return_to_block {
+                StackPopCleanup::Goto { unwind, .. } => {
+                    // This must be the very last thing that happens, since it can in fact push a new stack frame.
+                    self.unwind_to_block(unwind)
+                }
                 StackPopCleanup::Root { .. } => {
                     panic!("encountered StackPopCleanup::Root when unwinding!")
                 }
-            };
-            // This must be the very last thing that happens, since it can in fact push a new stack frame.
-            self.unwind_to_block(unwind)
+            }
         } else {
             // Follow the normal return edge.
             match stack_pop_info.return_to_block {
@@ -968,7 +965,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 StackPopCleanup::Root { .. } => {
                     assert!(
                         self.stack().is_empty(),
-                        "only the topmost frame can have StackPopCleanup::Root"
+                        "only the bottommost frame can have StackPopCleanup::Root"
                     );
                     Ok(())
                 }

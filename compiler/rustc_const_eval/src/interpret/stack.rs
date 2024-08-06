@@ -264,7 +264,7 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     ///
-    /// Used by priroda.
+    /// Used by [priroda](https://github.com/oli-obk/priroda).
     pub fn current_loc(&self) -> Either<mir::Location, Span> {
         self.loc
     }
@@ -340,6 +340,8 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Very low-level helper that pushes a stack frame without initializing
     /// the arguments or local variables.
+    ///
+    /// The high-level version of this is `init_stack_frame`.
     #[instrument(skip(self, body, return_place, return_to_block), level = "debug")]
     pub(crate) fn push_stack_frame_raw(
         &mut self,
@@ -392,12 +394,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
-    /// Pops a stack frame from the stack and returns some information about it.
+    /// Low-level helper that pops a stack frame from the stack and returns some information about
+    /// it.
     ///
     /// This also deallocates locals, if necessary.
     ///
     /// [`M::before_stack_pop`] should be called before calling this function.
     /// [`M::after_stack_pop`] is called by this function automatically.
+    ///
+    /// The high-level version of this is `return_from_current_stack_frame`.
     ///
     /// [`M::before_stack_pop`]: Machine::before_stack_pop
     /// [`M::after_stack_pop`]: Machine::after_stack_pop

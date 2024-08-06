@@ -369,44 +369,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Evaluate the arguments of a function call
-    fn eval_fn_call_arguments(
+    fn eval_fn_call_argument(
         &self,
-        ops: &[Spanned<mir::Operand<'tcx>>],
-    ) -> InterpResult<'tcx, Vec<FnArg<'tcx, M::Provenance>>> {
-        ops.iter()
-            .map(|op| {
-                let arg = match &op.node {
-                    mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
-                        // Make a regular copy.
-                        let op = self.eval_operand(&op.node, None)?;
+        op: &mir::Operand<'tcx>,
+    ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
+        Ok(match op {
+            mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
+                // Make a regular copy.
+                let op = self.eval_operand(op, None)?;
+                FnArg::Copy(op)
+            }
+            mir::Operand::Move(place) => {
+                // If this place lives in memory, preserve its location.
+                // We call `place_to_op` which will be an `MPlaceTy` whenever there exists
+                // an mplace for this place. (This is in contrast to `PlaceTy::as_mplace_or_local`
+                // which can return a local even if that has an mplace.)
+                let place = self.eval_place(*place)?;
+                let op = self.place_to_op(&place)?;
+
+                match op.as_mplace_or_imm() {
+                    Either::Left(mplace) => FnArg::InPlace(mplace),
+                    Either::Right(_imm) => {
+                        // This argument doesn't live in memory, so there's no place
+                        // to make inaccessible during the call.
+                        // We rely on there not being any stray `PlaceTy` that would let the
+                        // caller directly access this local!
+                        // This is also crucial for tail calls, where we want the `FnArg` to
+                        // stay valid when the old stack frame gets popped.
                         FnArg::Copy(op)
                     }
-                    mir::Operand::Move(place) => {
-                        // If this place lives in memory, preserve its location.
-                        // We call `place_to_op` which will be an `MPlaceTy` whenever there exists
-                        // an mplace for this place. (This is in contrast to `PlaceTy::as_mplace_or_local`
-                        // which can return a local even if that has an mplace.)
-                        let place = self.eval_place(*place)?;
-                        let op = self.place_to_op(&place)?;
-
-                        match op.as_mplace_or_imm() {
-                            Either::Left(mplace) => FnArg::InPlace(mplace),
-                            Either::Right(_imm) => {
-                                // This argument doesn't live in memory, so there's no place
-                                // to make inaccessible during the call.
-                                // We rely on there not being any stray `PlaceTy` that would let the
-                                // caller directly access this local!
-                                // This is also crucial for tail calls, where we want the `FnArg` to
-                                // stay valid when the old stack frame gets popped.
-                                FnArg::Copy(op)
-                            }
-                        }
-                    }
-                };
-
-                Ok(arg)
-            })
-            .collect()
+                }
+            }
+        })
     }
 
     /// Shared part of `Call` and `TailCall` implementation — finding and evaluating all the
@@ -418,7 +412,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         args: &[Spanned<mir::Operand<'tcx>>],
     ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
         let func = self.eval_operand(func, None)?;
-        let args = self.eval_fn_call_arguments(args)?;
+        let args = args
+            .iter()
+            .map(|arg| self.eval_fn_call_argument(&arg.node))
+            .collect::<InterpResult<'tcx, Vec<_>>>()?;
 
         let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
