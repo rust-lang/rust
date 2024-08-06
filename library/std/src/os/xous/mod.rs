@@ -7,6 +7,7 @@ pub mod ffi;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod services;
 
+pub mod path;
 /// A prelude for conveniently writing platform-specific code.
 ///
 /// Includes all extension traits, and some important type definitions.

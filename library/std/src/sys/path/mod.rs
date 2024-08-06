@@ -16,6 +16,10 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
+    target_os = "xous" => {
+        mod xous;
+        pub use xous::*;
+    }
     target_os = "cygwin" => {
         mod cygwin;
         mod windows_prefix;
