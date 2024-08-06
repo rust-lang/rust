@@ -39,6 +39,7 @@ use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
     MacroExpectedFound, RemoveSurroundingDerive,
 };
+use crate::imports::Import;
 use crate::Namespace::*;
 use crate::{
     BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, MacroData, ModuleKind,
@@ -399,6 +400,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                         &parent_scope,
                         true,
                         force,
+                        None,
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
@@ -551,6 +553,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             force,
             deleg_impl,
             invoc_in_mod_inert_attr.map(|def_id| (def_id, node_id)),
+            None,
         ) {
             Ok((Some(ext), res)) => (ext, res),
             Ok((None, res)) => (self.dummy_ext(kind), res),
@@ -704,8 +707,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
-        self.resolve_macro_or_delegation_path(path, kind, parent_scope, trace, force, None, None)
+        self.resolve_macro_or_delegation_path(
+            path,
+            kind,
+            parent_scope,
+            trace,
+            force,
+            None,
+            None,
+            ignore_import,
+        )
     }
 
     fn resolve_macro_or_delegation_path(
@@ -717,6 +730,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         force: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
@@ -733,7 +747,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let res = if deleg_impl.is_some() || path.len() > 1 {
             let ns = if deleg_impl.is_some() { TypeNS } else { MacroNS };
-            let res = match self.maybe_resolve_path(&path, Some(ns), parent_scope) {
+            let res = match self.maybe_resolve_path(&path, Some(ns), parent_scope, ignore_import) {
                 PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => Ok(res),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
@@ -767,6 +781,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 parent_scope,
                 None,
                 force,
+                None,
                 None,
             );
             if let Err(Determinacy::Undetermined) = binding {
@@ -852,6 +867,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
                 None,
+                None,
             ) {
                 PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => {
                     check_consistency(self, &path, path_span, kind, initial_res, res)
@@ -871,7 +887,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         if let PathResult::Failed { span, label, module, .. } = path_res {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) =
-                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
+                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
                                 && partial_res.unresolved_segments() == 0
                             {
                                 let sm = self.tcx.sess.source_map();
@@ -921,6 +937,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
                 None,
+                None,
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
@@ -965,6 +982,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
+                None,
                 None,
             );
         }
@@ -1070,6 +1088,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
                 false,
                 None,
+                None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
                 self.tcx.sess.psess.buffer_lint(
@@ -1143,7 +1162,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut indeterminate = false;
         for ns in namespaces {
-            match self.maybe_resolve_path(path, Some(*ns), &parent_scope) {
+            match self.maybe_resolve_path(path, Some(*ns), &parent_scope, None) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);

@@ -2058,6 +2058,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 ident,
                 ns,
                 &self.parent_scope,
+                None,
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
