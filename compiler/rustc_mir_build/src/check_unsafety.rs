@@ -447,19 +447,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             self.body_target_features.iter().any(|f| f.name == feature.name)
                         })
                     {
-                        // Don't include implicit features in the error, unless only implicit
-                        // features are missing.
-                        let missing_explicit_features = callee_features.iter().any(|feature| {
-                            !feature.implied
-                                && !self.body_target_features.iter().any(|body_feature| {
-                                    !feature.implied && body_feature.name == feature.name
-                                })
-                        });
                         let missing: Vec<_> = callee_features
                             .iter()
                             .copied()
                             .filter(|feature| {
-                                !(missing_explicit_features && feature.implied)
+                                !feature.implied
                                     && !self
                                         .body_target_features
                                         .iter()

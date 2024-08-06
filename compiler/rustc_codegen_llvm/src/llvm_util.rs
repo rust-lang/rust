@@ -277,7 +277,7 @@ pub fn check_tied_features(
 /// Used to generate cfg variables and apply features
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-    let mut features = FxHashSet::default();
+    let mut features = vec![];
 
     // Add base features for the target
     let target_machine = create_informational_target_machine(sess, true);
@@ -313,7 +313,9 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         if enabled {
             features.extend(sess.target.implied_target_features(std::iter::once(feature)));
         } else {
-            features.remove(&feature);
+            features.retain(|f| {
+                !sess.target.implied_target_features(std::iter::once(*f)).contains(&feature)
+            });
         }
     }
 
