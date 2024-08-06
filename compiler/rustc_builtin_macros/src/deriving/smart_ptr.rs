@@ -14,6 +14,8 @@ use rustc_span::{Span, Symbol};
 use smallvec::{smallvec, SmallVec};
 use thin_vec::{thin_vec, ThinVec};
 
+use crate::errors;
+
 macro_rules! path {
     ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
 }
@@ -26,6 +28,8 @@ pub fn expand_deriving_smart_ptr(
     push: &mut dyn FnMut(Annotatable),
     _is_const: bool,
 ) {
+    item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
+
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
         && let ItemKind::Struct(struct_data, g) = &aitem.kind
     {
@@ -374,6 +378,27 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
             }
             rustc_ast::WherePredicate::RegionPredicate(_)
             | rustc_ast::WherePredicate::EqPredicate(_) => {}
+        }
+    }
+}
+
+struct DetectNonGenericPointeeAttr<'a, 'b> {
+    cx: &'a ExtCtxt<'b>,
+}
+
+impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonGenericPointeeAttr<'a, 'b> {
+    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) -> Self::Result {
+        if attr.has_name(sym::pointee) {
+            self.cx.dcx().emit_err(errors::NonGenericPointee { span: attr.span });
+        }
+    }
+
+    fn visit_generic_param(&mut self, param: &'a rustc_ast::GenericParam) -> Self::Result {
+        match param.kind {
+            GenericParamKind::Type { .. } => return,
+            GenericParamKind::Lifetime | GenericParamKind::Const { .. } => {
+                rustc_ast::visit::walk_generic_param(self, param)
+            }
         }
     }
 }
