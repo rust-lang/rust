@@ -539,7 +539,6 @@ trigger_files = [
     "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
-    "src/doc/unstable-book/src/language-features/no-sanitize.md",
     "tests/codegen/sanitizer",
     "tests/codegen/split-lto-unit.rs",
     "tests/codegen/stack-probes-inline.rs",
@@ -994,9 +993,6 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/unstable-book/src/language-features/cfi-encoding.md"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
-
-[mentions."src/doc/unstable-book/src/language-features/no-sanitize.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
 [mentions."src/doc/rustc/src/check-cfg.md"]
