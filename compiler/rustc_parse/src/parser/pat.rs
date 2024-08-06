@@ -1318,7 +1318,7 @@ impl<'a> Parser<'a> {
                     last_non_comma_dotdot_span = Some(this.prev_token.span);
 
                     // We just ate a comma, so there's no need to capture a trailing token.
-                    Ok((field, false))
+                    Ok((field, Trailing::No))
                 })?;
 
             fields.push(field)

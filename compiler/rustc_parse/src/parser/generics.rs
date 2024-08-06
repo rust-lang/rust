@@ -7,7 +7,7 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 use thin_vec::ThinVec;
 
-use super::{ForceCollect, Parser};
+use super::{ForceCollect, Parser, Trailing};
 use crate::errors::{
     self, MultipleWhereClauses, UnexpectedDefaultValueForLifetimeInGenericParameters,
     UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
@@ -228,13 +228,13 @@ impl<'a> Parser<'a> {
                                     span: where_predicate.span(),
                                 });
                                 // FIXME - try to continue parsing other generics?
-                                return Ok((None, false));
+                                return Ok((None, Trailing::No));
                             }
                             Err(err) => {
                                 err.cancel();
                                 // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
                                 this.restore_snapshot(snapshot);
-                                return Ok((None, false));
+                                return Ok((None, Trailing::No));
                             }
                         }
                     } else {
@@ -248,14 +248,14 @@ impl<'a> Parser<'a> {
                                     .emit_err(errors::AttrWithoutGenerics { span: attrs[0].span });
                             }
                         }
-                        return Ok((None, false));
+                        return Ok((None, Trailing::No));
                     };
 
                     if !this.eat(&token::Comma) {
                         done = true;
                     }
                     // We just ate the comma, so no need to capture the trailing token.
-                    Ok((param, false))
+                    Ok((param, Trailing::No))
                 })?;
 
             if let Some(param) = param {

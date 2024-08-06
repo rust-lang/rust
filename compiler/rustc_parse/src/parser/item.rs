@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
                 let span = lo.to(this.prev_token.span);
                 let id = DUMMY_NODE_ID;
                 let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
-                return Ok((Some(item), false));
+                return Ok((Some(item), Trailing::No));
             }
 
             // At this point, we have failed to parse an item.
@@ -160,7 +160,7 @@ impl<'a> Parser<'a> {
             if !attrs_allowed {
                 this.recover_attrs_no_item(&attrs)?;
             }
-            Ok((None, false))
+            Ok((None, Trailing::No))
         })
     }
 
@@ -1555,7 +1555,7 @@ impl<'a> Parser<'a> {
 
                 let vis = this.parse_visibility(FollowedByType::No)?;
                 if !this.recover_nested_adt_item(kw::Enum)? {
-                    return Ok((None, false));
+                    return Ok((None, Trailing::No));
                 }
                 let ident = this.parse_field_ident("enum", vlo)?;
 
@@ -1567,7 +1567,7 @@ impl<'a> Parser<'a> {
                     this.bump();
                     this.parse_delim_args()?;
 
-                    return Ok((None, this.token == token::Comma));
+                    return Ok((None, Trailing::from(this.token == token::Comma)));
                 }
 
                 let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
@@ -1624,7 +1624,7 @@ impl<'a> Parser<'a> {
                     is_placeholder: false,
                 };
 
-                Ok((Some(vr), this.token == token::Comma))
+                Ok((Some(vr), Trailing::from(this.token == token::Comma)))
             },
         )
         .map_err(|mut err| {
@@ -1816,7 +1816,7 @@ impl<'a> Parser<'a> {
                         attrs,
                         is_placeholder: false,
                     },
-                    p.token == token::Comma,
+                    Trailing::from(p.token == token::Comma),
                 ))
             })
         })
@@ -1831,7 +1831,8 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            this.parse_single_struct_field(adt_ty, lo, vis, attrs).map(|field| (field, false))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
+                .map(|field| (field, Trailing::No))
         })
     }
 
@@ -2811,7 +2812,7 @@ impl<'a> Parser<'a> {
             if let Some(mut param) = this.parse_self_param()? {
                 param.attrs = attrs;
                 let res = if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
-                return Ok((res?, false));
+                return Ok((res?, Trailing::No));
             }
 
             let is_name_required = match this.token.kind {
@@ -2827,7 +2828,7 @@ impl<'a> Parser<'a> {
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), false))
+                        Ok((dummy_arg(ident, guar), Trailing::No))
                     } else {
                         Err(err)
                     };
@@ -2870,7 +2871,7 @@ impl<'a> Parser<'a> {
 
             Ok((
                 Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
-                false,
+                Trailing::No,
             ))
         })
     }
