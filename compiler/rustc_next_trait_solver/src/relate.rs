@@ -178,12 +178,20 @@ where
             }
 
             (ty::Infer(ty::TyVar(a_vid)), _) => {
-                infcx.instantiate_ty_var_raw(self, true, a_vid, self.ambient_variance, b)?;
+                infcx.instantiate_ty_var_raw(
+                    self,
+                    self.structurally_relate_aliases,
+                    true,
+                    a_vid,
+                    self.ambient_variance,
+                    b,
+                )?;
                 Ok(a)
             }
             (_, ty::Infer(ty::TyVar(b_vid))) => {
                 infcx.instantiate_ty_var_raw(
                     self,
+                    self.structurally_relate_aliases,
                     false,
                     b_vid,
                     self.ambient_variance.xform(ty::Contravariant),
@@ -314,12 +322,24 @@ where
             }
 
             (ty::ConstKind::Infer(ty::InferConst::Var(vid)), _) => {
-                infcx.instantiate_const_var_raw(self, true, vid, b)?;
+                infcx.instantiate_const_var_raw(
+                    self,
+                    self.structurally_relate_aliases,
+                    true,
+                    vid,
+                    b,
+                )?;
                 Ok(b)
             }
 
             (_, ty::ConstKind::Infer(ty::InferConst::Var(vid))) => {
-                infcx.instantiate_const_var_raw(self, false, vid, a)?;
+                infcx.instantiate_const_var_raw(
+                    self,
+                    self.structurally_relate_aliases,
+                    false,
+                    vid,
+                    a,
+                )?;
                 Ok(a)
             }
 
@@ -443,10 +463,6 @@ where
 
     fn param_env(&self) -> I::ParamEnv {
         self.param_env
-    }
-
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        self.structurally_relate_aliases
     }
 
     fn register_predicates(

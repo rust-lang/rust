@@ -29,7 +29,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{Const, ImplSubject};
 
 use super::*;
-use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
+use crate::infer::relate::{Relate, TypeRelation};
 use crate::traits::Obligation;
 
 /// Whether we should define opaque types or just treat them opaquely.
@@ -160,7 +160,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             self.param_env,
             define_opaque_types,
         );
-        fields.equate(StructurallyRelateAliases::No).relate(expected, actual)?;
+        fields.equate().relate(expected, actual)?;
         Ok(InferOk {
             value: (),
             obligations: fields
@@ -176,28 +176,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 })
                 .collect(),
         })
-    }
-
-    /// Equates `expected` and `found` while structurally relating aliases.
-    /// This should only be used inside of the next generation trait solver
-    /// when relating rigid aliases.
-    pub fn eq_structurally_relating_aliases<T>(
-        self,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        assert!(self.infcx.next_trait_solver());
-        let mut fields = CombineFields::new(
-            self.infcx,
-            ToTrace::to_trace(self.cause, true, expected, actual),
-            self.param_env,
-            DefineOpaqueTypes::Yes,
-        );
-        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
-        Ok(InferOk { value: (), obligations: fields.into_obligations() })
     }
 
     pub fn relate<T>(
@@ -246,25 +224,6 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             expected,
             actual,
         )?;
-        Ok(fields.goals)
-    }
-
-    /// Used in the new solver since we don't care about tracking an `ObligationCause`.
-    pub fn eq_structurally_relating_aliases_no_trace<T>(
-        self,
-        expected: T,
-        actual: T,
-    ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>
-    where
-        T: Relate<TyCtxt<'tcx>>,
-    {
-        let mut fields = CombineFields::new(
-            self.infcx,
-            TypeTrace::dummy(self.cause),
-            self.param_env,
-            DefineOpaqueTypes::Yes,
-        );
-        fields.equate(StructurallyRelateAliases::Yes).relate(expected, actual)?;
         Ok(fields.goals)
     }
 

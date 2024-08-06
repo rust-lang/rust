@@ -1,4 +1,4 @@
-use super::{StructurallyRelateAliases, TypeRelation};
+use super::TypeRelation;
 use crate::solve::Goal;
 use crate::{InferCtxtLike, Interner, Upcast};
 
@@ -11,11 +11,6 @@ where
     fn span(&self) -> I::Span;
 
     fn param_env(&self) -> I::ParamEnv;
-
-    /// Whether aliases should be related structurally. This is pretty much
-    /// always `No` unless you're equating in some specific locations of the
-    /// new solver. See the comments in these use-cases for more details.
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases;
 
     /// Register obligations that must hold in order for this relation to hold
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>);

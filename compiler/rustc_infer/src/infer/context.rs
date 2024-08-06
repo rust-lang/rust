@@ -7,6 +7,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, DUMMY_SP};
 use rustc_type_ir::relate::combine::PredicateEmittingRelation;
+use rustc_type_ir::relate::StructurallyRelateAliases;
 use rustc_type_ir::InferCtxtLike;
 
 use super::{BoundRegionConversionTime, InferCtxt, SubregionOrigin};
@@ -195,6 +196,7 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
     fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
+        structurally_relate_aliases: StructurallyRelateAliases,
         target_is_expected: bool,
         target_vid: rustc_type_ir::TyVid,
         instantiation_variance: rustc_type_ir::Variance,
@@ -202,6 +204,7 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         self.instantiate_ty_var(
             relation,
+            structurally_relate_aliases,
             target_is_expected,
             target_vid,
             instantiation_variance,
@@ -235,11 +238,18 @@ impl<'tcx> InferCtxtLike for InferCtxt<'tcx> {
     fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
+        structurally_relate_aliases: StructurallyRelateAliases,
         target_is_expected: bool,
         target_vid: rustc_type_ir::ConstVid,
         source_ct: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ()> {
-        self.instantiate_const_var(relation, target_is_expected, target_vid, source_ct)
+        self.instantiate_const_var(
+            relation,
+            structurally_relate_aliases,
+            target_is_expected,
+            target_vid,
+            source_ct,
+        )
     }
 
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {

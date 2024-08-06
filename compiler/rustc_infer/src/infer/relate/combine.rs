@@ -1,7 +1,7 @@
 //! There are four type combiners: [TypeRelating], [Lub], and [Glb],
 //! and `NllTypeRelating` in rustc_borrowck, which is only used for NLL.
 //!
-//! Each implements the trait [TypeRelation] and contains methods for
+//! Each implements the trait [`TypeRelation`](super::TypeRelation) and contains methods for
 //! combining two instances of various things and yielding a new instance.
 //! These combiner methods always yield a `Result<T>`. To relate two
 //! types, you can use `infcx.at(cause, param_env)` which then allows
@@ -134,15 +134,8 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (_, ty::Alias(..)) | (ty::Alias(..), _) if self.next_trait_solver() => {
-                match relation.structurally_relate_aliases() {
-                    StructurallyRelateAliases::Yes => {
-                        relate::structurally_relate_tys(relation, a, b)
-                    }
-                    StructurallyRelateAliases::No => {
-                        relation.register_alias_relate_predicate(a, b);
-                        Ok(a)
-                    }
-                }
+                relation.register_alias_relate_predicate(a, b);
+                Ok(a)
             }
 
             // All other cases of inference are errors
@@ -215,12 +208,12 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
-                self.instantiate_const_var(relation, true, vid, b)?;
+                self.instantiate_const_var(relation, StructurallyRelateAliases::No, true, vid, b)?;
                 Ok(b)
             }
 
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
-                self.instantiate_const_var(relation, false, vid, a)?;
+                self.instantiate_const_var(relation, StructurallyRelateAliases::No, false, vid, a)?;
                 Ok(a)
             }
 
@@ -235,24 +228,17 @@ impl<'tcx> InferCtxt<'tcx> {
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
                 if self.tcx.features().generic_const_exprs || self.next_trait_solver() =>
             {
-                match relation.structurally_relate_aliases() {
-                    StructurallyRelateAliases::No => {
-                        relation.register_predicates([if self.next_trait_solver() {
-                            ty::PredicateKind::AliasRelate(
-                                a.into(),
-                                b.into(),
-                                ty::AliasRelationDirection::Equate,
-                            )
-                        } else {
-                            ty::PredicateKind::ConstEquate(a, b)
-                        }]);
+                relation.register_predicates([if self.next_trait_solver() {
+                    ty::PredicateKind::AliasRelate(
+                        a.into(),
+                        b.into(),
+                        ty::AliasRelationDirection::Equate,
+                    )
+                } else {
+                    ty::PredicateKind::ConstEquate(a, b)
+                }]);
 
-                        Ok(b)
-                    }
-                    StructurallyRelateAliases::Yes => {
-                        relate::structurally_relate_consts(relation, a, b)
-                    }
-                }
+                Ok(b)
             }
             _ => relate::structurally_relate_consts(relation, a, b),
         }
@@ -282,19 +268,16 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn equate<'a>(
-        &'a mut self,
-        structurally_relate_aliases: StructurallyRelateAliases,
-    ) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, structurally_relate_aliases, ty::Invariant)
+    pub fn equate<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
+        TypeRelating::new(self, ty::Invariant)
     }
 
     pub fn sub<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, StructurallyRelateAliases::No, ty::Covariant)
+        TypeRelating::new(self, ty::Covariant)
     }
 
     pub fn sup<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, StructurallyRelateAliases::No, ty::Contravariant)
+        TypeRelating::new(self, ty::Contravariant)
     }
 
     pub fn lub<'a>(&'a mut self) -> Lub<'a, 'infcx, 'tcx> {

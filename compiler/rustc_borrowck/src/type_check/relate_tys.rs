@@ -134,6 +134,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
 
             self.type_checker.infcx.instantiate_ty_var(
                 self,
+                StructurallyRelateAliases::No,
                 opaque_is_expected,
                 ty_vid,
                 variance,
@@ -353,9 +354,14 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
                 );
             }
 
-            (&ty::Infer(ty::TyVar(a_vid)), _) => {
-                infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?
-            }
+            (&ty::Infer(ty::TyVar(a_vid)), _) => infcx.instantiate_ty_var(
+                self,
+                StructurallyRelateAliases::No,
+                true,
+                a_vid,
+                self.ambient_variance,
+                b,
+            )?,
 
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
@@ -522,10 +528,6 @@ impl<'bccx, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx
 impl<'bccx, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_, 'bccx, 'tcx> {
     fn span(&self) -> Span {
         self.locations.span(self.type_checker.body)
-    }
-
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

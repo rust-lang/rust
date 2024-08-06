@@ -1,6 +1,6 @@
 use crate::fold::TypeFoldable;
 use crate::relate::combine::PredicateEmittingRelation;
-use crate::relate::RelateResult;
+use crate::relate::{RelateResult, StructurallyRelateAliases};
 use crate::solve::SolverMode;
 use crate::{self as ty, Interner};
 
@@ -68,6 +68,7 @@ pub trait InferCtxtLike: Sized {
     fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
+        structurally_relate_aliases: StructurallyRelateAliases,
         target_is_expected: bool,
         target_vid: ty::TyVid,
         instantiation_variance: ty::Variance,
@@ -83,6 +84,7 @@ pub trait InferCtxtLike: Sized {
     fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
+        structurally_relate_aliases: StructurallyRelateAliases,
         target_is_expected: bool,
         target_vid: ty::ConstVid,
         source_ct: <Self::Interner as Interner>::Const,
