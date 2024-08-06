@@ -918,7 +918,6 @@ impl Step for Src {
         // translation code in `imported_source_files` in `src/librustc_metadata/rmeta/decoder.rs`
         let dst_src = tarball.image_dir().join("lib/rustlib/src/rust");
 
-        let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
         // (essentially libstd and all of its path dependencies).
         copy_src_dirs(
@@ -937,9 +936,6 @@ impl Step for Src {
             ],
             &dst_src,
         );
-        for file in src_files.iter() {
-            builder.copy_link(&builder.src.join(file), &dst_src.join(file));
-        }
 
         tarball.generate()
     }
