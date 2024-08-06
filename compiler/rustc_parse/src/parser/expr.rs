@@ -2462,7 +2462,7 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
-                this.token == token::Comma,
+                Trailing::from(this.token == token::Comma),
             ))
         })
     }
@@ -3243,7 +3243,7 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
-                false,
+                Trailing::No,
             ))
         })
     }
@@ -3752,7 +3752,7 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
-                this.token == token::Comma,
+                Trailing::from(this.token == token::Comma),
             ))
         })
     }
@@ -3848,12 +3848,14 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
-            let trailing = (this.restrictions.contains(Restrictions::STMT_EXPR)
-                 && this.token == token::Semi)
-            // FIXME: pass an additional condition through from the place
-            // where we know we need a comma, rather than assuming that
-            // `#[attr] expr,` always captures a trailing comma.
-            || this.token == token::Comma;
+            let trailing = Trailing::from(
+                this.restrictions.contains(Restrictions::STMT_EXPR)
+                     && this.token == token::Semi
+                // FIXME: pass an additional condition through from the place
+                // where we know we need a comma, rather than assuming that
+                // `#[attr] expr,` always captures a trailing comma.
+                || this.token == token::Comma,
+            );
             Ok((res, trailing))
         })
     }

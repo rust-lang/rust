@@ -388,6 +388,12 @@ enum Trailing {
     Yes,
 }
 
+impl From<bool> for Trailing {
+    fn from(b: bool) -> Trailing {
+        if b { Trailing::Yes } else { Trailing::No }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum TokenDescription {
     ReservedIdentifier,
@@ -1549,7 +1555,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(
             AttrWrapper::empty(),
             ForceCollect::Yes,
-            |this, _attrs| Ok((f(this)?, false)),
+            |this, _attrs| Ok((f(this)?, Trailing::No)),
         )
     }
 

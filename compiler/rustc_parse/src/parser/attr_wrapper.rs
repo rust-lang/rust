@@ -12,7 +12,7 @@ use rustc_span::{sym, Span, DUMMY_SP};
 
 use super::{
     Capturing, FlatToken, ForceCollect, NodeRange, NodeReplacement, Parser, ParserRange,
-    TokenCursor,
+    TokenCursor, Trailing,
 };
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.
@@ -168,7 +168,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 impl<'a> Parser<'a> {
     /// Parses code with `f`. If appropriate, it records the tokens (in
     /// `LazyAttrTokenStream` form) that were parsed in the result, accessible
-    /// via the `HasTokens` trait. The second (bool) part of the callback's
+    /// via the `HasTokens` trait. The `Trailing` part of the callback's
     /// result indicates if an extra token should be captured, e.g. a comma or
     /// semicolon.
     ///
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
-        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, bool)>,
+        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, (R, Trailing)>,
     ) -> PResult<'a, R> {
         // We must collect if anything could observe the collected tokens, i.e.
         // if any of the following conditions hold.
@@ -234,9 +234,9 @@ impl<'a> Parser<'a> {
         // `Parser::parse_inner_attributes`.
         let (mut ret, capture_trailing) = {
             let prev_capturing = mem::replace(&mut self.capture_state.capturing, Capturing::Yes);
-            let ret_and_trailing = f(self, attrs.attrs);
+            let f_res = f(self, attrs.attrs);
             self.capture_state.capturing = prev_capturing;
-            ret_and_trailing?
+            f_res?
         };
 
         // When we're not in `capture_cfg` mode, then skip collecting and
@@ -282,7 +282,7 @@ impl<'a> Parser<'a> {
         let parser_replacements_end = self.capture_state.parser_replacements.len();
 
         assert!(
-            !(self.break_last_token && capture_trailing),
+            !(self.break_last_token && matches!(capture_trailing, Trailing::Yes)),
             "Cannot set break_last_token and have trailing token"
         );
 

@@ -21,6 +21,7 @@ use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
 use super::{
     AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
+    Trailing,
 };
 use crate::errors::MalformedLoopLabel;
 use crate::{errors, maybe_whole};
@@ -68,7 +69,7 @@ impl<'a> Parser<'a> {
             self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
                 this.expect_keyword(kw::Let)?;
                 let local = this.parse_local(attrs)?;
-                let trailing = capture_semi && this.token == token::Semi;
+                let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
             })?
         } else if self.is_kw_followed_by_ident(kw::Mut) && self.may_recover() {
@@ -106,7 +107,7 @@ impl<'a> Parser<'a> {
             let stmt = self.collect_tokens_trailing_token(
                 AttrWrapper::empty(),
                 force_collect,
-                |this, _empty_attrs| Ok((this.parse_stmt_path_start(lo, attrs)?, false)),
+                |this, _empty_attrs| Ok((this.parse_stmt_path_start(lo, attrs)?, Trailing::No)),
             );
             match stmt {
                 Ok(stmt) => stmt,
@@ -133,7 +134,7 @@ impl<'a> Parser<'a> {
                 AttrWrapper::empty(),
                 force_collect,
                 |this, _empty_attrs| {
-                    Ok((this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?, false))
+                    Ok((this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?, Trailing::No))
                 },
             )?;
             if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
@@ -155,7 +156,7 @@ impl<'a> Parser<'a> {
 
             if this.eat(&token::Not) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
-                return Ok((stmt_mac, this.token == token::Semi));
+                return Ok((stmt_mac, Trailing::from(this.token == token::Semi)));
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
@@ -169,7 +170,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_dot_or_call_with(attrs, expr, lo)
             })?;
             // `DUMMY_SP` will get overwritten later in this function
-            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), false))
+            Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), Trailing::No))
         })?;
 
         if let StmtKind::Expr(expr) = stmt.kind {
@@ -242,7 +243,7 @@ impl<'a> Parser<'a> {
         let stmt = self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             let local = this.parse_local(attrs)?;
             // FIXME - maybe capture semicolon in recovery?
-            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), false))
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), Trailing::No))
         })?;
         self.dcx()
             .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });

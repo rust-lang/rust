@@ -8,7 +8,9 @@ use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle};
+use super::{
+    AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle, Trailing,
+};
 use crate::{errors, fluent_generated as fluent, maybe_whole};
 
 // Public for rustfmt usage
@@ -273,7 +275,7 @@ impl<'a> Parser<'a> {
             if is_unsafe {
                 this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
             }
-            Ok((ast::AttrItem { unsafety, path, args, tokens: None }, false))
+            Ok((ast::AttrItem { unsafety, path, args, tokens: None }, Trailing::No))
         };
         // Attr items don't have attributes.
         self.collect_tokens_trailing_token(AttrWrapper::empty(), force_collect, do_parse)
