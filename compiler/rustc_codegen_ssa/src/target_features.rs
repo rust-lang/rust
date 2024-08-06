@@ -1,7 +1,7 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
@@ -108,8 +108,7 @@ pub fn from_target_feature(
     // Add implied features
     let mut implied_target_features = UnordSet::new();
     for feature in added_target_features.iter() {
-        implied_target_features
-            .extend_unord(tcx.implied_target_features(*feature).clone().into_items());
+        implied_target_features.extend(tcx.implied_target_features(*feature).clone());
     }
     for feature in added_target_features.iter() {
         implied_target_features.remove(feature);
@@ -179,7 +178,8 @@ pub(crate) fn provide(providers: &mut Providers) {
             }
         },
         implied_target_features: |tcx, feature| {
-            tcx.sess.target.implied_target_features(std::iter::once(feature)).into()
+            UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
+                .into_sorted_stable_ord()
         },
         asm_target_features,
         ..*providers

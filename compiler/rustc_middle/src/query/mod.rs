@@ -2183,7 +2183,7 @@ rustc_queries! {
         desc { "looking up supported target features" }
     }
 
-    query implied_target_features(feature: Symbol) -> &'tcx UnordSet<Symbol> {
+    query implied_target_features(feature: Symbol) -> &'tcx Vec<Symbol> {
         arena_cache
         eval_always
         desc { "looking up implied target features" }
