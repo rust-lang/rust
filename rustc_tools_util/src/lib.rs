@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
-
 use std::str;
 
 /// This macro creates the version string during compilation from the
