@@ -35,8 +35,9 @@ diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
 index 42a26ae..5ac1042 100644
 --- a/library/core/tests/lib.rs
 +++ b/library/core/tests/lib.rs
-@@ -1,3 +1,4 @@
+@@ -2,4 +2,5 @@
+ // tidy-alphabetical-start
 +#![cfg(test)]
- #![feature(alloc_layout_extra)]
- #![feature(array_chunks)]
- #![feature(array_ptr_get)]
+ #![cfg_attr(bootstrap, feature(offset_of_nested))]
+ #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+ #![cfg_attr(test, feature(cfg_match))]
