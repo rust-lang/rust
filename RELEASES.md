@@ -1,4 +1,12 @@
-Version 1.80 (2024-07-25)
+Version 1.80.1 (2024-08-08)
+===========================
+
+<a id="1.80.1"></a>
+
+- [Fix miscompilation in the jump threading MIR optimization when comparing floats](https://github.com/rust-lang/rust/pull/128271)
+- [Revert changes to the `dead_code` lint from 1.80.0](https://github.com/rust-lang/rust/pull/128618)
+
+Version 1.80.0 (2024-07-25)
 ==========================
 
 <a id="1.80-Language"></a>

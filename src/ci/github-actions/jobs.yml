@@ -33,7 +33,7 @@ runners:
     <<: *base-job
 
   - &job-aarch64-linux
-    os: [ self-hosted, ARM64, linux ]
+    os: ubuntu-22.04-arm64-8core-32gb
 
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
