@@ -53,7 +53,9 @@ impl ByteSlice for [u8] {
     }
 }
 
-/// Determine if 8 bytes in a are all decimal digits.
+/// Determine if all characters in an 8-byte byte string (represented as a `u64`) are all decimal
+/// digits.
+///
 /// This does not care about the order in which the bytes were loaded.
 pub(crate) fn is_8digits(v: u64) -> bool {
     let a = v.wrapping_add(0x4646_4646_4646_4646);

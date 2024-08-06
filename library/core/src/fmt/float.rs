@@ -20,7 +20,6 @@ macro_rules! impl_general_format {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl_general_format! { f16 }
 impl_general_format! { f32 f64 }
 
@@ -229,7 +228,6 @@ macro_rules! floating {
     };
 }
 
-#[cfg(not(bootstrap))]
 floating! { f16 }
 floating! { f32 }
 floating! { f64 }

@@ -236,7 +236,6 @@ macro_rules! check_exact_one {
 // [1] Vern Paxson, A Program for Testing IEEE Decimal-Binary Conversion
 //     ftp://ftp.ee.lbl.gov/testbase-report.ps.Z
 
-// #[cfg(not(bootstrap))]
 // pub fn f16_shortest_sanity_test<F>(mut f: F)
 // where
 //     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
@@ -284,7 +283,6 @@ macro_rules! check_exact_one {
 //     check_shortest!(f(minf16) => b"1", -44);
 // }
 
-// #[cfg(not(bootstrap))]
 // pub fn f16_exact_sanity_test<F>(mut f: F)
 // where
 //     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),

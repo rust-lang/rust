@@ -189,7 +189,6 @@ pub trait RawFloat:
     }
 }
 
-#[cfg(not(bootstrap))]
 impl RawFloat for f16 {
     type Int = u16;
 
