@@ -176,10 +176,6 @@ pub(crate) struct EmbedSourceInsufficientDwarfVersion {
 pub(crate) struct EmbedSourceRequiresDebugInfo;
 
 #[derive(Diagnostic)]
-#[diag(session_embed_source_requires_llvm_backend)]
-pub(crate) struct EmbedSourceRequiresLLVMBackend;
-
-#[derive(Diagnostic)]
 #[diag(session_target_stack_protector_not_supported)]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,

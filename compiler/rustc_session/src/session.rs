@@ -1305,19 +1305,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         let dwarf_version =
             sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
 
-        let uses_llvm_backend =
-            matches!(sess.opts.unstable_opts.codegen_backend.as_deref(), None | Some("llvm"));
-
         if dwarf_version < 5 {
             sess.dcx().emit_warn(errors::EmbedSourceInsufficientDwarfVersion { dwarf_version });
         }
 
         if sess.opts.debuginfo == DebugInfo::None {
             sess.dcx().emit_warn(errors::EmbedSourceRequiresDebugInfo);
-        }
-
-        if !uses_llvm_backend {
-            sess.dcx().emit_warn(errors::EmbedSourceRequiresLLVMBackend);
         }
     }
 
