@@ -16,6 +16,10 @@ pub trait MirLint<'tcx> {
         }
     }
 
+    fn min_mir_opt_level(&self) -> usize {
+        0
+    }
+
     fn is_enabled(&self, _sess: &Session) -> bool {
         true
     }
@@ -35,6 +39,10 @@ where
         self.0.name()
     }
 
+    fn min_mir_opt_level(&self) -> usize {
+        self.0.min_mir_opt_level()
+    }
+
     fn is_enabled(&self, sess: &Session) -> bool {
         self.0.is_enabled(sess)
     }
@@ -48,6 +56,7 @@ where
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct WithMinOptLevel<T>(pub u32, pub T);
 
 impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
@@ -56,6 +65,10 @@ where
 {
     fn name(&self) -> &'static str {
         self.1.name()
+    }
+
+    fn min_mir_opt_level(&self) -> usize {
+        self.0 as usize
     }
 
     fn is_enabled(&self, sess: &Session) -> bool {

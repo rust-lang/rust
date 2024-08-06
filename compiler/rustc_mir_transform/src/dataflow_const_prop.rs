@@ -28,6 +28,10 @@ const PLACE_LIMIT: usize = 100;
 pub struct DataflowConstProp;
 
 impl<'tcx> MirPass<'tcx> for DataflowConstProp {
+    fn min_mir_opt_level(&self) -> usize {
+        3
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 3
     }

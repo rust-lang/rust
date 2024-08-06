@@ -718,7 +718,6 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         span,
         coroutine,
         Some(guar),
-        false,
     )
 }
 
@@ -795,13 +794,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let def_id = self.def_id.to_def_id();
-        let optimization_disabled = if self.tcx.def_kind(def_id).has_codegen_attrs() {
-            self.tcx.codegen_fn_attrs(def_id).optimize.as_ref().is_some_and(|o| o.is_none())
-        } else {
-            false
-        };
-
         let mut body = Body::new(
             MirSource::item(self.def_id.to_def_id()),
             self.cfg.basic_blocks,
@@ -813,7 +805,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.fn_span,
             self.coroutine,
             None,
-            optimization_disabled,
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
         body

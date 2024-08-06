@@ -55,7 +55,7 @@ pub enum InstructionSetAttr {
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq, Eq)]
 pub enum OptimizeAttr {
-    /// `#[optimize(none)]`
+    /// `#[optimize(none)]`. This implies `#[inline(never)]`, required by LLVM
     None,
     /// `#[optimize(speed)]`
     Speed,
@@ -64,7 +64,7 @@ pub enum OptimizeAttr {
 }
 
 impl OptimizeAttr {
-    pub fn is_none(&self) -> bool {
+    pub fn do_not_optimize(&self) -> bool {
         matches!(*self, OptimizeAttr::None)
     }
 }
