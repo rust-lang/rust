@@ -129,15 +129,15 @@ operator. We use OR and not AND because of this case:
 
 ```rust
 # unsafe fn example(some_cond: bool) {
-    let x = if some_cond {
-        std::mem::transmute::<i32, u32>(0_i32) // transmute was called!
-    } else {
-        1_u32 // transmute was not called
-    };
+let x = if some_cond {
+    std::mem::transmute::<i32, u32>(0_i32) // transmute was called!
+} else {
+    1_u32 // transmute was not called
+};
 
-    // Has transmute been called by this point? We conservatively approximate that
-    // as yes, and that is why we use the OR operator.
-    println!("x: {}", x);
+// Has transmute been called by this point? We conservatively approximate that
+// as yes, and that is why we use the OR operator.
+println!("x: {}", x);
 # }
 ```
 
@@ -221,7 +221,7 @@ the example below:
 
 ["gen-kill" problems]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 [*Static Program Analysis*]: https://cs.au.dk/~amoeller/spa/
-[Debugging MIR]: ./debugging.html
+[Debugging MIR]: ./debugging.md
 [`AnalysisDomain`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.AnalysisDomain.html
 [`Analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/trait.Analysis.html
 [`Engine`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_dataflow/struct.Engine.html

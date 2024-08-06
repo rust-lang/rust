@@ -194,7 +194,7 @@
 
 - [Prologue](./part-5-intro.md)
 - [MIR optimizations](./mir/optimizations.md)
-- [Debugging](./mir/debugging.md)
+- [Debugging MIR](./mir/debugging.md)
 - [Constant evaluation](./const-eval.md)
     - [Interpreter](./const-eval/interpret.md)
 - [Monomorphization](./backend/monomorph.md)
