@@ -41,6 +41,8 @@ const_eval_const_context = {$kind ->
     *[other] {""}
 }
 
+const_eval_const_stable = const-stable functions can only call other const-stable functions
+
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 

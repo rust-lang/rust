@@ -23,7 +23,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
 use super::ConstCx;
-use crate::errors;
+use crate::{errors, fluent_generated};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -334,7 +334,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         // FIXME: make this translatable
         #[allow(rustc::untranslatable_diagnostic)]
         if ccx.is_const_stable_const_fn() {
-            err.help("const-stable functions can only call other const-stable functions");
+            err.help(fluent_generated::const_eval_const_stable);
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
                 err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
