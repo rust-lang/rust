@@ -227,3 +227,17 @@ fn make_mut_unsized() {
     assert_eq!(*data, [11, 21, 31]);
     assert_eq!(*other_data, [110, 20, 30]);
 }
+
+#[allow(unused)]
+mod pin_coerce_unsized {
+    use alloc::sync::Arc;
+    use core::pin::Pin;
+
+    pub trait MyTrait {}
+    impl MyTrait for String {}
+
+    // Pin coercion should work for Arc
+    pub fn pin_arc(arg: Pin<Arc<String>>) -> Pin<Arc<dyn MyTrait>> {
+        arg
+    }
+}

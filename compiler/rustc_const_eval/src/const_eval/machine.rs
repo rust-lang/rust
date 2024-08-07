@@ -24,8 +24,9 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom, throw_unsup,
-    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
+    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
+    StackPopCleanup,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -306,17 +307,15 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
                     let align = ImmTy::from_uint(target_align, args[1].layout).into();
                     let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
-                    // We replace the entire function call with a "tail call".
-                    // Note that this happens before the frame of the original function
-                    // is pushed on the stack.
-                    self.eval_fn_call(
-                        FnVal::Instance(instance),
-                        (CallAbi::Rust, fn_abi),
+                    // Push the stack frame with our own adjusted arguments.
+                    self.init_stack_frame(
+                        instance,
+                        self.load_mir(instance.def, None)?,
+                        fn_abi,
                         &[FnArg::Copy(addr), FnArg::Copy(align)],
                         /* with_caller_location = */ false,
                         dest,
-                        ret,
-                        mir::UnwindAction::Unreachable,
+                        StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Unreachable },
                     )?;
                     Ok(ControlFlow::Break(()))
                 } else {

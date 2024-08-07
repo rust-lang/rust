@@ -1,5 +1,4 @@
 use crate::*;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -24,7 +23,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             start_routine,
             Abi::C { unwind: false },
             func_arg,
-            this.layout_of(this.tcx.types.usize)?,
+            this.machine.layouts.mut_raw_ptr,
         )?;
 
         Ok(())

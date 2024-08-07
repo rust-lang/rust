@@ -12,13 +12,14 @@ use rustc_apfloat::Float;
 use rustc_hir::{
     def::{DefKind, Namespace},
     def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE},
+    Safety,
 };
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::MaybeResult;
+use rustc_middle::ty::layout::{FnAbiOf, MaybeResult};
 use rustc_middle::ty::{
     self,
     layout::{LayoutOf, TyAndLayout},
@@ -492,48 +493,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         f: ty::Instance<'tcx>,
         caller_abi: Abi,
-        args: &[Immediate<Provenance>],
+        args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let param_env = ty::ParamEnv::reveal_all(); // in Miri this is always the param_env we use... and this.param_env is private.
-        let callee_abi = f.ty(*this.tcx, param_env).fn_sig(*this.tcx).abi();
-        if callee_abi != caller_abi {
-            throw_ub_format!(
-                "calling a function with ABI {} using caller ABI {}",
-                callee_abi.name(),
-                caller_abi.name()
-            )
-        }
 
-        // Push frame.
+        // Get MIR.
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
             None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
         };
-        this.push_stack_frame(f, mir, &dest, stack_pop)?;
 
-        // Initialize arguments.
-        let mut callee_args = this.frame().body.args_iter();
-        for arg in args {
-            let local = callee_args
-                .next()
-                .ok_or_else(|| err_ub_format!("callee has fewer arguments than expected"))?;
-            // Make the local live, and insert the initial value.
-            this.storage_live(local)?;
-            let callee_arg = this.local_to_place(local)?;
-            this.write_immediate(*arg, &callee_arg)?;
-        }
-        if callee_args.next().is_some() {
-            throw_ub_format!("callee has more arguments than expected");
-        }
+        // Construct a function pointer type representing the caller perspective.
+        let sig = this.tcx.mk_fn_sig(
+            args.iter().map(|a| a.layout.ty),
+            dest.layout.ty,
+            /*c_variadic*/ false,
+            Safety::Safe,
+            caller_abi,
+        );
+        let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
-        // Initialize remaining locals.
-        this.storage_live_for_always_live_locals()?;
-
-        Ok(())
+        this.init_stack_frame(
+            f,
+            mir,
+            caller_fn_abi,
+            &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
+            /*with_caller_location*/ false,
+            &dest,
+            stack_pop,
+        )
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 2nd parameter
@@ -1114,12 +1105,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Make an attempt to get at the instance of the function this is inlined from.
         let instance: Option<_> = try {
             let scope = frame.current_source_info()?.scope;
-            let inlined_parent = frame.body.source_scopes[scope].inlined_parent_scope?;
-            let source = &frame.body.source_scopes[inlined_parent];
+            let inlined_parent = frame.body().source_scopes[scope].inlined_parent_scope?;
+            let source = &frame.body().source_scopes[inlined_parent];
             source.inlined.expect("inlined_parent_scope points to scope without inline info").0
         };
         // Fall back to the instance of the function itself.
-        let instance = instance.unwrap_or(frame.instance);
+        let instance = instance.unwrap_or(frame.instance());
         // Now check the crate it is in. We could try to be clever here and e.g. check if this is
         // the same crate as `start_fn`, but that would not work for running std tests in Miri, so
         // we'd need some more hacks anyway. So we just check the name of the crate. If someone
@@ -1359,9 +1350,9 @@ impl<'tcx> MiriMachine<'tcx> {
 
     /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
     pub fn is_user_relevant(&self, frame: &Frame<'tcx, Provenance>) -> bool {
-        let def_id = frame.instance.def_id();
+        let def_id = frame.instance().def_id();
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
-            && !frame.instance.def.requires_caller_location(self.tcx)
+            && !frame.instance().def.requires_caller_location(self.tcx)
     }
 }
 

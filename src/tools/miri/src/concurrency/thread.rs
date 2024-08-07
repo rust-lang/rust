@@ -256,7 +256,7 @@ pub struct Thread<'tcx> {
     /// which then forwards it to 'Resume'. However this argument is implicit in MIR,
     /// so we have to store it out-of-band. When there are multiple active unwinds,
     /// the innermost one is always caught first, so we can store them as a stack.
-    pub(crate) panic_payloads: Vec<Scalar>,
+    pub(crate) panic_payloads: Vec<ImmTy<'tcx>>,
 
     /// Last OS error location in memory. It is a 32-bit integer.
     pub(crate) last_error: Option<MPlaceTy<'tcx>>,
@@ -377,10 +377,6 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
             return_place,
             locals,
             extra,
-            body: _,
-            instance: _,
-            return_to_block: _,
-            loc: _,
             // There are some private fields we cannot access; they contain no tags.
             ..
         } = self;
@@ -952,7 +948,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.call_function(
             instance,
             start_abi,
-            &[*func_arg],
+            &[func_arg],
             Some(&ret_place),
             StackPopCleanup::Root { cleanup: true },
         )?;

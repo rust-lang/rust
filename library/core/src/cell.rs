@@ -255,6 +255,7 @@ use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
+use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
 
 mod lazy;
@@ -2396,3 +2397,21 @@ fn assert_coerce_unsized(
     let _: Cell<&dyn Send> = c;
     let _: RefCell<&dyn Send> = d;
 }
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<'b, T: ?Sized> PinCoerceUnsized for RefMut<'b, T> {}
