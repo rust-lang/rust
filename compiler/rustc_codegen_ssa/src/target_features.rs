@@ -1,11 +1,12 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
@@ -18,7 +19,7 @@ pub fn from_target_feature(
     tcx: TyCtxt<'_>,
     attr: &ast::Attribute,
     supported_target_features: &UnordMap<String, Option<Symbol>>,
-    target_features: &mut Vec<Symbol>,
+    target_features: &mut Vec<TargetFeature>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
     let bad_item = |span| {
@@ -30,6 +31,7 @@ pub fn from_target_feature(
             .emit();
     };
     let rust_features = tcx.features();
+    let mut added_target_features = Vec::new();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
@@ -44,7 +46,7 @@ pub fn from_target_feature(
         };
 
         // We allow comma separation to enable multiple features.
-        target_features.extend(value.as_str().split(',').filter_map(|feature| {
+        added_target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.dcx().struct_span_err(item.span(), msg);
@@ -98,13 +100,26 @@ pub fn from_target_feature(
         }));
     }
 
-    for (feature, requires) in tcx.sess.target.implicit_target_features() {
-        if target_features.iter().any(|f| f.as_str() == *feature)
-            && !target_features.iter().any(|f| f.as_str() == *requires)
-        {
-            target_features.push(Symbol::intern(requires));
-        }
+    // Add explicit features
+    target_features.extend(
+        added_target_features.iter().copied().map(|name| TargetFeature { name, implied: false }),
+    );
+
+    // Add implied features
+    let mut implied_target_features = UnordSet::new();
+    for feature in added_target_features.iter() {
+        implied_target_features.extend(tcx.implied_target_features(*feature).clone());
     }
+    for feature in added_target_features.iter() {
+        implied_target_features.remove(feature);
+    }
+    target_features.extend(
+        implied_target_features
+            .into_sorted_stable_ord()
+            .iter()
+            .copied()
+            .map(|name| TargetFeature { name, implied: true }),
+    )
 }
 
 /// Computes the set of target features used in a function for the purposes of
@@ -113,7 +128,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
-        target_features.extend(&attrs.target_features);
+        target_features.extend(attrs.target_features.iter().map(|feature| feature.name));
         match attrs.instruction_set {
             None => {}
             Some(InstructionSetAttr::ArmA32) => {
@@ -158,9 +173,13 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .supported_target_features()
                     .iter()
-                    .map(|&(a, b)| (a.to_string(), b.as_feature_name()))
+                    .map(|&(a, b, _)| (a.to_string(), b.as_feature_name()))
                     .collect()
             }
+        },
+        implied_target_features: |tcx, feature| {
+            UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
+                .into_sorted_stable_ord()
         },
         asm_target_features,
         ..*providers
