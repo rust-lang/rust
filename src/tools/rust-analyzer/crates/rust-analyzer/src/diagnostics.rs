@@ -110,7 +110,7 @@ impl DiagnosticCollection {
                     })
                 {
                     // don't signal an update if the diagnostics are the same
-                    return;
+                    continue;
                 }
                 if *old_gen < generation || generation == 0 {
                     target.insert(file_id, (generation, diagnostics));
