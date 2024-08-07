@@ -137,7 +137,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
-        fn_abi.apply_attrs_llfn(self, llfn);
+        fn_abi.apply_attrs_llfn(self, llfn, instance);
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {

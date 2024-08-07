@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
 
 use crate::context::CodegenCx;
+use crate::llvm;
 use crate::value::Value;
-use crate::{attributes, llvm};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -77,8 +77,6 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
             cx.declare_fn(sym, fn_abi, Some(instance))
         };
         debug!("get_fn: not casting pointer!");
-
-        attributes::from_fn_attrs(cx, llfn, instance);
 
         // Apply an appropriate linkage/visibility value to our item that we
         // just declared.
