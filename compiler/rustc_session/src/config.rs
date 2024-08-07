@@ -1304,7 +1304,10 @@ pub(crate) const fn default_lib_output() -> CrateType {
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
-    // Combine the configuration requested by the session (command line) with
+    // First disallow some configuration given on the command line
+    cfg::disallow_cfgs(sess, &user_cfg);
+
+    // Then combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
     user_cfg.extend(cfg::default_configuration(sess));
     user_cfg

@@ -42,6 +42,7 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
+        EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
         FORBIDDEN_LINT_GROUPS,
@@ -3286,6 +3287,39 @@ declare_lint! {
     pub UNEXPECTED_CFGS,
     Warn,
     "detects unexpected names and values in `#[cfg]` conditions",
+}
+
+declare_lint! {
+    /// The `explicit_builtin_cfgs_in_flags` lint detects builtin cfgs set via the `--cfg` flag.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --cfg unix
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// fn main() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: unexpected `--cfg unix` flag
+    ///   |
+    ///   = note: config `unix` is only supposed to be controlled by `--target`
+    ///   = note: manually setting a built-in cfg can and does create incoherent behaviors
+    ///   = note: `#[deny(explicit_builtin_cfgs_in_flags)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Setting builtin cfgs can and does produce incoherent behavior, it's better to the use
+    /// the appropriate `rustc` flag that controls the config. For example setting the `windows`
+    /// cfg but on Linux based target.
+    pub EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
+    Deny,
+    "detects builtin cfgs set via the `--cfg`"
 }
 
 declare_lint! {
