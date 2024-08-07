@@ -720,6 +720,177 @@ impl f16 {
         self * RADS_PER_DEG
     }
 
+    /// Returns the maximum of the two numbers, ignoring NaN.
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmax.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.max(y), y);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn max(self, other: f16) -> f16 {
+        intrinsics::maxnumf16(self, other)
+    }
+
+    /// Returns the minimum of the two numbers, ignoring NaN.
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmin.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.min(y), x);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn min(self, other: f16) -> f16 {
+        intrinsics::minnumf16(self, other)
+    }
+
+    /// Returns the maximum of the two numbers, propagating NaN.
+    ///
+    /// This returns NaN when *either* argument is NaN, as opposed to
+    /// [`f16::max`] which only returns NaN when *both* arguments are NaN.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_minimum_maximum)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.maximum(y), y);
+    /// assert!(x.maximum(f16::NAN).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
+    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f16) for more info.
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn maximum(self, other: f16) -> f16 {
+        if self > other {
+            self
+        } else if other > self {
+            other
+        } else if self == other {
+            if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
+        } else {
+            self + other
+        }
+    }
+
+    /// Returns the minimum of the two numbers, propagating NaN.
+    ///
+    /// This returns NaN when *either* argument is NaN, as opposed to
+    /// [`f16::min`] which only returns NaN when *both* arguments are NaN.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_minimum_maximum)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.minimum(y), x);
+    /// assert!(x.minimum(f16::NAN).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
+    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f16) for more info.
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn minimum(self, other: f16) -> f16 {
+        if self < other {
+            self
+        } else if other < self {
+            other
+        } else if self == other {
+            if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
+        } else {
+            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+            self + other
+        }
+    }
+
+    /// Calculates the middle point of `self` and `rhs`.
+    ///
+    /// This returns NaN when *either* argument is NaN or if a combination of
+    /// +inf and -inf is provided as arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(num_midpoint)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// assert_eq!(1f16.midpoint(4.0), 2.5);
+    /// assert_eq!((-5.5f16).midpoint(8.0), 1.25);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "num_midpoint", issue = "110840")]
+    pub fn midpoint(self, other: f16) -> f16 {
+        const LO: f16 = f16::MIN_POSITIVE * 2.;
+        const HI: f16 = f16::MAX / 2.;
+
+        let (a, b) = (self, other);
+        let abs_a = a.abs_private();
+        let abs_b = b.abs_private();
+
+        if abs_a <= HI && abs_b <= HI {
+            // Overflow is impossible
+            (a + b) / 2.
+        } else if abs_a < LO {
+            // Not safe to halve `a` (would underflow)
+            a + (b / 2.)
+        } else if abs_b < LO {
+            // Not safe to halve `b` (would underflow)
+            (a / 2.) + b
+        } else {
+            // Safe to halve `a` and `b`
+            (a / 2.) + (b / 2.)
+        }
+    }
+
     /// Rounds toward zero and converts to any primitive integer type,
     /// assuming that the value is finite and fits in that type.
     ///
