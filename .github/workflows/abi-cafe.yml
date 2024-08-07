@@ -2,6 +2,7 @@ name: Abi-cafe
 
 on:
   - push
+  - pull_request
 
 permissions: {}
 
