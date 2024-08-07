@@ -4062,7 +4062,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let name = self.tcx.crate_name(trait_candidate.def_id.krate);
                 if trait_candidate.def_id.krate != item.def_id.krate && name == pick_name {
                     let msg = format!(
-                        "you have multiple different versions of crate `{name}` in your \
+                        "there are multiple different versions of crate `{name}` in the \
                          dependency graph",
                     );
                     let tdid = self.tcx.parent(item.def_id);

@@ -18,7 +18,7 @@ fn main() {
         .extern_("dep_2_reexport", rust_lib_name("foo"))
         .run_fail()
         .assert_stderr_contains(
-            "you have multiple different versions of crate `dependency` in your dependency graph",
+            "there are multiple different versions of crate `dependency` in the dependency graph",
         )
         .assert_stderr_contains(
             "two types coming from two different versions of the same crate are different types \
