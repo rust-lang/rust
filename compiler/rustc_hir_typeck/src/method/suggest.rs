@@ -3448,7 +3448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_missing_method: bool,
     ) {
         let mut alt_rcvr_sugg = false;
-        let mut suggest = true;
+        let mut trait_in_other_version_found = false;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
             debug!(
                 "suggest_traits_to_import: span={:?}, item_name={:?}, rcvr_ty={:?}, rcvr={:?}",
@@ -3490,21 +3490,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // self types and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
                         let did = Some(pick.item.container_id(self.tcx));
-                        let skip = skippable.contains(&did);
-                        if pick.autoderefs == 0 && !skip {
-                            suggest = self.detect_and_explain_multiple_crate_versions(
+                        if skippable.contains(&did) {
+                            continue;
+                        }
+                        trait_in_other_version_found = self
+                            .detect_and_explain_multiple_crate_versions(
                                 err,
                                 pick.item.def_id,
                                 pick.item.ident(self.tcx).span,
                                 rcvr.hir_id.owner,
                                 *rcvr_ty,
                             );
-                            if suggest {
-                                err.span_label(
-                                    pick.item.ident(self.tcx).span,
-                                    format!("the method is available for `{rcvr_ty}` here"),
-                                );
-                            }
+                        if pick.autoderefs == 0 && !trait_in_other_version_found {
+                            err.span_label(
+                                pick.item.ident(self.tcx).span,
+                                format!("the method is available for `{rcvr_ty}` here"),
+                            );
                         }
                         break;
                     }
@@ -3701,7 +3702,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `Trait` that is imported directly, but `Type` came from a different version of the
             // same crate.
             let rcvr_ty = self.tcx.type_of(def_id).instantiate_identity();
-            suggest = self.detect_and_explain_multiple_crate_versions(
+            trait_in_other_version_found = self.detect_and_explain_multiple_crate_versions(
                 err,
                 assoc.def_id,
                 self.tcx.def_span(assoc.def_id),
@@ -3709,7 +3710,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 rcvr_ty,
             );
         }
-        if suggest && self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true) {
+        if !trait_in_other_version_found
+            && self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true)
+        {
             return;
         }
 
@@ -4119,14 +4122,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("the method is available for `{rcvr_ty}` here"),
                         );
                         err.span_note(multi_span, msg);
-                        return false;
                     } else {
                         err.note(msg);
                     }
+                    return true;
                 }
             }
         }
-        true
+        false
     }
 
     /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`
