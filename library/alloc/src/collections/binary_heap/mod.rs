@@ -1433,6 +1433,20 @@ pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
+#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `binary_heap::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::binary_heap;
+    /// let iter: binary_heap::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { iter: Default::default() }
+    }
+}
+
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

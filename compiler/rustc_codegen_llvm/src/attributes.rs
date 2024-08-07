@@ -324,9 +324,10 @@ fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
     llvm::CreateAttrStringValue(llcx, "alloc-family", "__rust_alloc")
 }
 
+/// Helper for `FnAbi::apply_attrs_llfn`:
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
-pub fn from_fn_attrs<'ll, 'tcx>(
+pub fn llfn_attrs_from_instance<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
     instance: ty::Instance<'tcx>,
@@ -496,7 +497,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     to_add.extend(tune_cpu_attr(cx));
 
     let function_features =
-        codegen_fn_attrs.target_features.iter().map(|f| f.as_str()).collect::<Vec<&str>>();
+        codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
     if let Some(f) = llvm_util::check_tied_features(
         cx.tcx.sess,

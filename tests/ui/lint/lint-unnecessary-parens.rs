@@ -1,6 +1,7 @@
 //@ run-rustfix
 
 #![deny(unused_parens)]
+#![feature(raw_ref_op)]
 #![allow(while_true)] // for rustfix
 
 #[derive(Eq, PartialEq)]
@@ -125,4 +126,11 @@ fn main() {
         // FIXME: false positive. This parenthesis is required.
         (unit! {} - One) //~ ERROR unnecessary parentheses around block return value
     };
+
+    // Do *not* lint around `&raw` (but do lint when `&` creates a reference).
+    let mut x = 0;
+    let _r = (&x); //~ ERROR unnecessary parentheses
+    let _r = (&mut x); //~ ERROR unnecessary parentheses
+    let _r = (&raw const x);
+    let _r = (&raw mut x);
 }

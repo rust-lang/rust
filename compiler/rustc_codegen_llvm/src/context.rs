@@ -149,7 +149,7 @@ pub unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
-        let tm = crate::back::write::create_informational_target_machine(tcx.sess);
+        let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
         unsafe {
             llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
         }

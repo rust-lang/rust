@@ -212,11 +212,13 @@ impl Step for GenerateCopyright {
         let license_metadata = builder.ensure(CollectLicenseMetadata);
 
         // Temporary location, it will be moved to the proper one once it's accurate.
-        let dest = builder.out.join("COPYRIGHT.md");
+        let dest = builder.out.join("COPYRIGHT.html");
 
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
+        cmd.env("OUT_DIR", &builder.out);
+        cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
 
         dest
