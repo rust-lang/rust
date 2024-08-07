@@ -341,7 +341,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.block
                 .add_eval(self.location, self.cx.context.new_call(self.location, func, &args));
             // Return dummy value when not having return value.
-            self.context.new_rvalue_from_long(self.isize_type, 0)
+            self.context.new_rvalue_zero(self.isize_type)
         }
     }
 
@@ -421,17 +421,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 self.cx.context.new_call_through_ptr(self.location, func_ptr, &args),
             );
             // Return dummy value when not having return value.
-            let result = current_func.new_local(
-                self.location,
-                self.isize_type,
-                "dummyValueThatShouldNeverBeUsed",
-            );
-            self.block.add_assignment(
-                self.location,
-                result,
-                self.context.new_rvalue_from_long(self.isize_type, 0),
-            );
-            result.to_rvalue()
+            self.context.new_rvalue_zero(self.isize_type)
         }
     }
 
