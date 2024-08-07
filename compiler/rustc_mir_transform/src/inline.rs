@@ -479,7 +479,7 @@ impl<'tcx> Inliner<'tcx> {
             return Err("incompatible instruction set");
         }
 
-        if callee_attrs.target_features != self.codegen_fn_attrs.target_features {
+        if callee_attrs.all_target_features != self.codegen_fn_attrs.all_target_features {
             // In general it is not correct to inline a callee with target features that are a
             // subset of the caller. This is because the callee might contain calls, and the ABI of
             // those calls depends on the target features of the surrounding function. By moving a

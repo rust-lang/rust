@@ -996,14 +996,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         if !self.tcx.sess.target.is_like_wasm
             && attrs
-                .target_features
+                .all_target_features
                 .iter()
                 .any(|feature| !self.tcx.sess.target_features.contains(feature))
         {
             throw_ub_custom!(
                 fluent::const_eval_unavailable_target_features_for_fn,
                 unavailable_feats = attrs
-                    .target_features
+                    .all_target_features
                     .iter()
                     .filter(|&feature| !self.tcx.sess.target_features.contains(feature))
                     .fold(String::new(), |mut s, feature| {

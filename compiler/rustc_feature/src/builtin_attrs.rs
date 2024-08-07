@@ -471,7 +471,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     ungated!(
         target_feature, Normal, template!(List: r#"enable = "name""#),
-        DuplicatesOk, EncodeCrossCrate::No,
+        DuplicatesOk, EncodeCrossCrate::Yes,
     ),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     ungated!(instruction_set, Normal, template!(List: "set"), ErrorPreceding, EncodeCrossCrate::No),

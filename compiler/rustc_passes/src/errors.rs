@@ -83,6 +83,15 @@ pub struct AttrShouldBeAppliedToFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_should_be_applied_to_fn_or_unit_struct)]
+pub struct AttrShouldBeAppliedToFnOrUnitStruct {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn, code = E0739)]
 pub struct TrackedCallerWrongLocation {
     #[primary_span]
