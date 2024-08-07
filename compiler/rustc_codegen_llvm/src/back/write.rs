@@ -95,11 +95,14 @@ pub fn write_output_file<'ll>(
     }
 }
 
-pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine {
+pub fn create_informational_target_machine(
+    sess: &Session,
+    only_base_features: bool,
+) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, false);
+    let features = llvm_util::global_llvm_features(sess, false, only_base_features);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err).raise())
 }

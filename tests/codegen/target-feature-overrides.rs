@@ -1,7 +1,7 @@
 //@ revisions: COMPAT INCOMPAT
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3
-//@ [COMPAT] compile-flags: -Ctarget-feature=+avx2,+avx
+//@ [COMPAT] compile-flags: -Ctarget-feature=+avx2
 //@ [INCOMPAT] compile-flags: -Ctarget-feature=-avx2,-avx
 
 // See also tests/assembly/target-feature-multiple.rs
@@ -39,8 +39,8 @@ pub unsafe fn banana() -> u32 {
 }
 
 // CHECK: attributes [[APPLEATTRS]]
-// COMPAT-SAME: "target-features"="+avx2,+avx,+avx"
-// INCOMPAT-SAME: "target-features"="-avx2,-avx,+avx"
+// COMPAT-SAME: "target-features"="+avx,+avx2,{{.*}}"
+// INCOMPAT-SAME: "target-features"="-avx2,-avx,+avx,{{.*}}"
 // CHECK: attributes [[BANANAATTRS]]
-// COMPAT-SAME: "target-features"="+avx2,+avx"
+// COMPAT-SAME: "target-features"="+avx,+avx2,{{.*}}"
 // INCOMPAT-SAME: "target-features"="-avx2,-avx"

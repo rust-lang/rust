@@ -317,19 +317,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             && attrs
                 .target_features
                 .iter()
-                .any(|feature| !self.tcx.sess.target_features.contains(feature))
+                .any(|feature| !self.tcx.sess.target_features.contains(&feature.name))
         {
             throw_ub_custom!(
                 fluent::const_eval_unavailable_target_features_for_fn,
                 unavailable_feats = attrs
                     .target_features
                     .iter()
-                    .filter(|&feature| !self.tcx.sess.target_features.contains(feature))
+                    .filter(|&feature| !feature.implied
+                        && !self.tcx.sess.target_features.contains(&feature.name))
                     .fold(String::new(), |mut s, feature| {
                         if !s.is_empty() {
                             s.push_str(", ");
                         }
-                        s.push_str(feature.as_str());
+                        s.push_str(feature.name.as_str());
                         s
                     }),
             );
