@@ -1,5 +1,5 @@
 error: unsafe attribute used without unsafe
-  --> $DIR/in_2024_compatibility.rs:4:3
+  --> $DIR/in_2024_compatibility.rs:3:3
    |
 LL | #[no_mangle]
    |   ^^^^^^^^^ usage of unsafe attribute
