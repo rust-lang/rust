@@ -71,7 +71,9 @@
         "workspaceContains:Cargo.toml",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:rust-project.json",
-        "workspaceContains:*/rust-project.json"
+        "workspaceContains:*/rust-project.json",
+        "workspaceContains:.rust-project.json",
+        "workspaceContains:*/.rust-project.json"
     ],
     "main": "./out/main",
     "contributes": {
@@ -3210,6 +3212,10 @@
         "jsonValidation": [
             {
                 "fileMatch": "rust-project.json",
+                "url": "https://json.schemastore.org/rust-project.json"
+            },
+            {
+                "fileMatch": ".rust-project.json",
                 "url": "https://json.schemastore.org/rust-project.json"
             }
         ],
