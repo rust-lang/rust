@@ -388,39 +388,67 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 trait_impls.non_blanket_impls().values().flatten().count();
                             // If there is only one implementation of the trait, suggest using it.
                             // Otherwise, use a placeholder comment for the implementation.
-                            let (message, self_type) = if non_blanket_impl_count == 1 {
+                            let (message, self_types) = if non_blanket_impl_count == 1 {
                                 (
                                     "use the fully-qualified path to the only available \
                                      implementation",
-                                    format!(
+                                    vec![format!(
                                         "{}",
                                         self.tcx.type_of(impl_def_id).instantiate_identity()
-                                    ),
+                                    )],
+                                )
+                            } else if non_blanket_impl_count < 20 {
+                                (
+                                    "use a fully-qualified path to one of the available \
+                                     implementations",
+                                    trait_impls
+                                        .non_blanket_impls()
+                                        .values()
+                                        .flatten()
+                                        .map(|id| {
+                                            format!(
+                                                "{}",
+                                                self.tcx.type_of(id).instantiate_identity()
+                                            )
+                                        })
+                                        .collect::<Vec<String>>(),
                                 )
                             } else {
                                 (
                                     "use a fully-qualified path to a specific available \
                                      implementation",
-                                    "/* self type */".to_string(),
+                                    vec!["/* self type */".to_string()],
                                 )
                             };
-                            let mut suggestions =
-                                vec![(path.span.shrink_to_lo(), format!("<{self_type} as "))];
-                            if let Some(generic_arg) = trait_path_segment.args {
-                                let between_span =
-                                    trait_path_segment.ident.span.between(generic_arg.span_ext);
-                                // get rid of :: between Trait and <type>
-                                // must be '::' between them, otherwise the parser won't accept the code
-                                suggestions.push((between_span, "".to_string()));
-                                suggestions
-                                    .push((generic_arg.span_ext.shrink_to_hi(), ">".to_string()));
-                            } else {
-                                suggestions.push((
-                                    trait_path_segment.ident.span.shrink_to_hi(),
-                                    ">".to_string(),
-                                ));
-                            }
-                            err.multipart_suggestion(
+                            let suggestions: Vec<_> = self_types
+                                .into_iter()
+                                .map(|self_type| {
+                                    let mut suggestions = vec![(
+                                        path.span.shrink_to_lo(),
+                                        format!("<{self_type} as "),
+                                    )];
+                                    if let Some(generic_arg) = trait_path_segment.args {
+                                        let between_span = trait_path_segment
+                                            .ident
+                                            .span
+                                            .between(generic_arg.span_ext);
+                                        // get rid of :: between Trait and <type>
+                                        // must be '::' between them, otherwise the parser won't accept the code
+                                        suggestions.push((between_span, "".to_string()));
+                                        suggestions.push((
+                                            generic_arg.span_ext.shrink_to_hi(),
+                                            ">".to_string(),
+                                        ));
+                                    } else {
+                                        suggestions.push((
+                                            trait_path_segment.ident.span.shrink_to_hi(),
+                                            ">".to_string(),
+                                        ));
+                                    }
+                                    suggestions
+                                })
+                                .collect();
+                            err.multipart_suggestions(
                                 message,
                                 suggestions,
                                 Applicability::MaybeIncorrect,
