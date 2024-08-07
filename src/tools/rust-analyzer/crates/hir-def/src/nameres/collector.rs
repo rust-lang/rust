@@ -2003,7 +2003,7 @@ impl ModCollector<'_, '_> {
                             Err(cfg) => {
                                 self.emit_unconfigured_diagnostic(
                                     self.tree_id,
-                                    AttrOwner::TopLevel,
+                                    AttrOwner::ModItem(module_id.into()),
                                     &cfg,
                                 );
                             }
