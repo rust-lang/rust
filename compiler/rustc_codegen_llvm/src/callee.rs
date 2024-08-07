@@ -4,13 +4,14 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
+use rustc_codegen_ssa::common;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
 
 use crate::context::CodegenCx;
 use crate::value::Value;
-use crate::{attributes, common, llvm};
+use crate::{attributes, llvm};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -46,7 +47,7 @@ pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) ->
     } else {
         let instance_def_id = instance.def_id();
         let llfn = if tcx.sess.target.arch == "x86"
-            && let Some(dllimport) = common::get_dllimport(tcx, instance_def_id, sym)
+            && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
             // Fix for https://github.com/rust-lang/rust/issues/104453
             // On x86 Windows, LLVM uses 'L' as the prefix for any private

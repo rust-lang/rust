@@ -51,7 +51,8 @@ use super::linker::{self, Linker};
 use super::metadata::{create_wrapper_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
 use crate::{
-    errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
+    common, errors, looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo,
+    NativeLib,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -390,17 +391,13 @@ fn link_rlib<'a>(
         }
     }
 
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
-    {
-        let output_path = archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir.as_ref(),
-            true,
-        );
-
+    for output_path in create_dll_import_libs(
+        sess,
+        archive_builder_builder,
+        codegen_results.crate_info.used_libraries.iter(),
+        tmpdir.as_ref(),
+        true,
+    )? {
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
             sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
         });
@@ -484,6 +481,47 @@ fn collate_raw_dylibs<'a>(
         .into_iter()
         .map(|(name, imports)| {
             (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
+        })
+        .collect())
+}
+
+fn create_dll_import_libs<'a>(
+    sess: &Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
+    used_libraries: impl IntoIterator<Item = &'a NativeLib>,
+    tmpdir: &Path,
+    is_direct_dependency: bool,
+) -> Result<Vec<PathBuf>, ErrorGuaranteed> {
+    Ok(collate_raw_dylibs(sess, used_libraries)?
+        .into_iter()
+        .map(|(raw_dylib_name, raw_dylib_imports)| {
+            let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
+            let output_path = tmpdir.join(format!("{raw_dylib_name}{name_suffix}.lib"));
+
+            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
+
+            let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = raw_dylib_imports
+                .iter()
+                .map(|import: &DllImport| {
+                    if sess.target.arch == "x86" {
+                        (
+                            common::i686_decorated_name(import, mingw_gnu_toolchain, false),
+                            import.ordinal(),
+                        )
+                    } else {
+                        (import.name.to_string(), import.ordinal())
+                    }
+                })
+                .collect();
+
+            archive_builder_builder.create_dll_import_lib(
+                sess,
+                &raw_dylib_name,
+                import_name_and_ordinal_vector,
+                &output_path,
+            );
+
+            output_path
         })
         .collect())
 }
@@ -2305,16 +2343,14 @@ fn linker_with_args(
     );
 
     // Link with the import library generated for any raw-dylib functions.
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, codegen_results.crate_info.used_libraries.iter())?
-    {
-        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir,
-            true,
-        ));
+    for output_path in create_dll_import_libs(
+        sess,
+        archive_builder_builder,
+        codegen_results.crate_info.used_libraries.iter(),
+        tmpdir,
+        true,
+    )? {
+        cmd.add_object(&output_path);
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
     // they are used within inlined functions or instantiated generic functions. We do this *after*
@@ -2339,16 +2375,14 @@ fn linker_with_args(
         .flatten()
         .collect::<Vec<_>>();
     native_libraries_from_nonstatics.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
-    for (raw_dylib_name, raw_dylib_imports) in
-        collate_raw_dylibs(sess, native_libraries_from_nonstatics)?
-    {
-        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
-            sess,
-            &raw_dylib_name,
-            &raw_dylib_imports,
-            tmpdir,
-            false,
-        ));
+    for output_path in create_dll_import_libs(
+        sess,
+        archive_builder_builder,
+        native_libraries_from_nonstatics,
+        tmpdir,
+        false,
+    )? {
+        cmd.add_object(&output_path);
     }
 
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
