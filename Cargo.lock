@@ -3149,6 +3149,7 @@ dependencies = [
  "bstr",
  "build_helper",
  "gimli 0.31.0",
+ "libc",
  "object 0.36.2",
  "regex",
  "similar",
