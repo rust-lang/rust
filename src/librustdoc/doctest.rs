@@ -78,6 +78,17 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         content.push(format!("-Z{unstable_option_str}"));
     }
 
+    for compilation_args in &options.doctest_compilation_args {
+        for flag in compilation_args
+            .split_whitespace()
+            .map(|flag| flag.trim())
+            .filter(|flag| !flag.is_empty())
+        {
+            // Very simple parsing implementation. Might be a good idea to correctly handle strings.
+            content.push(flag.to_string());
+        }
+    }
+
     let content = content.join("\n");
 
     file.write_all(content.as_bytes())
