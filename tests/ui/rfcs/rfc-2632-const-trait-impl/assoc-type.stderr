@@ -12,16 +12,16 @@ error: using `#![feature(effects)]` without enabling next trait solver globally
    = note: the next trait solver must be enabled globally for the effects feature to work correctly
    = help: use `-Znext-solver` to enable
 
-error[E0277]: the trait bound `Add::{synthetic#0}: Compat` is not satisfied
+error[E0277]: the trait bound `Param<true>: TyCompat<Add::{synthetic#0}>` is not satisfied
   --> $DIR/assoc-type.rs:41:15
    |
 LL |     type Qux: Add;
-   |               ^^^ the trait `Compat` is not implemented for `Add::{synthetic#0}`
+   |               ^^^ the trait `TyCompat<Add::{synthetic#0}>` is not implemented for `Param<true>`
    |
-help: consider further restricting the associated type
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
-LL | trait Baz where Add::{synthetic#0}: Compat {
-   |           ++++++++++++++++++++++++++++++++
+LL | trait Baz where Param<true>: TyCompat<Add::{synthetic#0}> {
+   |           +++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

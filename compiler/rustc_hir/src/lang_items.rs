@@ -410,6 +410,7 @@ language_item_table! {
     EffectsRuntime,          sym::EffectsRuntime,      effects_runtime,            Target::Struct,         GenericRequirement::None;
     EffectsNoRuntime,        sym::EffectsNoRuntime,    effects_no_runtime,         Target::Struct,         GenericRequirement::None;
     EffectsMaybe,            sym::EffectsMaybe,        effects_maybe,              Target::Struct,         GenericRequirement::None;
+    EffectsParam,            sym::EffectsParam,        effects_param,              Target::Struct,         GenericRequirement::Exact(1);
     EffectsIntersection,     sym::EffectsIntersection, effects_intersection,       Target::Trait,          GenericRequirement::None;
     EffectsIntersectionOutput, sym::EffectsIntersectionOutput, effects_intersection_output, Target::AssocTy, GenericRequirement::None;
     EffectsCompat,           sym::EffectsCompat,       effects_compat,             Target::Trait,          GenericRequirement::Exact(1);

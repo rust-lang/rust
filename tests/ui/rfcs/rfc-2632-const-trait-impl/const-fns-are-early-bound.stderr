@@ -1,11 +1,12 @@
-error[E0277]: the trait bound `FnOnce<()>::{synthetic#0}: const Compat` is not satisfied
+error[E0277]: the trait bound `Param<false>: TyCompat<FnOnce<()>::{synthetic#0}>` is not satisfied
   --> $DIR/const-fns-are-early-bound.rs:31:17
    |
 LL |     is_const_fn(foo);
-   |     ----------- ^^^ the trait `const Compat` is not implemented for `FnOnce<()>::{synthetic#0}`
+   |     ----------- ^^^ the trait `TyCompat<FnOnce<()>::{synthetic#0}>` is not implemented for `Param<false>`
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `TyCompat<NoRuntime>` is implemented for `Param<false>`
 note: required by a bound in `is_const_fn`
   --> $DIR/const-fns-are-early-bound.rs:25:12
    |

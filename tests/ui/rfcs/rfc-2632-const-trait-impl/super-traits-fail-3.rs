@@ -3,7 +3,6 @@
 #![feature(const_trait_impl, effects)]
 
 //@ revisions: yy yn ny nn
-//@[yy] known-bug: #110395
 
 #[cfg_attr(any(yy, yn), const_trait)]
 trait Foo {
@@ -20,7 +19,7 @@ trait Bar: ~const Foo {}
 const fn foo<T: ~const Bar>(x: &T) {
     //[yn,nn]~^ ERROR: `~const` can only be applied to `#[const_trait]`
     x.a();
-    //[yn]~^ ERROR: the trait bound
+    //[yn,yy]~^ ERROR: the trait bound
 }
 
 fn main() {}

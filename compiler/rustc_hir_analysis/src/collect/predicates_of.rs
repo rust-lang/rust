@@ -325,7 +325,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         debug!(?predicates);
     }
 
-    // add `Self::Effects: Compat<HOST>` to ensure non-const impls don't get called
+    // add `Param<RUNTIME>: TyCompat<Self::Effects>` to ensure non-const impls don't get called
     // in const contexts.
     if let Node::TraitItem(&TraitItem { kind: TraitItemKind::Fn(..), .. }) = node
         && let Some(host_effect_index) = generics.host_effect_index
@@ -334,14 +334,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         let Some(assoc_def_id) = tcx.associated_type_for_effects(parent) else {
             bug!("associated_type_for_effects returned None when there is host effect in generics");
         };
-        let effects =
+        let proj_effects =
             Ty::new_projection(tcx, assoc_def_id, ty::GenericArgs::identity_for_item(tcx, parent));
         let param = generics.param_at(host_effect_index, tcx);
         let span = tcx.def_span(param.def_id);
         let host = ty::Const::new_param(tcx, ty::ParamConst::for_def(param));
-        let compat = tcx.require_lang_item(LangItem::EffectsCompat, Some(span));
-        let trait_ref =
-            ty::TraitRef::new(tcx, compat, [ty::GenericArg::from(effects), host.into()]);
+        let param = tcx.require_lang_item(LangItem::EffectsParam, Some(span));
+        let args = tcx.mk_args(&[host.into()]);
+        let param_ty = Ty::new_adt(tcx, tcx.adt_def(param), args);
+        let compat = tcx.require_lang_item(LangItem::EffectsTyCompat, Some(span));
+        let trait_ref = ty::TraitRef::new(tcx, compat, [param_ty, proj_effects]);
         predicates.push((ty::Binder::dummy(trait_ref).upcast(tcx), span));
     }
 

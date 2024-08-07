@@ -1,9 +1,12 @@
-error[E0277]: the trait bound `cross_crate::MyTrait::{synthetic#0}: ~const Compat` is not satisfied
+error[E0277]: the trait bound `Param<host>: TyCompat<cross_crate::MyTrait::{synthetic#0}>` is not satisfied
   --> $DIR/cross-crate.rs:19:14
    |
 LL |     NonConst.func();
-   |              ^^^^ the trait `~const Compat` is not implemented for `cross_crate::MyTrait::{synthetic#0}`
+   |              ^^^^ the trait `TyCompat<cross_crate::MyTrait::{synthetic#0}>` is not implemented for `Param<host>`
    |
+   = help: the following other types implement trait `TyCompat<T>`:
+             `Param<false>` implements `TyCompat<NoRuntime>`
+             `Param<true>` implements `TyCompat<Runtime>`
 note: required by a bound in `func`
   --> $DIR/auxiliary/cross-crate.rs:5:1
    |

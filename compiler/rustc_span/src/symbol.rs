@@ -199,6 +199,7 @@ symbols! {
         EffectsIntersectionOutput,
         EffectsMaybe,
         EffectsNoRuntime,
+        EffectsParam,
         EffectsRuntime,
         EffectsTyCompat,
         Effects__,

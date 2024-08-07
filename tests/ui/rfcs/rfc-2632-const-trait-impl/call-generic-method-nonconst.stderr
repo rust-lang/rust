@@ -12,15 +12,14 @@ error: using `#![feature(effects)]` without enabling next trait solver globally
    = note: the next trait solver must be enabled globally for the effects feature to work correctly
    = help: use `-Znext-solver` to enable
 
-error[E0277]: the trait bound `Runtime: const Compat` is not satisfied
-  --> $DIR/call-generic-method-nonconst.rs:23:34
+error[E0277]: the trait bound `Param<false>: TyCompat<Runtime>` is not satisfied
+  --> $DIR/call-generic-method-nonconst.rs:23:22
    |
 LL | pub const EQ: bool = equals_self(&S);
-   |                      ----------- ^^ the trait `const Compat` is not implemented for `Runtime`
-   |                      |
-   |                      required by a bound introduced by this call
+   |                      ^^^^^^^^^^^^^^^ the trait `TyCompat<Runtime>` is not implemented for `Param<false>`
    |
-   = help: the trait `Compat` is implemented for `Runtime`
+   = help: the trait `TyCompat<NoRuntime>` is implemented for `Param<false>`
+   = help: for that trait implementation, expected `NoRuntime`, found `Runtime`
 note: required by a bound in `equals_self`
   --> $DIR/call-generic-method-nonconst.rs:16:25
    |
