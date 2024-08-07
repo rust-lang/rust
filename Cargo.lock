@@ -4150,6 +4150,7 @@ dependencies = [
 name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
+ "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

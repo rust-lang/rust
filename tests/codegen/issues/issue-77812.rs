@@ -15,6 +15,7 @@ extern "C" {
     fn exf2();
 }
 
+#[no_mangle]
 pub static mut GLOBAL: Variant = Variant::Zero;
 
 // CHECK-LABEL: @issue_77812

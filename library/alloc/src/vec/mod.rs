@@ -1037,7 +1037,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve(self.len, additional)
+        let len = self.len;
+        let ret = self.buf.try_reserve(len, additional);
+        unsafe {
+            // Inform the optimier that growing did not change the length.
+            core::hint::assert_unchecked(self.len == len);
+        }
+        ret
     }
 
     /// Tries to reserve the minimum capacity for at least `additional`

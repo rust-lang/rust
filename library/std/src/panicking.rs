@@ -751,6 +751,22 @@ fn payload_as_str(payload: &dyn Any) -> &str {
     }
 }
 
+// This forces codegen of the function called by panic!() inside the std crate, rather than in
+// downstream crates. Primarily this is useful for rustc's codegen tests, which rely on noticing
+// complete removal of panic from generated IR. Since begin_panic is inline(never), it's only
+// codegen'd once per crate-graph so this pushes that to std rather than our codegen test crates.
+//
+// (See https://github.com/rust-lang/rust/pull/123244 for more info on why).
+//
+// If this is causing problems we can also modify those codegen tests to use a crate type like
+// cdylib which doesn't export "Rust" symbols to downstream linkage units.
+#[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
+#[doc(hidden)]
+#[allow(dead_code)]
+#[used]
+pub static EMPTY_PANIC: fn(&'static str) -> ! =
+    begin_panic::<&'static str> as fn(&'static str) -> !;
+
 /// Central point for dispatching panics.
 ///
 /// Executes the primary logic for a panic, including checking for recursive
