@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -18,7 +19,7 @@ use rustc_target::abi::{
 };
 use tracing::{debug, instrument, trace};
 
-use crate::common::{self, CodegenCx};
+use crate::common::CodegenCx;
 use crate::errors::{
     InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
 };
@@ -195,7 +196,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             g2
         }
     } else if cx.tcx.sess.target.arch == "x86"
-        && let Some(dllimport) = common::get_dllimport(cx.tcx, def_id, sym)
+        && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
         cx.declare_global(
             &common::i686_decorated_name(

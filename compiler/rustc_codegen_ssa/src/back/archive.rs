@@ -1,4 +1,6 @@
+use std::env;
 use std::error::Error;
+use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -9,7 +11,6 @@ use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
-use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use tempfile::Builder as TempFileBuilder;
@@ -17,6 +18,7 @@ use tempfile::Builder as TempFileBuilder;
 use super::metadata::search_for_section;
 // Re-exporting for rustc_codegen_llvm::back::archive
 pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArchiveKind};
+use crate::errors::{DlltoolFailImportLibrary, ErrorCallingDllTool, ErrorWritingDEFFile};
 
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a>;
@@ -30,10 +32,9 @@ pub trait ArchiveBuilderBuilder {
         &self,
         sess: &Session,
         lib_name: &str,
-        dll_imports: &[DllImport],
-        tmpdir: &Path,
-        is_direct_dependency: bool,
-    ) -> PathBuf;
+        import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
+        output_path: &Path,
+    );
 
     fn extract_bundled_libs<'a>(
         &'a self,
@@ -70,6 +71,130 @@ pub trait ArchiveBuilderBuilder {
         }
         Ok(())
     }
+}
+
+pub fn create_mingw_dll_import_lib(
+    sess: &Session,
+    lib_name: &str,
+    import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
+    output_path: &Path,
+) {
+    let def_file_path = output_path.with_extension("def");
+
+    let def_file_content = format!(
+        "EXPORTS\n{}",
+        import_name_and_ordinal_vector
+            .into_iter()
+            .map(|(name, ordinal)| {
+                match ordinal {
+                    Some(n) => format!("{name} @{n} NONAME"),
+                    None => name,
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+
+    match std::fs::write(&def_file_path, def_file_content) {
+        Ok(_) => {}
+        Err(e) => {
+            sess.dcx().emit_fatal(ErrorWritingDEFFile { error: e });
+        }
+    };
+
+    // --no-leading-underscore: For the `import_name_type` feature to work, we need to be
+    // able to control the *exact* spelling of each of the symbols that are being imported:
+    // hence we don't want `dlltool` adding leading underscores automatically.
+    let dlltool = find_binutils_dlltool(sess);
+    let temp_prefix = {
+        let mut path = PathBuf::from(&output_path);
+        path.pop();
+        path.push(lib_name);
+        path
+    };
+    // dlltool target architecture args from:
+    // https://github.com/llvm/llvm-project-release-prs/blob/llvmorg-15.0.6/llvm/lib/ToolDrivers/llvm-dlltool/DlltoolDriver.cpp#L69
+    let (dlltool_target_arch, dlltool_target_bitness) = match sess.target.arch.as_ref() {
+        "x86_64" => ("i386:x86-64", "--64"),
+        "x86" => ("i386", "--32"),
+        "aarch64" => ("arm64", "--64"),
+        "arm" => ("arm", "--32"),
+        _ => panic!("unsupported arch {}", sess.target.arch),
+    };
+    let mut dlltool_cmd = std::process::Command::new(&dlltool);
+    dlltool_cmd
+        .arg("-d")
+        .arg(def_file_path)
+        .arg("-D")
+        .arg(lib_name)
+        .arg("-l")
+        .arg(&output_path)
+        .arg("-m")
+        .arg(dlltool_target_arch)
+        .arg("-f")
+        .arg(dlltool_target_bitness)
+        .arg("--no-leading-underscore")
+        .arg("--temp-prefix")
+        .arg(temp_prefix);
+
+    match dlltool_cmd.output() {
+        Err(e) => {
+            sess.dcx().emit_fatal(ErrorCallingDllTool {
+                dlltool_path: dlltool.to_string_lossy(),
+                error: e,
+            });
+        }
+        // dlltool returns '0' on failure, so check for error output instead.
+        Ok(output) if !output.stderr.is_empty() => {
+            sess.dcx().emit_fatal(DlltoolFailImportLibrary {
+                dlltool_path: dlltool.to_string_lossy(),
+                dlltool_args: dlltool_cmd
+                    .get_args()
+                    .map(|arg| arg.to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join(" "),
+                stdout: String::from_utf8_lossy(&output.stdout),
+                stderr: String::from_utf8_lossy(&output.stderr),
+            })
+        }
+        _ => {}
+    }
+}
+
+fn find_binutils_dlltool(sess: &Session) -> OsString {
+    assert!(sess.target.options.is_like_windows && !sess.target.options.is_like_msvc);
+    if let Some(dlltool_path) = &sess.opts.cg.dlltool {
+        return dlltool_path.clone().into_os_string();
+    }
+
+    let tool_name: OsString = if sess.host.options.is_like_windows {
+        // If we're compiling on Windows, always use "dlltool.exe".
+        "dlltool.exe"
+    } else {
+        // On other platforms, use the architecture-specific name.
+        match sess.target.arch.as_ref() {
+            "x86_64" => "x86_64-w64-mingw32-dlltool",
+            "x86" => "i686-w64-mingw32-dlltool",
+            "aarch64" => "aarch64-w64-mingw32-dlltool",
+
+            // For non-standard architectures (e.g., aarch32) fallback to "dlltool".
+            _ => "dlltool",
+        }
+    }
+    .into();
+
+    // NOTE: it's not clear how useful it is to explicitly search PATH.
+    for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
+        let full_path = dir.join(&tool_name);
+        if full_path.is_file() {
+            return full_path.into_os_string();
+        }
+    }
+
+    // The user didn't specify the location of the dlltool binary, and we weren't able
+    // to find the appropriate one on the PATH. Just return the name of the tool
+    // and let the invocation fail with a hopefully useful error message.
+    tool_name
 }
 
 pub trait ArchiveBuilder {
