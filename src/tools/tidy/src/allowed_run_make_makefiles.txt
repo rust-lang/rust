@@ -23,7 +23,6 @@ run-make/split-debuginfo/Makefile
 run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
-run-make/thumb-none-cortex-m/Makefile
 run-make/thumb-none-qemu/Makefile
 run-make/translation/Makefile
 run-make/x86_64-fortanix-unknown-sgx-lvi/Makefile
