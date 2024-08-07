@@ -179,7 +179,10 @@ impl GlobalState {
             }
         }
 
-        while let Some(event) = self.next_event(&inbox) {
+        while let Ok(event) = self.next_event(&inbox) {
+            let Some(event) = event else {
+                anyhow::bail!("client exited without proper shutdown sequence");
+            };
             if matches!(
                 &event,
                 Event::Lsp(lsp_server::Message::Notification(Notification { method, .. }))
@@ -190,7 +193,7 @@ impl GlobalState {
             self.handle_event(event)?;
         }
 
-        anyhow::bail!("client exited without proper shutdown sequence")
+        Err(anyhow::anyhow!("A receiver has been dropped, something panicked!"))
     }
 
     fn register_did_save_capability(&mut self, additional_patterns: impl Iterator<Item = String>) {
@@ -237,37 +240,40 @@ impl GlobalState {
         );
     }
 
-    fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
+    fn next_event(
+        &self,
+        inbox: &Receiver<lsp_server::Message>,
+    ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
         select! {
             recv(inbox) -> msg =>
-                msg.ok().map(Event::Lsp),
+                return Ok(msg.ok().map(Event::Lsp)),
 
             recv(self.task_pool.receiver) -> task =>
-                Some(Event::Task(task.unwrap())),
+                task.map(Event::Task),
 
             recv(self.deferred_task_queue.receiver) -> task =>
-                Some(Event::QueuedTask(task.unwrap())),
+                task.map(Event::QueuedTask),
 
             recv(self.fmt_pool.receiver) -> task =>
-                Some(Event::Task(task.unwrap())),
+                task.map(Event::Task),
 
             recv(self.loader.receiver) -> task =>
-                Some(Event::Vfs(task.unwrap())),
+                task.map(Event::Vfs),
 
             recv(self.flycheck_receiver) -> task =>
-                Some(Event::Flycheck(task.unwrap())),
+                task.map(Event::Flycheck),
 
             recv(self.test_run_receiver) -> task =>
-                Some(Event::TestResult(task.unwrap())),
+                task.map(Event::TestResult),
 
             recv(self.discover_receiver) -> task =>
-                Some(Event::DiscoverProject(task.unwrap())),
+                task.map(Event::DiscoverProject),
         }
+        .map(Some)
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
-        // NOTE: don't count blocking select! call as a loop-turn time
         let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");

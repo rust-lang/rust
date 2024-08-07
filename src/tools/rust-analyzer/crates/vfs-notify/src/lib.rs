@@ -103,7 +103,10 @@ impl NotifyActor {
                             let (watcher_sender, watcher_receiver) = unbounded();
                             let watcher = log_notify_error(RecommendedWatcher::new(
                                 move |event| {
-                                    watcher_sender.send(event).unwrap();
+                                    // we don't care about the error. If sending fails that usually
+                                    // means we were dropped, so unwrapping will just add to the
+                                    // panic noise.
+                                    _ = watcher_sender.send(event);
                                 },
                                 Config::default(),
                             ));
