@@ -20,6 +20,12 @@ Target triplets available:
 
 ## Requirements
 
+### OS version
+
+The minimum supported version is VxWorks 7.
+
+## Building
+
 Rust for each target can be cross-compiled with its specific target vsb configuration. Std support is added but not yet fully tested.
 
 ## Building the target

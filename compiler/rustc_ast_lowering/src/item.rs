@@ -1668,7 +1668,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
-                    // FIXME(effects) we might not need a default.
                     default: Some(default_ct),
                     is_host_effect: true,
                     synthetic: true,

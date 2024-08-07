@@ -205,11 +205,11 @@ dependencies = [
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.3.0"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8412a2d690663356cba5a2532f3ed55d1e8090743bc6695b88403b27df67733"
+checksum = "3f2bcb7cf51decfbbfc7ef476e28b0775b13e5eb1190f8b7df145cd53d4f4374"
 dependencies = [
- "object 0.35.0",
+ "object 0.36.2",
 ]
 
 [[package]]
@@ -2452,15 +2452,6 @@ dependencies = [
  "indexmap",
  "memchr",
  "ruzstd 0.5.0",
-]
-
-[[package]]
-name = "object"
-version = "0.35.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8ec7ab813848ba4522158d5517a6093db1ded27575b070f4177b8d12b41db5e"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
