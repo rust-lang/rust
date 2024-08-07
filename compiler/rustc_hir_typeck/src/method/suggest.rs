@@ -3448,6 +3448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_missing_method: bool,
     ) {
         let mut alt_rcvr_sugg = false;
+        let mut suggest = true;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
             debug!(
                 "suggest_traits_to_import: span={:?}, item_name={:?}, rcvr_ty={:?}, rcvr={:?}",
@@ -3491,10 +3492,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let did = Some(pick.item.container_id(self.tcx));
                         let skip = skippable.contains(&did);
                         if pick.autoderefs == 0 && !skip {
-                            err.span_label(
-                                pick.item.ident(self.tcx).span,
-                                format!("the method is available for `{rcvr_ty}` here"),
+                            suggest = self.detect_and_explain_multiple_crate_versions(
+                                err,
+                                &pick.item,
+                                rcvr.hir_id.owner,
+                                *rcvr_ty,
                             );
+                            if suggest {
+                                err.span_label(
+                                    pick.item.ident(self.tcx).span,
+                                    format!("the method is available for `{rcvr_ty}` here"),
+                                );
+                            }
                         }
                         break;
                     }
@@ -3675,7 +3684,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true) {
+        if suggest && self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true) {
             return;
         }
 
@@ -4038,6 +4047,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn detect_and_explain_multiple_crate_versions(
+        &self,
+        err: &mut Diag<'_>,
+        item: &ty::AssocItem,
+        owner: hir::OwnerId,
+        rcvr_ty: Ty<'_>,
+    ) -> bool {
+        let pick_name = self.tcx.crate_name(item.def_id.krate);
+        if let Some(map) = self.tcx.in_scope_traits_map(owner) {
+            for trait_candidate in map.to_sorted_stable_ord().into_iter().flat_map(|v| v.1.iter()) {
+                let name = self.tcx.crate_name(trait_candidate.def_id.krate);
+                if trait_candidate.def_id.krate != item.def_id.krate && name == pick_name {
+                    let msg = format!(
+                        "you have multiple different versions of crate `{name}` in your \
+                         dependency graph",
+                    );
+                    let tdid = self.tcx.parent(item.def_id);
+                    if self.tcx.item_name(trait_candidate.def_id) == self.tcx.item_name(tdid)
+                        && let Some(def_id) = trait_candidate.import_ids.get(0)
+                    {
+                        let span = self.tcx.def_span(*def_id);
+                        let mut multi_span: MultiSpan = span.into();
+                        multi_span.push_span_label(
+                            span,
+                            format!(
+                                "`{name}` imported here doesn't correspond to the right crate \
+                                 version",
+                            ),
+                        );
+                        multi_span.push_span_label(
+                            self.tcx.def_span(trait_candidate.def_id),
+                            format!("this is the trait that was imported"),
+                        );
+                        multi_span.push_span_label(
+                            self.tcx.def_span(tdid),
+                            format!("this is the trait that is needed"),
+                        );
+                        multi_span.push_span_label(
+                            item.ident(self.tcx).span,
+                            format!("the method is available for `{rcvr_ty}` here"),
+                        );
+                        err.span_note(multi_span, msg);
+                        return false;
+                    } else {
+                        err.note(msg);
+                    }
+                }
+            }
+        }
+        true
     }
 
     /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`

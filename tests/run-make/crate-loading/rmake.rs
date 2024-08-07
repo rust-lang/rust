@@ -7,11 +7,15 @@ use run_make_support::{rust_lib_name, rustc};
 fn main() {
     rustc().input("multiple-dep-versions-1.rs").run();
     rustc().input("multiple-dep-versions-2.rs").extra_filename("2").metadata("2").run();
+    rustc()
+        .input("multiple-dep-versions-3.rs")
+        .extern_("dependency", rust_lib_name("dependency2"))
+        .run();
 
     rustc()
         .input("multiple-dep-versions.rs")
         .extern_("dependency", rust_lib_name("dependency"))
-        .extern_("dep_2_reexport", rust_lib_name("dependency2"))
+        .extern_("dep_2_reexport", rust_lib_name("foo"))
         .run_fail()
         .assert_stderr_contains(
             "you have multiple different versions of crate `dependency` in your dependency graph",
@@ -22,5 +26,11 @@ fn main() {
         )
         .assert_stderr_contains("this type doesn't implement the required trait")
         .assert_stderr_contains("this type implements the required trait")
-        .assert_stderr_contains("this is the required trait");
+        .assert_stderr_contains("this is the required trait")
+        .assert_stderr_contains(
+            "`dependency` imported here doesn't correspond to the right crate version",
+        )
+        .assert_stderr_contains("this is the trait that was imported")
+        .assert_stderr_contains("this is the trait that is needed")
+        .assert_stderr_contains("the method is available for `dep_2_reexport::Type` here");
 }
