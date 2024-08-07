@@ -521,7 +521,6 @@ pub struct Condition {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
     sess: &Session,
