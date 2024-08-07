@@ -539,7 +539,9 @@ macro_rules! test_lanes {
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
                     lanes_1 1;
                     lanes_2 2;
-                    lanes_3 3; // test one non-power-of-2 length on miri
+                    lanes_3 3;
+
+                    lanes_6 6;
                 );
 
                 #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
@@ -547,7 +549,7 @@ macro_rules! test_lanes {
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
                     lanes_4 4;
                     lanes_5 5;
-                    lanes_6 6;
+
                     lanes_7 7;
                     lanes_8 8;
                     lanes_9 9;
@@ -633,14 +635,16 @@ macro_rules! test_lanes_panic {
                     lanes_1 1;
                     lanes_2 2;
                     lanes_3 3;
-                    lanes_4 4;
-                    lanes_5 5;
+
+                    lanes_6 6;
                 );
 
                 #[cfg(not(miri))] // Miri intrinsic implementations are uniform and larger tests are sloooow
                 $crate::test_lanes_helper!(
                     #[should_panic];
-                    lanes_6 6;
+                    lanes_4 4;
+                    lanes_5 5;
+
                     lanes_7 7;
                     lanes_8 8;
                     lanes_9 9;
