@@ -179,7 +179,10 @@ impl GlobalState {
             }
         }
 
-        while let Some(event) = self.next_event(&inbox) {
+        while let Ok(event) = self.next_event(&inbox) {
+            let Some(event) = event else {
+                anyhow::bail!("client exited without proper shutdown sequence");
+            };
             if matches!(
                 &event,
                 Event::Lsp(lsp_server::Message::Notification(Notification { method, .. }))
@@ -190,7 +193,7 @@ impl GlobalState {
             self.handle_event(event)?;
         }
 
-        anyhow::bail!("client exited without proper shutdown sequence")
+        Err(anyhow::anyhow!("A receiver has been dropped, something panicked!"))
     }
 
     fn register_did_save_capability(&mut self, additional_patterns: impl Iterator<Item = String>) {
@@ -237,37 +240,40 @@ impl GlobalState {
         );
     }
 
-    fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
+    fn next_event(
+        &self,
+        inbox: &Receiver<lsp_server::Message>,
+    ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
         select! {
             recv(inbox) -> msg =>
-                msg.ok().map(Event::Lsp),
+                return Ok(msg.ok().map(Event::Lsp)),
 
             recv(self.task_pool.receiver) -> task =>
-                Some(Event::Task(task.unwrap())),
+                task.map(Event::Task),
 
             recv(self.deferred_task_queue.receiver) -> task =>
-                Some(Event::QueuedTask(task.unwrap())),
+                task.map(Event::QueuedTask),
 
             recv(self.fmt_pool.receiver) -> task =>
-                Some(Event::Task(task.unwrap())),
+                task.map(Event::Task),
 
             recv(self.loader.receiver) -> task =>
-                Some(Event::Vfs(task.unwrap())),
+                task.map(Event::Vfs),
 
             recv(self.flycheck_receiver) -> task =>
-                Some(Event::Flycheck(task.unwrap())),
+                task.map(Event::Flycheck),
 
             recv(self.test_run_receiver) -> task =>
-                Some(Event::TestResult(task.unwrap())),
+                task.map(Event::TestResult),
 
             recv(self.discover_receiver) -> task =>
-                Some(Event::DiscoverProject(task.unwrap())),
+                task.map(Event::DiscoverProject),
         }
+        .map(Some)
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
         let loop_start = Instant::now();
-        // NOTE: don't count blocking select! call as a loop-turn time
         let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
         let event_dbg_msg = format!("{event:?}");
@@ -434,40 +440,13 @@ impl GlobalState {
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
             for file_id in diagnostic_changes {
                 let uri = file_id_to_url(&self.vfs.read().0, file_id);
-                let mut diagnostics =
-                    self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
-
-                // VSCode assumes diagnostic messages to be non-empty strings, so we need to patch
-                // empty diagnostics. Neither the docs of VSCode nor the LSP spec say whether
-                // diagnostic messages are actually allowed to be empty or not and patching this
-                // in the VSCode client does not work as the assertion happens in the protocol
-                // conversion. So this hack is here to stay, and will be considered a hack
-                // until the LSP decides to state that empty messages are allowed.
-
-                // See https://github.com/rust-lang/rust-analyzer/issues/11404
-                // See https://github.com/rust-lang/rust-analyzer/issues/13130
-                let patch_empty = |message: &mut String| {
-                    if message.is_empty() {
-                        " ".clone_into(message);
-                    }
-                };
-
-                for d in &mut diagnostics {
-                    patch_empty(&mut d.message);
-                    if let Some(dri) = &mut d.related_information {
-                        for dri in dri {
-                            patch_empty(&mut dri.message);
-                        }
-                    }
-                }
-
                 let version = from_proto::vfs_path(&uri)
-                    .map(|path| self.mem_docs.get(&path).map(|it| it.version))
-                    .unwrap_or_default();
+                    .ok()
+                    .and_then(|path| self.mem_docs.get(&path).map(|it| it.version));
 
-                self.send_notification::<lsp_types::notification::PublishDiagnostics>(
-                    lsp_types::PublishDiagnosticsParams { uri, diagnostics, version },
-                );
+                let diagnostics =
+                    self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
+                self.publish_diagnostics(uri, version, diagnostics);
             }
         }
 
