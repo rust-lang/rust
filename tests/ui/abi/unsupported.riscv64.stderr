@@ -1,49 +1,167 @@
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:34:15
+   |
+LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:28:1
+  --> $DIR/unsupported.rs:39:1
+   |
+LL | extern "ptx-kernel" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:48:17
+   |
+LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+error[E0570]: `"aapcs"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:61:1
+   |
+LL | extern "aapcs" {}
+   | ^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:70:18
+   |
+LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:75:1
+   |
+LL | extern "msp430-interrupt" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:80:15
+   |
+LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:85:1
+   |
+LL | extern "avr-interrupt" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:115:15
+   |
+LL | fn x86_ptr(f: extern "x86-interrupt" fn()) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+error[E0570]: `"x86-interrupt"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:126:1
+   |
+LL | extern "x86-interrupt" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:138:20
+   |
+LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+error[E0570]: `"thiscall"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:151:1
+   |
+LL | extern "thiscall" {}
+   | ^^^^^^^^^^^^^^^^^^^^
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:169:19
+   |
+LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+warning: use of calling convention not supported on this target
+  --> $DIR/unsupported.rs:182:1
+   |
+LL | extern "stdcall" {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
+   = note: `#[warn(unsupported_calling_conventions)]` on by default
+
+warning: use of calling convention not supported on this target on function pointer
+  --> $DIR/unsupported.rs:194:16
+   |
+LL | fn cmse_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
+error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:32:1
    |
 LL | extern "ptx-kernel" fn ptx() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:30:1
+  --> $DIR/unsupported.rs:42:1
    |
 LL | extern "aapcs" fn aapcs() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:1
+  --> $DIR/unsupported.rs:68:1
    |
 LL | extern "msp430-interrupt" fn msp430() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:38:1
+  --> $DIR/unsupported.rs:78:1
    |
 LL | extern "avr-interrupt" fn avr() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"x86-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:45:1
+  --> $DIR/unsupported.rs:110:1
    |
 LL | extern "x86-interrupt" fn x86() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"thiscall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:50:1
+  --> $DIR/unsupported.rs:132:1
    |
 LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:56:1
+  --> $DIR/unsupported.rs:158:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
-   = note: `#[warn(unsupported_calling_conventions)]` on by default
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 12 previous errors; 10 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
