@@ -3491,21 +3491,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // self types and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
                         let did = Some(pick.item.container_id(self.tcx));
-                        let skip = skippable.contains(&did);
-                        if pick.autoderefs == 0 && !skip {
-                            suggest = self.detect_and_explain_multiple_crate_versions(
-                                err,
-                                pick.item.def_id,
+                        if skippable.contains(&did) {
+                            continue;
+                        }
+                        suggest = self.detect_and_explain_multiple_crate_versions(
+                            err,
+                            pick.item.def_id,
+                            pick.item.ident(self.tcx).span,
+                            rcvr.hir_id.owner,
+                            *rcvr_ty,
+                        );
+                        if pick.autoderefs == 0 && suggest {
+                            err.span_label(
                                 pick.item.ident(self.tcx).span,
-                                rcvr.hir_id.owner,
-                                *rcvr_ty,
+                                format!("the method is available for `{rcvr_ty}` here"),
                             );
-                            if suggest {
-                                err.span_label(
-                                    pick.item.ident(self.tcx).span,
-                                    format!("the method is available for `{rcvr_ty}` here"),
-                                );
-                            }
                         }
                         break;
                     }
