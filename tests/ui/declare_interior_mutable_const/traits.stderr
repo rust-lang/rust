@@ -1,4 +1,4 @@
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:15:11
    |
 LL |     const ATOMIC: AtomicUsize;
@@ -7,55 +7,55 @@ LL |     const ATOMIC: AtomicUsize;
    = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:18:20
    |
 LL |     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC);
    |                    ^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:68:11
    |
 LL |     const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13);
    |           ^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:69:11
    |
 LL |     const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14));
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:88:11
    |
 LL |     const BOUNDED: T::ToBeBounded;
    |           ^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:117:11
    |
 LL |     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
    |           ^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:123:11
    |
 LL |     const DIRECT: Cell<T>;
    |           ^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:124:11
    |
 LL |     const INDIRECT: Cell<*const T>;
    |           ^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:140:11
    |
 LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18);
    |           ^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/traits.rs:146:11
    |
 LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);

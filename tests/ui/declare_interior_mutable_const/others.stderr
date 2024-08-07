@@ -1,38 +1,38 @@
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/others.rs:10:7
    |
 LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5);
    |       ^^^^^^
    |
-   = help: consider making this a static item
+   = help: did you mean to make this a `static` item
    = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/others.rs:11:7
    |
 LL | const CELL: Cell<usize> = Cell::new(6);
    |       ^^^^
    |
-   = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
+   = help: did you mean to make this a `thread_local!` item
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/others.rs:12:7
    |
 LL | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
    |       ^^^^^^^^^^^^
    |
-   = help: consider making this a static item
+   = help: did you mean to make this a `static` item
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/others.rs:20:16
    |
 LL | declare_const!(_ONCE: Once = Once::new());
    |                ^^^^^
    |
-   = help: consider making this a static item
+   = help: did you mean to make this a `static` item
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/others.rs:44:19
    |
 LL |             const _BAZ: Cell<usize> = Cell::new(0);
@@ -41,7 +41,7 @@ LL |             const _BAZ: Cell<usize> = Cell::new(0);
 LL |     issue_8493!();
    |     ------------- in this macro invocation
    |
-   = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
+   = help: did you mean to make this a `thread_local!` item
    = note: this error originates in the macro `issue_8493` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors

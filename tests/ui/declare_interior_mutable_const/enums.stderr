@@ -1,66 +1,66 @@
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:12:7
    |
 LL | const UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(true));
    |       ^^^^^^^^^^^^^^^^
    |
-   = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
+   = help: did you mean to make this a `thread_local!` item
    = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:23:7
    |
 LL | const UNFROZEN_VARIANT_FROM_FN: OptionalCell = unfrozen_variant();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
+   = help: did you mean to make this a `thread_local!` item
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:45:7
    |
 LL | const NESTED_UNFROZEN_VARIANT: NestedOutermost = NestedOutermost {
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider making this a static item
+   = help: did you mean to make this a `static` item
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:64:11
    |
 LL |     const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:71:11
    |
 LL |     const TO_BE_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:75:11
    |
 LL |     const DEFAULTED_ON_FROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:90:11
    |
 LL |     const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4));
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:102:11
    |
 LL |     const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
    |           ^^^^^^^^^^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:111:11
    |
 LL |     const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null());
    |           ^^^^^^^
 
-error: a `const` item should not be interior mutable
+error: named constant with interior mutability
   --> tests/ui/declare_interior_mutable_const/enums.rs:118:11
    |
 LL |     const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> =
