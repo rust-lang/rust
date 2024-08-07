@@ -23,39 +23,36 @@ use super::macros::*;
 types! {
     /// PowerPC-specific 128-bit wide vector of sixteen packed `i8`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_signed_char(i8, i8, i8, i8, i8, i8, i8, i8,
-                                  i8, i8, i8, i8, i8, i8, i8, i8);
+    pub struct vector_signed_char(16 x i8);
     /// PowerPC-specific 128-bit wide vector of sixteen packed `u8`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_unsigned_char(u8, u8, u8, u8, u8, u8, u8, u8,
-                                    u8, u8, u8, u8, u8, u8, u8, u8);
+    pub struct vector_unsigned_char(16 x u8);
 
     /// PowerPC-specific 128-bit wide vector mask of sixteen packed elements
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_bool_char(i8, i8, i8, i8, i8, i8, i8, i8,
-                                i8, i8, i8, i8, i8, i8, i8, i8);
+    pub struct vector_bool_char(16 x i8);
     /// PowerPC-specific 128-bit wide vector of eight packed `i16`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_signed_short(i16, i16, i16, i16, i16, i16, i16, i16);
+    pub struct vector_signed_short(8 x i16);
     /// PowerPC-specific 128-bit wide vector of eight packed `u16`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_unsigned_short(u16, u16, u16, u16, u16, u16, u16, u16);
+    pub struct vector_unsigned_short(8 x u16);
     /// PowerPC-specific 128-bit wide vector mask of eight packed elements
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_bool_short(i16, i16, i16, i16, i16, i16, i16, i16);
+    pub struct vector_bool_short(8 x i16);
     // pub struct vector_pixel(???);
     /// PowerPC-specific 128-bit wide vector of four packed `i32`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_signed_int(i32, i32, i32, i32);
+    pub struct vector_signed_int(4 x i32);
     /// PowerPC-specific 128-bit wide vector of four packed `u32`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_unsigned_int(u32, u32, u32, u32);
+    pub struct vector_unsigned_int(4 x u32);
     /// PowerPC-specific 128-bit wide vector mask of four packed elements
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_bool_int(i32, i32, i32, i32);
+    pub struct vector_bool_int(4 x i32);
     /// PowerPC-specific 128-bit wide vector of four packed `f32`
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
-    pub struct vector_float(f32, f32, f32, f32);
+    pub struct vector_float(4 x f32);
 }
 
 #[allow(improper_ctypes)]

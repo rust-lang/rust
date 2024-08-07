@@ -52,14 +52,29 @@ macro_rules! static_assert_simm_bits {
 macro_rules! types {
     ($(
         $(#[$doc:meta])*
-        pub struct $name:ident($($fields:tt)*);
+        pub struct $name:ident($len:literal x $v:vis $elem_type:ty);
     )*) => ($(
         $(#[$doc])*
         #[derive(Copy, Clone, Debug)]
         #[allow(non_camel_case_types)]
         #[repr(simd)]
         #[allow(clippy::missing_inline_in_public_items)]
-        pub struct $name($($fields)*);
+        pub struct $name($v [$elem_type; $len]);
+
+        impl $name {
+            /// Using `my_simd([x; N])` seemingly fails tests,
+            /// so use this internal helper for it instead.
+            #[inline(always)]
+            $v fn splat(value: $elem_type) -> $name {
+                #[derive(Copy, Clone)]
+                #[repr(simd)]
+                struct JustOne([$elem_type; 1]);
+                let one = JustOne([value]);
+                // SAFETY: 0 is always in-bounds because we're shuffling
+                // a simd type with exactly one element.
+                unsafe { simd_shuffle!(one, one, [0; $len]) }
+            }
+        }
     )*)
 }
 

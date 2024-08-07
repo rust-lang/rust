@@ -23,15 +23,16 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
+use crate::intrinsics::simd::simd_shuffle;
 use crate::mem::transmute;
 
 types! {
     /// ARM-specific 32-bit wide vector of two packed `i16`.
     #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
-    pub struct int16x2_t(i16, i16);
+    pub struct int16x2_t(2 x i16);
     /// ARM-specific 32-bit wide vector of two packed `u16`.
     #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
-    pub struct uint16x2_t(u16, u16);
+    pub struct uint16x2_t(2 x u16);
 }
 
 extern "unadjusted" {

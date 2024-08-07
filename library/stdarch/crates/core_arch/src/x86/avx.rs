@@ -2350,7 +2350,7 @@ pub unsafe fn _mm256_set_epi64x(a: i64, b: i64, c: i64, d: i64) -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_setr_pd(a: f64, b: f64, c: f64, d: f64) -> __m256d {
-    __m256d(a, b, c, d)
+    __m256d([a, b, c, d])
 }
 
 /// Sets packed single-precision (32-bit) floating-point elements in returned
@@ -2371,7 +2371,7 @@ pub unsafe fn _mm256_setr_ps(
     g: f32,
     h: f32,
 ) -> __m256 {
-    __m256(a, b, c, d, e, f, g, h)
+    __m256([a, b, c, d, e, f, g, h])
 }
 
 /// Sets packed 8-bit integers in returned vector with the supplied values in
@@ -2808,7 +2808,7 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_si256() -> __m256i {
-    __m256i(0, 0, 0, 0)
+    __m256i([0, 0, 0, 0])
 }
 
 /// Sets packed __m256 returned vector with the supplied values.

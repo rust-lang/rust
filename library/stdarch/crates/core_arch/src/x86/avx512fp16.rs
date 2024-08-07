@@ -19,7 +19,7 @@ pub unsafe fn _mm_set_ph(
     e1: f16,
     e0: f16,
 ) -> __m128h {
-    __m128h(e0, e1, e2, e3, e4, e5, e6, e7)
+    __m128h([e0, e1, e2, e3, e4, e5, e6, e7])
 }
 
 /// Set packed half-precision (16-bit) floating-point elements in dst with the supplied values.
@@ -46,9 +46,9 @@ pub unsafe fn _mm256_set_ph(
     e1: f16,
     e0: f16,
 ) -> __m256h {
-    __m256h(
+    __m256h([
         e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
-    )
+    ])
 }
 
 /// Set packed half-precision (16-bit) floating-point elements in dst with the supplied values.
@@ -91,10 +91,10 @@ pub unsafe fn _mm512_set_ph(
     e1: f16,
     e0: f16,
 ) -> __m512h {
-    __m512h(
+    __m512h([
         e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19,
         e20, e21, e22, e23, e24, e25, e26, e27, e28, e29, e30, e31,
-    )
+    ])
 }
 
 /// Copy half-precision (16-bit) floating-point elements from a to the lower element of dst and zero
@@ -105,7 +105,7 @@ pub unsafe fn _mm512_set_ph(
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub unsafe fn _mm_set_sh(a: f16) -> __m128h {
-    __m128h(a, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    __m128h([a, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 }
 
 /// Broadcast the half-precision (16-bit) floating-point value a to all elements of dst.
@@ -154,7 +154,7 @@ pub unsafe fn _mm_setr_ph(
     e6: f16,
     e7: f16,
 ) -> __m128h {
-    __m128h(e0, e1, e2, e3, e4, e5, e6, e7)
+    __m128h([e0, e1, e2, e3, e4, e5, e6, e7])
 }
 
 /// Set packed half-precision (16-bit) floating-point elements in dst with the supplied values in reverse order.
@@ -181,9 +181,9 @@ pub unsafe fn _mm256_setr_ph(
     e14: f16,
     e15: f16,
 ) -> __m256h {
-    __m256h(
+    __m256h([
         e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
-    )
+    ])
 }
 
 /// Set packed half-precision (16-bit) floating-point elements in dst with the supplied values in reverse order.
@@ -226,10 +226,10 @@ pub unsafe fn _mm512_setr_ph(
     e30: f16,
     e31: f16,
 ) -> __m512h {
-    __m512h(
+    __m512h([
         e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19,
         e20, e21, e22, e23, e24, e25, e26, e27, e28, e29, e30, e31,
-    )
+    ])
 }
 
 /// Return vector of type __m128h with all elements set to zero.

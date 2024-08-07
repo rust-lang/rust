@@ -2393,14 +2393,14 @@ fn gen_arm(
                     } else {
                         let const_arm = const_arm.replace("ttn", &type_to_native_type(in_t[1]));
                         let mut cnt = String::from(in_t[1]);
-                        cnt.push('(');
+                        cnt.push_str("([");
                         for i in 0..type_len(in_t[1]) {
                             if i != 0 {
                                 cnt.push_str(", ");
                             }
                             cnt.push_str(&const_arm);
                         }
-                        cnt.push(')');
+                        cnt.push_str("])");
                         cnt
                     };
                     match para_num {
@@ -2467,14 +2467,14 @@ fn gen_arm(
                     } else if const_aarch64.contains("dup-in_len-N as ttn") {
                         let const_aarch64 = format!("N as {}", type_to_native_type(in_t[1]));
                         let mut cnt = String::from(in_t[1]);
-                        cnt.push('(');
+                        cnt.push_str("([");
                         for i in 0..type_len(in_t[1]) {
                             if i != 0 {
                                 cnt.push_str(", ");
                             }
                             cnt.push_str(&const_aarch64);
                         }
-                        cnt.push(')');
+                        cnt.push_str("])");
                         format!("{current_fn}(a, {cnt})")
                     } else {
                         match para_num {

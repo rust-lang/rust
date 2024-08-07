@@ -34,7 +34,7 @@ types! {
     /// functions in this module.
     // N.B., internals here are arbitrary.
     #[stable(feature = "wasm_simd", since = "1.54.0")]
-    pub struct v128(i32, i32, i32, i32);
+    pub struct v128(4 x i32);
 }
 
 macro_rules! conversions {

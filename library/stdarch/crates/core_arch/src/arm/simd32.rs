@@ -65,15 +65,16 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
+use crate::intrinsics::simd::simd_shuffle;
 use crate::{core_arch::arm::dsp::int16x2_t, mem::transmute};
 
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
     #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
-    pub struct int8x4_t(i8, i8, i8, i8);
+    pub struct int8x4_t(4 x i8);
     /// ARM-specific 32-bit wide vector of four packed `u8`.
     #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
-    pub struct uint8x4_t(u8, u8, u8, u8);
+    pub struct uint8x4_t(4 x u8);
 }
 
 macro_rules! dsp_call {

@@ -23,10 +23,10 @@ use stdarch_test::assert_instr;
 types! {
     /// ARM-specific 64-bit wide vector of one packed `f64`.
     #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-    pub struct float64x1_t(f64); // FIXME: check this!
+    pub struct float64x1_t(1 x f64); // FIXME: check this!
     /// ARM-specific 128-bit wide vector of two packed `f64`.
     #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-    pub struct float64x2_t(f64, f64);
+    pub struct float64x2_t(2 x f64);
 }
 
 /// ARM-specific type containing two `float64x1_t` vectors.
@@ -1061,7 +1061,7 @@ pub unsafe fn vabsq_s64(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbsl_f64(a: uint64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
-    let not = int64x1_t(-1);
+    let not = int64x1_t::splat(-1);
     transmute(simd_or(
         simd_and(a, transmute(b)),
         simd_and(simd_xor(a, transmute(not)), transmute(c)),
@@ -1073,7 +1073,7 @@ pub unsafe fn vbsl_f64(a: uint64x1_t, b: float64x1_t, c: float64x1_t) -> float64
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbsl_p64(a: poly64x1_t, b: poly64x1_t, c: poly64x1_t) -> poly64x1_t {
-    let not = int64x1_t(-1);
+    let not = int64x1_t::splat(-1);
     simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 /// Bitwise Select. (128-bit)
@@ -1082,7 +1082,7 @@ pub unsafe fn vbsl_p64(a: poly64x1_t, b: poly64x1_t, c: poly64x1_t) -> poly64x1_
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbslq_f64(a: uint64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
-    let not = int64x2_t(-1, -1);
+    let not = int64x2_t::splat(-1);
     transmute(simd_or(
         simd_and(a, transmute(b)),
         simd_and(simd_xor(a, transmute(not)), transmute(c)),
@@ -1094,7 +1094,7 @@ pub unsafe fn vbslq_f64(a: uint64x2_t, b: float64x2_t, c: float64x2_t) -> float6
 #[cfg_attr(test, assert_instr(bsl))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vbslq_p64(a: poly64x2_t, b: poly64x2_t, c: poly64x2_t) -> poly64x2_t {
-    let not = int64x2_t(-1, -1);
+    let not = int64x2_t::splat(-1);
     simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
@@ -1976,7 +1976,7 @@ pub unsafe fn vdup_n_p64(value: p64) -> poly64x1_t {
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdup_n_f64(value: f64) -> float64x1_t {
-    float64x1_t(value)
+    float64x1_t::splat(value)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -1994,7 +1994,7 @@ pub unsafe fn vdupq_n_p64(value: p64) -> poly64x2_t {
 #[cfg_attr(test, assert_instr(dup))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupq_n_f64(value: f64) -> float64x2_t {
-    float64x2_t(value, value)
+    float64x2_t::splat(value)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2040,7 +2040,7 @@ pub unsafe fn vmovq_n_f64(value: f64) -> float64x2_t {
 #[cfg_attr(all(test, target_env = "msvc"), assert_instr(dup))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
-    float64x1_t(simd_extract!(a, 1))
+    float64x1_t([simd_extract!(a, 1)])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2058,7 +2058,7 @@ pub unsafe fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_low_f64(a: float64x2_t) -> float64x1_t {
-    float64x1_t(simd_extract!(a, 0))
+    float64x1_t([simd_extract!(a, 0)])
 }
 
 /// Duplicate vector element to vector or scalar
