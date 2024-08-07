@@ -52,11 +52,15 @@ if [ "$CI" != "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set change-id=99999999"
 fi
 
-# If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined,
-# switch to in-tree rustc.
-if [ "$FORCE_CI_RUSTC" == "" ]; then
+if [ "$FORCE_CI_RUSTC" == "1" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-bitcode-linker"
+else
+    # If runner uses an incompatible option and `FORCE_CI_RUSTC` is not defined,
+    # switch to in-tree rustc.
     DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
 fi
+
+echo "debug: DISABLE_CI_RUSTC_IF_INCOMPATIBLE $DISABLE_CI_RUSTC_IF_INCOMPATIBLE"
 
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
   isCiBranch automation/bors/try; then
