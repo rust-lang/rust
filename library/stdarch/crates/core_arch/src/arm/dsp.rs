@@ -27,11 +27,11 @@ use crate::intrinsics::simd::simd_shuffle;
 use crate::mem::transmute;
 
 types! {
+    #![unstable(feature = "stdarch_arm_dsp", issue = "117237")]
+
     /// ARM-specific 32-bit wide vector of two packed `i16`.
-    #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
     pub struct int16x2_t(2 x i16);
     /// ARM-specific 32-bit wide vector of two packed `u16`.
-    #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
     pub struct uint16x2_t(2 x u16);
 }
 

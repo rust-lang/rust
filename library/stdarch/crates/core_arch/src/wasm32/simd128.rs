@@ -12,6 +12,8 @@ use crate::{core_arch::simd, intrinsics::simd::*, marker::Sized, mem, ptr};
 use stdarch_test::assert_instr;
 
 types! {
+    #![stable(feature = "wasm_simd", since = "1.54.0")]
+
     /// WASM-specific 128-bit wide SIMD vector type.
     ///
     /// This type corresponds to the `v128` type in the [WebAssembly SIMD
@@ -33,7 +35,6 @@ types! {
     /// type in WebAssembly. Operations on `v128` can only be performed with the
     /// functions in this module.
     // N.B., internals here are arbitrary.
-    #[stable(feature = "wasm_simd", since = "1.54.0")]
     pub struct v128(4 x i32);
 }
 

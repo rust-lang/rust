@@ -11,44 +11,36 @@ use stdarch_test::assert_instr;
 use crate::mem;
 
 types! {
+    #![unstable(feature = "stdarch_mips", issue = "111198")]
+
     /// MIPS-specific 128-bit wide vector of 16 packed `i8`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v16i8(16 x i8);
 
     /// MIPS-specific 128-bit wide vector of 8 packed `i16`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v8i16(8 x i16);
 
     /// MIPS-specific 128-bit wide vector of 4 packed `i32`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v4i32(4 x i32);
 
     /// MIPS-specific 128-bit wide vector of 2 packed `i64`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v2i64(2 x i64);
 
     /// MIPS-specific 128-bit wide vector of 16 packed `u8`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v16u8(16 x u8);
 
     /// MIPS-specific 128-bit wide vector of 8 packed `u16`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v8u16(8 x u16);
 
     /// MIPS-specific 128-bit wide vector of 4 packed `u32`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v4u32(4 x u32);
 
     /// MIPS-specific 128-bit wide vector of 2 packed `u64`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v2u64(2 x u64);
 
     // / MIPS-specific 128-bit wide vector of 4 packed `f32`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v4f32(4 x f32);
 
     /// MIPS-specific 128-bit wide vector of 2 packed `f64`.
-    #[unstable(feature = "stdarch_mips", issue = "111198")]
     pub struct v2f64(2 x f64);
 }
 

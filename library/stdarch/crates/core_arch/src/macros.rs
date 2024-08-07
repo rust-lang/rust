@@ -50,12 +50,40 @@ macro_rules! static_assert_simm_bits {
 
 #[allow(unused)]
 macro_rules! types {
-    ($(
-        $(#[$doc:meta])*
-        pub struct $name:ident($len:literal x $v:vis $elem_type:ty);
-    )*) => ($(
+    (
+        #![$stability_first:meta]
+        $(
+            #![$stability_more:meta]
+        )*
+
+        $(
+            $(#[$doc:meta])*
+            $(stability: [$stability_already: meta])*
+            pub struct $name:ident($len:literal x $v:vis $elem_type:ty);
+        )*
+    ) => (types! {
+        $(
+            #![$stability_more]
+        )*
+
+        $(
+            $(#[$doc])*
+            $(stability: [$stability_already])*
+            stability: [$stability_first]
+            pub struct $name($len x $v $elem_type);
+        )*
+    });
+
+    (
+        $(
+            $(#[$doc:meta])*
+            $(stability: [$stability: meta])+
+            pub struct $name:ident($len:literal x $v:vis $elem_type:ty);
+        )*
+    ) => ($(
         $(#[$doc])*
-        #[derive(Copy, Clone, Debug)]
+        $(#[$stability])+
+        #[derive(Copy, Clone)]
         #[allow(non_camel_case_types)]
         #[repr(simd)]
         #[allow(clippy::missing_inline_in_public_items)]
@@ -75,7 +103,15 @@ macro_rules! types {
                 unsafe { simd_shuffle!(one, one, [0; $len]) }
             }
         }
-    )*)
+
+        $(#[$stability])+
+        impl crate::fmt::Debug for $name {
+            #[inline]
+            fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+                crate::core_arch::simd::debug_simd_finish(f, stringify!($name), self.0)
+            }
+        }
+    )*);
 }
 
 #[allow(unused)]

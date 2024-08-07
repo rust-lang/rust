@@ -17,106 +17,61 @@ pub(crate) type p64 = u64;
 pub(crate) type p128 = u128;
 
 types! {
+    #![cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
+    #![cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
+
     /// ARM-specific 64-bit wide vector of eight packed `i8`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int8x8_t(8 x pub(crate) i8);
     /// ARM-specific 64-bit wide vector of eight packed `u8`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint8x8_t(8 x pub(crate) u8);
     /// ARM-specific 64-bit wide polynomial vector of eight packed `p8`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct poly8x8_t(8 x pub(crate) p8);
     /// ARM-specific 64-bit wide vector of four packed `i16`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int16x4_t(4 x pub(crate) i16);
     /// ARM-specific 64-bit wide vector of four packed `u16`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint16x4_t(4 x pub(crate) u16);
     // FIXME: ARM-specific 64-bit wide vector of four packed `f16`.
     // pub struct float16x4_t(f16, f16, f16, f16);
     /// ARM-specific 64-bit wide vector of four packed `p16`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct poly16x4_t(4 x pub(crate) p16);
     /// ARM-specific 64-bit wide vector of two packed `i32`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int32x2_t(2 x pub(crate) i32);
     /// ARM-specific 64-bit wide vector of two packed `u32`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint32x2_t(2 x pub(crate) u32);
     /// ARM-specific 64-bit wide vector of two packed `f32`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct float32x2_t(2 x pub(crate) f32);
     /// ARM-specific 64-bit wide vector of one packed `i64`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int64x1_t(1 x pub(crate) i64);
     /// ARM-specific 64-bit wide vector of one packed `u64`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint64x1_t(1 x pub(crate) u64);
     /// ARM-specific 64-bit wide vector of one packed `p64`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct poly64x1_t(1 x pub(crate) p64);
 
     /// ARM-specific 128-bit wide vector of sixteen packed `i8`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int8x16_t(16 x pub(crate) i8);
     /// ARM-specific 128-bit wide vector of sixteen packed `u8`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint8x16_t(16 x pub(crate) u8);
     /// ARM-specific 128-bit wide vector of sixteen packed `p8`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct poly8x16_t(16 x pub(crate) p8);
     /// ARM-specific 128-bit wide vector of eight packed `i16`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int16x8_t(8 x pub(crate) i16);
     /// ARM-specific 128-bit wide vector of eight packed `u16`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint16x8_t(8 x pub(crate) u16);
     // FIXME: ARM-specific 128-bit wide vector of eight packed `f16`.
     // pub struct float16x8_t(f16, f16, f16, f16, f16, f16, f16);
     /// ARM-specific 128-bit wide vector of eight packed `p16`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct poly16x8_t(8 x pub(crate) p16);
     /// ARM-specific 128-bit wide vector of four packed `i32`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int32x4_t(4 x pub(crate) i32);
     /// ARM-specific 128-bit wide vector of four packed `u32`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint32x4_t(4 x pub(crate) u32);
     /// ARM-specific 128-bit wide vector of four packed `f32`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct float32x4_t(4 x pub(crate) f32);
     /// ARM-specific 128-bit wide vector of two packed `i64`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct int64x2_t(2 x pub(crate) i64);
     /// ARM-specific 128-bit wide vector of two packed `u64`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct uint64x2_t(2 x pub(crate) u64);
     /// ARM-specific 128-bit wide vector of two packed `p64`.
-    #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-    #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
     pub struct poly64x2_t(2 x pub(crate) p64);
 }
 

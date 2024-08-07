@@ -21,11 +21,11 @@ use crate::{
 use stdarch_test::assert_instr;
 
 types! {
+    #![stable(feature = "neon_intrinsics", since = "1.59.0")]
+
     /// ARM-specific 64-bit wide vector of one packed `f64`.
-    #[stable(feature = "neon_intrinsics", since = "1.59.0")]
     pub struct float64x1_t(1 x f64); // FIXME: check this!
     /// ARM-specific 128-bit wide vector of two packed `f64`.
-    #[stable(feature = "neon_intrinsics", since = "1.59.0")]
     pub struct float64x2_t(2 x f64);
 }
 
