@@ -85,6 +85,11 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(reliable_f16)");
     println!("cargo:rustc-check-cfg=cfg(reliable_f128)");
 
+    // This is a step beyond only having the types and basic functions available. Math functions
+    // aren't consistently available or correct.
+    println!("cargo:rustc-check-cfg=cfg(reliable_f16_math)");
+    println!("cargo:rustc-check-cfg=cfg(reliable_f128_math)");
+
     let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
         // Selection failure until recent LLVM <https://github.com/llvm/llvm-project/issues/93894>
         // FIXME(llvm19): can probably be removed at the version bump
@@ -130,10 +135,42 @@ fn main() {
         _ => false,
     };
 
+    // These are currently empty, but will fill up as some platforms move from completely
+    // unreliable to reliable basics but unreliable math.
+
+    // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
+    let has_reliable_f16_math = has_reliable_f16
+        && match (target_arch.as_str(), target_os.as_str()) {
+            // Currently nothing special. Hooray!
+            // This will change as platforms gain better better support for standard ops but math
+            // lags behind.
+            _ => true,
+        };
+
+    let has_reliable_f128_math = has_reliable_f128
+        && match (target_arch.as_str(), target_os.as_str()) {
+            // LLVM lowers `fp128` math to `long double` symbols even on platforms where
+            // `long double` is not IEEE binary128. See
+            // <https://github.com/llvm/llvm-project/issues/44744>.
+            //
+            // This rules out anything that doesn't have `long double` = `binary128`; <= 32 bits
+            // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
+            // (ld is 80-bit extended precision).
+            ("x86_64", _) => false,
+            (_, "linux") if target_pointer_width == 64 => true,
+            _ => false,
+        };
+
     if has_reliable_f16 {
         println!("cargo:rustc-cfg=reliable_f16");
     }
     if has_reliable_f128 {
         println!("cargo:rustc-cfg=reliable_f128");
+    }
+    if has_reliable_f16_math {
+        println!("cargo:rustc-cfg=reliable_f16_math");
+    }
+    if has_reliable_f128_math {
+        println!("cargo:rustc-cfg=reliable_f128_math");
     }
 }
