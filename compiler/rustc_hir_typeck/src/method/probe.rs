@@ -14,6 +14,7 @@ use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
@@ -652,7 +653,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
-        let raw_self_ty = self_ty.value.value;
+        let (QueryResponse { value: raw_self_ty, .. }, _) =
+            self.instantiate_canonical(DUMMY_SP, self_ty);
         match *raw_self_ty.kind() {
             ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
                 // Subtle: we can't use `instantiate_query_response` here: using it will
@@ -697,6 +699,47 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ty::Param(p) => {
                 self.assemble_inherent_candidates_from_param(p);
             }
+            // which have some integer or float as a self type.
+            ty::Infer(ty::IntVar(_)) => {
+                use ty::IntTy::*;
+                use ty::UintTy::*;
+                // This causes a compiler error if any new integer kinds are added.
+                let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
+                let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
+                let possible_integers = [
+                    // signed integers
+                    SimplifiedType::Int(I8),
+                    SimplifiedType::Int(I16),
+                    SimplifiedType::Int(I32),
+                    SimplifiedType::Int(I64),
+                    SimplifiedType::Int(I128),
+                    SimplifiedType::Int(Isize),
+                    // unsigned integers
+                    SimplifiedType::Uint(U8),
+                    SimplifiedType::Uint(U16),
+                    SimplifiedType::Uint(U32),
+                    SimplifiedType::Uint(U64),
+                    SimplifiedType::Uint(U128),
+                    SimplifiedType::Uint(Usize),
+                ];
+                for simp in possible_integers {
+                    self.assemble_inherent_candidates_for_simplified_type(simp);
+                }
+            }
+            ty::Infer(ty::FloatVar(_)) => {
+                // This causes a compiler error if any new float kinds are added.
+                let (ty::FloatTy::F16 | ty::FloatTy::F32 | ty::FloatTy::F64 | ty::FloatTy::F128);
+                let possible_floats = [
+                    SimplifiedType::Float(ty::FloatTy::F16),
+                    SimplifiedType::Float(ty::FloatTy::F32),
+                    SimplifiedType::Float(ty::FloatTy::F64),
+                    SimplifiedType::Float(ty::FloatTy::F128),
+                ];
+
+                for simp in possible_floats {
+                    self.assemble_inherent_candidates_for_simplified_type(simp);
+                }
+            }
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -717,6 +760,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::AsCandidateKey) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
+        self.assemble_inherent_candidates_for_simplified_type(simp);
+    }
+
+    fn assemble_inherent_candidates_for_simplified_type(&mut self, simp: SimplifiedType) {
         for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
@@ -1199,6 +1246,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         for (kind, candidates) in
             [("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
         {
+            if kind == "inherent" && self.should_skip_shadowable_inherent_numerical_methods() {
+                continue;
+            }
+
             debug!("searching {} candidates", kind);
             let res = self.consider_candidates(
                 self_ty,
@@ -1633,6 +1684,26 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             result
         })
+    }
+
+    fn should_skip_shadowable_inherent_numerical_methods(&self) -> bool {
+        let res = self.inherent_candidates.len() > 1
+            && self.extension_candidates.iter().any(|cand| match cand.kind {
+                TraitCandidate(trait_ref) => {
+                    let trait_def_id = trait_ref.def_id();
+                    self.tcx.crate_name(trait_def_id.krate) == sym::compiler_builtins
+                        && [sym::Float, sym::Int].contains(&self.tcx.item_name(trait_def_id))
+                }
+                InherentImplCandidate(_) | ObjectCandidate(_) | WhereClauseCandidate(_) => false,
+            })
+            && self.inherent_candidates.iter().all(|cand| match cand.kind {
+                InherentImplCandidate(def_id) => {
+                    self.tcx.type_of(def_id).skip_binder().is_numeric()
+                }
+                ObjectCandidate(_) | TraitCandidate(_) | WhereClauseCandidate(_) => false,
+            });
+
+        res
     }
 
     /// Sometimes we get in a situation where we have multiple probes that are all impls of the
