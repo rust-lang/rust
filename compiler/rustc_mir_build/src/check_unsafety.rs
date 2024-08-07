@@ -5,6 +5,7 @@ use std::ops::Bound;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
+use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::Visitor;
@@ -31,7 +32,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     safety_context: SafetyContext,
     /// The `#[target_feature]` attributes of the body. Used for checking
     /// calls to functions with `#[target_feature]` (RFC 2396).
-    body_target_features: &'tcx [Symbol],
+    body_target_features: &'tcx [TargetFeature],
     /// When inside the LHS of an assignment to a field, this is the type
     /// of the LHS and the span of the assignment expression.
     assignment_info: Option<Ty<'tcx>>,
@@ -442,14 +443,21 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     // is_like_wasm check in hir_analysis/src/collect.rs
                     let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
                     if !self.tcx.sess.target.options.is_like_wasm
-                        && !callee_features
-                            .iter()
-                            .all(|feature| self.body_target_features.contains(feature))
+                        && !callee_features.iter().all(|feature| {
+                            self.body_target_features.iter().any(|f| f.name == feature.name)
+                        })
                     {
                         let missing: Vec<_> = callee_features
                             .iter()
                             .copied()
-                            .filter(|feature| !self.body_target_features.contains(feature))
+                            .filter(|feature| {
+                                !feature.implied
+                                    && !self
+                                        .body_target_features
+                                        .iter()
+                                        .any(|body_feature| body_feature.name == feature.name)
+                            })
+                            .map(|feature| feature.name)
                             .collect();
                         let build_enabled = self
                             .tcx

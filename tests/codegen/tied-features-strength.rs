@@ -8,7 +8,7 @@
 // is LLVM-14 we can remove the optional regex matching for this feature.
 
 //@ [ENABLE_SVE] compile-flags: -C target-feature=+sve -Copt-level=0
-// ENABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(\+sve,?)|(\+neon,?))*}}" }
+// ENABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(\+sve,?)|(\+neon,?)|(\+fp-armv8,?))*}}" }
 
 //@ [DISABLE_SVE] compile-flags: -C target-feature=-sve -Copt-level=0
 // DISABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)?|(-sve,?)|(\+neon,?))*}}" }
