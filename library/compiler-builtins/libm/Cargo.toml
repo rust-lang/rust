@@ -24,7 +24,7 @@ unstable = []
 musl-reference-tests = ['rand']
 
 # Used to prevent using any intrinsics or arch-specific code.
-only-soft-floats = []
+force-soft-floats = []
 
 [workspace]
 members = [

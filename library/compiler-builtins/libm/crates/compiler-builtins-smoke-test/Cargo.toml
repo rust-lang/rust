@@ -10,4 +10,4 @@ bench = false
 [features]
 unstable = []
 checked = []
-only-soft-floats = []
+force-soft-floats = []
