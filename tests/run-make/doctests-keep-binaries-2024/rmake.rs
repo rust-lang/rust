@@ -1,6 +1,8 @@
 // Check that valid binaries are persisted by running them, regardless of whether the
 // --run or --no-run option is used.
 
+//@ ignore-cross-compile
+
 use std::path::Path;
 
 use run_make_support::{rfs, run, rustc, rustdoc};
