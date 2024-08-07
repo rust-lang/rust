@@ -195,6 +195,7 @@ pub(crate) fn create_config(
         lint_cap,
         scrape_examples_options,
         expanded_args,
+        remap_path_prefix,
         ..
     }: RustdocOptions,
     RenderOptions { document_private, .. }: &RenderOptions,
@@ -247,6 +248,7 @@ pub(crate) fn create_config(
         describe_lints,
         crate_name,
         test,
+        remap_path_prefix,
         ..Options::default()
     };
 

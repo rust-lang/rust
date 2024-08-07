@@ -200,7 +200,7 @@ use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
     DerefPure, DispatchFromDyn, Receiver,
 };
-use core::pin::Pin;
+use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, addr_of_mut, NonNull, Unique};
 use core::task::{Context, Poll};
 use core::{borrow, fmt, slice};
@@ -2726,3 +2726,6 @@ impl<T: core::error::Error> core::error::Error for Box<T> {
         core::error::Error::provide(&**self, request);
     }
 }
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}

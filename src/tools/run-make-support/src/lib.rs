@@ -72,13 +72,14 @@ pub use targets::{is_darwin, is_msvc, is_windows, llvm_components_contain, targe
 
 /// Helpers for building names of output artifacts that are potentially target-specific.
 pub use artifact_names::{
-    bin_name, dynamic_lib_extension, dynamic_lib_name, rust_lib_name, static_lib_name,
+    bin_name, dynamic_lib_extension, dynamic_lib_name, msvc_import_dynamic_lib_name, rust_lib_name,
+    static_lib_name,
 };
 
 /// Path-related helpers.
 pub use path_helpers::{
-    cwd, filename_not_in_denylist, has_extension, has_prefix, has_suffix, not_contains, path,
-    shallow_find_files, source_root,
+    cwd, filename_contains, filename_not_in_denylist, has_extension, has_prefix, has_suffix,
+    not_contains, path, shallow_find_files, source_root,
 };
 
 /// Helpers for scoped test execution where certain properties are attempted to be maintained.

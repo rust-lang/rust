@@ -73,7 +73,9 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         cid.promoted.map_or_else(String::new, |p| format!("::{p:?}"))
     );
 
-    ecx.push_stack_frame(
+    // This can't use `init_stack_frame` since `body` is not a function,
+    // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.
+    ecx.push_stack_frame_raw(
         cid.instance,
         body,
         &ret.clone().into(),

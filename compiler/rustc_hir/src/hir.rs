@@ -3700,6 +3700,11 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
+    /// Check if node is an impl block.
+    pub fn is_impl_block(&self) -> bool {
+        matches!(self, OwnerNode::Item(Item { kind: ItemKind::Impl(_), .. }))
+    }
+
     expect_methods_self! {
         expect_item,         &'hir Item<'hir>,        OwnerNode::Item(n),        n;
         expect_foreign_item, &'hir ForeignItem<'hir>, OwnerNode::ForeignItem(n), n;
