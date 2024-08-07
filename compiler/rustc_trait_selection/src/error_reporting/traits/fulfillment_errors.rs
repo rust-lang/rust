@@ -2729,6 +2729,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref sig, _), .. })
             | Node::TraitItem(&hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..
+            })
+            | Node::ForeignItem(&hir::ForeignItem {
+                kind: hir::ForeignItemKind::Fn(ref sig, _, _),
+                ..
             }) => (
                 sig.span,
                 None,
