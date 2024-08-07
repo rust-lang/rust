@@ -159,8 +159,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 #[derive(Copy, Clone)]
 enum FloatBinOp {
-    /// Arithmetic operation
-    Arith(mir::BinOp),
     /// Comparison
     ///
     /// The semantics of this operator is a case distinction: we compare the two operands,
@@ -247,16 +245,11 @@ impl FloatBinOp {
 /// Performs `which` scalar operation on `left` and `right` and returns
 /// the result.
 fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
-    this: &crate::MiriInterpCx<'tcx>,
     which: FloatBinOp,
     left: &ImmTy<'tcx>,
     right: &ImmTy<'tcx>,
 ) -> InterpResult<'tcx, Scalar> {
     match which {
-        FloatBinOp::Arith(which) => {
-            let res = this.binary_op(which, left, right)?;
-            Ok(res.to_scalar())
-        }
         FloatBinOp::Cmp { gt, lt, eq, unord } => {
             let left = left.to_scalar().to_float::<F>()?;
             let right = right.to_scalar().to_float::<F>()?;
@@ -323,7 +316,6 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
     assert_eq!(dest_len, right_len);
 
     let res0 = bin_op_float::<F>(
-        this,
         which,
         &this.read_immediate(&this.project_index(&left, 0)?)?,
         &this.read_immediate(&this.project_index(&right, 0)?)?,
@@ -358,7 +350,7 @@ fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
         let right = this.read_immediate(&this.project_index(&right, i)?)?;
         let dest = this.project_index(&dest, i)?;
 
-        let res = bin_op_float::<F>(this, which, &left, &right)?;
+        let res = bin_op_float::<F>(which, &left, &right)?;
         this.write_scalar(res, &dest)?;
     }
 
@@ -367,11 +359,6 @@ fn bin_op_simd_float_all<'tcx, F: rustc_apfloat::Float>(
 
 #[derive(Copy, Clone)]
 enum FloatUnaryOp {
-    /// sqrt(x)
-    ///
-    /// <https://www.felixcloutier.com/x86/sqrtss>
-    /// <https://www.felixcloutier.com/x86/sqrtps>
-    Sqrt,
     /// Approximation of 1/x
     ///
     /// <https://www.felixcloutier.com/x86/rcpss>
@@ -392,11 +379,6 @@ fn unary_op_f32<'tcx>(
     op: &ImmTy<'tcx>,
 ) -> InterpResult<'tcx, Scalar> {
     match which {
-        FloatUnaryOp::Sqrt => {
-            let op = op.to_scalar();
-            // FIXME using host floats
-            Ok(Scalar::from_u32(f32::from_bits(op.to_u32()?).sqrt().to_bits()))
-        }
         FloatUnaryOp::Rcp => {
             let op = op.to_scalar().to_f32()?;
             let div = (Single::from_u128(1).value / op).value;
