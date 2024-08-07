@@ -605,8 +605,6 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
             span,
             format!("referencing statics in {}s is unstable", ccx.const_kind(),),
         );
-        // FIXME: make this translatable
-        #[allow(rustc::untranslatable_diagnostic)]
         err
             .note("`static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.")
             .help("to fix this, the value can be extracted to a `const` and then used.");
