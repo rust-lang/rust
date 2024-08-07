@@ -690,6 +690,14 @@ impl Env {
     pub fn extend_from_other(&mut self, other: &Env) {
         self.entries.extend(other.entries.iter().map(|(x, y)| (x.to_owned(), y.to_owned())));
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    pub fn insert(&mut self, k: impl Into<String>, v: impl Into<String>) -> Option<String> {
+        self.entries.insert(k.into(), v.into())
+    }
 }
 
 impl From<Env> for Vec<(String, String)> {
@@ -697,6 +705,15 @@ impl From<Env> for Vec<(String, String)> {
         let mut entries: Vec<_> = env.entries.into_iter().collect();
         entries.sort();
         entries
+    }
+}
+
+impl<'a> IntoIterator for &'a Env {
+    type Item = (&'a String, &'a String);
+    type IntoIter = std::collections::hash_map::Iter<'a, String, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.iter()
     }
 }
 
