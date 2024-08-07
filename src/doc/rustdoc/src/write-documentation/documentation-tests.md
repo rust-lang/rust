@@ -493,3 +493,61 @@ operations within documentation test examples, such as `std::fs::read_to_string`
 The `--test-run-directory` flag allows controlling the run directory separately from the compilation directory.
 This is particularly useful in workspaces, where compiler invocations and thus diagnostics should be
 relative to the workspace directory, but documentation test examples should run relative to the crate directory.
+
+## Passing arguments to rustc when compiling doctests
+
+You can set the `RUSTFLAGS` environment variable if you want to add options when compiling the
+doctest. For example if you have:
+
+```rust,no_run
+/// ```
+/// #![deny(warnings)]
+/// #![feature(async_await)]
+///
+/// let x = 12;
+/// ```
+pub struct Bar;
+```
+
+And you run `rustdoc --test` on it, you will get:
+
+```console
+running 1 test
+test foo.rs - Bar (line 1) ... FAILED
+
+failures:
+
+---- foo.rs - Bar (line 1) stdout ----
+error: the feature `async_await` has been stable since 1.39.0 and no longer requires an attribute to enable
+ --> foo.rs:2:12
+  |
+3 | #![feature(async_await)]
+  |            ^^^^^^^^^^^
+  |
+note: the lint level is defined here
+ --> foo.rs:1:9
+  |
+2 | #![deny(warnings)]
+  |         ^^^^^^^^
+  = note: `#[deny(stable_features)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    foo.rs - Bar (line 1)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+```
+
+But if you can limit the lint level to warning by using `RUSTFLAGS=--cap-lints=warn`:
+
+```console
+$ RUSTFLAGS=--cap-lints=warn rustdoc --test file.rs
+
+running 1 test
+test tests/rustdoc-ui/doctest/rustflags.rs - Bar (line 5) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+```
