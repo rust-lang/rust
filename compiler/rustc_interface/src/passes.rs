@@ -796,8 +796,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // Freeze definitions as we don't add new ones at this point.
     // We need to wait until now since we synthesize a by-move body
     // This improves performance by allowing lock-free access to them.
-    // FIXME(async_closures): We could force `coroutine_by_move_body_def_id`
-    // immediately after typeck, then freeze after that.
     tcx.untracked().definitions.freeze();
 
     sess.time("MIR_borrow_checking", || {
