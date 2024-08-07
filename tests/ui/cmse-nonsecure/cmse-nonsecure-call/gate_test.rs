@@ -2,7 +2,8 @@
 fn main() {
     let non_secure_function = unsafe {
         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(
-        //~^ ERROR [E0658]
+            //~^ ERROR [E0658]
+            //~| ERROR [E0570]
             0x10000004,
         )
     };

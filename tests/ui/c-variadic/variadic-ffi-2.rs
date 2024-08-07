@@ -1,6 +1,7 @@
 //@ ignore-arm stdcall isn't supported
 #![feature(extended_varargs_abi_support)]
 
+#[allow(unsupported_calling_conventions)]
 fn baz(f: extern "stdcall" fn(usize, ...)) {
     //~^ ERROR: C-variadic function must have a compatible calling convention,
     // like C, cdecl, system, aapcs, win64, sysv64 or efiapi
@@ -10,6 +11,7 @@ fn baz(f: extern "stdcall" fn(usize, ...)) {
 fn system(f: extern "system" fn(usize, ...)) {
     f(22, 44);
 }
+#[cfg(target_arch = "arm")]
 fn aapcs(f: extern "aapcs" fn(usize, ...)) {
     f(22, 44);
 }
