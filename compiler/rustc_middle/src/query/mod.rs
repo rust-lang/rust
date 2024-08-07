@@ -2183,6 +2183,12 @@ rustc_queries! {
         desc { "looking up supported target features" }
     }
 
+    query implied_target_features(feature: Symbol) -> &'tcx Vec<Symbol> {
+        arena_cache
+        eval_always
+        desc { "looking up implied target features" }
+    }
+
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
         feedable
         desc { "looking up enabled feature gates" }
