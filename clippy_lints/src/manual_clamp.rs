@@ -7,7 +7,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    eq_expr_value, in_constant, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks,
+    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id, peel_blocks,
     peel_blocks_with_stmt, MaybePath,
 };
 use itertools::Itertools;
@@ -146,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
         if !self.msrv.meets(msrvs::CLAMP) {
             return;
         }
-        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
+        if !expr.span.from_expansion() && !is_in_const_context(cx) {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if !self.msrv.meets(msrvs::CLAMP) || in_constant(cx, block.hir_id) {
+        if !self.msrv.meets(msrvs::CLAMP) || is_in_const_context(cx) {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {

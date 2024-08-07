@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::in_constant;
+use clippy_utils::is_in_const_context;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_isize_or_usize;
@@ -21,7 +21,7 @@ pub(super) fn check(
     cast_to_hir: &rustc_hir::Ty<'_>,
     msrv: &Msrv,
 ) {
-    if !should_lint(cx, expr, cast_from, cast_to, msrv) {
+    if !should_lint(cx, cast_from, cast_to, msrv) {
         return;
     }
 
@@ -70,9 +70,9 @@ pub(super) fn check(
     );
 }
 
-fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
+fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
-    if in_constant(cx, expr.hir_id) {
+    if is_in_const_context(cx) {
         return false;
     }
 

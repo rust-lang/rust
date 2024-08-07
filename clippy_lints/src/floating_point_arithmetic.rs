@@ -2,8 +2,8 @@ use clippy_utils::consts::Constant::{Int, F32, F64};
 use clippy_utils::consts::{constant, constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, higher, in_constant, is_inherent_method_call, is_no_std_crate, numeric_literal,
-    peel_blocks, sugg,
+    eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
+    numeric_literal, peel_blocks, sugg,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -753,7 +753,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // All of these operations are currently not const and are in std.
-        if in_constant(cx, expr.hir_id) {
+        if is_in_const_context(cx) {
             return;
         }
 

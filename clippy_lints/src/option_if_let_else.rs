@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_res_lang_ctor, peel_blocks,
-    peel_hir_expr_while, CaptureKind,
+    can_move_expr_to_closure, eager_or_lazy, higher, is_else_clause, is_in_const_context, is_res_lang_ctor,
+    peel_blocks, peel_hir_expr_while, CaptureKind,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -294,7 +294,7 @@ fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
 impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         // Don't lint macros and constants
-        if expr.span.from_expansion() || in_constant(cx, expr.hir_id) {
+        if expr.span.from_expansion() || is_in_const_context(cx) {
             return;
         }
 

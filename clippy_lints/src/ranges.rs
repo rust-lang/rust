@@ -4,7 +4,7 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
+use clippy_utils::{get_parent_expr, higher, is_in_const_context, is_integer_const, path_to_local};
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
@@ -202,7 +202,7 @@ fn check_possible_range_contains(
     expr: &Expr<'_>,
     span: Span,
 ) {
-    if in_constant(cx, expr.hir_id) {
+    if is_in_const_context(cx) {
         return;
     }
 
