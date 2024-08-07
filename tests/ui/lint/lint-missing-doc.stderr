@@ -116,7 +116,7 @@ error: missing documentation for a function
   --> $DIR/lint-missing-doc.rs:196:5
    |
 LL |     pub fn extern_fn_undocumented(f: f32) -> f32;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a static
   --> $DIR/lint-missing-doc.rs:201:5

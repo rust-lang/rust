@@ -189,7 +189,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
-                Some(sig) => self.lower_fn_header(sig.header),
+                Some(sig) => self.lower_fn_header(sig.header, hir::Safety::Safe),
                 None => self.generate_header_error(),
             }
         } else {

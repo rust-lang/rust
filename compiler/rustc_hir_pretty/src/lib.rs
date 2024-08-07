@@ -352,16 +352,11 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(self.attrs(item.hir_id()));
         match item.kind {
-            hir::ForeignItemKind::Fn(decl, arg_names, generics, safety) => {
+            hir::ForeignItemKind::Fn(sig, arg_names, generics) => {
                 self.head("");
                 self.print_fn(
-                    decl,
-                    hir::FnHeader {
-                        safety,
-                        constness: hir::Constness::NotConst,
-                        abi: Abi::Rust,
-                        asyncness: hir::IsAsync::NotAsync,
-                    },
+                    sig.decl,
+                    sig.header,
                     Some(item.ident.name),
                     generics,
                     arg_names,
