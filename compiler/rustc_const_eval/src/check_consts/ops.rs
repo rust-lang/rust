@@ -310,7 +310,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
-            err.note("consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`");
+            err.note(fluent_generated::const_eval_lazy_lock);
         }
 
         err
