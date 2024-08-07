@@ -1,6 +1,5 @@
 run-make/branch-protection-check-IBT/Makefile
 run-make/cat-and-grep-sanity-check/Makefile
-run-make/cross-lang-lto-upstream-rlibs/Makefile
 run-make/dep-info-doesnt-run-much/Makefile
 run-make/dep-info-spaces/Makefile
 run-make/dep-info/Makefile
@@ -13,8 +12,6 @@ run-make/libs-through-symlinks/Makefile
 run-make/libtest-json/Makefile
 run-make/libtest-junit/Makefile
 run-make/libtest-thread-limit/Makefile
-run-make/long-linker-command-lines-cmd-exe/Makefile
-run-make/long-linker-command-lines/Makefile
 run-make/macos-deployment-target/Makefile
 run-make/min-global-align/Makefile
 run-make/native-link-modifier-bundle/Makefile
