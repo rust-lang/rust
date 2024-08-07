@@ -675,6 +675,13 @@ trait UnusedDelimLint {
             return true;
         }
 
+        // Do not lint against parentheses around `&raw [const|mut] expr`.
+        // These parentheses will have to be added e.g. when calling a method on the result of this
+        // expression, and we want to avoid churn wrt adding and removing parentheses.
+        if matches!(inner.kind, ast::ExprKind::AddrOf(ast::BorrowKind::Raw, ..)) {
+            return true;
+        }
+
         // Check if LHS needs parens to prevent false-positives in cases like
         // `fn x() -> u8 { ({ 0 } + 1) }`.
         //
