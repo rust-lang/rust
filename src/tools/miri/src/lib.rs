@@ -2,6 +2,7 @@
 #![feature(cell_update)]
 #![feature(const_option)]
 #![feature(float_gamma)]
+#![cfg_attr(not(bootstrap), feature(float_mul_add_fast))]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]

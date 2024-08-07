@@ -1683,6 +1683,25 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
 
+    /// Returns `a * b + c` for `f32` values.
+    ///
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
+    /// Returns `a * b + c` for `f64` values.
+    ///
+    /// The operation is fused if the code generator determines that target
+    /// instruction set has support for a fused operation, and that the fused
+    /// operation is more efficient than the equivalent, separate pair of mul
+    /// and add instructions.
+    #[rustc_nounwind]
+    #[cfg(not(bootstrap))]
+    pub fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
+
     /// Returns the absolute value of an `f32`.
     ///
     /// The stabilized version of this intrinsic is

@@ -424,6 +424,23 @@ fn test_mul_add() {
     assert_eq!((-3.2f64).mul_add(2.4, neg_inf), neg_inf);
 }
 
+#[cfg(not(bootstrap))]
+#[test]
+fn test_mul_add_fast() {
+    let nan: f64 = f64::NAN;
+    let inf: f64 = f64::INFINITY;
+    let neg_inf: f64 = f64::NEG_INFINITY;
+    assert_approx_eq!(12.3f64.mul_add_fast(4.5, 6.7), 62.05);
+    assert_approx_eq!((-12.3f64).mul_add_fast(-4.5, -6.7), 48.65);
+    assert_approx_eq!(0.0f64.mul_add_fast(8.9, 1.2), 1.2);
+    assert_approx_eq!(3.4f64.mul_add_fast(-0.0, 5.6), 5.6);
+    assert!(nan.mul_add_fast(7.8, 9.0).is_nan());
+    assert_eq!(inf.mul_add_fast(7.8, 9.0), inf);
+    assert_eq!(neg_inf.mul_add_fast(7.8, 9.0), neg_inf);
+    assert_eq!(8.9f64.mul_add_fast(inf, 3.2), inf);
+    assert_eq!((-3.2f64).mul_add_fast(2.4, neg_inf), neg_inf);
+}
+
 #[test]
 fn test_recip() {
     let nan: f64 = f64::NAN;
