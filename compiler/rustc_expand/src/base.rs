@@ -1306,12 +1306,12 @@ pub fn parse_macro_name_and_helper_attrs(
     // that it's of the form `#[proc_macro_derive(Foo)]` or
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
-    if list.len() != 1 && list.len() != 2 {
+    let ([trait_attr] | [trait_attr, _]) = list.as_slice() else {
         dcx.emit_err(errors::AttrNoArguments { span: attr.span });
         return None;
-    }
-    let Some(trait_attr) = list[0].meta_item() else {
-        dcx.emit_err(errors::NotAMetaItem { span: list[0].span() });
+    };
+    let Some(trait_attr) = trait_attr.meta_item() else {
+        dcx.emit_err(errors::NotAMetaItem { span: trait_attr.span() });
         return None;
     };
     let trait_ident = match trait_attr.ident() {

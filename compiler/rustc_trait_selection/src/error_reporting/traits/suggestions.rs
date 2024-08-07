@@ -5300,7 +5300,8 @@ impl<'v> Visitor<'v> for FindTypeParam {
         match ty.kind {
             hir::TyKind::Ptr(_) | hir::TyKind::Ref(..) | hir::TyKind::TraitObject(..) => {}
             hir::TyKind::Path(hir::QPath::Resolved(None, path))
-                if path.segments.len() == 1 && path.segments[0].ident.name == self.param =>
+                if let [segment] = path.segments
+                    && segment.ident.name == self.param =>
             {
                 if !self.nested {
                     debug!(?ty, "FindTypeParam::visit_ty");
