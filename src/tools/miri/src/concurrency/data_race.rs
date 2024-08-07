@@ -499,7 +499,7 @@ impl MemoryCellClocks {
         Ok(())
     }
 
-    /// Detect data-races with an atomic read, caused by a non-atomic access that does
+    /// Detect data-races with an atomic read, caused by a non-atomic write that does
     /// not happen-before the atomic-read.
     fn atomic_read_detect(
         &mut self,
@@ -510,12 +510,8 @@ impl MemoryCellClocks {
         trace!("Atomic read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_access(thread_clocks, access_size)?;
         atomic.read_vector.set_at_index(&thread_clocks.clock, index);
-        // Make sure the last non-atomic write and all non-atomic reads were before this access.
-        if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
-            Ok(())
-        } else {
-            Err(DataRace)
-        }
+        // Make sure the last non-atomic write was before this access.
+        if self.write_was_before(&thread_clocks.clock) { Ok(()) } else { Err(DataRace) }
     }
 
     /// Detect data-races with an atomic write, either with a non-atomic read or with
@@ -552,11 +548,9 @@ impl MemoryCellClocks {
         }
         thread_clocks.clock.index_mut(index).set_read_type(read_type);
         if self.write_was_before(&thread_clocks.clock) {
+            // We must be ordered-after all atomic writes.
             let race_free = if let Some(atomic) = self.atomic() {
-                // We must be ordered-after all atomic accesses, reads and writes.
-                // This ensures we don't mix atomic and non-atomic accesses.
                 atomic.write_vector <= thread_clocks.clock
-                    && atomic.read_vector <= thread_clocks.clock
             } else {
                 true
             };
@@ -957,9 +951,7 @@ impl VClockAlloc {
         let mut other_size = None; // if `Some`, this was a size-mismatch race
         let write_clock;
         let (other_access, other_thread, other_clock) =
-            // First check the atomic-nonatomic cases. If it looks like multiple
-            // cases apply, this one should take precedence, else it might look like
-            // we are reporting races between two non-atomic reads.
+            // First check the atomic-nonatomic cases.
             if !access.is_atomic() &&
                 let Some(atomic) = mem_clocks.atomic() &&
                 let Some(idx) = Self::find_gt_index(&atomic.write_vector, &active_clocks.clock)
@@ -1007,10 +999,7 @@ impl VClockAlloc {
             assert!(!involves_non_atomic);
             Some("overlapping unsynchronized atomic accesses must use the same access size")
         } else if access.is_read() && other_access.is_read() {
-            assert!(involves_non_atomic);
-            Some(
-                "overlapping atomic and non-atomic accesses must be synchronized, even if both are read-only",
-            )
+            panic!("there should be no same-size read-read races")
         } else {
             None
         };
