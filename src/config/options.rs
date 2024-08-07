@@ -415,6 +415,9 @@ impl FromStr for IgnoreList {
 /// values in a config with values from the command line.
 pub trait CliOptions {
     fn apply_to(self, config: &mut Config);
+
+    /// It is ok if the returned path doesn't exist or is not canonicalized
+    /// (i.e. the callers are expected to handle such cases).
     fn config_path(&self) -> Option<&Path>;
 }
 

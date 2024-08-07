@@ -378,7 +378,7 @@ fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
         match fs::metadata(&config_file) {
             // Only return if it's a file to handle the unlikely situation of a directory named
             // `rustfmt.toml`.
-            Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
+            Ok(ref md) if md.is_file() => return Ok(Some(config_file.canonicalize()?)),
             // Return the error if it's something other than `NotFound`; otherwise we didn't
             // find the project file yet, and continue searching.
             Err(e) => {
@@ -417,7 +417,11 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
                 config_path_not_found(path.to_str().unwrap())
             }
         }
-        path => Ok(path.map(ToOwned::to_owned)),
+        Some(path) => Ok(Some(
+            // Canonicalize only after checking above that the `path.exists()`.
+            path.canonicalize()?,
+        )),
+        None => Ok(None),
     }
 }
 
