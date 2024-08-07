@@ -1027,6 +1027,28 @@ pub struct FailedToGetLayout<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_dlltool_fail_import_library)]
+pub(crate) struct DlltoolFailImportLibrary<'a> {
+    pub dlltool_path: Cow<'a, str>,
+    pub dlltool_args: String,
+    pub stdout: Cow<'a, str>,
+    pub stderr: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_writing_def_file)]
+pub(crate) struct ErrorWritingDEFFile {
+    pub error: std::io::Error,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_error_calling_dlltool)]
+pub(crate) struct ErrorCallingDllTool<'a> {
+    pub dlltool_path: Cow<'a, str>,
+    pub error: std::io::Error,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_error_creating_remark_dir)]
 pub struct ErrorCreatingRemarkDir {
     pub error: std::io::Error,
