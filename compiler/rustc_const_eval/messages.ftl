@@ -203,6 +203,9 @@ const_eval_invalid_vtable_pointer =
 const_eval_invalid_vtable_trait =
     using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
 
+const_eval_lazy_lock =
+    consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
+
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time
     .label = the destructor for this type cannot be evaluated in {const_eval_const_context}s
