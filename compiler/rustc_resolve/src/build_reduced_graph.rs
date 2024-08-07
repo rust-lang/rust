@@ -283,6 +283,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     parent_scope,
                     finalize.then(|| Finalize::new(id, path.span)),
                     None,
+                    None,
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
@@ -372,7 +373,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             has_attributes: !item.attrs.is_empty(),
             root_span,
             root_id,
-            vis: Cell::new(Some(vis)),
+            vis,
             used: Default::default(),
         });
 
@@ -888,7 +889,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             root_span: item.span,
             span: item.span,
             module_path: Vec::new(),
-            vis: Cell::new(Some(vis)),
+            vis,
             used: Cell::new(used.then_some(Used::Other)),
         });
         self.r.potentially_unused_imports.push(import);
@@ -1089,7 +1090,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: Cell::new(Some(ty::Visibility::Restricted(CRATE_DEF_ID))),
+                vis: ty::Visibility::Restricted(CRATE_DEF_ID),
                 used: Default::default(),
             })
         };
@@ -1125,6 +1126,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     ident,
                     MacroNS,
                     &self.parent_scope,
+                    None,
                 );
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span, false);
@@ -1253,7 +1255,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     root_span: span,
                     span,
                     module_path: Vec::new(),
-                    vis: Cell::new(Some(vis)),
+                    vis,
                     used: Cell::new(Some(Used::Other)),
                 });
                 let import_binding = self.r.import(binding, import);
