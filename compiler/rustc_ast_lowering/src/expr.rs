@@ -23,7 +23,7 @@ use super::{
     ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs, ResolverAstLoweringExt,
 };
 use crate::errors::YieldInClosure;
-use crate::{FnDeclKind, ImplTraitPosition};
+use crate::{fluent_generated, FnDeclKind, ImplTraitPosition};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -1540,7 +1540,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         let yielded =
             opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| self.expr_unit(span));
@@ -1575,7 +1574,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &self.tcx.sess,
                         sym::coroutines,
                         span,
-                        "yield syntax is experimental",
+                        fluent_generated::ast_lowering_yield,
                     )
                     .emit();
                 }
@@ -1587,7 +1586,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         &self.tcx.sess,
                         sym::coroutines,
                         span,
-                        "yield syntax is experimental",
+                        fluent_generated::ast_lowering_yield,
                     )
                     .emit();
                 }
