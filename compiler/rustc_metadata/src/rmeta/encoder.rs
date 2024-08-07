@@ -1066,7 +1066,6 @@ fn should_encode_mir(
         }
         // Coroutines require optimized MIR to compute layout.
         DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
-        // FIXME: lol
         DefKind::SyntheticCoroutineBody => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
@@ -1379,10 +1378,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);
             }
-            // FIXME(async_closures): We should just use `tcx.attrs` rather than going
-            // through the HIR. Historically, though, this has been inefficient apparently.
-            // For now, it's kind of pointless to fix, because coroutine-closures' coroutine
-            // bodies have no attrs anyways.
             if should_encode_attrs(def_kind) {
                 self.encode_attrs(local_id);
             }
