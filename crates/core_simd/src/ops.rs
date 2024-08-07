@@ -77,7 +77,7 @@ macro_rules! int_divrem_guard {
     (   $lhs:ident,
         $rhs:ident,
         {   const PANIC_ZERO: &'static str = $zero:literal;
-            $simd_call:ident
+            $simd_call:ident, $op:tt
         },
         $int:ident ) => {
         if $rhs.simd_eq(Simd::splat(0 as _)).any() {
@@ -97,39 +97,15 @@ macro_rules! int_divrem_guard {
                 $rhs
             };
 
-            // aarch64 fails for arbitrary `v % 0` for non-powers-of-two
+            // aarch64 div fails for arbitrary `v % 0`, mod fails when rhs is MIN, for non-powers-of-two
+            // these operations aren't vectorized on aarch64 anyway
             #[cfg(target_arch = "aarch64")]
             {
-                const { assert!(Self::LEN <= 64) };
-                if Self::LEN == 1 {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 1> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<1>(Default::default()), rhs.resize::<1>(Default::default())) };
-                    x.resize(Default::default())
-                } else if Self::LEN <= 2 {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 2> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<2>(Default::default()), rhs.resize::<2>(Default::default())) };
-                    x.resize(Default::default())
-                } else if Self::LEN <= 4 {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 4> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<4>(Default::default()), rhs.resize::<4>(Default::default())) };
-                    x.resize(Default::default())
-                } else if Self::LEN <= 8 {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 8> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<8>(Default::default()), rhs.resize::<8>(Default::default())) };
-                    x.resize(Default::default())
-                } else if Self::LEN <= 16 {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 16> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<16>(Default::default()), rhs.resize::<16>(Default::default())) };
-                    x.resize(Default::default())
-                } else if Self::LEN <= 32 {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 32> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<32>(Default::default()), rhs.resize::<32>(Default::default())) };
-                    x.resize(Default::default())
-                } else {
-                    // Safety: $lhs and rhs are vectors
-                    let x: Simd::<_, 64> = unsafe { core::intrinsics::simd::$simd_call($lhs.resize::<64>(Default::default()), rhs.resize::<64>(Default::default())) };
-                    x.resize(Default::default())
+                let mut out = Simd::splat(0 as _);
+                for i in 0..Self::LEN {
+                    out[i] = $lhs[i] $op rhs[i];
                 }
+                out
             }
 
             #[cfg(not(target_arch = "aarch64"))]
@@ -244,14 +220,14 @@ for_base_ops! {
     impl Div::div {
         int_divrem_guard {
             const PANIC_ZERO: &'static str = "attempt to divide by zero";
-            simd_div
+            simd_div, /
         }
     }
 
     impl Rem::rem {
         int_divrem_guard {
             const PANIC_ZERO: &'static str = "attempt to calculate the remainder with a divisor of zero";
-            simd_rem
+            simd_rem, %
         }
     }
 
