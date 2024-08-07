@@ -174,6 +174,13 @@ ast_lowering_underscore_expr_lhs_assign =
     in expressions, `_` can only be used on the left-hand side of an assignment
     .label = `_` not allowed here
 
+ast_lowering_unstable_inline_assembly = inline assembly is not stable yet on this architecture
+ast_lowering_unstable_inline_assembly_const_operands =
+    const operands for inline assembly are unstable
+ast_lowering_unstable_inline_assembly_label_operands =
+    label operands for inline assembly are unstable
+ast_lowering_unstable_may_unwind = the `may_unwind` option is unstable
+
 ast_lowering_use_angle_brackets = use angle brackets instead
 
 ast_lowering_yield = yield syntax is experimental
