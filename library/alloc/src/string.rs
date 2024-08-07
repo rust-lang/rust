@@ -2647,37 +2647,50 @@ impl ToString for i8 {
 // for strings, including `&&&str`s that would never be written
 // by hand. This macro generates twelve layers of nested `&`-impl
 // for primitive strings.
-macro_rules! to_string_str {
-    {type ; x $($x:ident)*} => {
-        &to_string_str! { type ; $($x)* }
+#[cfg(not(no_global_oom_handling))]
+macro_rules! to_string_str_wrap_in_ref {
+    {x $($x:ident)*} => {
+        &to_string_str_wrap_in_ref! { $($x)* }
     };
-    {type ;} => { str };
-    {impl ; x $($x:ident)*} => {
-        to_string_str! { $($x)* }
-    };
-    {impl ;} => { };
+    {} => { str };
+}
+#[cfg(not(no_global_oom_handling))]
+macro_rules! to_string_expr_wrap_in_deref {
     {$self:expr ; x $($x:ident)*} => {
-        *(to_string_str! { $self ; $($x)* })
+        *(to_string_expr_wrap_in_deref! { $self ; $($x)* })
     };
     {$self:expr ;} => { $self };
-    {$($x:ident)*} => {
-        #[doc(hidden)]
-        #[cfg(not(no_global_oom_handling))]
-        #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
-        impl ToString for to_string_str!(type ; $($x)*) {
-            #[inline]
-            fn to_string(&self) -> String {
-                String::from(to_string_str!(self ; $($x)*))
+}
+#[cfg(not(no_global_oom_handling))]
+macro_rules! to_string_str {
+    {$($($x:ident)*),+} => {
+        $(
+            #[doc(hidden)]
+            #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
+            impl ToString for to_string_str_wrap_in_ref!($($x)*) {
+                #[inline]
+                fn to_string(&self) -> String {
+                    String::from(to_string_expr_wrap_in_deref!(self ; $($x)*))
+                }
             }
-        }
-        to_string_str! { impl ; $($x)* }
+        )+
     };
 }
 
+#[cfg(not(no_global_oom_handling))]
 to_string_str! {
-    x x x x
-    x x x x
-    x x x x
+    x x x x x x x x x x x x,
+    x x x x x x x x x x x,
+    x x x x x x x x x x,
+    x x x x x x x x x,
+    x x x x x x x x,
+    x x x x x x x,
+    x x x x x x,
+    x x x x x,
+    x x x x,
+    x x x,
+    x x,
+    x,
 }
 
 #[doc(hidden)]
