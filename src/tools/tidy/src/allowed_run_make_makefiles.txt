@@ -20,7 +20,6 @@ run-make/remap-path-prefix-dwarf/Makefile
 run-make/reproducible-build/Makefile
 run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/split-debuginfo/Makefile
-run-make/staticlib-dylib-linkage/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/sysroot-crates-are-unstable/Makefile
 run-make/thumb-none-qemu/Makefile
