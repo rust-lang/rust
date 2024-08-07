@@ -20,16 +20,15 @@ use tracing::instrument;
 use triomphe::Arc;
 
 use crate::{
-    build_scripts::BuildScriptOutput,
+    build_dependencies::BuildScriptOutput,
     cargo_workspace::{DepKind, PackageData, RustLibSource},
-    cfg::{CfgFlag, CfgOverrides},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     rustc_cfg::{self, RustcCfgConfig},
     sysroot::{SysrootCrate, SysrootMode},
     target_data_layout::{self, RustcDataLayoutConfig},
-    utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath, Package,
-    ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
+    utf8_stdout, CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath,
+    Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
 use tracing::{debug, error, info};
 
@@ -55,7 +54,7 @@ pub struct ProjectWorkspace {
     /// `rustc --print cfg`.
     // FIXME: make this a per-crate map, as, eg, build.rs might have a
     // different target.
-    pub rustc_cfg: Vec<CfgFlag>,
+    pub rustc_cfg: Vec<CfgAtom>,
     /// The toolchain version used by this workspace.
     pub toolchain: Option<Version>,
     /// The target data layout queried for workspace.
@@ -842,7 +841,7 @@ impl ProjectWorkspace {
 
 #[instrument(skip_all)]
 fn project_json_to_crate_graph(
-    rustc_cfg: Vec<CfgFlag>,
+    rustc_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
     project: &ProjectJson,
     sysroot: &Sysroot,
@@ -854,8 +853,8 @@ fn project_json_to_crate_graph(
     let (public_deps, libproc_macro) =
         sysroot_to_crate_graph(crate_graph, sysroot, rustc_cfg.clone(), load);
 
-    let r_a_cfg_flag = CfgFlag::Atom("rust_analyzer".to_owned());
-    let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
+    let r_a_cfg_flag = CfgAtom::Flag(sym::rust_analyzer.clone());
+    let mut cfg_cache: FxHashMap<&str, Vec<CfgAtom>> = FxHashMap::default();
 
     let idx_to_crate_id: FxHashMap<CrateArrayIdx, CrateId> = project
         .crates()
@@ -962,7 +961,7 @@ fn cargo_to_crate_graph(
     rustc: Option<&(CargoWorkspace, WorkspaceBuildScripts)>,
     cargo: &CargoWorkspace,
     sysroot: &Sysroot,
-    rustc_cfg: Vec<CfgFlag>,
+    rustc_cfg: Vec<CfgAtom>,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
 ) -> (CrateGraph, ProcMacroPaths) {
@@ -1145,7 +1144,7 @@ fn cargo_to_crate_graph(
 }
 
 fn detached_file_to_crate_graph(
-    rustc_cfg: Vec<CfgFlag>,
+    rustc_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
     detached_file: &ManifestPath,
     sysroot: &Sysroot,
@@ -1308,11 +1307,10 @@ fn add_target_crate_root(
         None
     } else {
         let mut potential_cfg_options = cfg_options.clone();
-        potential_cfg_options.extend(
-            pkg.features
-                .iter()
-                .map(|feat| CfgFlag::KeyValue { key: "feature".into(), value: feat.0.into() }),
-        );
+        potential_cfg_options.extend(pkg.features.iter().map(|feat| CfgAtom::KeyValue {
+            key: sym::feature.clone(),
+            value: Symbol::intern(feat.0),
+        }));
         Some(potential_cfg_options)
     };
     let cfg_options = {
@@ -1378,7 +1376,7 @@ impl SysrootPublicDeps {
 fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
-    rustc_cfg: Vec<CfgFlag>,
+    rustc_cfg: Vec<CfgAtom>,
     load: FileLoader<'_>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = tracing::info_span!("sysroot_to_crate_graph").entered();

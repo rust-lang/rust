@@ -50,12 +50,13 @@
 //! rust-project.json over time via configuration request!)
 
 use base_db::{CrateDisplayName, CrateName};
+use cfg::CfgAtom;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
-use crate::{cfg::CfgFlag, ManifestPath, TargetKind};
+use crate::{ManifestPath, TargetKind};
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -82,7 +83,7 @@ pub struct Crate {
     pub(crate) edition: Edition,
     pub(crate) version: Option<String>,
     pub(crate) deps: Vec<Dep>,
-    pub(crate) cfg: Vec<CfgFlag>,
+    pub(crate) cfg: Vec<CfgAtom>,
     pub(crate) target: Option<String>,
     pub(crate) env: FxHashMap<String, String>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
@@ -319,7 +320,8 @@ struct CrateData {
     version: Option<semver::Version>,
     deps: Vec<Dep>,
     #[serde(default)]
-    cfg: Vec<CfgFlag>,
+    #[serde(with = "cfg_")]
+    cfg: Vec<CfgAtom>,
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
@@ -332,6 +334,33 @@ struct CrateData {
     repository: Option<String>,
     #[serde(default)]
     build: Option<BuildData>,
+}
+
+mod cfg_ {
+    use cfg::CfgAtom;
+    use serde::{Deserialize, Serialize};
+
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<CfgAtom>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let cfg: Vec<String> = Vec::deserialize(deserializer)?;
+        cfg.into_iter().map(|it| crate::parse_cfg(&it).map_err(serde::de::Error::custom)).collect()
+    }
+    pub(super) fn serialize<S>(cfg: &[CfgAtom], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        cfg.iter()
+            .map(|cfg| match cfg {
+                CfgAtom::Flag(flag) => flag.as_str().to_owned(),
+                CfgAtom::KeyValue { key, value } => {
+                    format!("{}=\"{}\"", key.as_str(), value.as_str())
+                }
+            })
+            .collect::<Vec<String>>()
+            .serialize(serializer)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]

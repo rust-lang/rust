@@ -1,14 +1,16 @@
-//! Workspace information we get from cargo consists of two pieces. The first is
-//! the output of `cargo metadata`. The second is the output of running
-//! `build.rs` files (`OUT_DIR` env var, extra cfg flags) and compiling proc
-//! macro.
+//! Logic to invoke `cargo` for building build-dependencies (build scripts and proc-macros) as well as
+//! executing the build scripts to fetch required dependency information (`OUT_DIR` env var, extra
+//! cfg flags, etc).
 //!
-//! This module implements this second part. We use "build script" terminology
-//! here, but it covers procedural macros as well.
+//! In essence this just invokes `cargo` with the appropriate output format which we consume,
+//! but if enabled we will also use `RUSTC_WRAPPER` to only compile the build scripts and
+//! proc-macros and skip everything else.
 
-use std::{cell::RefCell, io, mem, path, process::Command};
+use std::{cell::RefCell, io, mem, process::Command};
 
+use base_db::Env;
 use cargo_metadata::{camino::Utf8Path, Message};
+use cfg::CfgAtom;
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
@@ -17,7 +19,7 @@ use serde::Deserialize;
 use toolchain::Tool;
 
 use crate::{
-    cfg::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
+    utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
     InvocationStrategy, ManifestPath, Package, Sysroot, TargetKind,
 };
 
@@ -32,12 +34,12 @@ pub struct WorkspaceBuildScripts {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct BuildScriptOutput {
     /// List of config flags defined by this package's build script.
-    pub(crate) cfgs: Vec<CfgFlag>,
+    pub(crate) cfgs: Vec<CfgAtom>,
     /// List of cargo-related environment variables with their value.
     ///
     /// If the package has a build script which defines environment variables,
     /// they can also be found here.
-    pub(crate) envs: Vec<(String, String)>,
+    pub(crate) envs: Env,
     /// Directory where a build script might place its output.
     pub(crate) out_dir: Option<AbsPathBuf>,
     /// Path to the proc-macro library file if this package exposes proc-macros.
@@ -45,7 +47,7 @@ pub(crate) struct BuildScriptOutput {
 }
 
 impl BuildScriptOutput {
-    fn is_unchanged(&self) -> bool {
+    fn is_empty(&self) -> bool {
         self.cfgs.is_empty()
             && self.envs.is_empty()
             && self.out_dir.is_none()
@@ -54,85 +56,6 @@ impl BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    fn build_command(
-        config: &CargoConfig,
-        allowed_features: &FxHashSet<String>,
-        manifest_path: &ManifestPath,
-        sysroot: &Sysroot,
-    ) -> io::Result<Command> {
-        let mut cmd = match config.run_build_script_command.as_deref() {
-            Some([program, args @ ..]) => {
-                let mut cmd = Command::new(program);
-                cmd.args(args);
-                cmd
-            }
-            _ => {
-                let mut cmd = sysroot.tool(Tool::Cargo);
-
-                cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
-                cmd.args(&config.extra_args);
-
-                cmd.arg("--manifest-path");
-                cmd.arg(manifest_path);
-
-                if let Some(target_dir) = &config.target_dir {
-                    cmd.arg("--target-dir").arg(target_dir);
-                }
-
-                // --all-targets includes tests, benches and examples in addition to the
-                // default lib and bins. This is an independent concept from the --target
-                // flag below.
-                if config.all_targets {
-                    cmd.arg("--all-targets");
-                }
-
-                if let Some(target) = &config.target {
-                    cmd.args(["--target", target]);
-                }
-
-                match &config.features {
-                    CargoFeatures::All => {
-                        cmd.arg("--all-features");
-                    }
-                    CargoFeatures::Selected { features, no_default_features } => {
-                        if *no_default_features {
-                            cmd.arg("--no-default-features");
-                        }
-                        if !features.is_empty() {
-                            cmd.arg("--features");
-                            cmd.arg(
-                                features
-                                    .iter()
-                                    .filter(|&feat| allowed_features.contains(feat))
-                                    .join(","),
-                            );
-                        }
-                    }
-                }
-
-                if manifest_path.is_rust_manifest() {
-                    cmd.arg("-Zscript");
-                }
-
-                cmd.arg("--keep-going");
-
-                cmd
-            }
-        };
-
-        cmd.envs(&config.extra_env);
-        if config.wrap_rustc_in_build_scripts {
-            // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
-            // that to compile only proc macros and build scripts during the initial
-            // `cargo check`.
-            let myself = std::env::current_exe()?;
-            cmd.env("RUSTC_WRAPPER", myself);
-            cmd.env("RA_RUSTC_WRAPPER", "1");
-        }
-
-        Ok(cmd)
-    }
-
     /// Runs the build scripts for the given workspace
     pub(crate) fn run_for_workspace(
         config: &CargoConfig,
@@ -141,17 +64,19 @@ impl WorkspaceBuildScripts {
         sysroot: &Sysroot,
     ) -> io::Result<WorkspaceBuildScripts> {
         let current_dir = match &config.invocation_location {
-            InvocationLocation::Root(root) if config.run_build_script_command.is_some() => {
-                root.as_path()
-            }
+            InvocationLocation::Root(root) if config.run_build_script_command.is_some() => root,
             _ => workspace.workspace_root(),
-        }
-        .as_ref();
+        };
 
         let allowed_features = workspace.workspace_features();
-        let cmd =
-            Self::build_command(config, &allowed_features, workspace.manifest_path(), sysroot)?;
-        Self::run_per_ws(cmd, workspace, current_dir, progress)
+        let cmd = Self::build_command(
+            config,
+            &allowed_features,
+            workspace.manifest_path(),
+            current_dir,
+            sysroot,
+        )?;
+        Self::run_per_ws(cmd, workspace, progress)
     }
 
     /// Runs the build scripts by invoking the configured command *once*.
@@ -178,6 +103,7 @@ impl WorkspaceBuildScripts {
             &Default::default(),
             // This is not gonna be used anyways, so just construct a dummy here
             &ManifestPath::try_from(workspace_root.clone()).unwrap(),
+            current_dir,
             &Sysroot::empty(),
         )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
@@ -206,7 +132,6 @@ impl WorkspaceBuildScripts {
 
         let errors = Self::run_command(
             cmd,
-            current_dir.as_path().as_ref(),
             |package, cb| {
                 if let Some(&(package, workspace)) = by_id.get(package) {
                     cb(&workspaces[workspace][package].name, &mut res[workspace].outputs[package]);
@@ -225,7 +150,7 @@ impl WorkspaceBuildScripts {
             for (idx, workspace) in workspaces.iter().enumerate() {
                 for package in workspace.packages() {
                     let package_build_data = &mut res[idx].outputs[package];
-                    if !package_build_data.is_unchanged() {
+                    if !package_build_data.is_empty() {
                         tracing::info!(
                             "{}: {package_build_data:?}",
                             workspace[package].manifest.parent(),
@@ -238,151 +163,6 @@ impl WorkspaceBuildScripts {
         Ok(res)
     }
 
-    fn run_per_ws(
-        cmd: Command,
-        workspace: &CargoWorkspace,
-        current_dir: &path::Path,
-        progress: &dyn Fn(String),
-    ) -> io::Result<WorkspaceBuildScripts> {
-        let mut res = WorkspaceBuildScripts::default();
-        let outputs = &mut res.outputs;
-        // NB: Cargo.toml could have been modified between `cargo metadata` and
-        // `cargo check`. We shouldn't assume that package ids we see here are
-        // exactly those from `config`.
-        let mut by_id: FxHashMap<String, Package> = FxHashMap::default();
-        for package in workspace.packages() {
-            outputs.insert(package, BuildScriptOutput::default());
-            by_id.insert(workspace[package].id.clone(), package);
-        }
-
-        res.error = Self::run_command(
-            cmd,
-            current_dir,
-            |package, cb| {
-                if let Some(&package) = by_id.get(package) {
-                    cb(&workspace[package].name, &mut outputs[package]);
-                }
-            },
-            progress,
-        )?;
-
-        if tracing::enabled!(tracing::Level::INFO) {
-            for package in workspace.packages() {
-                let package_build_data = &outputs[package];
-                if !package_build_data.is_unchanged() {
-                    tracing::info!(
-                        "{}: {package_build_data:?}",
-                        workspace[package].manifest.parent(),
-                    );
-                }
-            }
-        }
-
-        Ok(res)
-    }
-
-    fn run_command(
-        mut cmd: Command,
-        current_dir: &path::Path,
-        // ideally this would be something like:
-        // with_output_for: impl FnMut(&str, dyn FnOnce(&mut BuildScriptOutput)),
-        // but owned trait objects aren't a thing
-        mut with_output_for: impl FnMut(&str, &mut dyn FnMut(&str, &mut BuildScriptOutput)),
-        progress: &dyn Fn(String),
-    ) -> io::Result<Option<String>> {
-        let errors = RefCell::new(String::new());
-        let push_err = |err: &str| {
-            let mut e = errors.borrow_mut();
-            e.push_str(err);
-            e.push('\n');
-        };
-
-        tracing::info!("Running build scripts in {}: {:?}", current_dir.display(), cmd);
-        cmd.current_dir(current_dir);
-        let output = stdx::process::spawn_with_streaming_output(
-            cmd,
-            &mut |line| {
-                // Copy-pasted from existing cargo_metadata. It seems like we
-                // should be using serde_stacker here?
-                let mut deserializer = serde_json::Deserializer::from_str(line);
-                deserializer.disable_recursion_limit();
-                let message = Message::deserialize(&mut deserializer)
-                    .unwrap_or_else(|_| Message::TextLine(line.to_owned()));
-
-                match message {
-                    Message::BuildScriptExecuted(mut message) => {
-                        with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("running build-script: {name}"));
-                            let cfgs = {
-                                let mut acc = Vec::new();
-                                for cfg in &message.cfgs {
-                                    match cfg.parse::<CfgFlag>() {
-                                        Ok(it) => acc.push(it),
-                                        Err(err) => {
-                                            push_err(&format!(
-                                                "invalid cfg from cargo-metadata: {err}"
-                                            ));
-                                            return;
-                                        }
-                                    };
-                                }
-                                acc
-                            };
-                            if !message.env.is_empty() {
-                                data.envs = mem::take(&mut message.env);
-                            }
-                            // cargo_metadata crate returns default (empty) path for
-                            // older cargos, which is not absolute, so work around that.
-                            let out_dir = mem::take(&mut message.out_dir);
-                            if !out_dir.as_str().is_empty() {
-                                let out_dir = AbsPathBuf::assert(out_dir);
-                                // inject_cargo_env(package, package_build_data);
-                                data.envs.push(("OUT_DIR".to_owned(), out_dir.as_str().to_owned()));
-                                data.out_dir = Some(out_dir);
-                                data.cfgs = cfgs;
-                            }
-                        });
-                    }
-                    Message::CompilerArtifact(message) => {
-                        with_output_for(&message.package_id.repr, &mut |name, data| {
-                            progress(format!("building proc-macros: {name}"));
-                            if message.target.kind.iter().any(|k| k == "proc-macro") {
-                                // Skip rmeta file
-                                if let Some(filename) =
-                                    message.filenames.iter().find(|name| is_dylib(name))
-                                {
-                                    let filename = AbsPath::assert(filename);
-                                    data.proc_macro_dylib_path = Some(filename.to_owned());
-                                }
-                            }
-                        });
-                    }
-                    Message::CompilerMessage(message) => {
-                        progress(message.target.name);
-
-                        if let Some(diag) = message.message.rendered.as_deref() {
-                            push_err(diag);
-                        }
-                    }
-                    Message::BuildFinished(_) => {}
-                    Message::TextLine(_) => {}
-                    _ => {}
-                }
-            },
-            &mut |line| {
-                push_err(line);
-            },
-        )?;
-
-        let errors = if !output.status.success() {
-            let errors = errors.into_inner();
-            Some(if errors.is_empty() { "cargo check failed".to_owned() } else { errors })
-        } else {
-            None
-        };
-        Ok(errors)
-    }
-
     pub fn error(&self) -> Option<&str> {
         self.error.as_deref()
     }
@@ -391,6 +171,7 @@ impl WorkspaceBuildScripts {
         self.outputs.get(idx)
     }
 
+    /// Assembles build script outputs for the rustc crates via `--print target-libdir`.
     pub(crate) fn rustc_crates(
         rustc: &CargoWorkspace,
         current_dir: &AbsPath,
@@ -457,7 +238,7 @@ impl WorkspaceBuildScripts {
             if tracing::enabled!(tracing::Level::INFO) {
                 for package in rustc.packages() {
                     let package_build_data = &bs.outputs[package];
-                    if !package_build_data.is_unchanged() {
+                    if !package_build_data.is_empty() {
                         tracing::info!(
                             "{}: {package_build_data:?}",
                             rustc[package].manifest.parent(),
@@ -471,6 +252,226 @@ impl WorkspaceBuildScripts {
             bs.error = Some(e.to_string());
         }
         bs
+    }
+
+    fn run_per_ws(
+        cmd: Command,
+        workspace: &CargoWorkspace,
+        progress: &dyn Fn(String),
+    ) -> io::Result<WorkspaceBuildScripts> {
+        let mut res = WorkspaceBuildScripts::default();
+        let outputs = &mut res.outputs;
+        // NB: Cargo.toml could have been modified between `cargo metadata` and
+        // `cargo check`. We shouldn't assume that package ids we see here are
+        // exactly those from `config`.
+        let mut by_id: FxHashMap<String, Package> = FxHashMap::default();
+        for package in workspace.packages() {
+            outputs.insert(package, BuildScriptOutput::default());
+            by_id.insert(workspace[package].id.clone(), package);
+        }
+
+        res.error = Self::run_command(
+            cmd,
+            |package, cb| {
+                if let Some(&package) = by_id.get(package) {
+                    cb(&workspace[package].name, &mut outputs[package]);
+                }
+            },
+            progress,
+        )?;
+
+        if tracing::enabled!(tracing::Level::INFO) {
+            for package in workspace.packages() {
+                let package_build_data = &outputs[package];
+                if !package_build_data.is_empty() {
+                    tracing::info!(
+                        "{}: {package_build_data:?}",
+                        workspace[package].manifest.parent(),
+                    );
+                }
+            }
+        }
+
+        Ok(res)
+    }
+
+    fn run_command(
+        cmd: Command,
+        // ideally this would be something like:
+        // with_output_for: impl FnMut(&str, dyn FnOnce(&mut BuildScriptOutput)),
+        // but owned trait objects aren't a thing
+        mut with_output_for: impl FnMut(&str, &mut dyn FnMut(&str, &mut BuildScriptOutput)),
+        progress: &dyn Fn(String),
+    ) -> io::Result<Option<String>> {
+        let errors = RefCell::new(String::new());
+        let push_err = |err: &str| {
+            let mut e = errors.borrow_mut();
+            e.push_str(err);
+            e.push('\n');
+        };
+
+        tracing::info!("Running build scripts: {:?}", cmd);
+        let output = stdx::process::spawn_with_streaming_output(
+            cmd,
+            &mut |line| {
+                // Copy-pasted from existing cargo_metadata. It seems like we
+                // should be using serde_stacker here?
+                let mut deserializer = serde_json::Deserializer::from_str(line);
+                deserializer.disable_recursion_limit();
+                let message = Message::deserialize(&mut deserializer)
+                    .unwrap_or_else(|_| Message::TextLine(line.to_owned()));
+
+                match message {
+                    Message::BuildScriptExecuted(mut message) => {
+                        with_output_for(&message.package_id.repr, &mut |name, data| {
+                            progress(format!("running build-script: {name}"));
+                            let cfgs = {
+                                let mut acc = Vec::new();
+                                for cfg in &message.cfgs {
+                                    match crate::parse_cfg(cfg) {
+                                        Ok(it) => acc.push(it),
+                                        Err(err) => {
+                                            push_err(&format!(
+                                                "invalid cfg from cargo-metadata: {err}"
+                                            ));
+                                            return;
+                                        }
+                                    };
+                                }
+                                acc
+                            };
+                            data.envs.extend(message.env.drain(..));
+                            // cargo_metadata crate returns default (empty) path for
+                            // older cargos, which is not absolute, so work around that.
+                            let out_dir = mem::take(&mut message.out_dir);
+                            if !out_dir.as_str().is_empty() {
+                                let out_dir = AbsPathBuf::assert(out_dir);
+                                // inject_cargo_env(package, package_build_data);
+                                data.envs.insert("OUT_DIR", out_dir.as_str());
+                                data.out_dir = Some(out_dir);
+                                data.cfgs = cfgs;
+                            }
+                        });
+                    }
+                    Message::CompilerArtifact(message) => {
+                        with_output_for(&message.package_id.repr, &mut |name, data| {
+                            progress(format!("building proc-macros: {name}"));
+                            if message.target.kind.iter().any(|k| k == "proc-macro") {
+                                // Skip rmeta file
+                                if let Some(filename) =
+                                    message.filenames.iter().find(|file| is_dylib(file))
+                                {
+                                    let filename = AbsPath::assert(filename);
+                                    data.proc_macro_dylib_path = Some(filename.to_owned());
+                                }
+                            }
+                        });
+                    }
+                    Message::CompilerMessage(message) => {
+                        progress(message.target.name);
+
+                        if let Some(diag) = message.message.rendered.as_deref() {
+                            push_err(diag);
+                        }
+                    }
+                    Message::BuildFinished(_) => {}
+                    Message::TextLine(_) => {}
+                    _ => {}
+                }
+            },
+            &mut |line| {
+                push_err(line);
+            },
+        )?;
+
+        let errors = if !output.status.success() {
+            let errors = errors.into_inner();
+            Some(if errors.is_empty() { "cargo check failed".to_owned() } else { errors })
+        } else {
+            None
+        };
+        Ok(errors)
+    }
+
+    fn build_command(
+        config: &CargoConfig,
+        allowed_features: &FxHashSet<String>,
+        manifest_path: &ManifestPath,
+        current_dir: &AbsPath,
+        sysroot: &Sysroot,
+    ) -> io::Result<Command> {
+        let mut cmd = match config.run_build_script_command.as_deref() {
+            Some([program, args @ ..]) => {
+                let mut cmd = Command::new(program);
+                cmd.args(args);
+                cmd
+            }
+            _ => {
+                let mut cmd = sysroot.tool(Tool::Cargo);
+
+                cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
+                cmd.args(&config.extra_args);
+
+                cmd.arg("--manifest-path");
+                cmd.arg(manifest_path);
+
+                if let Some(target_dir) = &config.target_dir {
+                    cmd.arg("--target-dir").arg(target_dir);
+                }
+
+                // --all-targets includes tests, benches and examples in addition to the
+                // default lib and bins. This is an independent concept from the --target
+                // flag below.
+                if config.all_targets {
+                    cmd.arg("--all-targets");
+                }
+
+                if let Some(target) = &config.target {
+                    cmd.args(["--target", target]);
+                }
+
+                match &config.features {
+                    CargoFeatures::All => {
+                        cmd.arg("--all-features");
+                    }
+                    CargoFeatures::Selected { features, no_default_features } => {
+                        if *no_default_features {
+                            cmd.arg("--no-default-features");
+                        }
+                        if !features.is_empty() {
+                            cmd.arg("--features");
+                            cmd.arg(
+                                features
+                                    .iter()
+                                    .filter(|&feat| allowed_features.contains(feat))
+                                    .join(","),
+                            );
+                        }
+                    }
+                }
+
+                if manifest_path.is_rust_manifest() {
+                    cmd.arg("-Zscript");
+                }
+
+                cmd.arg("--keep-going");
+
+                cmd
+            }
+        };
+
+        cmd.current_dir(current_dir);
+        cmd.envs(&config.extra_env);
+        if config.wrap_rustc_in_build_scripts {
+            // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
+            // that to compile only proc macros and build scripts during the initial
+            // `cargo check`.
+            let myself = std::env::current_exe()?;
+            cmd.env("RUSTC_WRAPPER", myself);
+            cmd.env("RA_RUSTC_WRAPPER", "1");
+        }
+
+        Ok(cmd)
     }
 }
 

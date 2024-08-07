@@ -15,9 +15,8 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
-mod build_scripts;
+mod build_dependencies;
 mod cargo_workspace;
-mod cfg;
 mod env;
 mod manifest_path;
 pub mod project_json;
@@ -41,12 +40,11 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashSet;
 
 pub use crate::{
-    build_scripts::WorkspaceBuildScripts,
+    build_dependencies::WorkspaceBuildScripts,
     cargo_workspace::{
         CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
         RustLibSource, Target, TargetData, TargetKind,
     },
-    cfg::CfgOverrides,
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
@@ -200,4 +198,43 @@ pub enum InvocationLocation {
     Root(AbsPathBuf),
     #[default]
     Workspace,
+}
+
+/// A set of cfg-overrides per crate.
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
+pub struct CfgOverrides {
+    /// A global set of overrides matching all crates.
+    pub global: cfg::CfgDiff,
+    /// A set of overrides matching specific crates.
+    pub selective: rustc_hash::FxHashMap<String, cfg::CfgDiff>,
+}
+
+impl CfgOverrides {
+    pub fn len(&self) -> usize {
+        self.global.len() + self.selective.values().map(|it| it.len()).sum::<usize>()
+    }
+
+    pub fn apply(&self, cfg_options: &mut cfg::CfgOptions, name: &str) {
+        if !self.global.is_empty() {
+            cfg_options.apply_diff(self.global.clone());
+        };
+        if let Some(diff) = self.selective.get(name) {
+            cfg_options.apply_diff(diff.clone());
+        };
+    }
+}
+
+fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
+    let res = match s.split_once('=') {
+        Some((key, value)) => {
+            if !(value.starts_with('"') && value.ends_with('"')) {
+                return Err(format!("Invalid cfg ({s:?}), value should be in quotes"));
+            }
+            let key = intern::Symbol::intern(key);
+            let value = intern::Symbol::intern(&value[1..value.len() - 1]);
+            cfg::CfgAtom::KeyValue { key, value }
+        }
+        None => cfg::CfgAtom::Flag(intern::Symbol::intern(s)),
+    };
+    Ok(res)
 }
