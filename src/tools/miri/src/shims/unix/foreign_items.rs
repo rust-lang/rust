@@ -815,6 +815,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.handle_miri_start_unwind(payload)?;
                 return Ok(EmulateItemResult::NeedsUnwind);
             }
+            "getuid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // For now, just pretend we always have this fixed UID.
+                this.write_int(UID, dest)?;
+            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
@@ -877,13 +882,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
 
-            "getuid"
-            if this.frame_in_std() => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // For now, just pretend we always have this fixed UID.
-                this.write_int(super::UID, dest)?;
-            }
-
             "getpwuid_r" | "__posix_getpwuid_r"
             if this.frame_in_std() => {
                 // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
@@ -898,7 +896,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.deref_pointer(result)?;
 
                 // Must be for "us".
-                if uid != crate::shims::unix::UID {
+                if uid != UID {
                     throw_unsup_format!("`getpwuid_r` on other users is not supported");
                 }
 
