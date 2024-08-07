@@ -1352,7 +1352,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> InterpResult<'tcx, Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         // Start recording our event before doing anything else
         let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
-            let fn_name = frame.instance.to_string();
+            let fn_name = frame.instance().to_string();
             let entry = ecx.machine.string_cache.entry(fn_name.clone());
             let name = entry.or_insert_with(|| profiler.alloc_string(&*fn_name));
 
@@ -1443,7 +1443,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // tracing-tree can autoamtically annotate scope changes, but it gets very confused by our
         // concurrency and what it prints is just plain wrong. So we print our own information
         // instead. (Cc https://github.com/rust-lang/miri/issues/2266)
-        info!("Leaving {}", ecx.frame().instance);
+        info!("Leaving {}", ecx.frame().instance());
         Ok(())
     }
 
@@ -1473,7 +1473,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Needs to be done after dropping frame to show up on the right nesting level.
         // (Cc https://github.com/rust-lang/miri/issues/2266)
         if !ecx.active_thread_stack().is_empty() {
-            info!("Continuing in {}", ecx.frame().instance);
+            info!("Continuing in {}", ecx.frame().instance());
         }
         res
     }
@@ -1486,7 +1486,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let Some(Provenance::Concrete { alloc_id, .. }) = mplace.ptr().provenance else {
             panic!("after_local_allocated should only be called on fresh allocations");
         };
-        let local_decl = &ecx.frame().body.local_decls[local];
+        let local_decl = &ecx.frame().body().local_decls[local];
         let span = local_decl.source_info.span;
         ecx.machine.allocation_spans.borrow_mut().insert(alloc_id, (span, None));
         Ok(())

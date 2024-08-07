@@ -37,7 +37,7 @@ pub enum ReturnAction {
     /// took care of everything.
     NoJump,
 
-    /// Returned by [`InterpCx::pop_stack_frame`] when no cleanup should be done.
+    /// Returned by [`InterpCx::pop_stack_frame_raw`] when no cleanup should be done.
     NoCleanup,
 }
 
