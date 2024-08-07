@@ -520,6 +520,14 @@ impl Step for Miri {
         builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
 
+        // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared
+        // properly when rustc changes. Similar to `Builder::cargo`, we skip this in dry runs to
+        // make sure the relevant compiler has been set up properly.
+        if !builder.config.dry_run() {
+            let ui_test_dep_dir = builder.stage_out(host_compiler, Mode::ToolStd).join("miri_ui");
+            builder.clear_if_dirty(&ui_test_dep_dir, &builder.rustc(host_compiler));
+        }
+
         // Run `cargo test`.
         // This is with the Miri crate, so it uses the host compiler.
         let mut cargo = tool::prepare_tool_cargo(
