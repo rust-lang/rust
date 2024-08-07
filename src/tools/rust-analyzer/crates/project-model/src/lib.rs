@@ -68,6 +68,9 @@ impl ProjectManifest {
         if path.file_name().unwrap_or_default() == "rust-project.json" {
             return Ok(ProjectManifest::ProjectJson(path));
         }
+        if path.file_name().unwrap_or_default() == ".rust-project.json" {
+            return Ok(ProjectManifest::ProjectJson(path));
+        }
         if path.file_name().unwrap_or_default() == "Cargo.toml" {
             return Ok(ProjectManifest::CargoToml(path));
         }
@@ -92,6 +95,9 @@ impl ProjectManifest {
 
     pub fn discover(path: &AbsPath) -> io::Result<Vec<ProjectManifest>> {
         if let Some(project_json) = find_in_parent_dirs(path, "rust-project.json") {
+            return Ok(vec![ProjectManifest::ProjectJson(project_json)]);
+        }
+        if let Some(project_json) = find_in_parent_dirs(path, ".rust-project.json") {
             return Ok(vec![ProjectManifest::ProjectJson(project_json)]);
         }
         return find_cargo_toml(path)

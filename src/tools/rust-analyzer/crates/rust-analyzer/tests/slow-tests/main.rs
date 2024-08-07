@@ -750,7 +750,7 @@ fn test_missing_module_code_action_in_json_project() {
 
     let code = format!(
         r#"
-//- /rust-project.json
+//- /.rust-project.json
 {project}
 
 //- /src/lib.rs
