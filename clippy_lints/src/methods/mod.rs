@@ -133,7 +133,7 @@ mod zst_offset;
 
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
@@ -4915,13 +4915,13 @@ impl Methods {
                     str_split::check(cx, expr, recv, arg);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
-                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                         str_splitn::check(cx, name, expr, recv, pat_arg, count, &self.msrv);
                     }
                 },
                 ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
-                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                     }
                 },

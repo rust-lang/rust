@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
@@ -147,7 +147,7 @@ fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx E
 
 // Returns the length of the `expr` if it's a constant string or char.
 fn constant_length(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
-    let value = constant(cx, cx.typeck_results(), expr)?;
+    let value = ConstEvalCtxt::new(cx).eval(expr)?;
     match value {
         Constant::Str(value) => Some(value.len() as u128),
         Constant::Char(value) => Some(value.len_utf8() as u128),

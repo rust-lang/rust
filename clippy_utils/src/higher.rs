@@ -2,7 +2,7 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::consts::{constant_simple, Constant};
+use crate::consts::{ConstEvalCtxt, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
 
@@ -471,7 +471,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     let arg = args.first()?;
-                    return match constant_simple(cx, cx.typeck_results(), arg) {
+                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };

@@ -125,7 +125,7 @@ use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
-use crate::consts::{constant, mir_to_const, Constant};
+use crate::consts::{mir_to_const, ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
@@ -1581,8 +1581,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
-                && let Some(start_const) = constant(cx, cx.typeck_results(), start)
+                && let Some(min_const) = mir_to_const(cx.tcx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
+                && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
                 start_const == min_const
             } else {
@@ -1594,8 +1594,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
                     && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
-                    && let Some(end_const) = constant(cx, cx.typeck_results(), end)
+                    && let Some(max_const) = mir_to_const(cx.tcx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
+                    && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
                     end_const == max_const
                 } else {
@@ -1626,7 +1626,9 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
         return true;
     }
     let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
-    if let Some(Constant::Int(v)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
+    if let Some(Constant::Int(v)) =
+        ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(enclosing_body), cx.tcx.typeck(enclosing_body)).eval(e)
+    {
         return value == v;
     }
     false

@@ -1,6 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant_full_int, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{is_in_const_context, path_to_local};
@@ -117,7 +117,7 @@ fn check_for_either_unsigned_int_constant<'a>(
 }
 
 fn check_for_unsigned_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<u128> {
-    let int_const = constant_full_int(cx, cx.typeck_results(), expr)?;
+    let int_const = ConstEvalCtxt::new(cx).eval_full_int(expr)?;
     match int_const {
         FullInt::S(s) => s.try_into().ok(),
         FullInt::U(u) => Some(u),
