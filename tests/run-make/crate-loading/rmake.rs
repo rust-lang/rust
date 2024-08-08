@@ -38,14 +38,17 @@ help: there are multiple different versions of crate `dependency` in the depende
         .assert_stderr_contains(
             r#"
 3  | pub struct Type(pub i32);
-   | ^^^^^^^^^^^^^^^ this type implements the required trait
+   | --------------- this type implements the required trait
 4  | pub trait Trait {
-   | --------------- this is the required trait"#,
+   | ^^^^^^^^^^^^^^^ this is the required trait"#,
         )
         .assert_stderr_contains(
             r#"
 3  | pub struct Type;
-   | ^^^^^^^^^^^^^^^ this type doesn't implement the required trait"#,
+   | --------------- this type doesn't implement the required trait
+4  | pub trait Trait {
+   | --------------- this is the found trait
+   = help: you can use `cargo tree` to explore your dependency tree"#,
         )
         .assert_stderr_contains(
             r#"
@@ -96,5 +99,9 @@ note: there are multiple different versions of crate `dependency` in the depende
   |
 4 | use dependency::{Trait, do_something};
   |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`"#,
-        );
+        )
+        .assert_stderr_contains(
+          r#"
+6  | pub struct OtherType;
+   | -------------------- this type doesn't implement the required trait"#);
 }

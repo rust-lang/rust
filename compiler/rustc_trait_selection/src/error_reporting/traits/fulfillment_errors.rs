@@ -1707,15 +1707,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // one crate version and the type comes from another crate version, even though they both
         // are from the same crate.
         let trait_def_id = trait_ref.def_id();
-        if let ty::Adt(def, _) = trait_ref.self_ty().skip_binder().peel_refs().kind()
-            && let found_type = def.did()
-            && trait_def_id.krate != found_type.krate
-            && self.tcx.crate_name(trait_def_id.krate) == self.tcx.crate_name(found_type.krate)
-        {
-            let name = self.tcx.crate_name(trait_def_id.krate);
-            let spans: Vec<_> = [trait_def_id, found_type]
-                .into_iter()
-                .filter(|def_id| def_id.krate != LOCAL_CRATE)
+        let trait_name = self.tcx.item_name(trait_def_id);
+        let crate_name = self.tcx.crate_name(trait_def_id.krate);
+        if let Some(other_trait_def_id) = self.tcx.all_traits().find(|def_id| {
+            trait_name == self.tcx.item_name(trait_def_id)
+                && trait_def_id.krate != def_id.krate
+                && crate_name == self.tcx.crate_name(def_id.krate)
+        }) {
+            // We've found two different traits with the same name, same crate name, but
+            // different crate `DefId`. We highlight the traits.
+
+            let found_type =
+                if let ty::Adt(def, _) = trait_ref.self_ty().skip_binder().peel_refs().kind() {
+                    Some(def.did())
+                } else {
+                    None
+                };
+            let spans: Vec<_> = [trait_def_id, other_trait_def_id]
+                .iter()
                 .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {
@@ -1726,7 +1735,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     (
                         data.span,
-                        format!("one version of crate `{name}` is used here, as a {dependency}"),
+                        format!(
+                            "one version of crate `{crate_name}` is used here, as a {dependency}"
+                        ),
                     )
                 })
                 .collect();
@@ -1738,7 +1749,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 StringPart::normal("there are ".to_string()),
                 StringPart::highlighted("multiple different versions".to_string()),
                 StringPart::normal(" of crate `".to_string()),
-                StringPart::highlighted(format!("{name}")),
+                StringPart::highlighted(format!("{crate_name}")),
                 StringPart::normal("` in the dependency graph".to_string()),
             ]);
             let candidates = if impl_candidates.is_empty() {
@@ -1746,36 +1757,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             } else {
                 impl_candidates.into_iter().map(|cand| cand.trait_ref).collect()
             };
-            if let Some((sp_candidate, sp_found)) = candidates.iter().find_map(|trait_ref| {
-                if let ty::Adt(def, _) = trait_ref.self_ty().peel_refs().kind()
-                    && let candidate_def_id = def.did()
-                    && let Some(name) = self.tcx.opt_item_name(candidate_def_id)
-                    && let Some(found) = self.tcx.opt_item_name(found_type)
-                    && name == found
-                    && candidate_def_id.krate != found_type.krate
-                    && self.tcx.crate_name(candidate_def_id.krate)
-                        == self.tcx.crate_name(found_type.krate)
-                {
-                    // A candidate was found of an item with the same name, from two separate
-                    // versions of the same crate, let's clarify.
-                    Some((self.tcx.def_span(candidate_def_id), self.tcx.def_span(found_type)))
-                } else {
-                    None
+            let mut span: MultiSpan = self.tcx.def_span(trait_def_id).into();
+            span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
+            if let Some(found_type) = found_type {
+                span.push_span_label(
+                    self.tcx.def_span(found_type),
+                    "this type doesn't implement the required trait",
+                );
+                for trait_ref in candidates {
+                    if let ty::Adt(def, _) = trait_ref.self_ty().peel_refs().kind()
+                        && let candidate_def_id = def.did()
+                        && let Some(name) = self.tcx.opt_item_name(candidate_def_id)
+                        && let Some(found) = self.tcx.opt_item_name(found_type)
+                        && name == found
+                        && candidate_def_id.krate != found_type.krate
+                        && self.tcx.crate_name(candidate_def_id.krate)
+                            == self.tcx.crate_name(found_type.krate)
+                    {
+                        // A candidate was found of an item with the same name, from two separate
+                        // versions of the same crate, let's clarify.
+                        let candidate_span = self.tcx.def_span(candidate_def_id);
+                        span.push_span_label(
+                            candidate_span,
+                            "this type implements the required trait",
+                        );
+                    }
                 }
-            }) {
-                let mut span: MultiSpan = vec![sp_candidate, sp_found].into();
-                span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
-                span.push_span_label(sp_candidate, "this type implements the required trait");
-                span.push_span_label(sp_found, "this type doesn't implement the required trait");
-                err.highlighted_span_note(span, vec![
-                    StringPart::normal(
-                        "two types coming from two different versions of the same crate are \
-                             different types "
-                            .to_string(),
-                    ),
-                    StringPart::highlighted("even if they look the same".to_string()),
-                ]);
             }
+            span.push_span_label(self.tcx.def_span(other_trait_def_id), "this is the found trait");
+            err.highlighted_span_note(span, vec![
+                StringPart::normal(
+                    "two types coming from two different versions of the same crate are \
+                         different types "
+                        .to_string(),
+                ),
+                StringPart::highlighted("even if they look the same".to_string()),
+            ]);
             err.help("you can use `cargo tree` to explore your dependency tree");
             return true;
         }
