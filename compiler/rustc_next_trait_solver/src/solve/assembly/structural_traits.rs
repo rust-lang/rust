@@ -458,28 +458,23 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             ))
         }
 
-        ty::FnDef(..) | ty::FnPtr(..) => {
-            let bound_sig = self_ty.fn_sig(cx);
-            let sig = bound_sig.skip_binder();
-            let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
-            // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
-            // return type implements `Future`.
-            let nested = vec![
-                bound_sig
-                    .rebind(ty::TraitRef::new(cx, future_trait_def_id, [sig.output()]))
-                    .upcast(cx),
-            ];
-            let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::FutureOutput);
-            let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
-            Ok((
-                bound_sig.rebind(AsyncCallableRelevantTypes {
-                    tupled_inputs_ty: Ty::new_tup(cx, sig.inputs().as_slice()),
-                    output_coroutine_ty: sig.output(),
-                    coroutine_return_ty: future_output_ty,
-                }),
-                nested,
-            ))
+        ty::FnDef(def_id, _) => {
+            let sig = self_ty.fn_sig(cx);
+            if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
+                fn_item_to_async_callable(cx, sig)
+            } else {
+                Err(NoSolution)
+            }
         }
+        ty::FnPtr(..) => {
+            let sig = self_ty.fn_sig(cx);
+            if sig.skip_binder().is_fn_trait_compatible() {
+                fn_item_to_async_callable(cx, sig)
+            } else {
+                Err(NoSolution)
+            }
+        }
+
         ty::Closure(_, args) => {
             let args = args.as_closure();
             let bound_sig = args.sig();
@@ -561,6 +556,29 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
             panic!("unexpected type `{self_ty:?}`")
         }
     }
+}
+
+fn fn_item_to_async_callable<I: Interner>(
+    cx: I,
+    bound_sig: ty::Binder<I, ty::FnSig<I>>,
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
+    let sig = bound_sig.skip_binder();
+    let future_trait_def_id = cx.require_lang_item(TraitSolverLangItem::Future);
+    // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
+    // return type implements `Future`.
+    let nested = vec![
+        bound_sig.rebind(ty::TraitRef::new(cx, future_trait_def_id, [sig.output()])).upcast(cx),
+    ];
+    let future_output_def_id = cx.require_lang_item(TraitSolverLangItem::FutureOutput);
+    let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
+    Ok((
+        bound_sig.rebind(AsyncCallableRelevantTypes {
+            tupled_inputs_ty: Ty::new_tup(cx, sig.inputs().as_slice()),
+            output_coroutine_ty: sig.output(),
+            coroutine_return_ty: future_output_ty,
+        }),
+        nested,
+    ))
 }
 
 /// Given a coroutine-closure, project to its returned coroutine when we are *certain*
