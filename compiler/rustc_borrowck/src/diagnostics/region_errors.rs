@@ -1173,7 +1173,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diag<'_>) {
         let map = self.infcx.tcx.hir();
         let body = map.body_owned_by(self.mir_def_id());
@@ -1212,7 +1211,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if let Some(closure_span) = closure_span {
             diag.span_suggestion_verbose(
                 closure_span,
-                "consider adding 'move' keyword before the nested closure",
+                fluent_generated::borrowck_move_closure_suggestion,
                 "move ",
                 Applicability::MaybeIncorrect,
             );

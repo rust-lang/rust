@@ -80,6 +80,9 @@ borrowck_higher_ranked_subtype_error =
 borrowck_lifetime_constraints_error =
     lifetime may not live long enough
 
+borrowck_move_closure_suggestion =
+    consider adding 'move' keyword before the nested closure
+
 borrowck_move_out_place_here =
     {$place} is moved here
 
