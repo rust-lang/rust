@@ -11,6 +11,7 @@ fn main() {
         .expect("CARGO_CFG_TARGET_POINTER_WIDTH was not set")
         .parse()
         .unwrap();
+    let is_miri = env::var_os("CARGO_CFG_MIRI").is_some();
 
     println!("cargo:rustc-check-cfg=cfg(netbsd10)");
     if target_os == "netbsd" && env::var("RUSTC_STD_NETBSD10").is_ok() {
@@ -91,6 +92,8 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(reliable_f128_math)");
 
     let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
+        // We can always enable these in Miri as that is not affected by codegen bugs.
+        _ if is_miri => true,
         // Selection failure until recent LLVM <https://github.com/llvm/llvm-project/issues/93894>
         // FIXME(llvm19): can probably be removed at the version bump
         ("loongarch64", _) => false,
@@ -118,6 +121,8 @@ fn main() {
     };
 
     let has_reliable_f128 = match (target_arch.as_str(), target_os.as_str()) {
+        // We can always enable these in Miri as that is not affected by codegen bugs.
+        _ if is_miri => true,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // ABI and precision bugs <https://github.com/rust-lang/rust/issues/125109>
@@ -141,6 +146,8 @@ fn main() {
     // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
     let has_reliable_f16_math = has_reliable_f16
         && match (target_arch.as_str(), target_os.as_str()) {
+            // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
+            _ if is_miri => false,
             // Currently nothing special. Hooray!
             // This will change as platforms gain better better support for standard ops but math
             // lags behind.
@@ -149,6 +156,8 @@ fn main() {
 
     let has_reliable_f128_math = has_reliable_f128
         && match (target_arch.as_str(), target_os.as_str()) {
+            // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
+            _ if is_miri => false,
             // LLVM lowers `fp128` math to `long double` symbols even on platforms where
             // `long double` is not IEEE binary128. See
             // <https://github.com/llvm/llvm-project/issues/44744>.
