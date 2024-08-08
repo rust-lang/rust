@@ -26,8 +26,16 @@ fn exitstatus_display_tests() {
     if cfg!(target_os = "linux") {
         #[cfg(any(target_arch = "mips", target_arch = "mips64"))]
         t(0x0137f, "stopped (not terminated) by signal: 19 (SIGPWR)");
-        #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
+
+        #[cfg(any(target_arch = "sparc", target_arch = "sparc64"))]
+        t(0x0137f, "stopped (not terminated) by signal: 19 (SIGCONT)");
+
+        #[cfg(not(any(target_arch = "mips", 
+                      target_arch = "sparc",
+                      target_arch = "mips64",
+                      target_arch = "sprac64")))]
         t(0x0137f, "stopped (not terminated) by signal: 19 (SIGSTOP)");
+        
         t(0x0ffff, "continued (WIFCONTINUED)");
     }
 
