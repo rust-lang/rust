@@ -111,7 +111,7 @@ You may want to run unit tests on a specific file with following:
 ./x test compiler/rustc_data_structures/src/thin_vec/tests.rs
 ```
 
-But unfortunately, it's impossible. You should invoke following instead:
+But unfortunately, it's impossible. You should invoke the following instead:
 
 ```bash
 ./x test compiler/rustc_data_structures/ --test-args thin_vec
