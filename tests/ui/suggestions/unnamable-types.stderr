@@ -55,7 +55,7 @@ error: missing type for `const` item
 LL | const G = #[coroutine] || -> i32 { yield 0; return 1; };
    |        ^
    |
-note: however, the inferred type `{coroutine@$DIR/unnamable-types.rs:37:24: 37:33}` cannot be named
+note: however, the inferred type `{coroutine@$DIR/unnamable-types.rs:37:24: 37:56}` cannot be named
   --> $DIR/unnamable-types.rs:37:24
    |
 LL | const G = #[coroutine] || -> i32 { yield 0; return 1; };

@@ -19,11 +19,11 @@ LL + #[derive(ConstParamTy)]
 LL | struct Foo(u8);
    |
 
-error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#0}`
+error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#1}`
   --> $DIR/unify-op-with-fn-call.rs:20:25
    |
 LL | fn foo<const N: Foo>(a: Evaluatable<{ N + N }>) {
-   |                         ^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo<N>::{constant#0}`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo<N>::{constant#1}`
 
 error[E0741]: `Foo` must implement `ConstParamTy` to be used as the type of a const generic parameter
   --> $DIR/unify-op-with-fn-call.rs:20:17
@@ -49,23 +49,23 @@ LL + #[derive(ConstParamTy)]
 LL | struct Foo(u8);
    |
 
-error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`
+error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#1}`
   --> $DIR/unify-op-with-fn-call.rs:29:28
    |
 LL | fn foo2<const N: usize>(a: Evaluatable2<{ N + N }>) {
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#0}`
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#1}`
 
-error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#0}`
+error[E0284]: type annotations needed: cannot normalize `foo<N>::{constant#1}`
   --> $DIR/unify-op-with-fn-call.rs:21:11
    |
 LL |     bar::<{ std::ops::Add::add(N, N) }>();
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo<N>::{constant#0}`
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo<N>::{constant#1}`
 
-error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#0}`
+error[E0284]: type annotations needed: cannot normalize `foo2<N>::{constant#1}`
   --> $DIR/unify-op-with-fn-call.rs:30:12
    |
 LL |     bar2::<{ std::ops::Add::add(N, N) }>();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#0}`
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot normalize `foo2<N>::{constant#1}`
 
 error: aborting due to 8 previous errors
 

@@ -32,7 +32,7 @@ LL | |     }
    | |_____^ types differ
    |
    = note: expected opaque type `impl Coroutine<Yield = (), Return = ()>`
-                found coroutine `{coroutine@$DIR/recursive-coroutine-boxed.rs:14:18: 14:20}`
+                found coroutine `{coroutine@$DIR/recursive-coroutine-boxed.rs:14:18: 22:6}`
 
 error: aborting due to 2 previous errors
 

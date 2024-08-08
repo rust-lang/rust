@@ -1,11 +1,17 @@
 error: changes to closure capture in Rust 2021 will affect which traits the closure implements
   --> $DIR/auto_traits.rs:22:19
    |
-LL |     thread::spawn(move || unsafe {
-   |                   ^^^^^^^ in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr` is not fully captured and `fptr.0` does not implement `Send`
-...
-LL |         *fptr.0 = 20;
-   |         ------- in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0`
+LL |       thread::spawn(move || unsafe {
+   |  ___________________^
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         *fptr.0 = 20;
+   | |         ------- in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0`
+LL | |
+LL | |     }).join().unwrap();
+   | |_____^ in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr` is not fully captured and `fptr.0` does not implement `Send`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
@@ -25,14 +31,20 @@ LL ~     } }).join().unwrap();
 error: changes to closure capture in Rust 2021 will affect which traits the closure implements
   --> $DIR/auto_traits.rs:42:19
    |
-LL |     thread::spawn(move || unsafe {
-   |                   ^^^^^^^
-   |                   |
-   |                   in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr` is not fully captured and `fptr.0.0` does not implement `Send`
-   |                   in Rust 2018, this closure implements `Sync` as `fptr` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` because `fptr` is not fully captured and `fptr.0.0` does not implement `Sync`
-...
-LL |         *fptr.0.0 = 20;
-   |         --------- in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0.0`
+LL |       thread::spawn(move || unsafe {
+   |  ___________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |         *fptr.0.0 = 20;
+   | |         --------- in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0.0`
+LL | |
+LL | |     }).join().unwrap();
+   | |     ^
+   | |     |
+   | |_____in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` because `fptr` is not fully captured and `fptr.0.0` does not implement `Send`
+   |       in Rust 2018, this closure implements `Sync` as `fptr` implements `Sync`, but in Rust 2021, this closure will no longer implement `Sync` because `fptr` is not fully captured and `fptr.0.0` does not implement `Sync`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `fptr` to be fully captured
@@ -47,14 +59,21 @@ LL ~     } }).join().unwrap();
 error: changes to closure capture in Rust 2021 will affect drop order and which traits the closure implements
   --> $DIR/auto_traits.rs:67:13
    |
-LL |     let c = || {
-   |             ^^ in Rust 2018, this closure implements `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f` is not fully captured and `f.1` does not implement `Clone`
+LL |       let c = || {
+   |  _____________^
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         let f_1 = f.1;
+   | |                   --- in Rust 2018, this closure captures all of `f`, but in Rust 2021, it will only capture `f.1`
+LL | |
+LL | |         println!("{:?}", f_1.0);
+LL | |     };
+   | |_____^ in Rust 2018, this closure implements `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` because `f` is not fully captured and `f.1` does not implement `Clone`
 ...
-LL |         let f_1 = f.1;
-   |                   --- in Rust 2018, this closure captures all of `f`, but in Rust 2021, it will only capture `f.1`
-...
-LL | }
-   | - in Rust 2018, `f` is dropped here, but in Rust 2021, only `f.1` will be dropped here as part of the closure
+LL |   }
+   |   - in Rust 2018, `f` is dropped here, but in Rust 2021, only `f.1` will be dropped here as part of the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f` to be fully captured

@@ -59,7 +59,7 @@ note: closure defined here
   --> $DIR/exotic-calls.rs:21:13
    |
 LL |     let x = || {};
-   |             ^^
+   |             ^^^^^
 help: remove the extra argument
    |
 LL -     x(1i32);

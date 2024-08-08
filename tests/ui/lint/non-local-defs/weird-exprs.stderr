@@ -1,17 +1,13 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:10:5
    |
-LL |   type A = [u32; {
-   |  ________________-
-LL | |     impl Uto for *mut Test {}
-   | |     ^^^^^---^^^^^---------
-   | |          |       |
-   | |          |       `*mut Test` is not local
-   | |          `Uto` is not local
-LL | |
-...  |
-LL | | }];
-   | |_- move the `impl` block outside of this constant expression `<unnameable>`
+LL | type A = [u32; {
+   | ------ move the `impl` block outside of this type alias `A`
+LL |     impl Uto for *mut Test {}
+   |     ^^^^^---^^^^^---------
+   |          |       |
+   |          |       `*mut Test` is not local
+   |          `Uto` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -25,17 +21,13 @@ LL | #![warn(non_local_definitions)]
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:18:9
    |
-LL |       Discr = {
-   |  _____________-
-LL | |         impl Uto for Test {}
-   | |         ^^^^^---^^^^^----
-   | |              |       |
-   | |              |       `Test` is not local
-   | |              `Uto` is not local
-LL | |
-...  |
-LL | |     }
-   | |_____- move the `impl` block outside of this constant expression `<unnameable>`
+LL |     Discr = {
+   |     ----- move the `impl` block outside of this variant `Discr`
+LL |         impl Uto for Test {}
+   |         ^^^^^---^^^^^----
+   |              |       |
+   |              |       `Test` is not local
+   |              `Uto` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -44,18 +36,13 @@ LL | |     }
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:27:9
    |
-LL |       let _array = [0i32; {
-   |  _________________________-
-LL | |         impl Test {
-   | |         ^^^^^----
-   | |              |
-   | |              `Test` is not local
-LL | |
-LL | |             fn bar() {}
-...  |
-LL | |         1
-LL | |     }];
-   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main` and up 2 bodies
+LL |     let _array = [0i32; {
+LL |         impl Test {
+   |         ^^^^^----
+   |              |
+   |              `Test` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -63,17 +50,13 @@ LL | |     }];
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:36:9
    |
-LL |       type A = [u32; {
-   |  ____________________-
-LL | |         impl Uto for &Test {}
-   | |         ^^^^^---^^^^^-----
-   | |              |       |
-   | |              |       `&'_ Test` is not local
-   | |              `Uto` is not local
-LL | |
-...  |
-LL | |     }];
-   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+LL |     type A = [u32; {
+   |     ------ move the `impl` block outside of this type alias `A` and up 2 bodies
+LL |         impl Uto for &Test {}
+   |         ^^^^^---^^^^^-----
+   |              |       |
+   |              |       `&'_ Test` is not local
+   |              `Uto` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -82,8 +65,7 @@ LL | |     }];
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:43:9
    |
-LL |       fn a(_: [u32; {
-   |  ___________________-
+LL | /     fn a(_: [u32; {
 LL | |         impl Uto for &(Test,) {}
    | |         ^^^^^---^^^^^--------
    | |              |       |
@@ -92,7 +74,7 @@ LL | |         impl Uto for &(Test,) {}
 LL | |
 ...  |
 LL | |     }]) {}
-   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+   | |_______- move the `impl` block outside of this function `a` and up 2 bodies
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
@@ -101,8 +83,7 @@ LL | |     }]) {}
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/weird-exprs.rs:50:9
    |
-LL |       fn b() -> [u32; {
-   |  _____________________-
+LL | /     fn b() -> [u32; {
 LL | |         impl Uto for &(Test,Test) {}
    | |         ^^^^^---^^^^^------------
    | |              |       |
@@ -111,7 +92,7 @@ LL | |         impl Uto for &(Test,Test) {}
 LL | |
 ...  |
 LL | |     }] { todo!() }
-   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+   | |______- move the `impl` block outside of this function `b` and up 2 bodies
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`

@@ -19,7 +19,7 @@ note: closure defined here
   --> $DIR/cyclic_type_ice.rs:2:13
    |
 LL |     let f = |_, _| ();
-   |             ^^^^^^
+   |             ^^^^^^^^^
 help: provide the argument
    |
 LL |     f(/*  */, /*  */);

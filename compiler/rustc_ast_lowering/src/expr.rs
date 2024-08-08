@@ -70,6 +70,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 _ => (),
             }
 
+            self.create_def_if_needed_for(e);
             let hir_id = self.lower_node_id(e.id);
             self.lower_attrs(hir_id, &e.attrs);
 
@@ -77,13 +78,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(c) => {
                     let c = self.with_new_scopes(c.value.span, |this| {
-                        let def_id = this.create_def(
-                            this.current_def_id_parent,
-                            c.id,
-                            kw::Empty,
-                            DefKind::InlineConst,
-                            c.value.span,
-                        );
+                        let def_id = this.local_def_id(c.id);
                         hir::ConstBlock {
                             def_id,
                             hir_id: this.lower_node_id(c.id),
@@ -214,13 +209,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     fn_decl_span,
                     fn_arg_span,
                 }) => {
-                    let closure_def = self.create_def(
-                        self.current_def_id_parent,
-                        e.id,
-                        kw::Empty,
-                        DefKind::Closure,
-                        e.span,
-                    );
+                    let closure_def = self.local_def_id(e.id);
                     self.with_def_id_parent(closure_def, |this| match coroutine_kind {
                         Some(coroutine_kind) => this.lower_expr_coroutine_closure(
                             binder,
@@ -369,6 +358,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             hir::Expr { hir_id, kind, span: self.lower_span(e.span) }
         })
+    }
+
+    /// HACK(min_generic_const_args): we delay creation of expression defs until ast_lowering
+    ///
+    /// This only creates a def for the top-level expression. If it has nested expressions that
+    /// need defs, those are handled by the recursion in the main lowering logic.
+    fn create_def_if_needed_for(&mut self, e: &Expr) {
+        match &e.kind {
+            ExprKind::ConstBlock(c) => {
+                self.create_def(
+                    self.current_def_id_parent,
+                    c.id,
+                    kw::Empty,
+                    DefKind::InlineConst,
+                    c.value.span,
+                );
+            }
+            ExprKind::Closure(_) => {
+                self.create_def(
+                    self.current_def_id_parent,
+                    e.id,
+                    kw::Empty,
+                    DefKind::Closure,
+                    e.span,
+                );
+            }
+            _ => {}
+        }
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {

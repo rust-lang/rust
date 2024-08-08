@@ -1,4 +1,4 @@
-error: reached the recursion limit while instantiating `A::matches::<{closure@$DIR/issue-22638.rs:42:23: 42:25}>`
+error: reached the recursion limit while instantiating `A::matches::<{closure@$DIR/issue-22638.rs:42:23: 44:10}>`
   --> $DIR/issue-22638.rs:54:9
    |
 LL |         a.matches(f)

@@ -55,7 +55,7 @@ LL | /     move || {
 LL | |         x;
    | |         - closure captures itself here
 LL | |     }
-   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:34:5: 34:12}`
+   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:34:5: 36:6}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:39:29
@@ -67,7 +67,7 @@ LL | /     move || {
 LL | |         &x;
    | |          - closure captures itself here
 LL | |     }
-   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:42:5: 42:12}`
+   | |_____- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:42:5: 44:6}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:47:21
@@ -76,7 +76,7 @@ LL | fn closure_sig() -> impl Sized {
    |                     ^^^^^^^^^^ recursive opaque type
 LL |
 LL |     || closure_sig()
-   |     ---------------- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:49:5: 49:7}`
+   |     ---------------- returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:49:5: 49:21}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:52:23
@@ -85,7 +85,7 @@ LL | fn coroutine_sig() -> impl Sized {
    |                       ^^^^^^^^^^ recursive opaque type
 LL |
 LL |     || coroutine_sig()
-   |     ------------------ returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:54:5: 54:7}`
+   |     ------------------ returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:54:5: 54:23}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:57:27
@@ -98,7 +98,7 @@ LL | |         yield;
 LL | |         x;
    | |         - coroutine captures itself here
 LL | |     }
-   | |_____- returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:62:5: 62:12}`
+   | |_____- returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:62:5: 65:6}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:68:35

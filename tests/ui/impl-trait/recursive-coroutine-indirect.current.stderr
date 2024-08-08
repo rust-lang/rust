@@ -1,10 +1,14 @@
 error[E0733]: recursion in a coroutine requires boxing
   --> $DIR/recursive-coroutine-indirect.rs:11:18
    |
-LL |     #[coroutine] move || {
-   |                  ^^^^^^^
-LL |         let x = coroutine_hold();
-   |             - recursive call here
+LL |       #[coroutine] move || {
+   |  __________________^
+LL | |         let x = coroutine_hold();
+   | |             - recursive call here
+LL | |         yield;
+LL | |         x;
+LL | |     }
+   | |_____^
 
 error: aborting due to 1 previous error
 

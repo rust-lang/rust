@@ -37,10 +37,10 @@ LL | |         .collect();
    |
    |
    = note: the following trait bounds were not satisfied:
-           `<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 7:25}> as Iterator>::Item = &_`
-           which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 7:25}>>: Iterator`
-           `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 7:25}>>: Iterator`
-           which is required by `&mut Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 7:25}>>: Iterator`
+           `<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 10:10}> as Iterator>::Item = &_`
+           which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 10:10}>>: Iterator`
+           `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 10:10}>>: Iterator`
+           which is required by `&mut Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, {closure@$DIR/issue-31173.rs:7:21: 10:10}>>: Iterator`
 
 error: aborting due to 2 previous errors
 

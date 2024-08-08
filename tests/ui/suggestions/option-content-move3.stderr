@@ -1,13 +1,15 @@
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move3.rs:13:21
    |
-LL |     let var = NotCopyable;
-   |         --- captured outer variable
+LL |       let var = NotCopyable;
+   |           --- captured outer variable
 ...
-LL |         move || {
-   |         ------- captured by this `FnMut` closure
-LL |             let x = var;
-   |                     ^^^ move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
+LL | /         move || {
+LL | |             let x = var;
+   | |                     ^^^ move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
+LL | |             println!("{x:?}");
+LL | |         }
+   | |_________- captured by this `FnMut` closure
    |
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
@@ -25,18 +27,22 @@ LL |             let x = &var;
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move3.rs:12:9
    |
-LL |     let var = NotCopyable;
-   |         --- captured outer variable
-LL |     func(|| {
-   |          -- captured by this `FnMut` closure
-LL |         // Shouldn't suggest `move ||.as_ref()` here
-LL |         move || {
-   |         ^^^^^^^ `var` is moved here
-LL |             let x = var;
-   |                     ---
-   |                     |
-   |                     variable moved due to use in closure
-   |                     move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
+LL |       let var = NotCopyable;
+   |           --- captured outer variable
+LL |       func(|| {
+   |  __________-
+LL | |         // Shouldn't suggest `move ||.as_ref()` here
+LL | |         move || {
+   | |         ^^^^^^^ `var` is moved here
+LL | |             let x = var;
+   | |                     ---
+   | |                     |
+   | |                     variable moved due to use in closure
+   | |                     move occurs because `var` has type `NotCopyable`, which does not implement the `Copy` trait
+LL | |             println!("{x:?}");
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
    |
 note: if `NotCopyable` implemented `Clone`, you could clone the value
   --> $DIR/option-content-move3.rs:2:1
@@ -50,13 +56,15 @@ LL |             let x = var;
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move3.rs:24:21
    |
-LL |     let var = NotCopyableButCloneable;
-   |         --- captured outer variable
+LL |       let var = NotCopyableButCloneable;
+   |           --- captured outer variable
 ...
-LL |         move || {
-   |         ------- captured by this `FnMut` closure
-LL |             let x = var;
-   |                     ^^^ move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
+LL | /         move || {
+LL | |             let x = var;
+   | |                     ^^^ move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
+LL | |             println!("{x:?}");
+LL | |         }
+   | |_________- captured by this `FnMut` closure
    |
 help: consider borrowing here
    |
@@ -66,18 +74,22 @@ LL |             let x = &var;
 error[E0507]: cannot move out of `var`, a captured variable in an `FnMut` closure
   --> $DIR/option-content-move3.rs:23:9
    |
-LL |     let var = NotCopyableButCloneable;
-   |         --- captured outer variable
-LL |     func(|| {
-   |          -- captured by this `FnMut` closure
-LL |         // Shouldn't suggest `move ||.as_ref()` here
-LL |         move || {
-   |         ^^^^^^^ `var` is moved here
-LL |             let x = var;
-   |                     ---
-   |                     |
-   |                     variable moved due to use in closure
-   |                     move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
+LL |       let var = NotCopyableButCloneable;
+   |           --- captured outer variable
+LL |       func(|| {
+   |  __________-
+LL | |         // Shouldn't suggest `move ||.as_ref()` here
+LL | |         move || {
+   | |         ^^^^^^^ `var` is moved here
+LL | |             let x = var;
+   | |                     ---
+   | |                     |
+   | |                     variable moved due to use in closure
+   | |                     move occurs because `var` has type `NotCopyableButCloneable`, which does not implement the `Copy` trait
+LL | |             println!("{x:?}");
+LL | |         }
+LL | |     });
+   | |_____- captured by this `FnMut` closure
    |
 help: clone the value before moving it into the closure
    |

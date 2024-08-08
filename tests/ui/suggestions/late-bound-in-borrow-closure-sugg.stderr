@@ -1,13 +1,16 @@
 error[E0631]: type mismatch in closure arguments
   --> $DIR/late-bound-in-borrow-closure-sugg.rs:26:24
    |
-LL |     let closure = |trader : Trader| {
-   |                   ----------------- found signature defined here
+LL |       let closure = |trader : Trader| {
+   |  ___________________-
+LL | |         println!("Woooosh!");
+LL | |     };
+   | |_____- found signature defined here
 ...
-LL |     trader.set_closure(closure);
-   |            ----------- ^^^^^^^ expected due to this
-   |            |
-   |            required by a bound introduced by this call
+LL |       trader.set_closure(closure);
+   |              ----------- ^^^^^^^ expected due to this
+   |              |
+   |              required by a bound introduced by this call
    |
    = note: expected closure signature `for<'a, 'b> fn(&'a mut Trader<'b>) -> _`
               found closure signature `fn(Trader<'_>) -> _`

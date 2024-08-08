@@ -92,7 +92,7 @@ note: closure defined here
   --> $DIR/basic.rs:26:19
    |
 LL |     let closure = |x| x;
-   |                   ^^^
+   |                   ^^^^^
 help: provide the argument
    |
 LL |     closure(/* x */);

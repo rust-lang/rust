@@ -1,15 +1,18 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnMut`
   --> $DIR/issue-34349.rs:16:17
    |
-LL |     let diary = || {
-   |                 ^^ this closure implements `FnMut`, not `Fn`
-LL |         farewell.push_str("!!!");
-   |         -------- closure is `FnMut` because it mutates the variable `farewell` here
-...
-LL |     apply(diary);
-   |     ----- ----- the requirement to implement `Fn` derives from here
-   |     |
-   |     required by a bound introduced by this call
+LL |       let diary = || {
+   |  _________________^
+LL | |         farewell.push_str("!!!");
+   | |         -------- closure is `FnMut` because it mutates the variable `farewell` here
+LL | |         println!("Then I screamed {}.", farewell);
+LL | |     };
+   | |_____^ this closure implements `FnMut`, not `Fn`
+LL |
+LL |       apply(diary);
+   |       ----- ----- the requirement to implement `Fn` derives from here
+   |       |
+   |       required by a bound introduced by this call
    |
 note: required by a bound in `apply`
   --> $DIR/issue-34349.rs:11:32

@@ -1,12 +1,17 @@
 error[E0277]: the trait bound `Foo: Trait` is not satisfied
   --> $DIR/parent-label.rs:14:11
    |
-LL |     let x = || {
-   |             -- in this scope
-LL |         f(Foo {});
-   |         - ^^^^^^ the trait `Trait` is not implemented for `Foo`
-   |         |
-   |         required by a bound introduced by this call
+LL |       let x = || {
+   |  _____________-
+LL | |         f(Foo {});
+   | |         - ^^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |         |
+   | |         required by a bound introduced by this call
+LL | |         let y = || {
+LL | |             f(Foo {});
+LL | |         };
+LL | |     };
+   | |_____- in this scope
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/parent-label.rs:6:1
@@ -22,12 +27,14 @@ LL | fn f<T: Trait>(x: T) {}
 error[E0277]: the trait bound `Foo: Trait` is not satisfied
   --> $DIR/parent-label.rs:16:15
    |
-LL |         let y = || {
-   |                 -- in this scope
-LL |             f(Foo {});
-   |             - ^^^^^^ the trait `Trait` is not implemented for `Foo`
-   |             |
-   |             required by a bound introduced by this call
+LL |           let y = || {
+   |  _________________-
+LL | |             f(Foo {});
+   | |             - ^^^^^^ the trait `Trait` is not implemented for `Foo`
+   | |             |
+   | |             required by a bound introduced by this call
+LL | |         };
+   | |_________- in this scope
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/parent-label.rs:6:1

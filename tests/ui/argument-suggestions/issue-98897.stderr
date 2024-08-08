@@ -8,7 +8,7 @@ note: closure defined here
   --> $DIR/issue-98897.rs:2:6
    |
 LL |     (|_, ()| ())([return, ()]);
-   |      ^^^^^^^
+   |      ^^^^^^^^^^
 help: provide the argument
    |
 LL |     (|_, ()| ())([return, ()], ());

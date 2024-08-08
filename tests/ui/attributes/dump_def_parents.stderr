@@ -1,8 +1,14 @@
 error: rustc_dump_def_parents: DefId(..)
   --> $DIR/dump_def_parents.rs:8:13
    |
-LL |             || {
-   |             ^^
+LL | /             || {
+LL | |
+LL | |                 qux::<
+LL | |                     {
+...  |
+LL | |                 >();
+LL | |             };
+   | |_____________^
    |
 note: DefId(..)
   --> $DIR/dump_def_parents.rs:6:9
@@ -46,8 +52,14 @@ LL | |                     },
 note: DefId(..)
   --> $DIR/dump_def_parents.rs:8:13
    |
-LL |             || {
-   |             ^^
+LL | /             || {
+LL | |
+LL | |                 qux::<
+LL | |                     {
+...  |
+LL | |                 >();
+LL | |             };
+   | |_____________^
 note: DefId(..)
   --> $DIR/dump_def_parents.rs:6:9
    |
@@ -95,8 +107,14 @@ LL | |                     },
 note: DefId(..)
   --> $DIR/dump_def_parents.rs:8:13
    |
-LL |             || {
-   |             ^^
+LL | /             || {
+LL | |
+LL | |                 qux::<
+LL | |                     {
+...  |
+LL | |                 >();
+LL | |             };
+   | |_____________^
 note: DefId(..)
   --> $DIR/dump_def_parents.rs:6:9
    |

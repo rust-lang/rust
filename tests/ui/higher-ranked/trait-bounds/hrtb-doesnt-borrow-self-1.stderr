@@ -8,9 +8,9 @@ LL |     let filter = map.filterx(|x: &_| true);
    |                      ^^^^^^^ method cannot be called due to unsatisfied trait bounds
    |
 note: the following trait bounds were not satisfied:
-      `&'a mut &Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:115:27: 115:34}>: Stream`
-      `&'a mut &mut Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:115:27: 115:34}>: Stream`
-      `&'a mut Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:115:27: 115:34}>: Stream`
+      `&'a mut &Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:115:27: 115:36}>: Stream`
+      `&'a mut &mut Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:115:27: 115:36}>: Stream`
+      `&'a mut Map<Repeat, {closure@$DIR/hrtb-doesnt-borrow-self-1.rs:115:27: 115:36}>: Stream`
   --> $DIR/hrtb-doesnt-borrow-self-1.rs:98:50
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}

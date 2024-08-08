@@ -2,7 +2,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-ref-114180.rs:6:15
    |
 LL |     let compare = |(a,), (e,)| todo!();
-   |                   ------------ found signature defined here
+   |                   -------------------- found signature defined here
 LL |     v.sort_by(compare);
    |       ------- ^^^^^^^ expected due to this
    |       |

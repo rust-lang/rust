@@ -4,7 +4,7 @@ error[E0391]: cycle detected when evaluating type-level constant
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
+note: ...which requires const-evaluating + checking `Foo::{constant#0}`...
   --> $DIR/const-size_of-cycle.rs:4:17
    |
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]

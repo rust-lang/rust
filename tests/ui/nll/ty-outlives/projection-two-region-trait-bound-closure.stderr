@@ -2,7 +2,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:38:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: no_relationships_late::<'?1, '?2, T>::{closure#0} with closure args [
                i32,
@@ -38,7 +38,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: no_relationships_early::<'?1, '?2, '?3, T>::{closure#0} with closure args [
                i32,
@@ -74,7 +74,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: projection_outlives::<'?1, '?2, '?3, T>::{closure#0} with closure args [
                i32,
@@ -99,7 +99,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:70:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: elements_outlive1::<'?1, '?2, '?3, T>::{closure#0} with closure args [
                i32,
@@ -124,7 +124,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:79:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: elements_outlive2::<'?1, '?2, '?3, T>::{closure#0} with closure args [
                i32,
@@ -149,7 +149,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:87:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: two_regions::<'?1, T>::{closure#0} with closure args [
                i32,
@@ -190,7 +190,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:97:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: two_regions_outlive::<'?1, '?2, T>::{closure#0} with closure args [
                i32,
@@ -215,7 +215,7 @@ note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:109:29
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: one_region::<'?1, T>::{closure#0} with closure args [
                i32,

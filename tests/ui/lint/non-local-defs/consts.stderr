@@ -71,18 +71,13 @@ LL |     impl Test {
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:52:9
    |
-LL |       const {
-   |  ___________-
-LL | |         impl Test {
-   | |         ^^^^^----
-   | |              |
-   | |              `Test` is not local
-LL | |
-LL | |             fn hoo() {}
-...  |
-LL | |         1
-LL | |     };
-   | |_____- move the `impl` block outside of this inline constant `<unnameable>` and up 2 bodies
+LL | fn main() {
+   | --------- move the `impl` block outside of this function `main` and up 2 bodies
+...
+LL |         impl Test {
+   |         ^^^^^----
+   |              |
+   |              `Test` is not local
    |
    = note: methods and associated constants are still usable outside the current expression, only `impl Local` and `impl dyn Local` can ever be private, and only if the type is nested in the same item as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
@@ -102,38 +97,19 @@ LL |         impl Test {
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/consts.rs:74:9
-   |
-LL |     let _a = || {
-   |              -- move the `impl` block outside of this closure `<unnameable>` and up 2 bodies
-LL |         impl Uto9 for Test {}
-   |         ^^^^^----^^^^^----
-   |              |        |
-   |              |        `Test` is not local
-   |              `Uto9` is not local
-   |
-   = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
-   = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
-   = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
-
-warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
   --> $DIR/consts.rs:81:9
    |
-LL |       type A = [u32; {
-   |  ____________________-
-LL | |         impl Uto10 for Test {}
-   | |         ^^^^^-----^^^^^----
-   | |              |         |
-   | |              |         `Test` is not local
-   | |              `Uto10` is not local
-LL | |
-...  |
-LL | |     }];
-   | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies
+LL |     type A = [u32; {
+   |     ------ move the `impl` block outside of this type alias `A` and up 2 bodies
+LL |         impl Uto10 for Test {}
+   |         ^^^^^-----^^^^^----
+   |              |         |
+   |              |         `Test` is not local
+   |              `Uto10` is not local
    |
    = note: `impl` may be usable in bounds, etc. from outside the expression, which might e.g. make something constructible that previously wasn't, because it's still on a publicly-visible type
    = note: an `impl` is never scoped, even when it is nested inside an item, as it may impact type checking outside of that item, which can be the case if neither the trait or the self type are at the same nesting level as the `impl`
    = note: this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
-warning: 8 warnings emitted
+warning: 7 warnings emitted
 

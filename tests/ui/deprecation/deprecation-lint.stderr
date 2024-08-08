@@ -298,7 +298,7 @@ error: use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
 LL |         <Foo as Trait>::trait_deprecated_text(&foo);
    |                         ^^^^^^^^^^^^^^^^^^^^^
 
-error: use of deprecated function `this_crate::test_fn_closure_body::{closure#0}::bar`
+error: use of deprecated function `this_crate::test_fn_closure_body::bar`
   --> $DIR/deprecation-lint.rs:317:13
    |
 LL |             bar();

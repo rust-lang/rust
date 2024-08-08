@@ -1,14 +1,17 @@
 error[E0626]: borrow may still be in use when coroutine yields
   --> $DIR/coroutine-with-nll.rs:8:17
    |
-LL |     || {
-   |     -- within this coroutine
-...
-LL |         let b = &mut true;
-   |                 ^^^^^^^^^
-LL |
-LL |         yield ();
-   |         -------- possible yield occurs here
+LL | /     || {
+LL | |         // The reference in `_a` is a Legal with NLL since it ends before the yield
+LL | |         let _a = &mut true;
+LL | |         let b = &mut true;
+   | |                 ^^^^^^^^^
+LL | |
+LL | |         yield ();
+   | |         -------- possible yield occurs here
+LL | |         println!("{}", b);
+LL | |     };
+   | |_____- within this coroutine
    |
 help: add `static` to mark this coroutine as unmovable
    |

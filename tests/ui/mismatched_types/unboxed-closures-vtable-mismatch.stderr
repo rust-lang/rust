@@ -2,7 +2,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/unboxed-closures-vtable-mismatch.rs:16:24
    |
 LL |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
-   |                       ----------------------------- found signature defined here
+   |                       -------------------------------------------------- found signature defined here
 LL |
 LL |     let z = call_it(3, f);
    |             -------    ^ expected due to this
