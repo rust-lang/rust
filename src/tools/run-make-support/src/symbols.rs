@@ -28,12 +28,11 @@ pub fn any_symbol_contains(path: impl AsRef<Path>, substrings: &[&str]) -> bool 
     with_symbol_iter(path, |syms| {
         for sym in syms {
             for substring in substrings {
-                if sym
-                    .name_bytes()
-                    .unwrap()
-                    .windows(substring.len())
-                    .any(|x| x == substring.as_bytes())
-                {
+                let name = sym.name_bytes().unwrap();
+                if name.starts_with(b"__imp_") {
+                    continue;
+                }
+                if name.windows(substring.len()).any(|x| x == substring.as_bytes()) {
                     eprintln!("{:?} contains {}", sym, substring);
                     return true;
                 }
