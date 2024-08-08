@@ -9,16 +9,15 @@
 //! ensure that they're always in place if needed.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
+use super::llvm::HashStamp;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
 use crate::{generate_smart_stamp_hash, Kind};
-
-use super::llvm::HashStamp;
 
 pub struct Meta {
     stamp: HashStamp,
@@ -38,13 +37,13 @@ pub enum GccBuildStatus {
 /// GCC, it's fine for us to not try to avoid doing so.
 pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
     // If we have gcc submodule initialized already, sync it.
-    builder.update_existing_submodule(&Path::new("src").join("gcc"));
+    builder.update_existing_submodule("src/gcc");
 
     // FIXME (GuillaumeGomez): To be done once gccjit has been built in the CI.
     // builder.config.maybe_download_ci_gcc();
 
     // Initialize the gcc submodule if not initialized already.
-    builder.update_submodule(&Path::new("src").join("gcc"));
+    builder.update_submodule("src/gcc");
 
     let root = "src/gcc";
     let out_dir = builder.gcc_out(target).join("build");
@@ -199,18 +198,17 @@ impl Step for Gcc {
             return true;
         }
 
-        builder.run(
-            command(root.join("configure"))
-                .current_dir(&out_dir)
-                .arg("--enable-host-shared")
-                .arg("--enable-languages=jit")
-                .arg("--enable-checking=release")
-                .arg("--disable-bootstrap")
-                .arg("--disable-multilib")
-                .arg(format!("--prefix={}", install_dir.display())),
-        );
-        builder.run(command("make").current_dir(&out_dir).arg(format!("-j{}", builder.jobs())));
-        builder.run(command("make").current_dir(&out_dir).arg("install"));
+        command(root.join("configure"))
+            .current_dir(&out_dir)
+            .arg("--enable-host-shared")
+            .arg("--enable-languages=jit")
+            .arg("--enable-checking=release")
+            .arg("--disable-bootstrap")
+            .arg("--disable-multilib")
+            .arg(format!("--prefix={}", install_dir.display()))
+            .run(builder);
+        command("make").current_dir(&out_dir).arg(format!("-j{}", builder.jobs())).run(builder);
+        command("make").current_dir(&out_dir).arg("install").run(builder);
 
         t!(builder.symlink_file(
             install_dir.join("lib/libgccjit.so"),
