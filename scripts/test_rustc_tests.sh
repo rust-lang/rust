@@ -39,6 +39,7 @@ rm tests/ui/simd/dont-invalid-bitcast-x86_64.rs # unimplemented llvm.x86.sse41.r
 # exotic linkages
 rm tests/incremental/hashes/function_interfaces.rs
 rm tests/incremental/hashes/statics.rs
+rm -r tests/run-make/naked-symbol-visibility
 
 # variadic arguments
 rm tests/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
