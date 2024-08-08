@@ -602,7 +602,7 @@ impl OutputType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
-    HumanReadable(HumanReadableErrorType),
+    HumanReadable(HumanReadableErrorType, ColorConfig),
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
     Json {
         /// Render the JSON in a human readable way (with indents and newlines).
@@ -610,12 +610,13 @@ pub enum ErrorOutputType {
         /// The JSON output includes a `rendered` field that includes the rendered
         /// human output.
         json_rendered: HumanReadableErrorType,
+        color_config: ColorConfig,
     },
 }
 
 impl Default for ErrorOutputType {
     fn default() -> Self {
-        Self::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
+        Self::HumanReadable(HumanReadableErrorType::Default, ColorConfig::Auto)
     }
 }
 
@@ -1631,6 +1632,7 @@ pub fn parse_color(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Col
 /// Possible json config files
 pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
+    pub json_color: ColorConfig,
     json_artifact_notifications: bool,
     pub json_unused_externs: JsonUnusedExterns,
     json_future_incompat: bool,
@@ -1668,8 +1670,7 @@ impl JsonUnusedExterns {
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
 pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
-    let mut json_rendered: fn(ColorConfig) -> HumanReadableErrorType =
-        HumanReadableErrorType::Default;
+    let mut json_rendered = HumanReadableErrorType::Default;
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
@@ -1696,7 +1697,8 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
     }
 
     JsonConfig {
-        json_rendered: json_rendered(json_color),
+        json_rendered,
+        json_color,
         json_artifact_notifications,
         json_unused_externs,
         json_future_incompat,
@@ -1708,6 +1710,7 @@ pub fn parse_error_format(
     early_dcx: &mut EarlyDiagCtxt,
     matches: &getopts::Matches,
     color: ColorConfig,
+    json_color: ColorConfig,
     json_rendered: HumanReadableErrorType,
 ) -> ErrorOutputType {
     // We need the `opts_present` check because the driver will send us Matches
@@ -1717,18 +1720,22 @@ pub fn parse_error_format(
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_deref() {
             None | Some("human") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default, color)
             }
             Some("human-annotate-rs") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(color))
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet, color)
             }
-            Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
-            Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
-            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
-
+            Some("json") => {
+                ErrorOutputType::Json { pretty: false, json_rendered, color_config: json_color }
+            }
+            Some("pretty-json") => {
+                ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
+            }
+            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short, color),
             Some(arg) => {
                 early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::HumanReadable(
-                    HumanReadableErrorType::Default(color),
+                    HumanReadableErrorType::Default,
+                    color,
                 ));
                 early_dcx.early_fatal(format!(
                     "argument for `--error-format` must be `human`, `json` or \
@@ -1737,7 +1744,7 @@ pub fn parse_error_format(
             }
         }
     } else {
-        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
+        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default, color)
     };
 
     match error_format {
@@ -1791,7 +1798,7 @@ fn check_error_format_stability(
         if let ErrorOutputType::Json { pretty: true, .. } = error_format {
             early_dcx.early_fatal("`--error-format=pretty-json` is unstable");
         }
-        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
+        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet, _) =
             error_format
         {
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
@@ -2392,12 +2399,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let JsonConfig {
         json_rendered,
+        json_color,
         json_artifact_notifications,
         json_unused_externs,
         json_future_incompat,
     } = parse_json(early_dcx, matches);
 
-    let error_format = parse_error_format(early_dcx, matches, color, json_rendered);
+    let error_format = parse_error_format(early_dcx, matches, color, json_color, json_rendered);
 
     early_dcx.abort_if_error_and_set_error_format(error_format);
 

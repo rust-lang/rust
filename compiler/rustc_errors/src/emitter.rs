@@ -43,20 +43,9 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
-    Default(ColorConfig),
-    AnnotateSnippet(ColorConfig),
-    Short(ColorConfig),
-}
-
-impl HumanReadableErrorType {
-    /// Returns a (`short`, `color`) tuple
-    pub fn unzip(self) -> (bool, ColorConfig) {
-        match self {
-            HumanReadableErrorType::Default(cc) => (false, cc),
-            HumanReadableErrorType::Short(cc) => (true, cc),
-            HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
-        }
-    }
+    Default,
+    AnnotateSnippet,
+    Short,
 }
 
 #[derive(Clone, Copy, Debug)]
