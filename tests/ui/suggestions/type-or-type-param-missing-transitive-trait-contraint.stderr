@@ -57,8 +57,25 @@ help: consider restricting the type parameter to satisfy the trait bound
 LL | fn qux<Z>(ctx: &mut Ctx<Z>) where Z: PartialEq {
    |                             ++++++++++++++++++
 
+error[E0277]: the trait bound `Z: Eq` is not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:26:6
+   |
+LL |     <_ as Eq>::assert_receiver_is_total_eq(&ctx.a_map["a"]);
+   |      ^ the trait `Eq` is not implemented for `Z`, which is required by `B<Z>: Eq`
+   |
+note: required for `B<Z>` to implement `Eq`
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:28
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider restricting type parameter `Z`
+   |
+LL | fn qux<Z: std::cmp::Eq>(ctx: &mut Ctx<Z>) {
+   |         ++++++++++++++
+
 error[E0599]: the method `eq` exists for struct `B<S>`, but its trait bounds were not satisfied
-  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:29:20
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:30:20
    |
 LL | struct B<A> {
    | ----------- method `eq` not found for this struct because it doesn't satisfy `B<S>: Iterator` or `B<S>: PartialEq`
@@ -85,6 +102,26 @@ LL + #[derive(PartialEq)]
 LL | struct S;
    |
 
-error: aborting due to 4 previous errors
+error[E0277]: the trait bound `S: Eq` is not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:31:6
+   |
+LL |     <_ as Eq>::assert_receiver_is_total_eq(&ctx.a_map["a"]);
+   |      ^ the trait `Eq` is not implemented for `S`, which is required by `B<S>: Eq`
+   |
+   = help: the trait `Eq` is implemented for `B<A>`
+note: required for `B<S>` to implement `Eq`
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:28
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `S` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct S;
+   |
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

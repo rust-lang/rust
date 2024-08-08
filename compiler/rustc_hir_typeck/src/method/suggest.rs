@@ -1376,7 +1376,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lang.copy_trait(),
                         lang.clone_trait(),
                         tcx.get_diagnostic_item(sym::Debug),
-                        tcx.get_diagnostic_item(sym::Eq),
                         tcx.get_diagnostic_item(sym::PartialEq),
                         tcx.get_diagnostic_item(sym::Default),
                     ]

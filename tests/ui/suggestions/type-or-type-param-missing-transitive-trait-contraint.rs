@@ -23,10 +23,12 @@ fn bar(ctx: &mut Ctx<S>) {
 
 fn qux<Z>(ctx: &mut Ctx<Z>) {
     ctx.a_map["a"].eq(&ctx.a_map["a"]); //~ ERROR E0599
+    <_ as Eq>::assert_receiver_is_total_eq(&ctx.a_map["a"]); //~ ERROR E0277
 }
 
 fn qut(ctx: &mut Ctx<S>) {
     ctx.a_map["a"].eq(&ctx.a_map["a"]); //~ ERROR E0599
+    <_ as Eq>::assert_receiver_is_total_eq(&ctx.a_map["a"]); //~ ERROR E0277
 }
 
 fn main() {}
