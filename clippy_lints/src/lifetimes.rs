@@ -543,7 +543,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
-                for bound in bounds {
+                for (bound, _) in bounds {
                     self.visit_poly_trait_ref(bound);
                 }
             },

@@ -1,4 +1,3 @@
-#![feature(is_sorted)]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
