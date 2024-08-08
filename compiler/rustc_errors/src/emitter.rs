@@ -2595,9 +2595,7 @@ fn num_decimal_digits(num: usize) -> usize {
 
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 // Keep the following list in sync with `rustc_span::char_width`.
-// ATTENTION: keep lexicografically sorted so that the binary search will work
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
-    // tidy-alphabetical-start
     // In terminals without Unicode support the following will be garbled, but in *all* terminals
     // the underlying codepoint will be as well. We could gate this replacement behind a "unicode
     // support" gate.
@@ -2610,7 +2608,7 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{0006}', "␆"),
     ('\u{0007}', "␇"),
     ('\u{0008}', "␈"),
-    ('\u{0009}', "    "), // We do our own tab replacement
+    ('\t', "    "), // We do our own tab replacement
     ('\u{000b}', "␋"),
     ('\u{000c}', "␌"),
     ('\u{000d}', "␍"),
@@ -2643,13 +2641,23 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{2067}', "�"),
     ('\u{2068}', "�"),
     ('\u{2069}', "�"),
-    // tidy-alphabetical-end
 ];
 
 fn normalize_whitespace(s: &str) -> String {
-    // Scan the input string for a character in the ordered table above. If it's present, replace
-    // it with it's alternative string (it can be more than 1 char!). Otherwise, retain the input
-    // char. At the end, allocate all chars into a string in one operation.
+    const {
+        let mut i = 1;
+        while i < OUTPUT_REPLACEMENTS.len() {
+            assert!(
+                OUTPUT_REPLACEMENTS[i - 1].0 < OUTPUT_REPLACEMENTS[i].0,
+                "The OUTPUT_REPLACEMENTS array must be sorted (for binary search to work) \
+                and must contain no duplicate entries"
+            );
+            i += 1;
+        }
+    }
+    // Scan the input string for a character in the ordered table above.
+    // If it's present, replace it with its alternative string (it can be more than 1 char!).
+    // Otherwise, retain the input char.
     s.chars().fold(String::with_capacity(s.len()), |mut s, c| {
         match OUTPUT_REPLACEMENTS.binary_search_by_key(&c, |(k, _)| *k) {
             Ok(i) => s.push_str(OUTPUT_REPLACEMENTS[i].1),
