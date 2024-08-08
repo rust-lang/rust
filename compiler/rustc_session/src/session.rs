@@ -951,7 +951,7 @@ fn default_emitter(
     };
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable(kind, color_config) => {
-            let short = matches!(kind, HumanReadableErrorType::Short);
+            let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
                 let emitter = AnnotateSnippetEmitter::new(
@@ -1427,7 +1427,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable(kind, color_config) => {
-            let short = matches!(kind, HumanReadableErrorType::Short);
+            let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .short_message(short),

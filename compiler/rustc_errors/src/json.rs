@@ -176,7 +176,7 @@ impl Emitter for JsonEmitter {
     }
 
     fn should_show_explain(&self) -> bool {
-        !matches!(self.json_rendered, HumanReadableErrorType::Short)
+        !self.json_rendered.short()
     }
 }
 
@@ -356,7 +356,7 @@ impl Diagnostic {
 
         let buf = BufWriter::default();
         let mut dst: Destination = Box::new(buf.clone());
-        let short = matches!(je.json_rendered, HumanReadableErrorType::Short);
+        let short = je.json_rendered.short();
         match je.color_config {
             ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
             ColorConfig::Never => {}

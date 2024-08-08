@@ -139,7 +139,7 @@ pub(crate) fn new_dcx(
     );
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable(kind, color_config) => {
-            let short = matches!(kind, HumanReadableErrorType::Short);
+            let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))

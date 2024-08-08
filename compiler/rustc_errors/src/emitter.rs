@@ -48,6 +48,12 @@ pub enum HumanReadableErrorType {
     Short,
 }
 
+impl HumanReadableErrorType {
+    pub fn short(&self) -> bool {
+        *self == HumanReadableErrorType::Short
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct Margin {
     /// The available whitespace in the left that can be consumed when centering.
