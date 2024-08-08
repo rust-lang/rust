@@ -119,7 +119,8 @@ impl Crate {
         cmd.arg(if config.fix { "fix" } else { "check" })
             .arg("--quiet")
             .current_dir(&self.path)
-            .env("CLIPPY_ARGS", clippy_args.join("__CLIPPY_HACKERY__"));
+            .env("CLIPPY_ARGS", clippy_args.join("__CLIPPY_HACKERY__"))
+            .env("CLIPPY_DISABLE_DOCS_LINKS", "1");
 
         if let Some(server) = server {
             // `cargo clippy` is a wrapper around `cargo check` that mainly sets `RUSTC_WORKSPACE_WRAPPER` to
