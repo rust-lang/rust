@@ -130,7 +130,7 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::Call(path_expr, _) => {
                 let sig = match *cx.typeck_results().expr_ty(path_expr).kind() {
                     ty::FnDef(id, _) => cx.tcx.fn_sig(id).skip_binder(),
-                    ty::FnPtr(sig) => sig,
+                    ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
                     _ => return Continue(Descend::Yes),
                 };
                 if sig.safety() == Safety::Unsafe {
