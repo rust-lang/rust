@@ -1876,7 +1876,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
