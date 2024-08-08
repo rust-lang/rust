@@ -130,7 +130,7 @@ impl<'tcx> Ty<'tcx> {
                 DefKind::Ctor(CtorOf::Variant, _) => "enum constructor".into(),
                 _ => "fn item".into(),
             },
-            ty::FnPtr(_) => "fn pointer".into(),
+            ty::FnPtr(..) => "fn pointer".into(),
             ty::Dynamic(inner, ..) if let Some(principal) = inner.principal() => {
                 format!("`dyn {}`", tcx.def_path_str(principal.def_id())).into()
             }
@@ -194,7 +194,7 @@ impl<'tcx> Ty<'tcx> {
                 DefKind::Ctor(CtorOf::Variant, _) => "enum constructor".into(),
                 _ => "fn item".into(),
             },
-            ty::FnPtr(_) => "fn pointer".into(),
+            ty::FnPtr(..) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) | ty::CoroutineClosure(..) => "closure".into(),
             ty::Coroutine(def_id, ..) => {

@@ -1636,7 +1636,7 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
             .generics_of(def_id)
             .host_effect_index
             .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
-        ty::FnPtr(_) => tcx.consts.true_,
+        ty::FnPtr(..) => tcx.consts.true_,
         _ => unreachable!("only expected FnPtr or FnDef in `confirm_fn_pointer_candidate`"),
     };
 

@@ -31,7 +31,7 @@ where
         | ty::Bool
         | ty::Float(_)
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Error(_)
         | ty::Never
         | ty::Char => Ok(vec![]),
@@ -117,7 +117,7 @@ where
         | ty::Bool
         | ty::Float(_)
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::RawPtr(..)
         | ty::Char
         | ty::Ref(..)
@@ -178,7 +178,7 @@ where
 {
     match ty.kind() {
         // impl Copy/Clone for FnDef, FnPtr
-        ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
+        ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Ok(vec![]),
 
         // Implementations are provided in core
         ty::Uint(_)
@@ -269,7 +269,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             }
         }
         // keep this in sync with assemble_fn_pointer_candidates until the old solver is removed.
-        ty::FnPtr(sig) => {
+        ty::FnPtr(sig_tys, hdr) => {
+            let sig = sig_tys.with(hdr);
             if sig.is_fn_trait_compatible() {
                 Ok(Some(
                     sig.map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),

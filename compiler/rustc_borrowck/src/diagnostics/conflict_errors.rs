@@ -3989,7 +3989,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             } else {
                 let ty = self.infcx.tcx.type_of(self.mir_def_id()).instantiate_identity();
                 match ty.kind() {
-                    ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
+                    ty::FnDef(_, _) | ty::FnPtr(..) => self.annotate_fn_sig(
                         self.mir_def_id(),
                         self.infcx.tcx.fn_sig(self.mir_def_id()).instantiate_identity(),
                     ),

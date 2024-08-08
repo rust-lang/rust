@@ -132,7 +132,7 @@ fn const_to_valtree_inner<'tcx>(
 
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
         // agree with runtime equality tests.
-        ty::FnPtr(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
+        ty::FnPtr(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
 
         ty::Ref(_, _, _)  => {
             let derefd_place = ecx.deref_pointer(place)?;
@@ -353,7 +353,7 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Str
         | ty::Slice(_)
         | ty::Dynamic(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),

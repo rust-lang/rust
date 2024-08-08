@@ -86,6 +86,7 @@ macro_rules! impl_binder_encode_decode {
 #[cfg(feature = "nightly")]
 impl_binder_encode_decode! {
     ty::FnSig<I>,
+    ty::FnSigTys<I>,
     ty::TraitPredicate<I>,
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,

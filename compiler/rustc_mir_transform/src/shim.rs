@@ -437,7 +437,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
 
     match self_ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => builder.copy_shim(),
+        ty::FnDef(..) | ty::FnPtr(..) => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::CoroutineClosure(_, args) => {
             builder.tuple_like_shim(dest, src, args.as_coroutine_closure().upvar_tys())
