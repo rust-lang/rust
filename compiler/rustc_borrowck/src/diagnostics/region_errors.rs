@@ -198,7 +198,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
     // and the span which bounded to the trait for adding 'static lifetime suggestion
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
         diag: &mut Diag<'_>,
@@ -254,7 +253,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
             diag.span_note(
                 *trait_span,
-                "due to current limitations in the borrow checker, this implies a `'static` lifetime"
+                fluent_generated::borrowck_limitations_implies_static,
             );
             let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local()) else { return; };
             let Def(_, trait_res_defid) = trait_ref.path.res else { return; };
@@ -286,7 +285,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if suggestions.len() > 0 {
             suggestions.dedup();
             diag.multipart_suggestion_verbose(
-                "consider restricting the type parameter to the `'static` lifetime",
+                fluent_generated::borrowck_restrict_to_static,
                 suggestions,
                 Applicability::MaybeIncorrect,
             );

@@ -80,6 +80,9 @@ borrowck_higher_ranked_subtype_error =
 borrowck_lifetime_constraints_error =
     lifetime may not live long enough
 
+borrowck_limitations_implies_static =
+    due to current limitations in the borrow checker, this implies a `'static` lifetime
+
 borrowck_move_closure_suggestion =
     consider adding 'move' keyword before the nested closure
 
@@ -168,6 +171,9 @@ borrowck_partial_var_move_by_use_in_coroutine =
         [true] partially moved
         *[false] moved
     } due to use in coroutine
+
+borrowck_restrict_to_static =
+    consider restricting the type parameter to the `'static` lifetime
 
 borrowck_returned_async_block_escaped =
     returns an `async` block that contains a reference to a captured variable, which then escapes the closure body
