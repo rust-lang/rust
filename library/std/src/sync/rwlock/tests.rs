@@ -21,6 +21,10 @@ fn smoke() {
 }
 
 #[test]
+// FIXME: On macOS we use a provenance-incorrect implementation and Miri
+// catches that issue with a chance of around 1/1000.
+// See <https://github.com/rust-lang/rust/issues/121950> for details.
+#[cfg_attr(all(miri, target_os = "macos"), ignore)]
 fn frob() {
     const N: u32 = 10;
     const M: usize = if cfg!(miri) { 100 } else { 1000 };
