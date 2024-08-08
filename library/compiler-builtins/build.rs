@@ -51,8 +51,9 @@ fn main() {
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
     // Activate libm's unstable features to make full use of Nightly.
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"unstable\"))");
+    println!("cargo::rustc-check-cfg=cfg(feature, values(\"unstable\", \"force-soft-floats\"))");
     println!("cargo:rustc-cfg=feature=\"unstable\"");
+    println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
 
     // Emscripten's runtime includes all the builtins
     if target.os == "emscripten" {
