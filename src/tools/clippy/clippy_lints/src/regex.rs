@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{def_path_def_ids, path_def_id, paths};
@@ -148,7 +148,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
 }
 
 fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
-    constant(cx, cx.typeck_results(), e).and_then(|c| match c {
+    ConstEvalCtxt::new(cx).eval(e).and_then(|c| match c {
         Constant::Str(s) => Some(s),
         _ => None,
     })

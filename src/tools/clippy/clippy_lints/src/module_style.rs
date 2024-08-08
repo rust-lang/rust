@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
@@ -121,17 +121,18 @@ impl EarlyLintPass for ModStyle {
         for folder in &folder_segments {
             if !mod_folders.contains(folder) {
                 if let Some((file, path)) = file_map.get(folder) {
-                    let mut correct = path.to_path_buf();
-                    correct.pop();
-                    correct.push(folder);
-                    correct.push("mod.rs");
-                    span_lint_and_help(
+                    span_lint_and_then(
                         cx,
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
                         format!("`mod.rs` files are required, found `{}`", path.display()),
-                        None,
-                        format!("move `{}` to `{}`", path.display(), correct.display(),),
+                        |diag| {
+                            let mut correct = path.to_path_buf();
+                            correct.pop();
+                            correct.push(folder);
+                            correct.push("mod.rs");
+                            diag.help(format!("move `{}` to `{}`", path.display(), correct.display(),));
+                        },
                     );
                 }
             }
@@ -161,17 +162,18 @@ fn process_paths_for_mod_files<'a>(
 /// for code-sharing between tests.
 fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &SourceFile) {
     if path.ends_with("mod.rs") && !path.starts_with("tests") {
-        let mut mod_file = path.to_path_buf();
-        mod_file.pop();
-        mod_file.set_extension("rs");
-
-        span_lint_and_help(
+        span_lint_and_then(
             cx,
             MOD_MODULE_FILES,
             Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
             format!("`mod.rs` files are not allowed, found `{}`", path.display()),
-            None,
-            format!("move `{}` to `{}`", path.display(), mod_file.display()),
+            |diag| {
+                let mut mod_file = path.to_path_buf();
+                mod_file.pop();
+                mod_file.set_extension("rs");
+
+                diag.help(format!("move `{}` to `{}`", path.display(), mod_file.display()));
+            },
         );
     }
 }

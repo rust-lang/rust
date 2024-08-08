@@ -2,10 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{should_call_clone_as_function, walk_ptrs_ty_depth};
 use clippy_utils::{
-    get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, paths, peel_blocks, strip_pat_refs,
+    get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, peel_blocks, strip_pat_refs,
 };
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -104,7 +104,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
 fn check_qpath(cx: &LateContext<'_>, qpath: hir::QPath<'_>, hir_id: hir::HirId) -> bool {
     // We check it's calling the `clone` method of the `Clone` trait.
     if let Some(path_def_id) = cx.qpath_res(&qpath, hir_id).opt_def_id() {
-        match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
+        cx.tcx.lang_items().get(LangItem::CloneFn) == Some(path_def_id)
     } else {
         false
     }

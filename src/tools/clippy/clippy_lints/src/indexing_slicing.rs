@@ -1,7 +1,7 @@
 //! lint on indexing and slicing operations
 
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
 use clippy_utils::{higher, is_from_proc_macro};
@@ -70,8 +70,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// # #![allow(unused)]
-    ///
     /// # let x = vec![0; 5];
     /// # let y = [0, 1, 2, 3];
     /// x.get(2);
@@ -179,7 +177,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         return;
                     }
                     // Index is a constant uint.
-                    if let Some(constant) = constant(cx, cx.typeck_results(), index) {
+                    if let Some(constant) = ConstEvalCtxt::new(cx).eval(index) {
                         // only `usize` index is legal in rust array index
                         // leave other type to rustc
                         if let Constant::Int(off) = constant
@@ -217,14 +215,15 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
 /// Returns a tuple of options with the start and end (exclusive) values of
 /// the range. If the start or end is not constant, None is returned.
 fn to_const_range(cx: &LateContext<'_>, range: higher::Range<'_>, array_size: u128) -> (Option<u128>, Option<u128>) {
-    let s = range.start.map(|expr| constant(cx, cx.typeck_results(), expr));
+    let ecx = ConstEvalCtxt::new(cx);
+    let s = range.start.map(|expr| ecx.eval(expr));
     let start = match s {
         Some(Some(Constant::Int(x))) => Some(x),
         Some(_) => None,
         None => Some(0),
     };
 
-    let e = range.end.map(|expr| constant(cx, cx.typeck_results(), expr));
+    let e = range.end.map(|expr| ecx.eval(expr));
     let end = match e {
         Some(Some(Constant::Int(x))) => {
             if range.limits == RangeLimits::Closed {

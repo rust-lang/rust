@@ -364,7 +364,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 
 
 ## `await-holding-invalid-types`
-
+The list of types which may not be held across an await point.
 
 **Default Value:** `[]`
 
@@ -668,6 +668,8 @@ crate. For example, `pub(crate)` items.
 ## `msrv`
 The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
 
+**Default Value:** `current version`
+
 ---
 **Affected lints:**
 * [`allow_attributes`](https://rust-lang.github.io/rust-clippy/master/index.html#allow_attributes)
@@ -861,6 +863,8 @@ The maximum number of lines a function or method can have
 ## `trivial-copy-size-limit`
 The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
 reference. By default there is no limit
+
+**Default Value:** `target_pointer_width * 2`
 
 ---
 **Affected lints:**

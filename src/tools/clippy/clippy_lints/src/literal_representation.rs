@@ -2,13 +2,13 @@
 //! floating-point literal expressions.
 
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -159,63 +159,39 @@ enum WarningType {
 }
 
 impl WarningType {
-    fn display(&self, suggested_format: String, cx: &EarlyContext<'_>, span: Span) {
+    fn lint_and_text(&self) -> (&'static Lint, &'static str, &'static str) {
         match self {
-            Self::MistypedLiteralSuffix => span_lint_and_sugg(
-                cx,
+            Self::MistypedLiteralSuffix => (
                 MISTYPED_LITERAL_SUFFIXES,
-                span,
                 "mistyped literal suffix",
                 "did you mean to write",
-                suggested_format,
-                Applicability::MaybeIncorrect,
             ),
-            Self::UnreadableLiteral => span_lint_and_sugg(
-                cx,
-                UNREADABLE_LITERAL,
-                span,
-                "long literal lacking separators",
-                "consider",
-                suggested_format,
-                Applicability::MachineApplicable,
-            ),
-            Self::LargeDigitGroups => span_lint_and_sugg(
-                cx,
-                LARGE_DIGIT_GROUPS,
-                span,
-                "digit groups should be smaller",
-                "consider",
-                suggested_format,
-                Applicability::MachineApplicable,
-            ),
-            Self::InconsistentDigitGrouping => span_lint_and_sugg(
-                cx,
+            Self::UnreadableLiteral => (UNREADABLE_LITERAL, "long literal lacking separators", "consider"),
+            Self::LargeDigitGroups => (LARGE_DIGIT_GROUPS, "digit groups should be smaller", "consider"),
+            Self::InconsistentDigitGrouping => (
                 INCONSISTENT_DIGIT_GROUPING,
-                span,
                 "digits grouped inconsistently by underscores",
                 "consider",
-                suggested_format,
-                Applicability::MachineApplicable,
             ),
-            Self::DecimalRepresentation => span_lint_and_sugg(
-                cx,
+            Self::DecimalRepresentation => (
                 DECIMAL_LITERAL_REPRESENTATION,
-                span,
                 "integer literal has a better hexadecimal representation",
                 "consider",
-                suggested_format,
-                Applicability::MachineApplicable,
             ),
-            Self::UnusualByteGroupings => span_lint_and_sugg(
-                cx,
+            Self::UnusualByteGroupings => (
                 UNUSUAL_BYTE_GROUPINGS,
-                span,
                 "digits of hex, binary or octal literal not in groups of equal size",
                 "consider",
-                suggested_format,
-                Applicability::MachineApplicable,
             ),
-        };
+        }
+    }
+
+    fn display(&self, num_lit: &NumericLiteral<'_>, cx: &EarlyContext<'_>, span: Span) {
+        let (lint, message, try_msg) = self.lint_and_text();
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(cx, lint, span, message, |diag| {
+            diag.span_suggestion(span, try_msg, num_lit.format(), Applicability::MaybeIncorrect);
+        });
     }
 }
 
@@ -293,7 +269,7 @@ impl LiteralDigitGrouping {
                     WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => true,
                 };
                 if should_warn {
-                    warning_type.display(num_lit.format(), cx, span);
+                    warning_type.display(&num_lit, cx, span);
                 }
             }
         }
@@ -346,11 +322,14 @@ impl LiteralDigitGrouping {
                 }
             }
             *part = main_part;
-            let mut sugg = num_lit.format();
-            sugg.push('_');
-            sugg.push(missing_char);
-            sugg.push_str(last_group);
-            WarningType::MistypedLiteralSuffix.display(sugg, cx, span);
+            let (lint, message, try_msg) = WarningType::MistypedLiteralSuffix.lint_and_text();
+            span_lint_and_then(cx, lint, span, message, |diag| {
+                let mut sugg = num_lit.format();
+                sugg.push('_');
+                sugg.push(missing_char);
+                sugg.push_str(last_group);
+                diag.span_suggestion(span, try_msg, sugg, Applicability::MaybeIncorrect);
+            });
             false
         } else {
             true
@@ -471,7 +450,7 @@ impl DecimalLiteralRepresentation {
             let hex = format!("{val:#X}");
             let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
             let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                warning_type.display(num_lit.format(), cx, span);
+                warning_type.display(&num_lit, cx, span);
             });
         }
     }

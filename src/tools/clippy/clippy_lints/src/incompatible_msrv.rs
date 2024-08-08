@@ -55,7 +55,6 @@ impl IncompatibleMsrv {
         }
     }
 
-    #[allow(clippy::cast_lossless)]
     fn get_def_id_version(&mut self, tcx: TyCtxt<'_>, def_id: DefId) -> RustcVersion {
         if let Some(version) = self.is_above_msrv.get(&def_id) {
             return *version;
@@ -67,9 +66,9 @@ impl IncompatibleMsrv {
                     since: StableSince::Version(version),
                     ..
                 } => Some(RustcVersion::new(
-                    version.major as _,
-                    version.minor as _,
-                    version.patch as _,
+                    version.major.into(),
+                    version.minor.into(),
+                    version.patch.into(),
                 )),
                 _ => None,
             }) {
