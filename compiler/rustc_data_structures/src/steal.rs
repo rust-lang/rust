@@ -53,7 +53,10 @@ impl<T> Steal<T> {
     }
 
     /// Writers of rustc drivers often encounter stealing issues. This function makes it possible to
-    /// handle these errors gracefully. This is not used within rustc as the time of writing.
+    /// handle these errors gracefully.
+    ///
+    /// This should not be used within rustc as it leaks information not tracked
+    /// by the query system, breaking incremental compilation.
     pub fn is_stolen(&self) -> bool {
         self.value.borrow().is_none()
     }
