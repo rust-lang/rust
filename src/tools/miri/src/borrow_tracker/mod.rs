@@ -346,7 +346,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn print_borrow_state(&mut self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
+        let Some(borrow_tracker) = &this.machine.borrow_tracker else {
+            eprintln!("attempted to print borrow state, but no borrow state is being tracked");
+            return Ok(());
+        };
+        let method = borrow_tracker.borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => this.print_stacks(alloc_id),
             BorrowTrackerMethod::TreeBorrows => this.print_tree(alloc_id, show_unnamed),
