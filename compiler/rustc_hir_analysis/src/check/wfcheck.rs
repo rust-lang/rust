@@ -1276,7 +1276,7 @@ fn check_item_type(
             UnsizedHandling::Forbid => true,
             UnsizedHandling::Allow => false,
             UnsizedHandling::AllowIfForeignTail => {
-                let tail = tcx.struct_tail_erasing_lifetimes(item_ty, wfcx.param_env);
+                let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.param_env);
                 !matches!(tail.kind(), ty::Foreign(_))
             }
         };

@@ -678,9 +678,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    let receiver_tail = self
-                        .tcx
-                        .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
+                    let receiver_tail =
+                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.param_env);
                     let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
                         span_bug!(
                             self.cur_span(),
