@@ -8,9 +8,9 @@ use paths::AbsPath;
 use serde::Deserialize;
 use toolchain::Tool;
 
-use crate::flycheck::{
+use crate::{
     command::{CommandHandle, ParseFromLine},
-    CargoOptions,
+    flycheck::CargoOptions,
 };
 
 #[derive(Debug, Deserialize)]

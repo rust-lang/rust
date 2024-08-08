@@ -5,7 +5,6 @@
 
 use std::{ops::Not as _, time::Instant};
 
-use crate::flycheck::{self, project_json, FlycheckHandle};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
@@ -28,6 +27,8 @@ use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 use crate::{
     config::{Config, ConfigChange, ConfigErrors, RatomlFileKind},
     diagnostics::{CheckFixes, DiagnosticCollection},
+    discover,
+    flycheck::{FlycheckHandle, FlycheckMessage},
     line_index::{LineEndings, LineIndex},
     lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
@@ -37,6 +38,7 @@ use crate::{
     reload,
     target_spec::{CargoTargetSpec, ProjectJsonTargetSpec, TargetSpec},
     task_pool::{TaskPool, TaskQueue},
+    test_runner::{CargoTestHandle, CargoTestMessage},
 };
 
 pub(crate) struct FetchWorkspaceRequest {
@@ -88,20 +90,20 @@ pub(crate) struct GlobalState {
 
     // Flycheck
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
-    pub(crate) flycheck_sender: Sender<flycheck::Message>,
-    pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
+    pub(crate) flycheck_sender: Sender<FlycheckMessage>,
+    pub(crate) flycheck_receiver: Receiver<FlycheckMessage>,
     pub(crate) last_flycheck_error: Option<String>,
 
     // Test explorer
-    pub(crate) test_run_session: Option<Vec<flycheck::CargoTestHandle>>,
-    pub(crate) test_run_sender: Sender<flycheck::CargoTestMessage>,
-    pub(crate) test_run_receiver: Receiver<flycheck::CargoTestMessage>,
+    pub(crate) test_run_session: Option<Vec<CargoTestHandle>>,
+    pub(crate) test_run_sender: Sender<CargoTestMessage>,
+    pub(crate) test_run_receiver: Receiver<CargoTestMessage>,
     pub(crate) test_run_remaining_jobs: usize,
 
     // Project loading
-    pub(crate) discover_handle: Option<project_json::DiscoverHandle>,
-    pub(crate) discover_sender: Sender<project_json::DiscoverProjectMessage>,
-    pub(crate) discover_receiver: Receiver<project_json::DiscoverProjectMessage>,
+    pub(crate) discover_handle: Option<discover::DiscoverHandle>,
+    pub(crate) discover_sender: Sender<discover::DiscoverProjectMessage>,
+    pub(crate) discover_receiver: Receiver<discover::DiscoverProjectMessage>,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,

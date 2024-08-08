@@ -1,4 +1,5 @@
-//! A `cargo-metadata`-equivalent for non-Cargo build systems.
+//! Infrastructure for lazy project discovery. Currently only support rust-project.json discovery
+//! via a custom discover command.
 use std::{io, process::Command};
 
 use crossbeam_channel::Sender;
@@ -7,14 +8,14 @@ use project_model::ProjectJsonData;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::flycheck::{CommandHandle, ParseFromLine};
+use crate::command::{CommandHandle, ParseFromLine};
 
 pub(crate) const ARG_PLACEHOLDER: &str = "{arg}";
 
 /// A command wrapper for getting a `rust-project.json`.
 ///
-/// This is analogous to `cargo-metadata`, but for non-Cargo build systems.
-pub(crate) struct Discover {
+/// This is analogous to discovering a cargo project + running `cargo-metadata` on it, but for non-Cargo build systems.
+pub(crate) struct DiscoverCommand {
     command: Vec<String>,
     sender: Sender<DiscoverProjectMessage>,
 }
@@ -34,8 +35,8 @@ where
     se.serialize_str(path.as_str())
 }
 
-impl Discover {
-    /// Create a new [Discover].
+impl DiscoverCommand {
+    /// Create a new [DiscoverCommand].
     pub(crate) fn new(sender: Sender<DiscoverProjectMessage>, command: Vec<String>) -> Self {
         Self { sender, command }
     }

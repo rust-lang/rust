@@ -19,8 +19,9 @@ use vfs::{loader::LoadingProgress, AbsPathBuf, FileId};
 use crate::{
     config::Config,
     diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
+    discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
     dispatch::{NotificationDispatcher, RequestDispatcher},
-    flycheck::{self, project_json},
+    flycheck::{self, FlycheckMessage},
     global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
     hack_recover_crate_name,
     lsp::{
@@ -29,6 +30,7 @@ use crate::{
     },
     lsp_ext,
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
+    test_runner::{CargoTestMessage, TestState},
 };
 
 pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
@@ -61,9 +63,9 @@ enum Event {
     Task(Task),
     QueuedTask(QueuedTask),
     Vfs(vfs::loader::Message),
-    Flycheck(flycheck::Message),
-    TestResult(flycheck::CargoTestMessage),
-    DiscoverProject(project_json::DiscoverProjectMessage),
+    Flycheck(FlycheckMessage),
+    TestResult(CargoTestMessage),
+    DiscoverProject(DiscoverProjectMessage),
 }
 
 impl fmt::Display for Event {
@@ -689,8 +691,7 @@ impl GlobalState {
                         // `self.report_progress` is called later
                         let title = &cfg.progress_label.clone();
                         let command = cfg.command.clone();
-                        let discover =
-                            project_json::Discover::new(self.discover_sender.clone(), command);
+                        let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
 
                         self.report_progress(title, Progress::Begin, None, None, None);
                         self.discover_workspace_queue
@@ -698,12 +699,8 @@ impl GlobalState {
                         let _ = self.discover_workspace_queue.should_start_op();
 
                         let arg = match arg {
-                            DiscoverProjectParam::Buildfile(it) => {
-                                project_json::DiscoverArgument::Buildfile(it)
-                            }
-                            DiscoverProjectParam::Path(it) => {
-                                project_json::DiscoverArgument::Path(it)
-                            }
+                            DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
+                            DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                         };
 
                         let handle = discover.spawn(arg).unwrap();
@@ -852,14 +849,14 @@ impl GlobalState {
         }
     }
 
-    fn handle_discover_msg(&mut self, message: project_json::DiscoverProjectMessage) {
+    fn handle_discover_msg(&mut self, message: DiscoverProjectMessage) {
         let title = self
             .config
             .discover_workspace_config()
             .map(|cfg| cfg.progress_label.clone())
             .expect("No title could be found; this is a bug");
         match message {
-            project_json::DiscoverProjectMessage::Finished { project, buildfile } => {
+            DiscoverProjectMessage::Finished { project, buildfile } => {
                 self.report_progress(&title, Progress::End, None, None, None);
                 self.discover_workspace_queue.op_completed(());
 
@@ -867,10 +864,10 @@ impl GlobalState {
                 config.add_linked_projects(project, buildfile);
                 self.update_configuration(config);
             }
-            project_json::DiscoverProjectMessage::Progress { message } => {
+            DiscoverProjectMessage::Progress { message } => {
                 self.report_progress(&title, Progress::Report, Some(message), None, None)
             }
-            project_json::DiscoverProjectMessage::Error { error, source } => {
+            DiscoverProjectMessage::Error { error, source } => {
                 let message = format!("Project discovery failed: {error}");
                 self.discover_workspace_queue.op_completed(());
                 self.show_and_log_error(message.clone(), source);
@@ -879,16 +876,14 @@ impl GlobalState {
         }
     }
 
-    fn handle_cargo_test_msg(&mut self, message: flycheck::CargoTestMessage) {
+    fn handle_cargo_test_msg(&mut self, message: CargoTestMessage) {
         match message {
-            flycheck::CargoTestMessage::Test { name, state } => {
+            CargoTestMessage::Test { name, state } => {
                 let state = match state {
-                    flycheck::TestState::Started => lsp_ext::TestState::Started,
-                    flycheck::TestState::Ignored => lsp_ext::TestState::Skipped,
-                    flycheck::TestState::Ok => lsp_ext::TestState::Passed,
-                    flycheck::TestState::Failed { stdout } => {
-                        lsp_ext::TestState::Failed { message: stdout }
-                    }
+                    TestState::Started => lsp_ext::TestState::Started,
+                    TestState::Ignored => lsp_ext::TestState::Skipped,
+                    TestState::Ok => lsp_ext::TestState::Passed,
+                    TestState::Failed { stdout } => lsp_ext::TestState::Failed { message: stdout },
                 };
                 let Some(test_id) = hack_recover_crate_name::lookup_name(name) else {
                     return;
@@ -897,23 +892,23 @@ impl GlobalState {
                     lsp_ext::ChangeTestStateParams { test_id, state },
                 );
             }
-            flycheck::CargoTestMessage::Suite => (),
-            flycheck::CargoTestMessage::Finished => {
+            CargoTestMessage::Suite => (),
+            CargoTestMessage::Finished => {
                 self.test_run_remaining_jobs = self.test_run_remaining_jobs.saturating_sub(1);
                 if self.test_run_remaining_jobs == 0 {
                     self.send_notification::<lsp_ext::EndRunTest>(());
                     self.test_run_session = None;
                 }
             }
-            flycheck::CargoTestMessage::Custom { text } => {
+            CargoTestMessage::Custom { text } => {
                 self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);
             }
         }
     }
 
-    fn handle_flycheck_msg(&mut self, message: flycheck::Message) {
+    fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
         match message {
-            flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => {
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(),
@@ -939,9 +934,9 @@ impl GlobalState {
                 }
             }
 
-            flycheck::Message::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
+            FlycheckMessage::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
 
-            flycheck::Message::Progress { id, progress } => {
+            FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),
                     flycheck::Progress::DidCheckCrate(target) => (Progress::Report, Some(target)),

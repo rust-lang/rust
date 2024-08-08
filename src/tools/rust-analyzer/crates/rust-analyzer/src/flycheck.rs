@@ -1,10 +1,5 @@
-//! Flycheck provides the functionality needed to run `cargo check` or
-//! another compatible command (f.x. clippy) in a background thread and provide
+//! Flycheck provides the functionality needed to run `cargo check` to provide
 //! LSP diagnostics based on the output of the command.
-
-// FIXME: This crate now handles running `cargo test` needed in the test explorer in
-// addition to `cargo check`. Either split it into 3 crates (one for test, one for check
-// and one common utilities) or change its name and docs to reflect the current state.
 
 use std::{fmt, io, process::Command, time::Duration};
 
@@ -18,12 +13,7 @@ pub(crate) use cargo_metadata::diagnostic::{
 };
 use toolchain::Tool;
 
-mod command;
-pub(crate) mod project_json;
-mod test_runner;
-
-use command::{CommandHandle, ParseFromLine};
-pub(crate) use test_runner::{CargoTestHandle, CargoTestMessage, TestState, TestTarget};
+use crate::command::{CommandHandle, ParseFromLine};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum InvocationStrategy {
@@ -52,7 +42,7 @@ pub(crate) struct CargoOptions {
 }
 
 impl CargoOptions {
-    fn apply_on_command(&self, cmd: &mut Command) {
+    pub(crate) fn apply_on_command(&self, cmd: &mut Command) {
         for target in &self.target_triples {
             cmd.args(["--target", target.as_str()]);
         }
@@ -119,7 +109,7 @@ pub(crate) struct FlycheckHandle {
 impl FlycheckHandle {
     pub(crate) fn spawn(
         id: usize,
-        sender: Box<dyn Fn(Message) + Send>,
+        sender: Box<dyn Fn(FlycheckMessage) + Send>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
@@ -157,7 +147,7 @@ impl FlycheckHandle {
     }
 }
 
-pub(crate) enum Message {
+pub(crate) enum FlycheckMessage {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic { id: usize, workspace_root: AbsPathBuf, diagnostic: Diagnostic },
 
@@ -172,19 +162,19 @@ pub(crate) enum Message {
     },
 }
 
-impl fmt::Debug for Message {
+impl fmt::Debug for FlycheckMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Message::AddDiagnostic { id, workspace_root, diagnostic } => f
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => f
                 .debug_struct("AddDiagnostic")
                 .field("id", id)
                 .field("workspace_root", workspace_root)
                 .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
                 .finish(),
-            Message::ClearDiagnostics { id } => {
+            FlycheckMessage::ClearDiagnostics { id } => {
                 f.debug_struct("ClearDiagnostics").field("id", id).finish()
             }
-            Message::Progress { id, progress } => {
+            FlycheckMessage::Progress { id, progress } => {
                 f.debug_struct("Progress").field("id", id).field("progress", progress).finish()
             }
         }
@@ -209,7 +199,7 @@ enum StateChange {
 struct FlycheckActor {
     /// The workspace id of this flycheck instance.
     id: usize,
-    sender: Box<dyn Fn(Message) + Send>,
+    sender: Box<dyn Fn(FlycheckMessage) + Send>,
     config: FlycheckConfig,
     manifest_path: Option<AbsPathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
@@ -245,7 +235,7 @@ pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
 impl FlycheckActor {
     fn new(
         id: usize,
-        sender: Box<dyn Fn(Message) + Send>,
+        sender: Box<dyn Fn(FlycheckMessage) + Send>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
@@ -266,7 +256,7 @@ impl FlycheckActor {
     }
 
     fn report_progress(&self, progress: Progress) {
-        self.send(Message::Progress { id: self.id, progress });
+        self.send(FlycheckMessage::Progress { id: self.id, progress });
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
@@ -339,7 +329,7 @@ impl FlycheckActor {
                         );
                     }
                     if self.status == FlycheckStatus::Started {
-                        self.send(Message::ClearDiagnostics { id: self.id });
+                        self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
                     }
                     self.report_progress(Progress::DidFinish(res));
                     self.status = FlycheckStatus::Finished;
@@ -361,9 +351,9 @@ impl FlycheckActor {
                             "diagnostic received"
                         );
                         if self.status == FlycheckStatus::Started {
-                            self.send(Message::ClearDiagnostics { id: self.id });
+                            self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
                         }
-                        self.send(Message::AddDiagnostic {
+                        self.send(FlycheckMessage::AddDiagnostic {
                             id: self.id,
                             workspace_root: self.root.clone(),
                             diagnostic: msg,
@@ -488,7 +478,7 @@ impl FlycheckActor {
         Some(cmd)
     }
 
-    fn send(&self, check_task: Message) {
+    fn send(&self, check_task: FlycheckMessage) {
         (self.sender)(check_task);
     }
 }
