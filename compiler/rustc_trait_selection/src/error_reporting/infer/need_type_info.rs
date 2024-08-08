@@ -419,7 +419,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: Option<ty::Predicate<'tcx>>,
+        originating_projection: Option<ty::ProjectionPredicate<'tcx>>,
     ) -> Diag<'a> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
@@ -468,7 +468,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 {
                     paths = self.get_fully_qualified_path_suggestions_from_impls(
-                        ty, def_id, true, param_env, predicate,
+                        ty,
+                        def_id,
+                        true,
+                        param_env,
+                        originating_projection,
                     );
                 }
 
@@ -601,7 +605,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         def_id,
                         false,
                         param_env,
-                        predicate,
+                        originating_projection,
                     );
                     if paths.len() > 20 || paths.is_empty() {
                         // This will show the fallback impl, so the expression will have type
@@ -680,7 +684,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         def_id: DefId,
         target_type: bool,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: Option<ty::Predicate<'tcx>>,
+        originating_projection: Option<ty::ProjectionPredicate<'tcx>>,
     ) -> Vec<String> {
         let tcx = self.infcx.tcx;
         let mut paths = vec![];
@@ -703,8 +707,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let filter = if let Some(ty::ProjectionPredicate {
                 projection_term: ty::AliasTerm { def_id, .. },
                 term,
-            }) =
-                predicate.and_then(|p| p.as_projection_clause()).map(|p| p.skip_binder())
+            }) = originating_projection
                 && let ty::TermKind::Ty(assoc_ty) = term.unpack()
                 && tcx.item_name(def_id) == sym::Output
                 && [

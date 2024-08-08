@@ -535,7 +535,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         TypeAnnotationNeeded::E0284,
                         true,
                         obligation.param_env,
-                        Some(predicate),
+                        Some(data),
                     )
                     .with_note(format!("cannot satisfy `{predicate}`"))
                 } else {
