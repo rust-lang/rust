@@ -6,7 +6,8 @@ use core::fmt;
 use core::fmt::Write;
 
 #[cfg_attr(not(target_env = "msvc"), link(name = "c"))]
-#[cfg_attr(target_env = "msvc", link(name = "libcmt"))]
+#[cfg_attr(all(target_env = "msvc", target_feature = "crt-static"), link(name = "libcmt"))]
+#[cfg_attr(all(target_env = "msvc", not(target_feature = "crt-static")), link(name = "msvcrt"))]
 extern "C" {}
 
 struct Dummy;
