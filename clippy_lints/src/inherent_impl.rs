@@ -1,6 +1,6 @@
 //! lint on inherent implementations
 
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
@@ -105,13 +105,14 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
         // `TyCtxt::crate_inherent_impls` doesn't have a defined order. Sort the lint output first.
         lint_spans.sort_by_key(|x| x.0.lo());
         for (span, first_span) in lint_spans {
-            span_lint_and_note(
+            span_lint_and_then(
                 cx,
                 MULTIPLE_INHERENT_IMPL,
                 span,
                 "multiple implementations of this structure",
-                Some(first_span),
-                "first implementation here",
+                |diag| {
+                    diag.span_note(first_span, "first implementation here");
+                },
             );
         }
     }

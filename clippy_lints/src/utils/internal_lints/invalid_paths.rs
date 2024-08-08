@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::def_path_res;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
@@ -32,9 +32,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
         if mod_name.as_str() == "paths"
             && let hir::ItemKind::Const(.., body_id) = item.kind
-            && let body = cx.tcx.hir().body(body_id)
-            && let typeck_results = cx.tcx.typeck_body(body_id)
-            && let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value)
+            && let Some(Constant::Vec(path)) =
+                ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(item.owner_id), cx.tcx.typeck(item.owner_id))
+                    .eval_simple(cx.tcx.hir().body(body_id).value)
             && let Some(path) = path
                 .iter()
                 .map(|x| {

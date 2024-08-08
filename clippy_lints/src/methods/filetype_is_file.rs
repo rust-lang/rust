@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir as hir;
@@ -33,6 +33,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         span = expr.span;
     }
     let lint_msg = format!("`{lint_unary}FileType::is_file()` only {verb} regular files");
-    let help_msg = format!("use `{help_unary}FileType::is_dir()` instead");
-    span_lint_and_help(cx, FILETYPE_IS_FILE, span, lint_msg, None, help_msg);
+
+    #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+    span_lint_and_then(cx, FILETYPE_IS_FILE, span, lint_msg, |diag| {
+        diag.help(format!("use `{help_unary}FileType::is_dir()` instead"));
+    });
 }

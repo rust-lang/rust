@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
@@ -15,7 +15,7 @@ use rustc_target::abi::IntegerType;
 use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
 
 fn constant_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
-    if let Some(Constant::Int(c)) = constant(cx, cx.typeck_results(), expr) {
+    if let Some(Constant::Int(c)) = ConstEvalCtxt::new(cx).eval(expr) {
         Some(c)
     } else {
         None

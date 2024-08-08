@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{is_from_proc_macro, path_to_local};
@@ -95,8 +95,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                     || cx.tcx.features().declared(sym!(const_float_classify))
             )
             && let [first, second, const_1, const_2] = exprs
-            && let Some(const_1) = constant(cx, cx.typeck_results(), const_1)
-            && let Some(const_2) = constant(cx, cx.typeck_results(), const_2)
+            && let ecx = ConstEvalCtxt::new(cx)
+            && let Some(const_1) = ecx.eval(const_1)
+            && let Some(const_2) = ecx.eval(const_2)
             && path_to_local(first).is_some_and(|f| path_to_local(second).is_some_and(|s| f == s))
             // The actual infinity check, we also allow `NEG_INFINITY` before` INFINITY` just in
             // case somebody does that for some reason
