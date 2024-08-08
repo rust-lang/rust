@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use std::ops::ControlFlow;
 
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
 use clippy_utils::{method_chain_args, sext};
@@ -88,7 +88,7 @@ fn get_const_signed_int_eval<'cx>(
 ) -> Option<i128> {
     let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
 
-    if let Constant::Int(n) = constant(cx, cx.typeck_results(), expr)?
+    if let Constant::Int(n) = ConstEvalCtxt::new(cx).eval(expr)?
         && let ty::Int(ity) = *ty.kind()
     {
         return Some(sext(cx.tcx, n, ity));
@@ -103,7 +103,7 @@ fn get_const_unsigned_int_eval<'cx>(
 ) -> Option<u128> {
     let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
 
-    if let Constant::Int(n) = constant(cx, cx.typeck_results(), expr)?
+    if let Constant::Int(n) = ConstEvalCtxt::new(cx).eval(expr)?
         && let ty::Uint(_ity) = *ty.kind()
     {
         return Some(n);

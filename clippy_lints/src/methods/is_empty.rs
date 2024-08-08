@@ -1,4 +1,4 @@
-use clippy_utils::consts::constant_is_empty;
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{find_binding_init, path_to_local};
 use rustc_hir::{Expr, HirId};
@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_
     if !receiver.span.eq_ctxt(init_expr.span) {
         return;
     }
-    if let Some(init_is_empty) = constant_is_empty(cx, init_expr) {
+    if let Some(init_is_empty) = ConstEvalCtxt::new(cx).eval_is_empty(init_expr) {
         span_lint(
             cx,
             CONST_IS_EMPTY,

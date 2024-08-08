@@ -14,8 +14,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::invalid_paths::INVALID_PATHS_INFO,
     #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_DEPRECATION_REASON_INFO,
-    #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_LINT_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE_INFO,
@@ -741,6 +739,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::unused_async::UNUSED_ASYNC_INFO,
     crate::unused_io_amount::UNUSED_IO_AMOUNT_INFO,
     crate::unused_peekable::UNUSED_PEEKABLE_INFO,
+    crate::unused_result_ok::UNUSED_RESULT_OK_INFO,
     crate::unused_rounding::UNUSED_ROUNDING_INFO,
     crate::unused_self::UNUSED_SELF_INFO,
     crate::unused_unit::UNUSED_UNIT_INFO,

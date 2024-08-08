@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use super::UNNECESSARY_MIN_OR_MAX;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 
-use clippy_utils::consts::{constant, constant_with_source, Constant, ConstantSource, FullInt};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, ConstantSource, FullInt};
 use clippy_utils::source::snippet;
 
 use rustc_errors::Applicability;
@@ -20,10 +20,9 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
 ) {
     let typeck_results = cx.typeck_results();
-    if let Some((left, ConstantSource::Local | ConstantSource::CoreConstant)) =
-        constant_with_source(cx, typeck_results, recv)
-        && let Some((right, ConstantSource::Local | ConstantSource::CoreConstant)) =
-            constant_with_source(cx, typeck_results, arg)
+    let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck_results);
+    if let Some((left, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(recv)
+        && let Some((right, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(arg)
     {
         let Some(ord) = Constant::partial_cmp(cx.tcx, typeck_results.expr_ty(recv), &left, &right) else {
             return;
@@ -78,9 +77,9 @@ enum Extrema {
 fn detect_extrema<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Extrema> {
     let ty = cx.typeck_results().expr_ty(expr);
 
-    let cv = constant(cx, cx.typeck_results(), expr)?;
+    let cv = ConstEvalCtxt::new(cx).eval(expr)?;
 
-    match (cv.int_value(cx, ty)?, ty.kind()) {
+    match (cv.int_value(cx.tcx, ty)?, ty.kind()) {
         (FullInt::S(i), &ty::Int(ity)) if i == i128::MIN >> (128 - ity.bit_width()?) => Some(Extrema::Minimum),
         (FullInt::S(i), &ty::Int(ity)) if i == i128::MAX >> (128 - ity.bit_width()?) => Some(Extrema::Maximum),
         (FullInt::U(i), &ty::Uint(uty)) if i == u128::MAX >> (128 - uty.bit_width()?) => Some(Extrema::Maximum),
