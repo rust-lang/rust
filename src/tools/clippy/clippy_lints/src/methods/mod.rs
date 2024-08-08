@@ -133,7 +133,7 @@ mod zst_offset;
 
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
@@ -749,7 +749,6 @@ declare_clippy_lint! {
     ///
      /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// (0_i32..10)
     ///     .filter(|n| n.checked_add(1).is_some())
     ///     .map(|n| n.checked_add(1).unwrap());
@@ -757,7 +756,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// # #[allow(unused)]
     /// (0_i32..10).filter_map(|n| n.checked_add(1));
     /// ```
     #[clippy::version = "1.51.0"]
@@ -850,7 +848,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// let vec = vec![1];
     /// vec.iter().find(|x| **x == 0).is_some();
     ///
@@ -862,7 +859,6 @@ declare_clippy_lint! {
     /// let vec = vec![1];
     /// vec.iter().any(|x| *x == 0);
     ///
-    /// # #[allow(unused)]
     /// !"hello world".contains("world");
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -1505,7 +1501,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #[allow(unused)]
     /// (0..3).fold(false, |acc, x| acc || x > 2);
     /// ```
     ///
@@ -1897,7 +1892,9 @@ declare_clippy_lint! {
     /// trait.
     ///
     /// ### Why is this bad?
-    /// It is recommended style to use collect. See
+    /// If it's needed to create a collection from the contents of an iterator, the `Iterator::collect(_)`
+    /// method is preferred. However, when it's needed to specify the container type,
+    /// `Vec::from_iter(_)` can be more readable than using a turbofish (e.g. `_.collect::<Vec<_>>()`). See
     /// [FromIterator documentation](https://doc.rust-lang.org/std/iter/trait.FromIterator.html)
     ///
     /// ### Example
@@ -1915,6 +1912,14 @@ declare_clippy_lint! {
     /// let v: Vec<i32> = five_fives.collect();
     ///
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+    /// ```
+    /// but prefer to use
+    /// ```no_run
+    /// let numbers: Vec<i32> = FromIterator::from_iter(1..=5);
+    /// ```
+    /// instead of
+    /// ```no_run
+    /// let numbers = (1..=5).collect::<Vec<_>>();
     /// ```
     #[clippy::version = "1.49.0"]
     pub FROM_ITER_INSTEAD_OF_COLLECT,
@@ -2008,13 +2013,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #[allow(unused)]
     /// "Hello".bytes().nth(3);
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// # #[allow(unused)]
     /// "Hello".as_bytes().get(3);
     /// ```
     #[clippy::version = "1.52.0"]
@@ -2059,7 +2062,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// let some_vec = vec![0, 1, 2, 3];
     ///
     /// some_vec.iter().count();
@@ -3656,7 +3658,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
     /// owned_string.as_str().as_bytes()
     /// # ;
@@ -3664,7 +3665,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
     /// owned_string.as_bytes()
     /// # ;
@@ -4915,13 +4915,13 @@ impl Methods {
                     str_split::check(cx, expr, recv, arg);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
-                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                         str_splitn::check(cx, name, expr, recv, pat_arg, count, &self.msrv);
                     }
                 },
                 ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
-                    if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
+                    if let Some(Constant::Int(count)) = ConstEvalCtxt::new(cx).eval(count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
                     }
                 },

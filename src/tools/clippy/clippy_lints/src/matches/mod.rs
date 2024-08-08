@@ -27,7 +27,7 @@ mod wild_in_or_pats;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, span_contains_cfg};
+use clippy_utils::{higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg};
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -1069,7 +1069,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_str_case_mismatch::check(cx, ex, arms);
                     redundant_guards::check(cx, arms, &self.msrv);
 
-                    if !in_constant(cx, expr.hir_id) {
+                    if !is_in_const_context(cx) {
                         manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
@@ -1098,7 +1098,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                             else_expr,
                         );
                     }
-                    if !in_constant(cx, expr.hir_id) {
+                    if !is_in_const_context(cx) {
                         manual_unwrap_or::check_if_let(
                             cx,
                             expr,

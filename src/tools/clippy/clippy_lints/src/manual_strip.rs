@@ -1,11 +1,12 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{eq_expr_value, higher, match_def_path, paths};
 use rustc_ast::ast::LitKind;
+use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind};
@@ -14,6 +15,7 @@ use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -108,19 +110,19 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                     format!("stripping a {kind_word} manually"),
                     |diag| {
                         diag.span_note(test_span, format!("the {kind_word} was tested here"));
-                        multispan_sugg(
-                            diag,
+                        diag.multipart_suggestion(
                             format!("try using the `strip_{kind_word}` method"),
-                            vec![(
+                            iter::once((
                                 test_span,
                                 format!(
                                     "if let Some(<stripped>) = {}.strip_{kind_word}({}) ",
                                     snippet(cx, target_arg.span, ".."),
                                     snippet(cx, pattern.span, "..")
                                 ),
-                            )]
-                            .into_iter()
-                            .chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
+                            ))
+                            .chain(strippings.into_iter().map(|span| (span, "<stripped>".into())))
+                            .collect(),
+                            Applicability::HasPlaceholders,
                         );
                     },
                 );
@@ -145,7 +147,7 @@ fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx E
 
 // Returns the length of the `expr` if it's a constant string or char.
 fn constant_length(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
-    let value = constant(cx, cx.typeck_results(), expr)?;
+    let value = ConstEvalCtxt::new(cx).eval(expr)?;
     match value {
         Constant::Str(value) => Some(value.len() as u128),
         Constant::Char(value) => Some(value.len_utf8() as u128),
@@ -183,9 +185,9 @@ fn peel_ref<'a>(expr: &'a Expr<'_>) -> &'a Expr<'a> {
     }
 }
 
-// Find expressions where `target` is stripped using the length of `pattern`.
-// We'll suggest replacing these expressions with the result of the `strip_{prefix,suffix}`
-// method.
+/// Find expressions where `target` is stripped using the length of `pattern`.
+/// We'll suggest replacing these expressions with the result of the `strip_{prefix,suffix}`
+/// method.
 fn find_stripping<'tcx>(
     cx: &LateContext<'tcx>,
     strip_kind: StripKind,

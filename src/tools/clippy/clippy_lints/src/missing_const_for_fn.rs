@@ -186,7 +186,7 @@ fn already_const(header: hir::FnHeader) -> bool {
 fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: &Msrv, abi: Abi) -> bool {
     match abi {
         Abi::Rust => true,
-        // `const extern "C"` was stablized after 1.62.0
+        // `const extern "C"` was stabilized after 1.62.0
         Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_FN),
         // Rest ABIs are still unstable and need the `const_extern_fn` feature enabled.
         _ => cx.tcx.features().const_extern_fn,

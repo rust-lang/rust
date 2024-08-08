@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_self;
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
@@ -278,9 +278,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         }
                     }
 
-                    let spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
-
-                    multispan_sugg(diag, "consider taking a reference instead", spans);
+                    diag.span_suggestion(
+                        input.span,
+                        "consider taking a reference instead",
+                        format!("&{}", snippet(cx, input.span, "_")),
+                        Applicability::MaybeIncorrect,
+                    );
                 };
 
                 span_lint_and_then(

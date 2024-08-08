@@ -1,4 +1,5 @@
 #![warn(clippy::if_let_mutex)]
+#![allow(clippy::redundant_pattern_matching)]
 
 use std::ops::Deref;
 use std::sync::Mutex;
@@ -48,6 +49,14 @@ fn mutex_ref(mutex: &Mutex<i32>) {
     } else {
         let _x = mutex.lock();
     };
+}
+
+fn multiple_mutexes(m1: &Mutex<()>, m2: &Mutex<()>) {
+    if let Ok(_) = m1.lock() {
+        m2.lock();
+    } else {
+        m1.lock();
+    }
 }
 
 fn main() {}

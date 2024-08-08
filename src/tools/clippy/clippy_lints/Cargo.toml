@@ -32,7 +32,6 @@ url = "2.2"
 walkdir = "2.3"
 
 [features]
-deny-warnings = ["clippy_config/deny-warnings", "clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
 internal = ["serde_json", "tempfile", "regex"]
 
