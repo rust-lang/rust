@@ -1129,9 +1129,6 @@ pub struct Resolver<'a, 'tcx> {
     /// Also includes of list of each fields visibility
     struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
-    /// Features declared for this crate.
-    declared_features: FxHashSet<Symbol>,
-
     lint_buffer: LintBuffer,
 
     next_node_id: NodeId,
@@ -1402,7 +1399,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let registered_tools = tcx.registered_tools(());
 
-        let features = tcx.features();
         let pub_vis = ty::Visibility::<DefId>::Public;
         let edition = tcx.sess.edition();
 
@@ -1506,7 +1502,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
             containers_deriving_copy: Default::default(),
-            declared_features: features.declared_features.clone(),
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,
