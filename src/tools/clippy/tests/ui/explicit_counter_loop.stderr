@@ -57,5 +57,11 @@ LL |         for _item in slice {
    |
    = note: `idx_u32` is of type `u32`, making it ineligible for `Iterator::enumerate`
 
-error: aborting due to 9 previous errors
+error: the variable `_index` is used as a loop counter
+  --> tests/ui/explicit_counter_loop.rs:286:9
+   |
+LL |         'label: for v in vec {
+   |         ^^^^^^^^^^^^^^^^^^^^ help: consider using: `'label: for (_index, v) in vec.into_iter().enumerate()`
+
+error: aborting due to 10 previous errors
 

@@ -2,7 +2,7 @@ error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/auxiliary/submodule.rs:2:5
    |
 LL |     dbg!();
-   |     ^^^^^^^
+   |     ^^^^^^
    |
    = note: `-D clippy::dbg-macro` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`

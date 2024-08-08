@@ -1,7 +1,7 @@
 //! lint on if branches that could be swapped so no `!` operation is necessary
 //! on the condition
 
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_else_clause;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
@@ -49,7 +49,7 @@ declare_clippy_lint! {
 declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
 fn is_zero_const(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
-    if let Some(value) = constant_simple(cx, cx.typeck_results(), expr) {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval_simple(expr) {
         return Constant::Int(0) == value;
     }
     false

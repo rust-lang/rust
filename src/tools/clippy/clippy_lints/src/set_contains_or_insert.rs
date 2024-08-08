@@ -12,8 +12,8 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `contains` to see if a value is not
-    /// present on `HashSet` followed by a `insert`.
+    /// Checks for usage of `contains` to see if a value is not present
+    /// in a set like `HashSet` or `BTreeSet`, followed by an `insert`.
     ///
     /// ### Why is this bad?
     /// Using just `insert` and checking the returned `bool` is more efficient.
@@ -45,12 +45,12 @@ declare_clippy_lint! {
     #[clippy::version = "1.80.0"]
     pub SET_CONTAINS_OR_INSERT,
     nursery,
-    "call to `HashSet::contains` followed by `HashSet::insert`"
+    "call to `<set>::contains` followed by `<set>::insert`"
 }
 
-declare_lint_pass!(HashsetInsertAfterContains => [SET_CONTAINS_OR_INSERT]);
+declare_lint_pass!(SetContainsOrInsert => [SET_CONTAINS_OR_INSERT]);
 
-impl<'tcx> LateLintPass<'tcx> for HashsetInsertAfterContains {
+impl<'tcx> LateLintPass<'tcx> for SetContainsOrInsert {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion()
             && let Some(higher::If {
@@ -58,14 +58,14 @@ impl<'tcx> LateLintPass<'tcx> for HashsetInsertAfterContains {
                 then: then_expr,
                 ..
             }) = higher::If::hir(expr)
-            && let Some(contains_expr) = try_parse_op_call(cx, cond_expr, sym!(contains))//try_parse_contains(cx, cond_expr)
+            && let Some((contains_expr, sym)) = try_parse_op_call(cx, cond_expr, sym!(contains))//try_parse_contains(cx, cond_expr)
             && let Some(insert_expr) = find_insert_calls(cx, &contains_expr, then_expr)
         {
             span_lint(
                 cx,
                 SET_CONTAINS_OR_INSERT,
                 vec![contains_expr.span, insert_expr.span],
-                "usage of `HashSet::insert` after `HashSet::contains`",
+                format!("usage of `{sym}::insert` after `{sym}::contains`"),
             );
         }
     }
@@ -77,7 +77,11 @@ struct OpExpr<'tcx> {
     span: Span,
 }
 
-fn try_parse_op_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, symbol: Symbol) -> Option<OpExpr<'tcx>> {
+fn try_parse_op_call<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    symbol: Symbol,
+) -> Option<(OpExpr<'tcx>, Symbol)> {
     let expr = peel_hir_expr_while(expr, |e| {
         if let ExprKind::Unary(UnOp::Not, e) = e.kind {
             Some(e)
@@ -97,11 +101,12 @@ fn try_parse_op_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, symbol:
         });
         let receiver = receiver.peel_borrows();
         let receiver_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
-        if value.span.eq_ctxt(expr.span)
-            && is_type_diagnostic_item(cx, receiver_ty, sym::HashSet)
-            && path.ident.name == symbol
-        {
-            return Some(OpExpr { receiver, value, span });
+        if value.span.eq_ctxt(expr.span) && path.ident.name == symbol {
+            for sym in &[sym::HashSet, sym::BTreeSet] {
+                if is_type_diagnostic_item(cx, receiver_ty, *sym) {
+                    return Some((OpExpr { receiver, value, span }, *sym));
+                }
+            }
         }
     }
     None
@@ -113,7 +118,7 @@ fn find_insert_calls<'tcx>(
     expr: &'tcx Expr<'_>,
 ) -> Option<OpExpr<'tcx>> {
     for_each_expr(cx, expr, |e| {
-        if let Some(insert_expr) = try_parse_op_call(cx, e, sym!(insert))
+        if let Some((insert_expr, _)) = try_parse_op_call(cx, e, sym!(insert))
             && SpanlessEq::new(cx).eq_expr(contains_expr.receiver, insert_expr.receiver)
             && SpanlessEq::new(cx).eq_expr(contains_expr.value, insert_expr.value)
         {

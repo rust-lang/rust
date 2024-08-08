@@ -1,7 +1,7 @@
 #![warn(clippy::uninit_vec)]
 
-use std::mem::MaybeUninit;
 use std::cell::UnsafeCell;
+use std::mem::MaybeUninit;
 
 #[derive(Default)]
 struct MyVec {

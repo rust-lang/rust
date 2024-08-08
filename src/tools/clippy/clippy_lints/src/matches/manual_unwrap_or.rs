@@ -1,4 +1,4 @@
-use clippy_utils::consts::constant_simple;
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -69,7 +69,7 @@ fn check_and_lint<'tcx>(
         && let Some(ty_name) = find_type_name(cx, ty)
         && let Some(or_body_snippet) = snippet_opt(cx, else_expr.span)
         && let Some(indent) = indent_of(cx, expr.span)
-        && constant_simple(cx, cx.typeck_results(), else_expr).is_some()
+        && ConstEvalCtxt::new(cx).eval_simple(else_expr).is_some()
     {
         lint(cx, expr, let_expr, ty_name, or_body_snippet, indent);
     }
