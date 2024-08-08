@@ -208,34 +208,31 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body,
                     fn_decl_span,
                     fn_arg_span,
-                }) => {
-                    let closure_def = self.local_def_id(e.id);
-                    self.with_def_id_parent(closure_def, |this| match coroutine_kind {
-                        Some(coroutine_kind) => this.lower_expr_coroutine_closure(
-                            binder,
-                            *capture_clause,
-                            e.id,
-                            hir_id,
-                            *coroutine_kind,
-                            fn_decl,
-                            body,
-                            *fn_decl_span,
-                            *fn_arg_span,
-                        ),
-                        None => this.lower_expr_closure(
-                            binder,
-                            *capture_clause,
-                            e.id,
-                            hir_id,
-                            *constness,
-                            *movability,
-                            fn_decl,
-                            body,
-                            *fn_decl_span,
-                            *fn_arg_span,
-                        ),
-                    })
-                }
+                }) => match coroutine_kind {
+                    Some(coroutine_kind) => self.lower_expr_coroutine_closure(
+                        binder,
+                        *capture_clause,
+                        e.id,
+                        hir_id,
+                        *coroutine_kind,
+                        fn_decl,
+                        body,
+                        *fn_decl_span,
+                        *fn_arg_span,
+                    ),
+                    None => self.lower_expr_closure(
+                        binder,
+                        *capture_clause,
+                        e.id,
+                        hir_id,
+                        *constness,
+                        *movability,
+                        fn_decl,
+                        body,
+                        *fn_decl_span,
+                        *fn_arg_span,
+                    ),
+                },
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
                         GenBlockKind::Async => hir::CoroutineDesugaring::Async,
