@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{in_constant, is_integer_literal};
+use clippy_utils::{is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, LangItem, PrimTy, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
 
             // do not lint in constant context, because the suggestion won't work.
             // NB: keep this check until a new `const_trait_impl` is available and stabilized.
-            && !in_constant(cx, exp.hir_id)
+            && !is_in_const_context(cx)
         {
             let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
                 let ty = cx.typeck_results().expr_ty(expr);

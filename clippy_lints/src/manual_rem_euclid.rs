@@ -3,7 +3,7 @@ use clippy_config::Conf;
 use clippy_utils::consts::{constant_full_int, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{in_constant, path_to_local};
+use clippy_utils::{is_in_const_context, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && add_rhs.span.ctxt() == ctxt
             && !in_external_macro(cx.sess(), expr.span)
             && self.msrv.meets(msrvs::REM_EUCLID)
-            && (self.msrv.meets(msrvs::REM_EUCLID_CONST) || !in_constant(cx, expr.hir_id))
+            && (self.msrv.meets(msrvs::REM_EUCLID_CONST) || !is_in_const_context(cx))
             && let Some(const1) = check_for_unsigned_int_constant(cx, rem_rhs)
             && let Some((const2, add_other)) = check_for_either_unsigned_int_constant(cx, add_lhs, add_rhs)
             && let ExprKind::Binary(rem2_op, rem2_lhs, rem2_rhs) = add_other.kind

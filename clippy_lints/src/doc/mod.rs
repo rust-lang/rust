@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
-use clippy_utils::{in_constant, is_entrypoint_fn, is_trait_impl_item, method_chain_args};
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
     Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
     TaskListMarker, Text,
@@ -858,7 +858,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne"
                 )
             {
-                self.is_const = in_constant(self.cx, expr.hir_id);
+                self.is_const = self.cx.tcx.hir().is_inside_const_context(expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }

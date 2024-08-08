@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet_indent, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 
-use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
 use itertools::Itertools;
 
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -170,7 +170,7 @@ fn generate_swap_warning<'tcx>(
 
 /// Implementation of the `MANUAL_SWAP` lint.
 fn check_manual_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-    if in_constant(cx, block.hir_id) {
+    if is_in_const_context(cx) {
         return;
     }
 

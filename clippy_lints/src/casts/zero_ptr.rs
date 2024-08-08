@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{in_constant, is_integer_literal, std_or_core};
+use clippy_utils::{is_in_const_context, is_integer_literal, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -10,7 +10,7 @@ use super::ZERO_PTR;
 pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: &Ty<'_>) {
     if let TyKind::Ptr(ref mut_ty) = to.kind
         && is_integer_literal(from, 0)
-        && !in_constant(cx, from.hir_id)
+        && !is_in_const_context(cx)
         && let Some(std_or_core) = std_or_core(cx)
     {
         let (msg, sugg_fn) = match mut_ty.mutbl {
