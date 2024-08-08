@@ -12,10 +12,9 @@ LL | async fn foo() {
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `NotSend`, which is required by `impl Future<Output = ()>: Send`
    = note: required because it appears within the type `(NotSend,)`
 note: required because it's used within this `async` fn body
-  --> $DIR/partial-drop-partial-reinit.rs:27:16
+  --> $DIR/partial-drop-partial-reinit.rs:27:1
    |
-LL |   async fn foo() {
-   |  ________________^
+LL | / async fn foo() {
 LL | |
 LL | |
 LL | |     let mut x = (NotSend {},);

@@ -1160,6 +1160,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (Some(coroutine_kind), Some(body)) = (coroutine_kind, body) else {
             return self.lower_fn_body_block(span, decl, body);
         };
+        self.create_def(
+            self.current_def_id_parent,
+            coroutine_kind.closure_id(),
+            kw::Empty,
+            DefKind::Closure,
+            span,
+        );
         self.lower_body(|this| {
             let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                 decl,
