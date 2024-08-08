@@ -185,6 +185,10 @@ impl CycleHeads {
         self.heads.last().copied()
     }
 
+    fn opt_lowest_cycle_head(&self) -> Option<StackDepth> {
+        self.heads.first().copied()
+    }
+
     fn remove_highest_cycle_head(&mut self) {
         let last = self.heads.pop_last();
         debug_assert_ne!(last, None);
@@ -303,6 +307,7 @@ struct StackEntry<X: Cx> {
 /// goals still on the stack.
 #[derive_where(Debug; X: Cx)]
 struct ProvisionalCacheEntry<X: Cx> {
+    is_sus: bool,
     heads: CycleHeads,
     path_from_head: CycleKind,
     nested_goals: NestedGoals<X>,
@@ -411,7 +416,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let head = self.stack.next_index();
         self.provisional_cache.retain(|&input, entries| {
             entries.retain_mut(|entry| {
-                let ProvisionalCacheEntry { heads, path_from_head, nested_goals, result } = entry;
+                let ProvisionalCacheEntry {
+                    is_sus: _,
+                    heads,
+                    path_from_head,
+                    nested_goals,
+                    result,
+                } = entry;
                 if heads.highest_cycle_head() != head {
                     return true;
                 }
@@ -459,6 +470,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             return self.handle_overflow(cx, input, inspect);
         };
 
+        if let Some(result) = self.lookup_provisional_cache(cx, input) {
+            return result;
+        }
+
         let validate_cache = if !D::inspect_is_noop(inspect) {
             None
         } else if let Some(scope) = D::enter_validation_scope(cx, input) {
@@ -474,11 +489,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         } else {
             None
         };
-
-        if let Some(result) = self.lookup_provisional_cache(cx, input) {
-            debug_assert!(validate_cache.is_none(), "global cache and provisional entry");
-            return result;
-        }
 
         if let Some(result) = self.check_cycle_on_stack(cx, input) {
             debug_assert!(validate_cache.is_none(), "global cache and cycle on stack");
@@ -531,9 +541,16 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         } else if D::ENABLE_PROVISIONAL_CACHE {
             debug_assert!(validate_cache.is_none());
             let entry = self.provisional_cache.entry(input).or_default();
-            let StackEntry { heads, nested_goals, .. } = final_entry;
+            let StackEntry { heads, nested_goals, encountered_overflow, .. } = final_entry;
+            let is_sus = encountered_overflow;
             let path_from_head = Self::stack_path_kind(cx, &self.stack, heads.highest_cycle_head());
-            entry.push(ProvisionalCacheEntry { heads, path_from_head, nested_goals, result });
+            entry.push(ProvisionalCacheEntry {
+                is_sus,
+                heads,
+                path_from_head,
+                nested_goals,
+                result,
+            });
         } else {
             debug_assert!(validate_cache.is_none());
         }
@@ -587,8 +604,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             debug!(?input, ?path_from_global_entry, ?entries, "candidate_is_applicable");
             // A provisional cache entry is applicable if the path to
             // its highest cycle head is equal to the expected path.
-            for ProvisionalCacheEntry { heads, path_from_head, nested_goals: _, result: _ } in
-                entries
+            for ProvisionalCacheEntry {
+                is_sus: _,
+                heads,
+                path_from_head,
+                nested_goals: _,
+                result: _,
+            } in entries.iter().filter(|e| !e.is_sus)
             {
                 let head = heads.highest_cycle_head();
                 let full_path = if Self::stack_coinductive_from(cx, stack, head) {
@@ -682,10 +704,22 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         let entries = self.provisional_cache.get(&input)?;
-        for &ProvisionalCacheEntry { ref heads, path_from_head, ref nested_goals, result } in
-            entries
+        for &ProvisionalCacheEntry {
+            is_sus,
+            ref heads,
+            path_from_head,
+            ref nested_goals,
+            result,
+        } in entries
         {
             let head = heads.highest_cycle_head();
+            if is_sus {
+                let last = self.stack.raw.last().unwrap();
+                if !last.heads.opt_lowest_cycle_head().is_some_and(|lowest| lowest <= head) {
+                    continue;
+                }
+            }
+
             if path_from_head == Self::stack_path_kind(cx, &self.stack, head) {
                 // While we don't have to track the full depth of the provisional cache entry,
                 // we do have to increment the required depth by one as we'd have already failed
