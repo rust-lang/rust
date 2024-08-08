@@ -77,7 +77,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(c) => {
                     let c = self.with_new_scopes(c.value.span, |this| {
-                        let def_id = this.local_def_id(c.id);
+                        let def_id = this.create_def(
+                            this.current_def_id_parent,
+                            c.id,
+                            kw::Empty,
+                            DefKind::InlineConst,
+                            c.value.span,
+                        );
                         hir::ConstBlock {
                             def_id,
                             hir_id: this.lower_node_id(c.id),
@@ -207,31 +213,40 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     body,
                     fn_decl_span,
                     fn_arg_span,
-                }) => match coroutine_kind {
-                    Some(coroutine_kind) => self.lower_expr_coroutine_closure(
-                        binder,
-                        *capture_clause,
+                }) => {
+                    let closure_def = self.create_def(
+                        self.current_def_id_parent,
                         e.id,
-                        hir_id,
-                        *coroutine_kind,
-                        fn_decl,
-                        body,
-                        *fn_decl_span,
-                        *fn_arg_span,
-                    ),
-                    None => self.lower_expr_closure(
-                        binder,
-                        *capture_clause,
-                        e.id,
-                        hir_id,
-                        *constness,
-                        *movability,
-                        fn_decl,
-                        body,
-                        *fn_decl_span,
-                        *fn_arg_span,
-                    ),
-                },
+                        kw::Empty,
+                        DefKind::Closure,
+                        e.span,
+                    );
+                    self.with_def_id_parent(closure_def, |this| match coroutine_kind {
+                        Some(coroutine_kind) => this.lower_expr_coroutine_closure(
+                            binder,
+                            *capture_clause,
+                            e.id,
+                            hir_id,
+                            *coroutine_kind,
+                            fn_decl,
+                            body,
+                            *fn_decl_span,
+                            *fn_arg_span,
+                        ),
+                        None => this.lower_expr_closure(
+                            binder,
+                            *capture_clause,
+                            e.id,
+                            hir_id,
+                            *constness,
+                            *movability,
+                            fn_decl,
+                            body,
+                            *fn_decl_span,
+                            *fn_arg_span,
+                        ),
+                    })
+                }
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
                         GenBlockKind::Async => hir::CoroutineDesugaring::Async,
@@ -383,15 +398,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_def_id_parent;
                 let node_id = self.next_node_id();
-
-                // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg() {
-                    // Add a definition for the in-band const def.
-                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
-                }
-
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
             } else {
@@ -625,7 +632,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
-        let closure_def_id = self.local_def_id(closure_node_id);
+        let closure_def_id = self.create_def(
+            self.current_def_id_parent,
+            closure_node_id,
+            kw::Empty,
+            DefKind::Closure,
+            span,
+        );
         let coroutine_kind = hir::CoroutineKind::Desugared(desugaring_kind, coroutine_source);
 
         // The `async` desugaring takes a resume argument and maintains a `task_context`,

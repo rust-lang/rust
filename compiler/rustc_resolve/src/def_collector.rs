@@ -182,10 +182,10 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
         });
     }
 
-    fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: Span, _: NodeId) {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
             match sig.header.coroutine_kind {
-                Some(coroutine_kind) => {
+                Some(_) => {
                     self.visit_generics(generics);
 
                     // For async functions, we need to create their inner defs inside of a
@@ -196,17 +196,10 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                         self.visit_param(param);
                     }
                     self.visit_fn_ret_ty(&sig.decl.output);
-                    // If this async fn has no body (i.e. it's an async fn signature in a trait)
-                    // then the closure_def will never be used, and we should avoid generating a
-                    // def-id for it.
                     if let Some(body) = body {
-                        let closure_def = self.create_def(
-                            coroutine_kind.closure_id(),
-                            kw::Empty,
-                            DefKind::Closure,
-                            span,
-                        );
-                        self.with_parent(closure_def, |this| this.visit_block(body));
+                        // HACK(min_generic_const_args): expression-like things (including coroutines)
+                        // have their defs created later, in ast_lowering
+                        self.visit_block(body);
                     }
                     return;
                 }
@@ -314,64 +307,29 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, constant: &'a AnonConst) {
-        // HACK(min_generic_const_args): don't create defs for anon consts if we think they will
-        // later be turned into ConstArgKind::Path's. because this is before resolve is done, we
-        // may accidentally identify a construction of a unit struct as a param and not create a
-        // def. we'll then create a def later in ast lowering in this case. the parent of nested
-        // items will be messed up, but that's ok because there can't be any if we're just looking
-        // for bare idents.
-        if constant.value.is_potential_trivial_const_arg() {
-            visit::walk_anon_const(self, constant)
-        } else {
-            let def =
-                self.create_def(constant.id, kw::Empty, DefKind::AnonConst, constant.value.span);
-            self.with_parent(def, |this| visit::walk_anon_const(this, constant));
-        }
+        // HACK(min_generic_const_args): expressions with defs (const blocks,
+        // anon consts, closures/generators) have their defs created later,
+        // during ast_lowering
+        visit::walk_anon_const(self, constant)
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        let parent_def = match expr.kind {
+        // HACK(min_generic_const_args): expressions with defs (const blocks,
+        // anon consts, closures/generators) have their defs created later,
+        // during ast_lowering
+        match expr.kind {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(ref closure) => {
-                // Async closures desugar to closures inside of closures, so
-                // we must create two defs.
-                let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
-                match closure.coroutine_kind {
-                    Some(coroutine_kind) => {
-                        self.with_parent(closure_def, |this| {
-                            let coroutine_def = this.create_def(
-                                coroutine_kind.closure_id(),
-                                kw::Empty,
-                                DefKind::Closure,
-                                expr.span,
-                            );
-                            this.with_parent(coroutine_def, |this| visit::walk_expr(this, expr));
-                        });
-                        return;
-                    }
-                    None => closure_def,
-                }
-            }
-            ExprKind::Gen(_, _, _, _) => {
-                self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
-            }
             ExprKind::ConstBlock(ref constant) => {
                 for attr in &expr.attrs {
                     visit::walk_attribute(self, attr);
                 }
-                let def = self.create_def(
-                    constant.id,
-                    kw::Empty,
-                    DefKind::InlineConst,
-                    constant.value.span,
-                );
-                self.with_parent(def, |this| visit::walk_anon_const(this, constant));
+                visit::walk_anon_const(self, constant);
                 return;
             }
-            _ => self.parent_def,
-        };
+            _ => {}
+        }
 
-        self.with_parent(parent_def, |this| visit::walk_expr(this, expr));
+        visit::walk_expr(self, expr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
