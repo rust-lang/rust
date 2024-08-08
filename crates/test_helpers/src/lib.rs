@@ -539,6 +539,9 @@ macro_rules! test_lanes {
                     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)];
                     lanes_1 1;
                     lanes_2 2;
+                    // Cover an odd and an even non-power-of-2 length in Miri.
+                    // (Even non-power-of-2 vectors have alignment between element
+                    // and vector size, so we want to cover that case as well.)
                     lanes_3 3;
 
                     lanes_6 6;
