@@ -33,6 +33,58 @@ LL + #[derive(Clone)]
 LL | struct S;
    |
 
-error: aborting due to 2 previous errors
+error[E0599]: the method `eq` exists for struct `B<Z>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:25:20
+   |
+LL | struct B<A> {
+   | ----------- method `eq` not found for this struct because it doesn't satisfy `B<Z>: Iterator` or `B<Z>: PartialEq`
+...
+LL |     ctx.a_map["a"].eq(&ctx.a_map["a"]);
+   |                    ^^ method cannot be called on `B<Z>` due to unsatisfied trait bounds
+   |
+note: trait bound `Z: PartialEq` was not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:17
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: the following trait bounds were not satisfied:
+           `B<Z>: Iterator`
+           which is required by `&mut B<Z>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | fn qux<Z>(ctx: &mut Ctx<Z>) where Z: PartialEq {
+   |                             ++++++++++++++++++
+
+error[E0599]: the method `eq` exists for struct `B<S>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:29:20
+   |
+LL | struct B<A> {
+   | ----------- method `eq` not found for this struct because it doesn't satisfy `B<S>: Iterator` or `B<S>: PartialEq`
+...
+LL | struct S;
+   | -------- doesn't satisfy `S: PartialEq`
+...
+LL |     ctx.a_map["a"].eq(&ctx.a_map["a"]);
+   |                    ^^ method cannot be called on `B<S>` due to unsatisfied trait bounds
+   |
+note: trait bound `S: PartialEq` was not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:17
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: the following trait bounds were not satisfied:
+           `B<S>: Iterator`
+           which is required by `&mut B<S>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `S` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct S;
+   |
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0599`.

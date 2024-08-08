@@ -31,10 +31,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{
     edit_distance, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, DUMMY_SP,
 };
-use rustc_trait_selection::error_reporting::traits::on_unimplemented::{
-    OnUnimplementedNote, TypeErrCtxtExt as _,
-};
-use rustc_trait_selection::error_reporting::traits::suggestions::TypeErrCtxtExt;
+use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -1374,16 +1371,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     else {
                         continue;
                     };
+                    let lang = tcx.lang_items();
+                    if ![
+                        lang.copy_trait(),
+                        lang.clone_trait(),
+                        tcx.get_diagnostic_item(sym::Debug),
+                        tcx.get_diagnostic_item(sym::Eq),
+                        tcx.get_diagnostic_item(sym::PartialEq),
+                        tcx.get_diagnostic_item(sym::Default),
+                    ]
+                    .contains(&Some(trait_pred.def_id()))
+                    {
+                        // We restrict ourselves only to built-in `derive`s.
+                        continue;
+                    }
                     let (adt, params) = match trait_pred.self_ty().kind() {
                         ty::Adt(adt, params) if adt.did().is_local() => (*adt, params),
                         _ => continue,
                     };
-                    if self
-                        .tcx
+                    if tcx
                         .all_impls(trait_pred.def_id())
-                        .filter_map(|imp_did| {
-                            self.tcx.impl_trait_header(imp_did).map(|h| (imp_did, h))
-                        })
+                        .filter_map(|imp_did| tcx.impl_trait_header(imp_did).map(|h| (imp_did, h)))
                         .filter(|(did, header)| {
                             let imp = header.trait_ref.instantiate_identity();
                             let impl_adt = match imp.self_ty().ty_adt_def() {
@@ -1392,7 +1400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             header.polarity == ty::ImplPolarity::Positive
                                 && impl_adt == adt
-                                && self.tcx.is_automatically_derived(*did)
+                                && tcx.is_automatically_derived(*did)
                         })
                         .count()
                         == 1
@@ -1413,7 +1421,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // The type param at hand is a local type, try to suggest
                                     // `derive(Trait)`.
                                     let trait_ref =
-                                        ty::TraitRef::new(tcx, trait_pred.trait_ref.def_id, [ty]);
+                                        ty::TraitRef::identity(tcx, trait_pred.trait_ref.def_id)
+                                            .with_self_ty(tcx, ty);
                                     let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
                                         trait_ref,
                                         polarity: ty::PredicatePolarity::Positive,
