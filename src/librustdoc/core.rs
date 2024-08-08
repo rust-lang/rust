@@ -138,8 +138,8 @@ pub(crate) fn new_dcx(
         false,
     );
     let emitter: Box<DynEmitter> = match error_format {
-        ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+        ErrorOutputType::HumanReadable(kind, color_config) => {
+            let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
@@ -150,7 +150,7 @@ pub(crate) fn new_dcx(
                     .ui_testing(unstable_opts.ui_testing),
             )
         }
-        ErrorOutputType::Json { pretty, json_rendered } => {
+        ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             let source_map = source_map.unwrap_or_else(|| {
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
@@ -161,6 +161,7 @@ pub(crate) fn new_dcx(
                     fallback_bundle,
                     pretty,
                     json_rendered,
+                    color_config,
                 )
                 .ui_testing(unstable_opts.ui_testing)
                 .diagnostic_width(diagnostic_width)

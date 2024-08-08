@@ -362,9 +362,10 @@ impl Options {
         }
 
         let color = config::parse_color(early_dcx, matches);
-        let config::JsonConfig { json_rendered, json_unused_externs, .. } =
+        let config::JsonConfig { json_rendered, json_unused_externs, json_color, .. } =
             config::parse_json(early_dcx, matches);
-        let error_format = config::parse_error_format(early_dcx, matches, color, json_rendered);
+        let error_format =
+            config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let codegen_options = CodegenOptions::build(early_dcx, matches);
