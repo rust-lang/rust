@@ -1,4 +1,4 @@
-error[E0271]: expected `{async closure@is-not-fn.rs:7:14}` to be a closure that returns `()`, but it returns `{async closure body@$DIR/is-not-fn.rs:7:23: 7:25}`
+error[E0271]: expected `{async closure@is-not-fn.rs:7:14}` to be a closure that returns `()`, but it returns `{async closure body@$DIR/is-not-fn.rs:7:14: 7:25}`
   --> $DIR/is-not-fn.rs:7:14
    |
 LL |     needs_fn(async || {});
@@ -7,7 +7,7 @@ LL |     needs_fn(async || {});
    |     required by a bound introduced by this call
    |
    = note:         expected unit type `()`
-           found `async` closure body `{async closure body@$DIR/is-not-fn.rs:7:23: 7:25}`
+           found `async` closure body `{async closure body@$DIR/is-not-fn.rs:7:14: 7:25}`
 note: required by a bound in `needs_fn`
   --> $DIR/is-not-fn.rs:6:25
    |

@@ -375,7 +375,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     c.value.span,
                 );
             }
-            ExprKind::Closure(_) => {
+            ExprKind::Closure(box Closure { coroutine_kind, .. }) => {
+                let closure_def = self.create_def(
+                    self.current_def_id_parent,
+                    e.id,
+                    kw::Empty,
+                    DefKind::Closure,
+                    e.span,
+                );
+                if let Some(coroutine_kind) = coroutine_kind {
+                    self.with_def_id_parent(closure_def, |this| {
+                        this.create_def(
+                            this.current_def_id_parent,
+                            coroutine_kind.closure_id(),
+                            kw::Empty,
+                            DefKind::Closure,
+                            e.span,
+                        );
+                    })
+                }
+            }
+            ExprKind::Gen(..) => {
                 self.create_def(
                     self.current_def_id_parent,
                     e.id,
@@ -649,13 +669,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
-        let closure_def_id = self.create_def(
-            self.current_def_id_parent,
-            closure_node_id,
-            kw::Empty,
-            DefKind::Closure,
-            span,
-        );
+        let closure_def_id = self.local_def_id(closure_node_id);
         let coroutine_kind = hir::CoroutineKind::Desugared(desugaring_kind, coroutine_source);
 
         // The `async` desugaring takes a resume argument and maintains a `task_context`,
