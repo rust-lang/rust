@@ -9,6 +9,7 @@ on:
 env:
   CARGO_NET_RETRY: 10
   RUSTUP_MAX_RETRIES: 10
+  PROPTEST_CASES: 64
 
 jobs:
   rustfmt:
@@ -181,6 +182,8 @@ jobs:
   cross-tests:
     name: "${{ matrix.target_feature }} on ${{ matrix.target }} (via cross)"
     runs-on: ubuntu-latest
+    env:
+      PROPTEST_CASES: 16
     strategy:
       fail-fast: false
 
@@ -247,6 +250,8 @@ jobs:
 
   miri:
     runs-on: ubuntu-latest
+    env:
+      PROPTEST_CASES: 16
     steps:
       - uses: actions/checkout@v2
       - name: Test (Miri)
