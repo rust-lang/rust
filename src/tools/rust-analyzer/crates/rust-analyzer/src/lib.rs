@@ -12,9 +12,12 @@
 pub mod cli;
 
 mod capabilities;
+mod command;
 mod diagnostics;
 mod diff;
+mod discover;
 mod dispatch;
+mod flycheck;
 mod hack_recover_crate_name;
 mod line_index;
 mod main_loop;
@@ -23,6 +26,7 @@ mod op_queue;
 mod reload;
 mod target_spec;
 mod task_pool;
+mod test_runner;
 mod version;
 
 mod handlers {

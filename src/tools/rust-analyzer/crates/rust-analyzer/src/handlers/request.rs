@@ -51,6 +51,7 @@ use crate::{
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
     target_spec::{CargoTargetSpec, TargetSpec},
+    test_runner::{CargoTestHandle, TestTarget},
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
@@ -246,15 +247,15 @@ pub(crate) fn handle_run_test(
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
             let test_target = if let Some(namespace_root) = namespace_root {
                 if let Some(package_name) = find_package_name(namespace_root, cargo) {
-                    flycheck::TestTarget::Package(package_name)
+                    TestTarget::Package(package_name)
                 } else {
-                    flycheck::TestTarget::Workspace
+                    TestTarget::Workspace
                 }
             } else {
-                flycheck::TestTarget::Workspace
+                TestTarget::Workspace
             };
 
-            let handle = flycheck::CargoTestHandle::new(
+            let handle = CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
                 cargo.workspace_root(),

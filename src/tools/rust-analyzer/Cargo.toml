@@ -52,7 +52,6 @@ debug = 2
 # local crates
 base-db = { path = "./crates/base-db", version = "0.0.0" }
 cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
-flycheck = { path = "./crates/flycheck", version = "0.0.0" }
 hir = { path = "./crates/hir", version = "0.0.0" }
 hir-def = { path = "./crates/hir-def", version = "0.0.0" }
 hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }

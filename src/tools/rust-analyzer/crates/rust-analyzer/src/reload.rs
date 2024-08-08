@@ -15,7 +15,6 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem};
 
-use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
 use ide_db::{
     base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
@@ -32,6 +31,7 @@ use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
+    flycheck::{FlycheckConfig, FlycheckHandle},
     global_state::{FetchWorkspaceRequest, GlobalState},
     lsp_ext,
     main_loop::{DiscoverProjectParam, Task},
@@ -749,12 +749,14 @@ impl GlobalState {
         let config = self.config.flycheck();
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {
-            FlycheckConfig::CargoCommand { .. } => flycheck::InvocationStrategy::PerWorkspace,
+            FlycheckConfig::CargoCommand { .. } => {
+                crate::flycheck::InvocationStrategy::PerWorkspace
+            }
             FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
         };
 
         self.flycheck = match invocation_strategy {
-            flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
+            crate::flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
                 config,
@@ -762,7 +764,7 @@ impl GlobalState {
                 self.config.root_path().clone(),
                 None,
             )],
-            flycheck::InvocationStrategy::PerWorkspace => {
+            crate::flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()
                     .enumerate()
