@@ -24,6 +24,9 @@ fn exitstatus_display_tests() {
     // The purpose of this test is to test our string formatting, not our understanding of the wait
     // status magic numbers. So restrict these to Linux.
     if cfg!(target_os = "linux") {
+        #[cfg(any(target_arch = "mips", target_arch = "mips64"))]
+        t(0x0137f, "stopped (not terminated) by signal: 19 (SIGPWR)");
+        #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
         t(0x0137f, "stopped (not terminated) by signal: 19 (SIGSTOP)");
         t(0x0ffff, "continued (WIFCONTINUED)");
     }
