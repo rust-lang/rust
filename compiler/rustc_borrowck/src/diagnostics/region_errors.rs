@@ -35,7 +35,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 use crate::universal_regions::DefiningTy;
-use crate::{borrowck_errors, MirBorrowckCtxt};
+use crate::{borrowck_errors, fluent_generated, MirBorrowckCtxt};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
@@ -1045,7 +1045,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     /// When encountering a lifetime error caused by the return type of a closure, check the
     /// corresponding trait bound and see if dereferencing the closure return value would satisfy
     /// them. If so, we produce a structured suggestion.
@@ -1166,7 +1165,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if ocx.select_all_or_error().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
-                "dereference the return value",
+                fluent_generated::borrowck_dereference_suggestion,
                 "*".repeat(count),
                 Applicability::MachineApplicable,
             );

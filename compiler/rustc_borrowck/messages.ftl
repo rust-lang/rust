@@ -62,6 +62,9 @@ borrowck_could_not_normalize =
 borrowck_could_not_prove =
     could not prove `{$predicate}`
 
+borrowck_dereference_suggestion =
+    dereference the return value
+
 borrowck_func_take_self_moved_place =
     `{$func}` takes ownership of the receiver `self`, which moves {$place_name}
 
