@@ -77,6 +77,15 @@ borrowck_higher_ranked_lifetime_error =
 borrowck_higher_ranked_subtype_error =
     higher-ranked subtype error
 
+borrowck_implicit_static =
+    this has an implicit `'static` lifetime requirement
+
+borrowck_implicit_static_introduced =
+    calling this method introduces the `impl`'s `'static` requirement
+
+borrowck_implicit_static_relax =
+    consider relaxing the implicit `'static` requirement
+
 borrowck_lifetime_constraints_error =
     lifetime may not live long enough
 

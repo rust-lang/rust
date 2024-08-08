@@ -975,7 +975,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(skip(self, err), level = "debug")]
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
@@ -994,15 +993,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
                 multi_span
-                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
+                    .push_span_label(*span, fluent_generated::borrowck_implicit_static);
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s `'static` requirement",
+                    fluent_generated::borrowck_implicit_static_introduced,
                 );
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
-                    "consider relaxing the implicit `'static` requirement",
+                    fluent_generated::borrowck_implicit_static_relax,
                     " + '_",
                     Applicability::MaybeIncorrect,
                 );
