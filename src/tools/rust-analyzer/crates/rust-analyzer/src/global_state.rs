@@ -5,8 +5,8 @@
 
 use std::{ops::Not as _, time::Instant};
 
+use crate::flycheck::{self, project_json, FlycheckHandle};
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use flycheck::{project_json, FlycheckHandle};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase, SourceRootDatabase};

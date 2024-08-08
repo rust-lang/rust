@@ -47,9 +47,10 @@ always-assert = "0.2.0"
 walkdir = "2.3.2"
 semver.workspace = true
 memchr = "2.7.1"
+cargo_metadata.workspace = true
+process-wrap.workspace = true
 
 cfg.workspace = true
-flycheck.workspace = true
 hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true

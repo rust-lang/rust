@@ -9,7 +9,6 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use flycheck::project_json;
 use ide_db::base_db::{SourceDatabase, SourceRootDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
@@ -21,6 +20,7 @@ use crate::{
     config::Config,
     diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
     dispatch::{NotificationDispatcher, RequestDispatcher},
+    flycheck::{self, project_json},
     global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
     hack_recover_crate_name,
     lsp::{

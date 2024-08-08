@@ -7,7 +7,6 @@ use std::{fmt, iter, ops::Not, sync::OnceLock};
 
 use cfg::{CfgAtom, CfgDiff};
 use dirs::config_dir;
-use flycheck::{CargoOptions, FlycheckConfig};
 use hir::Symbol;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
@@ -37,6 +36,7 @@ use vfs::{AbsPath, AbsPathBuf, VfsPath};
 use crate::{
     capabilities::ClientCapabilities,
     diagnostics::DiagnosticsMapConfig,
+    flycheck::{CargoOptions, FlycheckConfig},
     lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
@@ -1899,7 +1899,7 @@ impl Config {
         *self.check_workspace(None)
     }
 
-    pub fn cargo_test_options(&self) -> CargoOptions {
+    pub(crate) fn cargo_test_options(&self) -> CargoOptions {
         CargoOptions {
             target_triples: self.cargo_target(None).clone().into_iter().collect(),
             all_targets: false,
@@ -1915,7 +1915,7 @@ impl Config {
         }
     }
 
-    pub fn flycheck(&self) -> FlycheckConfig {
+    pub(crate) fn flycheck(&self) -> FlycheckConfig {
         match &self.check_overrideCommand(None) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1925,16 +1925,18 @@ impl Config {
                     args,
                     extra_env: self.check_extra_env(),
                     invocation_strategy: match self.check_invocationStrategy(None) {
-                        InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
+                        InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
-                            flycheck::InvocationStrategy::PerWorkspace
+                            crate::flycheck::InvocationStrategy::PerWorkspace
                         }
                     },
                     invocation_location: match self.check_invocationLocation(None) {
                         InvocationLocation::Root => {
-                            flycheck::InvocationLocation::Root(self.root_path.clone())
+                            crate::flycheck::InvocationLocation::Root(self.root_path.clone())
                         }
-                        InvocationLocation::Workspace => flycheck::InvocationLocation::Workspace,
+                        InvocationLocation::Workspace => {
+                            crate::flycheck::InvocationLocation::Workspace
+                        }
                     },
                 }
             }

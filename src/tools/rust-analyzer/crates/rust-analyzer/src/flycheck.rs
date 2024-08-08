@@ -13,43 +13,42 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
-pub use cargo_metadata::diagnostic::{
+pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
-    DiagnosticSpanMacroExpansion,
 };
 use toolchain::Tool;
 
 mod command;
-pub mod project_json;
+pub(crate) mod project_json;
 mod test_runner;
 
 use command::{CommandHandle, ParseFromLine};
-pub use test_runner::{CargoTestHandle, CargoTestMessage, TestState, TestTarget};
+pub(crate) use test_runner::{CargoTestHandle, CargoTestMessage, TestState, TestTarget};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum InvocationStrategy {
+pub(crate) enum InvocationStrategy {
     Once,
     #[default]
     PerWorkspace,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub enum InvocationLocation {
+pub(crate) enum InvocationLocation {
     Root(AbsPathBuf),
     #[default]
     Workspace,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CargoOptions {
-    pub target_triples: Vec<String>,
-    pub all_targets: bool,
-    pub no_default_features: bool,
-    pub all_features: bool,
-    pub features: Vec<String>,
-    pub extra_args: Vec<String>,
-    pub extra_env: FxHashMap<String, String>,
-    pub target_dir: Option<Utf8PathBuf>,
+pub(crate) struct CargoOptions {
+    pub(crate) target_triples: Vec<String>,
+    pub(crate) all_targets: bool,
+    pub(crate) no_default_features: bool,
+    pub(crate) all_features: bool,
+    pub(crate) features: Vec<String>,
+    pub(crate) extra_args: Vec<String>,
+    pub(crate) extra_env: FxHashMap<String, String>,
+    pub(crate) target_dir: Option<Utf8PathBuf>,
 }
 
 impl CargoOptions {
@@ -79,7 +78,7 @@ impl CargoOptions {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FlycheckConfig {
+pub(crate) enum FlycheckConfig {
     CargoCommand {
         command: String,
         options: CargoOptions,
@@ -110,7 +109,7 @@ impl fmt::Display for FlycheckConfig {
 /// diagnostics based on the output.
 /// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
-pub struct FlycheckHandle {
+pub(crate) struct FlycheckHandle {
     // XXX: drop order is significant
     sender: Sender<StateChange>,
     _thread: stdx::thread::JoinHandle,
@@ -118,7 +117,7 @@ pub struct FlycheckHandle {
 }
 
 impl FlycheckHandle {
-    pub fn spawn(
+    pub(crate) fn spawn(
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
@@ -137,28 +136,28 @@ impl FlycheckHandle {
     }
 
     /// Schedule a re-start of the cargo check worker to do a workspace wide check.
-    pub fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
+    pub(crate) fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
         self.sender.send(StateChange::Restart { package: None, saved_file }).unwrap();
     }
 
     /// Schedule a re-start of the cargo check worker to do a package wide check.
-    pub fn restart_for_package(&self, package: String) {
+    pub(crate) fn restart_for_package(&self, package: String) {
         self.sender
             .send(StateChange::Restart { package: Some(package), saved_file: None })
             .unwrap();
     }
 
     /// Stop this cargo check worker.
-    pub fn cancel(&self) {
+    pub(crate) fn cancel(&self) {
         self.sender.send(StateChange::Cancel).unwrap();
     }
 
-    pub fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.id
     }
 }
 
-pub enum Message {
+pub(crate) enum Message {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic { id: usize, workspace_root: AbsPathBuf, diagnostic: Diagnostic },
 
@@ -193,7 +192,7 @@ impl fmt::Debug for Message {
 }
 
 #[derive(Debug)]
-pub enum Progress {
+pub(crate) enum Progress {
     DidStart,
     DidCheckCrate(String),
     DidFinish(io::Result<()>),
@@ -241,7 +240,7 @@ enum FlycheckStatus {
     Finished,
 }
 
-pub const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
+pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
 
 impl FlycheckActor {
     fn new(

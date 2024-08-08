@@ -15,6 +15,7 @@ mod capabilities;
 mod diagnostics;
 mod diff;
 mod dispatch;
+mod flycheck;
 mod hack_recover_crate_name;
 mod line_index;
 mod main_loop;

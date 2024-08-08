@@ -424,23 +424,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "flycheck"
-version = "0.0.0"
-dependencies = [
- "cargo_metadata",
- "crossbeam-channel",
- "paths",
- "process-wrap",
- "project-model",
- "rustc-hash",
- "serde",
- "serde_json",
- "stdx",
- "toolchain",
- "tracing",
-]
-
-[[package]]
 name = "form_urlencoded"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1650,12 +1633,12 @@ version = "0.0.0"
 dependencies = [
  "always-assert",
  "anyhow",
+ "cargo_metadata",
  "cfg",
  "crossbeam-channel",
  "dirs",
  "dissimilar",
  "expect-test",
- "flycheck",
  "hir",
  "hir-def",
  "hir-ty",
@@ -1676,6 +1659,7 @@ dependencies = [
  "parser",
  "paths",
  "proc-macro-api",
+ "process-wrap",
  "profile",
  "project-model",
  "rayon",

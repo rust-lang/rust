@@ -246,15 +246,15 @@ pub(crate) fn handle_run_test(
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
             let test_target = if let Some(namespace_root) = namespace_root {
                 if let Some(package_name) = find_package_name(namespace_root, cargo) {
-                    flycheck::TestTarget::Package(package_name)
+                    crate::flycheck::TestTarget::Package(package_name)
                 } else {
-                    flycheck::TestTarget::Workspace
+                    crate::flycheck::TestTarget::Workspace
                 }
             } else {
-                flycheck::TestTarget::Workspace
+                crate::flycheck::TestTarget::Workspace
             };
 
-            let handle = flycheck::CargoTestHandle::new(
+            let handle = crate::flycheck::CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
                 cargo.workspace_root(),
