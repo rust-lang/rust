@@ -1022,16 +1022,16 @@ impl HirDisplay for Ty {
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if parameters.len() - impl_ > 0 {
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
+                        let without_impl = self_param as usize + type_ + const_ + lifetime;
                         // parent's params (those from enclosing impl or trait, if any).
-                        let (fn_params, other) =
-                            parameters.split_at(self_param as usize + type_ + const_ + lifetime);
-                        let (_impl, parent_params) = other.split_at(impl_);
+                        let (fn_params, parent_params) = parameters.split_at(without_impl + impl_);
                         debug_assert_eq!(parent_params.len(), parent_len);
 
                         let parent_params =
                             generic_args_sans_defaults(f, Some(generic_def_id), parent_params);
                         let fn_params =
-                            generic_args_sans_defaults(f, Some(generic_def_id), fn_params);
+                            &generic_args_sans_defaults(f, Some(generic_def_id), fn_params)
+                                [0..without_impl];
 
                         write!(f, "<")?;
                         hir_fmt_generic_arguments(f, parent_params, None)?;

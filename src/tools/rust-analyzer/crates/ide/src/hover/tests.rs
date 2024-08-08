@@ -8579,3 +8579,26 @@ fn main(a$0: T) {}
         "#]],
     );
 }
+
+#[test]
+fn hover_fn_with_impl_trait_arg() {
+    check(
+        r#"
+trait Foo {}
+impl Foo for bool {}
+fn bar<const WIDTH: u8>(_: impl Foo) {}
+fn test() {
+    let f = bar::<3>;
+    f$0(true);
+}
+"#,
+        expect![[r#"
+            *f*
+
+            ```rust
+            // size = 0, align = 1
+            let f: fn bar<3>(bool)
+            ```
+        "#]],
+    );
+}
