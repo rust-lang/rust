@@ -453,15 +453,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut infer_subdiags = Vec::new();
         let mut multi_suggestions = Vec::new();
         match kind {
-            InferSourceKind::LetBinding { insert_span, pattern_name, ty, def_id, hir_id } => {
+            InferSourceKind::LetBinding {
+                insert_span,
+                pattern_name,
+                ty,
+                def_id,
+                init_expr_hir_id,
+            } => {
                 let mut paths = vec![];
                 if let Some(def_id) = def_id
-                    && let Some(hir_id) = hir_id
+                    && let Some(hir_id) = init_expr_hir_id
                     && let expr = self.infcx.tcx.hir().expect_expr(hir_id)
                     && let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind
                     && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
                 {
-                    paths = self.get_suggestions(ty, def_id, true, param_env, None, predicate);
+                    paths = self.get_fully_qualified_path_suggestions_from_impls(
+                        ty, def_id, true, param_env, predicate,
+                    );
                 }
 
                 if paths.is_empty() {
@@ -588,12 +596,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     // Look for all the possible implementations to suggest, otherwise we'll show
                     // just suggest the syntax for the fully qualified path with placeholders.
-                    let paths = self.get_suggestions(
+                    let paths = self.get_fully_qualified_path_suggestions_from_impls(
                         args.type_at(0),
                         def_id,
                         false,
                         param_env,
-                        Some(args),
                         predicate,
                     );
                     if paths.len() > 20 || paths.is_empty() {
@@ -667,33 +674,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn get_suggestions(
+    fn get_fully_qualified_path_suggestions_from_impls(
         &self,
         self_ty: Ty<'tcx>,
         def_id: DefId,
         target_type: bool,
         param_env: ty::ParamEnv<'tcx>,
-        args: Option<&ty::GenericArgs<'tcx>>,
         predicate: Option<ty::Predicate<'tcx>>,
     ) -> Vec<String> {
         let tcx = self.infcx.tcx;
         let mut paths = vec![];
         let name = tcx.item_name(def_id);
-        let empty_args = |def_id| {
-            ty::GenericArgs::for_item(tcx, def_id, |param, _| {
-                // We don't want to name the arguments, we just want to give an
-                // idea of what the syntax is.
-                match param.kind {
-                    ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                    ty::GenericParamDefKind::Type { .. } => self.next_ty_var(DUMMY_SP).into(),
-                    ty::GenericParamDefKind::Const { .. } => self.next_const_var(DUMMY_SP).into(),
-                }
-            })
-        };
-        let args = args.unwrap_or_else(|| empty_args(def_id));
+        let args = self.fresh_args_for_item(DUMMY_SP, def_id);
         let trait_def_id = tcx.parent(def_id);
         tcx.for_each_relevant_impl(trait_def_id, self_ty, |impl_def_id| {
-            let impl_args = empty_args(impl_def_id);
+            let impl_args = self.fresh_args_for_item(DUMMY_SP, impl_def_id);
             let impl_trait_ref =
                 tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
             let impl_self_ty = impl_trait_ref.self_ty();
@@ -704,6 +699,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return;
             }
 
+            let lang = tcx.lang_items();
             let filter = if let Some(ty::ProjectionPredicate {
                 projection_term: ty::AliasTerm { def_id, .. },
                 term,
@@ -711,11 +707,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 predicate.and_then(|p| p.as_projection_clause()).map(|p| p.skip_binder())
                 && let ty::TermKind::Ty(assoc_ty) = term.unpack()
                 && tcx.item_name(def_id) == sym::Output
+                && [
+                    lang.add_trait(),
+                    lang.sub_trait(),
+                    lang.mul_trait(),
+                    lang.div_trait(),
+                    lang.rem_trait(),
+                    lang.neg_trait(),
+                ]
+                .contains(&Some(tcx.parent(def_id)))
             {
                 // If the predicate that failed to be inferred is an associated type called
-                // "Output" (presumably from one of the math traits), we will only mention the
-                // `Into` and `From` impls that correspond to the self type as well, so as to
-                // avoid showing multiple conversion options.
+                // "Output" (from one of the math traits), we will only mention the `Into` and
+                // `From` impls that correspond to the self type as well, so as to avoid showing
+                // multiple conversion options.
                 Some(assoc_ty)
             } else {
                 None
@@ -766,26 +771,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return;
             };
             let trait_assoc_substs =
-                impl_trait_ref.args.extend_to(tcx, trait_assoc_item, |def, _| {
-                    // We don't want to name the arguments, we just want to give an
-                    // idea of what the syntax is.
-                    match def.kind {
-                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                        ty::GenericParamDefKind::Type { .. } => self.next_ty_var(DUMMY_SP).into(),
-                        ty::GenericParamDefKind::Const { .. } => {
-                            self.next_const_var(DUMMY_SP).into()
-                        }
-                    }
-                });
+                impl_trait_ref
+                    .args
+                    .extend_to(tcx, trait_assoc_item, |def, _| self.var_for_def(DUMMY_SP, def));
             let identity_method = args.rebase_onto(tcx, def_id, trait_assoc_substs);
             if target_type {
                 let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, identity_method);
                 let ret = fn_sig.skip_binder().output();
                 paths.push(format!("{ret}"));
             } else {
-                let mut printer = fmt_printer(self, Namespace::ValueNS);
-                printer.print_def_path(def_id, identity_method).unwrap();
-                paths.push(printer.into_buffer());
+                paths.push(self.tcx.value_path_str_with_args(def_id, identity_method));
             }
         });
         paths
@@ -805,7 +800,7 @@ enum InferSourceKind<'tcx> {
         pattern_name: Option<Ident>,
         ty: Ty<'tcx>,
         def_id: Option<DefId>,
-        hir_id: Option<HirId>,
+        init_expr_hir_id: Option<HirId>,
     },
     ClosureArg {
         insert_span: Span,
@@ -1304,7 +1299,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                                 pattern_name: local.pat.simple_ident(),
                                 ty,
                                 def_id: None,
-                                hir_id: local.init.map(|e| e.hir_id),
+                                init_expr_hir_id: local.init.map(|e| e.hir_id),
                             },
                         })
                     }
