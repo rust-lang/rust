@@ -749,7 +749,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let ty = header.trait_ref.skip_binder().args.type_at(1);
                     if ty == self_ty {
                         if target_type {
-                            paths.push(format!("{target}"));
+                            let mut ty_str = format!("{target}");
+                            if &ty_str == "_" {
+                                ty_str = "/* Type */".to_string();
+                            }
+                            paths.push(ty_str);
                         } else {
                             paths.push(format!("<{self_ty} as Into<{target}>>::into"));
                         }
@@ -777,8 +781,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let identity_method = args.rebase_onto(tcx, def_id, trait_assoc_substs);
             if target_type {
                 let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, identity_method);
-                let ret = fn_sig.skip_binder().output();
-                paths.push(format!("{ret}"));
+                let mut ret = format!("{}", fn_sig.skip_binder().output());
+                if &ret == "_" {
+                    ret = "/* Type */".to_string();
+                }
+                paths.push(ret);
             } else {
                 paths.push(self.tcx.value_path_str_with_args(def_id, identity_method));
             }

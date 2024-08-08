@@ -6,8 +6,8 @@ LL |     let [a, b, c] = Zeroes.into() else {
    |
 help: consider giving this pattern a type
    |
-LL |     let [a, b, c]: _ = Zeroes.into() else {
-   |                  +++
+LL |     let [a, b, c]: /* Type */ = Zeroes.into() else {
+   |                  ++++++++++++
 help: consider giving this pattern a type
    |
 LL |     let [a, b, c]: [usize; 3] = Zeroes.into() else {
