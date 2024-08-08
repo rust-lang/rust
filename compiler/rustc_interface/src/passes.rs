@@ -818,6 +818,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
+    if tcx.sess.opts.unstable_opts.validate_mir {
+        sess.time("ensuring_optimized_MIR_is_computable", || {
+            tcx.hir().par_body_owners(|def_id| {
+                tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
+            });
+        });
+    }
 }
 
 /// Runs the type-checking, region checking and other miscellaneous analysis
