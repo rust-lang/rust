@@ -1,4 +1,4 @@
-error[E0271]: expected `{async block@$DIR/async.rs:12:17: 12:22}` to be a future that resolves to `i32`, but it resolves to `()`
+error[E0271]: expected `{async block@$DIR/async.rs:12:17: 12:25}` to be a future that resolves to `i32`, but it resolves to `()`
   --> $DIR/async.rs:12:17
    |
 LL |     needs_async(async {});
