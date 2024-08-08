@@ -10,9 +10,10 @@ fn bar() {
                 qux::<
                     {
                         //~^ ERROR: rustc_dump_def_parents: DefId
-                        fn inhibits_dump() {
+                        fn doesnt_inhibit_dump() {
                             qux::<
                                 {
+                                    //~^ ERROR: rustc_dump_def_parents: DefId
                                     "hi";
                                     1
                                 },
