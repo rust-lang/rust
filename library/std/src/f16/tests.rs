@@ -4,20 +4,20 @@
 use crate::f16::consts;
 use crate::num::{FpCategory as Fp, *};
 
-/// Tolerance for results on the order of 10.0e-2;
-#[cfg(reliable_f16_math)]
+/// Tolerance for results on the order of 10.0e-2
+#[allow(unused)]
 const TOL_N2: f16 = 0.0001;
 
 /// Tolerance for results on the order of 10.0e+0
-#[cfg(reliable_f16_math)]
+#[allow(unused)]
 const TOL_0: f16 = 0.01;
 
 /// Tolerance for results on the order of 10.0e+2
-#[cfg(reliable_f16_math)]
+#[allow(unused)]
 const TOL_P2: f16 = 0.5;
 
 /// Tolerance for results on the order of 10.0e+4
-#[cfg(reliable_f16_math)]
+#[allow(unused)]
 const TOL_P4: f16 = 10.0;
 
 /// Smallest number
