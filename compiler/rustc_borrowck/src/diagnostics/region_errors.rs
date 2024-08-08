@@ -35,7 +35,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 use crate::universal_regions::DefiningTy;
-use crate::{borrowck_errors, fluent_generated, MirBorrowckCtxt};
+use crate::{borrowck_errors, fluent_generated as fluent, MirBorrowckCtxt};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
@@ -250,23 +250,28 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         debug!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
-            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
-            diag.span_note(
-                *trait_span,
-                fluent_generated::borrowck_limitations_implies_static,
-            );
-            let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local()) else { return; };
-            let Def(_, trait_res_defid) = trait_ref.path.res else { return; };
+            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else {
+                return;
+            };
+            diag.span_note(*trait_span, fluent::borrowck_limitations_implies_static);
+            let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local())
+            else {
+                return;
+            };
+            let Def(_, trait_res_defid) = trait_ref.path.res else {
+                return;
+            };
             debug!(?generics_fn);
             generics_fn.predicates.iter().for_each(|predicate| {
-                let BoundPredicate(
-                    WhereBoundPredicate {
-                        span: bounded_span,
-                        bounded_ty,
-                        bounds,
-                        ..
-                    }
-                ) = predicate else { return; };
+                let BoundPredicate(WhereBoundPredicate {
+                    span: bounded_span,
+                    bounded_ty,
+                    bounds,
+                    ..
+                }) = predicate
+                else {
+                    return;
+                };
                 bounds.iter().for_each(|bd| {
                     if let Trait(PolyTraitRef { trait_ref: tr_ref, .. }, _) = bd
                         && let Def(_, res_defid) = tr_ref.path.res
@@ -276,16 +281,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         && generics_fn.params
                             .iter()
                             .rfind(|param| param.def_id.to_def_id() == defid)
-                            .is_some() {
-                            suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
-                        }
+                            .is_some()
+                    {
+                        suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
+                    }
                 });
             });
         });
         if suggestions.len() > 0 {
             suggestions.dedup();
             diag.multipart_suggestion_verbose(
-                fluent_generated::borrowck_restrict_to_static,
+                fluent::borrowck_restrict_to_static,
                 suggestions,
                 Applicability::MaybeIncorrect,
             );
@@ -992,16 +998,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span
-                    .push_span_label(*span, fluent_generated::borrowck_implicit_static);
-                multi_span.push_span_label(
-                    ident.span,
-                    fluent_generated::borrowck_implicit_static_introduced,
-                );
+                multi_span.push_span_label(*span, fluent::borrowck_implicit_static);
+                multi_span.push_span_label(ident.span, fluent::borrowck_implicit_static_introduced);
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
-                    fluent_generated::borrowck_implicit_static_relax,
+                    fluent::borrowck_implicit_static_relax,
                     " + '_",
                     Applicability::MaybeIncorrect,
                 );
@@ -1163,7 +1165,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if ocx.select_all_or_error().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
-                fluent_generated::borrowck_dereference_suggestion,
+                fluent::borrowck_dereference_suggestion,
                 "*".repeat(count),
                 Applicability::MachineApplicable,
             );
@@ -1209,7 +1211,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if let Some(closure_span) = closure_span {
             diag.span_suggestion_verbose(
                 closure_span,
-                fluent_generated::borrowck_move_closure_suggestion,
+                fluent::borrowck_move_closure_suggestion,
                 "move ",
                 Applicability::MaybeIncorrect,
             );
