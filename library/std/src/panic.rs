@@ -210,19 +210,49 @@ impl fmt::Display for PanicHookInfo<'_> {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(libstd_sys_internals, const_format_args, panic_internals, rt)]
+#[allow_internal_unstable(
+    libstd_sys_internals,
+    const_format_args,
+    panic_internals,
+    rt,
+    const_dispatch,
+    const_eval_select,
+    rustc_attrs
+)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
+    // For all cases where it is possible, wrap the actual call to the
+    // internal panic implementation function with a local no-inline
+    // cold function. This moves the codegen for setting up the
+    // arguments to the panic implementation function to the
+    // presumably cold panic path.
+    // It would be nice to handle literals here specially with a
+    // wrapper function, but unfortunately it results in unclear error
+    // messages when using panic(<non-str>).
     () => ({
-        $crate::rt::begin_panic("explicit panic")
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        const fn panic_cold_explicit() -> ! {
+            $crate::rt::begin_panic("explicit panic");
+        }
+        panic_cold_explicit();
     }),
     ($msg:expr $(,)?) => ({
         $crate::rt::begin_panic($msg);
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
-        $crate::rt::panic_display(&$arg);
+        #[cold]
+        #[track_caller]
+        #[inline(never)]
+        #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
+        #[rustc_do_not_const_check] // hooked by const-eval
+        const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
+            $crate::rt::panic_display(arg)
+        }
+        panic_cold_display(&$arg);
     }),
     ($fmt:expr, $($arg:tt)+) => ({
         // Semicolon to prevent temporaries inside the formatting machinery from

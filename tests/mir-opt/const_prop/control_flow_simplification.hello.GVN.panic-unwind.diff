@@ -4,7 +4,7 @@
   fn hello() -> () {
       let mut _0: ();
       let mut _1: bool;
-      let mut _2: !;
+      let _2: !;
   
       bb0: {
           StorageLive(_1);
@@ -14,7 +14,7 @@
       }
   
       bb1: {
-          _2 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
+          _2 = panic_cold_explicit() -> unwind continue;
       }
   
       bb2: {

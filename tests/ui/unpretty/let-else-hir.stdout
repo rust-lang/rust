@@ -12,7 +12,14 @@ fn foo(x:
     let Some(_) = x else
         {
 
-        { ::std::rt::begin_panic("explicit panic") }
+        {
+            #[cold]
+            #[track_caller]
+            #[inline(never)]
+            const fn panic_cold_explicit()
+                -> ! { ::std::rt::begin_panic("explicit panic"); }
+            panic_cold_explicit();
+        }
     };
 }
 fn main() { }

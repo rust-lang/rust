@@ -33,7 +33,7 @@
       }
   
       bb1: {
-          _10 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind unreachable;
+          _10 = core::panicking::unreachable_cold_explicit() -> unwind unreachable;
       }
   
       bb2: {

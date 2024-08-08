@@ -239,8 +239,12 @@ pub const fn panic_explicit() -> ! {
 
 #[inline]
 #[track_caller]
+#[rustc_do_not_const_check] // hooked by const-eval
+// enforce a &&str argument in const-check and hook this by const-eval
+#[rustc_const_panic_str]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
-pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
+pub const fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
 }
 
@@ -252,6 +256,22 @@ pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
 #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_str_2015(expr: &str) -> ! {
     panic_display(&expr);
+}
+
+#[cold]
+#[track_caller]
+#[inline(never)]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+pub const fn panic_cold_explicit() -> ! {
+    panic("explicit panic");
+}
+
+#[cold]
+#[track_caller]
+#[inline(never)]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+pub const fn unreachable_cold_explicit() -> ! {
+    panic("internal error: entered unreachable code");
 }
 
 #[inline]
