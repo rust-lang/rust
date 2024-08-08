@@ -59,6 +59,11 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
                     self.tcx.hir()
                 }
 
+                fn visit_item(&mut self, i: &'tcx rustc_hir::Item<'tcx>) -> Self::Result {
+                    self.defs.push(i.owner_id.def_id);
+                    intravisit::walk_item(self, i)
+                }
+
                 fn visit_anon_const(&mut self, c: &'tcx rustc_hir::AnonConst) {
                     self.defs.push(c.def_id);
                     intravisit::walk_anon_const(self, c)
@@ -76,13 +81,13 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
             // Look for any anon consts inside of this body owner as there is no way to apply
             // the `rustc_dump_def_parents` attribute to the anon const so it would not be possible
             // to see what its def parent is.
-            let mut expr_def_finder = ExprDefFinder { tcx, defs: vec![] };
+            let mut def_finder = ExprDefFinder { tcx, defs: vec![] };
             tcx.hir()
                 .fn_decl_by_hir_id(tcx.local_def_id_to_hir_id(did))
-                .map(|decl| intravisit::walk_fn_decl(&mut expr_def_finder, decl));
-            intravisit::walk_expr(&mut expr_def_finder, tcx.hir().body_owned_by(did).value);
+                .map(|decl| intravisit::walk_fn_decl(&mut def_finder, decl));
+            intravisit::walk_expr(&mut def_finder, tcx.hir().body_owned_by(did).value);
 
-            for did in [did].into_iter().chain(expr_def_finder.defs) {
+            for did in [did].into_iter().chain(def_finder.defs) {
                 let span = tcx.def_span(did);
 
                 let mut diag = tcx.dcx().struct_span_err(
