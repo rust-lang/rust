@@ -8,7 +8,11 @@
 #![no_std]
 #![feature(abi_x86_interrupt, naked_functions)]
 
-// CHECK: define x86_intrcc void @page_fault_handler(ptr {{.*}}%0, i64 {{.*}}%1){{.*}}#[[ATTRS:[0-9]+]] {
+pub fn caller() {
+    page_fault_handler(1, 2);
+}
+
+// CHECK: declare x86_intrcc void @page_fault_handler(ptr {{.*}}, i64 {{.*}}){{.*}}#[[ATTRS:[0-9]+]]
 // CHECK-NOT: memcpy
 #[naked]
 #[no_mangle]
