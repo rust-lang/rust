@@ -125,6 +125,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, target),
+                [sym::no_sanitize, ..] => self.check_no_sanitize(hir_id, attr, span, target),
                 [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target),
                 [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature, ..] => {
@@ -256,7 +257,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::may_dangle // FIXME(dropck_eyepatch)
                     | sym::pointee // FIXME(derive_smart_pointer)
                     | sym::linkage // FIXME(linkage)
-                    | sym::no_sanitize // FIXME(no_sanitize)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                     | sym::used // handled elsewhere to restrict to static items
                     | sym::repr // handled elsewhere to restrict to type decls items
@@ -449,6 +449,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 );
             }
         }
+    }
+
+    /// Checks that `#[no_sanitize(..)]` is applied to a function or method.
+    fn check_no_sanitize(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+        self.check_applied_to_fn_or_method(hir_id, attr, span, target)
     }
 
     fn check_generic_attr(

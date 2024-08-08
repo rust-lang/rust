@@ -1,0 +1,55 @@
+error: attribute should be applied to a function definition
+  --> $DIR/no-sanitize.rs:7:5
+   |
+LL |       #[no_sanitize(memory)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^
+LL | /     {
+LL | |         1
+LL | |     };
+   | |_____- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/no-sanitize.rs:13:1
+   |
+LL | #[no_sanitize(memory)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | type InvalidTy = ();
+   | -------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/no-sanitize.rs:16:1
+   |
+LL | #[no_sanitize(memory)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | mod invalid_module {}
+   | --------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/no-sanitize.rs:20:13
+   |
+LL |     let _ = #[no_sanitize(memory)]
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+LL |     (|| 1);
+   |     ------ not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/no-sanitize.rs:24:1
+   |
+LL | #[no_sanitize(memory)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | struct F;
+   | --------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/no-sanitize.rs:27:1
+   |
+LL |   #[no_sanitize(memory)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+LL | / impl F {
+LL | |     #[no_sanitize(memory)]
+LL | |     fn valid(&self) {}
+LL | | }
+   | |_- not a function definition
+
+error: aborting due to 6 previous errors
+

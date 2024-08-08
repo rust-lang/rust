@@ -19,6 +19,7 @@ Session.vim
 *.iml
 .vscode
 .project
+.vim/
 .favorites.json
 .settings/
 .vs/
