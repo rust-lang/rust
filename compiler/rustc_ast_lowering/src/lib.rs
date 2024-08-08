@@ -828,7 +828,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+                    self.current_def_id_parent,
                     param,
                     kw::UnderscoreLifetime,
                     DefKind::LifetimeParam,
@@ -1412,7 +1412,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
 
                         self.create_def(
-                            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+                            self.current_def_id_parent,
                             *def_node_id,
                             ident.name,
                             DefKind::TyParam,
@@ -1620,7 +1620,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.create_def(
-            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+            self.current_def_id_parent,
             opaque_ty_node_id,
             kw::Empty,
             DefKind::OpaqueTy,
