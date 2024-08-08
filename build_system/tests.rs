@@ -106,6 +106,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         ]);
         runner.run_out_command("gen_block_iterate", &[]);
     }),
+    TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
