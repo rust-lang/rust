@@ -1,7 +1,8 @@
 [package]
 name = "syntax-bridge"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Conversions between syntax nodes and token trees for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
