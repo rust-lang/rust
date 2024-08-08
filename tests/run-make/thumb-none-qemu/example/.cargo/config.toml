@@ -1,6 +1,5 @@
 [target.thumbv6m-none-eabi]
-# FIXME: Should be Cortex-M0, but Qemu used by CI is too old
-runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
+runner = "qemu-system-arm -cpu cortex-m0 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 
 [target.thumbv7m-none-eabi]
 runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
@@ -12,7 +11,7 @@ runner = "qemu-system-arm -cpu cortex-m4 -machine lm3s6965evb -nographic -semiho
 runner = "qemu-system-arm -cpu cortex-m4 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 
 [target.thumbv8m.base-none-eabi]
-# FIXME: Should be the Cortex-M23, bt Qemu does not currently support it
+# FIXME: Should be the Cortex-M23, but Qemu does not currently support it
 runner = "qemu-system-arm -cpu cortex-m33 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
 
 [target.thumbv8m.main-none-eabi]
