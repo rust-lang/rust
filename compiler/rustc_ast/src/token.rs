@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::hash::Hash;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -21,7 +22,7 @@ use crate::ast;
 use crate::ptr::P;
 use crate::util::case::Case;
 
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Hash)]
 pub enum CommentKind {
     Line,
     Block,

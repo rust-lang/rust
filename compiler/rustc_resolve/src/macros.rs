@@ -5,10 +5,13 @@ use std::cell::Cell;
 use std::mem;
 
 use rustc_ast::expand::StrippedCfgItem;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
@@ -33,7 +36,7 @@ use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 
 use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
@@ -334,6 +337,14 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             ),
             self.create_stable_hashing_context(),
         );
+        if let SyntaxExtensionKind::TcxLegacyBang(tcx_expander) = &ext.kind {
+            if let InvocationKind::Bang { ref mac, span } = invoc.kind {
+                self.tcx
+                    .macro_map
+                    .borrow_mut()
+                    .insert(invoc_id, (mac.args.tokens.clone(), span, tcx_expander.clone()));
+            }
+        }
 
         Ok(ext)
     }
@@ -525,6 +536,34 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             }
         });
         Ok(idents)
+    }
+
+    fn expand_legacy_bang(
+        &self,
+        invoc_id: LocalExpnId,
+        current_expansion: LocalExpnId,
+    ) -> Result<(TokenStream, usize), (Span, ErrorGuaranteed)> {
+        use tracing::debug;
+
+        debug!(
+            invoc_id_hash = ?invoc_id.to_expn_id().expn_hash(),
+            current_expansion_hash = ?current_expansion.to_expn_id().expn_hash()
+        );
+
+        let map = self.tcx().macro_map.borrow();
+        let (arg, _span, _expander) = map.get(&invoc_id).as_ref().unwrap();
+
+        debug!(?arg);
+
+        let arg_hash: Fingerprint = self.tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            arg.flattened().hash_stable(&mut hcx, &mut hasher);
+            hasher.finish()
+        });
+
+        self.tcx()
+            .expand_legacy_bang((invoc_id, current_expansion, arg_hash))
+            .map(|(tts, i)| (tts.clone(), i))
     }
 }
 

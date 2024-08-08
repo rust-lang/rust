@@ -73,6 +73,7 @@ mod macros;
 #[macro_use]
 pub mod arena;
 pub mod error;
+pub mod expand;
 pub mod hir;
 pub mod hooks;
 pub mod infer;

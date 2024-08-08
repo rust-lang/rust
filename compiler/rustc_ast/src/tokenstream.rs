@@ -105,7 +105,6 @@ where
         }
     }
 }
-
 pub trait ToAttrTokenStream: sync::DynSend + sync::DynSync {
     fn to_attr_token_stream(&self) -> AttrTokenStream;
 }
@@ -140,13 +139,19 @@ impl fmt::Debug for LazyAttrTokenStream {
 
 impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
     fn encode(&self, _s: &mut S) {
-        panic!("Attempted to encode LazyAttrTokenStream");
+        tracing::debug!("ENCODING {self:?}");
+        self.to_attr_token_stream().encode(_s);
+        // panic!("Attempted to encode {self:?}");
     }
 }
 
 impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
     fn decode(_d: &mut D) -> Self {
-        panic!("Attempted to decode LazyAttrTokenStream");
+        let ats = AttrTokenStream::decode(_d);
+        let res = LazyAttrTokenStream::new(ats);
+        tracing::debug!("DECODED {res:?}");
+        res
+        // panic!("Attempted to decode LazyAttrTokenStream");
     }
 }
 
