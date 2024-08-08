@@ -266,11 +266,55 @@ pub struct MonoItemData {
     /// `GloballyShared` maps to `false` and `LocalCopy` maps to `true`.
     pub inlined: bool,
 
-    pub linkage: Linkage,
+    pub linkage_info: LinkageInfo,
     pub visibility: Visibility,
 
     /// A cached copy of the result of `MonoItem::size_estimate`.
     pub size_estimate: usize,
+}
+
+/// Stores how we know what linkage to use
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum LinkageInfo {
+    /// The linkage was specified explicitly (e.g. using #[linkage = "..."])
+    Explicit(Linkage),
+    /// Assume the symbol may be used from other CGUs, a safe default
+    ImplicitExternal,
+    /// We did not find any uses from other CGUs, so it's fine to make this internal
+    ImplicitInternal,
+}
+
+impl LinkageInfo {
+    pub const fn is_external(self) -> bool {
+        matches!(self.into_linkage(), Linkage::External)
+    }
+
+    pub const fn into_linkage(self) -> Linkage {
+        match self {
+            Self::Explicit(linkage) => linkage,
+            Self::ImplicitExternal => Linkage::External,
+            Self::ImplicitInternal => Linkage::Internal,
+        }
+    }
+
+    /// Linkage when the MonoItem is a naked function
+    ///
+    /// Naked functions are generated as a separate declaration (effectively an extern fn) and
+    /// definition (using global assembly). To link them together, some flavor of external linkage
+    /// must be used.
+    pub const fn into_naked_linkage(self) -> Linkage {
+        match self {
+            // promote Weak linkage to ExternalWeak
+            Self::Explicit(Linkage::WeakAny | Linkage::WeakODR) => Linkage::ExternalWeak,
+            Self::Explicit(linkage) => linkage,
+
+            // the "implicit" means that linkage is picked by the partitioning algorithm.
+            // picking external should always be valid (given that we are in fact linking
+            // to the global assembly in the same CGU)
+            Self::ImplicitExternal => Linkage::External,
+            Self::ImplicitInternal => Linkage::External,
+        }
+    }
 }
 
 /// Specifies the linkage type for a `MonoItem`.

@@ -213,7 +213,7 @@ pub fn compile_codegen_unit(
 
             let mono_items = cgu.items_in_deterministic_order(tcx);
             for &(mono_item, data) in &mono_items {
-                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
+                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage_info, data.visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
