@@ -717,7 +717,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         };
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn add(&mut self, attrs: &[ast::Attribute], is_crate_node: bool, source_hir_id: Option<HirId>) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
@@ -1039,7 +1038,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
             // FIXME: make this translatable
             #[allow(rustc::diagnostic_outside_of_impl)]
-            #[allow(rustc::untranslatable_diagnostic)]
             lint_level(self.sess, lint, level, src, Some(span.into()), |lint| {
                 lint.primary_message(fluent::lint_unknown_gated_lint);
                 lint.arg("name", lint_id.lint.name_lower());
