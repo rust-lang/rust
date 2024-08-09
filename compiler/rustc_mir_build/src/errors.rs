@@ -13,6 +13,16 @@ use rustc_span::Span;
 use crate::fluent_generated as fluent;
 
 #[derive(LintDiagnostic)]
+#[diag(mir_build_recursive_default_impl)]
+#[help]
+pub(crate) struct RecursiveDefaultImpl {
+    #[label]
+    pub(crate) span: Span,
+    #[label(mir_build_recursive_default_impl_call_site_label)]
+    pub(crate) call_sites: Vec<Span>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(mir_build_unconditional_recursion)]
 #[help]
 pub(crate) struct UnconditionalRecursion {
