@@ -1,6 +1,7 @@
-//! used to ICE: #119272
+//@revisions: old next
+//@[next] compile-flags: -Znext-solver
 
-//@ check-pass
+//! used to ICE: #119272
 
 #![feature(type_alias_impl_trait)]
 mod defining_scope {
@@ -8,6 +9,7 @@ mod defining_scope {
     pub type Alias<T> = impl Sized;
 
     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
+        //~^ ERROR: type annotations needed
         x
     }
 }
@@ -24,6 +26,7 @@ impl<T> Trait<T> for T {
     type Assoc = Box<u32>;
 }
 impl<T> Trait<T> for defining_scope::Alias<T> {
+    //[next]~^ ERROR conflicting implementations of trait
     type Assoc = usize;
 }
 

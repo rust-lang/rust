@@ -1,0 +1,21 @@
+error[E0284]: type annotations needed
+  --> $DIR/opaques.rs:12:20
+   |
+LL |     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
+   |                    ^ cannot infer type
+   |
+   = note: cannot satisfy `<Alias<T> as Trait<T>>::Assoc == _`
+note: required because it appears within the type `Container<Alias<T>, T>`
+  --> $DIR/opaques.rs:18:8
+   |
+LL | struct Container<T: Trait<U>, U> {
+   |        ^^^^^^^^^
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     pub fn cast<T>(x: &Container<Alias<T>, T>) -> Container<T, T> {
+   |                       +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

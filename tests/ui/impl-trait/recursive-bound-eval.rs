@@ -3,7 +3,6 @@
 
 //@revisions: next current
 //@[next] compile-flags: -Znext-solver
-
 //@[current] check-pass
 
 pub trait Parser<E> {

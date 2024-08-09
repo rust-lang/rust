@@ -5,7 +5,7 @@ LL |         let mut iter = foo(n - 1, m);
    |             ^^^^^^^^
 LL |
 LL |         assert_eq!(iter.get(), 1);
-   |                    ---- type must be known at this point
+   |                    ---------- type must be known at this point
    |
 help: consider giving `iter` an explicit type
    |

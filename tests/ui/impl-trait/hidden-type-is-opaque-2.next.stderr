@@ -1,31 +1,15 @@
-error[E0282]: type annotations needed
-  --> $DIR/hidden-type-is-opaque-2.rs:10:17
+error[E0599]: no method named `reify_as` found for type `_` in the current scope
+  --> $DIR/hidden-type-is-opaque-2.rs:11:14
    |
-LL |     Thunk::new(|mut cont| {
-   |                 ^^^^^^^^
-LL |
 LL |         cont.reify_as();
-   |         ---- type must be known at this point
-   |
-help: consider giving this closure parameter an explicit type
-   |
-LL |     Thunk::new(|mut cont: /* Type */| {
-   |                         ++++++++++++
+   |              ^^^^^^^^ method not found in `_`
 
-error[E0282]: type annotations needed
-  --> $DIR/hidden-type-is-opaque-2.rs:20:17
+error[E0599]: no method named `reify_as` found for type `_` in the current scope
+  --> $DIR/hidden-type-is-opaque-2.rs:21:14
    |
-LL |     Thunk::new(|mut cont| {
-   |                 ^^^^^^^^
-LL |
 LL |         cont.reify_as();
-   |         ---- type must be known at this point
-   |
-help: consider giving this closure parameter an explicit type
-   |
-LL |     Thunk::new(|mut cont: /* Type */| {
-   |                         ++++++++++++
+   |              ^^^^^^^^ method not found in `_`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0599`.

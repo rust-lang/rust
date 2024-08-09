@@ -3,6 +3,12 @@ error[E0425]: cannot find function `consume` in this scope
    |
 LL |             consume(right);
    |             ^^^^^^^ not found in this scope
+   |
+help: use the `.` operator to call the method `BufRead::consume` on `&mut _`
+   |
+LL -             consume(right);
+LL +             right.consume();
+   |
 
 error: aborting due to 1 previous error
 

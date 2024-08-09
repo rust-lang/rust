@@ -5,7 +5,7 @@ LL |         let x = my_foo();
    |             ^
 LL |
 LL |         x.my_debug();
-   |         - type must be known at this point
+   |         ------------ type must be known at this point
    |
 help: consider giving `x` an explicit type
    |
