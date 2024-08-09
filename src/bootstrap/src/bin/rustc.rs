@@ -99,6 +99,17 @@ fn main() {
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
+    let rustc_source_dir = env::var_os("RUSTC_SOURCE_DIR").unwrap();
+    let workspace_prefix =
+        if let Ok(prefix) = env::current_dir().unwrap().strip_prefix(&rustc_source_dir) {
+            prefix.to_owned()
+        } else {
+            PathBuf::from(".")
+        };
+
+    cmd.arg("--remap-path-prefix");
+    cmd.arg(format!("={}", workspace_prefix.display()));
+
     // Get the name of the crate we're compiling, if any.
     let crate_name = parse_value_from_args(&orig_args, "--crate-name");
 

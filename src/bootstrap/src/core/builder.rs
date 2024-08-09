@@ -1794,7 +1794,8 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env("RUSTDOC_REAL", rustdoc_path)
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
-            .env("RUSTC_BREAK_ON_ICE", "1");
+            .env("RUSTC_BREAK_ON_ICE", "1")
+            .env("RUSTC_SOURCE_DIR", &self.src);
 
         // Set RUSTC_WRAPPER to the bootstrap shim, which switches between beta and in-tree
         // sysroot depending on whether we're building build scripts.
