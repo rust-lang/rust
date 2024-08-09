@@ -975,9 +975,14 @@ pub trait UpperHex {
 /// `p` formatting.
 ///
 /// The `Pointer` trait should format its output as a memory location. This is commonly presented
-/// as hexadecimal.
+/// as hexadecimal. For more information on formatters, see [the module-level documentation][module].
 ///
-/// For more information on formatters, see [the module-level documentation][module].
+/// Printing of pointers is not a reliable way to discover how Rust programs are implemented,
+/// because the act of reading an address of a value may change how the value is stored in memory,
+/// and prevent some code optimizations.
+///
+/// Rust may move values in memory, and reuse the same memory locations for different values, so
+/// the printed pointer values are not guaranteed to be stable nor unique identifiers of objects.
 ///
 /// [module]: ../../std/fmt/index.html
 ///
