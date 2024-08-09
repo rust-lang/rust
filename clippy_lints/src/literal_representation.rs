@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
@@ -225,7 +225,7 @@ impl LiteralDigitGrouping {
     }
 
     fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
-        if let Some(src) = snippet_opt(cx, span)
+        if let Some(src) = span.get_source_text(cx)
             && let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
         {
@@ -439,7 +439,7 @@ impl DecimalLiteralRepresentation {
         // Lint integral literals.
         if let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let LitKind::Int(val, _) = lit_kind
-            && let Some(src) = snippet_opt(cx, span)
+            && let Some(src) = span.get_source_text(cx)
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
             && num_lit.radix == Radix::Decimal
             && val >= u128::from(self.threshold)

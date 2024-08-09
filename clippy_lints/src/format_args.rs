@@ -7,7 +7,7 @@ use clippy_utils::macros::{
     find_format_arg_expr, format_arg_removal_span, format_placeholder_format_span, is_assert_macro, is_format_macro,
     is_panic, matching_root_macro_call, root_macro_call_first_node, FormatArgsStorage, FormatParamUsage, MacroCall,
 };
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use itertools::Itertools;
 use rustc_ast::{
@@ -407,7 +407,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = snippet_opt(cx, receiver.span.source_callsite())
+            && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {

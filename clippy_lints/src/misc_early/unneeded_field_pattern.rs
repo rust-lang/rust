@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
+use itertools::Itertools;
 use rustc_ast::ast::{Pat, PatKind};
 use rustc_lint::EarlyContext;
 
@@ -45,19 +46,6 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                             "you matched a field with a wildcard pattern, consider using `..` instead",
                         );
                     } else {
-                        let mut normal = vec![];
-
-                        for field in pfields {
-                            match field.pat.kind {
-                                PatKind::Wild => {},
-                                _ => {
-                                    if let Some(n) = snippet_opt(cx, field.span) {
-                                        normal.push(n);
-                                    }
-                                },
-                            }
-                        }
-
                         #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
                         span_lint_and_then(
                             cx,
@@ -65,7 +53,16 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                             field.span,
                             "you matched a field with a wildcard pattern, consider using `..` instead",
                             |diag| {
-                                diag.help(format!("try with `{type_name} {{ {}, .. }}`", normal[..].join(", ")));
+                                diag.help(format!(
+                                    "try with `{type_name} {{ {}, .. }}`",
+                                    pfields
+                                        .iter()
+                                        .filter_map(|f| match f.pat.kind {
+                                            PatKind::Wild => None,
+                                            _ => f.span.get_source_text(cx),
+                                        })
+                                        .format(", "),
+                                ));
                             },
                         );
                     }
