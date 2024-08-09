@@ -166,6 +166,16 @@ pub(crate) struct UnsupportedDwarfVersion {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_embed_source_insufficient_dwarf_version)]
+pub(crate) struct EmbedSourceInsufficientDwarfVersion {
+    pub(crate) dwarf_version: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_embed_source_requires_debug_info)]
+pub(crate) struct EmbedSourceRequiresDebugInfo;
+
+#[derive(Diagnostic)]
 #[diag(session_target_stack_protector_not_supported)]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,
