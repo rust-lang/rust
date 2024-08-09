@@ -6,7 +6,7 @@ fn foo() { }
 //~^ ERROR expected outer doc comment
 fn bar() { } //~ NOTE the inner doc comment doesn't annotate this function
 
-#![test] //~ ERROR an inner attribute is not permitted in this context
+#![cfg(test)] //~ ERROR an inner attribute is not permitted in this context
 fn baz() { } //~ NOTE the inner attribute doesn't annotate this function
 //~^^ NOTE inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually
 
