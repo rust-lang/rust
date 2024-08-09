@@ -502,6 +502,8 @@ impl Waker {
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn will_wake(&self, other: &Waker) -> bool {
+        // We optimize this by comparing vtable addresses instead of vtable contents.
+        // This is permitted since the function is documented as best-effort.
         let RawWaker { data: a_data, vtable: a_vtable } = self.waker;
         let RawWaker { data: b_data, vtable: b_vtable } = other.waker;
         a_data == b_data && ptr::eq(a_vtable, b_vtable)
@@ -761,7 +763,11 @@ impl LocalWaker {
     #[must_use]
     #[unstable(feature = "local_waker", issue = "118959")]
     pub fn will_wake(&self, other: &LocalWaker) -> bool {
-        self.waker == other.waker
+        // We optimize this by comparing vtable addresses instead of vtable contents.
+        // This is permitted since the function is documented as best-effort.
+        let RawWaker { data: a_data, vtable: a_vtable } = self.waker;
+        let RawWaker { data: b_data, vtable: b_vtable } = other.waker;
+        a_data == b_data && ptr::eq(a_vtable, b_vtable)
     }
 
     /// Creates a new `LocalWaker` from [`RawWaker`].
