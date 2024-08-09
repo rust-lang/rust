@@ -6,7 +6,6 @@ LL |     let p = p as *const dyn Trait<u8, u16>; // <- this is bad!
    |
    = note: expected trait object `dyn Trait<u8, u8>`
               found trait object `dyn Trait<u8, u16>`
-   = help: `dyn Trait<u8, u16>` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
 
 error: aborting due to 1 previous error
 
