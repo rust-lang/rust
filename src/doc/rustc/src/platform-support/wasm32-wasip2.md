@@ -65,5 +65,5 @@ It's recommended to conditionally compile code for this target with:
 ## Enabled WebAssembly features
 
 The default set of WebAssembly features enabled for compilation is currently the
-same as [`wasm32-unknown-unknokwn`](./wasm32-unknown-unknown.md). See the
+same as [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md). See the
 documentation there for more information.

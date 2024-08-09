@@ -165,14 +165,14 @@ necessary to detect this target may change as the target becomes more stable.
 
 ## Enabled WebAssembly features
 
-The default set of WebAssembly features enabled for compilation is similar to
-[`wasm32-unknown-unknokwn`](./wasm32-unknown-unknown.md) but two more features
-are included:
+The default set of WebAssembly features enabled for compilation includes two
+more features in addition to that which
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md) enables:
 
 * `bulk-memory`
 * `atomics`
 
 For more information about features see the documentation for
-[`wasm32-unknown-unknokwn`](./wasm32-unknown-unknown.md), but note that the
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md), but note that the
 `mvp` CPU in LLVM does not support this target as it's required that
 `bulk-memory`, `atomics`, and `mutable-globals` are all enabled.
