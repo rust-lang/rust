@@ -256,7 +256,7 @@ impl FlycheckActor {
     }
 
     fn report_progress(&self, progress: Progress) {
-        self.send(FlycheckMessage::Progress { id: self.id, progress });
+        self.sender.send(FlycheckMessage::Progress { id: self.id, progress }).unwrap();
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
@@ -329,7 +329,9 @@ impl FlycheckActor {
                         );
                     }
                     if self.status == FlycheckStatus::Started {
-                        self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
+                        self.sender
+                            .send(FlycheckMessage::ClearDiagnostics { id: self.id })
+                            .unwrap();
                     }
                     self.report_progress(Progress::DidFinish(res));
                     self.status = FlycheckStatus::Finished;
@@ -351,13 +353,17 @@ impl FlycheckActor {
                             "diagnostic received"
                         );
                         if self.status == FlycheckStatus::Started {
-                            self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
+                            self.sender
+                                .send(FlycheckMessage::ClearDiagnostics { id: self.id })
+                                .unwrap();
                         }
-                        self.send(FlycheckMessage::AddDiagnostic {
-                            id: self.id,
-                            workspace_root: self.root.clone(),
-                            diagnostic: msg,
-                        });
+                        self.sender
+                            .send(FlycheckMessage::AddDiagnostic {
+                                id: self.id,
+                                workspace_root: self.root.clone(),
+                                diagnostic: msg,
+                            })
+                            .unwrap();
                         self.status = FlycheckStatus::DiagnosticSent;
                     }
                 },
@@ -476,10 +482,6 @@ impl FlycheckActor {
 
         cmd.args(args);
         Some(cmd)
-    }
-
-    fn send(&self, check_task: FlycheckMessage) {
-        self.sender.send(check_task).unwrap();
     }
 }
 

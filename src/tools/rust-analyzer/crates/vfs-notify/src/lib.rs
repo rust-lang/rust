@@ -180,17 +180,19 @@ impl NotifyActor {
                                 }
                             }
                         }
-                        self.send(loader::Message::Progress {
-                            n_total,
-                            n_done: LoadingProgress::Finished,
-                            config_version,
-                            dir: None,
-                        });
+                        self.sender
+                            .send(loader::Message::Progress {
+                                n_total,
+                                n_done: LoadingProgress::Finished,
+                                config_version,
+                                dir: None,
+                            })
+                            .unwrap();
                     }
                     Message::Invalidate(path) => {
                         let contents = read(path.as_path());
                         let files = vec![(path, contents)];
-                        self.send(loader::Message::Changed { files });
+                        self.sender.send(loader::Message::Changed { files }).unwrap();
                     }
                 },
                 Event::NotifyEvent(event) => {
@@ -238,7 +240,7 @@ impl NotifyActor {
                                     Some((path, contents))
                                 })
                                 .collect();
-                            self.send(loader::Message::Changed { files });
+                            self.sender.send(loader::Message::Changed { files }).unwrap();
                         }
                     }
                 }
@@ -321,10 +323,6 @@ impl NotifyActor {
         if let Some((watcher, _)) = &mut self.watcher {
             log_notify_error(watcher.watch(path, RecursiveMode::NonRecursive));
         }
-    }
-
-    fn send(&self, msg: loader::Message) {
-        self.sender.send(msg).unwrap();
     }
 }
 
