@@ -10,7 +10,7 @@ use std::sync::Once;
 
 const ATOMIC: AtomicUsize = AtomicUsize::new(5);
 const CELL: Cell<usize> = Cell::new(6);
-const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
+const ATOMIC_TUPLE: ([AtomicUsize; 1], Option<Box<AtomicUsize>>, u8) = ([ATOMIC], None, 7);
 const INTEGER: u8 = 8;
 const STRING: String = String::new();
 const STR: &str = "012345";
@@ -74,7 +74,6 @@ fn main() {
     let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR: interior mutability
     let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR: interior mutability
     let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR: interior mutability
-    let _ = &*ATOMIC_TUPLE.1;
     let _ = &ATOMIC_TUPLE.2;
     let _ = (&&&&ATOMIC_TUPLE).0;
     let _ = (&&&&ATOMIC_TUPLE).2;
