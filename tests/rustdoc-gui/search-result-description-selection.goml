@@ -1,0 +1,12 @@
+// This test is to ensure that the codeblocks are correctly rendered in the search results.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=some_more_function"
+show-text: true // can't select text without showing it
+// Waiting for the search results to appear...
+wait-for: "#search-tabs"
+assert: ".search-results .desc"
+store-position: (".search-results .desc", {"x": desc_x, "y": desc_y})
+// select text within the description
+// making sure nothing happens after doing so (other than the text select itself)
+drag-and-drop: ((|desc_x| + 8, |desc_y| + 8), (|desc_x| + 80, |desc_y| + 8))
+wait-for: 125
+assert: ".search-results .desc"
