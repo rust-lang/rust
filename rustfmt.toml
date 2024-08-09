@@ -11,6 +11,7 @@ ignore = [
     "/*-build/",
     "/build-*/",
     "/vendor/",
+    ".git*",
 
     # Some tests are not formatted, for various reasons.
     "/tests/codegen/simd-intrinsic/", # Many types like `u8x64` are better hand-formatted.
