@@ -15,8 +15,8 @@ impl MyTrait for Outer {
 
 impl dyn MyTrait {
     //~^ ERROR the trait `MyTrait` cannot be made into an object
+    //~| ERROR the trait `MyTrait` cannot be made into an object
     fn other(&self) -> impl Marker {
-        //~^ ERROR the trait `MyTrait` cannot be made into an object
         MyTrait::foo(&self)
         //~^ ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
         //~| ERROR the trait bound `&dyn MyTrait: MyTrait` is not satisfied
