@@ -153,6 +153,7 @@ impl Command {
             | Command::Test { .. }
             | Command::Run { .. }
             | Command::Fmt { .. }
+            | Command::Doc { .. }
             | Command::Clippy { .. } => Self::auto_actions()?,
             | Command::Toolchain { .. }
             | Command::Bench { .. }
@@ -167,6 +168,7 @@ impl Command {
             Command::Test { bless, flags, target } => Self::test(bless, flags, target),
             Command::Run { dep, verbose, many_seeds, target, edition, flags } =>
                 Self::run(dep, verbose, many_seeds, target, edition, flags),
+            Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
             Command::Bench { target, benches } => Self::bench(target, benches),
@@ -436,6 +438,13 @@ impl Command {
         let e = MiriEnv::new()?;
         e.check(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         e.check(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
+        Ok(())
+    }
+
+    fn doc(flags: Vec<String>) -> Result<()> {
+        let e = MiriEnv::new()?;
+        e.doc(path!(e.miri_dir / "Cargo.toml"), &flags)?;
+        e.doc(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
         Ok(())
     }
 

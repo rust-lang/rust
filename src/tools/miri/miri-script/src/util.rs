@@ -150,6 +150,11 @@ impl MiriEnv {
         Ok(())
     }
 
+    pub fn doc(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
+        self.cargo_cmd(manifest_path, "doc").args(args).run()?;
+        Ok(())
+    }
+
     pub fn clippy(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
         self.cargo_cmd(manifest_path, "clippy").arg("--all-targets").args(args).run()?;
         Ok(())

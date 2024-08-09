@@ -48,6 +48,11 @@ pub enum Command {
         /// Flags that are passed through to `miri`.
         flags: Vec<String>,
     },
+    /// Build documentation
+    Doc {
+        /// Flags that are passed through to `cargo doc`.
+        flags: Vec<String>,
+    },
     /// Format all sources and tests.
     Fmt {
         /// Flags that are passed through to `rustfmt`.
@@ -148,6 +153,7 @@ fn main() -> Result<()> {
     let command = match args.next_raw().as_deref() {
         Some("build") => Command::Build { flags: args.remainder() },
         Some("check") => Command::Check { flags: args.remainder() },
+        Some("doc") => Command::Doc { flags: args.remainder() },
         Some("test") => {
             let mut target = None;
             let mut bless = false;
