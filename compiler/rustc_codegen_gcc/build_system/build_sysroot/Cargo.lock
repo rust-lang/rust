@@ -50,7 +50,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.109"
+version = "0.1.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f11973008a8cf741fe6d22f339eba21fd0ca81e2760a769ba8243ed6c21edd7e"
 dependencies = [
