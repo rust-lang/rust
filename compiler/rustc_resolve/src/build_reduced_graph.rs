@@ -374,7 +374,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             root_span,
             root_id,
             vis,
-            used: Default::default(),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -890,8 +889,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis,
-            used: Cell::new(used.then_some(Used::Other)),
         });
+        if used {
+            self.r.import_use_map.insert(import, Used::Other);
+        }
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
         if parent == self.r.graph_root {
@@ -1091,7 +1092,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: ty::Visibility::Restricted(CRATE_DEF_ID),
-                used: Default::default(),
             })
         };
 
@@ -1256,8 +1256,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis,
-                    used: Cell::new(Some(Used::Other)),
                 });
+                self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);
                 self.r.define(self.r.graph_root, ident, MacroNS, import_binding);
             } else {

@@ -176,7 +176,6 @@ pub(crate) struct ImportData<'a> {
     /// The resolution of `module_path`.
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'a>>>,
     pub vis: ty::Visibility,
-    pub used: Cell<Option<Used>>,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -484,7 +483,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             });
             self.record_use(target, dummy_binding, Used::Other);
         } else if import.imported_module.get().is_none() {
-            import.used.set(Some(Used::Other));
+            self.import_use_map.insert(import, Used::Other);
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
             }
@@ -1347,7 +1346,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // module defined by a block).
         // Skip if the import is public or was used through non scope-based resolution,
         // e.g. through a module-relative path.
-        if import.used.get() == Some(Used::Other)
+        if self.import_use_map.get(&import) == Some(&Used::Other)
             || self.effective_visibilities.is_exported(self.local_def_id(id))
         {
             return false;
