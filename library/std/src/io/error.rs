@@ -223,10 +223,10 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionReset,
     /// The remote host is not reachable.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     HostUnreachable,
     /// The network containing the remote host is not reachable.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     NetworkUnreachable,
     /// The connection was aborted (terminated) by the remote server.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -243,7 +243,7 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     AddrNotAvailable,
     /// The system's networking is down.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     NetworkDown,
     /// The operation failed because a pipe was closed.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -259,18 +259,18 @@ pub enum ErrorKind {
     ///
     /// For example, a filesystem path was specified where one of the intermediate directory
     /// components was, in fact, a plain file.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     NotADirectory,
     /// The filesystem object is, unexpectedly, a directory.
     ///
     /// A directory was specified when a non-directory was expected.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     IsADirectory,
     /// A non-empty directory was specified where an empty directory was expected.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     DirectoryNotEmpty,
     /// The filesystem or storage medium is read-only, but a write operation was attempted.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     ReadOnlyFilesystem,
     /// Loop in the filesystem or IO subsystem; often, too many levels of symbolic links.
     ///
@@ -285,7 +285,7 @@ pub enum ErrorKind {
     ///
     /// With some network filesystems, notably NFS, an open file (or directory) can be invalidated
     /// by problems with the network or server.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     StaleNetworkFileHandle,
     /// A parameter was incorrect.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -319,13 +319,13 @@ pub enum ErrorKind {
     /// The underlying storage (typically, a filesystem) is full.
     ///
     /// This does not include out of quota errors.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     StorageFull,
     /// Seek on unseekable file.
     ///
     /// Seeking was attempted on an open file handle which is not suitable for seeking - for
     /// example, on Unix, a named pipe opened with `File::open`.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     NotSeekable,
     /// Filesystem quota was exceeded.
     #[unstable(feature = "io_error_more", issue = "86442")]
@@ -335,22 +335,22 @@ pub enum ErrorKind {
     /// This might arise from a hard limit of the underlying filesystem or file access API, or from
     /// an administratively imposed resource limitation.  Simple disk full, and out of quota, have
     /// their own errors.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     FileTooLarge,
     /// Resource is busy.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     ResourceBusy,
     /// Executable file is busy.
     ///
     /// An attempt was made to write to a file which is also in use as a running program.  (Not all
     /// operating systems detect this situation.)
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     ExecutableFileBusy,
     /// Deadlock (avoided).
     ///
     /// A file locking operation would result in deadlock.  This situation is typically detected, if
     /// at all, on a best-effort basis.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     Deadlock,
     /// Cross-device or cross-filesystem (hard) link or rename.
     #[unstable(feature = "io_error_more", issue = "86442")]
@@ -358,7 +358,7 @@ pub enum ErrorKind {
     /// Too many (hard) links to the same filesystem object.
     ///
     /// The filesystem does not support making so many hardlinks to the same file.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     TooManyLinks,
     /// A filename was invalid.
     ///
@@ -369,7 +369,7 @@ pub enum ErrorKind {
     ///
     /// When trying to run an external program, a system or process limit on the size of the
     /// arguments would have been exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_a_bit_more", since = "CURRENT_RUSTC_VERSION")]
     ArgumentListTooLong,
     /// This operation was interrupted.
     ///
