@@ -376,7 +376,7 @@ pub struct GenericPredicates<'tcx> {
 
 impl<'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> InstantiatedPredicates<'tcx> {
@@ -386,20 +386,20 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     pub fn instantiate_own(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
         EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
     }
 
-    pub fn instantiate_own_identity(&self) -> impl Iterator<Item = (Clause<'tcx>, Span)> {
+    pub fn instantiate_own_identity(self) -> impl Iterator<Item = (Clause<'tcx>, Span)> {
         EarlyBinder::bind(self.predicates).iter_identity_copied()
     }
 
     #[instrument(level = "debug", skip(self, tcx))]
     fn instantiate_into(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
         args: GenericArgsRef<'tcx>,
@@ -413,14 +413,14 @@ impl<'tcx> GenericPredicates<'tcx> {
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 
-    pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
+    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
         self.instantiate_identity_into(tcx, &mut instantiated);
         instantiated
     }
 
     fn instantiate_identity_into(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
     ) {
