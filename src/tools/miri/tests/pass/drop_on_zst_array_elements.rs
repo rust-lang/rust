@@ -1,3 +1,5 @@
+#![allow(static_mut_refs)]
+
 struct Bar;
 
 static mut DROP_COUNT: usize = 0;

@@ -1,3 +1,14 @@
+warning: creating a mutable reference to mutable static is discouraged
+  --> $DIR/static-mut-requires-unsafe.rs:4:5
+   |
+LL |     a += 3;
+   |     ^^^^^^^ mutable reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
+   = note: `#[warn(static_mut_refs)]` on by default
+
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
   --> $DIR/static-mut-requires-unsafe.rs:4:5
    |
@@ -7,7 +18,7 @@ LL |     a += 3;
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/static-mut-requires-unsafe.rs:5:5
+  --> $DIR/static-mut-requires-unsafe.rs:6:5
    |
 LL |     a = 4;
    |     ^ use of mutable static
@@ -15,13 +26,13 @@ LL |     a = 4;
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/static-mut-requires-unsafe.rs:6:14
+  --> $DIR/static-mut-requires-unsafe.rs:7:14
    |
 LL |     let _b = a;
    |              ^ use of mutable static
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0133`.

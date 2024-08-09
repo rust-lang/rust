@@ -1,3 +1,5 @@
+#![allow(static_mut_refs)]
+
 trait Foo {}
 
 struct Bar;

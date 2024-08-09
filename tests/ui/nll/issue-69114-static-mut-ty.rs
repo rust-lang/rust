@@ -1,5 +1,8 @@
 // Check that borrowck ensures that `static mut` items have the expected type.
 
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 static FOO: u8 = 42;
 static mut BAR: &'static u8 = &FOO;
 static mut BAR_ELIDED: &u8 = &FOO;

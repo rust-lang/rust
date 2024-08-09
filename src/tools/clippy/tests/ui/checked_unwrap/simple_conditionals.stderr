@@ -236,5 +236,14 @@ LL |     if result.is_ok() {
 LL |         result.as_mut().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: redundant pattern matching, consider using `is_some()`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:174:16
+   |
+LL |         if let Some(_) = X {
+   |         -------^^^^^^^---- help: try: `if X.is_some()`
+   |
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
+
+error: aborting due to 26 previous errors
 

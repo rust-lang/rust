@@ -1,3 +1,6 @@
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::thread;
 

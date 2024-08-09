@@ -5,7 +5,9 @@
 // Test that destructor on a struct runs successfully after the struct
 // is boxed and converted to an object.
 
-static mut value: usize = 0;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static value: AtomicUsize = AtomicUsize::new(0);
 
 struct Cat {
     name : usize,
@@ -21,7 +23,7 @@ impl Dummy for Cat {
 
 impl Drop for Cat {
     fn drop(&mut self) {
-        unsafe { value = self.name; }
+        value.store(self.name, Ordering::Relaxed);
     }
 }
 
@@ -30,7 +32,5 @@ pub fn main() {
         let x = Box::new(Cat {name: 22});
         let nyan: Box<dyn Dummy> = x as Box<dyn Dummy>;
     }
-    unsafe {
-        assert_eq!(value, 22);
-    }
+    assert_eq!(value.load(Ordering::Relaxed), 22);
 }

@@ -1,5 +1,8 @@
 //@ run-pass
 
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 static mut DROPPED: [bool; 2] = [false, false];
 
 struct A(usize);

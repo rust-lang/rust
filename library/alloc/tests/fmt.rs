@@ -1,4 +1,6 @@
 #![deny(warnings)]
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 use std::cell::RefCell;
 use std::fmt::{self, Write};

@@ -1,5 +1,8 @@
 //@ run-pass
 
+// FIXME(obeis): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 #![allow(non_upper_case_globals)]
 #[cfg(not(target_vendor = "apple"))]
 #[link_section = ".moretext"]

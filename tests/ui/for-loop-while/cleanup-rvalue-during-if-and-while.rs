@@ -2,13 +2,15 @@
 // This test verifies that temporaries created for `while`'s and `if`
 // conditions are dropped after the condition is evaluated.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 struct Temporary;
 
-static mut DROPPED: isize = 0;
+static DROPPED: AtomicUsize = AtomicUsize::new(0);
 
 impl Drop for Temporary {
     fn drop(&mut self) {
-        unsafe { DROPPED += 1; }
+        DROPPED.fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -27,7 +29,7 @@ pub fn main() {
     // `drop` 6 times.
     while borrow().do_stuff() {
         i += 1;
-        unsafe { assert_eq!(DROPPED, i) }
+        assert_eq!(DROPPED.load(Ordering::Relaxed), i);
         if i > 5 {
             break;
         }
@@ -36,6 +38,6 @@ pub fn main() {
     // This if condition should
     // call it 1 time
     if borrow().do_stuff() {
-        unsafe { assert_eq!(DROPPED, i + 1) }
+        assert_eq!(DROPPED.load(Ordering::Relaxed), i + 1);
     }
 }
