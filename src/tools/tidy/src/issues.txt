@@ -467,7 +467,6 @@ ui/closures/issue-87814-2.rs
 ui/closures/issue-90871.rs
 ui/closures/issue-97607.rs
 ui/closures/issue-99565.rs
-ui/cmse-nonsecure/cmse-nonsecure-entry/issue-83475.rs
 ui/codegen/auxiliary/issue-97708-aux.rs
 ui/codegen/issue-101585-128bit-repeat.rs
 ui/codegen/issue-16602-1.rs

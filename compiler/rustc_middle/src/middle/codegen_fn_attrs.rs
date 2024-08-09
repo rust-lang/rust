@@ -120,9 +120,7 @@ bitflags::bitflags! {
         /// #[ffi_const]: applies clang's `const` attribute to a foreign function
         /// declaration.
         const FFI_CONST                 = 1 << 12;
-        /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
-        /// function as an entry function from Non-Secure code.
-        const CMSE_NONSECURE_ENTRY      = 1 << 13;
+        // (Bit 13 was used for `#[cmse_nonsecure_entry]`, but is now unused.)
         // (Bit 14 was used for `#[coverage(off)]`, but is now unused.)
         /// `#[used(linker)]`:
         /// indicates that neither LLVM nor the linker will eliminate this function.

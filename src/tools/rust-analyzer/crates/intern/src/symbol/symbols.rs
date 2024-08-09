@@ -94,6 +94,7 @@ define_symbols! {
     avr_dash_interrupt = "avr-interrupt",
     avr_dash_non_dash_blocking_dash_interrupt = "avr-non-blocking-interrupt",
     C_dash_cmse_dash_nonsecure_dash_call = "C-cmse-nonsecure-call",
+    C_dash_cmse_dash_nonsecure_dash_entry = "C-cmse-nonsecure-entry",
     C_dash_unwind = "C-unwind",
     cdecl_dash_unwind = "cdecl-unwind",
     fastcall_dash_unwind = "fastcall-unwind",

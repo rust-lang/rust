@@ -61,6 +61,9 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
         Conv::CCmseNonSecureCall => {
             sess.dcx().fatal("C-cmse-nonsecure-call call conv is not yet implemented");
         }
+        Conv::CCmseNonSecureEntry => {
+            sess.dcx().fatal("C-cmse-nonsecure-entry call conv is not yet implemented");
+        }
 
         Conv::Msp430Intr | Conv::PtxKernel | Conv::AvrInterrupt | Conv::AvrNonBlockingInterrupt => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");
