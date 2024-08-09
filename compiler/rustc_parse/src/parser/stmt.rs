@@ -408,10 +408,14 @@ impl<'a> Parser<'a> {
     fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
-                // Recover `let x <op>= 1` as `let x = 1`
+                // Recover `let x <op>= 1` as `let x = 1` We must not use `+ BytePos(1)` here
+                // because `<op>` can be a multi-byte lookalike that was recovered, e.g. `➖=` (the
+                // `➖` is a U+2796 Heavy Minus Sign Unicode Character) that was recovered as a
+                // `-=`.
+                let extra_op_span = self.psess.source_map().start_point(self.token.span);
                 self.dcx().emit_err(errors::CompoundAssignmentExpressionInLet {
                     span: self.token.span,
-                    suggestion: self.token.span.with_hi(self.token.span.lo() + BytePos(1)),
+                    suggestion: extra_op_span,
                 });
                 self.bump();
                 true
