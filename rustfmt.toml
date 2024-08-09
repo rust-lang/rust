@@ -45,6 +45,7 @@ ignore = [
     "src/tools/rust-analyzer",
     "src/tools/rustc-perf",
     "src/tools/rustfmt",
+    "src/gcc",
 
     # These are ignored by a standard cargo fmt run.
     "compiler/rustc_codegen_cranelift/scripts",
