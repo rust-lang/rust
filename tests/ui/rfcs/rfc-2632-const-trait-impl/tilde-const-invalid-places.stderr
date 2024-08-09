@@ -155,19 +155,19 @@ LL |     type Type<T: ~const Trait> = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:46:30
+  --> $DIR/tilde-const-invalid-places.rs:45:30
    |
 LL |     fn non_const_function<T: ~const Trait>() {}
    |                              ^^^^^^
    |
 note: this function is not `const`, so it cannot have `~const` trait bounds
-  --> $DIR/tilde-const-invalid-places.rs:46:8
+  --> $DIR/tilde-const-invalid-places.rs:45:8
    |
 LL |     fn non_const_function<T: ~const Trait>() {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:47:23
+  --> $DIR/tilde-const-invalid-places.rs:46:23
    |
 LL |     const CONSTANT<T: ~const Trait>: () = ();
    |                       ^^^^^^
@@ -175,49 +175,49 @@ LL |     const CONSTANT<T: ~const Trait>: () = ();
    = note: this item cannot have `~const` trait bounds
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:52:15
+  --> $DIR/tilde-const-invalid-places.rs:51:15
    |
 LL | trait Child0: ~const Trait {}
    |               ^^^^^^
    |
 note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
-  --> $DIR/tilde-const-invalid-places.rs:52:1
+  --> $DIR/tilde-const-invalid-places.rs:51:1
    |
 LL | trait Child0: ~const Trait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:53:26
+  --> $DIR/tilde-const-invalid-places.rs:52:26
    |
 LL | trait Child1 where Self: ~const Trait {}
    |                          ^^^^^^
    |
 note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
-  --> $DIR/tilde-const-invalid-places.rs:53:1
+  --> $DIR/tilde-const-invalid-places.rs:52:1
    |
 LL | trait Child1 where Self: ~const Trait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:56:9
+  --> $DIR/tilde-const-invalid-places.rs:55:9
    |
 LL | impl<T: ~const Trait> Trait for T {}
    |         ^^^^^^
    |
 note: this impl is not `const`, so it cannot have `~const` trait bounds
-  --> $DIR/tilde-const-invalid-places.rs:56:1
+  --> $DIR/tilde-const-invalid-places.rs:55:1
    |
 LL | impl<T: ~const Trait> Trait for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:59:9
+  --> $DIR/tilde-const-invalid-places.rs:58:9
    |
 LL | impl<T: ~const Trait> Struct<T> {}
    |         ^^^^^^
    |
 note: inherent impls cannot have `~const` trait bounds
-  --> $DIR/tilde-const-invalid-places.rs:59:1
+  --> $DIR/tilde-const-invalid-places.rs:58:1
    |
 LL | impl<T: ~const Trait> Struct<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -253,7 +253,7 @@ LL |     const CONSTANT<T: ~const Trait>: () = ();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
-  --> $DIR/tilde-const-invalid-places.rs:47:19
+  --> $DIR/tilde-const-invalid-places.rs:46:19
    |
 LL |     const CONSTANT<T: ~const Trait>: () = ();
    |                   ^^^^^^^^^^^^^^^^^
@@ -294,17 +294,7 @@ note: required by a bound in `NonConstTrait::Type`
 LL |     type Type<T: ~const Trait>: ~const Trait;
    |                                 ^^^^^^^^^^^^ required by this bound in `NonConstTrait::Type`
 
-error[E0658]: inherent associated types are unstable
-  --> $DIR/tilde-const-invalid-places.rs:44:5
-   |
-LL |     type Type<T: ~const Trait> = ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
-   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error: aborting due to 30 previous errors
+error: aborting due to 29 previous errors
 
 Some errors have detailed explanations: E0275, E0392, E0658, E0740.
 For more information about an error, try `rustc --explain E0275`.

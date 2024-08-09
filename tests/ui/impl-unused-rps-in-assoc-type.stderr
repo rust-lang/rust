@@ -3,6 +3,12 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a> Fun for Holder {
    |      ^^ unconstrained lifetime parameter
+   |
+help: this use of an otherwise unconstrained lifetime is not allowed
+  --> $DIR/impl-unused-rps-in-assoc-type.rs:12:19
+   |
+LL |     type Output = &'a str;
+   |                   ^^^^^^^
 
 error: aborting due to 1 previous error
 

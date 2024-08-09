@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
@@ -367,11 +367,12 @@ impl<'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Clause<'tcx>, Span)],
     pub effects_min_tys: &'tcx ty::List<Ty<'tcx>>,
+    pub errored_due_to_unconstrained_params: Result<(), ErrorGuaranteed>,
 }
 
 impl<'tcx> GenericPredicates<'tcx> {

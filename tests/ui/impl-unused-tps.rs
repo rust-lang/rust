@@ -1,5 +1,3 @@
-//~ ERROR overflow evaluating the requirement `([isize; 0], _): Sized
-
 trait Foo<A> {
     fn get(&self, A: &A) { }
 }
@@ -36,7 +34,7 @@ impl<T,U> Bar for T {
     // Using `U` in an associated type within the impl is not good enough!
 }
 
-impl<T,U> Bar for T
+impl<T,U> Bar for T //~ ERROR conflicting implementations
     where T : Bar<Out=U>
 {
     //~^^^ ERROR the type parameter `U` is not constrained
@@ -49,12 +47,13 @@ impl<T,U,V> Foo<T> for T
 {
     //~^^^ ERROR the type parameter `U` is not constrained
     //~|   ERROR the type parameter `V` is not constrained
+    //~|   ERROR conflicting implementations
 
     // Here, `V` is bound by an output type parameter, but the inputs
     // are not themselves constrained.
 }
 
-impl<T,U,V> Foo<(T,U)> for T
+impl<T,U,V> Foo<(T,U)> for T //~ ERROR conflicting implementations
     where (T,U): Bar<Out=V>
 {
     // As above, but both T and U ARE constrained.

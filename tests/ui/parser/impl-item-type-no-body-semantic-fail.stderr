@@ -72,16 +72,6 @@ LL |     type W: Ord where Self: Eq;
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: inherent associated types are unstable
-  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
-   |
-LL |     type W where Self: Eq;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
-   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0277]: the trait bound `X: Eq` is not satisfied
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:23
    |
@@ -98,6 +88,16 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
    |
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
+   |
+LL |     type W where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0277]: the trait bound `X: Eq` is not satisfied
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:18

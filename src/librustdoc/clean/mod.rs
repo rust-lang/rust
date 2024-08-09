@@ -1411,6 +1411,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     parent: None,
                     predicates,
                     effects_min_tys: ty::List::empty(),
+                    errored_due_to_unconstrained_params: Ok(()),
                 },
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);

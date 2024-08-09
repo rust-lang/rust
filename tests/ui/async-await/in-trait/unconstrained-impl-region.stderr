@@ -1,3 +1,15 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-impl-region.rs:13:6
+   |
+LL | impl<'a> Actor for () {
+   |      ^^ unconstrained lifetime parameter
+   |
+help: this use of an otherwise unconstrained lifetime is not allowed
+  --> $DIR/unconstrained-impl-region.rs:15:20
+   |
+LL |     type Message = &'a ();
+   |                    ^^^^^^
+
 error[E0277]: the trait bound `impl Inbox<&'a ()>: Inbox<&'a ()>` is not satisfied
   --> $DIR/unconstrained-impl-region.rs:16:5
    |
@@ -10,13 +22,16 @@ note: required by a bound in `<() as Actor>::on_mount`
 LL |     async fn on_mount(self, _: impl Inbox<&'a ()>) {}
    |                                     ^^^^^^^^^^^^^ required by this bound in `<() as Actor>::on_mount`
 
-error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-impl-region.rs:13:6
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/unconstrained-impl-region.rs:16:37
    |
-LL | impl<'a> Actor for () {
-   |      ^^ unconstrained lifetime parameter
+LL |     async fn on_mount(self, _: impl Inbox<Self::Message>);
+   |     ------------------------------------------------------ definition of `on_mount` from trait
+...
+LL |     async fn on_mount(self, _: impl Inbox<&'a ()>) {}
+   |                                     ^^^^^^^^^^^^^ impl has extra requirement `impl Inbox<&'a ()>: Inbox<&'a ()>`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0207, E0277.
+Some errors have detailed explanations: E0207, E0276, E0277.
 For more information about an error, try `rustc --explain E0207`.

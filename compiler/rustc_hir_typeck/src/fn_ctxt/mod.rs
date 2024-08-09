@@ -279,6 +279,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 }),
             ),
             effects_min_tys: ty::List::empty(),
+            errored_due_to_unconstrained_params: Ok(()),
         }
     }
 

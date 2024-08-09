@@ -62,15 +62,6 @@ note: struct defined here, with 0 generic parameters
 LL | struct Wrapper<'rom>(&'rom ());
    |        ^^^^^^^
 
-error[E0053]: method `bar` has an incompatible return type for trait
-  --> $DIR/opaque-and-lifetime-mismatch.rs:10:17
-   |
-LL |     fn bar() -> i32 {
-   |                 ^^^
-   |                 |
-   |                 expected `Wrapper<'static>`, found `i32`
-   |                 return type in trait
-
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/opaque-and-lifetime-mismatch.rs:10:17
    |
@@ -88,6 +79,15 @@ help: change the output type to match the trait
    |
 LL |     fn bar() -> Wrapper<'static> {
    |                 ~~~~~~~~~~~~~~~~
+
+error[E0053]: method `bar` has an incompatible return type for trait
+  --> $DIR/opaque-and-lifetime-mismatch.rs:10:17
+   |
+LL |     fn bar() -> i32 {
+   |                 ^^^
+   |                 |
+   |                 expected `Wrapper<'static>`, found `i32`
+   |                 return type in trait
 
 error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/opaque-and-lifetime-mismatch.rs:24:17

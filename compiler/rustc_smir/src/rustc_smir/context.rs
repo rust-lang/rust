@@ -161,8 +161,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn predicates_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
-        let GenericPredicates { parent, predicates, effects_min_tys: _ } =
-            tables.tcx.predicates_of(def_id);
+        let GenericPredicates {
+            parent,
+            predicates,
+            effects_min_tys: _,
+            errored_due_to_unconstrained_params: _,
+        } = tables.tcx.predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
@@ -183,8 +187,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     ) -> stable_mir::ty::GenericPredicates {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
-        let GenericPredicates { parent, predicates, effects_min_tys: _ } =
-            tables.tcx.explicit_predicates_of(def_id);
+        let GenericPredicates {
+            parent,
+            predicates,
+            effects_min_tys: _,
+            errored_due_to_unconstrained_params: _,
+        } = tables.tcx.explicit_predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
             parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates

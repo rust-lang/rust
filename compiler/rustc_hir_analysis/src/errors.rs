@@ -1646,6 +1646,8 @@ pub(crate) struct UnconstrainedGenericParameter {
     pub const_param_note: Option<()>,
     #[note(hir_analysis_const_param_note2)]
     pub const_param_note2: Option<()>,
+    #[help]
+    pub lifetime_help: Option<Span>,
 }
 
 #[derive(Diagnostic)]

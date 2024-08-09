@@ -4,7 +4,9 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{
+    self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt, TypeVisitableExt, Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
@@ -87,6 +89,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 parent: Some(tcx.parent(def_id.to_def_id())),
                 predicates: tcx.arena.alloc_from_iter(predicates),
                 effects_min_tys: ty::List::empty(),
+                errored_due_to_unconstrained_params: Ok(()),
             };
         }
 
@@ -109,6 +112,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 parent: Some(impl_def_id),
                 predicates: tcx.arena.alloc_from_iter(impl_predicates),
                 effects_min_tys: ty::List::empty(),
+                errored_due_to_unconstrained_params: trait_assoc_predicates
+                    .errored_due_to_unconstrained_params,
             };
         }
 
@@ -129,6 +134,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
     let mut effects_min_tys = Vec::new();
+    let mut errored_due_to_unconstrained_params = Ok(());
 
     let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
@@ -302,11 +308,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
         let self_ty = tcx.type_of(def_id).instantiate_identity();
         let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::instantiate_identity);
-        cgp::setup_constraining_predicates(
-            tcx,
-            &mut predicates,
-            trait_ref,
-            &mut cgp::parameters_for_impl(tcx, self_ty, trait_ref),
+        let mut input_parameters = cgp::parameters_for_impl(tcx, self_ty, trait_ref);
+        cgp::setup_constraining_predicates(tcx, &mut predicates, trait_ref, &mut input_parameters);
+        errored_due_to_unconstrained_params = errored_due_to_unconstrained_params.and(
+            self_ty.error_reported().and(trait_ref.error_reported()).and_then(|()| {
+                crate::impl_wf_check::enforce_impl_params_are_constrained(
+                    tcx,
+                    def_id,
+                    input_parameters,
+                )
+            }),
         );
     }
 
@@ -349,6 +360,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
         effects_min_tys: tcx.mk_type_list(&effects_min_tys),
+        errored_due_to_unconstrained_params,
     }
 }
 
@@ -500,6 +512,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
                 effects_min_tys: predicates_and_bounds.effects_min_tys,
+                errored_due_to_unconstrained_params: predicates_and_bounds
+                    .errored_due_to_unconstrained_params,
             }
         }
     } else {
@@ -552,6 +566,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 parent: parent_preds.parent,
                 predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
                 effects_min_tys: parent_preds.effects_min_tys,
+                errored_due_to_unconstrained_params: parent_preds
+                    .errored_due_to_unconstrained_params,
             };
         }
         gather_explicit_predicates_of(tcx, def_id)
@@ -664,6 +680,7 @@ pub(super) fn implied_predicates_with_filter(
         parent: None,
         predicates: implied_bounds,
         effects_min_tys: ty::List::empty(),
+        errored_due_to_unconstrained_params: Ok(()),
     }
 }
 
@@ -699,7 +716,12 @@ pub(super) fn type_param_predicates(
             let icx = ItemCtxt::new(tcx, parent);
             icx.probe_ty_param_bounds(DUMMY_SP, def_id, assoc_name)
         })
-        .unwrap_or_default();
+        .unwrap_or(GenericPredicates {
+            parent: None,
+            predicates: &[],
+            effects_min_tys: ty::List::empty(),
+            errored_due_to_unconstrained_params: Ok(()),
+        });
     let mut extend = None;
 
     let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
