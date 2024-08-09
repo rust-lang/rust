@@ -1924,14 +1924,13 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
         tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
         item: DefId,
         lifetime: DefId,
     ) -> Vec<ty::Region<'tcx>> {
         let item_generics = tcx.generics_of(item);
 
         inferred_outlives
-            .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyParam(ebr)
@@ -1947,11 +1946,10 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
-            .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
@@ -2094,7 +2092,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 (
                                     Self::lifetimes_outliving_lifetime(
                                         cx.tcx,
-                                        inferred_outlives,
+                                        // don't warn if the inferred span actually came from the predicate we're looking at
+                                        // this happens if the type is recursively defined
+                                        inferred_outlives
+                                            .iter()
+                                            .filter(|(_, span)| !predicate.span.contains(*span)),
                                         item.owner_id.to_def_id(),
                                         region_def_id,
                                     ),
@@ -2116,7 +2118,14 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     };
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
-                                        Self::lifetimes_outliving_type(inferred_outlives, index),
+                                        Self::lifetimes_outliving_type(
+                                            // don't warn if the inferred span actually came from the predicate we're looking at
+                                            // this happens if the type is recursively defined
+                                            inferred_outlives.iter().filter(|(_, span)| {
+                                                !predicate.span.contains(*span)
+                                            }),
+                                            index,
+                                        ),
                                         &predicate.bounds,
                                         predicate.span,
                                         predicate.origin == PredicateOrigin::WhereClause,
