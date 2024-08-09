@@ -1739,7 +1739,7 @@ impl<T> JoinHandle<T> {
     /// operations that happen after `join` returns.
     ///
     /// If the associated thread panics, [`Err`] is returned with the parameter given
-    /// to [`panic!`].
+    /// to [`panic!`] (though see the Notes below).
     ///
     /// [`Err`]: crate::result::Result::Err
     /// [atomic memory orderings]: crate::sync::atomic
@@ -1761,6 +1761,18 @@ impl<T> JoinHandle<T> {
     /// }).unwrap();
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
+    ///
+    /// # Notes
+    ///
+    /// This function has the same minimal guarantee regarding "foreign" unwinding operations (e.g.
+    /// an exception thrown from C++ code, or a `panic!` in Rust code compiled or linked with a
+    /// different runtime) as [`catch_unwind`]; namely, catching such an exception using this
+    /// function will have one of two behaviors, and it is unspecified which will occur:
+    ///
+    /// * The process aborts.
+    /// * The function returns a `Result::Err` containing an opaque type.
+    ///
+    /// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(self) -> Result<T> {
         self.0.join()

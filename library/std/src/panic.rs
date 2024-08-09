@@ -311,16 +311,19 @@ where
 ///
 /// # Notes
 ///
-/// Note that this function **might not catch all panics** in Rust. A panic in
-/// Rust is not always implemented via unwinding, but can be implemented by
-/// aborting the process as well. This function *only* catches unwinding panics,
-/// not those that abort the process.
+/// This function **cannot** catch panics when `panic=abort`, or with a manually written panic
+/// handler that aborts the process.
 ///
-/// Note that if a custom panic hook has been set, it will be invoked before
-/// the panic is caught, before unwinding.
+/// If a custom panic hook has been set, it will be invoked before the panic is
+/// caught, before unwinding.
 ///
-/// Also note that unwinding into Rust code with a foreign exception (e.g.
-/// an exception thrown from C++ code) is undefined behavior.
+/// Although unwinding into Rust code with a foreign exception (e.g. an
+/// exception thrown from C++ code, or a `panic!` in Rust code compiled or linked with a different
+/// runtime) via an appropriate ABI (e.g. `"C-unwind"`) is permitted, catching such an exception
+/// using this function will have one of two behaviors, and it is unspecified which will occur:
+///
+/// * The process aborts.
+/// * The function returns a `Result::Err` containing an opaque type.
 ///
 /// Finally, be **careful in how you drop the result of this function**.
 /// If it is `Err`, it contains the panic payload, and dropping that may in turn panic!
