@@ -643,6 +643,19 @@ impl<W: ?Sized + Write> Write for BufWriter<W> {
     }
 }
 
+#[stable(feature = "io_buf_clone", since = "CURRENT_RUSTC_VERSION")]
+impl<W: Clone + Write> Clone for BufWriter<W> {
+    fn clone(&self) -> Self {
+        Self { buf: self.buf.clone(), panicked: self.panicked, inner: self.inner.clone() }
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        self.buf.clone_from(&other.buf);
+        self.panicked = other.panicked;
+        self.inner.clone_from(&other.inner);
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: ?Sized + Write> fmt::Debug for BufWriter<W>
 where
