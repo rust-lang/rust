@@ -3,6 +3,17 @@ error: expected a pattern range bound, found an expression
    |
 LL |             0..5+1 => errors_only.push(x),
    |                ^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +         const VAL: /* Type */ = 5+1;
+LL ~         match x as i32 {
+LL ~             0..VAL => errors_only.push(x),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |             0..const { 5+1 } => errors_only.push(x),
+   |                +++++++     +
 
 error[E0408]: variable `n` is not bound in all patterns
   --> $DIR/range_pat_interactions1.rs:10:25

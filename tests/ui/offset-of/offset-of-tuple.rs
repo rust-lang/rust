@@ -30,6 +30,7 @@ fn nested() {
     offset_of!(((u8, u16), (u32, u16, u8)), 0.2); //~ ERROR no field `2`
     offset_of!(((u8, u16), (u32, u16, u8)), 1.2);
     offset_of!(((u8, u16), (u32, u16, u8)), 1.2.0); //~ ERROR no field `0`
+    offset_of!(((u8, u16), (u32, u16, u8)), 0.1e2); //~ ERROR no field `1e2`
 
     // All combinations of spaces (this sends different tokens to the parser)
     offset_of!(ComplexTup, 0.0.1.); //~ ERROR unexpected token: `)`

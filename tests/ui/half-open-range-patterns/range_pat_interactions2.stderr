@@ -1,9 +1,3 @@
-error: expected a pattern range bound, found an expression
-  --> $DIR/range_pat_interactions2.rs:10:18
-   |
-LL |             0..=(5+1) => errors_only.push(x),
-   |                  ^^^ arbitrary expressions are not allowed in patterns
-
 error: range pattern bounds cannot have parentheses
   --> $DIR/range_pat_interactions2.rs:10:17
    |
@@ -15,6 +9,23 @@ help: remove these parentheses
 LL -             0..=(5+1) => errors_only.push(x),
 LL +             0..=5+1 => errors_only.push(x),
    |
+
+error: expected a pattern range bound, found an expression
+  --> $DIR/range_pat_interactions2.rs:10:18
+   |
+LL |             0..=(5+1) => errors_only.push(x),
+   |                  ^^^ arbitrary expressions are not allowed in patterns
+   |
+help: consider extracting the expression into a `const`
+   |
+LL +         const VAL: /* Type */ = 5+1;
+LL ~         match x as i32 {
+LL ~             0..=(VAL) => errors_only.push(x),
+   |
+help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
+   |
+LL |             0..=(const { 5+1 }) => errors_only.push(x),
+   |                  +++++++     +
 
 error[E0658]: inline-const in pattern position is experimental
   --> $DIR/range_pat_interactions2.rs:15:20

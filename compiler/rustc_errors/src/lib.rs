@@ -543,6 +543,8 @@ pub enum StashKey {
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,
+    /// Used by `Parser::maybe_recover_trailing_expr`
+    ExprInPat,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
@@ -873,14 +875,9 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     /// Steals a previously stashed error with the given `Span` and
-    /// [`StashKey`] as the key, cancels it if found, and emits `new_err`.
+    /// [`StashKey`] as the key, and cancels it if found.
     /// Panics if the found diagnostic's level isn't `Level::Error`.
-    pub fn try_steal_replace_and_emit_err(
-        self,
-        span: Span,
-        key: StashKey,
-        new_err: Diag<'_>,
-    ) -> ErrorGuaranteed {
+    pub fn try_steal_and_replace_err(self, span: Span, key: StashKey, _: ErrorGuaranteed) -> bool {
         let key = (span.with_parent(None), key);
         // FIXME(#120456) - is `swap_remove` correct?
         let old_err = self.inner.borrow_mut().stashed_diagnostics.swap_remove(&key);
@@ -889,12 +886,26 @@ impl<'a> DiagCtxtHandle<'a> {
                 assert_eq!(old_err.level, Error);
                 assert!(guar.is_some());
                 // Because `old_err` has already been counted, it can only be
-                // safely cancelled because the `new_err` supplants it.
+                // safely cancelled because the passed `ErrorGuaranteed` supplants it.
                 Diag::<ErrorGuaranteed>::new_diagnostic(self, old_err).cancel();
+                true
             }
-            None => {}
-        };
-        new_err.emit()
+            None => false,
+        }
+    }
+
+    /// Steals a previously stashed error with the given `Span` and
+    /// [`StashKey`] as the key, cancels it if found, and emits `new_err`.
+    /// Panics if the found diagnostic's level isn't `Level::Error`.
+    pub fn try_steal_replace_and_emit_err(
+        self,
+        span: Span,
+        key: StashKey,
+        new_err: Diag<'_>,
+    ) -> ErrorGuaranteed {
+        let guar = new_err.emit();
+        self.try_steal_and_replace_err(span, key, guar);
+        guar
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
@@ -1287,6 +1298,17 @@ impl<'a> DiagCtxtHandle<'a> {
     #[track_caller]
     pub fn emit_err(self, err: impl Diagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
+    }
+
+    /// See [`DiagCtxtHandle::stash_diagnostic`] for details.
+    #[track_caller]
+    pub fn stash_err(
+        &'a self,
+        span: Span,
+        key: StashKey,
+        err: impl Diagnostic<'a>,
+    ) -> ErrorGuaranteed {
+        self.create_err(err).stash(span, key).unwrap()
     }
 
     /// Ensures that an error is printed. See `Level::DelayedBug`.
