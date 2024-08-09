@@ -192,6 +192,7 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
 const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     // tidy-alphabetical-start
     ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-bitset", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
@@ -511,6 +512,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "bumpalo",
     "cfg-if",
     "cranelift-bforest",
+    "cranelift-bitset",
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",

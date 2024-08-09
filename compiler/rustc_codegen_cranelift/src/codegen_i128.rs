@@ -23,19 +23,7 @@ pub(crate) fn maybe_codegen<'tcx>(
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => None,
         BinOp::Add | BinOp::AddUnchecked | BinOp::Sub | BinOp::SubUnchecked => None,
-        BinOp::Mul | BinOp::MulUnchecked => {
-            let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
-            let ret_val = fx.lib_call(
-                "__multi3",
-                vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
-                vec![AbiParam::new(types::I128)],
-                &args,
-            )[0];
-            Some(CValue::by_val(
-                ret_val,
-                fx.layout_of(if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 }),
-            ))
-        }
+        BinOp::Mul | BinOp::MulUnchecked => None,
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Div | BinOp::Rem => {
             let name = match (bin_op, is_signed) {
@@ -92,6 +80,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
 
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => unreachable!(),
+        BinOp::Add | BinOp::Sub => None,
         BinOp::Mul if is_signed => {
             let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
             let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
@@ -112,7 +101,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
             let oflow = fx.bcx.ins().ireduce(types::I8, oflow);
             Some(CValue::by_val_pair(res, oflow, fx.layout_of(out_ty)))
         }
-        BinOp::Add | BinOp::Sub | BinOp::Mul => {
+        BinOp::Mul => {
             let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
             let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
             let param_types = vec![
@@ -121,15 +110,7 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
                 AbiParam::new(types::I128),
             ];
             let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
-            let name = match (bin_op, is_signed) {
-                (BinOp::Add, false) => "__rust_u128_addo",
-                (BinOp::Add, true) => "__rust_i128_addo",
-                (BinOp::Sub, false) => "__rust_u128_subo",
-                (BinOp::Sub, true) => "__rust_i128_subo",
-                (BinOp::Mul, false) => "__rust_u128_mulo",
-                _ => unreachable!(),
-            };
-            fx.lib_call(name, param_types, vec![], &args);
+            fx.lib_call("__rust_u128_mulo", param_types, vec![], &args);
             Some(out_place.to_cvalue(fx))
         }
         BinOp::AddUnchecked | BinOp::SubUnchecked | BinOp::MulUnchecked => unreachable!(),

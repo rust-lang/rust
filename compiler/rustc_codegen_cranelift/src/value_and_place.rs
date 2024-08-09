@@ -677,8 +677,10 @@ impl<'tcx> CPlace<'tcx> {
                         let to_addr = to_ptr.get_addr(fx);
                         let src_layout = from.1;
                         let size = dst_layout.size.bytes();
-                        let src_align = src_layout.align.abi.bytes() as u8;
-                        let dst_align = dst_layout.align.abi.bytes() as u8;
+                        // `emit_small_memory_copy` uses `u8` for alignments, just use the maximum
+                        // alignment that fits in a `u8` if the actual alignment is larger.
+                        let src_align = src_layout.align.abi.bytes().try_into().unwrap_or(128);
+                        let dst_align = dst_layout.align.abi.bytes().try_into().unwrap_or(128);
                         fx.bcx.emit_small_memory_copy(
                             fx.target_config,
                             to_addr,

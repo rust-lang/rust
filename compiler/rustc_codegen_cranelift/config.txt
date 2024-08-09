@@ -45,6 +45,7 @@ aot.issue-59326
 aot.polymorphize_coroutine
 aot.neon
 aot.gen_block_iterate
+aot.raw-dylib
 
 testsuite.extended_sysroot
 test.rust-random/rand
