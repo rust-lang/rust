@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sext;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
@@ -42,15 +42,11 @@ fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     };
 
     if op.node == BinOpKind::Eq || op.node == BinOpKind::Ne {
-        if let Some(Constant::Int(0)) = constant(cx, cx.typeck_results(), rhs) {
-            return true;
-        }
-        if let Some(Constant::Int(0)) = constant(cx, cx.typeck_results(), lhs) {
-            return true;
-        }
+        let ecx = ConstEvalCtxt::new(cx);
+        matches!(ecx.eval(lhs), Some(Constant::Int(0))) || matches!(ecx.eval(rhs), Some(Constant::Int(0)))
+    } else {
+        false
     }
-
-    false
 }
 
 struct OperandInfo {
@@ -60,7 +56,7 @@ struct OperandInfo {
 }
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OperandInfo> {
-    match constant(cx, cx.typeck_results(), operand) {
+    match ConstEvalCtxt::new(cx).eval(operand) {
         Some(Constant::Int(v)) => match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => {
                 let value = sext(cx.tcx, v, ity);

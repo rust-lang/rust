@@ -92,20 +92,8 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
             let (suffix, is_float) = match lit_ty.kind() {
                 ty::Int(IntTy::I32) => ("i32", false),
                 ty::Float(FloatTy::F64) => ("f64", true),
-                // Default numeric fallback never results in other types.
                 _ => return,
             };
-
-            let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
-                src
-            } else {
-                match lit.node {
-                    LitKind::Int(src, _) => format!("{src}"),
-                    LitKind::Float(src, _) => format!("{src}"),
-                    _ => return,
-                }
-            };
-            let sugg = numeric_literal::format(&src, Some(suffix), is_float);
             span_lint_hir_and_then(
                 self.cx,
                 DEFAULT_NUMERIC_FALLBACK,
@@ -113,6 +101,17 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                 lit.span,
                 "default numeric fallback might occur",
                 |diag| {
+                    let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
+                        src
+                    } else {
+                        match lit.node {
+                            LitKind::Int(src, _) => format!("{src}"),
+                            LitKind::Float(src, _) => format!("{src}"),
+                            _ => unreachable!("Default numeric fallback never results in other types"),
+                        }
+                    };
+
+                    let sugg = numeric_literal::format(&src, Some(suffix), is_float);
                     diag.span_suggestion(lit.span, "consider adding suffix", sugg, Applicability::MaybeIncorrect);
                 },
             );

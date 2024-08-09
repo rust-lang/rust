@@ -10,7 +10,6 @@
 #![feature(assert_matches)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
@@ -126,7 +125,7 @@ use rustc_span::{sym, Span};
 use rustc_target::abi::Integer;
 use visitors::Visitable;
 
-use crate::consts::{constant, mir_to_const, Constant};
+use crate::consts::{mir_to_const, ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
@@ -211,20 +210,24 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
     false
 }
 
-/// Returns `true` if the given `HirId` is inside a constant context.
+/// Checks if we are currently in a const context (e.g. `const fn`, `static`/`const` initializer).
 ///
-/// This is the same as `is_inside_always_const_context`, but also includes
-/// `const fn`.
+/// The current context is determined based on the current body which is set before calling a lint's
+/// entry point (any function on `LateLintPass`). If you need to check in a different context use
+/// `tcx.hir().is_inside_const_context(_)`.
 ///
-/// # Example
-///
-/// ```rust,ignore
-/// if in_constant(cx, expr.hir_id) {
-///     // Do something
-/// }
-/// ```
-pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
-    cx.tcx.hir().is_inside_const_context(id)
+/// Do not call this unless the `LateContext` has an enclosing body. For release build this case
+/// will safely return `false`, but debug builds will ICE. Note that `check_expr`, `check_block`,
+/// `check_pat` and a few other entry points will always have an enclosing body. Some entry points
+/// like `check_path` or `check_ty` may or may not have one.
+pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
+    debug_assert!(cx.enclosing_body.is_some(), "`LateContext` has no enclosing body");
+    cx.enclosing_body.is_some_and(|id| {
+        cx.tcx
+            .hir()
+            .body_const_context(cx.tcx.hir().body_owner_def_id(id))
+            .is_some()
+    })
 }
 
 /// Returns `true` if the given `HirId` is inside an always constant context.
@@ -589,9 +592,8 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         "u128" => SimplifiedType::Uint(UintTy::U128),
         "f32" => SimplifiedType::Float(FloatTy::F32),
         "f64" => SimplifiedType::Float(FloatTy::F64),
-        #[allow(trivial_casts)]
         _ => {
-            return Result::<_, rustc_errors::ErrorGuaranteed>::Ok(&[] as &[_])
+            return Result::<&[_], rustc_errors::ErrorGuaranteed>::Ok(&[])
                 .into_iter()
                 .flatten()
                 .copied();
@@ -1579,8 +1581,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
                 && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
-                && let Some(start_const) = constant(cx, cx.typeck_results(), start)
+                && let Some(min_const) = mir_to_const(cx.tcx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
+                && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
                 start_const == min_const
             } else {
@@ -1592,8 +1594,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
                     && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
-                    && let Some(end_const) = constant(cx, cx.typeck_results(), end)
+                    && let Some(max_const) = mir_to_const(cx.tcx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
+                    && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
                     end_const == max_const
                 } else {
@@ -1624,7 +1626,9 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
         return true;
     }
     let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
-    if let Some(Constant::Int(v)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
+    if let Some(Constant::Int(v)) =
+        ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(enclosing_body), cx.tcx.typeck(enclosing_body)).eval(e)
+    {
         return value == v;
     }
     false

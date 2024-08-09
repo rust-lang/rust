@@ -564,7 +564,7 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.24.0",
+ "ui_test 0.25.0",
  "walkdir",
 ]
 
@@ -572,6 +572,7 @@ dependencies = [
 name = "clippy_config"
 version = "0.1.82"
 dependencies = [
+ "itertools",
  "rustc-semver",
  "serde",
  "toml 0.7.8",
@@ -4936,9 +4937,9 @@ dependencies = [
 
 [[package]]
 name = "spanned"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed14ba8b4b82241bd5daba2c49185d4a0581a0058355fe96537338f002b8605d"
+checksum = "86af297923fbcfd107c20a189a6e9c872160df71a7190ae4a7a6c5dce4b2feb6"
 dependencies = [
  "bstr",
  "color-eyre",
@@ -5562,9 +5563,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc1c6c78d55482388711c8d417b8e547263046a607512278fed274c54633bbe4"
+checksum = "f7e4f339f62edc873975c47115f9e71c5454ddaa37c1142b42fc0b2672c8dacb"
 dependencies = [
  "annotate-snippets 0.11.4",
  "anyhow",
