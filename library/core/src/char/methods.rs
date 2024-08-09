@@ -1,6 +1,7 @@
 //! impl char {}
 
 use super::*;
+use crate::mem::MaybeUninit;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -1767,33 +1768,66 @@ const fn len_utf8(code: u32) -> usize {
 #[inline]
 pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     let len = len_utf8(code);
-    match (len, &mut dst[..]) {
-        (1, [a, ..]) => {
-            *a = code as u8;
-        }
-        (2, [a, b, ..]) => {
-            *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-            *b = (code & 0x3F) as u8 | TAG_CONT;
-        }
-        (3, [a, b, c, ..]) => {
-            *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-            *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-            *c = (code & 0x3F) as u8 | TAG_CONT;
-        }
-        (4, [a, b, c, d, ..]) => {
-            *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-            *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-            *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-            *d = (code & 0x3F) as u8 | TAG_CONT;
-        }
-        _ => panic!(
+    if dst.len() < len {
+        panic!(
             "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
             len,
             code,
             dst.len(),
-        ),
-    };
-    &mut dst[..len]
+        );
+    }
+
+    // SAFETY: `encode_utf8_raw_unchecked` only writes initialized bytes to the slice,
+    // `dst` has been checked to be long enough to hold the encoded codepoint
+    unsafe { encode_utf8_raw_unchecked(code, &mut *(dst as *mut [u8] as *mut [MaybeUninit<u8>])) }
+}
+
+/// Encodes a raw u32 value as UTF-8 into the provided possibly uninitialized byte buffer,
+/// and then returns the subslice of the buffer that contains the encoded character.
+///
+/// Unlike `char::encode_utf8`, this method also handles codepoints in the surrogate range.
+/// (Creating a `char` in the surrogate range is UB.)
+/// The result is valid [generalized UTF-8] but not valid UTF-8.
+///
+/// [generalized UTF-8]: https://simonsapin.github.io/wtf-8/#generalized-utf8
+///
+/// # Safety
+///
+/// The behavior is undefined if the buffer is not large enough to hold the encoded codepoint.
+/// A buffer of length four is large enough to encode any `char`.
+///
+/// For a safe version of this function, see the [`encode_utf8_raw`] function.
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
+#[inline]
+pub unsafe fn encode_utf8_raw_unchecked(code: u32, dst: &mut [MaybeUninit<u8>]) -> &mut [u8] {
+    let len = len_utf8(code);
+    // SAFETY: the caller must guarantee that `dst` is at least `len` bytes long
+    unsafe {
+        match len {
+            1 => {
+                dst.get_unchecked_mut(0).write(code as u8);
+            }
+            2 => {
+                dst.get_unchecked_mut(0).write((code >> 6 & 0x1F) as u8 | TAG_TWO_B);
+                dst.get_unchecked_mut(1).write((code & 0x3F) as u8 | TAG_CONT);
+            }
+            3 => {
+                dst.get_unchecked_mut(0).write((code >> 12 & 0x0F) as u8 | TAG_THREE_B);
+                dst.get_unchecked_mut(1).write((code >> 6 & 0x3F) as u8 | TAG_CONT);
+                dst.get_unchecked_mut(2).write((code & 0x3F) as u8 | TAG_CONT);
+            }
+            4 => {
+                dst.get_unchecked_mut(0).write((code >> 18 & 0x07) as u8 | TAG_FOUR_B);
+                dst.get_unchecked_mut(1).write((code >> 12 & 0x3F) as u8 | TAG_CONT);
+                dst.get_unchecked_mut(2).write((code >> 6 & 0x3F) as u8 | TAG_CONT);
+                dst.get_unchecked_mut(3).write((code & 0x3F) as u8 | TAG_CONT);
+            }
+            _ => unreachable!(),
+        }
+    }
+    // SAFETY: data has been written to the first `len` bytes
+    unsafe { &mut *(dst.get_unchecked_mut(..len) as *mut [MaybeUninit<u8>] as *mut [u8]) }
 }
 
 /// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,
