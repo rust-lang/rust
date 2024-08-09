@@ -868,16 +868,12 @@ pub struct FnSig<I: Interner> {
 }
 
 impl<I: Interner> FnSig<I> {
-    pub fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty) {
-        self.inputs_and_output.split_inputs_and_output()
-    }
-
     pub fn inputs(self) -> I::FnInputTys {
-        self.split_inputs_and_output().0
+        self.inputs_and_output.inputs()
     }
 
     pub fn output(self) -> I::Ty {
-        self.split_inputs_and_output().1
+        self.inputs_and_output.output()
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
@@ -935,7 +931,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         }
 
         write!(f, "fn(")?;
-        let (inputs, output) = sig.split_inputs_and_output();
+        let inputs = sig.inputs();
         for (i, ty) in inputs.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
@@ -951,6 +947,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         }
         write!(f, ")")?;
 
+        let output = sig.output();
         match output.kind() {
             Tuple(list) if list.is_empty() => Ok(()),
             _ => write!(f, " -> {:?}", sig.output()),

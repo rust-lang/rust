@@ -1955,9 +1955,12 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
-    fn split_inputs_and_output(self) -> (&'tcx [Ty<'tcx>], Ty<'tcx>) {
-        let (output, inputs) = self.split_last().unwrap();
-        (inputs, *output)
+    fn inputs(self) -> &'tcx [Ty<'tcx>] {
+        self.split_last().unwrap().1
+    }
+
+    fn output(self) -> Ty<'tcx> {
+        *self.split_last().unwrap().0
     }
 }
 
