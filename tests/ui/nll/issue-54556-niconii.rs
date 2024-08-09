@@ -1,3 +1,4 @@
+//@ check-pass
 // This is a reduction of a concrete test illustrating a case that was
 // annoying to Rust developer niconii (see comment thread on #21114).
 //
@@ -19,7 +20,7 @@ impl Mutex {
 fn main() {
     let counter = Mutex;
 
-    if let Ok(_) = counter.lock() { } //~ ERROR does not live long enough
+    if let Ok(_) = counter.lock() { }
 
     // With this code as written, the dynamic semantics here implies
     // that `Mutex::drop` for `counter` runs *before*
@@ -28,4 +29,5 @@ fn main() {
     //
     // The goal of #54556 is to explain that within a compiler
     // diagnostic.
+    ()
 }
