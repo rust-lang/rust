@@ -570,7 +570,12 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         inlined_at: Option<&'ll DILocation>,
         span: Span,
     ) -> &'ll DILocation {
-        let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
 
         unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
     }
