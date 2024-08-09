@@ -82,7 +82,8 @@ fn main() {
     assert!(return_fn_ptr(i) == i);
     assert!(return_fn_ptr(i) as unsafe fn() -> i32 == i as fn() -> i32 as unsafe fn() -> i32);
     // Miri gives different addresses to different reifications of a generic function.
-    assert!(return_fn_ptr(f) != f);
+    // at least if we try often enough.
+    assert!((0..256).any(|_| return_fn_ptr(f) != f));
     // However, if we only turn `f` into a function pointer and use that pointer,
     // it is equal to itself.
     let f2 = f as fn() -> i32;
