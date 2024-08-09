@@ -211,6 +211,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ty::Int(ity) => (Integer::from_int_ty(&self.tcx, *ity), /* signed */ true),
                 ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, *uty), /* signed */ false),
                 ty::Char => (Integer::I32, /* signed */ false),
+                ty::Adt(def, _) => {
+                    // Ensure it is an enum, with a suitable repr, and fieldless.
+                    if !def.is_enum() {
+                        return None;
+                    }
+                    let Some(int_ty) = def.repr().int else {
+                        return None;
+                    };
+                    if !def.variants().iter().all(|variant| variant.fields.is_empty()) {
+                        return None;
+                    }
+                    let int = Integer::from_attr(&self.tcx, int_ty);
+                    (int, int_ty.is_signed())
+                }
                 _ => return None,
             })
         };

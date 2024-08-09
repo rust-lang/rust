@@ -1667,6 +1667,8 @@ mod prim_ref {}
 ///   Pointee>::Metadata`).
 /// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
 ///   ABI-compatible with the `iN` integer type of the same size.
+/// - A fieldless enum with `repr(u*)` or `repr(i*)` is ABI-compatible with the integer type given
+///   in the `repr`.
 /// - `char` is ABI-compatible with `u32`.
 /// - Any two `fn` (function pointer) types are ABI-compatible with each other if they have the same
 ///   ABI string or the ABI string only differs in a trailing `-unwind`, independent of the rest of
