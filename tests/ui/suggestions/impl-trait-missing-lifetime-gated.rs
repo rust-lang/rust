@@ -1,13 +1,13 @@
 //@ edition:2021
 // gate-test-anonymous_lifetime_in_impl_trait
+
 // Verify the behaviour of `feature(anonymous_lifetime_in_impl_trait)`.
 
 mod elided {
     fn f(_: impl Iterator<Item = &()>) {}
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
 
     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+    //~^ ERROR lifetime may not live long
     //~| ERROR missing lifetime specifier
 
     // Anonymous lifetimes in async fn are already allowed.
@@ -17,16 +17,15 @@ mod elided {
     // Anonymous lifetimes in async fn are already allowed.
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
-    //~^ ERROR missing lifetime specifier
-    //~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long
+    //~| ERROR missing lifetime specifier
 }
 
 mod underscore {
     fn f(_: impl Iterator<Item = &'_ ()>) {}
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
 
     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+    //~^ ERROR lifetime may not live long
     //~| ERROR missing lifetime specifier
 
     // Anonymous lifetimes in async fn are already allowed.
@@ -36,18 +35,17 @@ mod underscore {
     // Anonymous lifetimes in async fn are already allowed.
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-    //~^ ERROR missing lifetime specifier
-    //~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long
+    //~| ERROR missing lifetime specifier
 }
 
 mod alone_in_path {
     trait Foo<'a> { fn next(&mut self) -> Option<&'a ()>; }
 
     fn f(_: impl Foo) {}
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
 
     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+    //~^ ERROR lifetime may not live long
     //~| ERROR missing lifetime specifier
 }
 
@@ -55,10 +53,9 @@ mod in_path {
     trait Foo<'a, T> { fn next(&mut self) -> Option<&'a T>; }
 
     fn f(_: impl Foo<()>) {}
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
 
     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
-    //~^ ERROR anonymous lifetimes in `impl Trait` are unstable
+    //~^ ERROR lifetime may not live long
     //~| ERROR missing lifetime specifier
 }
 
