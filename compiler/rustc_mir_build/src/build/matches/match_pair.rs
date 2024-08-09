@@ -112,9 +112,12 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
         let test_case = match pattern.kind {
             PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
 
-            PatKind::Or { ref pats } => TestCase::Or {
-                pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
-            },
+            PatKind::Or { ref pats } => {
+                let pats: Box<[_]> =
+                    pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect();
+                let contains_bindings = pats.iter().any(|fpat| fpat.contains_bindings);
+                TestCase::Or { pats, contains_bindings }
+            }
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
@@ -254,5 +257,11 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
         };
 
         MatchPairTree { place, test_case, subpairs, pattern }
+    }
+
+    /// Whether this recursively contains any bindings or ascriptions.
+    pub(super) fn contains_bindings(&self) -> bool {
+        matches!(self.test_case, TestCase::Or { contains_bindings: true, .. })
+            || self.subpairs.iter().any(|p| p.contains_bindings())
     }
 }

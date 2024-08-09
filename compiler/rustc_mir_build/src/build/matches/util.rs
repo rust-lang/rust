@@ -140,7 +140,9 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         for binding in &candidate.extra_data.bindings {
             self.visit_binding(binding);
         }
-        for match_pair in &candidate.match_pairs {
+        // This assumes the candidate state is `Incomplete`, which is the case since we collect fake
+        // borrows before starting the processing of candidates.
+        for match_pair in candidate.match_pairs().unwrap() {
             self.visit_match_pair(match_pair);
         }
     }

@@ -12,29 +12,29 @@ use std::ops::ControlFlow;
 fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // CHECK-LABEL: fn too_complex(
     // CHECK: bb0: {
-    // CHECK:     switchInt(move {{_.*}}) -> [0: bb3, 1: bb2, otherwise: bb1];
-    // CHECK: bb1: {
+    // CHECK:     switchInt(move {{_.*}}) -> [0: [[continue1:bb.*]], 1: [[break1:bb.*]], otherwise: [[unreachable:bb.*]]];
+    // CHECK: [[unreachable]]: {
     // CHECK:     unreachable;
-    // CHECK: bb2: {
+    // CHECK: [[break1]]: {
     // CHECK:     [[controlflow:_.*]] = ControlFlow::<usize, i32>::Break(
-    // CHECK:     goto -> bb8;
-    // CHECK: bb3: {
+    // CHECK:     goto -> [[break2:bb.*]];
+    // CHECK: [[continue1]]: {
     // CHECK:     [[controlflow]] = ControlFlow::<usize, i32>::Continue(
-    // CHECK:     goto -> bb4;
-    // CHECK: bb4: {
-    // CHECK:     goto -> bb6;
-    // CHECK: bb5: {
+    // CHECK:     goto -> [[continue2:bb.*]];
+    // CHECK: [[continue2]]: {
+    // CHECK:     goto -> [[continue3:bb.*]];
+    // CHECK: [[break3:bb.*]]: {
     // CHECK:     {{_.*}} = (([[controlflow]] as Break).0: usize);
     // CHECK:     _0 = Option::<i32>::None;
-    // CHECK:     goto -> bb7;
-    // CHECK: bb6: {
+    // CHECK:     goto -> [[return:bb.*]];
+    // CHECK: [[continue3]]: {
     // CHECK:     {{_.*}} = (([[controlflow]] as Continue).0: i32);
     // CHECK:     _0 = Option::<i32>::Some(
-    // CHECK:     goto -> bb7;
-    // CHECK: bb7: {
+    // CHECK:     goto -> [[return]];
+    // CHECK: [[return]]: {
     // CHECK:     return;
-    // CHECK: bb8: {
-    // CHECK:     goto -> bb5;
+    // CHECK: [[break2]]: {
+    // CHECK:     goto -> [[break3]];
     match {
         match x {
             Ok(v) => ControlFlow::Continue(v),
