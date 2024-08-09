@@ -8,13 +8,8 @@
 // Reason: the compiled binary is executed.
 //@ ignore-wasm
 // Reason: WASM does not support dynamic libraries
-//@ ignore-msvc
-//FIXME(Oneirical): Getting this to work on MSVC requires passing libcmt.lib to CC,
-// which is not trivial to do.
-// Tracking issue: https://github.com/rust-lang/rust/issues/128602
-// Discussion: https://github.com/rust-lang/rust/pull/128407#discussion_r1702439172
 
-use run_make_support::{cc, regex, run, rustc};
+use run_make_support::{cc, is_msvc, regex, run, rustc, static_lib_name};
 
 fn main() {
     rustc().arg("-Cprefer-dynamic").input("bar.rs").run();
@@ -29,9 +24,13 @@ fn main() {
     let re = regex::Regex::new(r#"note: native-static-libs:\s*(.+)"#).unwrap();
     let libs = re.find(&libs).unwrap().as_str().trim();
     // remove the note
-    let (_, library_search_paths) = libs.split_once("note: native-static-libs: ").unwrap();
+    let (_, native_link_args) = libs.split_once("note: native-static-libs: ").unwrap();
     // divide the command-line arguments in a vec
-    let library_search_paths = library_search_paths.split(' ').collect::<Vec<&str>>();
-    cc().input("foo.c").arg("-lfoo").args(library_search_paths).out_exe("foo").run();
+    let mut native_link_args = native_link_args.split(' ').collect::<Vec<&str>>();
+    if is_msvc() {
+        // For MSVC pass the arguments on to the linker.
+        native_link_args.insert(0, "-link");
+    }
+    cc().input("foo.c").input(static_lib_name("foo")).args(native_link_args).out_exe("foo").run();
     run("foo");
 }
