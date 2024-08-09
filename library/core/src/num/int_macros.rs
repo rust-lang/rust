@@ -1496,18 +1496,17 @@ macro_rules! int_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = try_opt!(acc.checked_mul(base));
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return Some(acc);
+                    }
                 }
                 exp /= 2;
                 base = try_opt!(base.checked_mul(base));
             }
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.checked_mul(base)
         }
 
         /// Strict exponentiation. Computes `self.pow(exp)`, panicking if
@@ -1547,18 +1546,17 @@ macro_rules! int_impl {
             let mut base = self;
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc.strict_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base.strict_mul(base);
             }
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.strict_mul(base)
         }
 
         /// Returns the square root of the number, rounded down.
@@ -2175,26 +2173,57 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
             let mut base = self;
+
+            if intrinsics::is_val_statically_known(exp) {
+                // Unroll multiplications for small exponent values.
+                // This gives the optimizer a way to efficiently inline call sites
+                // for the most common use cases with constant exponents.
+                // Currently, LLVM is unable to unroll the loop below.
+                match exp {
+                    0 => return 1,
+                    1 => return base,
+                    2 => return base.wrapping_mul(base),
+                    3 => {
+                        let squared = base.wrapping_mul(base);
+                        return squared.wrapping_mul(base);
+                    }
+                    4 => {
+                        let squared = base.wrapping_mul(base);
+                        return squared.wrapping_mul(squared);
+                    }
+                    5 => {
+                        let squared = base.wrapping_mul(base);
+                        return squared.wrapping_mul(squared).wrapping_mul(base);
+                    }
+                    6 => {
+                        let cubed = base.wrapping_mul(base).wrapping_mul(base);
+                        return cubed.wrapping_mul(cubed);
+                    }
+                    _ => {}
+                }
+            } else {
+                if exp == 0 {
+                    return 1;
+                }
+            }
+            debug_assert!(exp != 0);
+
             let mut acc: Self = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc.wrapping_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base.wrapping_mul(base);
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc.wrapping_mul(base)
         }
 
         /// Calculates `self` + `rhs`.
@@ -2690,9 +2719,14 @@ macro_rules! int_impl {
             // Scratch space for storing results of overflowing_mul.
             let mut r;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     r = acc.overflowing_mul(base);
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        r.1 |= overflown;
+                        return r;
+                    }
                     acc = r.0;
                     overflown |= r.1;
                 }
@@ -2701,14 +2735,6 @@ macro_rules! int_impl {
                 base = r.0;
                 overflown |= r.1;
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            r = acc.overflowing_mul(base);
-            r.1 |= overflown;
-            r
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
@@ -2728,26 +2754,57 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
+        #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
             let mut base = self;
+
+            if intrinsics::is_val_statically_known(exp) {
+                // Unroll multiplications for small exponent values.
+                // This gives the optimizer a way to efficiently inline call sites
+                // for the most common use cases with constant exponents.
+                // Currently, LLVM is unable to unroll the loop below.
+                match exp {
+                    0 => return 1,
+                    1 => return base,
+                    2 => return base * base,
+                    3 => {
+                        let squared = base * base;
+                        return squared * base;
+                    }
+                    4 => {
+                        let squared = base * base;
+                        return squared * squared;
+                    }
+                    5 => {
+                        let squared = base * base;
+                        return squared * squared * base;
+                    }
+                    6 => {
+                        let cubed = base * base * base;
+                        return cubed * cubed;
+                    }
+                    _ => {}
+                }
+            } else {
+                if exp == 0 {
+                    return 1;
+                }
+            }
+            debug_assert!(exp != 0);
+
             let mut acc = 1;
 
-            while exp > 1 {
+            loop {
                 if (exp & 1) == 1 {
                     acc = acc * base;
+                    // since exp!=0, finally the exp must be 1.
+                    if exp == 1 {
+                        return acc;
+                    }
                 }
                 exp /= 2;
                 base = base * base;
             }
-
-            // since exp!=0, finally the exp must be 1.
-            // Deal with the final bit of the exponent separately, since
-            // squaring the base afterwards is not necessary and may cause a
-            // needless overflow.
-            acc * base
         }
 
         /// Returns the square root of the number, rounded down.
