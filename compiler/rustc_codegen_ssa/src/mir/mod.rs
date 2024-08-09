@@ -106,7 +106,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     locals: locals::Locals<'tcx, Bx::Value>,
 
     /// All `VarDebugInfo` from the MIR body, partitioned by `Local`.
-    /// This is `None` if no var`#[non_exhaustive]`iable debuginfo/names are needed.
+    /// This is `None` if no variable debuginfo/names are needed.
     per_local_var_debug_info:
         Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>>,
 
