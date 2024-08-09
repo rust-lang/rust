@@ -378,8 +378,8 @@ impl BlockOrExpr {
                 None => cx.expr_block(cx.block(span, ThinVec::new())),
                 Some(expr) => expr,
             }
-        } else if self.0.len() == 1
-            && let ast::StmtKind::Expr(expr) = &self.0[0].kind
+        } else if let [stmt] = self.0.as_slice()
+            && let ast::StmtKind::Expr(expr) = &stmt.kind
             && self.1.is_none()
         {
             // There's only a single statement expression. Pull it out.
@@ -1273,7 +1273,7 @@ impl<'a> MethodDef<'a> {
                     }
                     FieldlessVariantsStrategy::Default => (),
                 }
-            } else if variants.len() == 1 {
+            } else if let [variant] = variants.as_slice() {
                 // If there is a single variant, we don't need an operation on
                 // the discriminant(s). Just use the most degenerate result.
                 return self.call_substructure_method(
@@ -1281,7 +1281,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(0, &variants[0], Vec::new()),
+                    &EnumMatching(0, variant, Vec::new()),
                 );
             }
         }

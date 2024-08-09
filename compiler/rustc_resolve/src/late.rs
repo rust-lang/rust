@@ -445,8 +445,8 @@ impl<'a> PathSource<'a> {
                 Some(ExprKind::Call(call_expr, _)) => match &call_expr.kind {
                     // the case of `::some_crate()`
                     ExprKind::Path(_, path)
-                        if path.segments.len() == 2
-                            && path.segments[0].ident.name == kw::PathRoot =>
+                        if let [segment, _] = path.segments.as_slice()
+                            && segment.ident.name == kw::PathRoot =>
                     {
                         "external crate"
                     }
@@ -2396,15 +2396,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     fn future_proof_import(&mut self, use_tree: &UseTree) {
-        let segments = &use_tree.prefix.segments;
-        if !segments.is_empty() {
-            let ident = segments[0].ident;
+        if let [segment, rest @ ..] = use_tree.prefix.segments.as_slice() {
+            let ident = segment.ident;
             if ident.is_path_segment_keyword() || ident.span.is_rust_2015() {
                 return;
             }
 
             let nss = match use_tree.kind {
-                UseTreeKind::Simple(..) if segments.len() == 1 => &[TypeNS, ValueNS][..],
+                UseTreeKind::Simple(..) if rest.is_empty() => &[TypeNS, ValueNS][..],
                 _ => &[TypeNS],
             };
             let report_error = |this: &Self, ns| {
@@ -4009,16 +4008,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             if this.should_report_errs() {
                 if candidates.is_empty() {
-                    if path.len() == 2 && prefix_path.len() == 1 {
+                    if path.len() == 2
+                        && let [segment] = prefix_path
+                    {
                         // Delay to check whether methond name is an associated function or not
                         // ```
                         // let foo = Foo {};
                         // foo::bar(); // possibly suggest to foo.bar();
                         //```
-                        err.stash(
-                            prefix_path[0].ident.span,
-                            rustc_errors::StashKey::CallAssocMethod,
-                        );
+                        err.stash(segment.ident.span, rustc_errors::StashKey::CallAssocMethod);
                     } else {
                         // When there is no suggested imports, we can just emit the error
                         // and suggestions immediately. Note that we bypass the usually error

@@ -502,8 +502,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 if !self.is_beginning_of_line() {
                     self.word(" ");
                 }
-                if cmnt.lines.len() == 1 {
-                    self.word(cmnt.lines[0].clone());
+                if let [line] = cmnt.lines.as_slice() {
+                    self.word(line.clone());
                     self.hardbreak()
                 } else {
                     self.visual_align();

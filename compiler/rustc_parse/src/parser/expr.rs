@@ -694,12 +694,12 @@ impl<'a> Parser<'a> {
                         // `foo: `
                         ExprKind::Path(None, ast::Path { segments, .. }),
                         token::Ident(kw::For | kw::Loop | kw::While, IdentIsRaw::No),
-                    ) if segments.len() == 1 => {
+                    ) if let [segment] = segments.as_slice() => {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
                             ident: Ident::from_str_and_span(
-                                &format!("'{}", segments[0].ident),
-                                segments[0].ident.span,
+                                &format!("'{}", segment.ident),
+                                segment.ident.span,
                             ),
                         };
                         match self.parse_expr_labeled(label, false) {

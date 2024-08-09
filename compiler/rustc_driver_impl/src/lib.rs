@@ -338,12 +338,11 @@ fn run_compiler(
             config.input = input;
             true // has input: normal compilation
         }
-        Ok(None) => match matches.free.len() {
-            0 => false, // no input: we will exit early
-            1 => panic!("make_input should have provided valid inputs"),
-            _ => default_early_dcx.early_fatal(format!(
-                "multiple input filenames provided (first two filenames are `{}` and `{}`)",
-                matches.free[0], matches.free[1],
+        Ok(None) => match matches.free.as_slice() {
+            [] => false, // no input: we will exit early
+            [_] => panic!("make_input should have provided valid inputs"),
+            [fst, snd, ..] => default_early_dcx.early_fatal(format!(
+                "multiple input filenames provided (first two filenames are `{fst}` and `{snd}`)"
             )),
         },
     };
@@ -491,34 +490,30 @@ fn make_input(
     early_dcx: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
-    if free_matches.len() == 1 {
-        let ifile = &free_matches[0];
-        if ifile == "-" {
-            let mut src = String::new();
-            if io::stdin().read_to_string(&mut src).is_err() {
-                // Immediately stop compilation if there was an issue reading
-                // the input (for example if the input stream is not UTF-8).
-                let reported = early_dcx
-                    .early_err("couldn't read from stdin, as it did not contain valid UTF-8");
-                return Err(reported);
-            }
-            if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
-                let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
-                    "when UNSTABLE_RUSTDOC_TEST_PATH is set \
+    let [ifile] = free_matches else { return Ok(None) };
+    if ifile == "-" {
+        let mut src = String::new();
+        if io::stdin().read_to_string(&mut src).is_err() {
+            // Immediately stop compilation if there was an issue reading
+            // the input (for example if the input stream is not UTF-8).
+            let reported =
+                early_dcx.early_err("couldn't read from stdin, as it did not contain valid UTF-8");
+            return Err(reported);
+        }
+        if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+            let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
+                "when UNSTABLE_RUSTDOC_TEST_PATH is set \
                                     UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
-                );
-                let line = isize::from_str_radix(&line, 10)
-                    .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
-                let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
-                Ok(Some(Input::Str { name: file_name, input: src }))
-            } else {
-                Ok(Some(Input::Str { name: FileName::anon_source_code(&src), input: src }))
-            }
+            );
+            let line = isize::from_str_radix(&line, 10)
+                .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
+            let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
+            Ok(Some(Input::Str { name: file_name, input: src }))
         } else {
-            Ok(Some(Input::File(PathBuf::from(ifile))))
+            Ok(Some(Input::Str { name: FileName::anon_source_code(&src), input: src }))
         }
     } else {
-        Ok(None)
+        Ok(Some(Input::File(PathBuf::from(ifile))))
     }
 }
 

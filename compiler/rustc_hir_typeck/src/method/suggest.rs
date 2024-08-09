@@ -321,19 +321,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     );
                                 };
                             let suggest_for_privacy =
-                                |err: &mut Diag<'_>, mut msg: String, sugg: Vec<String>| {
-                                    if sugg.len() == 1 {
-                                        let msg = format!("\
+                                |err: &mut Diag<'_>, mut msg: String, suggs: Vec<String>| {
+                                    if let [sugg] = suggs.as_slice() {
+                                        err.help(format!("\
                                             trait `{}` provides `{item_name}` is implemented but not reachable",
-                                            sugg[0].trim()
-                                        );
-                                        err.help(msg);
+                                            sugg.trim(),
+                                        ));
                                     } else {
-                                        msg += &format!(" but {} not reachable", pluralize!("is", sugg.len()));
+                                        msg += &format!(" but {} not reachable", pluralize!("is", suggs.len()));
                                         err.span_suggestions(
                                             span,
                                             msg,
-                                            sugg,
+                                            suggs,
                                             Applicability::MaybeIncorrect,
                                         );
                                     }
@@ -2988,11 +2987,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if local_spans.primary_span().is_some() {
-            let msg = if local_preds.len() == 1 {
+            let msg = if let [local_pred] = local_preds.as_slice() {
                 format!(
                     "an implementation of `{}` might be missing for `{}`",
-                    local_preds[0].trait_ref.print_trait_sugared(),
-                    local_preds[0].self_ty()
+                    local_pred.trait_ref.print_trait_sugared(),
+                    local_pred.self_ty()
                 )
             } else {
                 format!(
@@ -3034,11 +3033,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if foreign_spans.primary_span().is_some() {
-            let msg = if foreign_preds.len() == 1 {
+            let msg = if let [foreign_pred] = foreign_preds.as_slice() {
                 format!(
                     "the foreign item type `{}` doesn't implement `{}`",
-                    foreign_preds[0].self_ty(),
-                    foreign_preds[0].trait_ref.print_trait_sugared()
+                    foreign_pred.self_ty(),
+                    foreign_pred.trait_ref.print_trait_sugared()
                 )
             } else {
                 format!(
@@ -3388,26 +3387,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             self.suggest_use_candidates(candidates, |accessible_sugg, inaccessible_sugg, span| {
-                let suggest_for_access = |err: &mut Diag<'_>, mut msg: String, sugg: Vec<_>| {
+                let suggest_for_access = |err: &mut Diag<'_>, mut msg: String, suggs: Vec<_>| {
                     msg += &format!(
                         "; perhaps you want to import {one_of}",
-                        one_of = if sugg.len() == 1 { "it" } else { "one of them" },
+                        one_of = if suggs.len() == 1 { "it" } else { "one of them" },
                     );
-                    err.span_suggestions(span, msg, sugg, Applicability::MaybeIncorrect);
+                    err.span_suggestions(span, msg, suggs, Applicability::MaybeIncorrect);
                 };
-                let suggest_for_privacy = |err: &mut Diag<'_>, sugg: Vec<String>| {
+                let suggest_for_privacy = |err: &mut Diag<'_>, suggs: Vec<String>| {
                     let msg = format!(
                         "{this_trait_is} implemented but not reachable",
-                        this_trait_is = if sugg.len() == 1 {
-                            format!("trait `{}` which provides `{item_name}` is", sugg[0].trim())
+                        this_trait_is = if let [sugg] = suggs.as_slice() {
+                            format!("trait `{}` which provides `{item_name}` is", sugg.trim())
                         } else {
                             format!("the following traits which provide `{item_name}` are")
                         }
                     );
-                    if sugg.len() == 1 {
+                    if suggs.len() == 1 {
                         err.help(msg);
                     } else {
-                        err.span_suggestions(span, msg, sugg, Applicability::MaybeIncorrect);
+                        err.span_suggestions(span, msg, suggs, Applicability::MaybeIncorrect);
                     }
                 };
                 if accessible_sugg.is_empty() {

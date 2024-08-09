@@ -109,8 +109,8 @@ pub(crate) fn sub_namespace_match(
 // `format!("{}", path)`, because that tries to insert
 // line-breaks and is slow.
 fn fast_print_path(path: &ast::Path) -> Symbol {
-    if path.segments.len() == 1 {
-        path.segments[0].ident.name
+    if let [segment] = path.segments.as_slice() {
+        segment.ident.name
     } else {
         let mut path_str = String::with_capacity(64);
         for (i, segment) in path.segments.iter().enumerate() {
@@ -738,10 +738,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Possibly apply the macro helper hack
         if deleg_impl.is_none()
             && kind == Some(MacroKind::Bang)
-            && path.len() == 1
-            && path[0].ident.span.ctxt().outer_expn_data().local_inner_macros
+            && let [segment] = path.as_slice()
+            && segment.ident.span.ctxt().outer_expn_data().local_inner_macros
         {
-            let root = Ident::new(kw::DollarCrate, path[0].ident.span);
+            let root = Ident::new(kw::DollarCrate, segment.ident.span);
             path.insert(0, Segment::from_ident(root));
         }
 

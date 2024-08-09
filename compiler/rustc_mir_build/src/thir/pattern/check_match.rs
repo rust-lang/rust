@@ -483,9 +483,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         // Check if the match is exhaustive.
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            if source == hir::MatchSource::ForLoopDesugar && arms.len() == 2 {
+            if source == hir::MatchSource::ForLoopDesugar
+                && let [_, snd_arm] = *arms
+            {
                 // the for loop pattern is not irrefutable
-                let pat = &self.thir[arms[1]].pattern;
+                let pat = &self.thir[snd_arm].pattern;
                 // `pat` should be `Some(<pat_field>)` from a desugared for loop.
                 debug_assert_eq!(pat.span.desugaring_kind(), Some(DesugaringKind::ForLoop));
                 let PatKind::Variant { ref subpatterns, .. } = pat.kind else { bug!() };

@@ -73,10 +73,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             });
 
-            let impl_def_id_and_args = if self_match_impls.len() == 1 {
-                self_match_impls[0]
-            } else if fuzzy_match_impls.len() == 1 {
-                fuzzy_match_impls[0]
+            let impl_def_id_and_args = if let [impl_] = self_match_impls[..] {
+                impl_
+            } else if let [impl_] = fuzzy_match_impls[..] {
+                impl_
             } else {
                 return None;
             };

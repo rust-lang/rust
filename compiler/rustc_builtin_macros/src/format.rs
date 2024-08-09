@@ -180,8 +180,8 @@ fn make_format_args(
                     Ok((mut err, suggested)) => {
                         if !suggested {
                             if let ExprKind::Block(block, None) = &efmt.kind
-                                && block.stmts.len() == 1
-                                && let StmtKind::Expr(expr) = &block.stmts[0].kind
+                                && let [stmt] = block.stmts.as_slice()
+                                && let StmtKind::Expr(expr) = &stmt.kind
                                 && let ExprKind::Path(None, path) = &expr.kind
                                 && path.is_potential_trivial_const_arg()
                             {
@@ -196,8 +196,8 @@ fn make_format_args(
                             } else {
                                 let sugg_fmt = match args.explicit_args().len() {
                                     0 => "{}".to_string(),
-                                    _ => {
-                                        format!("{}{{}}", "{} ".repeat(args.explicit_args().len()))
+                                    count => {
+                                        format!("{}{{}}", "{} ".repeat(count))
                                     }
                                 };
                                 err.span_suggestion(

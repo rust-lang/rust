@@ -3149,11 +3149,10 @@ impl Target {
                     if let Some(a) = o.as_array() {
                         for o in a {
                             if let Some(s) = o.as_str() {
-                                let p = s.split('=').collect::<Vec<_>>();
-                                if p.len() == 2 {
-                                    let k = p[0].to_string();
-                                    let v = p[1].to_string();
-                                    base.$key_name.to_mut().push((k.into(), v.into()));
+                                if let [k, v] = *s.split('=').collect::<Vec<_>>() {
+                                    base.$key_name
+                                        .to_mut()
+                                        .push((k.to_string().into(), v.to_string().into()))
                                 }
                             }
                         }

@@ -527,11 +527,11 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, path)) = p.kind {
             if let Res::Def(DefKind::Const, _) = path.res {
-                if path.segments.len() == 1 {
+                if let [segment] = path.segments {
                     NonUpperCaseGlobals::check_upper_case(
                         cx,
                         "constant in pattern",
-                        &path.segments[0].ident,
+                        &segment.ident,
                     );
                 }
             }

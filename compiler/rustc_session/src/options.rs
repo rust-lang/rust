@@ -912,16 +912,9 @@ mod parse {
         match v {
             None => false,
             Some(s) => {
-                let parts = s.split('=').collect::<Vec<_>>();
-                if parts.len() != 2 {
-                    return false;
-                }
-                let crate_name = parts[0].to_string();
-                let fuel = parts[1].parse::<u64>();
-                if fuel.is_err() {
-                    return false;
-                }
-                *slot = Some((crate_name, fuel.unwrap()));
+                let [crate_name, fuel] = *s.split('=').collect::<Vec<_>>() else { return false };
+                let Ok(fuel) = fuel.parse::<u64>() else { return false };
+                *slot = Some((crate_name.to_string(), fuel));
                 true
             }
         }

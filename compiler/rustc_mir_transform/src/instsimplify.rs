@@ -264,9 +264,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         };
 
         // It's definitely not a clone if there are multiple arguments
-        if args.len() != 1 {
-            return;
-        }
+        let [arg] = &args[..] else { return };
 
         let Some(destination_block) = *target else { return };
 
@@ -280,7 +278,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 
         // These types are easily available from locals, so check that before
         // doing DefId lookups to figure out what we're actually calling.
-        let arg_ty = args[0].node.ty(self.local_decls, self.tcx);
+        let arg_ty = arg.node.ty(self.local_decls, self.tcx);
 
         let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
 
