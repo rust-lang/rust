@@ -2472,10 +2472,6 @@ pub struct CrateTypeInCfgAttr;
 pub struct CrateNameInCfgAttr;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_missing_fragment_specifier)]
-pub struct MissingFragmentSpecifier;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_metavariable_still_repeating)]
 pub struct MetaVariableStillRepeating {
     pub name: MacroRulesNormalizedIdent,

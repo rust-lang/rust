@@ -401,9 +401,6 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::CrateNameInCfgAttr => {
             lints::CrateNameInCfgAttr.decorate_lint(diag);
         }
-        BuiltinLintDiag::MissingFragmentSpecifier => {
-            lints::MissingFragmentSpecifier.decorate_lint(diag);
-        }
         BuiltinLintDiag::MetaVariableStillRepeating(name) => {
             lints::MetaVariableStillRepeating { name }.decorate_lint(diag);
         }

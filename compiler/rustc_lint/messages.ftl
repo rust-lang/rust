@@ -489,8 +489,6 @@ lint_metavariable_still_repeating = variable `{$name}` is still repeating at thi
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
-lint_missing_fragment_specifier = missing fragment specifier
-
 lint_missing_unsafe_on_extern = extern blocks should be unsafe
     .suggestion = needs `unsafe` before the extern keyword
 
