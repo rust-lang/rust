@@ -109,26 +109,26 @@ define-function: (
     block {
         assert-css: (".result-" + |result_kind| + " ." + |result_kind|, {"color": |color|}, ALL)
         assert-css: (
-            ".result-" + |result_kind|,
+            "a.result-" + |result_kind|,
             {"color": |entry_color|, "background-color": |background_color|},
         )
-        move-cursor-to: ".result-" + |result_kind|
+        move-cursor-to: "a.result-" + |result_kind|
         assert-css: (
-            ".result-" + |result_kind| + ":hover",
+            "a.result-" + |result_kind| + ":hover",
             {"color": |hover_entry_color|, "background-color": |hover_background_color|},
         )
         assert-css: (
-            ".result-" + |result_kind| + ":hover ." + |result_kind|,
+            "a.result-" + |result_kind| + ":hover ." + |result_kind|,
             {"color": |hover_color|},
         )
         move-cursor-to: ".search-input"
-        focus: ".result-" + |result_kind|
+        focus: "a.result-" + |result_kind|
         assert-css: (
-            ".result-" + |result_kind| + ":focus",
+            "a.result-" + |result_kind| + ":focus",
             {"color": |hover_entry_color|, "background-color": |hover_background_color|},
         )
         assert-css: (
-            ".result-" + |result_kind| + ":focus ." + |result_kind|,
+            "a.result-" + |result_kind| + ":focus ." + |result_kind|,
             {"color": |hover_color|},
         )
         // color of the typename (struct, module, method, ...) before search results

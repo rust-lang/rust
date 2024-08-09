@@ -33,9 +33,8 @@ const EXPECTED = [
     },
     {
         'query': '-> Result<i32, u32, bool>',
-        'others': [
-            { 'path': 'nested_unboxed', 'name': 'something' },
-        ],
+        // can't put nested generics out of order
+        'others': [],
     },
     {
         'query': '-> Result<Object<i32>, bool>',
@@ -45,9 +44,7 @@ const EXPECTED = [
     },
     {
         'query': '-> Result<Object<u32>, bool>',
-        'others': [
-            { 'path': 'nested_unboxed', 'name': 'something' },
-        ],
+        'others': [],
     },
     {
         'query': '-> Result<Object<i32>, u32, bool>',

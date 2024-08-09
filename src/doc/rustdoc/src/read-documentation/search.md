@@ -130,29 +130,31 @@ pub trait MyTrait {
 /// This function can be found using the following search queries:
 ///
 ///     MyTrait<First=u8, Second=u32> -> bool
-///     MyTrait<u32, First=u8> -> bool
 ///     MyTrait<Second=u32> -> bool
-///     MyTrait<u32, u8> -> bool
 ///
 /// The following queries, however, will *not* match it:
 ///
 ///     MyTrait<First=u32> -> bool
 ///     MyTrait<u32, u32> -> bool
+///     MyTrait<u32, First=u8> -> bool
+///     MyTrait<u32, u8> -> bool
 pub fn my_fn(x: impl MyTrait<First=u8, Second=u32>) -> bool { true }
 ```
 
-Generics and function parameters are order-agnostic, but sensitive to nesting
+Function parameters are order-agnostic, but sensitive to nesting
 and number of matches. For example, a function with the signature
 `fn read_all(&mut self: impl Read) -> Result<Vec<u8>, Error>`
 will match these queries:
 
 * `&mut Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Vec<u8>, Error>`
-* `Read -> Result<Error, Vec>`
 * `Read -> Result<Vec<u8>>`
 * `Read -> u8`
 
-But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
+But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`,
+because those are nested incorrectly, and it does not match
+`Result<Error, Vec<u8>>` or `Result<Error>`, because those are
+in the wrong order.
 
 To search for a function that accepts a function as a parameter,
 like `Iterator::all`, wrap the nested signature in parenthesis,

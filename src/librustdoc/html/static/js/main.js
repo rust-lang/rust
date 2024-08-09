@@ -1108,6 +1108,9 @@ function preLoadCss(cssUrl) {
                 titleContent.appendChild(document.createTextNode(e.getAttribute("data-title")));
                 wrapper.appendChild(titleContent);
             }
+            if (e.RUSTDOC_TOOLTIP_DOM) {
+                wrapper.appendChild(e.RUSTDOC_TOOLTIP_DOM);
+            }
         }
         wrapper.className = "tooltip popover";
         const focusCatcher = document.createElement("div");
@@ -1245,8 +1248,10 @@ function preLoadCss(cssUrl) {
         }
     }
 
-    onEachLazy(document.getElementsByClassName("tooltip"), e => {
-        e.onclick = () => {
+    window.rustdocConfigureTooltip = e => {
+        e.onclick = ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
             e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
             if (window.CURRENT_TOOLTIP_ELEMENT && !e.TOOLTIP_FORCE_VISIBLE) {
                 hideTooltip(true);
@@ -1263,6 +1268,10 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
+            if (window.CURRENT_TOOLTIP_ELEMENT &&
+                window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
+                return;
+            }
             setTooltipHoverTimeout(e, true);
         };
         e.onpointermove = ev => {
@@ -1277,8 +1286,11 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!e.TOOLTIP_FORCE_VISIBLE && window.CURRENT_TOOLTIP_ELEMENT &&
-                !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
+            if (window.CURRENT_TOOLTIP_ELEMENT &&
+                window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE !== e) {
+                return;
+            }
+            if (!e.TOOLTIP_FORCE_VISIBLE) {
                 // Tooltip pointer leave gesture:
                 //
                 // Designing a good hover microinteraction is a matter of guessing user
@@ -1310,10 +1322,14 @@ function preLoadCss(cssUrl) {
                 // * https://www.nngroup.com/articles/tooltip-guidelines/
                 // * https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown
                 setTooltipHoverTimeout(e, false);
-                addClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
+                if (window.CURRENT_TOOLTIP_ELEMENT &&
+                    !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
+                    addClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
+                }
             }
         };
-    });
+    };
+    onEachLazy(document.getElementsByClassName("tooltip"), window.rustdocConfigureTooltip);
 
     const sidebar_menu_toggle = document.getElementsByClassName("sidebar-menu-toggle")[0];
     if (sidebar_menu_toggle) {
