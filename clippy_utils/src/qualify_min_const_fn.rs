@@ -18,7 +18,6 @@ use rustc_middle::mir::{
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
-use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
@@ -391,11 +390,7 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                     StableSince::Err => return false,
                 };
 
-                msrv.meets(RustcVersion::new(
-                    u32::from(const_stab_rust_version.major),
-                    u32::from(const_stab_rust_version.minor),
-                    u32::from(const_stab_rust_version.patch),
-                ))
+                msrv.meets(const_stab_rust_version)
             } else {
                 // Unstable const fn with the feature enabled.
                 msrv.current().is_none()
