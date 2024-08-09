@@ -1124,8 +1124,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     err.multipart_suggestion(
                         "consider moving the expression out of the loop so it is only moved once",
                         vec![
-                            (parent.span, "value".to_string()),
                             (span.shrink_to_lo(), format!("let mut value = {value};{indent}")),
+                            (parent.span, "value".to_string()),
                         ],
                         Applicability::MaybeIncorrect,
                     );
