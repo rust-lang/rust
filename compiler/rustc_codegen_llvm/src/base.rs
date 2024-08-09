@@ -148,6 +148,15 @@ pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
     }
 }
 
+pub fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
+    if attrs.no_sanitize.contains(SanitizerSet::ADDRESS) {
+        unsafe { llvm::LLVMRustSetNoSanitizeAddress(llval) };
+    }
+    if attrs.no_sanitize.contains(SanitizerSet::HWADDRESS) {
+        unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(llval) };
+    }
+}
+
 pub fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
     match linkage {
         Linkage::External => llvm::Linkage::ExternalLinkage,

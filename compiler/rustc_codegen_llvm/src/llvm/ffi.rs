@@ -2442,4 +2442,7 @@ extern "C" {
     pub fn LLVMRustIs64BitSymbolicFile(buf_ptr: *const u8, buf_len: usize) -> bool;
 
     pub fn LLVMRustIsECObject(buf_ptr: *const u8, buf_len: usize) -> bool;
+
+    pub fn LLVMRustSetNoSanitizeAddress(Global: &Value);
+    pub fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
 }
