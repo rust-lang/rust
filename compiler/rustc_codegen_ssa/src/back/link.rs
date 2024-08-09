@@ -2646,16 +2646,7 @@ fn add_native_libs_from_crate(
             NativeLibKind::Static { bundle, whole_archive } => {
                 if link_static {
                     let bundle = bundle.unwrap_or(true);
-                    let whole_archive = whole_archive == Some(true)
-                        // Backward compatibility case: this can be a rlib (so `+whole-archive`
-                        // cannot be added explicitly if necessary, see the error in `fn link_rlib`)
-                        // compiled as an executable due to `--test`. Use whole-archive implicitly,
-                        // like before the introduction of native lib modifiers.
-                        || (whole_archive == None
-                            && bundle
-                            && cnum == LOCAL_CRATE
-                            && sess.is_test_crate());
-
+                    let whole_archive = whole_archive == Some(true);
                     if bundle && cnum != LOCAL_CRATE {
                         if let Some(filename) = lib.filename {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
