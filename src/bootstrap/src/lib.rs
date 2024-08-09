@@ -986,7 +986,8 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    /// This method should be used for all command executions in bootstrap.
+    /// Note: Ideally, you should use one of the BootstrapCommand::run* functions to
+    /// execute commands. They internally call this method.
     #[track_caller]
     fn run(
         &self,
