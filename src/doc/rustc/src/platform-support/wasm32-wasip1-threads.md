@@ -162,3 +162,17 @@ It's recommended to conditionally compile code for this target with:
 Prior to Rust 1.80 the `target_env = "p1"` key was not set. Currently the
 `target_feature = "atomics"` is Nightly-only. Note that the precise `#[cfg]`
 necessary to detect this target may change as the target becomes more stable.
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation includes two
+more features in addition to that which
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md) enables:
+
+* `bulk-memory`
+* `atomics`
+
+For more information about features see the documentation for
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md), but note that the
+`mvp` CPU in LLVM does not support this target as it's required that
+`bulk-memory`, `atomics`, and `mutable-globals` are all enabled.
