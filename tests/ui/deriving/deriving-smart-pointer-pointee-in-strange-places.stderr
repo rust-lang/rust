@@ -1,0 +1,56 @@
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:35:14
+   |
+LL | type AType<#[pointee] T> = T;
+   |              ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:30:3
+   |
+LL | #[pointee]
+   |   ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:26:3
+   |
+LL | #[pointee]
+   |   ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:18:3
+   |
+LL | #[pointee]
+   |   ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:21:7
+   |
+LL |     #[pointee]
+   |       ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:3:3
+   |
+LL | #[pointee]
+   |   ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:6:7
+   |
+LL |     #[pointee]
+   |       ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:9:7
+   |
+LL |     #[pointee]
+   |       ^^^^^^^
+
+error: cannot find attribute `pointee` in this scope
+  --> $DIR/deriving-smart-pointer-pointee-in-strange-places.rs:13:7
+   |
+LL |     #[pointee]
+   |       ^^^^^^^
+
+error: aborting due to 9 previous errors
+

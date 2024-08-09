@@ -255,7 +255,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // need to be fixed
                     | sym::cfi_encoding // FIXME(cfi_encoding)
                     | sym::may_dangle // FIXME(dropck_eyepatch)
-                    | sym::pointee // FIXME(derive_smart_pointer)
                     | sym::linkage // FIXME(linkage)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                     | sym::used // handled elsewhere to restrict to static items

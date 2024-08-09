@@ -937,3 +937,10 @@ pub struct NakedFunctionTestingAttribute {
     #[label]
     pub testing_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_non_generic_pointee)]
+pub struct NonGenericPointee {
+    #[primary_span]
+    pub span: Span,
+}
