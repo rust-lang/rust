@@ -104,6 +104,8 @@
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
+// FIXME: Remove after `no_sanitize` stabilization (along with `#![feature(no_sanitize)]`)
+#![allow(stable_features)]
 //
 // Library features:
 // tidy-alphabetical-start

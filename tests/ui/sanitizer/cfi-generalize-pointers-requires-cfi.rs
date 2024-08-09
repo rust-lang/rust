@@ -1,5 +1,5 @@
-// Verifies that `-Zsanitizer-cfi-generalize-pointers` requires `-Zsanitizer=cfi` or
-// `-Zsanitizer=kcfi`.
+// Verifies that `-Zsanitizer-cfi-generalize-pointers` requires `-Csanitize=cfi` or
+// `-Csanitize=kcfi`.
 //
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer-cfi-generalize-pointers

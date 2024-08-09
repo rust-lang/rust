@@ -8,8 +8,8 @@
 //@ compile-flags: -C target-feature=-crt-static
 //@ [cfi] compile-flags: -C opt-level=0 -C codegen-units=1 -C lto
 //@ [cfi] compile-flags: -C prefer-dynamic=off
-//@ [cfi] compile-flags: -Z sanitizer=cfi
-//@ [kcfi] compile-flags: -Z sanitizer=kcfi
+//@ [cfi] compile-flags: -Zunstable-options -Csanitize=cfi
+//@ [kcfi] compile-flags: -Zunstable-options -Csanitize=kcfi
 //@ [kcfi] compile-flags: -C panic=abort -C prefer-dynamic=off
 //@ run-pass
 

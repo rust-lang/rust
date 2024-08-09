@@ -519,6 +519,46 @@ enabled. It takes one of the following values:
 * `y`, `yes`, `on`, `true` or no value: enable rpath.
 * `n`, `no`, `off` or `false`: disable rpath (the default).
 
+## sanitize
+
+Sanitizers are tools that help detect and prevent various types of bugs and
+vulnerabilities in software. They are available in compilers and work by
+instrumenting the code to add additional runtime checks. While they provide
+powerful tools for identifying bugs or security issues, it's important to note
+that using sanitizers can introduce runtime overhead and might not catch all
+possible issues. Therefore, they are typically used alongside other best
+practices in software development, such as testing and fuzzing, to ensure the
+highest level of software quality and security.
+
+This option allows for use of one or more of these sanitizers:
+
+* [AddressSanitizer](https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/sanitizer.html#addresssanitizer)
+  a fast memory error detector.
+* [LeakSanitizer](https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/sanitizer.html#leaksanitizer)
+  a run-time memory leak detector.
+
+These are the valid values for this option for targets that support one or more
+of these sanitizers:
+
+| Target | Sanitizers |
+|--------|------------|
+| aarch64-unknown-linux-gnu | address, leak |
+| i586-pc-windows-msvc | address |
+| i586-unknown-linux-gnu | address |
+| i686-pc-windows-msvc | address |
+| i686-unknown-linux-gnu | address |
+| x86_64-apple-darwin | address, leak |
+| x86_64-pc-windows-msvc | address |
+| x86_64-unknown-linux-gnu | address, leak |
+
+For more information on sanitizers, see the
+[sanitizer
+feature](https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/sanitizer.html)
+in the [The Rust Unstable
+Book](https://doc.rust-lang.org/nightly/unstable-book/). For more information on
+stable and supported sanitizers, see the [supported sanitizers
+table](https://github.com/rust-lang/rust/issues/123615#issuecomment-2041791236).
+
 ## save-temps
 
 This flag controls whether temporary files generated during compilation are

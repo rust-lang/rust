@@ -8,7 +8,8 @@ pub fn target() -> Target {
     base.frame_pointer = FramePointer::Always;
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
     base.supported_sanitizers =
-        SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
+        SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD | SanitizerSet::CFI;
+    base.stable_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK;
 
     Target {
         // Clang automatically chooses a more specific target based on

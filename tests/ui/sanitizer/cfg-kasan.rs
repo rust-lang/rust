@@ -1,8 +1,8 @@
-// Verifies that when compiling with -Zsanitizer=kernel-address,
+// Verifies that when compiling with -Csanitize=kernel-address,
 // the `#[cfg(sanitize = "address")]` attribute is configured.
 
 //@ check-pass
-//@ compile-flags: -Zsanitizer=kernel-address
+//@ compile-flags: -Zunstable-options -Csanitize=kernel-address
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
 //@[aarch64] needs-llvm-components: aarch64

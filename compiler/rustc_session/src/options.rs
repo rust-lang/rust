@@ -783,25 +783,14 @@ mod parse {
     }
 
     pub(crate) fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
-        if let Some(v) = v {
-            for s in v.split(',') {
-                *slot |= match s {
-                    "address" => SanitizerSet::ADDRESS,
-                    "cfi" => SanitizerSet::CFI,
-                    "dataflow" => SanitizerSet::DATAFLOW,
-                    "kcfi" => SanitizerSet::KCFI,
-                    "kernel-address" => SanitizerSet::KERNELADDRESS,
-                    "leak" => SanitizerSet::LEAK,
-                    "memory" => SanitizerSet::MEMORY,
-                    "memtag" => SanitizerSet::MEMTAG,
-                    "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-                    "thread" => SanitizerSet::THREAD,
-                    "hwaddress" => SanitizerSet::HWADDRESS,
-                    "safestack" => SanitizerSet::SAFESTACK,
-                    _ => return false,
-                }
+        if let Some(s) = v {
+            let sanitizer_set = SanitizerSet::from_comma_list(s);
+            if sanitizer_set.is_ok() {
+                *slot |= sanitizer_set.unwrap();
+                true
+            } else {
+                false
             }
-            true
         } else {
             false
         }
@@ -1595,6 +1584,8 @@ options! {
         "output remarks for these optimization passes (space separated, or \"all\")"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes (default: no)"),
+    sanitize: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
+        "use one or multiple sanitizers"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
     soft_float: bool = (false, parse_bool, [TRACKED],
@@ -1955,8 +1946,6 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
-        "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],

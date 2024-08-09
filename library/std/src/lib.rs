@@ -259,6 +259,8 @@
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+// FIXME: Remove after `no_sanitize` stabilization (along with `#![feature(no_sanitize)]`)
+#![allow(stable_features)]
 //
 // Features:
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]

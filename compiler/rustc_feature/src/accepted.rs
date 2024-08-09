@@ -284,6 +284,8 @@ declare_features! (
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490)),
     /// Allows using non lexical lifetimes (RFC 2094).
     (accepted, nll, "1.63.0", Some(43234)),
+    /// Allows the use of `no_sanitize` attribute.
+    (accepted, no_sanitize, "CURRENT_RUSTC_VERSION", Some(39699)),
     /// Allows using `#![no_std]`.
     (accepted, no_std, "1.6.0", None),
     /// Allows defining identifiers beyond ASCII.

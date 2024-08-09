@@ -1369,6 +1369,37 @@ impl SanitizerSet {
         })
     }
 
+    pub fn from_comma_list(s: &str) -> Result<Self, String> {
+        let mut sanitizer_set = SanitizerSet::empty();
+        for name in s.split(',') {
+            sanitizer_set |= match name {
+                "address" => SanitizerSet::ADDRESS,
+                "cfi" => SanitizerSet::CFI,
+                "dataflow" => SanitizerSet::DATAFLOW,
+                "kcfi" => SanitizerSet::KCFI,
+                "kernel-address" => SanitizerSet::KERNELADDRESS,
+                "leak" => SanitizerSet::LEAK,
+                "memory" => SanitizerSet::MEMORY,
+                "memtag" => SanitizerSet::MEMTAG,
+                "safestack" => SanitizerSet::SAFESTACK,
+                "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
+                "thread" => SanitizerSet::THREAD,
+                "hwaddress" => SanitizerSet::HWADDRESS,
+                _ => return Err(format!("Unknown sanitizer {}", name)),
+            };
+        }
+        return Ok(sanitizer_set);
+    }
+
+    fn from_json(json: &Json) -> Result<Self, String> {
+        if let Some(array) = json.as_array() {
+            let s: String = array.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(",");
+            return Self::from_comma_list(&s);
+        } else {
+            return Err("Expected a list of sanitizers".to_string());
+        }
+    }
+
     pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
         Self::MUTUALLY_EXCLUSIVE
             .into_iter()
@@ -2363,6 +2394,9 @@ pub struct TargetOptions {
     /// distributed with the target, the sanitizer should still appear in this list for the target.
     pub supported_sanitizers: SanitizerSet,
 
+    /// The stable sanitizers supported by this target
+    pub stable_sanitizers: SanitizerSet,
+
     /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
     pub c_enum_min_bits: Option<u64>,
 
@@ -2594,6 +2628,7 @@ impl Default for TargetOptions {
             // `Off` is supported by default, but targets can remove this manually, e.g. Windows.
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
+            stable_sanitizers: SanitizerSet::empty(),
             c_enum_min_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,
@@ -3015,31 +3050,15 @@ impl Target {
             } );
             ($key_name:ident, SanitizerSet) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(a) = o.as_array() {
-                        for s in a {
-                            base.$key_name |= match s.as_str() {
-                                Some("address") => SanitizerSet::ADDRESS,
-                                Some("cfi") => SanitizerSet::CFI,
-                                Some("dataflow") => SanitizerSet::DATAFLOW,
-                                Some("kcfi") => SanitizerSet::KCFI,
-                                Some("kernel-address") => SanitizerSet::KERNELADDRESS,
-                                Some("leak") => SanitizerSet::LEAK,
-                                Some("memory") => SanitizerSet::MEMORY,
-                                Some("memtag") => SanitizerSet::MEMTAG,
-                                Some("safestack") => SanitizerSet::SAFESTACK,
-                                Some("shadow-call-stack") => SanitizerSet::SHADOWCALLSTACK,
-                                Some("thread") => SanitizerSet::THREAD,
-                                Some("hwaddress") => SanitizerSet::HWADDRESS,
-                                Some(s) => return Err(format!("unknown sanitizer {}", s)),
-                                _ => return Err(format!("not a string: {:?}", s)),
-                            };
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-                Ok::<(), String>(())
+                obj.remove(&name).and_then(|o| match SanitizerSet::from_json(&o) {
+                    Ok(v) => {
+                        base.$key_name = v;
+                        Some(Ok(()))
+                    },
+                    Err(s) => Some(Err(
+                        format!("`{:?}` is not a valid value for `{}`: {}", o, name, s)
+                    )),
+                }).unwrap_or(Ok(()))
             } );
             ($key_name:ident, link_self_contained_components) => ( {
                 // Skeleton of what needs to be parsed:
@@ -3311,6 +3330,7 @@ impl Target {
         key!(split_debuginfo, SplitDebuginfo)?;
         key!(supported_split_debuginfo, fallible_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
+        key!(stable_sanitizers, SanitizerSet)?;
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
         key!(entry_name);
@@ -3566,6 +3586,7 @@ impl ToJson for Target {
         target_option_val!(split_debuginfo);
         target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
+        target_option_val!(stable_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);

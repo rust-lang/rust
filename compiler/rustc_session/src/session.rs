@@ -366,8 +366,12 @@ impl Session {
         self.opts.unstable_opts.coverage_options.no_mir_spans
     }
 
+    pub fn is_sanitizer_address_enabled(&self) -> bool {
+        self.opts.cg.sanitize.contains(SanitizerSet::ADDRESS)
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
-        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
+        self.opts.cg.sanitize.contains(SanitizerSet::CFI)
     }
 
     pub fn is_sanitizer_cfi_canonical_jump_tables_disabled(&self) -> bool {
@@ -386,8 +390,32 @@ impl Session {
         self.opts.unstable_opts.sanitizer_cfi_normalize_integers == Some(true)
     }
 
+    pub fn is_sanitizer_hwaddress_enabled(&self) -> bool {
+        self.opts.cg.sanitize.contains(SanitizerSet::HWADDRESS)
+    }
+
     pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
-        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
+        self.opts.cg.sanitize.contains(SanitizerSet::KCFI)
+    }
+
+    pub fn is_sanitizer_kernel_address_enabled(&self) -> bool {
+        self.opts.cg.sanitize.contains(SanitizerSet::KERNELADDRESS)
+    }
+
+    pub fn is_sanitizer_memory_enabled(&self) -> bool {
+        self.opts.cg.sanitize.contains(SanitizerSet::MEMORY)
+    }
+
+    pub fn is_sanitizer_memory_recover_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_recover.contains(SanitizerSet::MEMORY)
+    }
+
+    pub fn is_sanitizer_memory_track_origins_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_memory_track_origins != 0
+    }
+
+    pub fn is_sanitizer_thread_enabled(&self) -> bool {
+        self.opts.cg.sanitize.contains(SanitizerSet::THREAD)
     }
 
     pub fn is_split_lto_unit_enabled(&self) -> bool {
@@ -614,7 +642,10 @@ impl Session {
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
         // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        || self.is_sanitizer_address_enabled()
+        || self.is_sanitizer_kernel_address_enabled()
+        || self.is_sanitizer_memory_enabled()
+        || self.is_sanitizer_hwaddress_enabled()
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -741,7 +772,7 @@ impl Session {
             let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
                 || self.opts.output_types.contains_key(&OutputType::Bitcode)
                 // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
-                || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
+                || self.is_sanitizer_address_enabled() || self.is_sanitizer_memory_enabled();
             !more_names
         }
     }
@@ -1187,8 +1218,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
-    let supported_sanitizers = sess.target.options.supported_sanitizers;
-    let unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
+    let supported_sanitizers = if sess.unstable_options() {
+        sess.target.options.supported_sanitizers | sess.target.options.stable_sanitizers
+    } else {
+        sess.target.options.stable_sanitizers
+    };
+    let unsupported_sanitizers = sess.opts.cg.sanitize - supported_sanitizers;
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
         1 => {
@@ -1203,7 +1238,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot mix and match mutually-exclusive sanitizers.
-    if let Some((first, second)) = sess.opts.unstable_opts.sanitizer.mutually_exclusive() {
+    if let Some((first, second)) = sess.opts.cg.sanitize.mutually_exclusive() {
         sess.dcx().emit_err(errors::CannotMixAndMatchSanitizers {
             first: first.to_string(),
             second: second.to_string(),
@@ -1211,10 +1246,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None)
-        && !sess.opts.unstable_opts.sanitizer.is_empty()
-        && !sess.target.is_like_msvc
-    {
+    if sess.crt_static(None) && !sess.opts.cg.sanitize.is_empty() && !sess.target.is_like_msvc {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
     }
 
