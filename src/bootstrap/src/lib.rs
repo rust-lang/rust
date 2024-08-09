@@ -986,7 +986,8 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    /// This method should be used for all command executions in bootstrap.
+    /// Note: Ideally, you should use one of the BootstrapCommand::run* functions to
+    /// execute commands. They internally call this method.
     #[track_caller]
     fn run(
         &self,
@@ -1057,20 +1058,28 @@ Executed at: {executed_at}"#,
                 CommandOutput::did_not_start(stdout, stderr)
             }
         };
+
+        let fail = |message: &str| {
+            if self.is_verbose() {
+                println!("{message}");
+            } else {
+                println!("Command has failed. Rerun with -v to see more details.");
+            }
+            exit!(1);
+        };
+
         if !output.is_success() {
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
-                        println!("{message}");
-                        exit!(1);
+                        fail(&message);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
                     failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
-                    println!("{message}");
-                    exit!(1);
+                    fail(&message);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already
