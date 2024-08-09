@@ -29,8 +29,10 @@ pub(crate) mod search_index;
 mod tests;
 
 mod context;
+mod ordered_json;
 mod print_item;
 pub(crate) mod sidebar;
+mod sorted_template;
 mod span_map;
 mod type_layout;
 mod write_shared;
