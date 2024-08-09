@@ -12,6 +12,7 @@
 #![warn(unused_lifetimes)]
 // tidy-alphabetical-end
 
+extern crate ar_archive_writer;
 extern crate jobserver;
 #[macro_use]
 extern crate rustc_middle;
