@@ -1,0 +1,45 @@
+error[E0308]: mismatched types
+  --> $DIR/nested-or-of-eq.rs:3:18
+   |
+LL |     if x == 1 || 2 || 3 {
+   |        ------    ^ expected `bool`, found integer
+   |        |
+   |        expected because this is `bool`
+   |
+help: use `matches!()` to match against multiple values
+   |
+LL |     if matches!(x, 1 | 2 | 3) {
+   |        +++++++++ ~   ~   ~  +
+
+error[E0308]: mismatched types
+  --> $DIR/nested-or-of-eq.rs:3:23
+   |
+LL |     if x == 1 || 2 || 3 {
+   |        -----------    ^ expected `bool`, found integer
+   |        |
+   |        expected because this is `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/nested-or-of-eq.rs:10:20
+   |
+LL |     if x == 1.0 || 2.0 || 3.0 {
+   |        --------    ^^^ expected `bool`, found floating-point number
+   |        |
+   |        expected because this is `bool`
+   |
+help: use `x == ...` to match against several different values
+   |
+LL |     if x == 1.0 || x == 2.0 || x == 3.0 {
+   |                    ++++        ++++
+
+error[E0308]: mismatched types
+  --> $DIR/nested-or-of-eq.rs:10:27
+   |
+LL |     if x == 1.0 || 2.0 || 3.0 {
+   |        ---------------    ^^^ expected `bool`, found floating-point number
+   |        |
+   |        expected because this is `bool`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
