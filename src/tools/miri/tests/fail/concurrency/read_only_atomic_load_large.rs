@@ -2,6 +2,7 @@
 //@compile-flags: -Zmiri-disable-stacked-borrows
 // Needs atomic accesses larger than the pointer size
 //@ignore-64bit
+#![allow(unsafe_cell_transmutes)]
 
 use std::sync::atomic::{AtomicI64, Ordering};
 

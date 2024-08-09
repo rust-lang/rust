@@ -1,0 +1,11 @@
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/unsafe_cell_reference_casting.rs:19:23
+   |
+LL |     let _b = unsafe { &*(&a as *const A as *const B) };
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: transmute from `A.b` to `B.b`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: aborting due to 1 previous error
+

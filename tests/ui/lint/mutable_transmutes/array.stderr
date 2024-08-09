@@ -1,9 +1,10 @@
 error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
-  --> $DIR/transmute-imut-to-mut.rs:6:32
+  --> $DIR/array.rs:4:37
    |
-LL |     let _a: &mut u8 = unsafe { transmute(&1u8) };
-   |                                ^^^^^^^^^
+LL |     let _a: [&mut u8; 2] = unsafe { transmute([&1u8; 2]) };
+   |                                     ^^^^^^^^^
    |
+   = note: transmute from `[&u8; 2][0]` to `[&mut u8; 2][0]`
    = note: `#[deny(mutable_transmutes)]` on by default
 
 error: aborting due to 1 previous error

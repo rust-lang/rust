@@ -1,0 +1,20 @@
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/report_all_errors.rs:13:28
+   |
+LL |     let _a: Bar = unsafe { transmute(Foo(&0, &0)) };
+   |                            ^^^^^^^^^
+   |
+   = note: transmute from `*Foo.0` to `*Bar.0`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
+  --> $DIR/report_all_errors.rs:13:28
+   |
+LL |     let _a: Bar = unsafe { transmute(Foo(&0, &0)) };
+   |                            ^^^^^^^^^
+   |
+   = note: transmute from `Foo.1` to `Bar.1`
+   = note: `#[deny(mutable_transmutes)]` on by default
+
+error: aborting due to 2 previous errors
+

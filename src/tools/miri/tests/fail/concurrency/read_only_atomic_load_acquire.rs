@@ -1,5 +1,6 @@
 // Should not rely on the aliasing model for its failure.
 //@compile-flags: -Zmiri-disable-stacked-borrows
+#![allow(unsafe_cell_transmutes)]
 
 use std::sync::atomic::{AtomicI32, Ordering};
 

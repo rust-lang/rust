@@ -1,0 +1,27 @@
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/partially_overlapping.rs:25:26
+   |
+LL |     let _: &B = unsafe { transmute(&A(0)) };
+   |                          ^^^^^^^^^
+   |
+   = note: transmute from `(*&A).0` to `(*&B).1`
+   = note: `#[deny(unsafe_cell_transmutes)]` on by default
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/partially_overlapping.rs:27:26
+   |
+LL |     let _: &D = unsafe { transmute(&C(0, UnsafeCell::new(0))) };
+   |                          ^^^^^^^^^
+   |
+   = note: transmute from `(*&C).0` to `(*&D).0`
+
+error: transmuting &T to &UnsafeCell<T> is error-prone, rarely intentional and may cause undefined behavior
+  --> $DIR/partially_overlapping.rs:29:26
+   |
+LL |     let _: &F = unsafe { transmute(&E(0, UnsafeCell::new(0), 0)) };
+   |                          ^^^^^^^^^
+   |
+   = note: transmute from `(*&E).0` to `(*&F).0`
+
+error: aborting due to 3 previous errors
+
