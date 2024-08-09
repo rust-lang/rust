@@ -9,7 +9,8 @@ use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
 use rustc_session::lint::builtin::{
-    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+    RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+    TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
@@ -243,6 +244,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
                 }
+                rustc_lexer::TokenKind::GuardedStrMaybe => self.report_guarded_str(start, str_before),
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                     let suffix_start = start + BytePos(suffix_start);
                     let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
@@ -729,6 +731,102 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                 ast::CRATE_NODE_ID,
                 BuiltinLintDiag::ReservedPrefix(prefix_span, prefix.to_string()),
             );
+        }
+    }
+
+    /// For backwards compatibility, roll back to after just the first `#`
+    /// and return the `Pound` token.
+    fn split_guarded_str_maybe(&mut self, start: BytePos, str_before: &'src str) -> TokenKind {
+        self.pos = start + BytePos(1);
+        self.cursor = Cursor::new(&str_before[1..]);
+        token::Pound
+    }
+
+    /// Detect guarded string literal syntax
+    ///
+    /// RFC 3598 reserved this syntax for future use. As of Rust 2024,
+    /// using this syntax produces an error. In earlier editions, however, it
+    /// only results in an (allowed by default) lint, and is treated as
+    /// separate tokens.
+    fn report_guarded_str(&mut self, start: BytePos, str_before: &'src str) -> TokenKind {
+        let span = self.mk_sp(start, self.pos);
+        let edition2024 = span.edition().at_least_rust_2024();
+
+        // Prior to edition 2024, check the previous char, so we don't
+        // lint for each `#` before and after the string.
+        if !edition2024
+            && start > self.start_pos
+            && matches!(self.src.as_bytes()[self.src_index(start) - 1], b'#' | b'"')
+        {
+            return self.split_guarded_str_maybe(start, str_before);
+        }
+
+        let mut maybe_cursor = Cursor::new(str_before);
+
+        let (span, space_span, unterminated) =
+            if let Some(rustc_lexer::GuardedStr { n_hashes, terminated, token_len }) =
+                maybe_cursor.guarded_double_quoted_string()
+            {
+                let end = start + BytePos(token_len);
+                let span = self.mk_sp(start, end);
+                let str_start = start + BytePos(n_hashes);
+                let space_span = self.mk_sp(str_start, str_start);
+
+                if edition2024 {
+                    self.cursor = maybe_cursor;
+                    self.pos = end;
+                }
+
+                let unterminated = if edition2024 && !terminated { Some(str_start) } else { None };
+
+                (span, space_span, unterminated)
+            } else {
+                // We should only get here in the `##+` case.
+                debug_assert_eq!(self.str_from_to(start, start + BytePos(2)), "##");
+
+                let space_pos = start + BytePos(1);
+                let space_span = self.mk_sp(space_pos, space_pos);
+
+                (span, space_span, None)
+            };
+        if edition2024 {
+            let expn_data = span.ctxt().outer_expn_data();
+
+            let sugg = if expn_data.is_root() {
+                Some(errors::GuardedStringSugg(space_span))
+            } else {
+                None
+            };
+
+            // In Edition 2024 and later, emit a hard error.
+            let err = self.dcx().emit_err(errors::ReservedString { span, sugg });
+
+            if let Some(str_start) = unterminated {
+                // Only a fatal error if string is unterminated.
+                self.dcx()
+                    .struct_span_fatal(
+                        self.mk_sp(str_start, self.pos),
+                        "unterminated double quote string",
+                    )
+                    .with_code(E0765)
+                    .emit()
+            }
+
+            token::Literal(token::Lit {
+                kind: token::Err(err),
+                symbol: self.symbol_from_to(start, self.pos),
+                suffix: None,
+            })
+        } else {
+            // Before Rust 2024, only emit a lint for migration.
+            self.psess.buffer_lint(
+                RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
+                span,
+                ast::CRATE_NODE_ID,
+                BuiltinLintDiag::ReservedString(space_span),
+            );
+
+            self.split_guarded_str_maybe(start, str_before)
         }
     }
 

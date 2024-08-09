@@ -237,6 +237,7 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Slash => T![/],
                 rustc_lexer::TokenKind::Caret => T![^],
                 rustc_lexer::TokenKind::Percent => T![%],
+                rustc_lexer::TokenKind::GuardedStrMaybe => ERROR,
                 rustc_lexer::TokenKind::Unknown => ERROR,
                 rustc_lexer::TokenKind::UnknownPrefix if token_text == "builtin" => IDENT,
                 rustc_lexer::TokenKind::UnknownPrefix => {

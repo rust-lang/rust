@@ -619,6 +619,7 @@ pub enum BuiltinLintDiag {
     LegacyDeriveHelpers(Span),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
+    ReservedString(Span),
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
     UnicodeTextFlow(Span, String),

@@ -793,6 +793,7 @@ impl<'src> Classifier<'src> {
             | TokenKind::At
             | TokenKind::Tilde
             | TokenKind::Colon
+            | TokenKind::GuardedStrMaybe
             | TokenKind::Unknown => return no_highlight(sink),
 
             TokenKind::Question => Class::QuestionMark,
