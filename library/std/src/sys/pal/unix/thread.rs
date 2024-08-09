@@ -477,8 +477,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 fn vxCpuEnabledGet() -> libc::cpuset_t;
             }
 
+            // SAFETY: `vxCpuEnabledGet` always fetches a mask with at least one bit set
             unsafe{
-                // always fetches a valid bitmask
                 let set = vxCpuEnabledGet();
                 Ok(NonZero::new_unchecked(set.count_ones() as usize))
             }
