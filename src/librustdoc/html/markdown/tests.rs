@@ -61,7 +61,7 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     // error
-    t(LangString { original: "{rust}".into(), rust: true, ..Default::default() });
+    t(LangString { original: "{rust}".into(), rust: false, ..Default::default() });
     t(LangString {
         original: "{.rust}".into(),
         rust: true,
@@ -233,7 +233,7 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     // error
-    t(LangString { original: "{class=first=second}".into(), rust: true, ..Default::default() });
+    t(LangString { original: "{class=first=second}".into(), rust: false, ..Default::default() });
     // error
     t(LangString {
         original: "{class=first.second}".into(),
@@ -261,7 +261,7 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     // error
-    t(LangString { original: r#"{class=f"irst"}"#.into(), rust: true, ..Default::default() });
+    t(LangString { original: r#"{class=f"irst"}"#.into(), rust: false, ..Default::default() });
 }
 
 #[test]
