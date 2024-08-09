@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
 
 use super::{CopyTaggedPtr, Pointer, Tag};
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 
 /// A tagged pointer that supports pointers that implement [`Drop`].
 ///
@@ -142,7 +142,7 @@ where
     P: Pointer + HashStable<HCX>,
     T: Tag + HashStable<HCX>,
 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut HCX, hasher: &mut GenericStableHasher<H>) {
         self.raw.hash_stable(hcx, hasher);
     }
 }

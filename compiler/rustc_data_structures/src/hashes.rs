@@ -15,6 +15,7 @@ use std::fmt;
 use std::ops::BitXorAssign;
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_stable_hash::hashers::Blake2s256Hash;
 
 use crate::stable_hasher::{FromStableHash, StableHasherHash};
 
@@ -58,11 +59,9 @@ impl<D: Decoder> Decodable<D> for Hash64 {
     }
 }
 
-impl FromStableHash for Hash64 {
-    type Hash = StableHasherHash;
-
+impl FromStableHash<StableHasherHash> for Hash64 {
     #[inline]
-    fn from(StableHasherHash([_0, __1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, __1]): StableHasherHash) -> Self {
         Self { inner: _0 }
     }
 }
@@ -125,12 +124,22 @@ impl<D: Decoder> Decodable<D> for Hash128 {
     }
 }
 
-impl FromStableHash for Hash128 {
-    type Hash = StableHasherHash;
-
+impl FromStableHash<StableHasherHash> for Hash128 {
     #[inline]
-    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, _1]): StableHasherHash) -> Self {
         Self { inner: u128::from(_0) | (u128::from(_1) << 64) }
+    }
+}
+
+impl FromStableHash<Blake2s256Hash> for Hash128 {
+    #[inline]
+    fn from(Blake2s256Hash(bytes): Blake2s256Hash) -> Self {
+        let p0 = u128::from_le_bytes(bytes[0..16].try_into().unwrap());
+        let p1 = u128::from_le_bytes(bytes[16..32].try_into().unwrap());
+
+        // See https://stackoverflow.com/a/27952689 on why this function is
+        // implemented this way.
+        Self { inner: p0.wrapping_mul(3).wrapping_add(p1) }
     }
 }
 

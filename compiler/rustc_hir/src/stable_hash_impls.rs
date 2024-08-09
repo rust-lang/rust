@@ -1,4 +1,6 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, HashStable, ToStableHashKey,
+};
 use rustc_span::def_id::DefPathHash;
 
 use crate::hir::{
@@ -87,7 +89,11 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId
 // in "DefPath Mode".
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut HirCtx,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
         // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
@@ -99,7 +105,11 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
 }
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut HirCtx,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
         let AttributeMap { opt_hash, map: _ } = *self;
@@ -108,7 +118,11 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut HirCtx,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         let Crate { owners: _, opt_hir_hash } = self;
         opt_hir_hash.unwrap().hash_stable(hcx, hasher)
     }

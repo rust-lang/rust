@@ -16,7 +16,7 @@
 use std::borrow::Cow;
 use std::{cmp, fmt, iter};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
@@ -99,7 +99,7 @@ impl<CTX> HashStable<CTX> for TokenStream
 where
     CTX: crate::HashStableContext,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
         }
@@ -151,7 +151,7 @@ impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
 }
 
 impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, _hcx: &mut CTX, _hasher: &mut GenericStableHasher<H>) {
         panic!("Attempted to compute stable hash for LazyAttrTokenStream");
     }
 }

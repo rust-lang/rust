@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 use rustc_span::def_id::DefIdMap;
 use rustc_span::Symbol;
 
@@ -13,7 +13,7 @@ pub struct DiagnosticItems {
 
 impl<CTX: crate::HashStableContext> HashStable<CTX> for DiagnosticItems {
     #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.name_to_id.hash_stable(ctx, hasher);
     }
 }

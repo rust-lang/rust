@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_stable_hash::hashers::Blake2s256Hash;
 
 use crate::stable_hasher::{
     impl_stable_traits_for_trivial_type, FromStableHash, Hash64, StableHasherHash,
@@ -157,12 +158,24 @@ impl FingerprintHasher for crate::unhash::Unhasher {
     }
 }
 
-impl FromStableHash for Fingerprint {
-    type Hash = StableHasherHash;
-
+impl FromStableHash<StableHasherHash> for Fingerprint {
     #[inline]
-    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
+    fn from(StableHasherHash([_0, _1]): StableHasherHash) -> Self {
         Fingerprint(_0, _1)
+    }
+}
+
+impl FromStableHash<Blake2s256Hash> for Fingerprint {
+    #[inline]
+    fn from(Blake2s256Hash(bytes): Blake2s256Hash) -> Self {
+        let p0 = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
+        let p1 = u64::from_le_bytes(bytes[8..16].try_into().unwrap());
+        let p2 = u64::from_le_bytes(bytes[16..24].try_into().unwrap());
+        let p3 = u64::from_le_bytes(bytes[24..32].try_into().unwrap());
+
+        // See https://stackoverflow.com/a/27952689 on why this function is
+        // implemented this way.
+        Fingerprint(p0.wrapping_mul(3).wrapping_add(p1), p2.wrapping_mul(3).wrapping_add(p3))
     }
 }
 

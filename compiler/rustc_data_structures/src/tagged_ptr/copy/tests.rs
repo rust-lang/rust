@@ -1,7 +1,7 @@
 use std::ptr;
 
 use crate::hashes::Hash128;
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{StableHasher, HashStable};
 use crate::tagged_ptr::{CopyTaggedPtr, Pointer, Tag, Tag2};
 
 #[test]

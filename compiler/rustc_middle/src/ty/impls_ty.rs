@@ -7,7 +7,7 @@ use std::ptr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{
-    HashStable, HashingControls, StableHasher, ToStableHashKey,
+    ExtendedHasher, GenericStableHasher, HashStable, HashingControls, StableHasher, ToStableHashKey,
 };
 use rustc_query_system::ich::StableHashingContext;
 use tracing::trace;
@@ -15,11 +15,15 @@ use tracing::trace;
 use crate::middle::region;
 use crate::{mir, ty};
 
-impl<'a, 'tcx, H, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::RawList<H, T>
+impl<'a, 'tcx, HCX, T> HashStable<StableHashingContext<'a>> for &'tcx ty::list::RawList<HCX, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(*const (), HashingControls), Fingerprint>> =
                 RefCell::new(Default::default());
@@ -31,7 +35,7 @@ where
                 return hash;
             }
 
-            let mut hasher = StableHasher::new();
+            let mut hasher = GenericStableHasher::<H>::new();
             self[..].hash_stable(hcx, &mut hasher);
 
             let hash: Fingerprint = hasher.finish();
@@ -59,14 +63,22 @@ where
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::GenericArg<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         self.unpack().hash_stable(hcx, hasher);
     }
 }
 
 // AllocIds get resolved to whatever they point to (to be stable)
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
@@ -77,7 +89,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
 
 // CtfeProvenance is an AllocId and a bool.
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::CtfeProvenance {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         self.alloc_id().hash_stable(hcx, hasher);
         self.immutable().hash_stable(hcx, hasher);
     }

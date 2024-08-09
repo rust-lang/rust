@@ -7,7 +7,9 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, HashStable, HashingControls,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -143,7 +145,11 @@ impl Hash for AdtDefData {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, HashingControls), Fingerprint>> = Default::default();
         }
@@ -154,7 +160,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for AdtDefData {
             *cache.borrow_mut().entry((addr, hashing_controls)).or_insert_with(|| {
                 let ty::AdtDefData { did, ref variants, ref flags, ref repr } = *self;
 
-                let mut hasher = StableHasher::new();
+                let mut hasher = GenericStableHasher::<H>::new();
                 did.hash_stable(hcx, &mut hasher);
                 variants.hash_stable(hcx, &mut hasher);
                 flags.hash_stable(hcx, &mut hasher);

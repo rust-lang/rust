@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use rustc_index::{Idx, IndexVec};
 
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 
 /// An indexed multi-map that preserves insertion order while permitting both *O*(log *n*) lookup of
 /// an item by key and *O*(1) lookup by index.
@@ -131,7 +131,7 @@ where
     K: HashStable<C>,
     V: HashStable<C>,
 {
-    fn hash_stable(&self, ctx: &mut C, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, ctx: &mut C, hasher: &mut GenericStableHasher<H>) {
         let SortedIndexMultiMap {
             items,
             // We can ignore this field because it is not observable from the outside.

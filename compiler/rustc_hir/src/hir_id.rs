@@ -1,6 +1,8 @@
 use std::fmt::{self, Debug};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, HashStable, StableOrd, ToStableHashKey,
+};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 use rustc_span::HashStableContext;
@@ -52,7 +54,7 @@ impl rustc_index::Idx for OwnerId {
 
 impl<CTX: HashStableContext> HashStable<CTX> for OwnerId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(&self, hcx: &mut CTX, hasher: &mut GenericStableHasher<H>) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }

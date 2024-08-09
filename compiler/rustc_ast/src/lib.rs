@@ -43,7 +43,7 @@ pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
 
 pub use self::ast::*;
 pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasTokens};
@@ -52,11 +52,19 @@ pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasTok
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext: rustc_span::HashStableContext {
-    fn hash_attr(&mut self, _: &ast::Attribute, hasher: &mut StableHasher);
+    fn hash_attr<H: ExtendedHasher>(
+        &mut self,
+        _: &ast::Attribute,
+        hasher: &mut GenericStableHasher<H>,
+    );
 }
 
 impl<AstCtx: crate::HashStableContext> HashStable<AstCtx> for ast::Attribute {
-    fn hash_stable(&self, hcx: &mut AstCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: ExtendedHasher>(
+        &self,
+        hcx: &mut AstCtx,
+        hasher: &mut GenericStableHasher<H>,
+    ) {
         hcx.hash_attr(self, hasher)
     }
 }
