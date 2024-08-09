@@ -277,6 +277,7 @@ target | std | host | notes
 `armv6-unknown-freebsd` | ✓ | ✓ | Armv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv6 NetBSD w/hard-float
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | Armv6k Nintendo 3DS, Horizon (Requires devkitARM toolchain)
+[`armv7-rtems-eabihf`](platform-support/armv7-rtems-eabihf.md) | ✓ |  | RTEMS OS for ARM BSPs
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ✓ |  | Armv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | Armv7-A Linux with uClibc, softfloat
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | Armv7-A Linux with uClibc, hardfloat
