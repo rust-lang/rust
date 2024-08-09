@@ -74,7 +74,7 @@ pub enum Bool {
     FileNotFound,
 }
 
-// CHECK: define{{( dso_local)?}} noundef{{( zeroext)?}} i8 @test_Gpz(i8 noundef{{( zeroext)?}} %_1)
+// CHECK: define{{( dso_local)?}} noundef{{( zeroext)?( range\(i8 0, 3\))?}} i8 @test_Gpz(i8 noundef{{( zeroext)?( range\(i8 0, 3\))?}} %_1)
 #[no_mangle]
 pub extern "C" fn test_Gpz(_: GenericPlusZst<Bool>) -> GenericPlusZst<Bool> {
     loop {}
