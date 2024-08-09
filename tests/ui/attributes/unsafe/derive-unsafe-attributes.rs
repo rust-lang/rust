@@ -1,5 +1,3 @@
-#![feature(unsafe_attributes)]
-
 #[derive(unsafe(Debug))]
 //~^ ERROR: expected identifier, found keyword `unsafe`
 //~| ERROR: traits in `#[derive(...)]` don't accept arguments

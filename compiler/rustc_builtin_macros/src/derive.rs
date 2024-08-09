@@ -38,7 +38,6 @@ impl MultiItemModifier for Expander {
                 let template =
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
                 validate_attr::check_builtin_meta_item(
-                    features,
                     &sess.psess,
                     meta_item,
                     ast::AttrStyle::Outer,

@@ -1,5 +1,3 @@
-#![feature(unsafe_attributes)]
-
 #[unsafe(proc_macro)]
 //~^ ERROR: is not an unsafe attribute
 //~| ERROR attribute is only usable with crates of the `proc-macro` crate type
