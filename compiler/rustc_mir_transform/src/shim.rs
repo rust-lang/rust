@@ -9,7 +9,7 @@ use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
+    self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
@@ -276,7 +276,8 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     if ty.is_some() {
         let patch = {
-            let param_env = tcx.param_env_reveal_all_normalized(def_id);
+            let param_env =
+                if ty.has_non_region_param() { None } else { Some(ty::ParamEnv::reveal_all()) };
             let mut elaborator =
                 DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, param_env };
             let dropee = tcx.mk_place_deref(dropee_ptr);
@@ -336,7 +337,7 @@ pub struct DropShimElaborator<'a, 'tcx> {
     pub body: &'a Body<'tcx>,
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub param_env: Option<ty::ParamEnv<'tcx>>,
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
@@ -357,7 +358,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>> {
         self.param_env
     }
 
