@@ -62,6 +62,10 @@ COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
+# rustc's LLVM needs zstd.
+COPY scripts/zstd.sh /tmp/
+RUN ./zstd.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -79,6 +83,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
+      --set llvm.libzstd=true \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin \

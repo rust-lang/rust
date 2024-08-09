@@ -368,9 +368,7 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Disable zstd to avoid a dependency on libzstd.so.
-        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
-
+        // Libraries for ELF section compression.
         if !target.is_windows() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
@@ -822,6 +820,14 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
         if !target.contains("apple") {
             cfg.define("LLVM_ENABLE_LLD", "ON");
         }
+    }
+
+    // Libraries for ELF section compression.
+    if builder.config.llvm_libzstd {
+        cfg.define("LLVM_ENABLE_ZSTD", "FORCE_ON");
+        cfg.define("LLVM_USE_STATIC_ZSTD", "TRUE");
+    } else {
+        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
     }
 
     if let Some(ref linker) = builder.config.llvm_use_linker {
