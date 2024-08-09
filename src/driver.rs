@@ -270,8 +270,6 @@ pub fn main() {
                 },
                 _ => Some(s.to_string()),
             })
-            // FIXME: remove this line in 1.79 to only keep `--cfg clippy`.
-            .chain(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()])
             .chain(vec!["--cfg".into(), "clippy".into()])
             .collect::<Vec<String>>();
 
