@@ -123,6 +123,11 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
 LL - fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f3<X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
    |
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let y = *x2;
+LL +     let y = x2;
+   |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:26:10
@@ -176,6 +181,11 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
 LL + fn f4<X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
+   |
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let y = *x2;
+LL +     let y = x2;
    |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
