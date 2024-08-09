@@ -192,7 +192,7 @@ impl<T> [T] {
     /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] require
     /// additional precautions. For example, `f32::NAN != f32::NAN`, which doesn't fulfill the
     /// reflexivity requirement of [`Ord`]. By using an alternative comparison function with
-    /// [`slice::sort_by`] such as [`f32::total_cmp`] or [`f64::total_cmp`] that defines a [total
+    /// `slice::sort_by` such as [`f32::total_cmp`] or [`f64::total_cmp`] that defines a [total
     /// order] users can sort slices containing floating-point values. Alternatively, if all values
     /// in the slice are guaranteed to be in a subset for which [`PartialOrd::partial_cmp`] forms a
     /// [total order], it's possible to sort the slice with `sort_by(|a, b|
