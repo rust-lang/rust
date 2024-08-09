@@ -444,6 +444,7 @@ impl<'a> LintExtractor<'a> {
         let mut cmd = Command::new(self.rustc_path);
         if options.contains(&"edition2024") {
             cmd.arg("--edition=2024");
+            cmd.arg("-Zunstable-options");
         } else if options.contains(&"edition2021") {
             cmd.arg("--edition=2021");
         } else if options.contains(&"edition2018") {
