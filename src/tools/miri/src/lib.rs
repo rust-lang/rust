@@ -48,6 +48,7 @@
     clippy::cast_lossless,
     clippy::cast_possible_truncation,
 )]
+#![cfg_attr(not(bootstrap), warn(unqualified_local_imports))]
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 

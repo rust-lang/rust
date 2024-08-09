@@ -22,9 +22,9 @@ use crate::borrow_tracker::{
 use crate::concurrency::data_race::{NaReadType, NaWriteType};
 use crate::*;
 
-use diagnostics::{RetagCause, RetagInfo};
-pub use item::{Item, Permission};
-pub use stack::Stack;
+use self::diagnostics::{RetagCause, RetagInfo};
+pub use self::item::{Item, Permission};
+pub use self::stack::Stack;
 
 pub type AllocState = Stacks;
 

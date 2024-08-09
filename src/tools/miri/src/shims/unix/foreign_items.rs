@@ -11,11 +11,11 @@ use crate::shims::alloc::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
-use shims::unix::android::foreign_items as android;
-use shims::unix::freebsd::foreign_items as freebsd;
-use shims::unix::linux::foreign_items as linux;
-use shims::unix::macos::foreign_items as macos;
-use shims::unix::solarish::foreign_items as solarish;
+use self::shims::unix::android::foreign_items as android;
+use self::shims::unix::freebsd::foreign_items as freebsd;
+use self::shims::unix::linux::foreign_items as linux;
+use self::shims::unix::macos::foreign_items as macos;
+use self::shims::unix::solarish::foreign_items as solarish;
 
 pub fn is_dyn_sym(name: &str, target_os: &str) -> bool {
     match name {

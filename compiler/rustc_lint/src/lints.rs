@@ -2986,3 +2986,7 @@ pub struct UnsafeAttrOutsideUnsafeSuggestion {
 pub struct OutOfScopeMacroCalls {
     pub path: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unqualified_local_imports)]
+pub struct UnqualifiedLocalImportsDiag {}
