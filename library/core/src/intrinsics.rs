@@ -2675,12 +2675,12 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
 
-    /// Emits a `!nontemporal` store according to LLVM (see their docs).
-    /// Probably will never become stable.
+    /// Emits a `nontemporal` store, which gives a hint to the CPU that the data should not be held
+    /// in cache. Except for performance, this is fully equivalent to `ptr.write(val)`.
     ///
-    /// Do NOT use this intrinsic; "nontemporal" operations do not exist in our memory model!
-    /// It exists to support current stdarch, but the plan is to change stdarch and remove this intrinsic.
-    /// See <https://github.com/rust-lang/rust/issues/114582> for some more discussion.
+    /// Not all architectures provide such an operation. For instance, x86 does not: while `MOVNT`
+    /// exists, that operation is *not* equivalent to `ptr.write(val)` (`MOVNT` writes can be reordered
+    /// in ways that are not allowed for regular writes).
     #[rustc_nounwind]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
