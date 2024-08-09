@@ -3,7 +3,8 @@
 use super::{from_raw_parts, memchr};
 use crate::cmp::{self, BytewiseEq, Ordering};
 use crate::intrinsics::compare_bytes;
-use crate::mem;
+use crate::num::NonZero;
+use crate::{ascii, mem};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U> PartialEq<[U]> for [T]
@@ -182,19 +183,31 @@ impl<A: Ord> SliceOrd for A {
     }
 }
 
+// The type should be treated as an unsigned byte for comparisons.
+#[rustc_specialization_trait]
+unsafe trait UnsignedByte {}
+
+unsafe impl UnsignedByte for bool {}
+unsafe impl UnsignedByte for u8 {}
+unsafe impl UnsignedByte for NonZero<u8> {}
+unsafe impl UnsignedByte for Option<NonZero<u8>> {}
+unsafe impl UnsignedByte for ascii::Char {}
+
 // `compare_bytes` compares a sequence of unsigned bytes lexicographically.
-// this matches the order we want for [u8], but no others (not even [i8]).
-impl SliceOrd for u8 {
+impl<A: Ord + UnsignedByte> SliceOrd for A {
     #[inline]
     fn compare(left: &[Self], right: &[Self]) -> Ordering {
         // Since the length of a slice is always less than or equal to isize::MAX, this never underflows.
         let diff = left.len() as isize - right.len() as isize;
         // This comparison gets optimized away (on x86_64 and ARM) because the subtraction updates flags.
         let len = if left.len() < right.len() { left.len() } else { right.len() };
+        let left = left.as_ptr().cast();
+        let right = right.as_ptr().cast();
         // SAFETY: `left` and `right` are references and are thus guaranteed to be valid.
-        // We use the minimum of both lengths which guarantees that both regions are
-        // valid for reads in that interval.
-        let mut order = unsafe { compare_bytes(left.as_ptr(), right.as_ptr(), len) as isize };
+        // `UnsignedByte` is only implemented for types that are valid u8s. We use the
+        // minimum of both lengths which guarantees that both regions are valid for reads
+        // in that interval.
+        let mut order = unsafe { compare_bytes(left, right, len) as isize };
         if order == 0 {
             order = diff;
         }
