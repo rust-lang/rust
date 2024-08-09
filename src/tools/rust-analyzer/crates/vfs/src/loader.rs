@@ -72,7 +72,7 @@ pub enum Message {
 }
 
 /// Type that will receive [`Messages`](Message) from a [`Handle`].
-pub type Sender = Box<dyn Fn(Message) + Send + Sync>;
+pub type Sender = crossbeam_channel::Sender<Message>;
 
 /// Interface for reading and watching files.
 pub trait Handle: fmt::Debug {

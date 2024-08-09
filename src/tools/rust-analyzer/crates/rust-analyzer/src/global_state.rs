@@ -185,8 +185,7 @@ impl GlobalState {
     pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
             let (sender, receiver) = unbounded::<vfs::loader::Message>();
-            let handle: vfs_notify::NotifyHandle =
-                vfs::loader::Handle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            let handle: vfs_notify::NotifyHandle = vfs::loader::Handle::spawn(sender);
             let handle = Box::new(handle) as Box<dyn vfs::loader::Handle>;
             Handle { handle, receiver }
         };
