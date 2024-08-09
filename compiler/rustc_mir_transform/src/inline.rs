@@ -505,6 +505,10 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
+        if let Some(_) = callee_body.tainted_by_errors {
+            return Err("Body is tainted");
+        }
+
         let mut threshold = if self.caller_is_inline_forwarder {
             self.tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
         } else if cross_crate_inlinable {
