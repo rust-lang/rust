@@ -1,4 +1,3 @@
-#![feature(raw_ref_op)]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 

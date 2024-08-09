@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(raw_ref_op)]
-
 fn main() {
     let mut x = 123;
     let c_p = &raw const x;

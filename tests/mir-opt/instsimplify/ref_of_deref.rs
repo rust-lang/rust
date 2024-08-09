@@ -1,6 +1,5 @@
 //@ test-mir-pass: InstSimplify-after-simplifycfg
 #![crate_type = "lib"]
-#![feature(raw_ref_op)]
 
 // For each of these, only 2 of the 6 should simplify,
 // as the others have the wrong types.

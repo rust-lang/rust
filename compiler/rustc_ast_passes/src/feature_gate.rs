@@ -539,7 +539,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         }
     }
     gate_all!(gen_blocks, "gen blocks are experimental");
-    gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(
         half_open_range_patterns_in_slices,
