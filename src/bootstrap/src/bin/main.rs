@@ -11,13 +11,17 @@ use std::str::FromStr;
 use std::{env, process};
 
 use bootstrap::{
-    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Subcommand,
+    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Flags, Subcommand,
     CONFIG_CHANGE_HISTORY,
 };
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
+
+    if Flags::try_parse_verbose_help(&args) {
+        return;
+    }
 
     let mut build_lock;
     let _build_lock_guard;

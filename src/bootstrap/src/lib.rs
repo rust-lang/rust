@@ -43,7 +43,7 @@ mod core;
 mod utils;
 
 pub use core::builder::PathSet;
-pub use core::config::flags::Subcommand;
+pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::Config;
 
 pub use utils::change_tracker::{
