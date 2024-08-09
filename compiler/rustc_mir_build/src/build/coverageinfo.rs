@@ -175,7 +175,7 @@ impl CoverageInfoBuilder {
         let branch_spans =
             branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
 
-        let (mcdc_decision_spans, mcdc_branch_spans) =
+        let (mcdc_spans, mcdc_degraded_branch_spans) =
             mcdc_info.map(MCDCInfoBuilder::into_done).unwrap_or_default();
 
         // For simplicity, always return an info struct (without Option), even
@@ -183,8 +183,8 @@ impl CoverageInfoBuilder {
         Box::new(CoverageInfoHi {
             num_block_markers,
             branch_spans,
-            mcdc_branch_spans,
-            mcdc_decision_spans,
+            mcdc_degraded_branch_spans,
+            mcdc_spans,
         })
     }
 }
