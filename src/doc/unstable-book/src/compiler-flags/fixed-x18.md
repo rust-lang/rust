@@ -1,7 +1,7 @@
 # `fixed-x18`
 
 This option prevents the compiler from using the x18 register. It is only
-supported on aarch64.
+supported on `aarch64`.
 
 From the [ABI spec][arm-abi]:
 
@@ -23,6 +23,11 @@ Currently, the `-Zsanitizer=shadow-call-stack` flag is only supported on
 platforms that always treat x18 as a reserved register, and the `-Zfixed-x18`
 flag is not required to use the sanitizer on such platforms. However, the
 sanitizer may be supported on targets where this is not the case in the future.
+One way to do so now on Nightly compilers is to explicitly supply this `-Zfixed-x18`
+flag with `aarch64` targets, so that the sanitizer is available for instrumentation
+on targets like `aarch64-unknown-none`, for instance. However, discretion is still
+required to make sure that the runtime support is in place for this sanitizer
+to be effective.
 
 It is undefined behavior for `-Zsanitizer=shadow-call-stack` code to call into
 code where x18 is a temporary register. On the other hand, when you are *not*

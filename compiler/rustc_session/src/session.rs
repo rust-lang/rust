@@ -1188,7 +1188,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
     let supported_sanitizers = sess.target.options.supported_sanitizers;
-    let unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
+    let mut unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
+    // Niche: if `fixed-x18`, or effectively switching on `reserved-x18` flag, is enabled
+    // we should allow Shadow Call Stack sanitizer.
+    if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == "aarch64" {
+        unsupported_sanitizers -= SanitizerSet::SHADOWCALLSTACK;
+    }
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
         1 => {
