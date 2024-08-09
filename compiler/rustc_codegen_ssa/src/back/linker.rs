@@ -14,6 +14,7 @@ use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
+use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
@@ -854,6 +855,38 @@ pub struct MsvcLinker<'a> {
     sess: &'a Session,
 }
 
+impl MsvcLinker<'_> {
+    // FIXME this duplicates rustc_metadata::find_native_static_library,
+    // as the Meson/MinGW suffix for import libraries can differ
+    fn find_native_dynamic_library(name: &str, verbatim: bool, sess: &Session) -> OsString {
+        let formats = if verbatim {
+            vec![("".into(), "".into())]
+        } else {
+            // While the official naming convention for MSVC import libraries
+            // is foo.lib...
+            let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
+            // ... Meson follows the libfoo.dll.a convention to
+            // disambiguate .a for static libraries
+            let meson = ("lib".into(), ".dll.a".into());
+            // and MinGW uses .a altogether
+            let mingw = ("lib".into(), ".a".into());
+            vec![os, meson, mingw]
+        };
+
+        for path in sess.target_filesearch(PathKind::Native).search_paths() {
+            for (prefix, suffix) in &formats {
+                let test = path.dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return OsString::from(test);
+                }
+            }
+        }
+
+        // Allow the linker to find CRT libs itself
+        OsString::from(format!("{}{}", name, if verbatim { "" } else { ".lib" }))
+    }
+}
+
 impl<'a> Linker for MsvcLinker<'a> {
     fn cmd(&mut self) -> &mut Command {
         &mut self.cmd
@@ -878,7 +911,8 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
-        self.link_arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
+        let path = MsvcLinker::<'a>::find_native_dynamic_library(name, verbatim, self.sess);
+        self.link_arg(path);
     }
 
     fn link_dylib_by_path(&mut self, path: &Path, _as_needed: bool) {
@@ -891,9 +925,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
-        let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-        let suffix = if verbatim { "" } else { ".lib" };
-        self.link_arg(format!("{prefix}{name}{suffix}"));
+        // Static libraries built by MSVC are usually called foo.lib.
+        // However, under MinGW and build systems such as Meson, they are
+        // called libfoo.a
+        let path = find_native_static_library(name, verbatim, self.sess);
+        self.link_staticlib_by_path(&path, whole_archive);
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
