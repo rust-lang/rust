@@ -229,13 +229,13 @@ rustc_index::newtype_index! {
 // We guarantee field order. Note that the order is essential here, see below why.
 pub struct DefId {
     // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
-    // the lower bits no matter the endianness. This allows the compiler to turn that `Hash` impl
+    // the higher bits no matter the endianness. This allows the compiler to turn that `Hash` impl
     // into a direct call to `u64::hash(_)`.
     #[cfg(not(all(target_pointer_width = "64", target_endian = "big")))]
-    pub index: DefIndex,
-    pub krate: CrateNum,
+    pub krate: DefIndex,
+    pub index: CrateNum,
     #[cfg(all(target_pointer_width = "64", target_endian = "big"))]
-    pub index: DefIndex,
+    pub krate: DefIndex,
 }
 
 // To ensure correctness of incremental compilation,
@@ -250,22 +250,15 @@ impl !PartialOrd for DefId {}
 //
 // ```
 //     +-1--------------31-+-32-------------63-+
-//     ! index             ! krate             !
+//     ! krate             ! index             !
 //     +-------------------+-------------------+
 // ```
 //
-// The order here has direct impact on `FxHash` quality because we have far more `DefIndex` per
-// crate than we have `Crate`s within one compilation. Or in other words, this arrangement puts
-// more entropy in the low bits than the high bits. The reason this matters is that `FxHash`, which
-// is used throughout rustc, has problems distributing the entropy from the high bits, so reversing
-// the order would lead to a large number of collisions and thus far worse performance.
-//
-// On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, which is still
-// faster than another `FxHash` round.
+// On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, or a 64-bit load.
 #[cfg(target_pointer_width = "64")]
 impl Hash for DefId {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        (((self.krate.as_u32() as u64) << 32) | (self.index.as_u32() as u64)).hash(h)
+        (((self.index.as_u32() as u64) << 32) | (self.krate.as_u32() as u64)).hash(h)
     }
 }
 
