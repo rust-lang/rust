@@ -5,7 +5,7 @@
 //@ [arm64ec] compile-flags: --target arm64ec-pc-windows-msvc
 //@ [arm64ec] needs-llvm-components: aarch64
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -39,6 +39,10 @@ pub struct i32x2(i32, i32);
 #[repr(simd)]
 pub struct i64x1(i64);
 #[repr(simd)]
+pub struct f16x4(f16, f16, f16, f16);
+#[repr(simd)]
+pub struct f16x8(f16, f16, f16, f16, f16, f16, f16, f16);
+#[repr(simd)]
 pub struct f32x2(f32, f32);
 #[repr(simd)]
 pub struct f64x1(f64);
@@ -57,6 +61,7 @@ pub struct f64x2(f64, f64);
 
 impl Copy for i8 {}
 impl Copy for i16 {}
+impl Copy for f16 {}
 impl Copy for i32 {}
 impl Copy for f32 {}
 impl Copy for i64 {}
@@ -67,11 +72,13 @@ impl Copy for i16x4 {}
 impl Copy for i32x2 {}
 impl Copy for i64x1 {}
 impl Copy for f32x2 {}
+impl Copy for f16x4 {}
 impl Copy for f64x1 {}
 impl Copy for i8x16 {}
 impl Copy for i16x8 {}
 impl Copy for i32x4 {}
 impl Copy for i64x2 {}
+impl Copy for f16x8 {}
 impl Copy for f32x4 {}
 impl Copy for f64x2 {}
 
@@ -165,6 +172,12 @@ check!(reg_i16 i16 reg "mov" "");
 // CHECK: //NO_APP
 check!(reg_i32 i32 reg "mov" "");
 
+// CHECK-LABEL: reg_f16:
+// CHECK: @APP
+// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
+// CHECK: @NO_APP
+check!(reg_f16 f16 reg "mov");
+
 // CHECK-LABEL: {{("#)?}}reg_f32{{"?}}
 // CHECK: //APP
 // CHECK: mov x{{[0-9]+}}, x{{[0-9]+}}
@@ -254,6 +267,20 @@ check!(vreg_i32x2 i32x2 vreg "fmov" "s");
 // CHECK: fmov s{{[0-9]+}}, s{{[0-9]+}}
 // CHECK: //NO_APP
 check!(vreg_i64x1 i64x1 vreg "fmov" "s");
+
+// neon-LABEL: vreg_f16x4:
+// neon: @APP
+// neon: vmov.f64 d{{[0-9]+}}, d{{[0-9]+}}
+// neon: @NO_APP
+#[cfg(neon)]
+check!(vreg_f16x4 f16x4 vreg "vmov.f64");
+
+// neon-LABEL: vreg_f16x8:
+// neon: @APP
+// neon: vorr q{{[0-9]+}}, q{{[0-9]+}}, q{{[0-9]+}}
+// neon: @NO_APP
+#[cfg(neon)]
+check!(vreg_f16x8 f16x8 vreg "vmov");
 
 // CHECK-LABEL: {{("#)?}}vreg_f32x2{{"?}}
 // CHECK: //APP
