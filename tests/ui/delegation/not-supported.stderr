@@ -198,7 +198,16 @@ LL |         pub reuse to_reuse2::foo;
 LL |     reuse to_reuse1::foo;
    |                      ^^^
 
-error: aborting due to 17 previous errors; 2 warnings emitted
+error[E0308]: mismatched types
+  --> $DIR/not-supported.rs:112:18
+   |
+LL |     reuse Trait::foo;
+   |                  ^^^ expected `true`, found `host`
+   |
+   = note: expected constant `true`
+              found constant `host`
 
-Some errors have detailed explanations: E0049, E0195, E0391.
+error: aborting due to 18 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0049, E0195, E0308, E0391.
 For more information about an error, try `rustc --explain E0049`.

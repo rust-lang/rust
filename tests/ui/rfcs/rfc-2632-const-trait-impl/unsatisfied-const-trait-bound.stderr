@@ -16,12 +16,13 @@ LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
    = note: expected constant `false`
               found constant `host`
 
-error[E0277]: the trait bound `Trait::{synthetic#0}: const Compat` is not satisfied
+error[E0277]: the trait bound `Param<false>: TyCompat<Trait::{synthetic#0}>` is not satisfied
   --> $DIR/unsatisfied-const-trait-bound.rs:22:15
    |
 LL |     require::<Ty>();
-   |               ^^ the trait `const Compat` is not implemented for `Trait::{synthetic#0}`
+   |               ^^ the trait `TyCompat<Trait::{synthetic#0}>` is not implemented for `Param<false>`
    |
+   = help: the trait `TyCompat<NoRuntime>` is implemented for `Param<false>`
 note: required by a bound in `require`
   --> $DIR/unsatisfied-const-trait-bound.rs:7:15
    |

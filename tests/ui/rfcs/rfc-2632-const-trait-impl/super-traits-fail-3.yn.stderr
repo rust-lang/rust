@@ -1,39 +1,39 @@
 error: `~const` is not allowed here
-  --> $DIR/super-traits-fail-3.rs:14:12
+  --> $DIR/super-traits-fail-3.rs:13:12
    |
 LL | trait Bar: ~const Foo {}
    |            ^^^^^^
    |
 note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
-  --> $DIR/super-traits-fail-3.rs:14:1
+  --> $DIR/super-traits-fail-3.rs:13:1
    |
 LL | trait Bar: ~const Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/super-traits-fail-3.rs:20:24
+  --> $DIR/super-traits-fail-3.rs:19:24
    |
 LL | const fn foo<T: ~const Bar>(x: &T) {
    |                        ^^^
 
-error[E0277]: the trait bound `Foo::{synthetic#0}: ~const Compat` is not satisfied
-  --> $DIR/super-traits-fail-3.rs:22:7
+error[E0277]: the trait bound `Param<host>: TyCompat<Foo::{synthetic#0}>` is not satisfied
+  --> $DIR/super-traits-fail-3.rs:21:7
    |
 LL |     x.a();
-   |       ^ the trait `~const Compat` is not implemented for `Foo::{synthetic#0}`
+   |       ^ the trait `TyCompat<Foo::{synthetic#0}>` is not implemented for `Param<host>`
    |
 note: required by a bound in `Foo::a`
-  --> $DIR/super-traits-fail-3.rs:8:25
+  --> $DIR/super-traits-fail-3.rs:7:25
    |
 LL | #[cfg_attr(any(yy, yn), const_trait)]
    |                         ^^^^^^^^^^^ required by this bound in `Foo::a`
 LL | trait Foo {
 LL |     fn a(&self);
    |        - required by a bound in this associated function
-help: consider further restricting the associated type
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
-LL | const fn foo<T: ~const Bar>(x: &T) where Foo::{synthetic#0}: ~const Compat {
-   |                                    +++++++++++++++++++++++++++++++++++++++
+LL | const fn foo<T: ~const Bar>(x: &T) where Param<host>: TyCompat<Foo::{synthetic#0}> {
+   |                                    +++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

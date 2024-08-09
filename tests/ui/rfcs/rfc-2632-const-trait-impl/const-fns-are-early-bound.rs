@@ -102,6 +102,9 @@ pub mod effects {
     #[lang = "EffectsRuntime"]
     #[stable(feature = "minicore", since = "1.0.0")]
     pub struct Runtime;
+    #[lang = "EffectsParam"]
+    #[stable(feature = "minicore", since = "1.0.0")]
+    pub struct Param<const RUNTIME: bool>;
 
     #[lang = "EffectsCompat"]
     #[stable(feature = "minicore", since = "1.0.0")]
@@ -122,9 +125,15 @@ pub mod effects {
     #[stable(feature = "minicore", since = "1.0.0")]
     impl<T: ?Sized> TyCompat<T> for T {}
     #[stable(feature = "minicore", since = "1.0.0")]
-    impl<T: ?Sized> TyCompat<T> for Maybe {}
-    #[stable(feature = "minicore", since = "1.0.0")]
     impl<T: ?Sized> TyCompat<Maybe> for T {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl TyCompat<Param<true>> for Runtime {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl TyCompat<Runtime> for Param<true> {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl TyCompat<Param<false>> for NoRuntime {}
+    #[stable(feature = "minicore", since = "1.0.0")]
+    impl TyCompat<NoRuntime> for Param<false> {}
 
     #[lang = "EffectsIntersection"]
     #[stable(feature = "minicore", since = "1.0.0")]

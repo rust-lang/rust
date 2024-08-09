@@ -21,7 +21,7 @@ const fn equals_self<T: ~const Foo>(t: &T) -> bool {
 // it not using the impl.
 
 pub const EQ: bool = equals_self(&S);
-//~^ ERROR: the trait bound `Runtime: const Compat` is not satisfied
+//~^ ERROR: the trait bound
 // FIXME(effects) diagnostic
 
 fn main() {}

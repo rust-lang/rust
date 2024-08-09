@@ -144,12 +144,15 @@ impl<'tcx> Bounds<'tcx> {
             );
             return;
         };
-        let self_ty = Ty::new_projection(tcx, assoc, bound_trait_ref.skip_binder().args);
-        // make `<T as Tr>::Effects: Compat<runtime>`
+
+        // make `Param<runtime>: TyCompat<<T as Tr>::Effects>`
+        let proj_fx = Ty::new_projection(tcx, assoc, bound_trait_ref.skip_binder().args);
+        let param_def = tcx.require_lang_item(LangItem::EffectsParam, Some(span));
+        let param_ty = Ty::new_adt(tcx, tcx.adt_def(param_def), tcx.mk_args(&[compat_val.into()]));
         let new_trait_ref = ty::TraitRef::new(
             tcx,
-            tcx.require_lang_item(LangItem::EffectsCompat, Some(span)),
-            [ty::GenericArg::from(self_ty), compat_val.into()],
+            tcx.require_lang_item(LangItem::EffectsTyCompat, Some(span)),
+            [param_ty, proj_fx],
         );
         self.clauses.push((bound_trait_ref.rebind(new_trait_ref).upcast(tcx), span));
     }

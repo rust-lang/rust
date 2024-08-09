@@ -546,6 +546,8 @@ mod effects {
     pub struct Maybe;
     #[lang = "EffectsRuntime"]
     pub struct Runtime;
+    #[lang = "EffectsParam"]
+    pub struct Param<const RUNTIME: bool>;
 
     #[lang = "EffectsCompat"]
     pub trait Compat<#[rustc_runtime] const RUNTIME: bool> {}
@@ -559,8 +561,12 @@ mod effects {
     pub trait TyCompat<T: ?Sized> {}
 
     impl<T: ?Sized> TyCompat<T> for T {}
-    impl<T: ?Sized> TyCompat<T> for Maybe {}
     impl<T: ?Sized> TyCompat<Maybe> for T {}
+    impl TyCompat<Param<true>> for Runtime {}
+    impl TyCompat<Runtime> for Param<true> {}
+    impl TyCompat<Param<false>> for NoRuntime {}
+    impl TyCompat<NoRuntime> for Param<false> {}
+
 
     #[lang = "EffectsIntersection"]
     pub trait Intersection {
