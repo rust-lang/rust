@@ -289,8 +289,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [id, show_unnamed] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let id = this.read_scalar(id)?.to_u64()?;
                 let show_unnamed = this.read_scalar(show_unnamed)?.to_bool()?;
-                if let Some(id) = std::num::NonZero::new(id) {
-                    this.print_borrow_state(AllocId(id), show_unnamed)?;
+                if let Some(id) = std::num::NonZero::new(id).map(AllocId)
+                    && this.get_alloc_info(id).2 == AllocKind::LiveData
+                {
+                    this.print_borrow_state(id, show_unnamed)?;
+                } else {
+                    eprintln!("{id} is not the ID of a live data allocation");
                 }
             }
             "miri_pointer_name" => {
