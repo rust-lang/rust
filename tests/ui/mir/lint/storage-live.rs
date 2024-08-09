@@ -21,6 +21,7 @@ fn multiple_storage() {
         {
             StorageLive(a);
             StorageLive(a);
+            //~^ ERROR broken MIR
             Return()
         }
     }

@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -12,6 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_session::lint::builtin::BROKEN_MIR;
 
 pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
     let always_live_locals = &always_storage_live_locals(body);
@@ -30,6 +32,11 @@ pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
         tcx,
         when,
         body,
+        lint_id: body
+            .source
+            .def_id()
+            .as_local()
+            .map_or(CRATE_HIR_ID, |def_id| tcx.local_def_id_to_hir_id(def_id)),
         is_fn_like: tcx.def_kind(body.source.def_id()).is_fn_like(),
         always_live_locals,
         maybe_storage_live,
@@ -45,6 +52,7 @@ struct Lint<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     when: String,
     body: &'a Body<'tcx>,
+    lint_id: HirId,
     is_fn_like: bool,
     always_live_locals: &'a BitSet<Local>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
@@ -53,19 +61,19 @@ struct Lint<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Lint<'a, 'tcx> {
-    #[track_caller]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
-        self.tcx.sess.dcx().span_delayed_bug(
-            span,
-            format!(
+        self.tcx.node_span_lint(BROKEN_MIR, self.lint_id, span, |lint| {
+            lint.primary_message(format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
                 self.body.source.instance,
                 self.when,
                 location,
                 msg.as_ref()
-            ),
-        );
+            ));
+        });
     }
 }
 

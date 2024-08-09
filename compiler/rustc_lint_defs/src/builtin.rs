@@ -3966,6 +3966,15 @@ declare_lint! {
     "`break` expression with label and unlabeled loop as value expression"
 }
 
+crate::declare_tool_lint! {
+    /// The `broken_mir` statically detects undefined behaviour in the MIR optimization pipeline.
+    /// This is an internal lint, and not intended to be used directly.
+    pub rustc::BROKEN_MIR,
+    Deny,
+    "broken MIR",
+    report_in_external_macro: true
+}
+
 declare_lint! {
     /// The `non_exhaustive_omitted_patterns` lint aims to help consumers of a `#[non_exhaustive]`
     /// struct or enum who want to match all of its fields/variants explicitly.
