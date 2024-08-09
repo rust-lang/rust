@@ -347,7 +347,7 @@ pub enum Subcommand {
         /// extra arguments to be passed for the test tool being used
         /// (e.g. libtest, compiletest or rustdoc)
         test_args: Vec<String>,
-        /// extra options to pass the compiler when running tests
+        /// extra options to pass the compiler when running compiletest tests
         #[arg(long, value_name = "ARGS", allow_hyphen_values(true))]
         rustc_args: Vec<String>,
         #[arg(long)]

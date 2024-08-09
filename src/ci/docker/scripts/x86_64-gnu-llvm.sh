@@ -18,9 +18,9 @@ if [[ -z "${PR_CI_JOB}" ]]; then
     # compiler, and is sensitive to the addition of new flags.
     ../x.py --stage 1 test tests/ui-fulldeps
 
-    # The tests are run a second time with the size optimizations enabled.
-    ../x.py --stage 1 test library/std library/alloc library/core \
-        --rustc-args "--cfg feature=\"optimize_for_size\""
+    # Rebuild the stdlib with the size optimizations enabled and run tests again.
+    RUSTFLAGS_NOT_BOOTSTRAP="--cfg feature=\"optimize_for_size\"" ../x.py --stage 1 test \
+        library/std library/alloc library/core
 fi
 
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
