@@ -273,13 +273,6 @@ pub struct LoadDepGraph {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_write_dep_graph)]
-pub struct WriteDepGraph<'a> {
-    pub path: &'a Path,
-    pub err: std::io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(incremental_move_dep_graph)]
 pub struct MoveDepGraph<'a> {
     pub from: &'a Path,
