@@ -1581,7 +1581,37 @@ macro_rules! int_impl {
             if self < 0 {
                 None
             } else {
-                Some((self as $UnsignedT).isqrt() as Self)
+                // SAFETY: Input is nonnegative in this `else` branch.
+                let result = unsafe {
+                    crate::num::int_sqrt::$ActualT(self as $ActualT) as $SelfT
+                };
+
+                // SAFETY: Inform the optimizer what the range of outputs is.
+                //
+                // Integer square root is a monotonically nondecreasing
+                // function, which means that increasing the input will never
+                // cause the output to decrease.
+                //
+                // The minimum input in this `else` branch is 0. The maximum
+                // input is `<$ActualT>::MAX`.
+                //
+                // When n is 0, sqrt(n) is 0. If n increases above 0, sqrt(n)
+                // can't decrease below 0, so sqrt(n) can't decrease below 0 no
+                // matter what n is.
+                //
+                // When n is below `<$ActualT>::MAX`, sqrt(n) can't decrease at
+                // all when you increase n to `<$ActualT>::MAX`, so sqrt(n)
+                // can't be above sqrt(`<$ActualT>::MAX`) no matter what n is.
+                unsafe {
+                    crate::hint::assert_unchecked(result >= 0);
+                    // SAFETY: `<$ActualT>::MAX` is nonnegative.
+                    const MAX_RESULT: $SelfT = unsafe {
+                        crate::num::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT
+                    };
+                    crate::hint::assert_unchecked(result <= MAX_RESULT);
+                }
+
+                Some(result)
             }
         }
 
@@ -2768,15 +2798,12 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
+        #[track_caller]
         pub const fn isqrt(self) -> Self {
-            // I would like to implement it as
-            // ```
-            // self.checked_isqrt().expect("argument of integer square root must be non-negative")
-            // ```
-            // but `expect` is not yet stable as a `const fn`.
-            match self.checked_isqrt() {
-                Some(sqrt) => sqrt,
-                None => panic!("argument of integer square root must be non-negative"),
+            if let Some(sqrt) = self.checked_isqrt() {
+                sqrt
+            } else {
+                crate::num::int_sqrt::panic_for_negative_argument()
             }
         }
 

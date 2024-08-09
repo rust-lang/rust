@@ -1543,33 +1543,33 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         #[rustc_const_unstable(feature = "isqrt", issue = "116226")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
         pub const fn isqrt(self) -> Self {
-            // The algorithm is based on the one presented in
-            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
-            // which cites as source the following C code:
-            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
+            let result = super::int_sqrt::$Int(self.get());
 
-            let mut op = self.get();
-            let mut res = 0;
-            let mut one = 1 << (self.ilog2() & !1);
-
-            while one != 0 {
-                if op >= res + one {
-                    op -= res + one;
-                    res = (res >> 1) + one;
-                } else {
-                    res >>= 1;
-                }
-                one >>= 2;
+            // SAFETY: Inform the optimizer what the range of outputs is.
+            //
+            // Integer square root is a monotonically nondecreasing
+            // function, which means that increasing the input will never
+            // cause the output to decrease.
+            //
+            // The minimum input is 1. The maximum input is `<$Int>::MAX`.
+            //
+            // When n is 1, sqrt(n) is 1. If n increases above 1, sqrt(n)
+            // can't decrease below 1, so sqrt(n) can't decrease below 1 no
+            // matter what n is.
+            //
+            // When n is below `<$Int>::MAX`, sqrt(n) can't decrease at all
+            // when you increase n to `<$Int>::MAX`, so sqrt(n) can't be above
+            // sqrt(`<$Int>::MAX`) no matter what n is.
+            unsafe {
+                hint::assert_unchecked(result > 0);
+                const MAX_RESULT: $Int = super::int_sqrt::$Int(<$Int>::MAX);
+                hint::assert_unchecked(result <= MAX_RESULT);
             }
 
-            // SAFETY: The result fits in an integer with half as many bits.
-            // Inform the optimizer about it.
-            unsafe { hint::assert_unchecked(res < 1 << (Self::BITS / 2)) };
-
-            // SAFETY: The square root of an integer >= 1 is always >= 1.
-            unsafe { Self::new_unchecked(res) }
+            // SAFETY: As explained above, the minimum integer square root is
+            // 1, so it can't be 0.
+            unsafe { Self::new_unchecked(result) }
         }
     };
 

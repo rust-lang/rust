@@ -2677,10 +2677,32 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            match NonZero::new(self) {
-                Some(x) => x.isqrt().get(),
-                None => 0,
+            let result = crate::num::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+
+            // SAFETY: Inform the optimizer what the range of outputs is.
+            //
+            // Integer square root is a monotonically nondecreasing
+            // function, which means that increasing the input will never
+            // cause the output to decrease.
+            //
+            // The minimum input is 0. The maximum input is `<$ActualT>::MAX`.
+            //
+            // When n is 0, sqrt(n) is 0. If n increases above 0, sqrt(n)
+            // can't decrease below 0, so sqrt(n) can't decrease below 0 no
+            // matter what n is.
+            //
+            // However, the optimizer already knows that zero is the minimum
+            // value of all unsigned integer types, so we won't mention that.
+            //
+            // When n is below `<$ActualT>::MAX`, sqrt(n) can't decrease at
+            // all when you increase n to `<$ActualT>::MAX`, so sqrt(n)
+            // can't be above sqrt(`<$ActualT>::MAX`) no matter what n is.
+            unsafe {
+                const MAX_RESULT: $SelfT = crate::num::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
+                crate::hint::assert_unchecked(result <= MAX_RESULT);
             }
+
+            result
         }
 
         /// Performs Euclidean division.
