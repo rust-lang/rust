@@ -183,9 +183,9 @@ pub struct Flags {
 }
 
 impl Flags {
-    pub fn parse(args: &[String]) -> Self {
-        let first = String::from("x.py");
-        let it = std::iter::once(&first).chain(args.iter());
+    /// Check if `<cmd> -h -v` was passed.
+    /// If yes, print the available paths and return `true`.
+    pub fn try_parse_verbose_help(args: &[String]) -> bool {
         // We need to check for `<cmd> -h -v`, in which case we list the paths
         #[derive(Parser)]
         #[command(disable_help_flag(true))]
@@ -198,10 +198,10 @@ impl Flags {
             cmd: Kind,
         }
         if let Ok(HelpVerboseOnly { help: true, verbose: 1.., cmd: subcommand }) =
-            HelpVerboseOnly::try_parse_from(it.clone())
+            HelpVerboseOnly::try_parse_from(normalize_args(args))
         {
             println!("NOTE: updating submodules before printing available paths");
-            let config = Config::parse(&[String::from("build")]);
+            let config = Config::parse(Self::parse(&[String::from("build")]));
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
@@ -209,11 +209,21 @@ impl Flags {
             } else {
                 panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }
-            crate::exit!(0);
+            true
+        } else {
+            false
         }
-
-        Flags::parse_from(it)
     }
+
+    pub fn parse(args: &[String]) -> Self {
+        Flags::parse_from(normalize_args(args))
+    }
+}
+
+fn normalize_args(args: &[String]) -> Vec<String> {
+    let first = String::from("x.py");
+    let it = std::iter::once(first).chain(args.iter().cloned());
+    it.collect()
 }
 
 #[derive(Debug, Clone, Default, clap::Subcommand)]

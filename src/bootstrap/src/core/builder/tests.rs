@@ -3,13 +3,14 @@ use std::thread;
 use super::*;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::Flags;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
     configure_with_args(&[cmd.to_owned()], host, target)
 }
 
 fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(cmd);
+    let mut config = Config::parse(Flags::parse(cmd));
     // don't save toolstates
     config.save_toolstates = None;
     config.dry_run = DryRun::SelfCheck;
@@ -23,7 +24,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let submodule_build = Build::new(Config {
         // don't include LLVM, so CI doesn't require ninja/cmake to be installed
         rust_codegen_backends: vec![],
-        ..Config::parse(&["check".to_owned()])
+        ..Config::parse(Flags::parse(&["check".to_owned()]))
     });
     submodule_build.require_submodule("src/doc/book", None);
     config.submodules = Some(false);
