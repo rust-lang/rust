@@ -70,6 +70,8 @@
 #[cfg(test)]
 mod tests;
 
+use core::clone::CloneToUninit;
+
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::error::Error;
@@ -3106,6 +3108,16 @@ impl Path {
         let rw = Box::into_raw(self) as *mut OsStr;
         let inner = unsafe { Box::from_raw(rw) };
         PathBuf { inner: OsString::from(inner) }
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Path {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: Path is just a wrapper around OsStr
+        unsafe { self.inner.clone_to_uninit(core::ptr::addr_of_mut!((*dst).inner)) }
     }
 }
 

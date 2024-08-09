@@ -1,5 +1,7 @@
 use core::clone::CloneToUninit;
+use core::ffi::CStr;
 use core::mem::MaybeUninit;
+use core::ptr;
 
 #[test]
 #[allow(suspicious_double_ref_op)]
@@ -80,4 +82,42 @@ fn test_clone_to_uninit_slice_drops_on_panic() {
     // Might as well exercise the rest of the drops
     drop(a);
     assert_eq!(COUNTER.load(Relaxed), 0);
+}
+
+#[test]
+fn test_clone_to_uninit_str() {
+    let a = "hello";
+
+    let mut storage: MaybeUninit<[u8; 5]> = MaybeUninit::uninit();
+    unsafe { a.clone_to_uninit(storage.as_mut_ptr() as *mut [u8] as *mut str) };
+    assert_eq!(a.as_bytes(), unsafe { storage.assume_init() }.as_slice());
+
+    let mut b: Box<str> = "world".into();
+    assert_eq!(a.len(), b.len());
+    assert_ne!(a, &*b);
+    unsafe { a.clone_to_uninit(ptr::from_mut::<str>(&mut b)) };
+    assert_eq!(a, &*b);
+}
+
+#[test]
+fn test_clone_to_uninit_cstr() {
+    let a = c"hello";
+
+    let mut storage: MaybeUninit<[u8; 6]> = MaybeUninit::uninit();
+    unsafe { a.clone_to_uninit(storage.as_mut_ptr() as *mut [u8] as *mut CStr) };
+    assert_eq!(a.to_bytes_with_nul(), unsafe { storage.assume_init() }.as_slice());
+
+    let mut b: Box<CStr> = c"world".into();
+    assert_eq!(a.count_bytes(), b.count_bytes());
+    assert_ne!(a, &*b);
+    unsafe { a.clone_to_uninit(ptr::from_mut::<CStr>(&mut b)) };
+    assert_eq!(a, &*b);
+}
+
+#[test]
+fn cstr_metadata_is_length_with_nul() {
+    let s: &CStr = c"abcdef";
+    let p: *const CStr = ptr::from_ref(s);
+    let bytes: *const [u8] = p as *const [u8];
+    assert_eq!(s.to_bytes_with_nul().len(), bytes.len());
 }
