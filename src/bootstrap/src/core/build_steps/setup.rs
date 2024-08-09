@@ -247,9 +247,11 @@ pub struct Link;
 impl Step for Link {
     type Output = ();
     const DEFAULT: bool = true;
+
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("link")
     }
+
     fn make_run(run: RunConfig<'_>) {
         if run.builder.config.dry_run() {
             return;
@@ -262,21 +264,30 @@ impl Step for Link {
     }
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let config = &builder.config;
+
         if config.dry_run() {
             return;
         }
+
+        if !rustup_installed(builder) {
+            println!("WARNING: `rustup` is not installed; Skipping `stage1` toolchain linking.");
+            return;
+        }
+
         let stage_path =
             ["build", config.build.rustc_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
-        if !rustup_installed(builder) {
-            eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-        } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
+
+        if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
             attempt_toolchain_link(builder, &stage_path[..]);
         }
     }
 }
 
 fn rustup_installed(builder: &Builder<'_>) -> bool {
-    command("rustup").arg("--version").run_capture_stdout(builder).is_success()
+    let mut rustup = command("rustup");
+    rustup.arg("--version");
+
+    rustup.allow_failure().run_always().run_capture_stdout(builder).is_success()
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
