@@ -17,7 +17,6 @@ cranelift-object = { version = "0.110.1" }
 target-lexicon = "0.12.0"
 gimli = { version = "0.28", default-features = false, features = ["write"]}
 object = { version = "0.36", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
-ar_archive_writer = "0.3"
 
 indexmap = "2.0.0"
 libloading = { version = "0.8.0", optional = true }
