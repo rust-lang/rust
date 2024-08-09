@@ -67,6 +67,7 @@ pub fn provide(providers: &mut Providers) {
         item_super_predicates: item_bounds::item_super_predicates,
         explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
         item_non_self_assumptions: item_bounds::item_non_self_assumptions,
+        impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
         predicates_defined_on,

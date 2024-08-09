@@ -212,6 +212,8 @@ pub(super) fn item_super_predicates(
     })
 }
 
+/// This exists as an optimization to compute only the item bounds of the item
+/// that are not `Self` bounds.
 pub(super) fn item_non_self_assumptions(
     tcx: TyCtxt<'_>,
     def_id: DefId,
@@ -224,6 +226,25 @@ pub(super) fn item_non_self_assumptions(
     } else {
         ty::EarlyBinder::bind(tcx.mk_clauses_from_iter(all_bounds.difference(&own_bounds).copied()))
     }
+}
+
+/// This exists as an optimization to compute only the supertraits of this impl's
+/// trait that are outlives bounds.
+pub(super) fn impl_super_outlives(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
+    tcx.impl_trait_header(def_id).expect("expected an impl of trait").trait_ref.map_bound(
+        |trait_ref| {
+            let clause: ty::Clause<'_> = trait_ref.upcast(tcx);
+            tcx.mk_clauses_from_iter(util::elaborate(tcx, [clause]).filter(|clause| {
+                matches!(
+                    clause.kind().skip_binder(),
+                    ty::ClauseKind::TypeOutlives(_) | ty::ClauseKind::RegionOutlives(_)
+                )
+            }))
+        },
+    )
 }
 
 struct AssocTyToOpaque<'tcx> {

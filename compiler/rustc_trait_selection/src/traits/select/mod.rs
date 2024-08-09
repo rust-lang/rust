@@ -17,7 +17,6 @@ use rustc_hir::LangItem;
 use rustc_infer::infer::relate::TypeRelation;
 use rustc_infer::infer::BoundRegionConversionTime::{self, HigherRankedType};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{dep_kinds, DepNodeIndex};
@@ -2801,31 +2800,22 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         // Register any outlives obligations from the trait here, cc #124336.
-        if matches!(self.tcx().def_kind(def_id), DefKind::Impl { of_trait: true })
-            && let Some(header) = self.tcx().impl_trait_header(def_id)
-        {
-            let trait_clause: ty::Clause<'tcx> =
-                header.trait_ref.instantiate(self.tcx(), args).upcast(self.tcx());
-            for clause in elaborate(self.tcx(), [trait_clause]) {
-                if matches!(
-                    clause.kind().skip_binder(),
-                    ty::ClauseKind::TypeOutlives(..) | ty::ClauseKind::RegionOutlives(..)
-                ) {
-                    let clause = normalize_with_depth_to(
-                        self,
-                        param_env,
-                        cause.clone(),
-                        recursion_depth,
-                        clause,
-                        &mut obligations,
-                    );
-                    obligations.push(Obligation {
-                        cause: cause.clone(),
-                        recursion_depth,
-                        param_env,
-                        predicate: clause.as_predicate(),
-                    });
-                }
+        if matches!(tcx.def_kind(def_id), DefKind::Impl { of_trait: true }) {
+            for clause in tcx.impl_super_outlives(def_id).iter_instantiated(tcx, args) {
+                let clause = normalize_with_depth_to(
+                    self,
+                    param_env,
+                    cause.clone(),
+                    recursion_depth,
+                    clause,
+                    &mut obligations,
+                );
+                obligations.push(Obligation {
+                    cause: cause.clone(),
+                    recursion_depth,
+                    param_env,
+                    predicate: clause.as_predicate(),
+                });
             }
         }
 
