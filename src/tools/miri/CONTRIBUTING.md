@@ -173,24 +173,24 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo-miri/Cargo.toml",
         "miri-script/Cargo.toml",
     ],
+    "rust-analyzer.check.invocationLocation": "root",
+    "rust-analyzer.check.invocationStrategy": "once",
     "rust-analyzer.check.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
-        "cargo",
         "clippy", // make this `check` when working with a locally built rustc
         "--message-format=json",
-        "--all-targets",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
+    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
-        "cargo",
         "check",
         "--message-format=json",
-        "--all-targets",
     ],
 }
 ```

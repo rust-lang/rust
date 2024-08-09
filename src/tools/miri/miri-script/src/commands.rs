@@ -153,8 +153,7 @@ impl Command {
             | Command::Test { .. }
             | Command::Run { .. }
             | Command::Fmt { .. }
-            | Command::Clippy { .. }
-            | Command::Cargo { .. } => Self::auto_actions()?,
+            | Command::Clippy { .. } => Self::auto_actions()?,
             | Command::Toolchain { .. }
             | Command::Bench { .. }
             | Command::RustcPull { .. }
@@ -170,7 +169,6 @@ impl Command {
                 Self::run(dep, verbose, many_seeds, target, edition, flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
-            Command::Cargo { flags } => Self::cargo(flags),
             Command::Bench { target, benches } => Self::bench(target, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
@@ -446,15 +444,6 @@ impl Command {
         e.clippy(path!(e.miri_dir / "Cargo.toml"), &flags)?;
         e.clippy(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
         e.clippy(path!(e.miri_dir / "miri-script" / "Cargo.toml"), &flags)?;
-        Ok(())
-    }
-
-    fn cargo(flags: Vec<String>) -> Result<()> {
-        let e = MiriEnv::new()?;
-        let toolchain = &e.toolchain;
-        // We carefully kept the working dir intact, so this will run cargo *on the workspace in the
-        // current working dir*, not on the main Miri workspace. That is exactly what RA needs.
-        cmd!(e.sh, "cargo +{toolchain} {flags...}").run()?;
         Ok(())
     }
 

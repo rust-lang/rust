@@ -58,9 +58,6 @@ pub enum Command {
         /// Flags that are passed through to `cargo clippy`.
         flags: Vec<String>,
     },
-    /// Runs just `cargo <flags>` with the Miri-specific environment variables.
-    /// Mainly meant to be invoked by rust-analyzer.
-    Cargo { flags: Vec<String> },
     /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
     Bench {
         target: Option<String>,
@@ -205,7 +202,6 @@ fn main() -> Result<()> {
         }
         Some("fmt") => Command::Fmt { flags: args.remainder() },
         Some("clippy") => Command::Clippy { flags: args.remainder() },
-        Some("cargo") => Command::Cargo { flags: args.remainder() },
         Some("install") => Command::Install { flags: args.remainder() },
         Some("bench") => {
             let mut target = None;

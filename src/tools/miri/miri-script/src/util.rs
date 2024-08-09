@@ -33,7 +33,7 @@ pub struct MiriEnv {
     /// miri_dir is the root of the miri repository checkout we are working in.
     pub miri_dir: PathBuf,
     /// active_toolchain is passed as `+toolchain` argument to cargo/rustc invocations.
-    pub toolchain: String,
+    toolchain: String,
     /// Extra flags to pass to cargo.
     cargo_extra_flags: Vec<String>,
     /// The rustc sysroot
