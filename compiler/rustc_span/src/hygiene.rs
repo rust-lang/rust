@@ -1415,6 +1415,14 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 
     // Overwrite the dummy data with our decoded SyntaxContextData
     HygieneData::with(|hygiene_data| {
+        if let Some(old) = hygiene_data.syntax_context_data.get(raw_id as usize)
+            && old.outer_expn == ctxt_data.outer_expn
+            && old.outer_transparency == ctxt_data.outer_transparency
+            && old.parent == ctxt_data.parent
+        {
+            ctxt_data = old.clone();
+        }
+
         let dummy = std::mem::replace(
             &mut hygiene_data.syntax_context_data[ctxt.as_u32() as usize],
             ctxt_data,
