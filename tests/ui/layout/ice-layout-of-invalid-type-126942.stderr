@@ -1,0 +1,31 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/ice-layout-of-invalid-type-126942.rs:11:6
+   |
+LL | impl<T: ?Sized> Every for Thing {
+   |      ^ unconstrained type parameter
+
+error[E0283]: type annotations needed
+  --> $DIR/ice-layout-of-invalid-type-126942.rs:18:11
+   |
+LL | static I: <Thing as Every>::Assoc = 3;
+   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
+   |
+   = note: cannot satisfy `_: Sync`
+   = note: shared static variables must have a type that implements `Sync`
+
+error[E0282]: type annotations needed
+  --> $DIR/ice-layout-of-invalid-type-126942.rs:21:11
+   |
+LL | fn foo(_: <Thing as Every>::Assoc) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
+
+error[E0282]: type annotations needed
+  --> $DIR/ice-layout-of-invalid-type-126942.rs:21:8
+   |
+LL | fn foo(_: <Thing as Every>::Assoc) {}
+   |        ^ cannot infer type for type parameter `T`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0207, E0282, E0283.
+For more information about an error, try `rustc --explain E0207`.
