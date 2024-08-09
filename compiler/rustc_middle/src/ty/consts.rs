@@ -151,7 +151,11 @@ impl<'tcx> Const<'tcx> {
 
 impl<'tcx> rustc_type_ir::inherent::Const<TyCtxt<'tcx>> for Const<'tcx> {
     fn try_to_target_usize(self, interner: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_target_usize(interner)
+        let scalar = self.try_to_valtree()?.try_to_scalar_int()?;
+        if scalar.size() != interner.data_layout.pointer_size {
+            return None;
+        }
+        Some(scalar.to_target_usize(interner))
     }
 
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferConst) -> Self {
