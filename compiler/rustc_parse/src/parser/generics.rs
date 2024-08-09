@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
 
         if let Some(struct_) = struct_
             && self.may_recover()
-            && self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+            && self.token == token::OpenDelim(Delimiter::Parenthesis)
         {
             snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
         };

@@ -1853,7 +1853,7 @@ impl KeywordIdents {
                         if !prev_dollar {
                             self.check_ident_token(cx, UnderMacro(true), ident);
                         }
-                    } else if token.kind == TokenKind::Dollar {
+                    } else if *token == TokenKind::Dollar {
                         prev_dollar = true;
                         continue;
                     }

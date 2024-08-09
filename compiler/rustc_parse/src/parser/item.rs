@@ -354,7 +354,7 @@ impl<'a> Parser<'a> {
     fn is_reuse_path_item(&mut self) -> bool {
         // no: `reuse ::path` for compatibility reasons with macro invocations
         self.token.is_keyword(kw::Reuse)
-            && self.look_ahead(1, |t| t.is_path_start() && t.kind != token::PathSep)
+            && self.look_ahead(1, |t| t.is_path_start() && *t != token::PathSep)
     }
 
     /// Are we sure this could not possibly be a macro invocation?
@@ -499,7 +499,7 @@ impl<'a> Parser<'a> {
         let mut err = self.dcx().struct_span_err(end.span, msg);
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
-        } else if self.token.kind == TokenKind::Semi {
+        } else if self.token == TokenKind::Semi {
             err.span_suggestion_verbose(
                 self.token.span,
                 "consider removing this semicolon",
@@ -777,12 +777,12 @@ impl<'a> Parser<'a> {
                         && self
                             .span_to_snippet(self.prev_token.span)
                             .is_ok_and(|snippet| snippet == "}")
-                        && self.token.kind == token::Semi;
+                        && self.token == token::Semi;
                     let mut semicolon_span = self.token.span;
                     if !is_unnecessary_semicolon {
                         // #105369, Detect spurious `;` before assoc fn body
                         is_unnecessary_semicolon = self.token == token::OpenDelim(Delimiter::Brace)
-                            && self.prev_token.kind == token::Semi;
+                            && self.prev_token == token::Semi;
                         semicolon_span = self.prev_token.span;
                     }
                     // We have to bail or we'll potentially never make progress.
@@ -1194,7 +1194,7 @@ impl<'a> Parser<'a> {
         // FIXME: This recovery should be tested better.
         if safety == Safety::Default
             && self.token.is_keyword(kw::Unsafe)
-            && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Brace))
+            && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace))
         {
             self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err().emit();
             safety = Safety::Unsafe(self.token.span);
@@ -1258,7 +1258,7 @@ impl<'a> Parser<'a> {
             && self.is_keyword_ahead(1, &[kw::Extern])
             && self.look_ahead(
                 2 + self.look_ahead(2, |t| t.can_begin_string_literal() as usize),
-                |t| t.kind == token::OpenDelim(Delimiter::Brace),
+                |t| *t == token::OpenDelim(Delimiter::Brace),
             )
     }
 
@@ -1343,7 +1343,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (Ident, StaticItem)> {
         let ident = self.parse_ident()?;
 
-        if self.token.kind == TokenKind::Lt && self.may_recover() {
+        if self.token == TokenKind::Lt && self.may_recover() {
             let generics = self.parse_generics()?;
             self.dcx().emit_err(errors::StaticWithGenerics { span: generics.span });
         }
@@ -1914,7 +1914,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.dcx().struct_span_err(sp, msg);
 
                 if self.token.is_ident()
-                    || (self.token.kind == TokenKind::Pound
+                    || (self.token == TokenKind::Pound
                         && (self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Bracket))))
                 {
                     // This is likely another field, TokenKind::Pound is used for `#[..]`
@@ -1937,8 +1937,8 @@ impl<'a> Parser<'a> {
     fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
         if let Err(err) = self.expect(&token::Colon) {
             let sm = self.psess.source_map();
-            let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
-            let semi_typo = self.token.kind == token::Semi
+            let eq_typo = self.token == token::Eq && self.look_ahead(1, |t| t.is_path_start());
+            let semi_typo = self.token == token::Semi
                 && self.look_ahead(1, |t| {
                     t.is_path_start()
                     // We check that we are in a situation like `foo; bar` to avoid bad suggestions
@@ -1974,7 +1974,7 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        if self.token.kind == token::Not {
+        if self.token == token::Not {
             if let Err(mut err) = self.unexpected() {
                 // Encounter the macro invocation
                 err.subdiagnostic(MacroExpandsToAdtField { adt_ty });
@@ -1983,10 +1983,10 @@ impl<'a> Parser<'a> {
         }
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty_for_field_def()?;
-        if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
+        if self.token == token::Colon && self.look_ahead(1, |t| *t != token::Colon) {
             self.dcx().emit_err(errors::SingleColonStructType { span: self.token.span });
         }
-        if self.token.kind == token::Eq {
+        if self.token == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
@@ -2064,7 +2064,7 @@ impl<'a> Parser<'a> {
                         .parse_ident_common(false)
                         // Cancel this error, we don't need it.
                         .map_err(|err| err.cancel())
-                    && self.token.kind == TokenKind::Colon
+                    && self.token == TokenKind::Colon
                 {
                     err.span_suggestion(
                         removal_span,
@@ -2367,12 +2367,12 @@ impl<'a> Parser<'a> {
         match self.expected_one_of_not_found(&[], expected) {
             Ok(error_guaranteed) => Ok(error_guaranteed),
             Err(mut err) => {
-                if self.token.kind == token::CloseDelim(Delimiter::Brace) {
+                if self.token == token::CloseDelim(Delimiter::Brace) {
                     // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
                     // the AST for typechecking.
                     err.span_label(ident_span, "while parsing this `fn`");
                     Ok(err.emit())
-                } else if self.token.kind == token::RArrow
+                } else if self.token == token::RArrow
                     && let Some(fn_params_end) = fn_params_end
                 {
                     // Instead of a function body, the parser has encountered a right arrow
@@ -2445,7 +2445,7 @@ impl<'a> Parser<'a> {
         fn_params_end: Option<Span>,
     ) -> PResult<'a, Option<P<Block>>> {
         let has_semi = if req_body {
-            self.token.kind == TokenKind::Semi
+            self.token == TokenKind::Semi
         } else {
             // Only include `;` in list of expected tokens if body is not required
             self.check(&TokenKind::Semi)
@@ -2458,7 +2458,7 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(Delimiter::Brace)) || self.token.is_whole_block() {
             self.parse_block_common(self.token.span, BlockCheckMode::Default, false)
                 .map(|(attrs, body)| (attrs, Some(body)))?
-        } else if self.token.kind == token::Eq {
+        } else if self.token == token::Eq {
             // Recover `fn foo() = $expr;`.
             self.bump(); // `=`
             let eq_sp = self.prev_token.span;
@@ -2761,7 +2761,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
-        if self.token.kind != TokenKind::OpenDelim(Delimiter::Parenthesis)
+        if self.token != TokenKind::OpenDelim(Delimiter::Parenthesis)
         // might be typo'd trait impl, handled elsewhere
         && !self.token.is_keyword(kw::For)
         {

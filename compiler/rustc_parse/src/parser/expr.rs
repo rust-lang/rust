@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
 
             // Look for JS' `===` and `!==` and recover
             if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
-                && self.token.kind == token::Eq
+                && self.token == token::Eq
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
                 let sp = op.span.to(self.token.span);
@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
 
             // Look for PHP's `<>` and recover
             if op.node == AssocOp::Less
-                && self.token.kind == token::Gt
+                && self.token == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
                 let sp = op.span.to(self.token.span);
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
 
             // Look for C++'s `<=>` and recover
             if op.node == AssocOp::LessEqual
-                && self.token.kind == token::Gt
+                && self.token == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
                 let sp = op.span.to(self.token.span);
@@ -882,7 +882,7 @@ impl<'a> Parser<'a> {
         let mut res = ensure_sufficient_stack(|| {
             loop {
                 let has_question =
-                    if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+                    if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
                         // We are using noexpect here because we don't expect a `?` directly after
                         // a `return` which could be suggested otherwise.
                         self.eat_noexpect(&token::Question)
@@ -894,20 +894,19 @@ impl<'a> Parser<'a> {
                     e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                     continue;
                 }
-                let has_dot =
-                    if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
-                        // We are using noexpect here because we don't expect a `.` directly after
-                        // a `return` which could be suggested otherwise.
-                        self.eat_noexpect(&token::Dot)
-                    } else if self.token.kind == TokenKind::RArrow && self.may_recover() {
-                        // Recovery for `expr->suffix`.
-                        self.bump();
-                        let span = self.prev_token.span;
-                        self.dcx().emit_err(errors::ExprRArrowCall { span });
-                        true
-                    } else {
-                        self.eat(&token::Dot)
-                    };
+                let has_dot = if self.prev_token == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
+                    // We are using noexpect here because we don't expect a `.` directly after
+                    // a `return` which could be suggested otherwise.
+                    self.eat_noexpect(&token::Dot)
+                } else if self.token == TokenKind::RArrow && self.may_recover() {
+                    // Recovery for `expr->suffix`.
+                    self.bump();
+                    let span = self.prev_token.span;
+                    self.dcx().emit_err(errors::ExprRArrowCall { span });
+                    true
+                } else {
+                    self.eat(&token::Dot)
+                };
                 if has_dot {
                     // expr.f
                     e = self.parse_dot_suffix_expr(lo, e)?;
@@ -1221,7 +1220,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a function call expression, `expr(...)`.
     fn parse_expr_fn_call(&mut self, lo: Span, fun: P<Expr>) -> P<Expr> {
-        let snapshot = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+        let snapshot = if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             Some((self.create_snapshot_for_diagnostic(), fun.kind.clone()))
         } else {
             None
@@ -1585,7 +1584,7 @@ impl<'a> Parser<'a> {
                 // Suggests using '<=' if there is an error parsing qpath when the previous token
                 // is an '=' token. Only emits suggestion if the '<' token and '=' token are
                 // directly adjacent (i.e. '=<')
-                if maybe_eq_tok.kind == TokenKind::Eq && maybe_eq_tok.span.hi() == lt_span.lo() {
+                if maybe_eq_tok == TokenKind::Eq && maybe_eq_tok.span.hi() == lt_span.lo() {
                     let eq_lt = maybe_eq_tok.span.to(lt_span);
                     err.span_suggestion(eq_lt, "did you mean", "<=", Applicability::Unspecified);
                 }
@@ -2230,7 +2229,7 @@ impl<'a> Parser<'a> {
             return Ok(());
         }
 
-        if self.token.kind == token::Comma {
+        if self.token == token::Comma {
             if !self.psess.source_map().is_multiline(prev_span.until(self.token.span)) {
                 return Ok(());
             }
@@ -2360,7 +2359,7 @@ impl<'a> Parser<'a> {
             None => {}
         }
 
-        if self.token.kind == TokenKind::Semi
+        if self.token == TokenKind::Semi
             && matches!(self.token_cursor.stack.last(), Some((.., Delimiter::Parenthesis)))
             && self.may_recover()
         {
@@ -2557,7 +2556,7 @@ impl<'a> Parser<'a> {
                             );
                         } else {
                             // Look for usages of '=>' where '>=' might be intended
-                            if maybe_fatarrow.kind == token::FatArrow {
+                            if maybe_fatarrow == token::FatArrow {
                                 err.span_suggestion(
                                     maybe_fatarrow.span,
                                     "you might have meant to write a \"greater than or equal to\" comparison",
@@ -2606,7 +2605,7 @@ impl<'a> Parser<'a> {
                 missing_let: None,
                 comparison: None,
             };
-            if self.prev_token.kind == token::BinOp(token::Or) {
+            if self.prev_token == token::BinOp(token::Or) {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
             } else {
@@ -2742,7 +2741,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_for_head(&mut self) -> PResult<'a, (P<Pat>, P<Expr>)> {
-        let begin_paren = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+        let begin_paren = if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
             // in which case we will suggest `for $stuff $block`.
@@ -2776,7 +2775,7 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
-                return if self.token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+                return if self.token == token::CloseDelim(Delimiter::Parenthesis) {
                     // We know for sure we have seen `for ($SOMETHING in $EXPR)`, so we recover the
                     // parser state and emit a targeted suggestion.
                     let span = vec![start_span, self.token.span];
@@ -2995,7 +2994,7 @@ impl<'a> Parser<'a> {
         first_expr: &P<Expr>,
         arrow_span: Span,
     ) -> Option<(Span, ErrorGuaranteed)> {
-        if self.token.kind != token::Semi {
+        if self.token != token::Semi {
             return None;
         }
         let start_snapshot = self.create_snapshot_for_diagnostic();
@@ -3024,18 +3023,18 @@ impl<'a> Parser<'a> {
         // We might have either a `,` -> `;` typo, or a block without braces. We need
         // a more subtle parsing strategy.
         loop {
-            if self.token.kind == token::CloseDelim(Delimiter::Brace) {
+            if self.token == token::CloseDelim(Delimiter::Brace) {
                 // We have reached the closing brace of the `match` expression.
                 return Some(err(self, stmts));
             }
-            if self.token.kind == token::Comma {
+            if self.token == token::Comma {
                 self.restore_snapshot(start_snapshot);
                 return None;
             }
             let pre_pat_snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_pat_no_top_alt(None, None) {
                 Ok(_pat) => {
-                    if self.token.kind == token::FatArrow {
+                    if self.token == token::FatArrow {
                         // Reached arm end.
                         self.restore_snapshot(pre_pat_snapshot);
                         return Some(err(self, stmts));
@@ -3286,7 +3285,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
-        if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+        if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             // Detect and recover from `($pat if $cond) => $arm`.
             let left = self.token.span;
             match self.parse_pat_allow_top_alt(
@@ -3344,7 +3343,7 @@ impl<'a> Parser<'a> {
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     let msg = "you might have meant to start a match arm after the match guard";
                     if self.eat(&token::CloseDelim(Delimiter::Brace)) {
-                        let applicability = if self.token.kind != token::FatArrow {
+                        let applicability = if self.token != token::FatArrow {
                             // We have high confidence that we indeed didn't have a struct
                             // literal in the match guard, but rather we had some operation
                             // that ended in a path, immediately followed by a block that was
@@ -3565,7 +3564,7 @@ impl<'a> Parser<'a> {
                         && self.look_ahead(1, |t| {
                             AssocOp::from_token(t).is_some()
                                 || matches!(t.kind, token::OpenDelim(_))
-                                || t.kind == token::Dot
+                                || *t == token::Dot
                         })
                     {
                         // Looks like they tried to write a shorthand, complex expression.
@@ -3850,11 +3849,11 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
             let trailing = (this.restrictions.contains(Restrictions::STMT_EXPR)
-                 && this.token.kind == token::Semi)
+                 && this.token == token::Semi)
             // FIXME: pass an additional condition through from the place
             // where we know we need a comma, rather than assuming that
             // `#[attr] expr,` always captures a trailing comma.
-            || this.token.kind == token::Comma;
+            || this.token == token::Comma;
             Ok((res, trailing))
         })
     }
