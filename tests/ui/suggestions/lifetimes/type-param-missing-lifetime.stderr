@@ -44,8 +44,9 @@ LL |         check_bound(arg, lt);
    |
 help: consider adding an explicit lifetime bound
    |
-LL |     async fn bar2<'c, 'b>(_dummy: &'a u8, arg: A, lt: Inv<'c>) where A: 'c {
-   |                   +++                                     ~~   +++++++++++
+LL -     async fn bar2<'b>(_dummy: &'a u8, arg: A, lt: Inv<'_>) {
+LL +     async fn bar2<'c, 'b>(_dummy: &'a u8, arg: A, lt: Inv<'c>) where A: 'c {
+   |
 
 error[E0311]: the parameter type `A` may not live long enough
   --> $DIR/type-param-missing-lifetime.rs:47:9
@@ -58,8 +59,9 @@ LL |         check_bound(self.0 .1, self.0 .0);
    |
 help: consider adding an explicit lifetime bound
    |
-LL | impl<'a, A: 'a> MyTy<Elided<'a, A>> {
-   |      +++  ++++              ~~
+LL - impl<A> MyTy<Elided<'_, A>> {
+LL + impl<'a, A: 'a> MyTy<Elided<'a, A>> {
+   |
 
 error: aborting due to 4 previous errors
 

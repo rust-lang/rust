@@ -18,8 +18,9 @@ LL | #![deny(elided_lifetimes_in_associated_constant)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use the `'static` lifetime
    |
-LL |     const FOO: Foo<'static> = Foo { x: PhantomData::<&()> };
-   |                    ~~~~~~~
+LL -     const FOO: Foo<'_> = Foo { x: PhantomData::<&()> };
+LL +     const FOO: Foo<'static> = Foo { x: PhantomData::<&()> };
+   |
 
 error: `&` without an explicit lifetime name cannot be used here
   --> $DIR/assoc-const-elided-lifetime.rs:14:16

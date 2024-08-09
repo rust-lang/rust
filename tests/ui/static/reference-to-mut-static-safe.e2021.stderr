@@ -10,8 +10,9 @@ LL |     let _x = &X;
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |     let _x = addr_of!(X);
-   |              ~~~~~~~~~ +
+LL -     let _x = &X;
+LL +     let _x = addr_of!(X);
+   |
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
   --> $DIR/reference-to-mut-static-safe.rs:9:15

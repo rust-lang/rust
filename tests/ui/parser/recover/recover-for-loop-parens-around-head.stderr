@@ -18,8 +18,9 @@ LL |         const _RECOVERY_WITNESS: u32 = 0u8;
    |
 help: change the type of the numeric literal from `u8` to `u32`
    |
-LL |         const _RECOVERY_WITNESS: u32 = 0u32;
-   |                                         ~~~
+LL -         const _RECOVERY_WITNESS: u32 = 0u8;
+LL +         const _RECOVERY_WITNESS: u32 = 0u32;
+   |
 
 error: aborting due to 2 previous errors
 

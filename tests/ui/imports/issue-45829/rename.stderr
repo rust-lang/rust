@@ -9,8 +9,9 @@ LL | use std as core;
    = note: `core` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | use std as other_core;
-   |         ~~~~~~~~~~~~~
+LL - use std as core;
+LL + use std as other_core;
+   |
 
 error: aborting due to 1 previous error
 

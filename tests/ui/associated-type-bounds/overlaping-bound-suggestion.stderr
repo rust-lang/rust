@@ -12,8 +12,9 @@ LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>
    |
 help: if there were a trait named `Example` with associated type `IntoIterator` implemented for `(dyn IntoIterator + 'static)`, you could use the fully-qualified path
    |
-LL |     inner: <<(dyn IntoIterator + 'static) as Example>::IntoIterator as Item>::Core,
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
+LL +     inner: <<(dyn IntoIterator + 'static) as Example>::IntoIterator as Item>::Core,
+   |
 
 error: aborting due to 2 previous errors
 

@@ -29,8 +29,9 @@ LL |     fn from_residual(t: T) -> _ {
    |
 help: try replacing `_` with the type in the corresponding trait method signature
    |
-LL |     fn from_residual(t: T) -> T {
-   |                               ~
+LL -     fn from_residual(t: T) -> _ {
+LL +     fn from_residual(t: T) -> T {
+   |
 
 error: aborting due to 4 previous errors
 

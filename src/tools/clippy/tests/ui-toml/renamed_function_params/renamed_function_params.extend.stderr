@@ -27,8 +27,9 @@ LL |     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
    |
 help: consider using the default names
    |
-LL |     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
-   |                              ~~~~           ~~~~~
+LL -     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
+LL +     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
+   |
 
 error: aborting due to 4 previous errors
 

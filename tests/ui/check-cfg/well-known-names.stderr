@@ -9,8 +9,9 @@ LL | #[cfg(target_oz = "linux")]
    = note: `#[warn(unexpected_cfgs)]` on by default
 help: there is a config with a similar name and value
    |
-LL | #[cfg(target_os = "linux")]
-   |       ~~~~~~~~~
+LL - #[cfg(target_oz = "linux")]
+LL + #[cfg(target_os = "linux")]
+   |
 
 warning: unexpected `cfg` condition name: `features`
   --> $DIR/well-known-names.rs:14:7

@@ -12,12 +12,14 @@ LL | impl Me2 for usize { fn me(&self) -> usize { *self } }
    = note: candidate #2 is defined in an impl of the trait `Me` for the type `usize`
 help: disambiguate the method for candidate #1
    |
-LL | fn main() { Me2::me(&1_usize); }
-   |             ~~~~~~~~~~~~~~~~~
+LL - fn main() { 1_usize.me(); }
+LL + fn main() { Me2::me(&1_usize); }
+   |
 help: disambiguate the method for candidate #2
    |
-LL | fn main() { Me::me(&1_usize); }
-   |             ~~~~~~~~~~~~~~~~
+LL - fn main() { 1_usize.me(); }
+LL + fn main() { Me::me(&1_usize); }
+   |
 
 error: aborting due to 1 previous error
 

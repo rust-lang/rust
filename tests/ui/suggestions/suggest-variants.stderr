@@ -9,8 +9,9 @@ LL |     println!("My shape is {:?}", Shape::Squareee { size: 5});
    |
 help: there is a variant with a similar name
    |
-LL |     println!("My shape is {:?}", Shape::Square { size: 5});
-   |                                         ~~~~~~
+LL -     println!("My shape is {:?}", Shape::Squareee { size: 5});
+LL +     println!("My shape is {:?}", Shape::Square { size: 5});
+   |
 
 error[E0599]: no variant named `Circl` found for enum `Shape`
   --> $DIR/suggest-variants.rs:13:41
@@ -23,8 +24,9 @@ LL |     println!("My shape is {:?}", Shape::Circl { size: 5});
    |
 help: there is a variant with a similar name
    |
-LL |     println!("My shape is {:?}", Shape::Circle { size: 5});
-   |                                         ~~~~~~
+LL -     println!("My shape is {:?}", Shape::Circl { size: 5});
+LL +     println!("My shape is {:?}", Shape::Circle { size: 5});
+   |
 
 error[E0599]: no variant named `Rombus` found for enum `Shape`
   --> $DIR/suggest-variants.rs:14:41
@@ -46,8 +48,9 @@ LL |     Shape::Squareee;
    |
 help: there is a variant with a similar name
    |
-LL |     Shape::Square { size: /* value */ };
-   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     Shape::Squareee;
+LL +     Shape::Square { size: /* value */ };
+   |
 
 error[E0599]: no variant or associated item named `Circl` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:16:12
@@ -60,8 +63,9 @@ LL |     Shape::Circl;
    |
 help: there is a variant with a similar name
    |
-LL |     Shape::Circle { radius: /* value */ };
-   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     Shape::Circl;
+LL +     Shape::Circle { radius: /* value */ };
+   |
 
 error[E0599]: no variant or associated item named `Rombus` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:17:12

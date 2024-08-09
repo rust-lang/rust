@@ -11,8 +11,9 @@ LL |     fn bar(&self, _: T);
    |        ^^^
 help: consider moving this generic argument to the `Foo` trait, which takes up to 1 argument
    |
-LL |     Foo::<i32>::bar(1, 0);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     1.bar::<i32>(0);
+LL +     Foo::<i32>::bar(1, 0);
+   |
 help: remove the unnecessary generics
    |
 LL -     1.bar::<i32>(0);

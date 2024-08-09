@@ -6,8 +6,9 @@ LL |     let y = 0;
    |
 help: Unicode character ';' (Greek Question Mark) looks like ';' (Semicolon), but it is not
    |
-LL |     let y = 0;
-   |              ~
+LL -     let y = 0;
+LL +     let y = 0;
+   |
 
 error: unknown start of token: \u{a0}
   --> $DIR/unicode-chars.rs:5:5
@@ -29,8 +30,9 @@ LL |     let _ = 1 ⩵ 2;
    |
 help: Unicode character '⩵' (Two Consecutive Equals Signs) looks like '==' (Double Equals Sign), but it is not
    |
-LL |     let _ = 1 == 2;
-   |               ~~
+LL -     let _ = 1 ⩵ 2;
+LL +     let _ = 1 == 2;
+   |
 
 error: aborting due to 3 previous errors
 

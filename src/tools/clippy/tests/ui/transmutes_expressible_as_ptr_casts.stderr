@@ -17,8 +17,9 @@ LL |     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr
    = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
 help: use `pointer::cast` instead
    |
-LL |     let _ptr_i8_transmute = unsafe { ptr_i32.cast::<i8>() };
-   |                                      ~~~~~~~~~~~~~~~~~~~~
+LL -     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr_i32) };
+LL +     let _ptr_i8_transmute = unsafe { ptr_i32.cast::<i8>() };
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmutes_expressible_as_ptr_casts.rs:27:46
@@ -28,8 +29,9 @@ LL |     let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *con
    |
 help: use an `as` cast instead
    |
-LL |     let _ptr_to_unsized_transmute = unsafe { slice_ptr as *const [u32] };
-   |                                              ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *const [u32]>(slice_ptr) };
+LL +     let _ptr_to_unsized_transmute = unsafe { slice_ptr as *const [u32] };
+   |
 
 error: transmute from `*const i32` to `usize` which could be expressed as a pointer cast instead
   --> tests/ui/transmutes_expressible_as_ptr_casts.rs:33:50

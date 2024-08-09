@@ -11,12 +11,14 @@ LL | #![deny(clippy::index_refutable_slice)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a slice pattern here
    |
-LL |     if let Some([_, _, _, _, _, _, _, slice_7, ..]) = slice {
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     if let Some(slice) = slice {
+LL +     if let Some([_, _, _, _, _, _, _, slice_7, ..]) = slice {
+   |
 help: and replace the index expressions here
    |
-LL |         println!("{}", slice_7);
-   |                        ~~~~~~~
+LL -         println!("{}", slice[7]);
+LL +         println!("{}", slice_7);
+   |
 
 error: aborting due to 1 previous error
 

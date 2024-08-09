@@ -6,8 +6,9 @@ LL |     let _: u32 = 5i32.try_into::<32>().unwrap();
    |
 help: consider moving this generic argument to the `TryInto` trait, which takes up to 1 argument
    |
-LL |     let _: u32 = TryInto::<32>::try_into(5i32).unwrap();
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: u32 = 5i32.try_into::<32>().unwrap();
+LL +     let _: u32 = TryInto::<32>::try_into(5i32).unwrap();
+   |
 help: remove the unnecessary generics
    |
 LL -     let _: u32 = 5i32.try_into::<32>().unwrap();

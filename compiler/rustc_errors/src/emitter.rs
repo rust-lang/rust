@@ -1834,7 +1834,7 @@ impl HumanEmitter {
         for (complete, parts, highlights, _) in suggestions.iter().take(MAX_SUGGESTIONS) {
             debug!(?complete, ?parts, ?highlights);
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
+            let has_deletion = parts.iter().any(|p| p.is_deletion(sm) || p.is_replacement(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if let Some(span) = span.primary_span() {

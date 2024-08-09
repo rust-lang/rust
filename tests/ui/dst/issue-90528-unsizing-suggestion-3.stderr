@@ -67,8 +67,9 @@ LL | fn wants_write(_: impl Write) {}
    |                        ^^^^^ required by this bound in `wants_write`
 help: consider changing this borrow's mutability
    |
-LL |     wants_write(&mut [0u8][..]);
-   |                 ~~~~
+LL -     wants_write(&[0u8][..]);
+LL +     wants_write(&mut [0u8][..]);
+   |
 
 error: aborting due to 4 previous errors
 

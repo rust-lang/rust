@@ -6,8 +6,9 @@ LL |     String::from::utf8;
    |
 help: there is an associated function with a similar name: `from_utf8`
    |
-LL |     String::from_utf8;
-   |             ~~~~~~~~~
+LL -     String::from::utf8;
+LL +     String::from_utf8;
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:5:5
@@ -17,8 +18,9 @@ LL |     String::from::utf8();
    |
 help: there is an associated function with a similar name: `from_utf8`
    |
-LL |     String::from_utf8();
-   |             ~~~~~~~~~
+LL -     String::from::utf8();
+LL +     String::from_utf8();
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:8:5
@@ -28,8 +30,9 @@ LL |     String::from::utf16();
    |
 help: there is an associated function with a similar name: `from_utf16`
    |
-LL |     String::from_utf16();
-   |             ~~~~~~~~~~
+LL -     String::from::utf16();
+LL +     String::from_utf16();
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:11:5
@@ -39,8 +42,9 @@ LL |     String::from::method_that_doesnt_exist();
    |
 help: if there were a trait named `Example` with associated type `from` implemented for `String`, you could use the fully-qualified path
    |
-LL |     <String as Example>::from::method_that_doesnt_exist();
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     String::from::method_that_doesnt_exist();
+LL +     <String as Example>::from::method_that_doesnt_exist();
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:14:5
@@ -50,8 +54,9 @@ LL |     str::from::utf8();
    |
 help: if there were a trait named `Example` with associated type `from` implemented for `str`, you could use the fully-qualified path
    |
-LL |     <str as Example>::from::utf8();
-   |     ~~~~~~~~~~~~~~~~~~~~~~
+LL -     str::from::utf8();
+LL +     <str as Example>::from::utf8();
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/issue-109195.rs:17:5
@@ -61,8 +66,9 @@ LL |     str::from::utf8_mut();
    |
 help: if there were a trait named `Example` with associated type `from` implemented for `str`, you could use the fully-qualified path
    |
-LL |     <str as Example>::from::utf8_mut();
-   |     ~~~~~~~~~~~~~~~~~~~~~~
+LL -     str::from::utf8_mut();
+LL +     <str as Example>::from::utf8_mut();
+   |
 
 error: aborting due to 6 previous errors
 

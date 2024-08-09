@@ -91,7 +91,8 @@ LL |     let r = iter.next().unwrap();
    |
 help: try `split_once`
    |
-LL |     let (l, r) = "a.b.c".split_once('.').unwrap();
+LL -     let mut iter = "a.b.c".splitn(2, '.');
+LL +     let (l, r) = "a.b.c".split_once('.').unwrap();
    |
 help: remove the `iter` usages
    |
@@ -114,7 +115,8 @@ LL |     let r = iter.next()?;
    |
 help: try `split_once`
    |
-LL |     let (l, r) = "a.b.c".split_once('.')?;
+LL -     let mut iter = "a.b.c".splitn(2, '.');
+LL +     let (l, r) = "a.b.c".split_once('.')?;
    |
 help: remove the `iter` usages
    |
@@ -137,7 +139,8 @@ LL |     let l = iter.next().unwrap();
    |
 help: try `rsplit_once`
    |
-LL |     let (l, r) = "a.b.c".rsplit_once('.').unwrap();
+LL -     let mut iter = "a.b.c".rsplitn(2, '.');
+LL +     let (l, r) = "a.b.c".rsplit_once('.').unwrap();
    |
 help: remove the `iter` usages
    |
@@ -160,7 +163,8 @@ LL |     let l = iter.next()?;
    |
 help: try `rsplit_once`
    |
-LL |     let (l, r) = "a.b.c".rsplit_once('.')?;
+LL -     let mut iter = "a.b.c".rsplitn(2, '.');
+LL +     let (l, r) = "a.b.c".rsplit_once('.')?;
    |
 help: remove the `iter` usages
    |
@@ -189,7 +193,8 @@ LL |     let b = iter.next().unwrap();
    |
 help: try `split_once`
    |
-LL |     let (a, b) = "a.b.c".split_once('.').unwrap();
+LL -     let mut iter = "a.b.c".splitn(2, '.');
+LL +     let (a, b) = "a.b.c".split_once('.').unwrap();
    |
 help: remove the `iter` usages
    |

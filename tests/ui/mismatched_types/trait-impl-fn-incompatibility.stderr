@@ -13,8 +13,9 @@ LL |     fn foo(x: u16);
               found signature `fn(i16)`
 help: change the parameter type to match the trait
    |
-LL |     fn foo(x: u16) { }
-   |               ~~~
+LL -     fn foo(x: i16) { }
+LL +     fn foo(x: u16) { }
+   |
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/trait-impl-fn-incompatibility.rs:10:28
@@ -31,8 +32,9 @@ LL |     fn bar(&mut self, bar: &mut Bar);
               found signature `fn(&mut Bar, &Bar)`
 help: change the parameter type to match the trait
    |
-LL |     fn bar(&mut self, bar: &mut Bar) { }
-   |                            ~~~~~~~~
+LL -     fn bar(&mut self, bar: &Bar) { }
+LL +     fn bar(&mut self, bar: &mut Bar) { }
+   |
 
 error: aborting due to 2 previous errors
 

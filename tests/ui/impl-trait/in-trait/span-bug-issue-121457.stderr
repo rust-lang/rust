@@ -46,8 +46,9 @@ LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missin
    = note: `#[warn(refining_impl_trait_reachable)]` on by default
 help: replace the return type so that it matches the trait
    |
-LL |     fn iter(&self) -> impl Iterator {}
-   |                       ~~~~~~~~~~~~~
+LL -     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
+LL +     fn iter(&self) -> impl Iterator {}
+   |
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

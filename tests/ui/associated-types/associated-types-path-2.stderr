@@ -13,8 +13,9 @@ LL | pub fn f1<T: Foo>(a: T, x: T::A) {}
    |        ^^               -------
 help: change the type of the numeric literal from `i32` to `u32`
    |
-LL |     f1(2i32, 4u32);
-   |               ~~~
+LL -     f1(2i32, 4i32);
+LL +     f1(2i32, 4u32);
+   |
 
 error[E0277]: the trait bound `u32: Foo` is not satisfied
   --> $DIR/associated-types-path-2.rs:29:8

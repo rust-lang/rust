@@ -8,8 +8,9 @@ LL |             break 9;
    |
 help: use `break` on its own without a value inside this `while` loop
    |
-LL |             break;
-   |             ~~~~~
+LL -             break 9;
+LL +             break;
+   |
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/issue-114529-illegal-break-with-value.rs:16:13
@@ -21,8 +22,9 @@ LL |             break v;
    |
 help: use `break` on its own without a value inside this `while` loop
    |
-LL |             break;
-   |             ~~~~~
+LL -             break v;
+LL +             break;
+   |
 
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/issue-114529-illegal-break-with-value.rs:22:9
@@ -36,8 +38,11 @@ LL | |         });
    |
 help: use `break` on its own without a value inside this `while` loop
    |
-LL |         break;
-   |         ~~~~~
+LL -         break (|| {
+LL -             let local = 9;
+LL -         });
+LL +         break;
+   |
 
 error: aborting due to 3 previous errors
 

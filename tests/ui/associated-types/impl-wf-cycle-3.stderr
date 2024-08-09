@@ -19,8 +19,9 @@ LL |     T: A<Self::Type>,
    |        ------------- unsatisfied trait bound introduced here
 help: replace the associated type with the type specified in this `impl`
    |
-LL |     T: A<bool>,
-   |          ~~~~
+LL -     T: A<Self::Type>,
+LL +     T: A<bool>,
+   |
 
 error: aborting due to 1 previous error
 

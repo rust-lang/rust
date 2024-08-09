@@ -14,8 +14,9 @@ LL | #![deny(static_mut_refs)]
    |         ^^^^^^^^^^^^^^^
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |         let _y = addr_of!(X);
-   |                  ~~~~~~~~~ +
+LL -         let _y = &X;
+LL +         let _y = addr_of!(X);
+   |
 
 error: creating a mutable reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:20:18
@@ -28,8 +29,9 @@ LL |         let _y = &mut X;
    = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
 help: use `addr_of_mut!` instead to create a raw pointer
    |
-LL |         let _y = addr_of_mut!(X);
-   |                  ~~~~~~~~~~~~~ +
+LL -         let _y = &mut X;
+LL +         let _y = addr_of_mut!(X);
+   |
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:28:22
@@ -56,8 +58,9 @@ LL |         let (_b, _c) = (&X, &Y);
    = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |         let (_b, _c) = (addr_of!(X), &Y);
-   |                         ~~~~~~~~~ +
+LL -         let (_b, _c) = (&X, &Y);
+LL +         let (_b, _c) = (addr_of!(X), &Y);
+   |
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:32:29
@@ -70,8 +73,9 @@ LL |         let (_b, _c) = (&X, &Y);
    = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |         let (_b, _c) = (&X, addr_of!(Y));
-   |                             ~~~~~~~~~ +
+LL -         let (_b, _c) = (&X, &Y);
+LL +         let (_b, _c) = (&X, addr_of!(Y));
+   |
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/reference-to-mut-static.rs:38:13
@@ -84,8 +88,9 @@ LL |         foo(&X);
    = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
 help: use `addr_of!` instead to create a raw pointer
    |
-LL |         foo(addr_of!(X));
-   |             ~~~~~~~~~ +
+LL -         foo(&X);
+LL +         foo(addr_of!(X));
+   |
 
 error: aborting due to 6 previous errors
 

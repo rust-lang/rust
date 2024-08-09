@@ -14,8 +14,9 @@ LL |         S(Either::Right(_)) => {}
    |         ++                +
 help: you might have meant to use field `0` whose type is `Either<usize, usize>`
    |
-LL |     match S(Either::Left(5)).0 {
-   |           ~~~~~~~~~~~~~~~~~~~~
+LL -     match S(Either::Left(5)) {
+LL +     match S(Either::Left(5)).0 {
+   |
 
 error: aborting due to 1 previous error
 

@@ -16,8 +16,9 @@ LL | impl Foo<N = 3> for Bar {
    |
 help: to use `3` as a generic argument specify it directly
    |
-LL | impl Foo<3> for Bar {
-   |          ~
+LL - impl Foo<N = 3> for Bar {
+LL + impl Foo<3> for Bar {
+   |
 
 error: aborting due to 2 previous errors
 

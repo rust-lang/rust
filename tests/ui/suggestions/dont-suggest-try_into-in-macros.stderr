@@ -6,8 +6,9 @@ LL |     assert_eq!(10u64, 10usize);
    |
 help: change the type of the numeric literal from `usize` to `u64`
    |
-LL |     assert_eq!(10u64, 10u64);
-   |                         ~~~
+LL -     assert_eq!(10u64, 10usize);
+LL +     assert_eq!(10u64, 10u64);
+   |
 
 error: aborting due to 1 previous error
 

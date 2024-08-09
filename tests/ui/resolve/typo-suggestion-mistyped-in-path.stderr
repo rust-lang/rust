@@ -18,8 +18,9 @@ LL |     Struct::fob();
    |
 help: there is an associated function `foo` with a similar name
    |
-LL |     Struct::foo();
-   |             ~~~
+LL -     Struct::fob();
+LL +     Struct::foo();
+   |
 
 error[E0433]: failed to resolve: use of undeclared type `Struc`
   --> $DIR/typo-suggestion-mistyped-in-path.rs:27:5
@@ -38,8 +39,9 @@ LL |     modul::foo();
    |
 help: there is a crate or module with a similar name
    |
-LL |     module::foo();
-   |     ~~~~~~
+LL -     modul::foo();
+LL +     module::foo();
+   |
 
 error[E0433]: failed to resolve: use of undeclared type `Trai`
   --> $DIR/typo-suggestion-mistyped-in-path.rs:39:5

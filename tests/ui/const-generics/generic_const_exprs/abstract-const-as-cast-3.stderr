@@ -16,8 +16,9 @@ LL |     fn assert_impl<T: Trait>() {}
    |                       ^^^^^ required by this bound in `assert_impl`
 help: try adding a `where` bound
    |
-LL |     EvaluatableU128<{N as u128}>:, [(); { O as u128 } as usize]: {
-   |                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     EvaluatableU128<{N as u128}>:, {
+LL +     EvaluatableU128<{N as u128}>:, [(); { O as u128 } as usize]: {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:17:5
@@ -51,8 +52,9 @@ LL |     fn assert_impl<T: Trait>() {}
    |                       ^^^^^ required by this bound in `assert_impl`
 help: try adding a `where` bound
    |
-LL |     EvaluatableU128<{N as u128}>:, [(); { O as u128 } as usize]: {
-   |                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     EvaluatableU128<{N as u128}>:, {
+LL +     EvaluatableU128<{N as u128}>:, [(); { O as u128 } as usize]: {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:20:5
@@ -114,8 +116,9 @@ LL |     fn assert_impl<T: Trait>() {}
    |                       ^^^^^ required by this bound in `assert_impl`
 help: try adding a `where` bound
    |
-LL |     EvaluatableU128<{N as _}>:, [(); { O as u128 } as usize]: {
-   |                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     EvaluatableU128<{N as _}>:, {
+LL +     EvaluatableU128<{N as _}>:, [(); { O as u128 } as usize]: {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:35:5
@@ -149,8 +152,9 @@ LL |     fn assert_impl<T: Trait>() {}
    |                       ^^^^^ required by this bound in `assert_impl`
 help: try adding a `where` bound
    |
-LL |     EvaluatableU128<{N as _}>:, [(); { O as u128 } as usize]: {
-   |                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     EvaluatableU128<{N as _}>:, {
+LL +     EvaluatableU128<{N as _}>:, [(); { O as u128 } as usize]: {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/abstract-const-as-cast-3.rs:38:5

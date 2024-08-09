@@ -6,8 +6,9 @@ LL |     public const X: i32 = 123;
    |
 help: write `pub` instead of `public` to make the item public
    |
-LL |     pub const X: i32 = 123;
-   |     ~~~
+LL -     public const X: i32 = 123;
+LL +     pub const X: i32 = 123;
+   |
 
 error: aborting due to 1 previous error
 

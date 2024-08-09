@@ -71,12 +71,14 @@ LL |     let fail_multi_zero = 000_123usize;
    = help: to override `-D warnings` add `#[allow(clippy::zero_prefixed_literal)]`
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
-LL |     let fail_multi_zero = 123usize;
-   |                           ~~~~~~~~
+LL -     let fail_multi_zero = 000_123usize;
+LL +     let fail_multi_zero = 123usize;
+   |
 help: if you mean to use an octal constant, use `0o`
    |
-LL |     let fail_multi_zero = 0o123usize;
-   |                           ~~~~~~~~~~
+LL -     let fail_multi_zero = 000_123usize;
+LL +     let fail_multi_zero = 0o123usize;
+   |
 
 error: integer type suffix should not be separated by an underscore
   --> tests/ui/literals.rs:36:16
@@ -92,12 +94,14 @@ LL |     let fail8 = 0123;
    |
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
-LL |     let fail8 = 123;
-   |                 ~~~
+LL -     let fail8 = 0123;
+LL +     let fail8 = 123;
+   |
 help: if you mean to use an octal constant, use `0o`
    |
-LL |     let fail8 = 0o123;
-   |                 ~~~~~
+LL -     let fail8 = 0123;
+LL +     let fail8 = 0o123;
+   |
 
 error: integer type suffix should not be separated by an underscore
   --> tests/ui/literals.rs:48:16
@@ -143,8 +147,9 @@ LL |     let _ = 08;
    |
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
-LL |     let _ = 8;
-   |             ~
+LL -     let _ = 08;
+LL +     let _ = 8;
+   |
 
 error: this is a decimal constant
   --> tests/ui/literals.rs:72:13
@@ -154,8 +159,9 @@ LL |     let _ = 09;
    |
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
-LL |     let _ = 9;
-   |             ~
+LL -     let _ = 09;
+LL +     let _ = 9;
+   |
 
 error: this is a decimal constant
   --> tests/ui/literals.rs:74:13
@@ -165,8 +171,9 @@ LL |     let _ = 089;
    |
 help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
-LL |     let _ = 89;
-   |             ~~
+LL -     let _ = 089;
+LL +     let _ = 89;
+   |
 
 error: aborting due to 20 previous errors
 

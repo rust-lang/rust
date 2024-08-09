@@ -28,8 +28,9 @@ LL |         println!("{self.config}");
    |                    +++++
 help: a local variable with a similar name exists
    |
-LL |         println!("{cofig}");
-   |                    ~~~~~
+LL -         println!("{config}");
+LL +         println!("{cofig}");
+   |
 
 error[E0425]: cannot find value `bah` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:33:9
@@ -46,8 +47,9 @@ LL |         Self::bah;
    |         ++++++
 help: a function with a similar name exists
    |
-LL |         ba;
-   |         ~~
+LL -         bah;
+LL +         ba;
+   |
 
 error[E0425]: cannot find value `BAR` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:35:9
@@ -64,8 +66,9 @@ LL |         Self::BAR;
    |         ++++++
 help: a constant with a similar name exists
    |
-LL |         BARR;
-   |         ~~~~
+LL -         BAR;
+LL +         BARR;
+   |
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:37:18
@@ -82,8 +85,9 @@ LL |         let foo: Self::Baz = "".to_string();
    |                  ++++++
 help: a type alias with a similar name exists
    |
-LL |         let foo: Bar = "".to_string();
-   |                  ~~~
+LL -         let foo: Baz = "".to_string();
+LL +         let foo: Bar = "".to_string();
+   |
 
 error[E0425]: cannot find function `baz` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:31:9
@@ -100,8 +104,9 @@ LL |         self.baz();
    |         +++++
 help: a function with a similar name exists
    |
-LL |         ba();
-   |         ~~
+LL -         baz();
+LL +         ba();
+   |
 
 error: aborting due to 7 previous errors
 

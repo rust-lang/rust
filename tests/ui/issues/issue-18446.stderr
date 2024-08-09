@@ -16,8 +16,9 @@ LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     T::foo(&x);
-   |     ~~~~~~~~~~
+LL -     x.foo();
+LL +     T::foo(&x);
+   |
 
 error: aborting due to 1 previous error
 

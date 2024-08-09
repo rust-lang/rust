@@ -58,8 +58,9 @@ LL |     let NormalStruct { first_field, second_field } = ns;
    |
 help: add `..` at the end of the field list to ignore all other fields
    |
-LL |     let NormalStruct { first_field, second_field , .. } = ns;
-   |                                                  ~~~~~~
+LL -     let NormalStruct { first_field, second_field } = ns;
+LL +     let NormalStruct { first_field, second_field , .. } = ns;
+   |
 
 error[E0423]: cannot initialize a tuple struct which contains private fields
   --> $DIR/struct.rs:20:14
@@ -75,8 +76,9 @@ LL |     let TupleStruct { 0: first_field, 1: second_field } = ts;
    |
 help: add `..` at the end of the field list to ignore all other fields
    |
-LL |     let TupleStruct { 0: first_field, 1: second_field , .. } = ts;
-   |                                                       ~~~~~~
+LL -     let TupleStruct { 0: first_field, 1: second_field } = ts;
+LL +     let TupleStruct { 0: first_field, 1: second_field , .. } = ts;
+   |
 
 error[E0638]: `..` required with struct marked as non-exhaustive
   --> $DIR/struct.rs:35:9
@@ -86,8 +88,9 @@ LL |     let UnitStruct { } = us;
    |
 help: add `..` at the end of the field list to ignore all other fields
    |
-LL |     let UnitStruct { .. } = us;
-   |                      ~~~~
+LL -     let UnitStruct { } = us;
+LL +     let UnitStruct { .. } = us;
+   |
 
 error: aborting due to 9 previous errors
 

@@ -16,12 +16,14 @@ LL |     fn foo(self) {}
    |     ^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     A::foo(AB {});
-   |     ~~~~~~~~~~~~~
+LL -     AB {}.foo();
+LL +     A::foo(AB {});
+   |
 help: disambiguate the method for candidate #2
    |
-LL |     B::foo(AB {});
-   |     ~~~~~~~~~~~~~
+LL -     AB {}.foo();
+LL +     B::foo(AB {});
+   |
 
 error: aborting due to 1 previous error
 

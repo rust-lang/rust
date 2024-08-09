@@ -6,8 +6,9 @@ LL |     let f = Foo::Variant(42);
    |
 help: you might have meant to create a new value of the struct
    |
-LL |     let f = Foo::Variant { x: /* value */ };
-   |                          ~~~~~~~~~~~~~~~~~~
+LL -     let f = Foo::Variant(42);
+LL +     let f = Foo::Variant { x: /* value */ };
+   |
 
 error: aborting due to 1 previous error
 

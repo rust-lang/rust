@@ -8,8 +8,9 @@ LL | mod test {}
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:6:1
@@ -27,8 +28,9 @@ LL | | }
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:20:1
@@ -40,8 +42,9 @@ LL | extern "C" {}
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:23:1
@@ -53,8 +56,9 @@ LL | trait Foo {}
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:26:1
@@ -66,8 +70,9 @@ LL | impl Foo for i32 {}
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:29:1
@@ -79,8 +84,9 @@ LL | const FOO: i32 = -1_i32;
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:32:1
@@ -92,8 +98,9 @@ LL | static BAR: u64 = 10_000_u64;
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:35:1
@@ -107,8 +114,9 @@ LL | | }
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:40:1
@@ -120,8 +128,9 @@ LL | struct NewI32(i32);
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:43:1
@@ -136,8 +145,9 @@ LL | | }
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:50:1
@@ -153,8 +163,9 @@ LL | | }
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 warning: the `#[test]` attribute may only be used on a non-associated function
   --> $DIR/test-on-not-fn.rs:61:1
@@ -166,8 +177,9 @@ LL | foo!();
    |
 help: replace with conditional compilation to make the item only exist when tests are being run
    |
-LL | #[cfg(test)]
-   | ~~~~~~~~~~~~
+LL - #[test]
+LL + #[cfg(test)]
+   |
 
 error: aborting due to 11 previous errors; 1 warning emitted
 

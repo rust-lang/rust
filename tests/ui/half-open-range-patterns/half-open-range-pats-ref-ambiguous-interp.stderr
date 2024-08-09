@@ -76,8 +76,9 @@ LL |         &...0 | _ => {}
    |
 help: use `..=` instead
    |
-LL |         &..=0 | _ => {}
-   |          ~~~
+LL -         &...0 | _ => {}
+LL +         &..=0 | _ => {}
+   |
 
 error: the range pattern here has ambiguous interpretation
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:20:10

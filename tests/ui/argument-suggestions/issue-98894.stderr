@@ -11,8 +11,9 @@ LL |     (|_, ()| ())(if true {} else {return;});
    |      ^^^^^^^
 help: provide the argument
    |
-LL |     (|_, ()| ())(if true {} else {return;}, ());
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     (|_, ()| ())(if true {} else {return;});
+LL +     (|_, ()| ())(if true {} else {return;}, ());
+   |
 
 error: aborting due to 1 previous error
 

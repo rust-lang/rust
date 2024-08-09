@@ -27,8 +27,9 @@ LL |     c2: C,
    |     -----
 help: did you mean
    |
-LL |     f(A, A, B, B, C, C);
-   |      ~~~~~~~~~~~~~~~~~~
+LL -     f(C, A, A, A, B, B, C);
+LL +     f(A, A, B, B, C, C);
+   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:17:5
@@ -55,8 +56,9 @@ LL |     c2: C,
    |     -----
 help: did you mean
    |
-LL |     f(A, A, B, B, C, C);
-   |      ~~~~~~~~~~~~~~~~~~
+LL -     f(C, C, A, A, B, B);
+LL +     f(A, A, B, B, C, C);
+   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:18:5
@@ -86,8 +88,9 @@ LL |     c2: C,
    |     -----
 help: did you mean
    |
-LL |     f(A, A, B, B, /* C */, /* C */);
-   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     f(A, A, D, D, B, B);
+LL +     f(A, A, B, B, /* C */, /* C */);
+   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:19:5
@@ -118,8 +121,9 @@ LL |     c2: C,
    |     -----
 help: did you mean
    |
-LL |     f(A, A, B, B, C, C);
-   |      ~~~~~~~~~~~~~~~~~~
+LL -     f(C, C, B, B, A, A);
+LL +     f(A, A, B, B, C, C);
+   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/issue-101097.rs:20:5
@@ -151,8 +155,9 @@ LL |     c2: C,
    |     -----
 help: did you mean
    |
-LL |     f(A, A, /* B */, B, C, C);
-   |      ~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     f(C, C, A, B, A, A);
+LL +     f(A, A, /* B */, B, C, C);
+   |
 
 error: aborting due to 5 previous errors
 

@@ -28,8 +28,9 @@ LL |     Type!().get();
    = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |     <Type!()>::get();
-   |     ~~~~~~~~~~~
+LL -     Type!().get();
+LL +     <Type!()>::get();
+   |
 
 error[E0423]: expected value, found struct `std::cell::Cell`
   --> $DIR/issue-22692.rs:17:9
@@ -43,8 +44,9 @@ LL |     Type! {}.get;
    = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |     <Type! {}>::get;
-   |     ~~~~~~~~~~~~
+LL -     Type! {}.get;
+LL +     <Type! {}>::get;
+   |
 
 error[E0423]: expected value, found struct `Vec`
   --> $DIR/issue-22692.rs:26:9
@@ -80,8 +82,9 @@ LL |     let _ = create!(macro method);
    = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the path separator to refer to an item
    |
-LL |         <Type!()>::new(0)
-   |         ~~~~~~~~~~~
+LL -         Type!().new(0)
+LL +         <Type!()>::new(0)
+   |
 
 error: aborting due to 8 previous errors
 

@@ -36,12 +36,14 @@ LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |
 help: consider changing `impl Copy + 'static`'s explicit `'static` bound to the lifetime of argument `x`
    |
-LL | fn elided2(x: &i32) -> impl Copy + '_ { x }
-   |                                    ~~
+LL - fn elided2(x: &i32) -> impl Copy + 'static { x }
+LL + fn elided2(x: &i32) -> impl Copy + '_ { x }
+   |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
-   |               ~~~~~~~~~~~~
+LL - fn elided2(x: &i32) -> impl Copy + 'static { x }
+LL + fn elided2(x: &'static i32) -> impl Copy + 'static { x }
+   |
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:12:55
@@ -51,12 +53,14 @@ LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |
 help: consider changing `impl Copy + 'static`'s explicit `'static` bound to the lifetime of argument `x`
    |
-LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'a { x }
-   |                                             ~~
+LL - fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
+LL + fn explicit2<'a>(x: &'a i32) -> impl Copy + 'a { x }
+   |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn explicit2<'a>(x: &'static i32) -> impl Copy + 'static { x }
-   |                     ~~~~~~~~~~~~
+LL - fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
+LL + fn explicit2<'a>(x: &'static i32) -> impl Copy + 'static { x }
+   |
 
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/must_outlive_least_region_or_bound.rs:15:41
@@ -91,12 +95,14 @@ LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |
 help: consider changing `impl LifetimeTrait<'a> + 'static`'s explicit `'static` bound to the lifetime of argument `x`
    |
-LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'a { x }
-   |                                                           ~~
+LL - fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
+LL + fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'a { x }
+   |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x }
-   |                      ~~~~~~~~~~~~
+LL - fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
+LL + fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x }
+   |
 
 error[E0700]: hidden type for `impl Fn(&'a u32)` captures lifetime that does not appear in bounds
   --> $DIR/must_outlive_least_region_or_bound.rs:42:5
@@ -161,12 +167,14 @@ LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
    |
-LL | fn elided4(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
-   |                                        ~~
+LL - fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+LL + fn elided4(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
+   |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |               ~~~~~~~~~~~~
+LL - fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+LL + fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:27:60
@@ -176,12 +184,14 @@ LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
    |
-LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
-   |                                                 ~~
+LL - fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+LL + fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
+   |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn explicit4<'a>(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |                     ~~~~~~~~~~~~
+LL - fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+LL + fn explicit4<'a>(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |
 
 error: aborting due to 13 previous errors
 

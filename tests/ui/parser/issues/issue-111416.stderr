@@ -6,8 +6,9 @@ LL |     let my = monad_bind(mx, T: Try);
    |
 help: if `monad_bind` is a struct, use braces as delimiters
    |
-LL |     let my = monad_bind { mx, T: Try };
-   |                         ~            ~
+LL -     let my = monad_bind(mx, T: Try);
+LL +     let my = monad_bind { mx, T: Try };
+   |
 help: if `monad_bind` is a function, use the arguments directly
    |
 LL -     let my = monad_bind(mx, T: Try);

@@ -40,8 +40,9 @@ LL |     let _: *const u8 = &mut a;
            found mutable reference `&mut Emm`
 help: consider dereferencing
    |
-LL |     let _: *const u8 = &***a;
-   |                         ~~~
+LL -     let _: *const u8 = &mut a;
+LL +     let _: *const u8 = &***a;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-71676-1.rs:52:22

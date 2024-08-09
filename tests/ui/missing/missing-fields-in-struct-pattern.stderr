@@ -6,8 +6,9 @@ LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
    |
 help: use the tuple variant pattern syntax instead
    |
-LL |     if let S(a, b, c, d) = S(1, 2, 3, 4) {
-   |             ~~~~~~~~~~~~
+LL -     if let S { a, b, c, d } = S(1, 2, 3, 4) {
+LL +     if let S(a, b, c, d) = S(1, 2, 3, 4) {
+   |
 
 error: aborting due to 1 previous error
 

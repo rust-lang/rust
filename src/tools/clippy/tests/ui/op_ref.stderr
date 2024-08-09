@@ -8,8 +8,9 @@ LL |     let foo = &5 - &6;
    = help: to override `-D warnings` add `#[allow(clippy::op_ref)]`
 help: use the values directly
    |
-LL |     let foo = 5 - 6;
-   |               ~   ~
+LL -     let foo = &5 - &6;
+LL +     let foo = 5 - 6;
+   |
 
 error: taken reference of right operand
   --> tests/ui/op_ref.rs:58:13

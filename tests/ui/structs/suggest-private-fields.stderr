@@ -6,8 +6,9 @@ LL |         aa: 20,
    |
 help: a field with a similar name exists
    |
-LL |         a: 20,
-   |         ~
+LL -         aa: 20,
+LL +         a: 20,
+   |
 
 error[E0560]: struct `B` has no field named `bb`
   --> $DIR/suggest-private-fields.rs:17:9
@@ -25,8 +26,9 @@ LL |         aa: 20,
    |
 help: a field with a similar name exists
    |
-LL |         a: 20,
-   |         ~
+LL -         aa: 20,
+LL +         a: 20,
+   |
 
 error[E0560]: struct `A` has no field named `bb`
   --> $DIR/suggest-private-fields.rs:24:9
@@ -36,8 +38,9 @@ LL |         bb: 20,
    |
 help: a field with a similar name exists
    |
-LL |         b: 20,
-   |         ~
+LL -         bb: 20,
+LL +         b: 20,
+   |
 
 error: aborting due to 4 previous errors
 

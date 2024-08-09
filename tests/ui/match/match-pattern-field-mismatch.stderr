@@ -13,8 +13,9 @@ LL |           Color::Rgb(_, _, _) => { }
    |                          +++
 help: use `..` to ignore all fields
    |
-LL |           Color::Rgb(..) => { }
-   |                      ~~
+LL -           Color::Rgb(_, _) => { }
+LL +           Color::Rgb(..) => { }
+   |
 
 error: aborting due to 1 previous error
 

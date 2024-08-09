@@ -6,8 +6,9 @@ LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |
 help: Unicode character '➖' (Heavy Minus Sign) looks like '-' (Minus/Hyphen), but it is not
    |
-LL |     let _ = i_like_to_😄_a_lot() - 4;
-   |                                  ~
+LL -     let _ = i_like_to_😄_a_lot() ➖ 4;
+LL +     let _ = i_like_to_😄_a_lot() - 4;
+   |
 
 error: identifiers cannot contain emoji: `ABig👩👩👧👧Family`
   --> $DIR/emoji-identifiers.rs:1:8
@@ -80,8 +81,9 @@ LL |     fn full_of_✨() -> 👀 {
    |     ^^^^^^^^^^^^^^^^^^^^^
 help: there is an associated function `full_of_✨` with a similar name
    |
-LL |     👀::full_of_✨()
-   |         ~~~~~~~~~~
+LL -     👀::full_of✨()
+LL +     👀::full_of_✨()
+   |
 
 error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
   --> $DIR/emoji-identifiers.rs:13:13

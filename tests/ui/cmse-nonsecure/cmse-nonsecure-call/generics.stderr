@@ -14,8 +14,9 @@ LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64
    |
 help: a type parameter with a similar name exists
    |
-LL |     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(T, u32, u32, u32) -> u64,
-   |                                                    ~
+LL -     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(U, u32, u32, u32) -> u64,
+LL +     f1: extern "C-cmse-nonsecure-call" fn<U: Copy>(T, u32, u32, u32) -> u64,
+   |
 help: you might be missing a type parameter
    |
 LL | struct Test<T: Copy, U> {

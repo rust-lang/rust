@@ -19,8 +19,9 @@ LL |         .sum::<_>()
    |
 help: consider specifying the generic argument
    |
-LL |         .sum::<S>()
-   |             ~~~~~
+LL -         .sum::<_>()
+LL +         .sum::<S>()
+   |
 
 error: aborting due to 2 previous errors
 

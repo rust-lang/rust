@@ -52,8 +52,9 @@ LL | struct Image<const R: usize>([[u32; C]; R]);
    |
 help: a const parameter with a similar name exists
    |
-LL | struct Image<const R: usize>([[u32; R]; R]);
-   |                                     ~
+LL - struct Image<const R: usize>([[u32; C]; R]);
+LL + struct Image<const R: usize>([[u32; R]; R]);
+   |
 help: you might be missing a const parameter
    |
 LL | struct Image<const R: usize, const C: /* Type */>([[u32; C]; R]);

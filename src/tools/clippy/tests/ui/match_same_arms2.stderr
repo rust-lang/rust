@@ -34,8 +34,9 @@ LL |         51 => foo(),
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         51 | 42 => foo(),
-   |         ~~~~~~~
+LL -         51 => foo(),
+LL +         51 | 42 => foo(),
+   |
 help: and remove this obsolete arm
    |
 LL -         42 => foo(),
@@ -50,8 +51,9 @@ LL |         None => 24,
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         None | Some(_) => 24,
-   |         ~~~~~~~~~~~~~~
+LL -         None => 24,
+LL +         None | Some(_) => 24,
+   |
 help: and remove this obsolete arm
    |
 LL -         Some(_) => 24,
@@ -66,8 +68,9 @@ LL |         (None, Some(a)) => bar(a),
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         (None, Some(a)) | (Some(a), None) => bar(a),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         (None, Some(a)) => bar(a),
+LL +         (None, Some(a)) | (Some(a), None) => bar(a),
+   |
 help: and remove this obsolete arm
    |
 LL -         (Some(a), None) => bar(a),
@@ -82,8 +85,9 @@ LL |         (None, Some(a)) if a == 42 => a,
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         (None, Some(a)) | (Some(a), None) if a == 42 => a,
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         (None, Some(a)) if a == 42 => a,
+LL +         (None, Some(a)) | (Some(a), None) if a == 42 => a,
+   |
 help: and remove this obsolete arm
    |
 LL -         (Some(a), None) if a == 42 => a,
@@ -98,8 +102,9 @@ LL |         (Some(a), ..) => bar(a),
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         (Some(a), ..) | (.., Some(a)) => bar(a),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         (Some(a), ..) => bar(a),
+LL +         (Some(a), ..) | (.., Some(a)) => bar(a),
+   |
 help: and remove this obsolete arm
    |
 LL -         (.., Some(a)) => bar(a),
@@ -114,8 +119,9 @@ LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         (Ok(x), Some(_)) | (Ok(_), Some(x)) => println!("ok {}", x),
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         (Ok(x), Some(_)) => println!("ok {}", x),
+LL +         (Ok(x), Some(_)) | (Ok(_), Some(x)) => println!("ok {}", x),
+   |
 help: and remove this obsolete arm
    |
 LL -         (Ok(_), Some(x)) => println!("ok {}", x),
@@ -130,8 +136,9 @@ LL |         Ok(_) => println!("ok"),
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         Ok(_) | Ok(3) => println!("ok"),
-   |         ~~~~~~~~~~~~~
+LL -         Ok(_) => println!("ok"),
+LL +         Ok(_) | Ok(3) => println!("ok"),
+   |
 help: and remove this obsolete arm
    |
 LL -         Ok(3) => println!("ok"),
@@ -148,8 +155,9 @@ LL | |         },
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         1 | 0 => {
-   |         ~~~~~
+LL -         1 => {
+LL +         1 | 0 => {
+   |
 help: and remove this obsolete arm
    |
 LL -         0 => {
@@ -166,8 +174,9 @@ LL |         Foo::X(0) => 1,
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         Foo::X(0) | Foo::Z(_) => 1,
-   |         ~~~~~~~~~~~~~~~~~~~~~
+LL -         Foo::X(0) => 1,
+LL +         Foo::X(0) | Foo::Z(_) => 1,
+   |
 help: and remove this obsolete arm
    |
 LL -         Foo::Z(_) => 1,
@@ -182,8 +191,9 @@ LL |         Foo::Z(_) => 1,
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         Foo::Z(_) | Foo::X(0) => 1,
-   |         ~~~~~~~~~~~~~~~~~~~~~
+LL -         Foo::Z(_) => 1,
+LL +         Foo::Z(_) | Foo::X(0) => 1,
+   |
 help: and remove this obsolete arm
    |
 LL -         Foo::X(0) => 1,
@@ -198,8 +208,9 @@ LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         Some(Bar { y: 0, x: 5, .. }) | Some(Bar { x: 0, y: 5, .. }) => 1,
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         Some(Bar { y: 0, x: 5, .. }) => 1,
+LL +         Some(Bar { y: 0, x: 5, .. }) | Some(Bar { x: 0, y: 5, .. }) => 1,
+   |
 help: and remove this obsolete arm
    |
 LL -         Some(Bar { x: 0, y: 5, .. }) => 1,
@@ -214,8 +225,9 @@ LL |         1 => cfg!(not_enable),
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |         1 | 0 => cfg!(not_enable),
-   |         ~~~~~
+LL -         1 => cfg!(not_enable),
+LL +         1 | 0 => cfg!(not_enable),
+   |
 help: and remove this obsolete arm
    |
 LL -         0 => cfg!(not_enable),
@@ -230,8 +242,9 @@ LL |                 MaybeStaticStr::Borrowed(s) => s,
    = help: try changing either arm body
 help: or try merging the arm patterns
    |
-LL |                 MaybeStaticStr::Borrowed(s) | MaybeStaticStr::Static(s) => s,
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -                 MaybeStaticStr::Borrowed(s) => s,
+LL +                 MaybeStaticStr::Borrowed(s) | MaybeStaticStr::Static(s) => s,
+   |
 help: and remove this obsolete arm
    |
 LL -                 MaybeStaticStr::Static(s) => s,

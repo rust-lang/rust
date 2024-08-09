@@ -19,8 +19,9 @@ LL |     '\●'
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
-LL |     r"\●"
-   |     ~~~~~
+LL -     '\●'
+LL +     r"\●"
+   |
 
 error: unknown character escape: `\u{25cf}`
   --> $DIR/lex-bad-char-literals-1.rs:14:7
@@ -31,8 +32,9 @@ LL |     "\●"
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
-LL |     r"\●"
-   |     ~~~~~
+LL -     "\●"
+LL +     r"\●"
+   |
 
 error: aborting due to 4 previous errors
 

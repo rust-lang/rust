@@ -17,12 +17,14 @@ LL | |         }
    | |_________^
 help: you might have meant to use the following enum variant
    |
-LL |         m::Z::Unit;
-   |         ~~~~~~~~~~
+LL -         n::Z;
+LL +         m::Z::Unit;
+   |
 help: alternatively, the following enum variant is available
    |
-LL |         (m::Z::Fn(/* fields */));
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         n::Z;
+LL +         (m::Z::Fn(/* fields */));
+   |
 
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
@@ -43,12 +45,14 @@ LL | |         }
    | |_________^
 help: you might have meant to use the following enum variant
    |
-LL |         m::Z::Unit;
-   |         ~~~~~~~~~~
+LL -         Z;
+LL +         m::Z::Unit;
+   |
 help: alternatively, the following enum variant is available
    |
-LL |         (m::Z::Fn(/* fields */));
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         Z;
+LL +         (m::Z::Fn(/* fields */));
+   |
 
 error[E0423]: expected value, found enum `m::E`
   --> $DIR/privacy-enum-ctor.rs:41:16
@@ -72,16 +76,19 @@ LL | |     }
    | |_____^
 help: you might have meant to use the following enum variant
    |
-LL |     let _: E = E::Unit;
-   |                ~~~~~~~
+LL -     let _: E = m::E;
+LL +     let _: E = E::Unit;
+   |
 help: alternatively, the following enum variant is available
    |
-LL |     let _: E = (E::Fn(/* fields */));
-   |                ~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: E = m::E;
+LL +     let _: E = (E::Fn(/* fields */));
+   |
 help: a function with a similar name exists
    |
-LL |     let _: E = m::f;
-   |                   ~
+LL -     let _: E = m::E;
+LL +     let _: E = m::f;
+   |
 help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
@@ -117,12 +124,14 @@ LL | |     }
    | |_____^
 help: you might have meant to use the following enum variant
    |
-LL |     let _: E = E::Unit;
-   |                ~~~~~~~
+LL -     let _: E = E;
+LL +     let _: E = E::Unit;
+   |
 help: alternatively, the following enum variant is available
    |
-LL |     let _: E = (E::Fn(/* fields */));
-   |                ~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: E = E;
+LL +     let _: E = (E::Fn(/* fields */));
+   |
 help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
@@ -168,12 +177,14 @@ LL | |         }
    | |_________^
 help: you might have meant to use the following enum variant
    |
-LL |     let _: Z = m::Z::Unit;
-   |                ~~~~~~~~~~
+LL -     let _: Z = m::n::Z;
+LL +     let _: Z = m::Z::Unit;
+   |
 help: alternatively, the following enum variant is available
    |
-LL |     let _: Z = (m::Z::Fn(/* fields */));
-   |                ~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: Z = m::n::Z;
+LL +     let _: Z = (m::Z::Fn(/* fields */));
+   |
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
