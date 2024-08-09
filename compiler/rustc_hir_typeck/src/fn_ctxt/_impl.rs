@@ -404,8 +404,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
-            let tail =
-                self.tcx.struct_tail_with_normalize(ty, |ty| self.normalize(span, ty), || {});
+            let tail = self.tcx.struct_tail_with_normalize(
+                ty,
+                |ty| {
+                    if self.next_trait_solver() {
+                        self.try_structurally_resolve_type(span, ty)
+                    } else {
+                        self.normalize(span, ty)
+                    }
+                },
+                || {},
+            );
             // Sized types have static alignment, and so do slices.
             if tail.is_trivially_sized(self.tcx) || matches!(tail.kind(), ty::Slice(..)) {
                 // Nothing else is required here.

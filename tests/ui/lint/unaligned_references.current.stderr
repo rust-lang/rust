@@ -1,5 +1,5 @@
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:28:13
+  --> $DIR/unaligned_references.rs:32:13
    |
 LL |             &self.x;
    |             ^^^^^^^
@@ -9,7 +9,7 @@ LL |             &self.x;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:40:24
+  --> $DIR/unaligned_references.rs:44:24
    |
 LL |     println!("{:?}", &*foo.0);
    |                        ^^^^^
@@ -19,7 +19,7 @@ LL |     println!("{:?}", &*foo.0);
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:42:24
+  --> $DIR/unaligned_references.rs:46:24
    |
 LL |     println!("{:?}", &*foo.0);
    |                        ^^^^^
@@ -29,7 +29,7 @@ LL |     println!("{:?}", &*foo.0);
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:47:24
+  --> $DIR/unaligned_references.rs:51:24
    |
 LL |     println!("{:?}", &*foo.0);
    |                        ^^^^^
@@ -39,7 +39,7 @@ LL |     println!("{:?}", &*foo.0);
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:57:17
+  --> $DIR/unaligned_references.rs:81:17
    |
 LL |         let _ = &good.ptr;
    |                 ^^^^^^^^^
@@ -49,7 +49,7 @@ LL |         let _ = &good.ptr;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:58:17
+  --> $DIR/unaligned_references.rs:82:17
    |
 LL |         let _ = &good.data;
    |                 ^^^^^^^^^^
@@ -59,7 +59,7 @@ LL |         let _ = &good.data;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:60:17
+  --> $DIR/unaligned_references.rs:84:17
    |
 LL |         let _ = &good.data as *const _;
    |                 ^^^^^^^^^^
@@ -69,7 +69,7 @@ LL |         let _ = &good.data as *const _;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:61:27
+  --> $DIR/unaligned_references.rs:85:27
    |
 LL |         let _: *const _ = &good.data;
    |                           ^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |         let _: *const _ = &good.data;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:63:17
+  --> $DIR/unaligned_references.rs:87:17
    |
 LL |         let _ = good.data.clone();
    |                 ^^^^^^^^^
@@ -89,7 +89,7 @@ LL |         let _ = good.data.clone();
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:65:17
+  --> $DIR/unaligned_references.rs:89:17
    |
 LL |         let _ = &good.data2[0];
    |                 ^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL |         let _ = &good.data2[0];
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:74:17
+  --> $DIR/unaligned_references.rs:98:17
    |
 LL |         let _ = &packed2.x;
    |                 ^^^^^^^^^^
@@ -109,7 +109,7 @@ LL |         let _ = &packed2.x;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:113:20
+  --> $DIR/unaligned_references.rs:137:20
    |
 LL |         let _ref = &m1.1.a;
    |                    ^^^^^^^
@@ -119,7 +119,7 @@ LL |         let _ref = &m1.1.a;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:116:20
+  --> $DIR/unaligned_references.rs:140:20
    |
 LL |         let _ref = &m2.1.a;
    |                    ^^^^^^^

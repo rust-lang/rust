@@ -1019,7 +1019,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
             if ty.is_sized(tcx.tcx, param_env) {
                 return false;
             }
-            let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
+            let tail = tcx.struct_tail_for_codegen(ty, param_env);
             match tail.kind() {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -1029,7 +1029,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         if type_has_metadata(inner_source) {
             (inner_source, inner_target)
         } else {
-            tcx.struct_lockstep_tails_erasing_lifetimes(inner_source, inner_target, param_env)
+            tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, param_env)
         }
     };
 

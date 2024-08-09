@@ -343,7 +343,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         meta: MemPlaceMeta<M::Provenance>,
         pointee: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
-        let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
+        let tail = self.ecx.tcx.struct_tail_for_codegen(pointee.ty, self.ecx.param_env);
         match tail.kind() {
             ty::Dynamic(data, _, ty::Dyn) => {
                 let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
