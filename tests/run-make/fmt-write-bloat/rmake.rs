@@ -15,14 +15,11 @@
 //! `NO_DEBUG_ASSERTIONS=1`). If debug assertions are disabled, then we can check for the absence of
 //! additional `usize` formatting and padding related symbols.
 
-// Reason: This test is `ignore-windows` because the `no_std` test (using `#[link(name = "c")])`
-// doesn't link on windows.
-//@ ignore-windows
 //@ ignore-cross-compile
 
 use run_make_support::env::no_debug_assertions;
-use run_make_support::rustc;
 use run_make_support::symbols::any_symbol_contains;
+use run_make_support::{bin_name, rustc};
 
 fn main() {
     rustc().input("main.rs").opt().run();
@@ -33,5 +30,5 @@ fn main() {
         // otherwise, add them to the list of symbols to deny.
         panic_syms.extend_from_slice(&["panicking", "panic_fmt", "pad_integral", "Display"]);
     }
-    assert!(!any_symbol_contains("main", &panic_syms));
+    assert!(!any_symbol_contains(&bin_name("main"), &panic_syms));
 }
