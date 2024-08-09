@@ -4,7 +4,7 @@ error[E0599]: no method named `the_fn` found for reference `&TheStruct` in the c
 LL |         s.the_fn();
    |           ^^^^^^ method not found in `&TheStruct`
    |
-   = help: items from traits can only be used if the trait is in scope
+   = help: items from traits can only be used if the trait is implemented and in scope
 help: trait `TheTrait` which provides `the_fn` is implemented but not in scope; perhaps you want to import it
    |
 LL +     use coherence_inherent_cc_lib::TheTrait;

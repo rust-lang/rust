@@ -17,5 +17,5 @@ mod banana {
 fn main() {
     banana::Chaenomeles.pick()
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is in scope
+    //~| HELP items from traits can only be used if the trait is implemented and in scope
 }

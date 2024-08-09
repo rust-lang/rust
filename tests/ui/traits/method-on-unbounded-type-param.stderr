@@ -6,7 +6,11 @@ LL | fn f<T>(a: T, b: T) -> std::cmp::Ordering {
 LL |     a.cmp(&b)
    |       ^^^ method cannot be called on `T` due to unsatisfied trait bounds
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/method-on-unbounded-type-param.rs:2:7
+   |
+LL |     a.cmp(&b)
+   |       ^^^
 help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
    |
 LL | fn f<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
@@ -27,7 +31,11 @@ LL |     (&a).cmp(&b)
            which is required by `&mut &T: Iterator`
            `T: Iterator`
            which is required by `&mut T: Iterator`
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/method-on-unbounded-type-param.rs:5:10
+   |
+LL |     (&a).cmp(&b)
+   |          ^^^
 help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
    |
 LL | fn g<T: Iterator>(a: T, b: T) -> std::cmp::Ordering {
@@ -48,7 +56,11 @@ LL |     a.cmp(&b)
            which is required by `&mut &T: Iterator`
            `T: Iterator`
            which is required by `&mut T: Iterator`
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/method-on-unbounded-type-param.rs:8:7
+   |
+LL |     a.cmp(&b)
+   |       ^^^
 help: the following traits define an item `cmp`, perhaps you need to restrict type parameter `T` with one of them:
    |
 LL | fn h<T: Iterator>(a: &T, b: T) -> std::cmp::Ordering {
@@ -74,7 +86,11 @@ LL |     x.cmp(&x);
            which is required by `&mut Box<dyn T>: Iterator`
            `dyn T: Iterator`
            which is required by `&mut dyn T: Iterator`
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/method-on-unbounded-type-param.rs:14:7
+   |
+LL |     x.cmp(&x);
+   |       ^^^
    = note: the following traits define an item `cmp`, perhaps you need to implement one of them:
            candidate #1: `Ord`
    = note: the trait `Iterator` defines an item `cmp`, but is explicitly unimplemented

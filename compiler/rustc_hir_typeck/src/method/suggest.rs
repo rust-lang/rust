@@ -2383,7 +2383,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let call_expr = tcx.hir().expect_expr(tcx.parent_hir_id(expr.hir_id));
 
                     if let Some(span) = call_expr.span.trim_start(item_name.span) {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             span,
                             "remove the arguments",
                             "",
@@ -3372,7 +3372,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .copied();
 
             if explain {
-                err.help("items from traits can only be used if the trait is in scope");
+                err.help(
+                    "items from traits can only be used if the trait is implemented and in scope",
+                );
             }
 
             let msg = format!(
@@ -3676,7 +3678,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true) {
+        if self.suggest_valid_traits(
+            err,
+            item_name,
+            valid_out_of_scope_traits,
+            !trait_missing_method,
+        ) {
             return;
         }
 
@@ -3786,7 +3793,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             };
             if !trait_missing_method {
-                err.help(if param_type.is_some() {
+                err.span_help(span, if param_type.is_some() {
                     "items from traits can only be used if the type parameter is bounded by the trait"
                 } else {
                     "items from traits can only be used if the trait is implemented and in scope"

@@ -7,7 +7,11 @@ LL |     fn my_debug(&self);
 LL |         x.my_debug();
    |           ^^^^^^^^ method not found in `impl Debug`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/call_method_on_inherent_impl_ref.rs:20:11
+   |
+LL |         x.my_debug();
+   |           ^^^^^^^^
 note: `MyDebug` defines an item `my_debug`, perhaps you need to implement it
   --> $DIR/call_method_on_inherent_impl_ref.rs:4:1
    |

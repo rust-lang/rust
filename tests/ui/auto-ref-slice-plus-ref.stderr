@@ -4,7 +4,11 @@ error[E0599]: no method named `test_mut` found for struct `Vec<{integer}>` in th
 LL |     a.test_mut();
    |       ^^^^^^^^
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/auto-ref-slice-plus-ref.rs:7:7
+   |
+LL |     a.test_mut();
+   |       ^^^^^^^^
 note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
   --> $DIR/auto-ref-slice-plus-ref.rs:14:1
    |
@@ -19,7 +23,11 @@ error[E0599]: no method named `test` found for struct `Vec<{integer}>` in the cu
 LL |     a.test();
    |       ^^^^ method not found in `Vec<{integer}>`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/auto-ref-slice-plus-ref.rs:8:7
+   |
+LL |     a.test();
+   |       ^^^^
 note: `MyIter` defines an item `test`, perhaps you need to implement it
   --> $DIR/auto-ref-slice-plus-ref.rs:14:1
    |
@@ -32,7 +40,11 @@ error[E0599]: no method named `test` found for array `[{integer}; 1]` in the cur
 LL |     ([1]).test();
    |           ^^^^ method not found in `[{integer}; 1]`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/auto-ref-slice-plus-ref.rs:10:11
+   |
+LL |     ([1]).test();
+   |           ^^^^
 note: `MyIter` defines an item `test`, perhaps you need to implement it
   --> $DIR/auto-ref-slice-plus-ref.rs:14:1
    |
@@ -45,7 +57,11 @@ error[E0599]: no method named `test` found for reference `&[{integer}; 1]` in th
 LL |     (&[1]).test();
    |            ^^^^ method not found in `&[{integer}; 1]`
    |
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/auto-ref-slice-plus-ref.rs:11:12
+   |
+LL |     (&[1]).test();
+   |            ^^^^
 note: `MyIter` defines an item `test`, perhaps you need to implement it
   --> $DIR/auto-ref-slice-plus-ref.rs:14:1
    |

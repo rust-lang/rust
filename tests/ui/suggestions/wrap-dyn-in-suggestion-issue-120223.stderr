@@ -15,7 +15,11 @@ LL | pub fn in_ty_param<T: Fn() -> dyn std::fmt::Debug> (t: T) {
 LL |     t.method();
    |       ^^^^^^ method not found in `T`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:24:7
+   |
+LL |     t.method();
+   |       ^^^^^^
 help: the following trait defines an item `method`, perhaps you need to restrict type parameter `T` with it:
    |
 LL | pub fn in_ty_param<T: Fn() -> (dyn std::fmt::Debug) + Trait> (t: T) {

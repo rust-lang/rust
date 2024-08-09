@@ -4,7 +4,11 @@ error[E0599]: no method named `test` found for reference `&impl T1` in the curre
 LL |     s.test();
    |       ^^^^ method not found in `&impl T1`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/issue-99597.rs:11:7
+   |
+LL |     s.test();
+   |       ^^^^
 help: the following trait defines an item `test`, perhaps you need to restrict type parameter `impl T1` with it:
    |
 LL | fn go(s: &(impl T1 + T2)) {

@@ -6,7 +6,11 @@ LL | fn foo<T:>(t: T) {
 LL |     t.clone();
    |       ^^^^^ method not found in `T`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: items from traits can only be used if the type parameter is bounded by the trait
+  --> $DIR/issue-95898.rs:5:7
+   |
+LL |     t.clone();
+   |       ^^^^^
 help: the following trait defines an item `clone`, perhaps you need to restrict type parameter `T` with it:
    |
 LL | fn foo<T: Clone>(t: T) {

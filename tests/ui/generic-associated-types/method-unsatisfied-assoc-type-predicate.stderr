@@ -14,7 +14,11 @@ LL | impl<T: X<Y<i32> = i32>> M for T {}
    |           ^^^^^^^^^^^^   -     -
    |           |
    |           unsatisfied trait bound introduced here
-   = help: items from traits can only be used if the trait is implemented and in scope
+help: items from traits can only be used if the trait is implemented and in scope
+  --> $DIR/method-unsatisfied-assoc-type-predicate.rs:26:7
+   |
+LL |     a.f();
+   |       ^
 note: `M` defines an item `f`, perhaps you need to implement it
   --> $DIR/method-unsatisfied-assoc-type-predicate.rs:8:1
    |
