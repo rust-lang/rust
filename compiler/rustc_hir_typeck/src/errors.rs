@@ -724,3 +724,16 @@ pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: Option<()>,
 }
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_replace_comma_with_semicolon,
+    applicability = "machine-applicable",
+    style = "verbose",
+    code = "; "
+)]
+pub struct ReplaceCommaWithSemicolon {
+    #[primary_span]
+    pub comma_span: Span,
+    pub descr: &'static str,
+}

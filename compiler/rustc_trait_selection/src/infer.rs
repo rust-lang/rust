@@ -26,6 +26,7 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
+    /// Check if `ty` implements the `Copy` trait.
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
@@ -42,6 +43,14 @@ impl<'tcx> InferCtxt<'tcx> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
+    /// Check if `ty` implements the `Clone` trait.
+    fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+        let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, None);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
+    }
+
+    /// Check if `ty` implements the `Sized` trait.
     fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item)
