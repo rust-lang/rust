@@ -20,11 +20,11 @@ LL |     1_u32
    |
    = help: the trait `Traitor<N, 2>` is implemented for `u32`
 
-error[E0277]: the trait bound `u64: Traitor` is not satisfied
+error[E0277]: the trait bound `u64: Traitor<1>` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:21:13
    |
 LL | fn owo() -> impl Traitor {
-   |             ^^^^^^^^^^^^ the trait `Traitor` is not implemented for `u64`
+   |             ^^^^^^^^^^^^ the trait `Traitor<1>` is not implemented for `u64`
 LL |
 LL |     1_u64
    |     ----- return type was inferred to be `u64` here

@@ -13,29 +13,31 @@ LL |     const ASSOC: usize;
 LL | impl<const N: u64> Q for [u8; N] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `ASSOC` in implementation
 
-error: the constant `13` is not of type `u64`
-  --> $DIR/type_mismatch.rs:12:26
+error[E0391]: cycle detected when building an abstract representation for `q_user::{constant#0}`
+  --> $DIR/type_mismatch.rs:12:25
    |
 LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
-   |                          ^^^^^^^^ expected `u64`, found `usize`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: required for `[u8; 13]` to implement `Q`
-  --> $DIR/type_mismatch.rs:8:20
-   |
-LL | impl<const N: u64> Q for [u8; N] {}
-   |      ------------  ^     ^^^^^^^
-   |      |
-   |      unsatisfied trait bound introduced here
-
-error[E0308]: mismatched types
-  --> $DIR/type_mismatch.rs:12:20
+note: ...which requires building THIR for `q_user::{constant#0}`...
+  --> $DIR/type_mismatch.rs:12:25
    |
 LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
-   |        ------      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `[u8; <[u8; 13] as Q>::ASSOC]`, found `()`
-   |        |
-   |        implicitly returns `()` as its body has no tail or `return` expression
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `q_user::{constant#0}`...
+  --> $DIR/type_mismatch.rs:12:25
+   |
+LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires building an abstract representation for `q_user::{constant#0}`, completing the cycle
+note: cycle used when checking that `q_user` is well-formed
+  --> $DIR/type_mismatch.rs:12:1
+   |
+LL | pub fn q_user() -> [u8; <[u8; 13] as Q>::ASSOC] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0046, E0308.
+Some errors have detailed explanations: E0046, E0391.
 For more information about an error, try `rustc --explain E0046`.

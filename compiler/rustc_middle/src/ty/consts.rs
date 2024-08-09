@@ -238,18 +238,13 @@ impl<'tcx> Const<'tcx> {
         let expr = &tcx.hir().body(body_id).value;
         debug!(?expr);
 
-        let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
-
-        match Self::try_from_lit(tcx, ty, expr) {
-            Some(v) => v,
-            None => ty::Const::new_unevaluated(
-                tcx,
-                ty::UnevaluatedConst {
-                    def: def.to_def_id(),
-                    args: GenericArgs::identity_for_item(tcx, def.to_def_id()),
-                },
-            ),
-        }
+        ty::Const::new_unevaluated(
+            tcx,
+            ty::UnevaluatedConst {
+                def: def.to_def_id(),
+                args: GenericArgs::identity_for_item(tcx, def.to_def_id()),
+            },
+        )
     }
 
     /// Lower a const param to a [`Const`].

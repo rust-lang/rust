@@ -35,7 +35,7 @@ error[E0792]: non-defining opaque type use in defining scope
   --> $DIR/generic_nondefining_use.rs:27:24
    |
 LL | fn concrete_const() -> OneConst<{ 123 }> {
-   |                        ^^^^^^^^^^^^^^^^^ argument `123` is not a generic parameter
+   |                        ^^^^^^^^^^^^^^^^^ argument `{ 123 }` is not a generic parameter
    |
 note: for this opaque type
   --> $DIR/generic_nondefining_use.rs:11:33

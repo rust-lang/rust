@@ -14,9 +14,9 @@ impl Unsigned<11> {
     //[v0]~^ ERROR symbol-name(_RNvMCs
     //[v0]~| ERROR demangling(<c[
     //[v0]~| ERROR demangling-alt(<c::Unsigned<11>>::f)
-    //[legacy]~^^^^ ERROR symbol-name(_ZN1c21Unsigned$LT$11_u8$GT$
-    //[legacy]~|    ERROR demangling(c::Unsigned<11_u8>::f::
-    //[legacy]~|    ERROR demangling-alt(c::Unsigned<11_u8>::f)
+    //[legacy]~^^^^ ERROR symbol-name(_ZN1c17Unsigned$LT$_$GT$
+    //[legacy]~|    ERROR demangling(c::Unsigned<_>::f::
+    //[legacy]~|    ERROR demangling-alt(c::Unsigned<_>::f)
     fn f() {}
 }
 
@@ -27,9 +27,9 @@ impl Signed<-152> {
     //[v0]~^ ERROR symbol-name(_RNvMs_Cs
     //[v0]~| ERROR demangling(<c[
     //[v0]~| ERROR demangling-alt(<c::Signed<-152>>::f)
-    //[legacy]~^^^^ ERROR symbol-name(_ZN1c22Signed$LT$.152_i16$GT$
-    //[legacy]~|    ERROR demangling(c::Signed<.152_i16>::f::
-    //[legacy]~|    ERROR demangling-alt(c::Signed<.152_i16>::f)
+    //[legacy]~^^^^ ERROR symbol-name(_ZN1c15Signed$LT$_$GT$
+    //[legacy]~|    ERROR demangling(c::Signed<_>::f::
+    //[legacy]~|    ERROR demangling-alt(c::Signed<_>::f)
     fn f() {}
 }
 

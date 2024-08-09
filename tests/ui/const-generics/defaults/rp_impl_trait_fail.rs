@@ -19,7 +19,7 @@ fn uwu<const N: u8>() -> impl Traitor<N> {
 }
 
 fn owo() -> impl Traitor {
-    //~^ error: the trait bound `u64: Traitor` is not satisfied
+    //~^ error: the trait bound `u64: Traitor<1>` is not satisfied
     1_u64
 }
 
