@@ -758,7 +758,7 @@ impl GlobalState {
         self.flycheck = match invocation_strategy {
             crate::flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
                 0,
-                Box::new(move |msg| sender.send(msg).unwrap()),
+                sender,
                 config,
                 None,
                 self.config.root_path().clone(),
@@ -793,10 +793,9 @@ impl GlobalState {
                         ))
                     })
                     .map(|(id, (root, manifest_path), sysroot_root)| {
-                        let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
-                            Box::new(move |msg| sender.send(msg).unwrap()),
+                            sender.clone(),
                             config.clone(),
                             sysroot_root,
                             root.to_path_buf(),
