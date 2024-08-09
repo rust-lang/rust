@@ -6,6 +6,11 @@ LL |     type AssocTy = Const<{ my_const_fn(U) }>;
 ...
 LL | const fn my_const_fn(val: u8) -> u8 {
    | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+   |
+help: consider adding `pub` in front of it
+   |
+LL | pub {
+   | ~~~
 
 error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
   --> $DIR/eval-privacy.rs:17:5

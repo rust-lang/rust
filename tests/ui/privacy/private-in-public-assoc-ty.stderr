@@ -6,6 +6,11 @@ LL |     struct Priv;
 ...
 LL |         type A = Priv;
    |         ^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 warning: trait `PrivTr` is more private than the item `PubTr::Alias1`
   --> $DIR/private-in-public-assoc-ty.rs:24:9
@@ -52,6 +57,11 @@ LL |     struct Priv;
 ...
 LL |         type Alias4 = Priv;
    |         ^^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `Priv` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:38:9
@@ -61,6 +71,11 @@ LL |     struct Priv;
 ...
 LL |         type Alias1 = Priv;
    |         ^^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private trait `PrivTr` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:41:9
@@ -70,6 +85,11 @@ LL |     trait PrivTr {}
 ...
 LL |         type Exist = impl PrivTr;
    |         ^^^^^^^^^^ can't leak private trait
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub {}
+   |     ~~~
 
 error: aborting due to 4 previous errors; 3 warnings emitted
 

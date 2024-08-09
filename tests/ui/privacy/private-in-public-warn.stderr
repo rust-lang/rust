@@ -59,6 +59,11 @@ LL |     struct Priv;
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: type `types::Priv` is more private than the item `Tr::f1`
   --> $DIR/private-in-public-warn.rs:23:9
@@ -128,6 +133,11 @@ LL |     struct Priv;
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: trait `traits::PrivTr` is more private than the item `traits::Alias`
   --> $DIR/private-in-public-warn.rs:41:5
@@ -310,6 +320,11 @@ LL |     struct Priv;
 ...
 LL |         type Alias = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: type `aliases_pub::Priv` is more private than the item `aliases_pub::<impl Pub2>::f`
   --> $DIR/private-in-public-warn.rs:180:9
@@ -331,6 +346,11 @@ LL |     struct Priv;
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:186:9
@@ -340,6 +360,11 @@ LL |     struct Priv;
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:189:9
@@ -349,6 +374,11 @@ LL |     struct Priv;
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `aliases_pub::Priv` in public interface
   --> $DIR/private-in-public-warn.rs:192:9
@@ -358,6 +388,11 @@ LL |     struct Priv;
 ...
 LL |         type Check = Priv;
    |         ^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: trait `PrivTr1` is more private than the item `aliases_priv::Tr1`
   --> $DIR/private-in-public-warn.rs:222:5

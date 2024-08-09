@@ -49,6 +49,7 @@ pub struct UnnamedItemIsPrivate {
 }
 
 #[derive(Diagnostic)]
+#[help]
 #[diag(privacy_in_public_interface, code = E0446)]
 pub struct InPublicInterface<'a> {
     #[primary_span]
@@ -59,6 +60,9 @@ pub struct InPublicInterface<'a> {
     pub descr: DiagArgFromDisplay<'a>,
     #[label(privacy_visibility_label)]
     pub vis_span: Span,
+    #[suggestion(code = "{vis_sugg}", applicability = "maybe-incorrect", style = "verbose")]
+    pub data: Span,
+    pub vis_sugg: &'static str,
 }
 
 #[derive(Diagnostic)]

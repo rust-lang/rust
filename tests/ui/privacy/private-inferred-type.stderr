@@ -6,6 +6,11 @@ LL |     struct Priv;
 ...
 LL |     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
    |                                    ^^^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error[E0446]: private type `S2` in public interface
   --> $DIR/private-inferred-type.rs:83:9
@@ -15,6 +20,11 @@ LL |     struct S2;
 ...
 LL |         type Target = S2Alias;
    |         ^^^^^^^^^^^ can't leak private type
+   |
+help: consider adding `pub` in front of it
+   |
+LL |     pub;
+   |     ~~~
 
 error: type `Priv` is private
   --> $DIR/private-inferred-type.rs:97:9
