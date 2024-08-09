@@ -222,7 +222,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None => {
                         let peeled = body.peel_uwu();
                         if let ast::ExprKind::Gen(
-                            gen_capture_clause,
+                            _,
                             block,
                             gen_kind @ ast::GenBlockKind::Async,
                             span,
@@ -248,7 +248,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             let id = self.next_node_id();
                             self.lower_expr_coroutine_closure(
                                 binder,
-                                (*capture_clause).max(*gen_capture_clause),
+                                *capture_clause,
                                 e.id,
                                 hir_id,
                                 coroutine_kind,
