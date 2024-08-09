@@ -140,7 +140,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                     let value = state.simplify_rvalue(rvalue, location);
                     // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
                     // reusable if we have an exact type match.
-                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
+                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, state.tcx) {
                         return;
                     }
                     value
@@ -405,7 +405,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = match kind {
                     AggregateTy::Array => {
                         assert!(fields.len() > 0);
-                        Ty::new_array(self.tcx, fields[0].layout.ty, fields.len() as u64)
+                        let field_ty = fields[0].layout.ty;
+                        Ty::new_array(self.tcx, field_ty, fields.len() as u64)
                     }
                     AggregateTy::Tuple => {
                         Ty::new_tup_from_iter(self.tcx, fields.iter().map(|f| f.layout.ty))
@@ -429,7 +430,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     let ptr_imm = Immediate::new_pointer_with_meta(data, meta, &self.ecx);
                     ImmTy::from_immediate(ptr_imm, ty).into()
-                } else if matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+                } else if matches!(kind, AggregateTy::Array)
+                    || matches!(ty.abi, Abi::Scalar(..) | Abi::ScalarPair(..))
+                {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).ok()?;
                     let variant_dest = if let Some(variant) = variant {
                         self.ecx.project_downcast(&dest, variant).ok()?
@@ -441,9 +444,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         self.ecx.copy_op(op, &field_dest).ok()?;
                     }
                     self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
-                    self.ecx
-                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
-                        .ok()?;
+                    let dest = dest.map_provenance(|prov| prov.as_immutable());
                     dest.into()
                 } else {
                     return None;
@@ -727,7 +728,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             place.projection = self.tcx.mk_place_elems(&projection);
         }
 
-        trace!(?place);
+        trace!(after_place = ?place);
     }
 
     /// Represent the *value* which would be read from `place`, and point `place` to a preexisting
@@ -904,7 +905,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         let (mut ty, variant_index) = match *kind {
-            AggregateKind::Array(..) => {
+            AggregateKind::Array(_) => {
                 assert!(!field_ops.is_empty());
                 (AggregateTy::Array, FIRST_VARIANT)
             }
@@ -1367,6 +1368,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     }
 }
 
+#[instrument(level = "trace", skip(ecx), ret)]
 fn op_to_prop_const<'tcx>(
     ecx: &mut InterpCx<'tcx, DummyMachine>,
     op: &OpTy<'tcx>,
@@ -1381,8 +1383,11 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
-    if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
+    // Do not synthesize too large constants, except constant arrays.
+    // For arrays, codegen will just memcpy them, but LLVM will optimize out those unneeded memcpy.
+    // For others, we'd prefer in-place initialization over memcpy them.
+    if !(op.layout.ty.is_array() || matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)))
+    {
         return None;
     }
 
@@ -1458,6 +1463,7 @@ impl<'tcx> VnState<'_, 'tcx> {
     }
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
+    #[instrument(level = "trace", skip(self, index), ret)]
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
         // This was already constant in MIR, do not change it. If the constant is not
         // deterministic, adding an additional mention of it in MIR will not give the same value as
@@ -1468,10 +1474,6 @@ impl<'tcx> VnState<'_, 'tcx> {
         }
 
         let op = self.evaluated[index].as_ref()?;
-        if op.layout.is_unsized() {
-            // Do not attempt to propagate unsized locals.
-            return None;
-        }
 
         let value = op_to_prop_const(&mut self.ecx, op)?;
 
@@ -1508,6 +1510,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         self.simplify_operand(operand, location);
     }
 
+    #[instrument(level = "trace", skip(self, stmt))]
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
             self.simplify_place_projection(lhs, location);
