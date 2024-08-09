@@ -3586,7 +3586,7 @@ impl ForeignItem<'_> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(&'hir FnDecl<'hir>, &'hir [Ident], &'hir Generics<'hir>, Safety),
+    Fn(FnSig<'hir>, &'hir [Ident], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.
@@ -3645,7 +3645,10 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | OwnerNode::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+            }) => Some(fn_sig),
             _ => None,
         }
     }
@@ -3654,11 +3657,10 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
-            OwnerNode::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_decl, _, _, _),
-                ..
-            }) => Some(fn_decl),
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | OwnerNode::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(fn_sig, _, _), ..
+            }) => Some(fn_sig.decl),
             _ => None,
         }
     }
@@ -3846,11 +3848,13 @@ impl<'hir> Node<'hir> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig.decl),
-            Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. })
-            | Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(fn_decl, _, _, _), ..
-            }) => Some(fn_decl),
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+                Some(fn_sig.decl)
+            }
+            Node::Expr(Expr { kind: ExprKind::Closure(Closure { fn_decl, .. }), .. }) => {
+                Some(fn_decl)
+            }
             _ => None,
         }
     }
@@ -3874,7 +3878,10 @@ impl<'hir> Node<'hir> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
-            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. })
+            | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_sig, _, _), .. }) => {
+                Some(fn_sig)
+            }
             _ => None,
         }
     }
@@ -3949,7 +3956,7 @@ impl<'hir> Node<'hir> {
     pub fn generics(self) -> Option<&'hir Generics<'hir>> {
         match self {
             Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Fn(_, _, generics, _), ..
+                kind: ForeignItemKind::Fn(_, _, generics), ..
             })
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
@@ -4039,8 +4046,8 @@ mod size_asserts {
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);
-    static_assert_size!(ForeignItem<'_>, 72);
-    static_assert_size!(ForeignItemKind<'_>, 40);
+    static_assert_size!(ForeignItem<'_>, 88);
+    static_assert_size!(ForeignItemKind<'_>, 56);
     static_assert_size!(GenericArg<'_>, 16);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);

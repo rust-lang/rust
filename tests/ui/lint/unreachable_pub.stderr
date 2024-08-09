@@ -130,7 +130,7 @@ warning: unreachable `pub` item
   --> $DIR/unreachable_pub.rs:48:9
    |
 LL |         pub fn catalyze() -> bool;
-   |         ---^^^^^^^^^^^^^^^^^^^^^^
+   |         ---^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         help: consider restricting its visibility: `pub(crate)`
    |
