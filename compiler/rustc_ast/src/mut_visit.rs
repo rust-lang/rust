@@ -631,7 +631,7 @@ fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
 }
 
 fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
-    let Attribute { kind, id: _, style: _, span } = attr;
+    let Attribute { kind, id: _, style: _, span, allowed_diagnostic_attribute: _ } = attr;
     match kind {
         AttrKind::Normal(normal) => {
             let NormalAttr {

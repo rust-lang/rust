@@ -1214,7 +1214,7 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) -> V::
 }
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) -> V::Result {
-    let Attribute { kind, id: _, style: _, span: _ } = attr;
+    let Attribute { kind, id: _, style: _, span: _, allowed_diagnostic_attribute: _ } = attr;
     match kind {
         AttrKind::Normal(normal) => {
             let NormalAttr { item, tokens: _ } = &**normal;

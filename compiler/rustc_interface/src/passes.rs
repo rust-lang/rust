@@ -237,6 +237,8 @@ fn configure_and_expand(
         rustc_builtin_macros::test_harness::inject(&mut krate, sess, features, resolver)
     });
 
+    rustc_ast_passes::ast_validation::apply_diagnostic_attribute_stablilty(features, &mut krate);
+
     let has_proc_macro_decls = sess.time("AST_validation", || {
         rustc_ast_passes::ast_validation::check_crate(
             sess,

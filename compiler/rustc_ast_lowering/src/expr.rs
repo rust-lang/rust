@@ -733,6 +733,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
                     style: AttrStyle::Outer,
                     span: unstable_span,
+                    allowed_diagnostic_attribute: false,
                 }],
             );
         }
