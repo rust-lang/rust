@@ -443,13 +443,13 @@ fn discover_sysroot_src_dir_or_add_component(
             get_rust_src(sysroot_path)
         })
         .ok_or_else(|| {
-            format_err!(
-                "\
+            let error = "\
 can't load standard library from sysroot
 {sysroot_path}
 (discovered via `rustc --print sysroot`)
-try installing the Rust source the same way you installed rustc",
-            )
+try installing the Rust source the same way you installed rustc";
+            tracing::error!(error);
+            format_err!(error)
         })
 }
 
