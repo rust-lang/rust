@@ -708,16 +708,14 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(
+    pub(crate) fn attributes<'tcx>(
         &self,
-        tcx: TyCtxt<'_>,
+        tcx: TyCtxt<'tcx>,
         cache: &Cache,
         keep_as_is: bool,
     ) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
-
-        use rustc_abi::IntegerType;
 
         let mut attrs: Vec<String> = self
             .attrs
@@ -738,67 +736,122 @@ impl Item {
                 }
             })
             .collect();
-        if !keep_as_is
-            && let Some(def_id) = self.def_id()
-            && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
-        {
-            let adt = tcx.adt_def(def_id);
-            let repr = adt.repr();
-            let mut out = Vec::new();
-            if repr.c() {
-                out.push("C");
-            }
-            if repr.transparent() {
-                // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
-                // field is public in case all fields are 1-ZST fields.
-                let render_transparent = cache.document_private
-                    || adt
-                        .all_fields()
-                        .find(|field| {
-                            let ty =
-                                field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
-                            tcx.layout_of(tcx.param_env(field.did).and(ty))
-                                .is_ok_and(|layout| !layout.is_1zst())
-                        })
-                        .map_or_else(
-                            || adt.all_fields().any(|field| field.vis.is_public()),
-                            |field| field.vis.is_public(),
-                        );
 
-                if render_transparent {
-                    out.push("transparent");
-                }
-            }
-            if repr.simd() {
-                out.push("simd");
-            }
-            let pack_s;
-            if let Some(pack) = repr.pack {
-                pack_s = format!("packed({})", pack.bytes());
-                out.push(&pack_s);
-            }
-            let align_s;
-            if let Some(align) = repr.align {
-                align_s = format!("align({})", align.bytes());
-                out.push(&align_s);
-            }
-            let int_s;
-            if let Some(int) = repr.int {
-                int_s = match int {
-                    IntegerType::Pointer(is_signed) => {
-                        format!("{}size", if is_signed { 'i' } else { 'u' })
-                    }
-                    IntegerType::Fixed(size, is_signed) => {
-                        format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
-                    }
-                };
-                out.push(&int_s);
-            }
-            if !out.is_empty() {
-                attrs.push(format!("#[repr({})]", out.join(", ")));
-            }
+        if !keep_as_is && let Some(repr) = self.repr(tcx, cache) {
+            attrs.push(repr);
         }
+
         attrs
+    }
+
+    /// Compute the *public* `#[repr]` of this item.
+    ///
+    /// Read more about it here:
+    /// https://doc.rust-lang.org/nightly/rustdoc/advanced-features.html#repr-documenting-the-representation-of-a-type
+    fn repr<'tcx>(&self, tcx: TyCtxt<'tcx>, cache: &Cache) -> Option<String> {
+        let def_id = self.def_id()?;
+        let (ItemType::Struct | ItemType::Enum | ItemType::Union) = self.type_() else {
+            return None;
+        };
+
+        let adt = tcx.adt_def(def_id);
+        let repr = adt.repr();
+
+        let is_visible = |def_id| cache.document_hidden || !tcx.is_doc_hidden(def_id);
+        let is_field_public =
+            |field: &'tcx ty::FieldDef| field.vis.is_public() && is_visible(field.did);
+
+        if repr.transparent() {
+            // `repr(transparent)` is public iff the non-1-ZST field is public or
+            // at least one field is public in case all fields are 1-ZST fields.
+            let is_public = cache.document_private
+                || adt.variants().iter().all(|variant| {
+                    if !is_visible(variant.def_id) {
+                        return false;
+                    }
+
+                    let field = variant.fields.iter().find(|field| {
+                        let args = ty::GenericArgs::identity_for_item(tcx, field.did);
+                        let ty = field.ty(tcx, args);
+                        tcx.layout_of(tcx.param_env(field.did).and(ty))
+                            .is_ok_and(|layout| !layout.is_1zst())
+                    });
+
+                    if let Some(field) = field {
+                        return is_field_public(field);
+                    }
+
+                    adt.variants().iter().all(|variant| {
+                        variant.fields.is_empty() || variant.fields.iter().any(is_field_public)
+                    })
+                });
+
+            // Since `repr(transparent)` can't have any other reprs or
+            // repr modifiers beside it, we can safely return early here.
+            return is_public.then(|| "#[repr(transparent)]".into());
+        }
+
+        // Fast path which avoids looking through the variants and fields in
+        // the common case of no `#[repr]` or in the case of `#[repr(Rust)]`.
+        if !repr.c()
+            && !repr.simd()
+            && repr.int.is_none()
+            && repr.pack.is_none()
+            && repr.align.is_none()
+        {
+            return None;
+        }
+
+        let is_public = cache.document_private
+            || if adt.is_enum() {
+                // FIXME(fmease): Should we take the visibility of fields of variants into account?
+                // FIXME(fmease): `any` or `all`?
+                adt.variants().is_empty()
+                    || adt.variants().iter().any(|variant| is_visible(variant.def_id))
+            } else {
+                // FIXME(fmease): `all` or `any`?
+                adt.all_fields().all(is_field_public)
+            };
+        if !is_public {
+            return None;
+        }
+
+        let mut result = Vec::new();
+
+        if repr.c() {
+            result.push("C");
+        }
+        if repr.simd() {
+            result.push("simd");
+        }
+        let int_s;
+        if let Some(int) = repr.int {
+            int_s = match int {
+                rustc_abi::IntegerType::Pointer(is_signed) => {
+                    format!("{}size", if is_signed { 'i' } else { 'u' })
+                }
+                rustc_abi::IntegerType::Fixed(size, is_signed) => {
+                    format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+                }
+            };
+            result.push(&int_s);
+        }
+        let pack_s;
+        if let Some(pack) = repr.pack {
+            pack_s = format!("packed({})", pack.bytes());
+            result.push(&pack_s);
+        }
+        let align_s;
+        if let Some(align) = repr.align {
+            align_s = format!("align({})", align.bytes());
+            result.push(&align_s);
+        }
+
+        if result.is_empty() {
+            return None;
+        }
+
+        Some(format!("#[repr({})]", result.join(", ")))
     }
 
     pub fn is_doc_hidden(&self) -> bool {
