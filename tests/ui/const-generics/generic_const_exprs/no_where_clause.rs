@@ -17,6 +17,7 @@ impl<const N: usize> Example<N> {
       a: [0.; N],
       b: [0.; complex_maths(N)],
       //~^ ERROR: unconstrained generic constant
+      //~| ERROR: unconstrained generic constant
     }
   }
 }

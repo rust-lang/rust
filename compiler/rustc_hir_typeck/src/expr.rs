@@ -1736,6 +1736,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, guar)
             };
 
+            // Check that the expected field type is WF. Otherwise, we emit no use-site error
+            // in the case of coercions for non-WF fields, which leads to incorrect error
+            // tainting. See issue #126272.
+            self.register_wf_obligation(
+                field_type.into(),
+                field.expr.span,
+                ObligationCauseCode::WellFormed(None),
+            );
+
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
             let ty = self.check_expr_with_hint(field.expr, field_type);
