@@ -98,6 +98,16 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `for` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the iterator expression.
+  --> $DIR/coerce-loop-issue-122561.rs:4:5
+   |
+LL |     for i in 0.. {
+   |     ^^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:4:5
+   |
+LL |     for i in 0.. {
+   |     ^^^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
@@ -116,6 +126,16 @@ LL | |     }
    | |_____^ expected `String`, found `()`
    |
    = note: `for` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the iterator expression.
+  --> $DIR/coerce-loop-issue-122561.rs:11:5
+   |
+LL |     for i in 0..5 {
+   |     ^^^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:11:5
+   |
+LL |     for i in 0..5 {
+   |     ^^^^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
@@ -134,6 +154,16 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `for` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the iterator expression.
+  --> $DIR/coerce-loop-issue-122561.rs:18:5
+   |
+LL |     for i in 0..0 {
+   |     ^^^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:18:5
+   |
+LL |     for i in 0..0 {
+   |     ^^^^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
@@ -168,6 +198,16 @@ LL | fn for_single_line() -> bool { for i in 0.. { return false; } }
    |                         expected `bool` because of return type
    |
    = note: `for` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the iterator expression.
+  --> $DIR/coerce-loop-issue-122561.rs:33:32
+   |
+LL | fn for_single_line() -> bool { for i in 0.. { return false; } }
+   |                                ^^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:33:32
+   |
+LL | fn for_single_line() -> bool { for i in 0.. { return false; } }
+   |                                ^^^^^^^^^^^^
 help: consider returning a value here
    |
 LL | fn for_single_line() -> bool { for i in 0.. { return false; } /* `bool` value */ }
@@ -186,6 +226,16 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `while` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the loop condition expression or pattern.
+  --> $DIR/coerce-loop-issue-122561.rs:48:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:48:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
@@ -206,6 +256,16 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `while` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the loop condition expression or pattern.
+  --> $DIR/coerce-loop-issue-122561.rs:57:5
+   |
+LL |     while i < 3 {
+   |     ^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:57:5
+   |
+LL |     while i < 3 {
+   |     ^^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
@@ -224,6 +284,16 @@ LL | |     }
    | |_____^ expected `bool`, found `()`
    |
    = note: `while` loops evaluate to unit type `()`
+note: It is determined that this might iterate zero times, regardless of the loop condition expression or pattern.
+  --> $DIR/coerce-loop-issue-122561.rs:65:5
+   |
+LL |     while false {
+   |     ^^^^^^^^^^^
+help: If you are assuming that it will iterate at least once, consider using a `loop` expression instead.
+  --> $DIR/coerce-loop-issue-122561.rs:65:5
+   |
+LL |     while false {
+   |     ^^^^^^^^^^^
 help: consider returning a value here
    |
 LL ~     }
