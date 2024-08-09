@@ -3,6 +3,7 @@
 use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
+use crate::sys_common::ignore_notfound;
 
 pub(crate) const NOT_FILE_ERROR: Error = io::const_io_error!(
     ErrorKind::InvalidInput,
@@ -32,14 +33,22 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 
 fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in fs::read_dir(path)? {
-        let child = child?;
-        if child.file_type()?.is_dir() {
-            remove_dir_all_recursive(&child.path())?;
-        } else {
-            fs::remove_file(&child.path())?;
+        let result: io::Result<()> = try {
+            let child = child?;
+            if child.file_type()?.is_dir() {
+                remove_dir_all_recursive(&child.path())?;
+            } else {
+                fs::remove_file(&child.path())?;
+            }
+        };
+        // ignore internal NotFound errors to prevent race conditions
+        if let Err(err) = &result
+            && err.kind() != io::ErrorKind::NotFound
+        {
+            return result;
         }
     }
-    fs::remove_dir(path)
+    ignore_notfound(fs::remove_dir(path))
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
