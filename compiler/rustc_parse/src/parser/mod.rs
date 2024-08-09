@@ -13,7 +13,7 @@ mod ty;
 use std::ops::Range;
 use std::{fmt, mem, slice};
 
-use attr_wrapper::AttrWrapper;
+use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::FnParseMode;
@@ -237,6 +237,7 @@ impl NodeRange {
     // is the position of the function's start token. This gives
     // `NodeRange(10..15)`.
     fn new(ParserRange(parser_range): ParserRange, start_pos: u32) -> NodeRange {
+        assert!(parser_range.start >= start_pos && parser_range.end >= start_pos);
         NodeRange((parser_range.start - start_pos)..(parser_range.end - start_pos))
     }
 }
@@ -252,7 +253,7 @@ enum Capturing {
     Yes,
 }
 
-// This state is used by `Parser::collect_tokens_trailing_token`.
+// This state is used by `Parser::collect_tokens`.
 #[derive(Clone, Debug)]
 struct CaptureState {
     capturing: Capturing,
@@ -387,6 +388,12 @@ enum Trailing {
     Yes,
 }
 
+impl From<bool> for Trailing {
+    fn from(b: bool) -> Trailing {
+        if b { Trailing::Yes } else { Trailing::No }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum TokenDescription {
     ReservedIdentifier,
@@ -458,8 +465,8 @@ impl<'a> Parser<'a> {
         parser.bump();
 
         // Change this from 1 back to 0 after the bump. This eases debugging of
-        // `Parser::collect_tokens_trailing_token` nicer because it makes the
-        // token positions 0-indexed which is nicer than 1-indexed.
+        // `Parser::collect_tokens` because 0-indexed token positions are nicer
+        // than 1-indexed token positions.
         parser.num_bump_calls = 0;
 
         parser
@@ -1543,11 +1550,9 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, R> {
         // The only reason to call `collect_tokens_no_attrs` is if you want tokens, so use
         // `ForceCollect::Yes`
-        self.collect_tokens_trailing_token(
-            AttrWrapper::empty(),
-            ForceCollect::Yes,
-            |this, _attrs| Ok((f(this)?, false)),
-        )
+        self.collect_tokens(None, AttrWrapper::empty(), ForceCollect::Yes, |this, _attrs| {
+            Ok((f(this)?, Trailing::No, UsePreAttrPos::No))
+        })
     }
 
     /// `::{` or `::*`
