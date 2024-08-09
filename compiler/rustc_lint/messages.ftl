@@ -699,6 +699,9 @@ lint_ptr_null_checks_ref = references are not nullable, so checking them for nul
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
+lint_query_untracked = `{$method}` accesses information that is not tracked by the query system
+    .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
 
 lint_range_use_inclusive_range = use an inclusive range instead
