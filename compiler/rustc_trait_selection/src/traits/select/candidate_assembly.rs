@@ -247,11 +247,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .filter(|p| p.def_id() == stack.obligation.predicate.def_id())
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
+        let drcx = DeepRejectCtxt::new(self.tcx(), TreatParams::AsRigid, TreatParams::AsRigid);
+        let obligation_args = stack.obligation.predicate.skip_binder().trait_ref.args;
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in bounds {
+            let bound_trait_ref = bound.map_bound(|t| t.trait_ref);
+            if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
+                continue;
+            }
+
             // FIXME(oli-obk): it is suspicious that we are dropping the constness and
             // polarity here.
-            let wc = self.where_clause_may_apply(stack, bound.map_bound(|t| t.trait_ref))?;
+            let wc = self.where_clause_may_apply(stack, bound_trait_ref)?;
             if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));
             }
@@ -580,7 +587,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let drcx = DeepRejectCtxt::new(self.tcx(), TreatParams::ForLookup);
+        let drcx = DeepRejectCtxt::new(
+            self.tcx(),
+            TreatParams::AsRigid,
+            TreatParams::InstantiateWithInfer,
+        );
         let obligation_args = obligation.predicate.skip_binder().trait_ref.args;
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),

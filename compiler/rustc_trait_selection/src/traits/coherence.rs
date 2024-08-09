@@ -94,7 +94,11 @@ pub fn overlapping_impls(
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let drcx = DeepRejectCtxt::new(tcx, TreatParams::AsCandidateKey);
+    let drcx = DeepRejectCtxt::new(
+        tcx,
+        TreatParams::InstantiateWithInfer,
+        TreatParams::InstantiateWithInfer,
+    );
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
