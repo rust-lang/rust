@@ -2567,6 +2567,20 @@ impl<'hir> Ty<'hir> {
         final_ty
     }
 
+    /// Check whether type is a reference with anonymous lifetime
+    pub fn is_ref_with_anonymous_lifetime(&self) -> bool {
+        if let TyKind::Ref(lifetime, MutTy { mutbl: Mutability::Not, .. }) = self.kind {
+            lifetime.is_anonymous()
+        } else {
+            false
+        }
+    }
+
+    /// Check whether type is a mutable reference to some type
+    pub fn is_mut_ref(&self) -> bool {
+        matches!(self.kind, TyKind::Ref(_, MutTy { mutbl: Mutability::Mut, .. }))
+    }
+
     pub fn find_self_aliases(&self) -> Vec<Span> {
         use crate::intravisit::Visitor;
         struct MyVisitor(Vec<Span>);

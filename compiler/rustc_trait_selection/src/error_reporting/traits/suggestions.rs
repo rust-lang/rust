@@ -4949,29 +4949,83 @@ impl<'v> Visitor<'v> for AwaitsVisitor {
     }
 }
 
+/// Function to suggest a type or lifetime parameter.
+///
+/// `possible_names` is the list of names from which a name will be choosen.
+/// `used_names` is the list of `hir::GenericsParam`s already in use.
+/// `filter_fn` is a function to filter out the desired names from `used_names`.
+/// `default_name` is the name to suggest when all `possible_names` are in `used_names`.
+fn next_param_name<F: FnMut(&hir::GenericParam<'_>) -> Option<Symbol>>(
+    possible_names: [&str; 10],
+    used_names: &[hir::GenericParam<'_>],
+    filter_fn: F,
+    default_name: &str,
+) -> String {
+    // Filter out used names based on `filter_fn`.
+    let used_names = used_names.iter().filter_map(filter_fn).collect::<Vec<_>>();
+
+    // Find a name from `possible_names` that is not in `used_names`.
+    possible_names
+        .iter()
+        .find(|n| !used_names.contains(&Symbol::intern(n)))
+        .unwrap_or(&default_name)
+        .to_string()
+}
+
+/// Suggest a new type parameter name for diagnostic purposes.
+///
+/// `name` is the preferred name you'd like to suggest if it's not in use already.
 pub trait NextTypeParamName {
     fn next_type_param_name(&self, name: Option<&str>) -> String;
 }
 
 impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
-        // This is the list of possible parameter names that we might suggest.
+        // Type names are usually single letters in uppercase. So convert the first letter of input string to uppercase.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_uppercase().to_string());
         let name = name.as_deref();
-        let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
-        let used_names = self
-            .iter()
-            .filter_map(|p| match p.name {
-                hir::ParamName::Plain(ident) => Some(ident.name),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
 
-        possible_names
-            .iter()
-            .find(|n| !used_names.contains(&Symbol::intern(n)))
-            .unwrap_or(&"ParamName")
-            .to_string()
+        // This is the list of possible parameter names that we might suggest.
+        let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];
+
+        // Filter out the existing type parameter names.
+        let filter_fn = |p: &hir::GenericParam<'_>| match p.name {
+            hir::ParamName::Plain(ident) => Some(ident.name),
+            _ => None,
+        };
+        next_param_name(possible_names, self, filter_fn, "ParamName")
+    }
+}
+
+/// Suggest a new lifetime parameter name for diagnostic purposes.
+///
+/// `name` is the preferred name you'd like to suggest if it's not in use already.
+/// Note: `name`, if provided, should begin with an apostrophe and followed by a lifetime name.
+/// The output string will also begin with an apostrophe and follwed by a lifetime name.
+pub trait NextLifetimeParamName {
+    fn next_lifetime_param_name(&self, name: Option<&str>) -> String;
+}
+
+impl NextLifetimeParamName for &[hir::GenericParam<'_>] {
+    fn next_lifetime_param_name(&self, name: Option<&str>) -> String {
+        // Lifetimes are usually in lowercase. So transform input string to lowercase.
+        let name = name.map(|n| n.to_lowercase());
+        let name = name.as_deref();
+        // This is the list of possible lifetime names that we might suggest.
+        let possible_names =
+            [name.unwrap_or("'a"), "'a", "'b", "'c", "'d", "'e", "'f", "'g", "'h", "'i"];
+        // Filter out the existing lifetime names
+        let filter_fn = |p: &hir::GenericParam<'_>| {
+            if matches!(p.kind, hir::GenericParamKind::Lifetime { .. }) {
+                match p.name {
+                    hir::ParamName::Plain(ident) => Some(ident.name),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        };
+        next_param_name(possible_names, self, filter_fn, "LifetimeName")
     }
 }
 
