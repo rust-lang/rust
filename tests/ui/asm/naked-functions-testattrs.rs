@@ -6,13 +6,13 @@
 #![feature(test)]
 #![crate_type = "lib"]
 
-use std::arch::asm;
+use std::arch::naked_asm;
 
 #[test]
 #[naked]
 //~^ ERROR [E0736]
 fn test_naked() {
-    unsafe { asm!("", options(noreturn)) };
+    unsafe { naked_asm!("", options(noreturn)) };
 }
 
 #[should_panic]
@@ -20,7 +20,7 @@ fn test_naked() {
 #[naked]
 //~^ ERROR [E0736]
 fn test_naked_should_panic() {
-    unsafe { asm!("", options(noreturn)) };
+    unsafe { naked_asm!("", options(noreturn)) };
 }
 
 #[ignore]
@@ -28,12 +28,12 @@ fn test_naked_should_panic() {
 #[naked]
 //~^ ERROR [E0736]
 fn test_naked_ignore() {
-    unsafe { asm!("", options(noreturn)) };
+    unsafe { naked_asm!("", options(noreturn)) };
 }
 
 #[bench]
 #[naked]
 //~^ ERROR [E0736]
 fn bench_naked() {
-    unsafe { asm!("", options(noreturn)) };
+    unsafe { naked_asm!("", options(noreturn)) };
 }

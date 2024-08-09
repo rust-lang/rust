@@ -751,7 +751,7 @@ pub(crate) struct AsmExpectedOther {
     #[primary_span]
     #[label(builtin_macros_asm_expected_other)]
     pub(crate) span: Span,
-    pub(crate) is_global_asm: bool,
+    pub(crate) is_inline_asm: bool,
 }
 
 #[derive(Diagnostic)]
@@ -799,13 +799,6 @@ pub(crate) struct AsmMayUnwind {
     pub(crate) labels_sp: Vec<Span>,
 }
 
-#[derive(Diagnostic)]
-#[diag(builtin_macros_global_asm_clobber_abi)]
-pub(crate) struct GlobalAsmClobberAbi {
-    #[primary_span]
-    pub(crate) spans: Vec<Span>,
-}
-
 pub(crate) struct AsmClobberNoReg {
     pub(crate) spans: Vec<Span>,
     pub(crate) clobbers: Vec<Span>,
@@ -841,23 +834,33 @@ pub(crate) struct AsmOptAlreadyprovided {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_global_asm_unsupported_option)]
-pub(crate) struct GlobalAsmUnsupportedOption {
+#[diag(builtin_macros_asm_unsupported_option)]
+pub(crate) struct AsmUnsupportedOption {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) symbol: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub(crate) full_span: Span,
+    pub(crate) macro_name: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_global_asm_unsupported_operand)]
-pub(crate) struct GlobalAsmUnsupportedOperand<'a> {
+#[diag(builtin_macros_asm_unsupported_operand)]
+pub(crate) struct AsmUnsupportedOperand<'a> {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     pub(crate) symbol: &'a str,
+    pub(crate) macro_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_asm_unsupported_clobber_abi)]
+pub(crate) struct AsmUnsupportedClobberAbi {
+    #[primary_span]
+    pub(crate) spans: Vec<Span>,
+    pub(crate) macro_name: &'static str,
 }
 
 #[derive(Diagnostic)]

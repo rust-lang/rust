@@ -1,8 +1,50 @@
-error: asm with the `pure` option must have at least one output
-  --> $DIR/naked-functions.rs:112:14
+error: the `in` operand cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:41:29
    |
-LL |     asm!("", options(readonly, nostack), options(pure));
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+LL |     naked_asm!("/* {0} */", in(reg) a, options(noreturn))
+   |                             ^^ the `in` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `in` operand cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:62:10
+   |
+LL |          in(reg) a,
+   |          ^^ the `in` operand is not meaningful for global-scoped inline assembly, remove it
+
+error: the `nomem` option cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:104:28
+   |
+LL |     naked_asm!("", options(nomem, preserves_flags, noreturn));
+   |                            ^^^^^ the `nomem` option is not meaningful for global-scoped inline assembly
+
+error: the `preserves_flags` option cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:104:35
+   |
+LL |     naked_asm!("", options(nomem, preserves_flags, noreturn));
+   |                                   ^^^^^^^^^^^^^^^ the `preserves_flags` option is not meaningful for global-scoped inline assembly
+
+error: the `readonly` option cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:111:28
+   |
+LL |     naked_asm!("", options(readonly, nostack), options(pure));
+   |                            ^^^^^^^^ the `readonly` option is not meaningful for global-scoped inline assembly
+
+error: the `nostack` option cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:111:38
+   |
+LL |     naked_asm!("", options(readonly, nostack), options(pure));
+   |                                      ^^^^^^^ the `nostack` option is not meaningful for global-scoped inline assembly
+
+error: the `pure` option cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:111:56
+   |
+LL |     naked_asm!("", options(readonly, nostack), options(pure));
+   |                                                        ^^^^ the `pure` option is not meaningful for global-scoped inline assembly
+
+error: the `may_unwind` option cannot be used with `naked_asm!`
+  --> $DIR/naked-functions.rs:120:38
+   |
+LL |     naked_asm!("", options(noreturn, may_unwind));
+   |                                      ^^^^^^^^^^ the `may_unwind` option is not meaningful for global-scoped inline assembly
 
 error: this is a user specified error
   --> $DIR/naked-functions.rs:168:5
@@ -17,10 +59,10 @@ LL |     compile_error!("this is a user specified error");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: asm template must be a string literal
-  --> $DIR/naked-functions.rs:181:10
+  --> $DIR/naked-functions.rs:181:16
    |
-LL |     asm!(invalid_syntax)
-   |          ^^^^^^^^^^^^^^
+LL |     naked_asm!(invalid_syntax)
+   |                ^^^^^^^^^^^^^^
 
 error: patterns not allowed in naked function parameters
   --> $DIR/naked-functions.rs:19:5
@@ -63,22 +105,8 @@ LL |
 LL |     a + 1
    |     ----- non-asm is unsupported in naked functions
 
-error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:41:31
-   |
-LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
-   |                               ^
-   |
-   = help: follow the calling convention in asm block to use parameters
-
-error[E0787]: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:41:23
-   |
-LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
-   |                       ^^^^^^^^^
-
 error[E0787]: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:47:1
+  --> $DIR/naked-functions.rs:46:1
    |
 LL | pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,40 +114,8 @@ LL |
 LL |     (|| a + 1)()
    |     ------------ non-asm is unsupported in naked functions
 
-error[E0787]: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:64:10
-   |
-LL |          in(reg) a,
-   |          ^^^^^^^^^
-LL |
-LL |          inlateout(reg) b,
-   |          ^^^^^^^^^^^^^^^^
-LL |          inout(reg) c,
-   |          ^^^^^^^^^^^^
-LL |          lateout(reg) d,
-   |          ^^^^^^^^^^^^^^
-LL |          out(reg) e,
-   |          ^^^^^^^^^^
-
-error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:62:5
-   |
-LL | /     asm!("/* {0} {1} {2} {3} {4} {5} {6} */",
-LL | |
-LL | |          in(reg) a,
-LL | |
-...  |
-LL | |          sym G,
-LL | |     );
-   | |_____^
-   |
-help: consider specifying that the asm block is responsible for returning from the function
-   |
-LL |          sym G, options(noreturn),
-   |               +++++++++++++++++++
-
 error[E0787]: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:53:1
+  --> $DIR/naked-functions.rs:52:1
    |
 LL | pub unsafe extern "C" fn unsupported_operands() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -136,61 +132,61 @@ LL |     let mut e = 0usize;
    |     ------------------- non-asm is unsupported in naked functions
 
 error[E0787]: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:76:1
+  --> $DIR/naked-functions.rs:74:1
    |
 LL | pub extern "C" fn missing_assembly() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:84:9
+  --> $DIR/naked-functions.rs:82:9
    |
-LL |         asm!("");
-   |         ^^^^^^^^
+LL |         naked_asm!("");
+   |         ^^^^^^^^^^^^^^
    |
 help: consider specifying that the asm block is responsible for returning from the function
    |
-LL |         asm!("", options(noreturn));
-   |                +++++++++++++++++++
+LL |         naked_asm!("", options(noreturn));
+   |                      +++++++++++++++++++
+
+error[E0787]: asm in naked functions must use `noreturn` option
+  --> $DIR/naked-functions.rs:84:9
+   |
+LL |         naked_asm!("");
+   |         ^^^^^^^^^^^^^^
+   |
+help: consider specifying that the asm block is responsible for returning from the function
+   |
+LL |         naked_asm!("", options(noreturn));
+   |                      +++++++++++++++++++
 
 error[E0787]: asm in naked functions must use `noreturn` option
   --> $DIR/naked-functions.rs:86:9
    |
-LL |         asm!("");
-   |         ^^^^^^^^
+LL |         naked_asm!("");
+   |         ^^^^^^^^^^^^^^
    |
 help: consider specifying that the asm block is responsible for returning from the function
    |
-LL |         asm!("", options(noreturn));
-   |                +++++++++++++++++++
-
-error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:88:9
-   |
-LL |         asm!("");
-   |         ^^^^^^^^
-   |
-help: consider specifying that the asm block is responsible for returning from the function
-   |
-LL |         asm!("", options(noreturn));
-   |                +++++++++++++++++++
+LL |         naked_asm!("", options(noreturn));
+   |                      +++++++++++++++++++
 
 error[E0787]: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:81:1
+  --> $DIR/naked-functions.rs:79:1
    |
 LL | pub extern "C" fn too_many_asm_blocks() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |         asm!("");
-   |         -------- multiple asm blocks are unsupported in naked functions
+LL |         naked_asm!("");
+   |         -------------- multiple asm blocks are unsupported in naked functions
 LL |
-LL |         asm!("");
-   |         -------- multiple asm blocks are unsupported in naked functions
+LL |         naked_asm!("");
+   |         -------------- multiple asm blocks are unsupported in naked functions
 LL |
-LL |         asm!("", options(noreturn));
-   |         --------------------------- multiple asm blocks are unsupported in naked functions
+LL |         naked_asm!("", options(noreturn));
+   |         --------------------------------- multiple asm blocks are unsupported in naked functions
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:98:11
+  --> $DIR/naked-functions.rs:96:11
    |
 LL |         *&y
    |           ^
@@ -198,7 +194,7 @@ LL |         *&y
    = help: follow the calling convention in asm block to use parameters
 
 error[E0787]: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:96:5
+  --> $DIR/naked-functions.rs:94:5
    |
 LL |     pub extern "C" fn inner(y: usize) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,34 +202,16 @@ LL |
 LL |         *&y
    |         --- non-asm is unsupported in naked functions
 
-error[E0787]: asm options unsupported in naked functions: `nomem`, `preserves_flags`
-  --> $DIR/naked-functions.rs:106:5
-   |
-LL |     asm!("", options(nomem, preserves_flags, noreturn));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0787]: asm options unsupported in naked functions: `pure`, `readonly`, `nostack`
-  --> $DIR/naked-functions.rs:112:5
-   |
-LL |     asm!("", options(readonly, nostack), options(pure));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0787]: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:112:5
+  --> $DIR/naked-functions.rs:111:5
    |
-LL |     asm!("", options(readonly, nostack), options(pure));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     naked_asm!("", options(readonly, nostack), options(pure));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider specifying that the asm block is responsible for returning from the function
    |
-LL |     asm!("", options(noreturn), options(readonly, nostack), options(pure));
-   |            +++++++++++++++++++
-
-error[E0787]: asm options unsupported in naked functions: `may_unwind`
-  --> $DIR/naked-functions.rs:120:5
-   |
-LL |     asm!("", options(noreturn, may_unwind));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     naked_asm!("", options(noreturn), options(readonly, nostack), options(pure));
+   |                  +++++++++++++++++++
 
 warning: Rust ABI is unsupported in naked functions
   --> $DIR/naked-functions.rs:125:1
