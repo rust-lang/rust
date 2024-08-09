@@ -18,8 +18,9 @@ LL |     Float(Option<f64>),
    |     ^^^^^
 help: remove the extra arguments
    |
-LL ~         ,
-LL ~         None);
+LL -         0,
+LL -         None,
+LL +         None);
    |
 
 error: aborting due to 1 previous error
