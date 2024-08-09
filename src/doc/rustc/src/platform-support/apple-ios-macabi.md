@@ -2,7 +2,7 @@
 
 Apple Mac Catalyst targets.
 
-**Tier: 3**
+**Tier: 2 (without Host Tools)**
 
 - `aarch64-apple-ios-macabi`: Mac Catalyst on ARM64.
 - `x86_64-apple-ios-macabi`: Mac Catalyst on 64-bit x86.
