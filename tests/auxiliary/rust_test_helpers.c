@@ -292,6 +292,11 @@ float get_c_exhaust_sysv64_ints(
     return h.c;
 }
 
+// Variadic arguments are broken when using clang to compile nvptx-nvidia-cuda,
+// causing clang to ICE. As no test run on CI currently relies on these
+// functions, we don't compile them when building for nvptx-nvidia-cuda.
+#ifndef __CUDA_ARCH__
+
 // Calculates the average of `(x + y) / n` where x: i64, y: f64. There must be exactly n pairs
 // passed as variadic arguments. There are two versions of this function: the
 // variadic one, and the one that takes a `va_list`.
@@ -313,6 +318,8 @@ double rust_interesting_average(uint64_t n, ...) {
     va_end(pairs);
     return sum;
 }
+
+#endif
 
 int32_t rust_int8_to_int32(int8_t x) {
     return (int32_t)x;
