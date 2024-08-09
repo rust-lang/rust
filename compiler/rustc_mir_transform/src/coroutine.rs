@@ -607,104 +607,6 @@ fn replace_local<'tcx>(
     new_local
 }
 
-/// Transforms the `body` of the coroutine applying the following transforms:
-///
-/// - Eliminates all the `get_context` calls that async lowering created.
-/// - Replace all `Local` `ResumeTy` types with `&mut Context<'_>` (`context_mut_ref`).
-///
-/// The `Local`s that have their types replaced are:
-/// - The `resume` argument itself.
-/// - The argument to `get_context`.
-/// - The yielded value of a `yield`.
-///
-/// The `ResumeTy` hides a `&mut Context<'_>` behind an unsafe raw pointer, and the
-/// `get_context` function is being used to convert that back to a `&mut Context<'_>`.
-///
-/// Ideally the async lowering would not use the `ResumeTy`/`get_context` indirection,
-/// but rather directly use `&mut Context<'_>`, however that would currently
-/// lead to higher-kinded lifetime errors.
-/// See <https://github.com/rust-lang/rust/issues/105501>.
-///
-/// The async lowering step and the type / lifetime inference / checking are
-/// still using the `ResumeTy` indirection for the time being, and that indirection
-/// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
-fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let context_mut_ref = Ty::new_task_context(tcx);
-
-    // replace the type of the `resume` argument
-    replace_resume_ty_local(tcx, body, Local::new(2), context_mut_ref);
-
-    let get_context_def_id = tcx.require_lang_item(LangItem::GetContext, None);
-
-    for bb in START_BLOCK..body.basic_blocks.next_index() {
-        let bb_data = &body[bb];
-        if bb_data.is_cleanup {
-            continue;
-        }
-
-        match &bb_data.terminator().kind {
-            TerminatorKind::Call { func, .. } => {
-                let func_ty = func.ty(body, tcx);
-                if let ty::FnDef(def_id, _) = *func_ty.kind() {
-                    if def_id == get_context_def_id {
-                        let local = eliminate_get_context_call(&mut body[bb]);
-                        replace_resume_ty_local(tcx, body, local, context_mut_ref);
-                    }
-                } else {
-                    continue;
-                }
-            }
-            TerminatorKind::Yield { resume_arg, .. } => {
-                replace_resume_ty_local(tcx, body, resume_arg.local, context_mut_ref);
-            }
-            _ => {}
-        }
-    }
-}
-
-fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local {
-    let terminator = bb_data.terminator.take().unwrap();
-    if let TerminatorKind::Call { args, destination, target, .. } = terminator.kind {
-        let [arg] = *Box::try_from(args).unwrap();
-        let local = arg.node.place().unwrap().local;
-
-        let arg = Rvalue::Use(arg.node);
-        let assign = Statement {
-            source_info: terminator.source_info,
-            kind: StatementKind::Assign(Box::new((destination, arg))),
-        };
-        bb_data.statements.push(assign);
-        bb_data.terminator = Some(Terminator {
-            source_info: terminator.source_info,
-            kind: TerminatorKind::Goto { target: target.unwrap() },
-        });
-        local
-    } else {
-        bug!();
-    }
-}
-
-#[cfg_attr(not(debug_assertions), allow(unused))]
-fn replace_resume_ty_local<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    local: Local,
-    context_mut_ref: Ty<'tcx>,
-) {
-    let local_ty = std::mem::replace(&mut body.local_decls[local].ty, context_mut_ref);
-    // We have to replace the `ResumeTy` that is used for type and borrow checking
-    // with `&mut Context<'_>` in MIR.
-    #[cfg(debug_assertions)]
-    {
-        if let ty::Adt(resume_ty_adt, _) = local_ty.kind() {
-            let expected_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-            assert_eq!(*resume_ty_adt, expected_adt);
-        } else {
-            panic!("expected `ResumeTy`, found `{:?}`", local_ty);
-        };
-    }
-}
-
 /// Transforms the `body` of the coroutine applying the following transform:
 ///
 /// - Remove the `resume` argument.
@@ -712,7 +614,7 @@ fn replace_resume_ty_local<'tcx>(
 /// Ideally the async lowering would not add the `resume` argument.
 ///
 /// The async lowering step and the type / lifetime inference / checking are
-/// still using the `resume` argument for the time being. After this transform,
+/// still using the `resume` argument for the time being. After this transform
 /// the coroutine body doesn't have the `resume` argument.
 fn transform_gen_context<'tcx>(body: &mut Body<'tcx>) {
     // This leaves the local representing the `resume` argument in place,
@@ -1679,14 +1581,6 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // We rename RETURN_PLACE which has type mir.return_ty to old_ret_local
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
         let old_ret_local = replace_local(RETURN_PLACE, new_ret_ty, body, tcx);
-
-        // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
-        if matches!(
-            coroutine_kind,
-            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
-        ) {
-            transform_async_context(tcx, body);
-        }
 
         // We also replace the resume argument and insert an `Assign`.
         // This is needed because the resume argument `_2` might be live across a `yield`, in which

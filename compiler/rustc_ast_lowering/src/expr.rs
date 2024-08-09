@@ -632,17 +632,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // whereas a generator does not.
         let (inputs, params, task_context): (&[_], &[_], _) = match desugaring_kind {
             hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen => {
-                // Resume argument type: `ResumeTy`
-                let unstable_span = self.mark_span_with_reason(
-                    DesugaringKind::Async,
-                    self.lower_span(span),
-                    Some(self.allow_gen_future.clone()),
-                );
-                let resume_ty = self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span);
+                // Resume argument type: `&mut Context<'_>`.
+                let context_lifetime_ident = Ident::with_dummy_span(kw::UnderscoreLifetime);
+                let context_lifetime = self.arena.alloc(hir::Lifetime {
+                    hir_id: self.next_id(),
+                    ident: context_lifetime_ident,
+                    res: hir::LifetimeName::Infer,
+                });
+                let context_path =
+                    hir::QPath::LangItem(hir::LangItem::Context, self.lower_span(span));
+                let context_ty = hir::MutTy {
+                    ty: self.arena.alloc(hir::Ty {
+                        hir_id: self.next_id(),
+                        kind: hir::TyKind::Path(context_path),
+                        span: self.lower_span(span),
+                    }),
+                    mutbl: hir::Mutability::Mut,
+                };
+
                 let input_ty = hir::Ty {
                     hir_id: self.next_id(),
-                    kind: hir::TyKind::Path(resume_ty),
-                    span: unstable_span,
+                    kind: hir::TyKind::Ref(context_lifetime, context_ty),
+                    span: self.lower_span(span),
                 };
                 let inputs = arena_vec![self; input_ty];
 
@@ -744,7 +755,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     mut __awaitee => loop {
     ///         match unsafe { ::std::future::Future::poll(
     ///             <::std::pin::Pin>::new_unchecked(&mut __awaitee),
-    ///             ::std::future::get_context(task_context),
+    ///             task_context,
     ///         ) } {
     ///             ::std::task::Poll::Ready(result) => break result,
     ///             ::std::task::Poll::Pending => {}
@@ -803,11 +814,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             FutureKind::AsyncIterator => Some(self.allow_for_await.clone()),
         };
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, features);
-        let gen_future_span = self.mark_span_with_reason(
-            DesugaringKind::Await,
-            full_span,
-            Some(self.allow_gen_future.clone()),
-        );
         let expr_hir_id = expr.hir_id;
 
         // Note that the name of this binding must not be changed to something else because
@@ -815,14 +821,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // this name to identify what is being awaited by a suspended async functions.
         let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
         let (awaitee_pat, awaitee_pat_hid) =
-            self.pat_ident_binding_mode(gen_future_span, awaitee_ident, hir::BindingMode::MUT);
+            self.pat_ident_binding_mode(full_span, awaitee_ident, hir::BindingMode::MUT);
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 
         // unsafe {
         //     ::std::future::Future::poll(
         //         ::std::pin::Pin::new_unchecked(&mut __awaitee),
-        //         ::std::future::get_context(task_context),
+        //         task_context,
         //     )
         // }
         let poll_expr = {
@@ -840,21 +846,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_awaitee],
             );
-            let get_context = self.expr_call_lang_item_fn_mut(
-                gen_future_span,
-                hir::LangItem::GetContext,
-                arena_vec![self; task_context],
-            );
             let call = match await_kind {
                 FutureKind::Future => self.expr_call_lang_item_fn(
                     span,
                     hir::LangItem::FuturePoll,
-                    arena_vec![self; new_unchecked, get_context],
+                    arena_vec![self; new_unchecked, task_context],
                 ),
                 FutureKind::AsyncIterator => self.expr_call_lang_item_fn(
                     span,
                     hir::LangItem::AsyncIteratorPollNext,
-                    arena_vec![self; new_unchecked, get_context],
+                    arena_vec![self; new_unchecked, task_context],
                 ),
             };
             self.arena.alloc(self.expr_unsafe(call))
@@ -865,14 +866,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);
-            let (x_pat, x_pat_hid) = self.pat_ident(gen_future_span, x_ident);
-            let x_expr = self.expr_ident(gen_future_span, x_ident, x_pat_hid);
-            let ready_field = self.single_pat_field(gen_future_span, x_pat);
+            let (x_pat, x_pat_hid) = self.pat_ident(full_span, x_ident);
+            let x_expr = self.expr_ident(full_span, x_ident, x_pat_hid);
+            let ready_field = self.single_pat_field(full_span, x_pat);
             let ready_pat = self.pat_lang_item_variant(span, hir::LangItem::PollReady, ready_field);
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
-                this.arena.alloc(this.expr(gen_future_span, expr_break))
+                this.arena.alloc(this.expr(full_span, expr_break))
             });
             self.arm(ready_pat, break_x)
         };

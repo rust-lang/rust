@@ -44,7 +44,7 @@ pub use self::join::join;
 ///    non-Send/Sync as well, and we don't want that.
 ///
 /// It also simplifies the HIR lowering of `.await`.
-#[lang = "ResumeTy"]
+#[cfg_attr(bootstrap, lang = "ResumeTy")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[derive(Debug, Copy, Clone)]
@@ -56,7 +56,7 @@ unsafe impl Send for ResumeTy {}
 #[unstable(feature = "gen_future", issue = "50547")]
 unsafe impl Sync for ResumeTy {}
 
-#[lang = "get_context"]
+#[cfg_attr(bootstrap, lang = "get_context")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[must_use]

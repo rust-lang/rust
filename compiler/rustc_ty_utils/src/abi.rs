@@ -234,21 +234,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     let poll_args = tcx.mk_args(&[sig.return_ty.into()]);
                     let ret_ty = Ty::new_adt(tcx, poll_adt_ref, poll_args);
 
-                    // We have to replace the `ResumeTy` that is used for type and borrow checking
-                    // with `&mut Context<'_>` which is used in codegen.
-                    #[cfg(debug_assertions)]
-                    {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
-                    }
-                    let context_mut_ref = Ty::new_task_context(tcx);
-
-                    (Some(context_mut_ref), ret_ty)
+                    (Some(sig.resume_ty), ret_ty)
                 }
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                     // The signature should be `Iterator::next(_) -> Option<Yield>`
@@ -270,21 +256,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     // Yield type is already `Poll<Option<yield_ty>>`
                     let ret_ty = sig.yield_ty;
 
-                    // We have to replace the `ResumeTy` that is used for type and borrow checking
-                    // with `&mut Context<'_>` which is used in codegen.
-                    #[cfg(debug_assertions)]
-                    {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
-                    }
-                    let context_mut_ref = Ty::new_task_context(tcx);
-
-                    (Some(context_mut_ref), ret_ty)
+                    (Some(sig.resume_ty), ret_ty)
                 }
                 hir::CoroutineKind::Coroutine(_) => {
                     // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`

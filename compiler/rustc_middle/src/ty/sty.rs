@@ -781,15 +781,6 @@ impl<'tcx> Ty<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::MaybeUninit, None);
         Ty::new_generic_adt(tcx, def_id, ty)
     }
-
-    /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
-    pub fn new_task_context(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        let context_did = tcx.require_lang_item(LangItem::Context, None);
-        let context_adt_ref = tcx.adt_def(context_did);
-        let context_args = tcx.mk_args(&[tcx.lifetimes.re_erased.into()]);
-        let context_ty = Ty::new_adt(tcx, context_adt_ref, context_args);
-        Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, context_ty)
-    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
