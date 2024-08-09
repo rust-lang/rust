@@ -38,18 +38,12 @@ builtin_functions! {
     register_functions_for_jit;
 
     // integers
-    fn __multi3(a: i128, b: i128) -> i128;
     fn __muloti4(n: i128, d: i128, oflow: &mut i32) -> i128;
     fn __udivti3(n: u128, d: u128) -> u128;
     fn __divti3(n: i128, d: i128) -> i128;
     fn __umodti3(n: u128, d: u128) -> u128;
     fn __modti3(n: i128, d: i128) -> i128;
-    fn __rust_u128_addo(a: u128, b: u128) -> (u128, bool);
-    fn __rust_i128_addo(a: i128, b: i128) -> (i128, bool);
-    fn __rust_u128_subo(a: u128, b: u128) -> (u128, bool);
-    fn __rust_i128_subo(a: i128, b: i128) -> (i128, bool);
     fn __rust_u128_mulo(a: u128, b: u128) -> (u128, bool);
-    fn __rust_i128_mulo(a: i128, b: i128) -> (i128, bool);
 
     // floats
     fn __floattisf(i: i128) -> f32;
