@@ -1,0 +1,23 @@
+// MIR for `check_bool` after PreCodegen
+
+fn check_bool() -> u32 {
+    let mut _0: u32;
+
+    bb0: {
+        switchInt(const <T as TraitWithBool>::FLAG) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const 456_u32;
+        goto -> bb3;
+    }
+
+    bb2: {
+        _0 = const 123_u32;
+        goto -> bb3;
+    }
+
+    bb3: {
+        return;
+    }
+}
