@@ -1191,9 +1191,9 @@ fn eq_span_tokens(
     pred: impl Fn(TokenKind) -> bool,
 ) -> bool {
     fn f(cx: &LateContext<'_>, left: Range<BytePos>, right: Range<BytePos>, pred: impl Fn(TokenKind) -> bool) -> bool {
-        if let Some(lsrc) = left.get_source_text(cx)
+        if let Some(lsrc) = left.get_source_range(cx)
             && let Some(lsrc) = lsrc.as_str()
-            && let Some(rsrc) = right.get_source_text(cx)
+            && let Some(rsrc) = right.get_source_range(cx)
             && let Some(rsrc) = rsrc.as_str()
         {
             let pred = |t: &(_, _)| pred(t.0);
