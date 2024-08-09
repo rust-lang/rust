@@ -159,11 +159,12 @@ pub(crate) fn emit_unescape_error(
                      version control settings",
                 );
             } else if looks_like_quote(c) {
-                diag.help(
-                    format!("{ec} is not an ascii quote, \
+                diag.help(format!(
+                    "{ec} is not an ascii quote, \
                              but may look like one in some fonts.\n\
                              consider writing it in its \
-                             escaped form for clarity."));
+                             escaped form for clarity."
+                ));
             } else {
                 if mode == Mode::Str || mode == Mode::Char {
                     diag.span_suggestion(
@@ -310,14 +311,8 @@ fn looks_like_quote(c: char) -> bool {
     //   ?c wdt:P4213 ?u.
     // }
     match c {
-        '\u{2033}' | 
-        '\u{02BA}' |
-        '\u{02DD}' |
-        '\u{030B}' |
-        '\u{030E}' |
-        '\u{05F4}' |
-        '\u{201C}' |
-        '\u{201D}' => true,
+        '\u{2033}' | '\u{02BA}' | '\u{02DD}' | '\u{030B}' | '\u{030E}' | '\u{05F4}'
+        | '\u{201C}' | '\u{201D}' => true,
         _ => false,
     }
 }
