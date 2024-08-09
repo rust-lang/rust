@@ -3211,13 +3211,8 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 ///
 /// For regions of memory which might overlap, use [`copy`] instead.
 ///
-/// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-/// with the argument order swapped.
-///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
 /// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
 ///
 /// # Safety
 ///
@@ -3240,6 +3235,8 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointers must be non-null and properly aligned.
+/// In this case, the pointers may share the same address, as
+/// a region of 0 bytes does not overlap with a region of 0 bytes.
 ///
 /// [`read`]: crate::ptr::read
 /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -3328,17 +3325,14 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
 /// and destination may overlap.
 ///
-/// If the source and destination will *never* overlap,
-/// [`copy_nonoverlapping`] can be used instead.
-///
-/// `copy` is semantically equivalent to C's [`memmove`], but with the argument
-/// order swapped. Copying takes place as if the bytes were copied from `src`
-/// to a temporary array and then copied from the array to `dst`.
+/// `copy` may temporarily use additional space to copy bytes from `src` into an array, before
+/// copying them to `dst`. This lets `copy` correctly handle overlapping locations.
+/// If `src` and `dst` *never* overlap, [`copy_nonoverlapping`] may be used to avoid overhead.
+/// Note that in many cases, this additional overhead can be removed or reduced by the compiler,
+/// as this is an "intrinsic function" implemented directly through the compiler.
 ///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
 /// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
 ///
 /// # Safety
 ///
@@ -3426,10 +3420,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
 /// `val`.
 ///
-/// `write_bytes` is similar to C's [`memset`], but sets `count *
-/// size_of::<T>()` bytes to `val`.
-///
-/// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
+/// Note that this means that if `T` is multiple bytes, each byte is set to the same value,
+/// which may be interpreted to mean a very different value when interpreted as `T`.
 ///
 /// # Safety
 ///
