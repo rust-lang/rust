@@ -86,25 +86,7 @@ impl<'a> Parser<'a> {
                 token::Interpolated(nt) => may_be_ident(nt),
                 _ => false,
             },
-            NonterminalKind::Pat(pat_kind) => match &token.kind {
-                // box, ref, mut, and other identifiers (can stricten)
-                token::Ident(..) | token::NtIdent(..) |
-                token::OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
-                token::OpenDelim(Delimiter::Bracket) |      // slice pattern
-                token::BinOp(token::And) |                  // reference
-                token::BinOp(token::Minus) |                // negative literal
-                token::AndAnd |                             // double reference
-                token::Literal(_) |                         // literal
-                token::DotDot |                             // range pattern (future compat)
-                token::DotDotDot |                          // range pattern (future compat)
-                token::PathSep |                             // path
-                token::Lt |                                 // path (UFCS constant)
-                token::BinOp(token::Shl) => true,           // path (double UFCS)
-                // leading vert `|` or-pattern
-                token::BinOp(token::Or) => matches!(pat_kind, PatWithOr),
-                token::Interpolated(nt) => may_be_ident(nt),
-                _ => false,
-            },
+            NonterminalKind::Pat(pat_kind) => token.can_begin_pattern(pat_kind),
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(_) | token::NtLifetime(..) => true,
                 _ => false,
