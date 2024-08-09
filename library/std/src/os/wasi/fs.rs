@@ -2,7 +2,6 @@
 //!
 //! [`std::fs`]: crate::fs
 
-#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
 // Used for `File::read` on intra-doc links

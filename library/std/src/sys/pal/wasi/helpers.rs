@@ -1,3 +1,5 @@
+#![forbid(unsafe_op_in_unsafe_fn)]
+
 use crate::{io as std_io, mem};
 
 #[inline]

@@ -30,7 +30,7 @@
 
 #![cfg_attr(not(target_env = "p2"), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(target_env = "p2", unstable(feature = "wasip2", issue = "none"))]
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 #![doc(cfg(target_os = "wasi"))]
 
 pub mod ffi;
