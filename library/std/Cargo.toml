@@ -57,6 +57,9 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
     'archive',
 ] }
 
+[target.'cfg(windows)'.dependencies.windows-targets]
+path = "../windows_targets"
+
 [dev-dependencies]
 rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
 rand_xorshift = "0.3.0"
@@ -116,7 +119,7 @@ std_detect_env_override = ["std_detect/std_detect_env_override"]
 
 # Enable using raw-dylib for Windows imports.
 # This will eventually be the default.
-windows_raw_dylib = []
+windows_raw_dylib = ["windows-targets/windows_raw_dylib"]
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing
