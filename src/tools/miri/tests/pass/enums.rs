@@ -43,6 +43,7 @@ fn discriminant_overflow() {
     }
 }
 
+#[allow(unreachable_patterns)]
 fn more_discriminant_overflow() {
     pub enum Infallible {}
 

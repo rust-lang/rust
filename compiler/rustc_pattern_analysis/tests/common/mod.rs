@@ -152,10 +152,6 @@ impl PatCx for Cx {
         false
     }
 
-    fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
-        true
-    }
-
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize {
         ty.sub_tys(ctor).len()
     }

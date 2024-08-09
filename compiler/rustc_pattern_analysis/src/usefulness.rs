@@ -543,13 +543,11 @@
 //! recurse into subpatterns. That second part is done through [`PlaceValidity`], most notably
 //! [`PlaceValidity::specialize`].
 //!
-//! Having said all that, in practice we don't fully follow what's been presented in this section.
-//! Let's call "toplevel exception" the case where the match scrutinee itself has type `!` or
-//! `EmptyEnum`. First, on stable rust, we require `_` patterns for empty types in all cases apart
-//! from the toplevel exception. The `exhaustive_patterns` and `min_exaustive_patterns` allow
-//! omitting patterns in the cases described above. There's a final detail: in the toplevel
-//! exception or with the `exhaustive_patterns` feature, we ignore place validity when checking
-//! whether a pattern is required for exhaustiveness. I (Nadrieril) hope to deprecate this behavior.
+//! Having said all that, we don't fully follow what's been presented in this section. For
+//! backwards-compatibility, we ignore place validity when checking whether a pattern is required
+//! for exhaustiveness in two cases: when the `exhaustive_patterns` feature gate is on, or when the
+//! match scrutinee itself has type `!` or `EmptyEnum`. I (Nadrieril) hope to deprecate this
+//! exception.
 //!
 //!
 //!
@@ -953,13 +951,10 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
             self.is_scrutinee && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
         // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
         // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
-        let empty_arms_are_unreachable = self.validity.is_known_valid()
-            && (is_toplevel_exception
-                || cx.is_exhaustive_patterns_feature_on()
-                || cx.is_min_exhaustive_patterns_feature_on());
+        let empty_arms_are_unreachable = self.validity.is_known_valid();
         // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
         // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
-        let can_omit_empty_arms = empty_arms_are_unreachable
+        let can_omit_empty_arms = self.validity.is_known_valid()
             || is_toplevel_exception
             || cx.is_exhaustive_patterns_feature_on();
 

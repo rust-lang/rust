@@ -237,9 +237,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         let tys = cx.variant_sub_tys(ty, variant).map(|(field, ty)| {
                             let is_visible =
                                 adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                            let is_uninhabited = (cx.tcx.features().exhaustive_patterns
-                                || cx.tcx.features().min_exhaustive_patterns)
-                                && cx.is_uninhabited(*ty);
+                            let is_uninhabited = cx.is_uninhabited(*ty);
                             let skip = is_uninhabited && (!is_visible || is_non_exhaustive);
                             (ty, PrivateUninhabitedField(skip))
                         });
@@ -924,9 +922,6 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.tcx.features().exhaustive_patterns
-    }
-    fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
-        self.tcx.features().min_exhaustive_patterns
     }
 
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {

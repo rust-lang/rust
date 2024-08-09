@@ -267,6 +267,8 @@ declare_features! (
     (accepted, min_const_generics, "1.51.0", Some(74878)),
     /// Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607)),
+    /// Allows exhaustive pattern matching on uninhabited types when matched by value.
+    (accepted, min_exhaustive_patterns, "CURRENT_RUSTC_VERSION", Some(119612)),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     /// Allows using the MOVBE target feature.

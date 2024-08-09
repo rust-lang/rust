@@ -2931,6 +2931,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
             moved_before_use,
             same_ctxt,
         },
+        #[allow(unreachable_patterns)]
         Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
             node: Node::Crate(cx.tcx.hir().root_module()),

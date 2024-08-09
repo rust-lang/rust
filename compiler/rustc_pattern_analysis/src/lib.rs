@@ -54,7 +54,6 @@ pub trait PatCx: Sized + fmt::Debug {
     type PatData: Clone;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
-    fn is_min_exhaustive_patterns_feature_on(&self) -> bool;
 
     /// The number of fields for this constructor.
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;
