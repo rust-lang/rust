@@ -450,7 +450,7 @@ entries, format it across multiple lines as with a type alias.
 
 When writing extern items (such as `extern "C" fn`), always specify the ABI.
 For example, write `extern "C" fn foo ...`, not `extern fn foo ...`, or
-`extern "C" { ... }`.
+`unsafe extern "C" { ... }`.
 
 ## Imports (`use` statements)
 
