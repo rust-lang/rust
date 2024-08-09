@@ -1,7 +1,7 @@
 use crate::ffi::CStr;
 use crate::num::NonZero;
 use crate::sys::unsupported;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, mem};
 
 cfg_if::cfg_if! {
@@ -137,35 +137,18 @@ impl Thread {
         let nanos = dur.as_nanos();
         assert!(nanos <= u64::MAX as u128);
 
-        const USERDATA: wasi::Userdata = 0x0123_45678;
+        sleep_with(nanos as u64, wasi::CLOCKID_MONOTONIC, 0);
+    }
 
-        let clock = wasi::SubscriptionClock {
-            id: wasi::CLOCKID_MONOTONIC,
-            timeout: nanos as u64,
-            precision: 0,
-            flags: 0,
-        };
+    pub fn sleep_until(deadline: Instant) {
+        let nanos = deadline.into_inner().into_inner().as_nanos();
+        assert!(nanos <= u64::MAX as u128);
 
-        let in_ = wasi::Subscription {
-            userdata: USERDATA,
-            u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
-        };
-        unsafe {
-            let mut event: wasi::Event = mem::zeroed();
-            let res = wasi::poll_oneoff(&in_, &mut event, 1);
-            match (res, event) {
-                (
-                    Ok(1),
-                    wasi::Event {
-                        userdata: USERDATA,
-                        error: wasi::ERRNO_SUCCESS,
-                        type_: wasi::EVENTTYPE_CLOCK,
-                        ..
-                    },
-                ) => {}
-                _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
-            }
-        }
+        sleep_with(
+            nanos as u64,
+            wasi::CLOCKID_MONOTONIC,
+            wasi::SUBCLOCKFLAGS_SUBSCRIPTION_CLOCK_ABSTIME,
+        );
     }
 
     pub fn join(self) {
@@ -179,6 +162,32 @@ impl Thread {
             } else {
                 self.0
             }
+        }
+    }
+}
+
+fn sleep_with(nanos: u64, clock_id: wasi::Clockid, flags: u16) {
+    let clock = wasi::SubscriptionClock { id: clock_id, timeout: nanos, precision: 0, flags };
+
+    const USERDATA: wasi::Userdata = 0x0123_45678;
+    let in_ = wasi::Subscription {
+        userdata: USERDATA,
+        u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
+    };
+    unsafe {
+        let mut event: wasi::Event = mem::zeroed();
+        let res = wasi::poll_oneoff(&in_, &mut event, 1);
+        match (res, event) {
+            (
+                Ok(1),
+                wasi::Event {
+                    userdata: USERDATA,
+                    error: wasi::ERRNO_SUCCESS,
+                    type_: wasi::EVENTTYPE_CLOCK,
+                    ..
+                },
+            ) => {}
+            _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
         }
     }
 }

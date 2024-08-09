@@ -1,7 +1,8 @@
+#![feature(thread_sleep_until)]
 use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
@@ -36,4 +37,15 @@ fn thread_local_containing_const_statements() {
 
     assert_eq!(CELL.get(), 1);
     assert_eq!(REFCELL.take(), 1);
+}
+
+#[test]
+fn sleep_until() {
+    let now = Instant::now();
+    let period = Duration::from_millis(100);
+    let deadline = now + period;
+    thread::sleep_until(deadline);
+
+    let elapsed = now.elapsed();
+    assert!(elapsed >= period);
 }
