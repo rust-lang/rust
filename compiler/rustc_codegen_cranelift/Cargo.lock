@@ -21,15 +21,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
-name = "ar_archive_writer"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2bcb7cf51decfbbfc7ef476e28b0775b13e5eb1190f8b7df145cd53d4f4374"
-dependencies = [
- "object",
-]
-
-[[package]]
 name = "arbitrary"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -367,7 +358,6 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 name = "rustc_codegen_cranelift"
 version = "0.1.0"
 dependencies = [
- "ar_archive_writer",
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-jit",
