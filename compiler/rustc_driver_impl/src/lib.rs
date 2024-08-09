@@ -464,14 +464,6 @@ fn run_compiler(
             linker.link(sess, codegen_backend)?
         }
 
-        if sess.opts.unstable_opts.print_fuel.is_some() {
-            eprintln!(
-                "Fuel used by {}: {}",
-                sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
-                sess.print_fuel.load(Ordering::SeqCst)
-            );
-        }
-
         Ok(())
     })
 }

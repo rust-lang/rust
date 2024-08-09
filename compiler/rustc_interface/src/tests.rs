@@ -780,7 +780,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(fixed_x18, true);
     tracked!(flatten_format_args, false);
     tracked!(force_unstable_if_unmarked, true);
-    tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
@@ -825,7 +824,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(plt, Some(true));
     tracked!(polonius, Polonius::Legacy);
     tracked!(precise_enum_drop_elaboration, false);
-    tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));

@@ -1569,11 +1569,6 @@ impl<'tcx> TyCtxt<'tcx> {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
-        // This is here instead of layout because the choice must make it into metadata.
-        if !self.consider_optimizing(|| format!("Reorder fields of {:?}", self.def_path_str(did))) {
-            flags.insert(ReprFlags::IS_LINEAR);
-        }
-
         ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
     }
 
