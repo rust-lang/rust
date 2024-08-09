@@ -8,7 +8,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter};
+use rustc_errors::emitter::{
+    stderr_destination, DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme,
+};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
@@ -147,6 +149,11 @@ pub(crate) fn new_dcx(
                     .teach(unstable_opts.teach)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
+                    .theme(if let HumanReadableErrorType::Unicode = kind {
+                        OutputTheme::Unicode
+                    } else {
+                        OutputTheme::Ascii
+                    })
                     .ui_testing(unstable_opts.ui_testing),
             )
         }

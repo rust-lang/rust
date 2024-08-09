@@ -4,7 +4,7 @@ error: found an empty line after a doc comment. Perhaps you need to use `//!` to
 LL | / /// This should produce a warning
 LL | |
 LL | | fn with_doc_and_newline() { assert!(true)}
-   | |_
+   | |_^
    |
    = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
@@ -19,7 +19,7 @@ LL | |  */
 ...  |
 LL | | #[allow(missing_docs)]
 LL | | fn three_attributes() { assert!(true) }
-   | |_
+   | |_^
 
 error: found an empty line after a doc comment. Perhaps you need to use `//!` to make a comment on a module, remove the empty line, or make a regular comment with `//`?
   --> tests/ui/empty_line_after_doc_comments.rs:70:1
@@ -31,7 +31,7 @@ LL | | // This should *NOT* produce a warning
 ...  |
 LL | | #[allow(missing_docs)]
 LL | | fn three_attributes() { assert!(true) }
-   | |_
+   | |_^
 
 error: aborting due to 3 previous errors
 

@@ -11,7 +11,7 @@ use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, Toke
 use rustc_ast::{self as ast, visit, PatKind};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::emitter::HumanEmitter;
+use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -35,16 +35,17 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
     ))
 }
 
-fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
+fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE],
         false,
     );
-    let emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
+    let mut emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
+    emitter = emitter.theme(theme);
     let dcx = DiagCtxt::new(Box::new(emitter));
     (dcx, source_map, output)
 }
@@ -68,7 +69,7 @@ fn with_expected_parse_error<T, F>(source_str: &str, expected_output: &str, f: F
 where
     F: for<'a> FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
-    let (handler, source_map, output) = create_test_handler();
+    let (handler, source_map, output) = create_test_handler(OutputTheme::Ascii);
     let psess = ParseSess::with_dcx(handler, source_map);
     let mut p = string_to_parser(&psess, source_str.to_string());
     let result = f(&mut p);
@@ -188,34 +189,55 @@ impl<T: Write> Write for Shared<T> {
 }
 
 #[allow(rustc::untranslatable_diagnostic)] // no translation needed for tests
-fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
+fn test_harness(
+    file_text: &str,
+    span_labels: Vec<SpanLabel>,
+    notes: Vec<(Option<(Position, Position)>, &'static str)>,
+    expected_output_ascii: &str,
+    expected_output_unicode: &str,
+) {
     create_default_session_globals_then(|| {
-        let (dcx, source_map, output) = create_test_handler();
-        source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
+        for (theme, expected_output) in [
+            (OutputTheme::Ascii, expected_output_ascii),
+            (OutputTheme::Unicode, expected_output_unicode),
+        ] {
+            let (dcx, source_map, output) = create_test_handler(theme);
+            source_map
+                .new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
-        let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
-        let mut msp = MultiSpan::from_span(primary_span);
-        for span_label in span_labels {
-            let span = make_span(&file_text, &span_label.start, &span_label.end);
-            msp.push_span_label(span, span_label.label);
-            println!("span: {:?} label: {:?}", span, span_label.label);
-            println!("text: {:?}", source_map.span_to_snippet(span));
+            let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
+            let mut msp = MultiSpan::from_span(primary_span);
+            for span_label in &span_labels {
+                let span = make_span(&file_text, &span_label.start, &span_label.end);
+                msp.push_span_label(span, span_label.label);
+                println!("span: {:?} label: {:?}", span, span_label.label);
+                println!("text: {:?}", source_map.span_to_snippet(span));
+            }
+
+            let mut err = dcx.handle().struct_span_err(msp, "foo");
+            for (position, note) in &notes {
+                if let Some((start, end)) = position {
+                    let span = make_span(&file_text, &start, &end);
+                    err.span_note(span, *note);
+                } else {
+                    err.note(*note);
+                }
+            }
+            err.emit();
+
+            assert!(
+                expected_output.chars().next() == Some('\n'),
+                "expected output should begin with newline"
+            );
+            let expected_output = &expected_output[1..];
+
+            let bytes = output.lock().unwrap();
+            let actual_output = str::from_utf8(&bytes).unwrap();
+            println!("expected output:\n------\n{}------", expected_output);
+            println!("actual output:\n------\n{}------", actual_output);
+
+            assert!(expected_output == actual_output)
         }
-
-        dcx.handle().span_err(msp, "foo");
-
-        assert!(
-            expected_output.chars().next() == Some('\n'),
-            "expected output should begin with newline"
-        );
-        let expected_output = &expected_output[1..];
-
-        let bytes = output.lock().unwrap();
-        let actual_output = str::from_utf8(&bytes).unwrap();
-        println!("expected output:\n------\n{}------", expected_output);
-        println!("actual output:\n------\n{}------", actual_output);
-
-        assert!(expected_output == actual_output)
     })
 }
 
@@ -252,6 +274,7 @@ fn foo() {
             end: Position { string: "}", count: 1 },
             label: "test",
         }],
+        vec![],
         r#"
 error: foo
  --> test.rs:2:10
@@ -260,6 +283,16 @@ error: foo
   |  __________^
 3 | | }
   | |_^ test
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:2:10
+  │
+2 │   fn foo() {
+  │ ┏━━━━━━━━━━┛
+3 │ ┃ }
+  ╰╴┗━┛ test
 
 "#,
     );
@@ -279,6 +312,7 @@ fn foo() {
             end: Position { string: "}", count: 1 },
             label: "test",
         }],
+        vec![],
         r#"
 error: foo
  --> test.rs:2:10
@@ -288,6 +322,17 @@ error: foo
 ... |
 5 | |   }
   | |___^ test
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:2:10
+  │
+2 │   fn foo() {
+  │ ┏━━━━━━━━━━┛
+  ‡ ┃
+5 │ ┃   }
+  ╰╴┗━━━┛ test
 
 "#,
     );
@@ -314,6 +359,7 @@ fn foo() {
                 label: "`Y` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -326,6 +372,20 @@ error: foo
   | ||____^__- `Y` is a good letter too
   | |_____|
   |       `X` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │      X0 Y0
+  │ ┏━━━━┛  │
+  │ ┃┌──────┘
+4 │ ┃│   X1 Y1
+5 │ ┃│   X2 Y2
+  │ ┃└────╿──┘ `Y` is a good letter too
+  │ ┗━━━━━┥
+  ╰╴      `X` is a good letter
 
 "#,
     );
@@ -352,6 +412,7 @@ fn foo() {
                 label: "`Y` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -363,6 +424,72 @@ error: foo
   | ||____-__^ `X` is a good letter
   |  |____|
   |       `Y` is a good letter too
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │      X0 Y0
+  │ ┏━━━━┛  │
+  │ ┃┌──────┘
+4 │ ┃│   Y1 X1
+  │ ┗│━━━━│━━┛ `X` is a good letter
+  │  └────┤
+  ╰╴      `Y` is a good letter too
+
+"#,
+    );
+}
+
+#[test]
+fn multiline_and_normal_overlap() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![
+            SpanLabel {
+                start: Position { string: "Y0", count: 1 },
+                end: Position { string: "X2", count: 1 },
+                label: "`X` is a good letter",
+            },
+            SpanLabel {
+                start: Position { string: "X0", count: 1 },
+                end: Position { string: "Y0", count: 1 },
+                label: "`Y` is a good letter too",
+            },
+        ],
+        vec![],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |     X0 Y0 Z0
+  |  ___---^-
+  | |   |
+  | |   `Y` is a good letter too
+4 | |   X1 Y1 Z1
+5 | |   X2 Y2 Z2
+  | |____^ `X` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │     X0 Y0 Z0
+  │ ┏━━━┬──┛─
+  │ ┃   │
+  │ ┃   `Y` is a good letter too
+4 │ ┃   X1 Y1 Z1
+5 │ ┃   X2 Y2 Z2
+  ╰╴┗━━━━┛ `X` is a good letter
 
 "#,
     );
@@ -391,6 +518,7 @@ fn foo() {
                 label: "`Y` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:6
@@ -403,6 +531,789 @@ error: foo
   | ||____^ `X` is a good letter
 6 |  |   X3 Y3 Z3
   |  |____- `Y` is a good letter too
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │      X0 Y0 Z0
+  │ ┏━━━━━━━┛
+4 │ ┃    X1 Y1 Z1
+  │ ┃┌─────────┘
+5 │ ┃│   X2 Y2 Z2
+  │ ┗│━━━━┛ `X` is a good letter
+6 │  │   X3 Y3 Z3
+  ╰╴ └────┘ `Y` is a good letter too
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_1() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![(None, "bar")],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+  = note: bar
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  │
+  ╰ note: bar
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_2() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![(None, "bar"), (None, "qux")],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+  = note: bar
+  = note: qux
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  │
+  ├ note: bar
+  ╰ note: qux
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_3() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![(None, "bar"), (None, "baz"), (None, "qux")],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+  = note: bar
+  = note: baz
+  = note: qux
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  │
+  ├ note: bar
+  ├ note: baz
+  ╰ note: qux
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_1() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![(
+            Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+            "bar",
+        )],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_2() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "bar",
+            ),
+            (
+                Some((Position { string: "X2", count: 1 }, Position { string: "Y2", count: 1 })),
+                "qux",
+            ),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+note: qux
+ --> test.rs:5:3
+  |
+5 |   X2 Y2 Z2
+  |   ^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+note: qux
+  ╭▸ test.rs:5:3
+  │
+5 │   X2 Y2 Z2
+  ╰╴  ━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_3() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "bar",
+            ),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "baz",
+            ),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "qux",
+            ),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+note: baz
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+note: qux
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+note: baz
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+note: qux
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_4() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "bar",
+            ),
+            (None, "qux"),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+  = note: qux
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  │   ━━━━━━━━
+  ╰ note: qux
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_5() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (None, "bar"),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "qux",
+            ),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+  = note: bar
+note: qux
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  │
+  ╰ note: bar
+note: qux
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_6() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (None, "bar"),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "baz",
+            ),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "qux",
+            ),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+  = note: bar
+note: baz
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+note: qux
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  │
+  ╰ note: bar
+note: baz
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+note: qux
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_7() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z3", count: 1 })),
+                "bar",
+            ),
+            (None, "baz"),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "qux",
+            ),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 | /   X1 Y1 Z1
+5 | |   X2 Y2 Z2
+6 | |   X3 Y3 Z3
+  | |__________^
+  = note: baz
+note: qux
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │ ┏   X1 Y1 Z1
+5 │ ┃   X2 Y2 Z2
+6 │ ┃   X3 Y3 Z3
+  │ ┗━━━━━━━━━━┛
+  ╰ note: baz
+note: qux
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_8() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "bar",
+            ),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "baz",
+            ),
+            (None, "qux"),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+note: baz
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+  = note: qux
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+note: baz
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  │   ━━━━━━━━
+  ╰ note: qux
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_9() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (None, "bar"),
+            (None, "baz"),
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "qux",
+            ),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+  = note: bar
+  = note: baz
+note: qux
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  │
+  ├ note: bar
+  ╰ note: baz
+note: qux
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  ╰╴  ━━━━━━━━
+
+"#,
+    );
+}
+
+#[test]
+fn different_note_spanned_10() {
+    test_harness(
+        r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "Y0", count: 1 },
+            end: Position { string: "Z0", count: 1 },
+            label: "`X` is a good letter",
+        }],
+        vec![
+            (
+                Some((Position { string: "X1", count: 1 }, Position { string: "Z1", count: 1 })),
+                "bar",
+            ),
+            (None, "baz"),
+            (None, "qux"),
+        ],
+        r#"
+error: foo
+ --> test.rs:3:6
+  |
+3 |   X0 Y0 Z0
+  |      ^^^^^ `X` is a good letter
+  |
+note: bar
+ --> test.rs:4:3
+  |
+4 |   X1 Y1 Z1
+  |   ^^^^^^^^
+  = note: baz
+  = note: qux
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │   X0 Y0 Z0
+  │      ━━━━━ `X` is a good letter
+  ╰╴
+note: bar
+  ╭▸ test.rs:4:3
+  │
+4 │   X1 Y1 Z1
+  │   ━━━━━━━━
+  ├ note: baz
+  ╰ note: qux
 
 "#,
     );
@@ -435,6 +1346,7 @@ fn foo() {
                 label: "`Z` label",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -449,6 +1361,22 @@ error: foo
   | ||_____|__|
   | |______|  `Y` is a good letter too
   |        `X` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │       X0 Y0 Z0
+  │ ┏━━━━━┛  │  │
+  │ ┃┌───────┘  │
+  │ ┃│┌─────────┘
+4 │ ┃││   X1 Y1 Z1
+5 │ ┃││   X2 Y2 Z2
+  │ ┃│└────╿──│──┘ `Z` label
+  │ ┃└─────│──┤
+  │ ┗━━━━━━┥  `Y` is a good letter too
+  ╰╴       `X` is a good letter
 
 "#,
     );
@@ -481,6 +1409,7 @@ fn foo() {
                 label: "`Z` label",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -493,6 +1422,20 @@ error: foo
   | |    `X` is a good letter
   | |____`Y` is a good letter too
   |      `Z` label
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │ ┏   X0 Y0 Z0
+4 │ ┃   X1 Y1 Z1
+5 │ ┃   X2 Y2 Z2
+  │ ┃    ╿
+  │ ┃    │
+  │ ┃    `X` is a good letter
+  │ ┗━━━━`Y` is a good letter too
+  ╰╴     `Z` label
 
 "#,
     );
@@ -526,6 +1469,7 @@ fn foo() {
                 label: "`Z`",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:6
@@ -542,6 +1486,24 @@ error: foo
   |  |
 6 |  |   X3 Y3 Z3
   |  |_______- `Z`
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │      X0 Y0 Z0
+  │ ┏━━━━━━━┛
+4 │ ┃    X1 Y1 Z1
+  │ ┃┌────╿─┘
+  │ ┗│━━━━┥
+  │  │    `X` is a good letter
+5 │  │   X2 Y2 Z2
+  │  └───│──────┘ `Y` is a good letter too
+  │  ┌───┘
+  │  │
+6 │  │   X3 Y3 Z3
+  ╰╴ └───────┘ `Z`
 
 "#,
     );
@@ -570,6 +1532,7 @@ fn foo() {
                 label: "`Y` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -581,6 +1544,19 @@ error: foo
   |  ______-
 6 | |   X3 Y3 Z3
   | |__________- `Y` is a good letter too
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │ ┏   X0 Y0 Z0
+4 │ ┃   X1 Y1 Z1
+  │ ┗━━━━┛ `X` is a good letter
+5 │     X2 Y2 Z2
+  │ ┌──────┘
+6 │ │   X3 Y3 Z3
+  ╰╴└──────────┘ `Y` is a good letter too
 
 "#,
     );
@@ -609,6 +1585,7 @@ fn foo() {
                 label: "`Y` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:6
@@ -622,6 +1599,21 @@ error: foo
 5 |  |   X2 Y2 Z2
 6 |  |   X3 Y3 Z3
   |  |__________- `Y` is a good letter too
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:6
+  │
+3 │      X0 Y0 Z0
+  │ ┏━━━━━━━┛
+4 │ ┃    X1 Y1 Z1
+  │ ┃┌────╿────┘
+  │ ┗│━━━━┥
+  │  │    `X` is a good letter
+5 │  │   X2 Y2 Z2
+6 │  │   X3 Y3 Z3
+  ╰╴ └──────────┘ `Y` is a good letter too
 
 "#,
     );
@@ -652,12 +1644,64 @@ fn foo() {
                 label: "",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:7
   |
 3 |   a { b { c } d }
   |   ----^^^^-^^-- `a` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:7
+  │
+3 │   a { b { c } d }
+  ╰╴  ────━━━━─━━── `a` is a good letter
+
+"#,
+    );
+}
+
+#[test]
+fn multiline_notes() {
+    test_harness(
+        r#"
+fn foo() {
+  a { b { c } d }
+}
+"#,
+        vec![SpanLabel {
+            start: Position { string: "a", count: 1 },
+            end: Position { string: "d", count: 1 },
+            label: "`a` is a good letter",
+        }],
+        vec![(None, "foo\nbar"), (None, "foo\nbar")],
+        r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a { b { c } d }
+  |   ^^^^^^^^^^^^^ `a` is a good letter
+  |
+  = note: foo
+          bar
+  = note: foo
+          bar
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  │   ━━━━━━━━━━━━━ `a` is a good letter
+  │
+  ├ note: foo
+  │       bar
+  ╰ note: foo
+          bar
 
 "#,
     );
@@ -683,12 +1727,21 @@ fn foo() {
                 label: "",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
   |
 3 |   a { b { c } d }
   |   ^^^^-------^^ `a` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  ╰╴  ━━━━───────━━ `a` is a good letter
 
 "#,
     );
@@ -719,6 +1772,7 @@ fn foo() {
                 label: "",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:7
@@ -727,6 +1781,16 @@ error: foo
   |   ----^^^^-^^--
   |       |
   |       `b` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:7
+  │
+3 │   a { b { c } d }
+  │   ────┯━━━─━━──
+  │       │
+  ╰╴      `b` is a good letter
 
 "#,
     );
@@ -752,6 +1816,7 @@ fn foo() {
                 label: "`b` is a good letter",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -760,6 +1825,16 @@ error: foo
   |   ^^^^-------^^
   |       |
   |       `b` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  │   ━━━━┬──────━━
+  │       │
+  ╰╴      `b` is a good letter
 
 "#,
     );
@@ -785,6 +1860,7 @@ fn foo() {
                 label: "",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -793,6 +1869,16 @@ error: foo
   |   ^^^^----
   |   |
   |   `a` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a  bc  d
+  │   ┯━━━────
+  │   │
+  ╰╴  `a` is a good letter
 
 "#,
     );
@@ -818,12 +1904,21 @@ fn foo() {
                 label: "",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
   |
 3 |   a { b { c } d }
   |   ^^^^-------^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  ╰╴  ━━━━───────━━
 
 "#,
     );
@@ -854,12 +1949,21 @@ fn foo() {
                 label: "",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:7
   |
 3 |   a { b { c } d }
   |   ----^^^^-^^--
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:7
+  │
+3 │   a { b { c } d }
+  ╰╴  ────━━━━─━━──
 
 "#,
     );
@@ -885,6 +1989,7 @@ fn foo() {
                 label: "`b` is a good letter",
             },
         ],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
@@ -894,6 +1999,17 @@ error: foo
   |   |   |
   |   |   `b` is a good letter
   |   `a` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  │   ┯━━━┬──────━━
+  │   │   │
+  │   │   `b` is a good letter
+  ╰╴  `a` is a good letter
 
 "#,
     );
@@ -912,12 +2028,21 @@ fn foo() {
             end: Position { string: "d", count: 1 },
             label: "`a` is a good letter",
         }],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
   |
 3 |   a { b { c } d }
   |   ^^^^^^^^^^^^^ `a` is a good letter
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  ╰╴  ━━━━━━━━━━━━━ `a` is a good letter
 
 "#,
     );
@@ -936,12 +2061,21 @@ fn foo() {
             end: Position { string: "d", count: 1 },
             label: "",
         }],
+        vec![],
         r#"
 error: foo
  --> test.rs:3:3
   |
 3 |   a { b { c } d }
   |   ^^^^^^^^^^^^^
+
+"#,
+        r#"
+error: foo
+  ╭▸ test.rs:3:3
+  │
+3 │   a { b { c } d }
+  ╰╴  ━━━━━━━━━━━━━
 
 "#,
     );
@@ -980,6 +2114,7 @@ fn foo() {
                 label: "`Y` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
   --> test.rs:3:6
@@ -997,6 +2132,25 @@ error: foo
 15 |  |   X2 Y2 Z2
 16 |  |   X3 Y3 Z3
    |  |__________- `Y` is a good letter too
+
+"#,
+        r#"
+error: foo
+   ╭▸ test.rs:3:6
+   │
+3  │      X0 Y0 Z0
+   │ ┏━━━━━━━┛
+4  │ ┃    X1 Y1 Z1
+   │ ┃┌────╿────┘
+   │ ┗│━━━━┥
+   │  │    `X` is a good letter
+5  │  │ 1
+6  │  │ 2
+7  │  │ 3
+   ‡  │
+15 │  │   X2 Y2 Z2
+16 │  │   X3 Y3 Z3
+   ╰╴ └──────────┘ `Y` is a good letter too
 
 "#,
     );
@@ -1035,6 +2189,7 @@ fn foo() {
                 label: "`Z` is a good letter too",
             },
         ],
+        vec![],
         r#"
 error: foo
   --> test.rs:3:6
@@ -1055,6 +2210,28 @@ error: foo
 15 | |  10
 16 | |    X3 Y3 Z3
    | |________^ `Y` is a good letter
+
+"#,
+        r#"
+error: foo
+   ╭▸ test.rs:3:6
+   │
+3  │      X0 Y0 Z0
+   │ ┏━━━━━━━┛
+4  │ ┃  1
+5  │ ┃  2
+6  │ ┃  3
+7  │ ┃    X1 Y1 Z1
+   │ ┃┌─────────┘
+8  │ ┃│ 4
+9  │ ┃│ 5
+10 │ ┃│ 6
+11 │ ┃│   X2 Y2 Z2
+   │ ┃└──────────┘ `Z` is a good letter too
+   ‡ ┃
+15 │ ┃  10
+16 │ ┃    X3 Y3 Z3
+   ╰╴┗━━━━━━━━┛ `Y` is a good letter
 
 "#,
     );
