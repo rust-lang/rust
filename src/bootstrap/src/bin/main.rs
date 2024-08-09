@@ -17,11 +17,13 @@ use bootstrap::{
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let config = Config::parse(&args);
 
     if Flags::try_parse_verbose_help(&args) {
         return;
     }
+
+    let flags = Flags::parse(&args);
+    let config = Config::parse(flags);
 
     let mut build_lock;
     let _build_lock_guard;
