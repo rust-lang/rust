@@ -5,7 +5,7 @@ LL | impl !Copy for str {}
    | ^^^^^^^^^^^^^^^---
    | |              |
    | |              `str` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -16,7 +16,7 @@ LL | impl !Copy for fn() {}
    | ^^^^^^^^^^^^^^^----
    | |              |
    | |              `fn()` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -27,7 +27,7 @@ LL | impl !Copy for () {}
    | ^^^^^^^^^^^^^^^--
    | |              |
    | |              this is not defined in the current crate because tuples are always foreign
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 

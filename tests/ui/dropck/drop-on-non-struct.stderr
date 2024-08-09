@@ -11,7 +11,7 @@ LL | impl<'a> Drop for &'a mut isize {
    | ^^^^^^^^^^^^^^^^^^-------------
    | |                 |
    | |                 `isize` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 

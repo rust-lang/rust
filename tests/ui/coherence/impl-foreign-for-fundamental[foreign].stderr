@@ -6,7 +6,7 @@ LL | impl Remote for Box<i32> {
    | |    |          |
    | |    |          `i32` is not defined in the current crate
    | |    `std::alloc::Global` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -18,7 +18,7 @@ LL | impl<T> Remote for Box<Rc<T>> {
    | |       |          |
    | |       |          `Rc` is not defined in the current crate
    | |       `std::alloc::Global` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 

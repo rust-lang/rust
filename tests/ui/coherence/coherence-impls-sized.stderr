@@ -23,7 +23,7 @@ LL | impl Sized for (MyType, MyType) {}
    | ^^^^^^^^^^^^^^^----------------
    | |              |
    | |              this is not defined in the current crate because tuples are always foreign
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -46,7 +46,7 @@ LL | impl Sized for [MyType] {}
    | ^^^^^^^^^^^^^^^--------
    | |              |
    | |              this is not defined in the current crate because slices are always foreign
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
@@ -63,7 +63,7 @@ LL | impl Sized for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^------------------
    | |              |
    | |              this is not defined in the current crate because slices are always foreign
-   | impl doesn't use only types from inside the current crate
+   | impl doesn't use any uncovered types from inside the current crate
    |
    = note: define and implement a trait or new type instead
 
