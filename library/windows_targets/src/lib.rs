@@ -2,6 +2,10 @@
 //!
 //! This is a simple wrapper around an `extern` block with a `#[link]` attribute.
 //! It's very roughly equivalent to the windows-targets crate.
+#![no_std]
+#![no_core]
+#![feature(decl_macro)]
+#![feature(no_core)]
 
 #[cfg(feature = "windows_raw_dylib")]
 pub macro link {
