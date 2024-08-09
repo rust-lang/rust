@@ -28,6 +28,10 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("deprecated-safe", "Lints for functions which were erroneously marked as safe in the past"),
 ];
 
+pub fn exists(name: &str) -> bool {
+    GROUP_DESCRIPTIONS.iter().any(|&(n, _)| n == name)
+}
+
 type LintGroups = BTreeMap<String, BTreeSet<String>>;
 
 impl<'a> LintExtractor<'a> {
