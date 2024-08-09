@@ -545,9 +545,15 @@ impl<'a> LintExtractor<'a> {
 fn add_renamed_lints(lints: &mut Vec<Lint>) {
     for (level, names) in RENAMES {
         for (from, to) in *names {
+            let doc = if groups::exists(to) {
+                format!("The lint `{from}` has been renamed to the group `{to}`.")
+            } else {
+                format!("The lint `{from}` has been renamed to [`{to}`](#{to}).")
+            };
+
             lints.push(Lint {
                 name: from.to_string(),
-                doc: vec![format!("The lint `{from}` has been renamed to [`{to}`](#{to}).")],
+                doc: vec![doc],
                 level: *level,
                 path: PathBuf::new(),
                 lineno: 0,
