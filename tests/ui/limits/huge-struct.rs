@@ -3,6 +3,9 @@
 //@ normalize-stderr-test: "S1M" -> "SXX"
 //@ error-pattern: too big for the current
 
+//@ compile-flags: -Z mir-opt-level=0
+// (The optimizations would remove the values on which this errors.)
+
 struct S32<T> {
     v0: T,
     v1: T,

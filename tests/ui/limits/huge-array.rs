@@ -1,5 +1,8 @@
 //@ build-fail
 
+//@ compile-flags: -Z mir-opt-level=0
+// (The optimizations would remove the values on which this errors.)
+
 fn generic<T: Copy>(t: T) {
     let s: [T; 1518600000] = [t; 1518600000];
     //~^ ERROR values of the type `[[u8; 1518599999]; 1518600000]` are too big

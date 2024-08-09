@@ -2,6 +2,9 @@
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=0
 //@ normalize-stderr-test: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"
+//@ compile-flags: -Z mir-opt-level=0
+//  (Don't optimize out the unused locals, so that we actually compute the offsets.)
+//  FIXME: As part of fixing #127336, re-enable the normal mir-opts.
 #![feature(extern_types)]
 
 extern "C" {

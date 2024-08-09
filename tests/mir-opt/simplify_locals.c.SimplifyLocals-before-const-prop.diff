@@ -3,19 +3,19 @@
   
   fn c() -> () {
       let mut _0: ();
-      let _1: [u8; 10];
+-     let _1: [u8; 10];
 -     let mut _2: &[u8];
 -     let mut _3: &[u8; 10];
 -     let _4: &[u8; 10];
       scope 1 {
-          debug bytes => _1;
+-         debug bytes => _1;
           scope 2 {
           }
       }
   
       bb0: {
-          StorageLive(_1);
-          _1 = [const 0_u8; 10];
+-         StorageLive(_1);
+-         _1 = [const 0_u8; 10];
 -         StorageLive(_2);
 -         StorageLive(_3);
 -         StorageLive(_4);
@@ -26,7 +26,7 @@
 -         StorageDead(_4);
 -         StorageDead(_2);
           _0 = const ();
-          StorageDead(_1);
+-         StorageDead(_1);
           return;
       }
   }

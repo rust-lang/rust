@@ -31,6 +31,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::{DebugInfo, Options};
 use smallvec::SmallVec;
 
 pub enum SimplifyCfg {
@@ -373,9 +374,15 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     }
 }
 
-pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+/// Go through the basic blocks and remove statements that assign locals that aren't read.
+///
+/// This does *not* clean up the `local_decl`s. If you want it to do that too,
+/// call [`simplify_locals`] instead of this.
+pub(crate) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+    let preserve_debug = true;
+
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body);
+    let mut used_locals = UsedLocals::new(body, preserve_debug);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -385,9 +392,18 @@ pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
     remove_unused_definitions_helper(&mut used_locals, body);
 }
 
-pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
+/// Go through the basic blocks and remove statements that assign locals that aren't read.
+///
+/// Then go through and remove unneeded `local_decl`s, rewriting all mentions of them
+/// in all the statements.
+///
+/// If you only want the (faster) statement pruning, call [`remove_unused_definitions`]
+/// instead of this.
+pub(crate) fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
+    let preserve_debug = preserve_debug_even_if_never_generated(&tcx.sess.opts);
+
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body);
+    let mut used_locals = UsedLocals::new(body, preserve_debug);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -438,15 +454,17 @@ struct UsedLocals {
     increment: bool,
     arg_count: u32,
     use_count: IndexVec<Local, u32>,
+    preserve_debug: bool,
 }
 
 impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
-    fn new(body: &Body<'_>) -> Self {
+    fn new(body: &Body<'_>, preserve_debug: bool) -> Self {
         let mut this = Self {
             increment: true,
             arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
+            preserve_debug,
         };
         this.visit_body(body);
         this
@@ -527,6 +545,17 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             self.use_count[local] -= 1;
         }
     }
+
+    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
+        // We don't want to have to track *conditional* uses (such as
+        // "`_4` is used iff `_5` is used" from `debug x => Foo(_4, _5)`),
+        // so if this mentions multiple locals we just treat them all as used.
+        if !self.preserve_debug && debug_info_is_for_single_local(var_debug_info).is_some() {
+            return;
+        }
+
+        self.super_var_debug_info(var_debug_info);
+    }
 }
 
 /// Removes unused definitions. Updates the used locals to reflect the changes made.
@@ -539,6 +568,26 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
     let mut modified = true;
     while modified {
         modified = false;
+
+        if !used_locals.preserve_debug {
+            body.var_debug_info.retain(|info| {
+                let keep = if let Some(local) = debug_info_is_for_single_local(info) {
+                    used_locals.is_used(local)
+                } else {
+                    true
+                };
+
+                if !keep {
+                    trace!("removing var_debug_info {:?}", info);
+
+                    // While we did modify the debug info, we don't need to set the
+                    // `modified` flag, as we didn't change `used_locals`, and thus
+                    // we don't need to re-run the loop to look again.
+                }
+
+                keep
+            });
+        }
 
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
@@ -580,4 +629,36 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }
+}
+
+fn preserve_debug_even_if_never_generated(opts: &Options) -> bool {
+    if let Some(p) = opts.unstable_opts.inline_mir_preserve_debug {
+        return p;
+    }
+
+    match opts.debuginfo {
+        DebugInfo::None | DebugInfo::LineDirectivesOnly | DebugInfo::LineTablesOnly => false,
+        DebugInfo::Limited | DebugInfo::Full => true,
+    }
+}
+
+/// Returns the only [`Local`] mentioned in `info`, if there's exactly one.
+/// Otherwise return `None` if this mentions no `Local`s (probably because
+/// it's [`VarDebugInfoContents::Const`]) or multiple `Local`s.
+fn debug_info_is_for_single_local(info: &VarDebugInfo<'_>) -> Option<Local> {
+    struct SingleLocalFinder(Result<Option<Local>, ()>);
+    impl Visitor<'_> for SingleLocalFinder {
+        fn visit_local(&mut self, local: Local, _ctx: PlaceContext, _location: Location) {
+            match &mut self.0 {
+                Err(()) => {}
+                Ok(opt @ None) => *opt = Some(local),
+                Ok(Some(current)) if *current == local => {}
+                res @ Ok(Some(_)) => *res = Err(()),
+            }
+        }
+    }
+
+    let mut finder = SingleLocalFinder(Ok(None));
+    finder.visit_var_debug_info(info);
+    if let Ok(Some(local)) = finder.0 { Some(local) } else { None }
 }
