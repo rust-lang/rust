@@ -1,17 +1,23 @@
-error[E0277]: the trait bound `S: Clone` is not satisfied in `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`
+error[E0277]: the trait bound `S: Clone` is not satisfied in `{closure@$DIR/not-clone-closure.rs:7:17: 9:6}`
   --> $DIR/not-clone-closure.rs:11:23
    |
-LL |     let hello = move || {
-   |                 ------- within this `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`
-...
-LL |     let hello = hello.clone();
-   |                       ^^^^^ within `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}`, the trait `Clone` is not implemented for `S`, which is required by `{closure@$DIR/not-clone-closure.rs:7:17: 7:24}: Clone`
+LL |       let hello = move || {
+   |  _________________-
+LL | |         println!("Hello {}", a.0);
+LL | |     };
+   | |_____- within this `{closure@$DIR/not-clone-closure.rs:7:17: 9:6}`
+LL |
+LL |       let hello = hello.clone();
+   |                         ^^^^^ within `{closure@$DIR/not-clone-closure.rs:7:17: 9:6}`, the trait `Clone` is not implemented for `S`, which is required by `{closure@$DIR/not-clone-closure.rs:7:17: 9:6}: Clone`
    |
 note: required because it's used within this closure
   --> $DIR/not-clone-closure.rs:7:17
    |
-LL |     let hello = move || {
-   |                 ^^^^^^^
+LL |       let hello = move || {
+   |  _________________^
+LL | |         println!("Hello {}", a.0);
+LL | |     };
+   | |_____^
 help: consider annotating `S` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

@@ -12,10 +12,9 @@ LL | type Bar = impl std::fmt::Display;
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
 error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
-  --> $DIR/const_generic_type.rs:8:38
+  --> $DIR/const_generic_type.rs:8:1
    |
-LL |   async fn test<const N: crate::Bar>() {
-   |  ______________________________________^
+LL | / async fn test<const N: crate::Bar>() {
 LL | |
 LL | |
 LL | |

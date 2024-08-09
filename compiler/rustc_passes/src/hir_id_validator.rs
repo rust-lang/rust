@@ -91,11 +91,12 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         if def_parent_hir_id.owner != owner {
             self.error(|| {
                 format!(
-                    "inconsistent Def parent at `{:?}` for `{:?}`:\nexpected={:?}\nfound={:?}",
+                    "inconsistent Def parent at `{:?}` for `{:?}`:\nexpected={:?}\nfound={:?} ({:?})",
                     self.tcx.def_span(id),
                     id,
                     owner,
-                    def_parent_hir_id
+                    def_parent_hir_id,
+                    def_parent,
                 )
             });
         }

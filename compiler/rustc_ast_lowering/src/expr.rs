@@ -70,6 +70,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 _ => (),
             }
 
+            self.create_def_if_needed_for(e);
             let hir_id = self.lower_node_id(e.id);
             self.lower_attrs(hir_id, &e.attrs);
 
@@ -356,6 +357,54 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
+    /// HACK(min_generic_const_args): we delay creation of expression defs until ast_lowering
+    ///
+    /// This only creates a def for the top-level expression. If it has nested expressions that
+    /// need defs, those are handled by the recursion in the main lowering logic.
+    fn create_def_if_needed_for(&mut self, e: &Expr) {
+        match &e.kind {
+            ExprKind::ConstBlock(c) => {
+                self.create_def(
+                    self.current_def_id_parent,
+                    c.id,
+                    kw::Empty,
+                    DefKind::InlineConst,
+                    c.value.span,
+                );
+            }
+            ExprKind::Closure(box Closure { coroutine_kind, .. }) => {
+                let closure_def = self.create_def(
+                    self.current_def_id_parent,
+                    e.id,
+                    kw::Empty,
+                    DefKind::Closure,
+                    e.span,
+                );
+                if let Some(coroutine_kind) = coroutine_kind {
+                    self.with_def_id_parent(closure_def, |this| {
+                        this.create_def(
+                            this.current_def_id_parent,
+                            coroutine_kind.closure_id(),
+                            kw::Empty,
+                            DefKind::Closure,
+                            e.span,
+                        );
+                    })
+                }
+            }
+            ExprKind::Gen(..) => {
+                self.create_def(
+                    self.current_def_id_parent,
+                    e.id,
+                    kw::Empty,
+                    DefKind::Closure,
+                    e.span,
+                );
+            }
+            _ => {}
+        }
+    }
+
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
         match u {
             UnOp::Deref => hir::UnOp::Deref,
@@ -383,15 +432,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_def_id_parent;
                 let node_id = self.next_node_id();
-
-                // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg() {
-                    // Add a definition for the in-band const def.
-                    self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
-                }
-
                 let anon_const = AnonConst { id: node_id, value: arg };
                 generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
             } else {

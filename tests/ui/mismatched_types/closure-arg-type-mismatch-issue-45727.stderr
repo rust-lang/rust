@@ -2,7 +2,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch-issue-45727.rs:3:24
    |
 LL |     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
-   |                        ^^^^ -------- found signature defined here
+   |                        ^^^^ ------------------------ found signature defined here
    |                        |
    |                        expected due to this
    |
@@ -19,7 +19,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/closure-arg-type-mismatch-issue-45727.rs:4:24
    |
 LL |     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
-   |                        ^^^^ ----------- found signature defined here
+   |                        ^^^^ --------------------------- found signature defined here
    |                        |
    |                        expected due to this
    |

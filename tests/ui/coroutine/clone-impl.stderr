@@ -1,11 +1,15 @@
-error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}`
   --> $DIR/clone-impl.rs:49:5
    |
-LL |     move || {
-   |     ------- within this `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`
-...
-LL |     check_copy(&gen_clone_0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}: Copy`
+LL | /     move || {
+LL | |         let v = vec!['a'];
+LL | |         yield;
+LL | |         drop(v);
+LL | |         drop(clonable_0);
+LL | |     };
+   | |_____- within this `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}`
+LL |       check_copy(&gen_clone_0);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}: Copy`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:47:14
@@ -18,14 +22,18 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}`
   --> $DIR/clone-impl.rs:49:5
    |
-LL |     move || {
-   |     ------- within this `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`
-...
-LL |     check_copy(&gen_clone_0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}`, the trait `Copy` is not implemented for `Vec<char>`, which is required by `{coroutine@$DIR/clone-impl.rs:43:5: 43:12}: Copy`
+LL | /     move || {
+LL | |         let v = vec!['a'];
+LL | |         yield;
+LL | |         drop(v);
+LL | |         drop(clonable_0);
+LL | |     };
+   | |_____- within this `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}`
+LL |       check_copy(&gen_clone_0);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}`, the trait `Copy` is not implemented for `Vec<char>`, which is required by `{coroutine@$DIR/clone-impl.rs:43:5: 48:6}: Copy`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
   --> $DIR/clone-impl.rs:45:9
@@ -40,14 +48,19 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`
+error[E0277]: the trait bound `Vec<u32>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}`
   --> $DIR/clone-impl.rs:70:5
    |
-LL |     move || {
-   |     ------- within this `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`
-...
-LL |     check_copy(&gen_clone_1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}: Copy`
+LL | /     move || {
+LL | |         let v = vec!['a'];
+LL | |         /*
+LL | |         let n = NonClone;
+...  |
+LL | |         drop(clonable_1);
+LL | |     };
+   | |_____- within this `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}`
+LL |       check_copy(&gen_clone_1);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}`, the trait `Copy` is not implemented for `Vec<u32>`, which is required by `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}: Copy`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:68:14
@@ -60,14 +73,19 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`
+error[E0277]: the trait bound `Vec<char>: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}`
   --> $DIR/clone-impl.rs:70:5
    |
-LL |     move || {
-   |     ------- within this `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`
-...
-LL |     check_copy(&gen_clone_1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}`, the trait `Copy` is not implemented for `Vec<char>`, which is required by `{coroutine@$DIR/clone-impl.rs:58:5: 58:12}: Copy`
+LL | /     move || {
+LL | |         let v = vec!['a'];
+LL | |         /*
+LL | |         let n = NonClone;
+...  |
+LL | |         drop(clonable_1);
+LL | |     };
+   | |_____- within this `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}`
+LL |       check_copy(&gen_clone_1);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}`, the trait `Copy` is not implemented for `Vec<char>`, which is required by `{coroutine@$DIR/clone-impl.rs:58:5: 69:6}: Copy`
    |
 note: coroutine does not implement `Copy` as this value is used across a yield
   --> $DIR/clone-impl.rs:64:9
@@ -83,14 +101,16 @@ note: required by a bound in `check_copy`
 LL | fn check_copy<T: Copy>(_x: &T) {}
    |                  ^^^^ required by this bound in `check_copy`
 
-error[E0277]: the trait bound `NonClone: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`
+error[E0277]: the trait bound `NonClone: Copy` is not satisfied in `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}`
   --> $DIR/clone-impl.rs:83:5
    |
-LL |     move || {
-   |     ------- within this `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`
-...
-LL |     check_copy(&gen_non_clone);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`, the trait `Copy` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}: Copy`
+LL | /     move || {
+LL | |         yield;
+LL | |         drop(non_clonable);
+LL | |     };
+   | |_____- within this `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}`
+LL |       check_copy(&gen_non_clone);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}`, the trait `Copy` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}: Copy`
    |
 note: captured value does not implement `Copy`
   --> $DIR/clone-impl.rs:81:14
@@ -108,14 +128,17 @@ LL + #[derive(Copy)]
 LL | struct NonClone;
    |
 
-error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied in `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}`
   --> $DIR/clone-impl.rs:85:5
    |
-LL |     move || {
-   |     ------- within this `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`
+LL | /     move || {
+LL | |         yield;
+LL | |         drop(non_clonable);
+LL | |     };
+   | |_____- within this `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}`
 ...
-LL |     check_clone(&gen_non_clone);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}`, the trait `Clone` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:79:5: 79:12}: Clone`
+LL |       check_clone(&gen_non_clone);
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}`, the trait `Clone` is not implemented for `NonClone`, which is required by `{coroutine@$DIR/clone-impl.rs:79:5: 82:6}: Clone`
    |
 note: captured value does not implement `Clone`
   --> $DIR/clone-impl.rs:81:14

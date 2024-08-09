@@ -46,15 +46,15 @@ help: consider further restricting this bound
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + Output<'_>,
    |                                                    ++++++++++++
 
-error[E0277]: expected a `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:41}`
+error[E0277]: expected a `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:44} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:44}`
   --> $DIR/filter-relevant-fn-bounds.rs:21:34
    |
 LL |     wrapper.do_something_wrapper(|value| ());
-   |             -------------------- ^^^^^^^^^^ expected an `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:41}`
+   |             -------------------- ^^^^^^^^^^ expected an `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:44} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:44}`
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:41}`
+   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:21:34: 21:44}`
 help: this trait has no implementations, consider adding one
   --> $DIR/filter-relevant-fn-bounds.rs:1:1
    |

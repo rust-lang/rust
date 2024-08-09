@@ -1,8 +1,15 @@
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
    |
-LL |     with_signature(a, b, |x, y| {
-   |                          ^^^^^^
+LL |       with_signature(a, b, |x, y| {
+   |  __________________________^
+LL | |         // See `correct_region`, which explains the point of this
+LL | |         // test.  The only difference is that, in the case of this
+LL | |         // function, there is no where clause *anywhere*, and hence we
+...  |
+LL | |
+LL | |     })
+   | |_____^
    |
    = note: defining type: no_region::<T>::{closure#0} with closure args [
                i32,
@@ -38,8 +45,15 @@ LL | fn no_region<'a, T: 'a>(a: Cell<&'a ()>, b: T) {
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:42:26
    |
-LL |     with_signature(a, b, |x, y| {
-   |                          ^^^^^^
+LL |       with_signature(a, b, |x, y| {
+   |  __________________________^
+LL | |         // Key point of this test:
+LL | |         //
+LL | |         // The *closure* is being type-checked with all of its free
+...  |
+LL | |         require(&x, &y)
+LL | |     })
+   | |_____^
    |
    = note: defining type: correct_region::<'?1, T>::{closure#0} with closure args [
                i32,
@@ -62,8 +76,13 @@ LL | |     T: 'a,
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:63:26
    |
-LL |     with_signature(a, b, |x, y| {
-   |                          ^^^^^^
+LL |       with_signature(a, b, |x, y| {
+   |  __________________________^
+LL | |         // See `correct_region`
+LL | |         require(&x, &y)
+LL | |
+LL | |     })
+   | |_____^
    |
    = note: defining type: wrong_region::<'?1, T>::{closure#0} with closure args [
                i32,
@@ -101,8 +120,12 @@ LL |     T: 'b + 'a,
 note: external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:76:26
    |
-LL |     with_signature(a, b, |x, y| {
-   |                          ^^^^^^
+LL |       with_signature(a, b, |x, y| {
+   |  __________________________^
+LL | |         // See `correct_region`
+LL | |         require(&x, &y)
+LL | |     })
+   | |_____^
    |
    = note: defining type: outlives_region::<'?1, '?2, T>::{closure#0} with closure args [
                i32,

@@ -828,7 +828,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
-                    self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+                    self.current_def_id_parent,
                     param,
                     kw::UnderscoreLifetime,
                     DefKind::LifetimeParam,
@@ -1412,7 +1412,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
 
                         self.create_def(
-                            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+                            self.current_def_id_parent,
                             *def_node_id,
                             ident.name,
                             DefKind::TyParam,
@@ -1620,7 +1620,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
         let opaque_ty_def_id = self.create_def(
-            self.current_hir_id_owner.def_id, // FIXME: should this use self.current_def_id_parent?
+            self.current_def_id_parent,
             opaque_ty_node_id,
             kw::Empty,
             DefKind::OpaqueTy,
@@ -2465,19 +2465,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_const_arg`].
     fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
-        if c.value.is_potential_trivial_const_arg() {
-            // HACK(min_generic_const_args): see DefCollector::visit_anon_const
-            // Over there, we guess if this is a bare param and only create a def if
-            // we think it's not. However we may can guess wrong (see there for example)
-            // in which case we have to create the def here.
-            self.create_def(
-                self.current_def_id_parent,
-                c.id,
-                kw::Empty,
-                DefKind::AnonConst,
-                c.value.span,
-            );
-        }
+        // HACK(min_generic_const_args): see DefCollector::visit_anon_const
+        // We delay creation of defs for expression-like things, including anon consts.
+        // This is because some anon consts end up as `ConstArgKind::Path`'s instead.
+        self.create_def(
+            self.current_def_id_parent,
+            c.id,
+            kw::Empty,
+            DefKind::AnonConst,
+            c.value.span,
+        );
 
         self.arena.alloc(self.with_new_scopes(c.value.span, |this| {
             let def_id = this.local_def_id(c.id);

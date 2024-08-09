@@ -2,7 +2,7 @@ note: external requirements
   --> $DIR/nested-closures-regions.rs:8:24
    |
 LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: main::{closure#0}::{closure#0} with closure args [
                i8,
@@ -19,7 +19,7 @@ note: no external requirements
   --> $DIR/nested-closures-regions.rs:8:5
    |
 LL |     for<'a> || -> () { for<'c> |_: &'a ()| -> () {}; };
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: main::{closure#0} with closure args [
                i8,

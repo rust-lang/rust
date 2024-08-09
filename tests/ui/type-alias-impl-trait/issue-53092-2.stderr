@@ -53,7 +53,7 @@ error: item does not constrain `Bug::{opaque#0}`, but has it in its signature
   --> $DIR/issue-53092-2.rs:6:61
    |
 LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
-   |                                                             ^^^^^^^
+   |                                                             ^^^^^^^^^^
    |
    = note: consider moving the opaque type's declaration and defining uses into a separate module
 note: this opaque type is in the signature

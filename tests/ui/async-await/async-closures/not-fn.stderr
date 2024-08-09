@@ -1,10 +1,14 @@
 error: async closure does not implement `FnMut` because it captures state from its environment
   --> $DIR/not-fn.rs:11:14
    |
-LL |     needs_fn(async || {
-   |     -------- ^^^^^^^^
-   |     |
-   |     required by a bound introduced by this call
+LL |       needs_fn(async || {
+   |  _____--------_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         x += 1;
+LL | |     });
+   | |_____^
    |
 note: required by a bound in `needs_fn`
   --> $DIR/not-fn.rs:8:28

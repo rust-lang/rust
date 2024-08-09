@@ -44,7 +44,7 @@ LL | |             },
 LL | |         },
    | |_________^ expected `Unit3`, found `Unit4`
    |
-note: required for `L<{closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19}>` to implement `for<'r> T0<'r, (&'r u8,)>`
+note: required for `L<{closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 45:14}>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16
    |
 LL | impl<'a, A, T> T0<'a, A> for L<T>

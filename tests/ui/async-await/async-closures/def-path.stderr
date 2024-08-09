@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/def-path.rs:9:9
    |
 LL |     let x = async || {};
-   |                      -- the expected `async` closure body
+   |             ----------- the expected `async` closure body
 LL |
 LL |     let () = x();
    |         ^^   --- this expression has type `{static main::{closure#0}::{closure#0}<?17t> upvar_tys=?16t witness=?6t}`

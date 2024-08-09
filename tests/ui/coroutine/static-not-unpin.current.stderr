@@ -1,8 +1,8 @@
-error[E0277]: `{static coroutine@$DIR/static-not-unpin.rs:15:5: 15:14}` cannot be unpinned
+error[E0277]: `{static coroutine@$DIR/static-not-unpin.rs:15:5: 17:6}` cannot be unpinned
   --> $DIR/static-not-unpin.rs:18:18
    |
 LL |     assert_unpin(coroutine);
-   |     ------------ ^^^^^^^^^ the trait `Unpin` is not implemented for `{static coroutine@$DIR/static-not-unpin.rs:15:5: 15:14}`
+   |     ------------ ^^^^^^^^^ the trait `Unpin` is not implemented for `{static coroutine@$DIR/static-not-unpin.rs:15:5: 17:6}`
    |     |
    |     required by a bound introduced by this call
    |

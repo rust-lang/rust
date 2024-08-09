@@ -1,14 +1,17 @@
-error[E0277]: the trait bound `NotClonableUpvar: Clone` is not satisfied in `{async closure@$DIR/not-clone-closure.rs:29:21: 29:34}`
+error[E0277]: the trait bound `NotClonableUpvar: Clone` is not satisfied in `{async closure@$DIR/not-clone-closure.rs:29:21: 31:6}`
   --> $DIR/not-clone-closure.rs:32:15
    |
 LL |     not_clone.clone();
-   |               ^^^^^ within `{async closure@$DIR/not-clone-closure.rs:29:21: 29:34}`, the trait `Clone` is not implemented for `NotClonableUpvar`, which is required by `{async closure@$DIR/not-clone-closure.rs:29:21: 29:34}: Clone`
+   |               ^^^^^ within `{async closure@$DIR/not-clone-closure.rs:29:21: 31:6}`, the trait `Clone` is not implemented for `NotClonableUpvar`, which is required by `{async closure@$DIR/not-clone-closure.rs:29:21: 31:6}: Clone`
    |
 note: required because it's used within this closure
   --> $DIR/not-clone-closure.rs:29:21
    |
-LL |     let not_clone = async move || {
-   |                     ^^^^^^^^^^^^^
+LL |       let not_clone = async move || {
+   |  _____________________^
+LL | |         println!("{z:?}");
+LL | |     };
+   | |_____^
 help: consider annotating `NotClonableUpvar` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

@@ -2,7 +2,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:7:5
    |
 LL |     foo(|_: isize| {});
-   |     ^^^^----------^^^^
+   |     ^^^^-------------^
    |     |   |
    |     |   found signature defined here
    |     expected due to this
@@ -19,7 +19,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:8:5
    |
 LL |     bar(|_: isize| {});
-   |     ^^^^----------^^^^
+   |     ^^^^-------------^
    |     |   |
    |     |   found signature defined here
    |     expected due to this
