@@ -2,7 +2,7 @@
 
 <!-- Completely hide the TOC and the section numbers -->
 <style type="text/css">
-#TOC { display: none; }
+#rustdoc-toc { display: none; }
 .header-section-number { display: none; }
 li {list-style-type: none; }
 #search-input {
