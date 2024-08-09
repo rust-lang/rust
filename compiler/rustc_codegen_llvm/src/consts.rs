@@ -320,6 +320,12 @@ impl<'ll> CodegenCx<'ll, '_> {
         }
 
         if !def_id.is_local() {
+            // Workaround an LLD bug (https://github.com/rust-lang/rust/issues/81408) with importing
+            // static symbols triggered by ThinLTO if we're not using -Z dylib-lto. Note this
+            // workaround may not be sound for crate graphs with dylibs.
+            let workaround_lld_bug =
+                self.tcx.sess.lto() == Lto::Thin && !self.tcx.sess.opts.unstable_opts.dylib_lto;
+
             let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
@@ -327,8 +333,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
-                self.tcx.sess.lto() != Lto::Thin;
+                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() && !workaround_lld_bug;
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
