@@ -6,7 +6,7 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "linux".into(),
         dynamic_linking: true,
-        families: cvs!["unix"],
+        families: cvs!["linux", "unix"],
         has_rpath: true,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
