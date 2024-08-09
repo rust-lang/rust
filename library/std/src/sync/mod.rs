@@ -130,6 +130,11 @@
 //!   inter-thread synchronisation mechanism, at the cost of some
 //!   extra memory.
 //!
+//! - [`mpmc`]: Multi-producer, multi-consumer queues, used for
+//!   message-based communication. Can provide a lightweight
+//!   inter-thread synchronisation mechanism, at the cost of some
+//!   extra memory.
+//!
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
@@ -150,6 +155,7 @@
 //! [`Arc`]: crate::sync::Arc
 //! [`Barrier`]: crate::sync::Barrier
 //! [`Condvar`]: crate::sync::Condvar
+//! [`mpmc`]: crate::sync::mpmc
 //! [`mpsc`]: crate::sync::mpsc
 //! [`Mutex`]: crate::sync::Mutex
 //! [`Once`]: crate::sync::Once
@@ -172,6 +178,8 @@ pub use self::barrier::{Barrier, BarrierWaitResult};
 pub use self::condvar::{Condvar, WaitTimeoutResult};
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub use self::lazy_lock::LazyLock;
+#[stable(feature = "lazy_cell", since = "1.80.0")]
+pub use self::lazy_lock::LazyLock;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::mutex::MappedMutexGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -181,8 +189,12 @@ pub use self::mutex::{Mutex, MutexGuard};
 pub use self::once::{Once, OnceState, ONCE_INIT};
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub use self::once_lock::OnceLock;
+#[stable(feature = "once_cell", since = "1.70.0")]
+pub use self::once_lock::OnceLock;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
+#[unstable(feature = "reentrant_lock", issue = "121440")]
+pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 #[unstable(feature = "reentrant_lock", issue = "121440")]
 pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
@@ -190,12 +202,12 @@ pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-pub mod mpsc;
+#[unstable(feature = "mpmc_channel", issue = "125712")]
+pub mod mpmc;
 
 mod barrier;
 mod condvar;
 mod lazy_lock;
-mod mpmc;
 mod mutex;
 pub(crate) mod once;
 mod once_lock;
