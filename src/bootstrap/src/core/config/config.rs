@@ -1325,7 +1325,11 @@ impl Config {
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
-            config.config = Some(toml_path.clone());
+            config.config = Some(if cfg!(not(feature = "bootstrap-self-test")) {
+                toml_path.canonicalize().unwrap()
+            } else {
+                toml_path.clone()
+            });
             get_toml(&toml_path)
         } else {
             config.config = None;
