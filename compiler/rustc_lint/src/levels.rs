@@ -1,5 +1,5 @@
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::{fx::FxIndexMap, fx::FxIndexSet};
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::intravisit::{self, Visitor};
@@ -31,7 +31,7 @@ use crate::errors::{
     OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
 };
 use crate::fluent_generated as fluent;
-use crate::late::unerased_lint_store;
+use crate::late::{unerased_lint_store, name_without_tool};
 use crate::lints::{
     DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
     OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
@@ -143,6 +143,46 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     builder.provider.expectations
 }
 
+pub fn lints_that_dont_need_to_run(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> FxIndexSet<LintId> {
+    let store = unerased_lint_store(&tcx.sess);
+
+    let dont_need_to_run: FxIndexSet<LintId> = store
+        .get_lints()
+        .into_iter()
+        .filter_map(|lint| {
+            if !lint.loadbearing && lint.default_level(tcx.sess.edition()) == Level::Allow {
+                Some(LintId::of(lint))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mut visitor = LintLevelMaximum { tcx, dont_need_to_run };
+    visitor.process_opts();
+    tcx.hir().walk_attributes(&mut visitor);
+
+    // let lint_groups = store.get_lint_groups();
+    // for group in lint_groups {
+    //     let binding = group.0.to_lowercase();
+    //     let group_name = name_without_tool(&binding).to_string();
+    //     if visitor.lints_that_actually_run.contains(&group_name) {
+    //         for lint in group.1 {
+    //             visitor.lints_that_actually_run.insert(name_without_tool(&lint.to_string()).to_string());
+    //         }
+    //     } else if visitor.lints_allowed.contains(&group_name) {
+    //         for lint in &group.1 {
+    //             visitor.lints_allowed.insert(name_without_tool(&lint.to_string()).to_string());
+    //         }
+    //     }
+    // }
+
+    visitor.dont_need_to_run
+}
+
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx.sess);
@@ -245,7 +285,7 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
     }
 }
 
-struct QueryMapExpectationsWrapper<'tcx> {
+pub(crate) struct QueryMapExpectationsWrapper<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// HirId of the currently investigated element.
     cur: HirId,
@@ -439,6 +479,114 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.add_id(impl_item.hir_id());
         intravisit::walk_impl_item(self, impl_item);
+    }
+}
+
+/// Visitor with the only function of visiting every item-like in a crate and
+/// computing the highest level that every lint gets put to.
+///
+/// E.g., if a crate has a global #![allow(lint)] attribute, but a single item
+/// uses #[warn(lint)], this visitor will set that lint level as `Warn`
+struct LintLevelMaximum<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    /// The actual list of detected lints.
+    dont_need_to_run: FxIndexSet<LintId>,
+}
+
+impl<'tcx> LintLevelMaximum<'tcx> {
+    fn process_opts(&mut self) {
+        let store = unerased_lint_store(self.tcx.sess);
+        for (lint_group, level) in &self.tcx.sess.opts.lint_opts {
+            if *level != Level::Allow {
+                let Ok(lints) = store.find_lints(lint_group) else {
+                    return;
+                };
+                for lint in lints {
+                    self.dont_need_to_run.swap_remove(&lint);
+                }
+            }
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
+    type NestedFilter = nested_filter::All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
+    fn visit_attribute(&mut self, attribute: &'tcx ast::Attribute) {
+        match Level::from_attr(attribute) {
+            Some(
+                Level::Warn
+                | Level::Deny
+                | Level::Forbid
+                | Level::Expect(..)
+                | Level::ForceWarn(..),
+            ) => {
+                let store = unerased_lint_store(self.tcx.sess);
+                let Some(meta) = attribute.meta() else { return };
+                // SAFETY: Lint attributes are always a metalist inside a
+                // metalist (even with just one lint).
+                let Some(meta_item_list) = meta.meta_item_list() else { return };
+
+                for meta_list in meta_item_list {
+                    // Convert Path to String
+                    let Some(meta_item) = meta_list.meta_item() else {return};
+                    let ident: &str = &meta_item.path.segments.iter().map(|segment| segment.ident.as_str()).collect::<Vec<&str>>().join("::");
+                    let Ok(lints) = store.find_lints(
+                        // SAFETY: Lint attributes can only have literals
+                        ident,
+                    ) else {
+                        return;
+                    };
+                    for lint in lints {
+                        self.dont_need_to_run.swap_remove(&lint);
+                    }
+                    // // If it's a tool lint (e.g. clippy::my_clippy_lint)
+                    // if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
+                    //     if meta_item.path.segments.len() == 1 {
+                    //         let Ok(lints) = store.find_lints(
+                    //             // SAFETY: Lint attributes can only have literals
+                    //             meta_list.ident().unwrap().name.as_str(),
+                    //         ) else {
+                    //             return;
+                    //         };
+                    //         for lint in lints {
+                    //             dbg!("LINT REMOVED", &lint);
+                    //             self.dont_need_to_run.swap_remove(&lint);
+                    //         }
+                    //     } else {
+                    //         let Ok(lints) = store.find_lints(
+                    //             // SAFETY: Lint attributes can only have literals
+                    //             meta_item.path.segments[1].ident.name.as_str(),
+                    //         ) else {
+                    //             return;
+                    //         };
+                    //         for lint in lints {
+                    //             dbg!("LINT REMOVED", &lint);
+                    //             self.dont_need_to_run.swap_remove(&lint);
+                    //         }
+                    //     }
+                    }
+                // We handle #![allow]s differently, as these remove checking rather than adding.
+            } // Some(Level::Allow) if ast::AttrStyle::Inner == attribute.style => {
+              //     for meta_list in meta.meta_item_list().unwrap() {
+              //         // If it's a tool lint (e.g. clippy::my_clippy_lint)
+              //         if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
+              //             if meta_item.path.segments.len() == 1 {
+              //                 self.lints_allowed
+              //                     .insert(meta_list.name_or_empty().as_str().to_string());
+              //             } else {
+              //                 self.lints_allowed
+              //                     .insert(meta_item.path.segments[1].ident.name.as_str().to_string());
+              //             }
+              //         }
+              //     }
+              // }
+              _ => { return; }
+        }
     }
 }
 
@@ -1102,7 +1250,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
+    *providers =
+        Providers { shallow_lint_levels_on, lint_expectations, lints_that_dont_need_to_run, ..*providers };
 }
 
 pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

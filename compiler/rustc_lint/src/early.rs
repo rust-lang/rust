@@ -312,6 +312,9 @@ impl LintPass for RuntimeCombinedEarlyLintPass<'_> {
     fn name(&self) -> &'static str {
         panic!()
     }
+    fn get_lints(&self) -> crate::LintVec {
+        panic!()
+    }
 }
 
 macro_rules! impl_early_lint_pass {

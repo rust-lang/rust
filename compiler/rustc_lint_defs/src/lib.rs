@@ -329,6 +329,10 @@ pub struct Lint {
     pub feature_gate: Option<Symbol>,
 
     pub crate_level_only: bool,
+
+    /// `true` if this lint should not be filtered out under any circustamces
+    /// (e.g. the unknown_attributes lint)
+    pub loadbearing: bool,
 }
 
 /// Extra information for a future incompatibility lint.
@@ -473,6 +477,7 @@ impl Lint {
             future_incompatible: None,
             feature_gate: None,
             crate_level_only: false,
+            loadbearing: false,
         }
     }
 
@@ -868,7 +873,7 @@ macro_rules! declare_lint {
             $(#[$attr])* $vis $NAME, $Level, $desc,
         );
     );
-    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
+    ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr, $([loadbearing: $loadbearing: literal])?
      $(@feature_gate = $gate:ident;)?
      $(@future_incompatible = FutureIncompatibleInfo {
         reason: $reason:expr,
@@ -890,6 +895,7 @@ macro_rules! declare_lint {
                 ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
             }),)?
             $(edition_lint_opts: Some(($crate::Edition::$lint_edition, $crate::$edition_level)),)?
+            $(loadbearing: $loadbearing,)?
             ..$crate::Lint::default_fields_for_macro()
         };
     );
@@ -900,6 +906,7 @@ macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
         $(, @feature_gate = $gate:ident;)?
+        $(, [loadbearing: $loadbearing: literal])?
     ) => (
         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
     );
@@ -907,6 +914,7 @@ macro_rules! declare_tool_lint {
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
         $(, @feature_gate = $gate:ident;)?
+        $(, [loadbearing: $loadbearing: literal])?
     ) => (
          $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
     );
@@ -914,6 +922,7 @@ macro_rules! declare_tool_lint {
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
         $(, @feature_gate = $gate:ident;)?
+        $(, [loadbearing: $loadbearing: literal])?
     ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -926,6 +935,7 @@ macro_rules! declare_tool_lint {
             is_externally_loaded: true,
             $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
             crate_level_only: false,
+            $(loadbearing: $loadbearing,)?
             ..$crate::Lint::default_fields_for_macro()
         };
     );
@@ -935,6 +945,7 @@ pub type LintVec = Vec<&'static Lint>;
 
 pub trait LintPass {
     fn name(&self) -> &'static str;
+    fn get_lints(&self) -> LintVec;
 }
 
 /// Implements `LintPass for $ty` with the given list of `Lint` statics.
@@ -943,9 +954,7 @@ macro_rules! impl_lint_pass {
     ($ty:ty => [$($lint:expr),* $(,)?]) => {
         impl $crate::LintPass for $ty {
             fn name(&self) -> &'static str { stringify!($ty) }
-        }
-        impl $ty {
-            pub fn get_lints() -> $crate::LintVec { vec![$($lint),*] }
+            fn get_lints(&self) -> $crate::LintVec { vec![$($lint),*] }
         }
     };
 }
@@ -955,7 +964,18 @@ macro_rules! impl_lint_pass {
 #[macro_export]
 macro_rules! declare_lint_pass {
     ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
-        $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
+        $(#[$m])* #[derive(Copy, Clone, Default)] pub struct $name;
         $crate::impl_lint_pass!($name => [$($lint),*]);
     };
+}
+
+#[allow(rustc::lint_pass_impl_without_macro)]
+impl<P: LintPass + ?Sized> LintPass for Box<P> {
+    fn name(&self) -> &'static str {
+        (**self).name()
+    }
+
+    fn get_lints(&self) -> LintVec {
+        (**self).get_lints()
+    }
 }
