@@ -32,6 +32,10 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ),
 ];
 
+pub fn exists(name: &str) -> bool {
+    GROUP_DESCRIPTIONS.iter().any(|&(n, _)| n == name)
+}
+
 type LintGroups = BTreeMap<String, BTreeSet<String>>;
 
 impl<'a> LintExtractor<'a> {
