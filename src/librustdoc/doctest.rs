@@ -407,6 +407,16 @@ fn run_test(
         compiler.arg("-W").arg("unused_crate_dependencies");
         compiler.arg("-Z").arg("unstable-options");
     }
+    // If arguments are passed to `RUSTFLAGS` environment variable, let's add them when compiling
+    // the doctest.
+    if let Ok(rustflags) = std::env::var("RUSTFLAGS") {
+        // Very simple parsing implementation. Might be a good idea to correctly handle strings.
+        for flag in
+            rustflags.split_whitespace().map(|flag| flag.trim()).filter(|flag| !flag.is_empty())
+        {
+            compiler.arg(flag);
+        }
+    }
 
     if scraped_test.no_run(rustdoc_options)
         && !langstr.compile_fail
