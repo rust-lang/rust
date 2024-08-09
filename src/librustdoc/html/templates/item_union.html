@@ -10,7 +10,7 @@
     {% for (field, ty) in self.fields_iter() %}
         {% let name = field.name.expect("union field name") %}
         <span id="structfield.{{ name }}" {#+ #}
-            class="{{ ItemType::StructField +}} section-header"> {# #}
+            class="structfield {{ ItemType::StructField +}} section-header"> {# #}
             <a href="#structfield.{{ name }}" class="anchor field">§</a> {# #}
             <code>{{ name }}: {{+ self.print_ty(ty)|safe }}</code> {# #}
         </span>
