@@ -340,11 +340,3 @@ impl MaybeCause {
         }
     }
 }
-
-#[derive_where(PartialEq, Eq, Debug; I: Interner)]
-pub struct CacheData<I: Interner> {
-    pub result: QueryResult<I>,
-    pub proof_tree: Option<I::CanonicalGoalEvaluationStepRef>,
-    pub additional_depth: usize,
-    pub encountered_overflow: bool,
-}
