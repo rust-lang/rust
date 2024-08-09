@@ -999,7 +999,7 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
             ),
-            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
+            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::VsCode, setup::Zed),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             Kind::Vendor => describe!(vendor::Vendor),
             // special-cased in Build::build()

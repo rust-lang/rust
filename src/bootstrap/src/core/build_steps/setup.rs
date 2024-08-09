@@ -35,10 +35,10 @@ pub enum Profile {
 
 static PROFILE_DIR: &str = "src/bootstrap/defaults";
 
-/// A list of historical hashes of `src/etc/rust_analyzer_settings.json`.
-/// New entries should be appended whenever this is updated so we can detect
+/// A list of historical SHA-256 hashes of `src/etc/vscode_settings.json`. New
+/// entries should be appended whenever this is updated so we can detect
 /// outdated vs. user-modified settings files.
-static SETTINGS_HASHES: &[&str] = &[
+static VSCODE_SETTINGS_HASHES: &[&str] = &[
     "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
     "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
     "af1b5efe196aed007577899db9dae15d6dbc923d6fa42fa0934e68617ba9bbe0",
@@ -47,7 +47,14 @@ static SETTINGS_HASHES: &[&str] = &[
     "b526bd58d0262dd4dda2bff5bc5515b705fb668a46235ace3e057f807963a11a",
     "828666b021d837a33e78d870b56d34c88a5e2c85de58b693607ec574f0c27000",
 ];
-static RUST_ANALYZER_SETTINGS: &str = include_str!("../../../../etc/rust_analyzer_settings.json");
+static VSCODE_SETTINGS: &str = include_str!("../../../../etc/vscode_settings.json");
+
+/// A list of historical SHA-256 hashes of `src/etc/zed_settings.json`. New
+/// entries should be appended whenever this is updated so we can detect
+/// outdated vs. user-modified settings files.
+static ZED_SETTINGS_HASHES: &[&str] =
+    &["08bb47a0a93947284102eece102cb2e21a91ff952bf21798df92590e31240d98"];
+static ZED_SETTINGS: &str = include_str!("../../../../etc/zed_settings.json");
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
@@ -521,11 +528,11 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     Ok(())
 }
 
-/// Sets up or displays `src/etc/rust_analyzer_settings.json`
+/// Sets up or displays `src/etc/vscode_settings.json`
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct Vscode;
+pub struct VsCode;
 
-impl Step for Vscode {
+impl Step for VsCode {
     type Output = ();
     const DEFAULT: bool = true;
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -537,7 +544,7 @@ impl Step for Vscode {
         }
         if let [cmd] = &run.paths[..] {
             if cmd.assert_single_path().path.as_path().as_os_str() == "vscode" {
-                run.builder.ensure(Vscode);
+                run.builder.ensure(VsCode);
             }
         }
     }
@@ -553,7 +560,7 @@ impl Step for Vscode {
 /// Create a `.vscode/settings.json` file for rustc development, or just print it
 /// If this method should be re-called, it returns `false`.
 fn create_vscode_settings_maybe(config: &Config) -> io::Result<bool> {
-    let (current_hash, historical_hashes) = SETTINGS_HASHES.split_last().unwrap();
+    let (current_hash, historical_hashes) = VSCODE_SETTINGS_HASHES.split_last().unwrap();
     let vscode_settings = config.src.join(".vscode").join("settings.json");
     // If None, no settings.json exists
     // If Some(true), is a previous version of settings.json
@@ -613,10 +620,110 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<bool> {
             }
             _ => "Created",
         };
-        fs::write(&vscode_settings, RUST_ANALYZER_SETTINGS)?;
+        fs::write(&vscode_settings, VSCODE_SETTINGS)?;
         println!("{verb} `.vscode/settings.json`");
     } else {
-        println!("\n{RUST_ANALYZER_SETTINGS}");
+        println!("\n{VSCODE_SETTINGS}");
+    }
+    Ok(should_create)
+}
+
+/// Sets up or displays `src/etc/zed_settings.json`
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Zed;
+
+impl Step for Zed {
+    type Output = ();
+    const DEFAULT: bool = true;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("zed")
+    }
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+        if let [cmd] = &run.paths[..] {
+            if cmd.assert_single_path().path.as_path().as_os_str() == "zed" {
+                run.builder.ensure(Zed);
+            }
+        }
+    }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let config = &builder.config;
+        if config.dry_run() {
+            return;
+        }
+        while !t!(create_zed_settings_maybe(config)) {}
+    }
+}
+
+/// Create a `.zed/settings.json` file for rustc development, or just print it
+/// If this method should be re-called, it returns `false`.
+fn create_zed_settings_maybe(config: &Config) -> io::Result<bool> {
+    let (current_hash, historical_hashes) = ZED_SETTINGS_HASHES.split_last().unwrap();
+    let zed_settings = config.src.join(".zed").join("settings.json");
+    // If None, no settings.json exists
+    // If Some(true), is a previous version of settings.json
+    // If Some(false), is not a previous version (i.e. user modified)
+    // If it's up to date we can just skip this
+    let mut mismatched_settings = None;
+    if let Ok(current) = fs::read_to_string(&zed_settings) {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&current);
+        let hash = hex_encode(hasher.finalize().as_slice());
+        if hash == *current_hash {
+            return Ok(true);
+        } else if historical_hashes.contains(&hash.as_str()) {
+            mismatched_settings = Some(true);
+        } else {
+            mismatched_settings = Some(false);
+        }
+    }
+    println!(
+        "\nx.py can automatically install the recommended `.zed/settings.json` file for rustc development"
+    );
+    match mismatched_settings {
+        Some(true) => eprintln!(
+            "WARNING: existing `.zed/settings.json` is out of date, x.py will update it"
+        ),
+        Some(false) => eprintln!(
+            "WARNING: existing `.zed/settings.json` has been modified by user, x.py will back it up and replace it"
+        ),
+        _ => (),
+    }
+    let should_create = match prompt_user(
+        "Would you like to create/update settings.json? (Press 'p' to preview values): [y/N]",
+    )? {
+        Some(PromptResult::Yes) => true,
+        Some(PromptResult::Print) => false,
+        _ => {
+            println!("Ok, skipping settings!");
+            return Ok(true);
+        }
+    };
+    if should_create {
+        let path = config.src.join(".zed");
+        if !path.exists() {
+            fs::create_dir(&path)?;
+        }
+        let verb = match mismatched_settings {
+            // exists but outdated, we can replace this
+            Some(true) => "Updated",
+            // exists but user modified, back it up
+            Some(false) => {
+                // exists and is not current version or outdated, so back it up
+                let mut backup = zed_settings.clone();
+                backup.set_extension("json.bak");
+                eprintln!("WARNING: copying `settings.json` to `settings.json.bak`");
+                fs::copy(&zed_settings, &backup)?;
+                "Updated"
+            }
+            _ => "Created",
+        };
+        fs::write(&zed_settings, ZED_SETTINGS)?;
+        println!("{verb} `.zed/settings.json`");
+    } else {
+        println!("\n{ZED_SETTINGS}");
     }
     Ok(should_create)
 }

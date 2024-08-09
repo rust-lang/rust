@@ -18,6 +18,7 @@ Session.vim
 .idea
 *.iml
 .vscode
+.zed
 .project
 .vim/
 .favorites.json

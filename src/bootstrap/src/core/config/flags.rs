@@ -443,14 +443,15 @@ Arguments:
     The profile is optional and you will be prompted interactively if it is not given.
     The following profiles are available:
 {}
-    To only set up the git hook, VS Code config or toolchain link, you may use
+    To only set up the git hook, VS Code config, Zed config, or toolchain link, you may use
         ./x.py setup hook
         ./x.py setup vscode
+        ./x.py setup zed
         ./x.py setup link", Profile::all_for_help("        ").trim_end()))]
     Setup {
         /// Either the profile for `config.toml` or another setup action.
         /// May be omitted to set up interactively
-        #[arg(value_name = "<PROFILE>|hook|vscode|link")]
+        #[arg(value_name = "<PROFILE>|hook|vscode|zed|link")]
         profile: Option<PathBuf>,
     },
     /// Suggest a subset of tests to run, based on modified files
