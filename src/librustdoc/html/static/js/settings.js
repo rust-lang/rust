@@ -36,6 +36,20 @@
                     removeClass(document.documentElement, "hide-sidebar");
                 }
                 break;
+            case "hide-toc":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-toc");
+                } else {
+                    removeClass(document.documentElement, "hide-toc");
+                }
+                break;
+            case "hide-modnav":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-modnav");
+                } else {
+                    removeClass(document.documentElement, "hide-modnav");
+                }
+                break;
         }
     }
 
@@ -102,6 +116,11 @@
         let output = "";
 
         for (const setting of settings) {
+            if (setting === "hr") {
+                output += "<hr>";
+                continue;
+            }
+
             const js_data_name = setting["js_name"];
             const setting_name = setting["name"];
 
@@ -196,6 +215,16 @@
             {
                 "name": "Hide persistent navigation bar",
                 "js_name": "hide-sidebar",
+                "default": false,
+            },
+            {
+                "name": "Hide table of contents",
+                "js_name": "hide-toc",
+                "default": false,
+            },
+            {
+                "name": "Hide module navigation",
+                "js_name": "hide-modnav",
                 "default": false,
             },
             {
