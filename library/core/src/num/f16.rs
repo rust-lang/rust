@@ -248,7 +248,6 @@ impl f16 {
     /// Exponent mask
     pub(crate) const EXP_MASK: u16 = 0x7c00;
 
-    /// Mantissa mask
     pub(crate) const MAN_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)

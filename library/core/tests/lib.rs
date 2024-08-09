@@ -50,6 +50,7 @@
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
+#![feature(f16)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]

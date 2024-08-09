@@ -67,6 +67,18 @@
 //! "such that the exponent +/- the number of decimal digits fits into a 64 bit integer".
 //! Larger exponents are accepted, but we don't do arithmetic with them, they are immediately
 //! turned into {positive,negative} {zero,infinity}.
+//!
+//! # Notation
+//!
+//! This module uses the same notation as the Lemire paper:
+//!
+//! - `m`: binary mantissa; always nonnegative
+//! - `p`: binary exponent; a signed integer
+//! - `w`: decimal significand; always nonnegative
+//! - `q`: decimal exponent; a signed integer
+//!
+//! This gives `m * 2^p` for the binary floating-point number, with `w * 10^q` as the decimal
+//! equivalent.
 
 #![doc(hidden)]
 #![unstable(
@@ -159,6 +171,8 @@ macro_rules! from_str_float_impl {
         }
     };
 }
+
+from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
@@ -221,8 +235,8 @@ pub fn pfe_invalid() -> ParseFloatError {
 
 /// Converts a `BiasedFp` to the closest machine float type.
 fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
-    let mut word = x.f;
-    word |= (x.e as u64) << T::MANTISSA_EXPLICIT_BITS;
+    let mut word = x.m;
+    word |= (x.m as u64) << T::MANTISSA_EXPLICIT_BITS;
     T::from_u64_bits(word)
 }
 
@@ -260,12 +274,15 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     // redundantly using the Eisel-Lemire algorithm if it was unable to
     // correctly round on the first pass.
     let mut fp = compute_float::<F>(num.exponent, num.mantissa);
-    if num.many_digits && fp.e >= 0 && fp != compute_float::<F>(num.exponent, num.mantissa + 1) {
-        fp.e = -1;
+    if num.many_digits
+        && fp.p_biased >= 0
+        && fp != compute_float::<F>(num.exponent, num.mantissa + 1)
+    {
+        fp.p_biased = -1;
     }
     // Unable to correctly round the float using the Eisel-Lemire algorithm.
     // Fallback to a slower, but always correct algorithm.
-    if fp.e < 0 {
+    if fp.p_biased < 0 {
         fp = parse_long_mantissa::<F>(s);
     }
 
