@@ -836,6 +836,28 @@ impl UnixDatagram {
         self.0.set_mark(mark)
     }
 
+    /// Set the route FIB table id
+    ///
+    /// The kernel allows up to 65536 distinct routes
+    /// (visible via net.fibs sysctl), this socket option
+    /// allows to set the id programmatically
+    #[cfg_attr(target_os = "freebsd", doc = "```no_run")]
+    #[cfg_attr(not(target_os = "freebsd"), doc = "```ignore")]
+    /// #![feature(unix_set_fib)]
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_fib(1)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[cfg(any(doc, target_os = "freebsd"))]
+    #[unstable(feature = "unix_set_fib", issue = "none")]
+    pub fn set_fib(&self, fib: i32) -> io::Result<()> {
+        self.0.set_fib(fib)
+    }
+
     /// Returns the value of the `SO_ERROR` option.
     ///
     /// # Examples
