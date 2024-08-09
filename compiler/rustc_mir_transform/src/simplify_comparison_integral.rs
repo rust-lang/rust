@@ -27,6 +27,10 @@ use super::MirPass;
 pub struct SimplifyComparisonIntegral;
 
 impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
+    fn min_mir_opt_level(&self) -> usize {
+        1
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

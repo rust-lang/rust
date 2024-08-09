@@ -13,6 +13,10 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 pub struct ScalarReplacementOfAggregates;
 
 impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
+    fn min_mir_opt_level(&self) -> usize {
+        2
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }

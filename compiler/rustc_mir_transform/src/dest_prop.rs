@@ -150,6 +150,10 @@ use crate::MirPass;
 pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
+    fn min_mir_opt_level(&self) -> usize {
+        3
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         // For now, only run at MIR opt level 3. Two things need to be changed before this can be
         // turned on by default:

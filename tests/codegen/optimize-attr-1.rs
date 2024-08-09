@@ -15,6 +15,17 @@ pub fn nothing() -> i32 {
     2 + 2
 }
 
+// CHECK-LABEL: define{{.*}}i32 @none
+// CHECK-SAME: [[NONE_ATTRS:#[0-9]+]]
+// SIZE-OPT: alloca
+// SPEED-OPT: alloca
+#[no_mangle]
+#[optimize(none)]
+pub fn none() -> i32 {
+    let arr = [0, 1, 2, 3, 4];
+    arr[4]
+}
+
 // CHECK-LABEL: define{{.*}}i32 @size
 // CHECK-SAME: [[SIZE_ATTRS:#[0-9]+]]
 // SIZE-OPT: ret i32 6
@@ -39,8 +50,10 @@ pub fn speed() -> i32 {
 
 // NO-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
 // SPEED-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
+// SPEED-OPT-DAG: attributes [[NONE_ATTRS]] = {{.*}}optnone{{.*}}
 // SIZE-OPT-DAG: attributes [[NOTHING_ATTRS]] = {{.*}}optsize{{.*}}
 // SIZE-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
+// SIZE-OPT-DAG: attributes [[NONE_ATTRS]] = {{.*}}noinline{{.*}}optnone{{.*}}
 
 // SIZE-OPT: attributes [[SPEED_ATTRS]]
 // SIZE-OPT-NOT: minsize

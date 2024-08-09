@@ -53,11 +53,20 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq, Eq)]
 pub enum OptimizeAttr {
+    /// `#[optimize(none)]`. This implies `#[inline(never)]`, required by LLVM
     None,
+    /// `#[optimize(speed)]`
     Speed,
+    /// `#[optimize(size)]`
     Size,
+}
+
+impl OptimizeAttr {
+    pub fn do_not_optimize(&self) -> bool {
+        matches!(*self, OptimizeAttr::None)
+    }
 }
 
 /// Represents the following attributes:

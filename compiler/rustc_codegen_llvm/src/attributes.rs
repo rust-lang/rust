@@ -337,22 +337,27 @@ pub fn llfn_attrs_from_instance<'ll, 'tcx>(
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
-        OptimizeAttr::None => {
+        None => {
             to_add.extend(default_optimisation_attrs(cx));
         }
-        OptimizeAttr::Size => {
+        Some(OptimizeAttr::None) => {
+            to_add.push(llvm::AttributeKind::OptimizeNone.create_attr(cx.llcx));
+        }
+        Some(OptimizeAttr::Size) => {
             to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
             to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
-        OptimizeAttr::Speed => {}
+        Some(OptimizeAttr::Speed) => {}
     }
 
-    let inline =
-        if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
-            InlineAttr::Hint
-        } else {
-            codegen_fn_attrs.inline
-        };
+    // `optnone` requires `noinline`
+    let inline = if codegen_fn_attrs.optimize == Some(OptimizeAttr::None) {
+        InlineAttr::Never
+    } else if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
+        InlineAttr::Hint
+    } else {
+        codegen_fn_attrs.inline
+    };
     to_add.extend(inline_attr(cx, inline));
 
     // The `uwtable` attribute according to LLVM is:

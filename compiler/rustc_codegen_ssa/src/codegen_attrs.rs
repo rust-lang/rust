@@ -559,7 +559,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     });
 
-    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
+    codegen_fn_attrs.optimize = attrs.iter().fold(None, |ia, attr| {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
@@ -573,14 +573,16 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 inline_span = Some(attr.span);
                 if items.len() != 1 {
                     err(attr.span, "expected one argument");
-                    OptimizeAttr::None
+                    None
                 } else if list_contains_name(items, sym::size) {
-                    OptimizeAttr::Size
+                    Some(OptimizeAttr::Size)
                 } else if list_contains_name(items, sym::speed) {
-                    OptimizeAttr::Speed
+                    Some(OptimizeAttr::Speed)
+                } else if list_contains_name(items, sym::none) {
+                    Some(OptimizeAttr::None)
                 } else {
                     err(items[0].span(), "invalid argument");
-                    OptimizeAttr::None
+                    None
                 }
             }
             Some(MetaItemKind::NameValue(_)) => ia,

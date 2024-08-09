@@ -10,6 +10,10 @@ use crate::simplify;
 pub struct MultipleReturnTerminators;
 
 impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
+    fn min_mir_opt_level(&self) -> usize {
+        4
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 4
     }

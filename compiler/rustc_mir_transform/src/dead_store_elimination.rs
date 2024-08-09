@@ -140,6 +140,10 @@ impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
         }
     }
 
+    fn min_mir_opt_level(&self) -> usize {
+        2
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }

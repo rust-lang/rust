@@ -7,6 +7,10 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub struct RemoveZsts;
 
 impl<'tcx> MirPass<'tcx> for RemoveZsts {
+    fn min_mir_opt_level(&self) -> usize {
+        1
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }

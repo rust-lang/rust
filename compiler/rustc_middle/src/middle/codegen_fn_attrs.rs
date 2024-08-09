@@ -11,8 +11,8 @@ pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
     /// Parsed representation of the `#[inline]` attribute
     pub inline: InlineAttr,
-    /// Parsed representation of the `#[optimize]` attribute
-    pub optimize: OptimizeAttr,
+    /// Parsed representation of the `#[optimize]` attribute if present
+    pub optimize: Option<OptimizeAttr>,
     /// The `#[export_name = "..."]` attribute, indicating a custom symbol a
     /// function should be exported under
     pub export_name: Option<Symbol>,
@@ -146,7 +146,7 @@ impl CodegenFnAttrs {
         CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
-            optimize: OptimizeAttr::None,
+            optimize: None,
             export_name: None,
             link_name: None,
             link_ordinal: None,
