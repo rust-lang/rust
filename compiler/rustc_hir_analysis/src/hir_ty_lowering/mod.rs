@@ -959,11 +959,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                      \n    where\n        T: {qself_str},\n{}",
                     where_bounds.join(",\n"),
                 ));
-            }
-            let reported = err.emit();
-            if !where_bounds.is_empty() {
+                let reported = err.emit();
                 return Err(reported);
             }
+            err.emit();
         }
 
         Ok(bound)
