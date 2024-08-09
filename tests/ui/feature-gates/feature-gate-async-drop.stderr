@@ -1,0 +1,28 @@
+error[E0658]: use of unstable library feature 'async_drop'
+  --> feature-gate-async-drop.rs:1:5
+   |
+LL | use std::future::AsyncDrop;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(async_drop)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'async_drop'
+  --> feature-gate-async-drop.rs:11:5
+   |
+LL |     async fn drop(self: Pin<&mut Self>) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(async_drop)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature 'async_drop'
+  --> feature-gate-async-drop.rs:10:6
+   |
+LL | impl AsyncDrop for Foo {
+   |      ^^^^^^^^^
+   |
+   = help: add `#![feature(async_drop)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors

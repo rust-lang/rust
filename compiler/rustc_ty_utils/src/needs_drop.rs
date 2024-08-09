@@ -36,11 +36,11 @@ fn needs_async_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty
     let adt_has_async_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
     let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_async_dtor, false)
-        .filter(filter_array_elements(tcx, query.param_env))
+        .filter(filter_array_elements_async(tcx, query.param_env))
         .next()
         .is_some();
 
-    debug!("needs_drop_raw({:?}) = {:?}", query, res);
+    debug!("needs_async_drop_raw({:?}) = {:?}", query, res);
     res
 }
 
@@ -55,6 +55,18 @@ fn filter_array_elements<'tcx>(
     move |ty| match ty {
         Ok(ty) => match *ty.kind() {
             ty::Array(elem, _) => tcx.needs_drop_raw(param_env.and(elem)),
+            _ => true,
+        },
+        Err(AlwaysRequiresDrop) => true,
+    }
+}
+fn filter_array_elements_async<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> impl Fn(&Result<Ty<'tcx>, AlwaysRequiresDrop>) -> bool {
+    move |ty| match ty {
+        Ok(ty) => match *ty.kind() {
+            ty::Array(elem, _) => tcx.needs_async_drop_raw(param_env.and(elem)),
             _ => true,
         },
         Err(AlwaysRequiresDrop) => true,
@@ -382,6 +394,26 @@ fn adt_drop_tys<'tcx>(
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))
 }
+
+fn adt_async_drop_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> Result<&ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+    // This is for the "adt_async_drop_tys" query, that considers all `AsyncDrop` impls.
+    let adt_has_dtor =
+        |adt_def: ty::AdtDef<'tcx>| adt_def.async_destructor(tcx).map(|_| DtorType::Significant);
+    // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_args)`
+    drop_tys_helper(
+        tcx,
+        tcx.type_of(def_id).instantiate_identity(),
+        tcx.param_env(def_id),
+        adt_has_dtor,
+        false,
+    )
+    .collect::<Result<Vec<_>, _>>()
+    .map(|components| tcx.mk_type_list(&components))
+}
+
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
 // a `tcx.make_ty(def, identity_args)` and as such it is legal to instantiate the generic parameters
 // of the ADT into the outputted `ty`s.
@@ -406,6 +438,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         needs_async_drop_raw,
         has_significant_drop_raw,
         adt_drop_tys,
+        adt_async_drop_tys,
         adt_significant_drop_tys,
         ..*providers
     };

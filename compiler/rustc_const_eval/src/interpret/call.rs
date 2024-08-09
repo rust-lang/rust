@@ -582,6 +582,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::FnPtrAddrShim(..)
             | ty::InstanceKind::ThreadLocalShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
+            | ty::InstanceKind::AsyncDropGlue(..)
+            | ty::InstanceKind::FutureDropPollShim(..)
             | ty::InstanceKind::Item(_) => {
                 // We need MIR for this fn
                 let Some((body, instance)) = M::find_mir_or_eval_fn(

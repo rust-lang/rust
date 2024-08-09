@@ -76,7 +76,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
 }
 
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let def_id = body.source.def_id().expect_local();
+    let def_id = body.source.def_id().expect_local_or_templated(|v| tcx.is_templated_coroutine(v));
 
     // Only do inlining into fn bodies.
     if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
@@ -332,6 +332,21 @@ impl<'tcx> Inliner<'tcx> {
                 return Err("still needs substitution");
             }
 
+            InstanceKind::AsyncDropGlue(_, ty) | InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+                return if ty.still_further_specializable() {
+                    Err("still needs substitution")
+                } else {
+                    Ok(())
+                };
+            }
+            InstanceKind::FutureDropPollShim(_, ty, ty2) => {
+                return if ty.still_further_specializable() || ty2.still_further_specializable() {
+                    Err("still needs substitution")
+                } else {
+                    Ok(())
+                };
+            }
+
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does
             // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
             // do not need to catch this here, we can wait until the inliner decides to continue
@@ -345,8 +360,7 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceKind::DropGlue(..)
             | InstanceKind::CloneShim(..)
             | InstanceKind::ThreadLocalShim(..)
-            | InstanceKind::FnPtrAddrShim(..)
-            | InstanceKind::AsyncDropGlueCtorShim(..) => return Ok(()),
+            | InstanceKind::FnPtrAddrShim(..) => return Ok(()),
         }
 
         if self.tcx.is_constructor(callee_def_id) {
@@ -544,7 +558,15 @@ impl<'tcx> Inliner<'tcx> {
             checker.visit_basic_block_data(bb, blk);
 
             let term = blk.terminator();
-            if let TerminatorKind::Drop { ref place, target, unwind, replace: _ } = term.kind {
+            if let TerminatorKind::Drop {
+                ref place,
+                target,
+                unwind,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } = term.kind
+            {
                 work_list.push(target);
 
                 // If the place doesn't actually need dropping, treat it like a regular goto.
@@ -1111,8 +1133,8 @@ fn try_instance_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: InstanceKind<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
-    if let ty::InstanceKind::DropGlue(_, Some(ty))
-    | ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) = instance
+    if let ty::InstanceKind::DropGlue(_, Some(ty)) | ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) =
+        instance
         && let ty::Adt(def, args) = ty.kind()
     {
         let fields = def.all_fields();

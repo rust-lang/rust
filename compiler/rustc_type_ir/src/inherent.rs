@@ -158,8 +158,6 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn discriminant_ty(self, interner: I) -> I::Ty;
 
-    fn async_destructor_ty(self, interner: I) -> I::Ty;
-
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated. This includes all primitive types, but also
     /// things like ADTs and trait objects, sice even if their arguments or

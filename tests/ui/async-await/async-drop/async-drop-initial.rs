@@ -52,19 +52,20 @@ fn main() {
 
     let i = 13;
     let fut = pin!(async {
-        test_async_drop(Int(0), 0).await;
-        test_async_drop(AsyncInt(0), 104).await;
-        test_async_drop([AsyncInt(1), AsyncInt(2)], 152).await;
-        test_async_drop((AsyncInt(3), AsyncInt(4)), 488).await;
-        test_async_drop(5, 0).await;
+        test_async_drop(Int(0), 16).await;
+        test_async_drop(AsyncInt(0), 32).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)], 96).await;
+        test_async_drop((AsyncInt(3), AsyncInt(4)), 120).await;
+        test_async_drop(5, 16).await;
         let j = 42;
-        test_async_drop(&i, 0).await;
-        test_async_drop(&j, 0).await;
-        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 1688).await;
-        test_async_drop(ManuallyDrop::new(AsyncInt(9)), 0).await;
+        test_async_drop(&i, 16).await;
+        test_async_drop(&j, 16).await;
+        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 168).await;
+        test_async_drop(ManuallyDrop::new(AsyncInt(9)), 16).await;
 
         let foo = AsyncInt(10);
-        test_async_drop(AsyncReference { foo: &foo }, 104).await;
+        test_async_drop(AsyncReference { foo: &foo }, 32).await;
+        let _ = ManuallyDrop::new(foo);
 
         let foo = AsyncInt(11);
         test_async_drop(
@@ -73,21 +74,22 @@ fn main() {
                 let foo = AsyncInt(10);
                 foo
             },
-            120,
+            48,
         )
         .await;
 
-        test_async_drop(AsyncEnum::A(AsyncInt(12)), 680).await;
-        test_async_drop(AsyncEnum::B(SyncInt(13)), 680).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12)), 104).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13)), 104).await;
 
         test_async_drop(SyncInt(14), 16).await;
         test_async_drop(
             SyncThenAsync { i: 15, a: AsyncInt(16), b: SyncInt(17), c: AsyncInt(18) },
-            3064,
+            120,
         )
         .await;
 
-        let async_drop_fut = pin!(core::future::async_drop(AsyncInt(19)));
+        let mut ptr19 = mem::MaybeUninit::new(AsyncInt(19));
+        let async_drop_fut = pin!(unsafe { async_drop_in_place(ptr19.as_mut_ptr()) });
         test_idempotency(async_drop_fut).await;
 
         let foo = AsyncInt(20);
@@ -99,7 +101,7 @@ fn main() {
                 black_box(core::future::ready(())).await;
                 foo
             },
-            120,
+            48,
         )
         .await;
 
@@ -111,13 +113,14 @@ fn main() {
 
 struct AsyncInt(i32);
 
+impl Drop for AsyncInt {
+    fn drop(&mut self) {
+        println!("AsyncInt::drop: {}", self.0);
+    }
+}
 impl AsyncDrop for AsyncInt {
-    type Dropper<'a> = impl Future<Output = ()>;
-
-    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
-        async move {
-            println!("AsyncInt::Dropper::poll: {}", self.0);
-        }
+    async fn drop(self: Pin<&mut Self>) {
+        println!("AsyncInt::Dropper::poll: {}", self.0);
     }
 }
 
@@ -146,13 +149,15 @@ struct AsyncReference<'a> {
     foo: &'a AsyncInt,
 }
 
-impl AsyncDrop for AsyncReference<'_> {
-    type Dropper<'a> = impl Future<Output = ()> where Self: 'a;
+impl Drop for AsyncReference<'_> {
+    fn drop(&mut self) {
+        println!("AsyncReference::drop: {}", self.foo.0);
+    }
+}
 
-    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
-        async move {
-            println!("AsyncReference::Dropper::poll: {}", self.foo.0);
-        }
+impl AsyncDrop for AsyncReference<'_> {
+    async fn drop(self: Pin<&mut Self>) {
+        println!("AsyncReference::Dropper::poll: {}", self.foo.0);
     }
 }
 
@@ -164,13 +169,15 @@ struct AsyncStruct {
     b: AsyncInt,
 }
 
-impl AsyncDrop for AsyncStruct {
-    type Dropper<'a> = impl Future<Output = ()>;
+impl Drop for AsyncStruct {
+    fn drop(&mut self) {
+        println!("AsyncStruct::drop: {}", self.i);
+    }
+}
 
-    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
-        async move {
-            println!("AsyncStruct::Dropper::poll: {}", self.i);
-        }
+impl AsyncDrop for AsyncStruct {
+    async fn drop(self: Pin<&mut Self>) {
+        println!("AsyncStruct::Dropper::poll: {}", self.i);
     }
 }
 
@@ -179,23 +186,34 @@ enum AsyncEnum {
     B(SyncInt),
 }
 
+impl Drop for AsyncEnum {
+    fn drop(&mut self) {
+        let new_self = match self {
+            AsyncEnum::A(foo) => {
+                println!("AsyncEnum(A)::drop: {}", foo.0);
+                AsyncEnum::B(SyncInt(foo.0))
+            }
+            AsyncEnum::B(foo) => {
+                println!("AsyncEnum(B)::drop: {}", foo.0);
+                AsyncEnum::A(AsyncInt(foo.0))
+            }
+        };
+        mem::forget(mem::replace(&mut *self, new_self));
+    }
+}
 impl AsyncDrop for AsyncEnum {
-    type Dropper<'a> = impl Future<Output = ()>;
-
-    fn async_drop(mut self: Pin<&mut Self>) -> Self::Dropper<'_> {
-        async move {
-            let new_self = match &*self {
-                AsyncEnum::A(foo) => {
-                    println!("AsyncEnum(A)::Dropper::poll: {}", foo.0);
-                    AsyncEnum::B(SyncInt(foo.0))
-                }
-                AsyncEnum::B(foo) => {
-                    println!("AsyncEnum(B)::Dropper::poll: {}", foo.0);
-                    AsyncEnum::A(AsyncInt(foo.0))
-                }
-            };
-            mem::forget(mem::replace(&mut *self, new_self));
-        }
+    async fn drop(mut self: Pin<&mut Self>) {
+        let new_self = match &*self {
+            AsyncEnum::A(foo) => {
+                println!("AsyncEnum(A)::Dropper::poll: {}", foo.0);
+                AsyncEnum::B(SyncInt(foo.0))
+            }
+            AsyncEnum::B(foo) => {
+                println!("AsyncEnum(B)::Dropper::poll: {}", foo.0);
+                AsyncEnum::A(AsyncInt(foo.0))
+            }
+        };
+        mem::forget(mem::replace(&mut *self, new_self));
     }
 }
 
@@ -205,16 +223,21 @@ union AsyncUnion {
     unsigned: u32,
 }
 
+impl Drop for AsyncUnion {
+    fn drop(&mut self) {
+        println!(
+            "AsyncUnion::drop: {}, {}",
+            unsafe { self.signed },
+            unsafe { self.unsigned },
+        );
+    }
+}
 impl AsyncDrop for AsyncUnion {
-    type Dropper<'a> = impl Future<Output = ()>;
-
-    fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
-        async move {
-            println!(
-                "AsyncUnion::Dropper::poll: {}, {}",
-                unsafe { self.signed },
-                unsafe { self.unsigned },
-            );
-        }
+    async fn drop(self: Pin<&mut Self>) {
+        println!(
+            "AsyncUnion::Dropper::poll: {}, {}",
+            unsafe { self.signed },
+            unsafe { self.unsigned },
+        );
     }
 }

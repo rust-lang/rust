@@ -364,7 +364,7 @@ fn exported_symbols_provider_local(
                     ));
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty)),
+                    def: InstanceKind::AsyncDropGlueCtorShim(def_id, ty),
                     args,
                 }) => {
                     // A little sanity-check
@@ -374,6 +374,16 @@ fn exported_symbols_provider_local(
                     );
                     symbols.push((
                         ExportedSymbol::AsyncDropGlueCtorShim(ty),
+                        SymbolExportInfo {
+                            level: SymbolExportLevel::Rust,
+                            kind: SymbolExportKind::Text,
+                            used: false,
+                        },
+                    ));
+                }
+                MonoItem::Fn(Instance { def: InstanceKind::AsyncDropGlue(_, ty), args: _ }) => {
+                    symbols.push((
+                        ExportedSymbol::AsyncDropGlue(ty),
                         SymbolExportInfo {
                             level: SymbolExportLevel::Rust,
                             kind: SymbolExportKind::Text,
@@ -404,6 +414,7 @@ fn upstream_monomorphizations_provider(
 
     let drop_in_place_fn_def_id = tcx.lang_items().drop_in_place_fn();
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
+    let async_drop_in_place_poll_fn_def_id = tcx.lang_items().async_drop_in_place_poll_fn();
 
     for &cnum in cnums.iter() {
         for (exported_symbol, _) in tcx.exported_symbols(cnum).iter() {
@@ -422,8 +433,13 @@ fn upstream_monomorphizations_provider(
                     if let Some(async_drop_in_place_fn_def_id) = async_drop_in_place_fn_def_id {
                         (async_drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
                     } else {
-                        // `drop_in_place` in place does not exist, don't try
-                        // to use it.
+                        continue;
+                    }
+                }
+                ExportedSymbol::AsyncDropGlue(ty) => {
+                    if let Some(poll_fn_def_id) = async_drop_in_place_poll_fn_def_id {
+                        (poll_fn_def_id, tcx.mk_args(&[ty.into()]))
+                    } else {
                         continue;
                     }
                 }
@@ -575,6 +591,13 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
                 instantiating_crate,
             )
         }
+        ExportedSymbol::AsyncDropGlue(ty) => {
+            rustc_symbol_mangling::symbol_name_for_instance_in_crate(
+                tcx,
+                Instance::resolve_async_drop_in_place_poll(tcx, ty),
+                instantiating_crate,
+            )
+        }
         ExportedSymbol::NoDefId(symbol_name) => symbol_name.to_string(),
     }
 }
@@ -626,6 +649,7 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         // AsyncDropGlueCtorShim always use the Rust calling convention and thus follow the
         // target's default symbol decoration scheme.
         ExportedSymbol::AsyncDropGlueCtorShim(..) => None,
+        ExportedSymbol::AsyncDropGlue(..) => None,
         // NoDefId always follow the target's default symbol decoration scheme.
         ExportedSymbol::NoDefId(..) => None,
         // ThreadLocalShim always follow the target's default symbol decoration scheme.

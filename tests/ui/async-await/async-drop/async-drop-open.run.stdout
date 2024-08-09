@@ -1,0 +1,11 @@
+Foo::new() : 7
+Foo::drop() : 7
+Middle
+Complex::new() : 10
+Foo::new() : 10
+Foo::new() : 11
+Foo::new() : 12
+Foo::async drop() : 10
+Foo::async drop() : 12
+Foo::drop() : 11
+Done

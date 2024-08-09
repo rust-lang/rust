@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+itertools = "0.12"
 polonius-engine = "0.13.0"
 regex = "1"
 rustc_ast = { path = "../rustc_ast" }
