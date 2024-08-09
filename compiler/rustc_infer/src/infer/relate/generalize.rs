@@ -35,6 +35,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn instantiate_ty_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
         &self,
         relation: &mut R,
+        structurally_relate_aliases: StructurallyRelateAliases,
         target_is_expected: bool,
         target_vid: ty::TyVid,
         instantiation_variance: ty::Variance,
@@ -53,7 +54,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } = self
             .generalize(
                 relation.span(),
-                relation.structurally_relate_aliases(),
+                structurally_relate_aliases,
                 target_vid,
                 instantiation_variance,
                 source_ty,
@@ -180,9 +181,10 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self, relation))]
-    pub(super) fn instantiate_const_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
+    pub(crate) fn instantiate_const_var<R: PredicateEmittingRelation<InferCtxt<'tcx>>>(
         &self,
         relation: &mut R,
+        structurally_relate_aliases: StructurallyRelateAliases,
         target_is_expected: bool,
         target_vid: ty::ConstVid,
         source_ct: ty::Const<'tcx>,
@@ -192,7 +194,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let Generalization { value_may_be_infer: generalized_ct, has_unconstrained_ty_var } = self
             .generalize(
                 relation.span(),
-                relation.structurally_relate_aliases(),
+                structurally_relate_aliases,
                 target_vid,
                 ty::Invariant,
                 source_ct,

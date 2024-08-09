@@ -13,17 +13,15 @@ use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin};
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub struct TypeRelating<'combine, 'a, 'tcx> {
     fields: &'combine mut CombineFields<'a, 'tcx>,
-    structurally_relate_aliases: StructurallyRelateAliases,
     ambient_variance: ty::Variance,
 }
 
 impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
     pub fn new(
         f: &'combine mut CombineFields<'infcx, 'tcx>,
-        structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
     ) -> TypeRelating<'combine, 'infcx, 'tcx> {
-        TypeRelating { fields: f, structurally_relate_aliases, ambient_variance }
+        TypeRelating { fields: f, ambient_variance }
     }
 }
 
@@ -116,11 +114,19 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, '_, 'tcx> {
             }
 
             (&ty::Infer(TyVar(a_vid)), _) => {
-                infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
+                infcx.instantiate_ty_var(
+                    self,
+                    StructurallyRelateAliases::No,
+                    true,
+                    a_vid,
+                    self.ambient_variance,
+                    b,
+                )?;
             }
             (_, &ty::Infer(TyVar(b_vid))) => {
                 infcx.instantiate_ty_var(
                     self,
+                    StructurallyRelateAliases::No,
                     false,
                     b_vid,
                     self.ambient_variance.xform(ty::Contravariant),
@@ -300,10 +306,6 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for TypeRelating<'_, '_, '
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
-    }
-
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        self.structurally_relate_aliases
     }
 
     fn register_predicates(

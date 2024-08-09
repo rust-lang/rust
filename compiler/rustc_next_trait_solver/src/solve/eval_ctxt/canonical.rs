@@ -19,6 +19,7 @@ use tracing::{instrument, trace};
 
 use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
 use crate::delegate::SolverDelegate;
+use crate::relate::RelateExt;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
 use crate::solve::{

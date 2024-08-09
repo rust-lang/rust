@@ -14,6 +14,7 @@ use tracing::{instrument, trace};
 
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::relate::RelateExt;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
@@ -792,7 +793,7 @@ where
             let ctor_term = rigid_ctor.to_term(cx);
             let obligations =
                 self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
-            debug_assert!(obligations.is_empty());
+            debug_assert!(obligations.is_empty(), "{obligations:#?}");
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {
             Err(NoSolution)
