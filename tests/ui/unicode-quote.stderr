@@ -1,0 +1,20 @@
+error: unknown character escape: `\u{201c}`
+  --> $DIR/unicode-quote.rs:2:26
+   |
+LL |     dbg!("since when is \“THIS\” not allowed in a string literal");
+   |                          ^ unknown character escape
+   |
+   = help: \u{201c} is not an ascii quote, but may look like one in some fonts.
+           consider writing it in its escaped form for clarity.
+
+error: unknown character escape: `\u{201d}`
+  --> $DIR/unicode-quote.rs:2:32
+   |
+LL |     dbg!("since when is \“THIS\” not allowed in a string literal");
+   |                                ^ unknown character escape
+   |
+   = help: \u{201d} is not an ascii quote, but may look like one in some fonts.
+           consider writing it in its escaped form for clarity.
+
+error: aborting due to 2 previous errors
+
