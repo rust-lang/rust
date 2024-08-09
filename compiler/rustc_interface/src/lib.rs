@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![feature(decl_macro)]
 #![feature(let_chains)]
+#![feature(refcell_try_map)]
 #![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end

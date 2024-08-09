@@ -33,14 +33,16 @@ pub struct Query<T> {
 
 impl<T> Query<T> {
     fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<QueryResult<'_, T>> {
-        RefMut::filter_map(
-            self.result.borrow_mut(),
-            |r: &mut Option<Result<Steal<T>>>| -> Option<&mut Steal<T>> {
-                r.get_or_insert_with(|| f().map(Steal::new)).as_mut().ok()
-            },
-        )
-        .map_err(|r| *r.as_ref().unwrap().as_ref().map(|_| ()).unwrap_err())
-        .map(QueryResult)
+        let result = RefMut::try_map(self.result.borrow_mut(), |option| {
+            match option.get_or_insert_with(|| f().map(Steal::new)) {
+                Ok(steal) => Ok(steal),
+                &mut Err(error) => Err(error),
+            }
+        });
+        match result {
+            Ok(r) => Ok(QueryResult(r)),
+            Err((_, e)) => Err(e),
+        }
     }
 }
 
