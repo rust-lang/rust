@@ -473,13 +473,14 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         }
 
         let mut cursor = read_buf.unfilled();
-        loop {
+        let result = loop {
             match r.read_buf(cursor.reborrow()) {
-                Ok(()) => break,
                 Err(e) if e.is_interrupted() => continue,
-                Err(e) => return Err(e),
+                // Do not stop now in case of error: we might have received both data
+                // and an error
+                res => break res,
             }
-        }
+        };
 
         let unfilled_but_initialized = cursor.init_ref().len();
         let bytes_read = cursor.written();
@@ -489,14 +490,17 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
             return Ok(buf.len() - start_len);
         }
 
-        // store how much was initialized but not filled
-        initialized = unfilled_but_initialized;
-
         // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
             let new_len = bytes_read + buf.len();
             buf.set_len(new_len);
         }
+
+        // Now that all data is pushed to the vector, we can fail without data loss
+        result?;
+
+        // store how much was initialized but not filled
+        initialized = unfilled_but_initialized;
 
         // Use heuristics to determine the max read size if no initial size hint was provided
         if size_hint.is_none() {
@@ -2930,7 +2934,7 @@ impl<T: Read> Read for Take<T> {
             }
 
             let mut cursor = sliced_buf.unfilled();
-            self.inner.read_buf(cursor.reborrow())?;
+            let result = self.inner.read_buf(cursor.reborrow());
 
             let new_init = cursor.init_ref().len();
             let filled = sliced_buf.len();
@@ -2945,13 +2949,14 @@ impl<T: Read> Read for Take<T> {
             }
 
             self.limit -= filled as u64;
+
+            result
         } else {
             let written = buf.written();
-            self.inner.read_buf(buf.reborrow())?;
+            let result = self.inner.read_buf(buf.reborrow());
             self.limit -= (buf.written() - written) as u64;
+            result
         }
-
-        Ok(())
     }
 }
 
