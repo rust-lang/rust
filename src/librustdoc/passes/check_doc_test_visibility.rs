@@ -45,7 +45,7 @@ pub(crate) struct Tests {
     pub(crate) found_tests: usize,
 }
 
-impl crate::doctest::DoctestVisitor for Tests {
+impl crate::doctest::DocTestVisitor for Tests {
     fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine) {
         if config.rust && config.ignore == Ignore::None {
             self.found_tests += 1;
