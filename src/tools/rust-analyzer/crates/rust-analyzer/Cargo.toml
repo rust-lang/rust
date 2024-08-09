@@ -21,7 +21,7 @@ path = "src/bin/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-crossbeam-channel = "0.5.5"
+crossbeam-channel.workspace = true
 dirs = "5.0.1"
 dissimilar.workspace = true
 itertools.workspace = true
@@ -90,13 +90,13 @@ jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 sysroot-abi = []
 in-rust-tree = [
-    "sysroot-abi",
-    "syntax/in-rust-tree",
-    "parser/in-rust-tree",
-    "hir/in-rust-tree",
-    "hir-def/in-rust-tree",
-    "hir-ty/in-rust-tree",
-    "load-cargo/in-rust-tree",
+  "sysroot-abi",
+  "syntax/in-rust-tree",
+  "parser/in-rust-tree",
+  "hir/in-rust-tree",
+  "hir-def/in-rust-tree",
+  "hir-ty/in-rust-tree",
+  "load-cargo/in-rust-tree",
 ]
 
 [lints]
