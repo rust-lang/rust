@@ -15,7 +15,6 @@ use crate::solve::SolverMode;
 mod global_cache;
 use global_cache::CacheData;
 pub use global_cache::GlobalCache;
-mod validate;
 
 /// The search graph does not simply use `Interner` directly
 /// to enable its fuzzing without having to stub the rest of
@@ -362,7 +361,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.stack.is_empty()
+        if self.stack.is_empty() {
+            debug_assert!(self.provisional_cache.is_empty());
+            true
+        } else {
+            false
+        }
     }
 
     /// The number of goals currently in the search graph. This should only be
@@ -463,8 +467,6 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         inspect: &mut D::ProofTreeBuilder,
         mut evaluate_goal: impl FnMut(&mut Self, &mut D::ProofTreeBuilder) -> X::Result,
     ) -> X::Result {
-        self.check_invariants();
-        // Check for overflow.
         let Some(available_depth) = AvailableDepth::allowed_depth_for_nested::<D>(cx, &self.stack)
         else {
             return self.handle_overflow(cx, input, inspect);
