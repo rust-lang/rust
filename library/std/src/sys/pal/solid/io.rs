@@ -33,7 +33,7 @@ impl<'a> IoSlice<'a> {
     }
 
     #[inline]
-    pub fn as_slice(&self) -> &[u8] {
+    pub const fn as_slice(&self) -> &'a [u8] {
         unsafe { slice::from_raw_parts(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
 }
