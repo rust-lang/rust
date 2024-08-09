@@ -282,7 +282,7 @@ target | std | host | notes
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | Armv7-A Linux with uClibc, hardfloat
 `armv7-unknown-freebsd` | ✓ | ✓ | Armv7-A FreeBSD
 [`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv7-A NetBSD w/hard-float
-[`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ? |  | Armv7-A for VxWorks
+[`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ✓ |  | Armv7-A for VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 [`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare Armv7-A, hardfloat
@@ -308,7 +308,7 @@ target | std | host | notes
 `i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
 `i686-uwp-windows-msvc` | ✓ |  | [^x86_32-floats-return-ABI]
 [`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
-[`i686-wrs-vxworks`](platform-support/vxworks.md) | ? |  | [^x86_32-floats-return-ABI]
+[`i686-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | [^x86_32-floats-return-ABI]
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
 `mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl 1.2.3
@@ -334,13 +334,13 @@ target | std | host | notes
 `powerpc-unknown-linux-musl` | ? |  | PowerPC Linux with musl 1.2.3
 [`powerpc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD 32-bit powerpc systems
 [`powerpc-unknown-openbsd`](platform-support/powerpc-unknown-openbsd.md) | * |  |
-[`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ? |  |
-[`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ? |  |
+[`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
+[`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
 `powerpc64le-unknown-freebsd` |   |   | PPC64LE FreeBSD
 `powerpc-unknown-freebsd` |   |   | PowerPC FreeBSD
 `powerpc64-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.3
-`powerpc64-wrs-vxworks` | ? |  |
+[`powerpc64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 `powerpc64le-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.3, Little Endian
 [`powerpc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/powerpc64
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
@@ -383,7 +383,7 @@ target | std | host | notes
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 [`x86_64-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 64-bit Windows 7 support
-[`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ? |  |
+[`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`x86_64h-apple-darwin`](platform-support/x86_64h-apple-darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
 [`xtensa-esp32-none-elf`](platform-support/xtensa.md) | * |  | Xtensa ESP32

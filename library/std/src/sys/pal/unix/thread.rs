@@ -3,12 +3,7 @@ use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
-#[cfg(any(
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "nto",
-    target_os = "vxworks"
-))]
+#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
@@ -220,23 +215,16 @@ impl Thread {
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
         // FIXME(libc): adding real STATUS, ERROR type eventually.
-        weak! {
-            fn taskNameSet(
-                libc::TASK_ID, *mut libc::c_char
-            ) -> libc::c_int
+        extern "C" {
+            fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
         }
 
-        // We can't assume taskNameSet is necessarily available.
-        // VX_TASK_NAME_LEN can be found set to 31,
-        // however older versions can be set to only 10.
-        // FIXME(vxworks): if the minimum supported VxWorks is >= 7, the maximum length can be changed to 31.
-        if let Some(f) = taskNameSet.get() {
-            const VX_TASK_NAME_LEN: usize = 10;
+        //  VX_TASK_NAME_LEN is 31 in VxWorks 7.
+        const VX_TASK_NAME_LEN: usize = 31;
 
-            let name = truncate_cstr::<{ VX_TASK_NAME_LEN }>(name);
-            let status = unsafe { f(libc::taskIdSelf(), name.as_mut_ptr()) };
-            debug_assert_eq!(res, libc::OK);
-        }
+        let mut name = truncate_cstr::<{ VX_TASK_NAME_LEN }>(name);
+        let res = unsafe { taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
+        debug_assert_eq!(res, libc::OK);
     }
 
     #[cfg(any(
@@ -489,9 +477,11 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 fn vxCpuEnabledGet() -> libc::cpuset_t;
             }
 
-            // always fetches a valid bitmask
-            let set = unsafe { vxCpuEnabledGet() };
-            Ok(NonZero::new_unchecked(set.count_ones() as usize))
+            // SAFETY: `vxCpuEnabledGet` always fetches a mask with at least one bit set
+            unsafe{
+                let set = vxCpuEnabledGet();
+                Ok(NonZero::new_unchecked(set.count_ones() as usize))
+            }
         } else {
             // FIXME: implement on Redox, l4re
             Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))

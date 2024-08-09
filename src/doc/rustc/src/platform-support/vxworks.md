@@ -12,6 +12,7 @@ Target triplets available:
 - `i686-wrs-vxworks`
 - `armv7-wrs-vxworks-eabihf`
 - `powerpc-wrs-vxworks`
+- `powerpc64-wrs-vxworks`
 - `powerpc-wrs-vxworks-spe`
 
 ## Target maintainers
@@ -42,6 +43,7 @@ target = [
     "i686-wrs-vxworks",
     "armv7-wrs-vxworks-eabihf",
     "powerpc-wrs-vxworks",
+    "powerpc64-wrs-vxworks",
     "powerpc-wrs-vxworks-spe",
 ]
 ```
