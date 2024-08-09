@@ -324,6 +324,11 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     assert!(opts.fail_fast || st.current_test_count() == st.total);
 
+    // Check if any filter is applied to an invalid test file (e.g .stderr)
+    if !opts.filters.is_empty() && st.total == 0 {
+        panic!("\nno tests were run for the given filters: {:?}\n", opts.filters);
+    }
+
     out.write_run_finish(&st)
 }
 
