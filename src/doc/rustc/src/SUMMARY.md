@@ -61,6 +61,7 @@
     - [mipsisa\*r6\*-unknown-linux-gnu\*](platform-support/mips-release-6.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
     - [powerpc-unknown-openbsd](platform-support/powerpc-unknown-openbsd.md)
+    - [powerpc-unknown-linux-muslspe](platform-support/powerpc-unknown-linux-muslspe.md)
     - [powerpc64-ibm-aix](platform-support/aix.md)
     - [riscv32im-risc0-zkvm-elf](platform-support/riscv32im-risc0-zkvm-elf.md)
     - [riscv32imac-unknown-xous-elf](platform-support/riscv32imac-unknown-xous-elf.md)
