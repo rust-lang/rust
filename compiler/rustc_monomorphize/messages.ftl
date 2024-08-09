@@ -1,3 +1,10 @@
+monomorphize_abi_error_disabled_vector_type_call =
+  ABI error: this function call uses a {$required_feature} vector type, which is not enabled in the caller
+  .help = consider enabling it globally (-C target-feature=+{$required_feature}) or locally (#[target_feature(enable="{$required_feature}")])
+monomorphize_abi_error_disabled_vector_type_def =
+  ABI error: this function definition uses a {$required_feature} vector type, which is not enabled
+  .help = consider enabling it globally (-C target-feature=+{$required_feature}) or locally (#[target_feature(enable="{$required_feature}")])
+
 monomorphize_couldnt_dump_mono_stats =
     unexpected error occurred while dumping monomorphization stats: {$error}
 
