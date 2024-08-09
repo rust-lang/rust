@@ -51,16 +51,18 @@ pub mod gha {
 
     impl Drop for Group {
         fn drop(&mut self) {
-            end_group();
+            if !std::thread::panicking() {
+                end_group();
 
-            let mut groups = ACTIVE_GROUPS.lock().unwrap();
-            // Remove the current group
-            groups.pop();
+                let mut groups = ACTIVE_GROUPS.lock().unwrap();
+                // Remove the current group
+                groups.pop();
 
-            // If there was some previous group, restart it
-            if is_in_gha() {
-                if let Some(name) = groups.last() {
-                    start_group(format!("{name} (continued)"));
+                // If there was some previous group, restart it
+                if is_in_gha() {
+                    if let Some(name) = groups.last() {
+                        start_group(format!("{name} (continued)"));
+                    }
                 }
             }
         }

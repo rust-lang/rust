@@ -900,6 +900,15 @@ impl Step for LlvmBitcodeLinker {
         builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
         builder.ensure(compile::Rustc::new(self.compiler, self.target));
 
+        let _guard = builder.msg_tool(
+            Kind::Build,
+            Mode::ToolRustc,
+            bin_name,
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
+        );
+
         let cargo = prepare_tool_cargo(
             builder,
             self.compiler,
@@ -925,6 +934,9 @@ impl Step for LlvmBitcodeLinker {
         let tool_out = builder
             .cargo_out(self.compiler, Mode::ToolRustc, self.target)
             .join(exe(bin_name, self.compiler.host));
+        if !builder.config.dry_run() {
+            panic!("foo");
+        }
 
         if self.compiler.stage > 0 {
             let bindir_self_contained = builder
