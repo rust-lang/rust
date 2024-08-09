@@ -83,20 +83,16 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         unnamed: llvm::UnnamedAddr,
         fn_type: &'ll Type,
     ) -> &'ll Value {
-        // Declare C ABI functions with the visibility used by C by default.
-        let visibility = if self.tcx.sess.default_hidden_visibility() {
-            llvm::Visibility::Hidden
-        } else {
-            llvm::Visibility::Default
-        };
-
-        declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
+        // Declare C ABI functions with Default visibility to allow them to link
+        // dynamically with shared object-provided symbols later on. This is
+        // needed to link intrinsic-generated calls to e.g. libc.so symbols like
+        // memcmp.
+        declare_raw_fn(self, name, llvm::CCallConv, unnamed, llvm::Visibility::Default, fn_type)
     }
 
     /// Declare an entry Function
     ///
-    /// The ABI of this function can change depending on the target (although for now the same as
-    /// `declare_cfn`)
+    /// The ABI of this function can change depending on the target.
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
