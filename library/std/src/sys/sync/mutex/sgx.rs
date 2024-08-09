@@ -1,28 +1,25 @@
 use crate::sys::pal::waitqueue::{try_lock_or_false, SpinMutex, WaitQueue, WaitVariable};
-use crate::sys_common::lazy_box::{LazyBox, LazyInit};
+use crate::sys_common::once_box::OnceBox;
 
-/// FIXME: `UnsafeList` is not movable.
-struct AllocatedMutex(SpinMutex<WaitVariable<bool>>);
-
+// FIXME: `UnsafeList` is not movable.
 pub struct Mutex {
-    inner: LazyBox<AllocatedMutex>,
-}
-
-impl LazyInit for AllocatedMutex {
-    fn init() -> Box<Self> {
-        Box::new(AllocatedMutex(SpinMutex::new(WaitVariable::new(false))))
-    }
+    inner: OnceBox<SpinMutex<WaitVariable<bool>>>,
 }
 
 // Implementation according to “Operating Systems: Three Easy Pieces”, chapter 28
 impl Mutex {
     pub const fn new() -> Mutex {
-        Mutex { inner: LazyBox::new() }
+        Mutex { inner: OnceBox::new() }
+    }
+
+    #[inline]
+    fn get(&self) -> &SpinMutex<WaitVariable<bool>> {
+        self.inner.get_or_init(|| Box::pin(SpinMutex::new(WaitVariable::new(false)))).get_ref()
     }
 
     #[inline]
     pub fn lock(&self) {
-        let mut guard = self.inner.0.lock();
+        let mut guard = self.get().lock();
         if *guard.lock_var() {
             // Another thread has the lock, wait
             WaitQueue::wait(guard, || {})
@@ -35,7 +32,7 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let guard = self.inner.0.lock();
+        let guard = self.get().lock();
         if let Err(mut guard) = WaitQueue::notify_one(guard) {
             // No other waiters, unlock
             *guard.lock_var_mut() = false;
@@ -46,7 +43,7 @@ impl Mutex {
 
     #[inline]
     pub fn try_lock(&self) -> bool {
-        let mut guard = try_lock_or_false!(self.inner.0);
+        let mut guard = try_lock_or_false!(self.get());
         if *guard.lock_var() {
             // Another thread has the lock
             false

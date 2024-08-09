@@ -19,7 +19,7 @@ cfg_if::cfg_if! {
         target_os = "teeos",
     ))] {
         mod pthread;
-        pub use pthread::{Mutex, raw};
+        pub use pthread::Mutex;
     } else if #[cfg(all(target_os = "windows", target_vendor = "win7"))] {
         mod windows7;
         pub use windows7::{Mutex, raw};
