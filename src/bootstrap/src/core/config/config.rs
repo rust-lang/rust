@@ -218,6 +218,7 @@ pub struct Config {
     pub llvm_thin_lto: bool,
     pub llvm_release_debuginfo: bool,
     pub llvm_static_stdcpp: bool,
+    pub llvm_libzstd: bool,
     /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
     #[cfg(not(test))]
     llvm_link_shared: Cell<Option<bool>>,
@@ -878,6 +879,7 @@ define_config! {
         plugins: Option<bool> = "plugins",
         ccache: Option<StringOrBool> = "ccache",
         static_libstdcpp: Option<bool> = "static-libstdcpp",
+        libzstd: Option<bool> = "libzstd",
         ninja: Option<bool> = "ninja",
         targets: Option<String> = "targets",
         experimental_targets: Option<String> = "experimental-targets",
@@ -1153,6 +1155,7 @@ impl Config {
             llvm_optimize: true,
             ninja_in_file: true,
             llvm_static_stdcpp: false,
+            llvm_libzstd: false,
             backtrace: true,
             rust_optimize: RustOptimize::Bool(true),
             rust_optimize_tests: true,
@@ -1791,6 +1794,7 @@ impl Config {
                 plugins,
                 ccache,
                 static_libstdcpp,
+                libzstd,
                 ninja,
                 targets,
                 experimental_targets,
@@ -1825,6 +1829,7 @@ impl Config {
             set(&mut config.llvm_thin_lto, thin_lto);
             set(&mut config.llvm_release_debuginfo, release_debuginfo);
             set(&mut config.llvm_static_stdcpp, static_libstdcpp);
+            set(&mut config.llvm_libzstd, libzstd);
             if let Some(v) = link_shared {
                 config.llvm_link_shared.set(Some(v));
             }
@@ -1875,6 +1880,7 @@ impl Config {
                 check_ci_llvm!(optimize_toml);
                 check_ci_llvm!(thin_lto);
                 check_ci_llvm!(release_debuginfo);
+                check_ci_llvm!(libzstd);
                 check_ci_llvm!(targets);
                 check_ci_llvm!(experimental_targets);
                 check_ci_llvm!(clang_cl);
