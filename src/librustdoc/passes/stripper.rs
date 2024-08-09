@@ -63,7 +63,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             | clean::UnionItem(..)
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
-            | clean::ForeignTypeItem => {
+            | clean::ExternTypeItem => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !is_item_reachable(
@@ -112,7 +112,7 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             }
 
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem { .. } | clean::ImportItem(_) => {}
+            clean::ExternCrateItem { .. } | clean::UseItem(_) => {}
 
             clean::ImplItem(..) => {}
 
@@ -259,7 +259,7 @@ pub(crate) struct ImportStripper<'tcx> {
 }
 
 impl<'tcx> ImportStripper<'tcx> {
-    fn import_should_be_hidden(&self, i: &Item, imp: &clean::Import) -> bool {
+    fn import_should_be_hidden(&self, i: &Item, imp: &clean::Use) -> bool {
         if self.is_json_output {
             // FIXME: This should be handled the same way as for HTML output.
             imp.imported_item_is_doc_hidden(self.tcx)
@@ -272,13 +272,13 @@ impl<'tcx> ImportStripper<'tcx> {
 impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
-            clean::ImportItem(imp)
+            clean::UseItem(imp)
                 if !self.document_hidden && self.import_should_be_hidden(&i, &imp) =>
             {
                 None
             }
             // clean::ImportItem(_) if !self.document_hidden && i.is_doc_hidden() => None,
-            clean::ExternCrateItem { .. } | clean::ImportItem(..)
+            clean::ExternCrateItem { .. } | clean::UseItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
                 None

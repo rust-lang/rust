@@ -898,7 +898,7 @@ fn assoc_method(
     w: &mut Buffer,
     meth: &clean::Item,
     g: &clean::Generics,
-    d: &clean::FnDecl,
+    d: &clean::FunctionSignature,
     link: AssocItemLink<'_>,
     parent: ItemType,
     cx: &mut Context<'_>,
@@ -2266,7 +2266,7 @@ impl ItemSection {
 
 fn item_ty_to_section(ty: ItemType) -> ItemSection {
     match ty {
-        ItemType::ExternCrate | ItemType::Import => ItemSection::Reexports,
+        ItemType::ExternCrate | ItemType::Use => ItemSection::Reexports,
         ItemType::Module => ItemSection::Modules,
         ItemType::Struct => ItemSection::Structs,
         ItemType::Union => ItemSection::Unions,
@@ -2285,7 +2285,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::Primitive => ItemSection::PrimitiveTypes,
         ItemType::AssocType => ItemSection::AssociatedTypes,
         ItemType::AssocConst => ItemSection::AssociatedConstants,
-        ItemType::ForeignType => ItemSection::ForeignTypes,
+        ItemType::ExternType => ItemSection::ForeignTypes,
         ItemType::Keyword => ItemSection::Keywords,
         ItemType::ProcAttribute => ItemSection::AttributeMacros,
         ItemType::ProcDerive => ItemSection::DeriveMacros,

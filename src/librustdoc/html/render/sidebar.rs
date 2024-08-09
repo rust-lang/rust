@@ -102,7 +102,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buf
         clean::EnumItem(ref e) => sidebar_enum(cx, it, e),
         clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t),
         clean::ModuleItem(ref m) => vec![sidebar_module(&m.items)],
-        clean::ForeignTypeItem => sidebar_foreign_type(cx, it),
+        clean::ExternTypeItem => sidebar_extern_type(cx, it),
         _ => vec![],
     };
     // The sidebar is designed to display sibling functions, modules and
@@ -504,8 +504,8 @@ fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
                 && it
                     .name
                     .or_else(|| {
-                        if let clean::ImportItem(ref i) = *it.kind
-                            && let clean::ImportKind::Simple(s) = i.kind
+                        if let clean::UseItem(ref i) = *it.kind
+                            && let clean::UseKind::Simple(s) = i.kind
                         {
                             Some(s)
                         } else {
@@ -520,7 +520,7 @@ fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
     sidebar_module_like(item_sections_in_use)
 }
 
-fn sidebar_foreign_type<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
+fn sidebar_extern_type<'a>(cx: &'a Context<'_>, it: &'a clean::Item) -> Vec<LinkBlock<'a>> {
     let mut items = vec![];
     sidebar_assoc_items(cx, it, &mut items);
     items

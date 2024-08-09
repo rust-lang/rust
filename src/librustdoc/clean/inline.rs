@@ -104,10 +104,10 @@ pub(crate) fn try_inline(
             })
         }
         Res::Def(DefKind::ForeignTy, did) => {
-            record_extern_fqn(cx, did, ItemType::ForeignType);
+            record_extern_fqn(cx, did, ItemType::ExternType);
             cx.with_param_env(did, |cx| {
                 build_impls(cx, did, attrs_without_docs, &mut ret);
-                clean::ForeignTypeItem
+                clean::ExternTypeItem
             })
         }
         // Never inline enum variants but leave them shown as re-exports.
@@ -679,7 +679,7 @@ fn build_module_items(
                     // We can use the item's `DefId` directly since the only information ever used
                     // from it is `DefId.krate`.
                     item_id: ItemId::DefId(did),
-                    kind: Box::new(clean::ImportItem(clean::Import::new_simple(
+                    kind: Box::new(clean::UseItem(clean::Use::new_simple(
                         item.ident.name,
                         clean::ImportSource {
                             path: clean::Path {

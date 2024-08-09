@@ -201,7 +201,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
             }
             // docs on `use` and `extern crate` statements are not displayed, so they're not
             // worth counting
-            clean::ImportItem(..) | clean::ExternCrateItem { .. } => {}
+            clean::UseItem(..) | clean::ExternCrateItem { .. } => {}
             // Don't count trait impls, the missing-docs lint doesn't so we shouldn't either.
             // Inherent impls *can* be documented, and those docs show up, but in most cases it
             // doesn't make sense, as all methods on a type are in one single impl block
