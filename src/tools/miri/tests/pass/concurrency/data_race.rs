@@ -1,7 +1,7 @@
 //@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
-use std::sync::atomic::{fence, AtomicUsize, Ordering};
-use std::thread::spawn;
+use std::sync::atomic::*;
+use std::thread::{self, spawn};
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -112,9 +112,45 @@ pub fn test_simple_release() {
     }
 }
 
+// This test coverse the case where the non-atomic access come first.
+fn test_read_read_race1() {
+    let a = AtomicU16::new(0);
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            let ptr = &a as *const AtomicU16 as *mut u16;
+            unsafe { ptr.read() };
+        });
+        s.spawn(|| {
+            thread::yield_now();
+
+            a.load(Ordering::SeqCst);
+        });
+    });
+}
+
+// This test coverse the case where the atomic access come first.
+fn test_read_read_race2() {
+    let a = AtomicU16::new(0);
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            a.load(Ordering::SeqCst);
+        });
+        s.spawn(|| {
+            thread::yield_now();
+
+            let ptr = &a as *const AtomicU16 as *mut u16;
+            unsafe { ptr.read() };
+        });
+    });
+}
+
 pub fn main() {
     test_fence_sync();
     test_multiple_reads();
     test_rmw_no_block();
     test_simple_release();
+    test_read_read_race1();
+    test_read_read_race2();
 }
