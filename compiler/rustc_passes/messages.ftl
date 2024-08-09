@@ -223,6 +223,9 @@ passes_doc_masked_only_extern_crate =
     .not_an_extern_crate_label = not an `extern crate` item
     .note = read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
 
+passes_doc_rust_logo =
+    the `#[doc(rust_logo)]` attribute is used for Rust branding
+
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
 passes_doc_test_takes_list =
@@ -594,6 +597,9 @@ passes_remove_fields =
       [one] field
      *[other] fields
     }
+
+passes_repr_align_function =
+    `repr(align)` attributes on functions are unstable
 
 passes_repr_conflicting =
     conflicting representation hints

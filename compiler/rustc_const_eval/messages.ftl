@@ -41,6 +41,8 @@ const_eval_const_context = {$kind ->
     *[other] {""}
 }
 
+const_eval_const_stable = const-stable functions can only call other const-stable functions
+
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 
@@ -200,6 +202,9 @@ const_eval_invalid_vtable_pointer =
 
 const_eval_invalid_vtable_trait =
     using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
+
+const_eval_lazy_lock =
+    consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time

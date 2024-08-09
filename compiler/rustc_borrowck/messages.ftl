@@ -62,6 +62,9 @@ borrowck_could_not_normalize =
 borrowck_could_not_prove =
     could not prove `{$predicate}`
 
+borrowck_dereference_suggestion =
+    dereference the return value
+
 borrowck_func_take_self_moved_place =
     `{$func}` takes ownership of the receiver `self`, which moves {$place_name}
 
@@ -74,8 +77,23 @@ borrowck_higher_ranked_lifetime_error =
 borrowck_higher_ranked_subtype_error =
     higher-ranked subtype error
 
+borrowck_implicit_static =
+    this has an implicit `'static` lifetime requirement
+
+borrowck_implicit_static_introduced =
+    calling this method introduces the `impl`'s `'static` requirement
+
+borrowck_implicit_static_relax =
+    consider relaxing the implicit `'static` requirement
+
 borrowck_lifetime_constraints_error =
     lifetime may not live long enough
+
+borrowck_limitations_implies_static =
+    due to current limitations in the borrow checker, this implies a `'static` lifetime
+
+borrowck_move_closure_suggestion =
+    consider adding 'move' keyword before the nested closure
 
 borrowck_move_out_place_here =
     {$place} is moved here
@@ -162,6 +180,9 @@ borrowck_partial_var_move_by_use_in_coroutine =
         [true] partially moved
         *[false] moved
     } due to use in coroutine
+
+borrowck_restrict_to_static =
+    consider restricting the type parameter to the `'static` lifetime
 
 borrowck_returned_async_block_escaped =
     returns an `async` block that contains a reference to a captured variable, which then escapes the closure body
