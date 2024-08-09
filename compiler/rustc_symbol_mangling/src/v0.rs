@@ -56,7 +56,6 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
             Some("by_ref")
         }
-        ty::InstanceKind::CoroutineKindShim { .. } => Some("by_move_body"),
 
         _ => None,
     };
