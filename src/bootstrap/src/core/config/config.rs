@@ -13,6 +13,7 @@ use std::str::FromStr;
 use std::sync::OnceLock;
 use std::{cmp, env, fs};
 
+use build_helper::ci::CiEnv;
 use build_helper::exit;
 use build_helper::git::GitConfig;
 use serde::{Deserialize, Deserializer};
@@ -22,6 +23,7 @@ use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
+use crate::core::download::is_download_ci_available;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{self, exe, get_closest_merge_base_commit, output, t};
@@ -1550,9 +1552,11 @@ impl Config {
             config.mandir = mandir.map(PathBuf::from);
         }
 
+        config.llvm_assertions =
+            toml.llvm.as_ref().map_or(false, |llvm| llvm.assertions.unwrap_or(false));
+
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
-        let mut llvm_assertions = None;
         let mut llvm_tests = None;
         let mut llvm_plugins = None;
         let mut debug = None;
@@ -1573,12 +1577,15 @@ impl Config {
         let mut is_user_configured_rust_channel = false;
 
         if let Some(rust) = toml.rust {
-            if let Some(commit) = config.download_ci_rustc_commit(rust.download_rustc.clone()) {
+            if let Some(commit) =
+                config.download_ci_rustc_commit(rust.download_rustc.clone(), config.llvm_assertions)
+            {
                 // Primarily used by CI runners to avoid handling download-rustc incompatible
                 // options one by one on shell scripts.
-                let disable_ci_rustc_if_incompatible =
-                    env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
-                        .is_some_and(|s| s == "1" || s == "true");
+                let disable_ci_rustc_if_incompatible = env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        .is_some_and(|s| s == "1" || s == "true")
+                        // ignore `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` while testing bootstrap for accurate results.
+                        && !cfg!(feature = "bootstrap-self-test");
 
                 if let Err(e) = check_incompatible_options_for_ci_rustc(&rust) {
                     if disable_ci_rustc_if_incompatible {
@@ -1782,7 +1789,7 @@ impl Config {
                 optimize: optimize_toml,
                 thin_lto,
                 release_debuginfo,
-                assertions,
+                assertions: _,
                 tests,
                 plugins,
                 ccache,
@@ -1814,7 +1821,6 @@ impl Config {
                 Some(StringOrBool::Bool(false)) | None => {}
             }
             set(&mut config.ninja_in_file, ninja);
-            llvm_assertions = assertions;
             llvm_tests = tests;
             llvm_plugins = plugins;
             set(&mut config.llvm_optimize, optimize_toml);
@@ -1841,8 +1847,8 @@ impl Config {
             config.llvm_enable_warnings = enable_warnings.unwrap_or(false);
             config.llvm_build_config = build_config.clone().unwrap_or(Default::default());
 
-            let asserts = llvm_assertions.unwrap_or(false);
-            config.llvm_from_ci = config.parse_download_ci_llvm(download_ci_llvm, asserts);
+            config.llvm_from_ci =
+                config.parse_download_ci_llvm(download_ci_llvm, config.llvm_assertions);
 
             if config.llvm_from_ci {
                 let warn = |option: &str| {
@@ -2013,7 +2019,6 @@ impl Config {
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
@@ -2489,7 +2494,15 @@ impl Config {
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
-    fn download_ci_rustc_commit(&self, download_rustc: Option<StringOrBool>) -> Option<String> {
+    fn download_ci_rustc_commit(
+        &self,
+        download_rustc: Option<StringOrBool>,
+        llvm_assertions: bool,
+    ) -> Option<String> {
+        if !is_download_ci_available(&self.build.triple, llvm_assertions) {
+            return None;
+        }
+
         // If `download-rustc` is not set, default to rebuilding.
         let if_unchanged = match download_rustc {
             None | Some(StringOrBool::Bool(false)) => return None,
@@ -2506,7 +2519,7 @@ impl Config {
             Some(&self.src),
             &self.git_config(),
             &self.stage0_metadata.config.git_merge_commit_email,
-            &[],
+            &[self.src.join("compiler"), self.src.join("library")],
         )
         .unwrap();
         if commit.is_empty() {
@@ -2515,6 +2528,19 @@ impl Config {
             println!("HELP: consider disabling `download-rustc`");
             println!("HELP: or fetch enough history to include one upstream commit");
             crate::exit!(1);
+        }
+
+        if CiEnv::is_ci() && {
+            let head_sha =
+                output(helpers::git(Some(&self.src)).arg("rev-parse").arg("HEAD").as_command_mut());
+            let head_sha = head_sha.trim();
+            commit == head_sha
+        } {
+            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+            eprintln!(
+                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+            );
+            return None;
         }
 
         // Warn if there were changes to the compiler or standard library since the ancestor commit.
