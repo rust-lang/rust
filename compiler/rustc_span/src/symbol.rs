@@ -472,6 +472,7 @@ symbols! {
         attr,
         attr_literals,
         attributes,
+        audit_that,
         augmented_assignments,
         auto_traits,
         automatically_derived,
