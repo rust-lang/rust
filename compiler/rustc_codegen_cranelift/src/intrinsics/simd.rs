@@ -191,6 +191,14 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     })
                     .try_into()
                     .unwrap(),
+                _ if idx_ty.is_simd()
+                    && matches!(
+                        idx_ty.simd_size_and_type(fx.tcx).1.kind(),
+                        ty::Uint(ty::UintTy::U32)
+                    ) =>
+                {
+                    idx_ty.simd_size_and_type(fx.tcx).0.try_into().unwrap()
+                }
                 _ => {
                     fx.tcx.dcx().span_err(
                         span,
@@ -213,6 +221,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let total_len = lane_count * 2;
 
+            // FIXME: this is a terrible abstraction-breaking hack.
+            // Find a way to reuse `immediate_const_vector` from `codegen_ssa` instead.
             let indexes = {
                 use rustc_middle::mir::interpret::*;
                 let idx_const = match &idx.node {

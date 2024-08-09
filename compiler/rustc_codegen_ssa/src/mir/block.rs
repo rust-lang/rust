@@ -924,7 +924,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // checked by the type-checker.
                         if i == 2 && intrinsic.name == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.simd_shuffle_indices(bx, constant);
+                                let (llval, ty) = self.immediate_const_vector(bx, constant);
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),
