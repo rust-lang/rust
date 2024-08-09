@@ -10,12 +10,6 @@
 
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
-//@ ignore-windows-msvc
-// Reason: this test links libraries via link.exe, which only accepts the import library
-// for the dynamic library, i.e. `foo.dll.lib`. However, build_native_dynamic_lib only
-// produces `foo.dll` - the dynamic library itself. To make this test work on MSVC, one
-// would need to derive the import library from the dynamic library.
-// See https://stackoverflow.com/questions/9360280/
 
 use run_make_support::{
     build_native_dynamic_lib, build_native_static_lib, cwd, is_msvc, rfs, run, rustc,
