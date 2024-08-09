@@ -87,6 +87,7 @@
     - [x86_64-unknown-none](platform-support/x86_64-unknown-none.md)
     - [xtensa-\*-none-elf](platform-support/xtensa.md)
     - [*-nuttx-\*](platform-support/nuttx.md)
+    - [\*-freebsd](platform-support/freebsd.md)
 - [Targets](targets/index.md)
     - [Built-in Targets](targets/built-in.md)
     - [Custom Targets](targets/custom.md)
