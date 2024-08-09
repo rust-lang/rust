@@ -313,6 +313,7 @@ impl Thread {
         target_os = "dragonfly",
         target_os = "hurd",
         target_os = "fuchsia",
+        target_os = "vxworks",
         target_vendor = "apple"
     )))]
     pub fn sleep_until(deadline: Instant) {
@@ -334,6 +335,7 @@ impl Thread {
         target_os = "dragonfly",
         target_os = "hurd",
         target_os = "fuchsia",
+        target_os = "vxworks",
     ))]
     pub fn sleep_until(deadline: crate::time::Instant) {
         let mut ts = deadline
