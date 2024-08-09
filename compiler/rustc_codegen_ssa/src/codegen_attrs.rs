@@ -559,6 +559,20 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     });
 
+    // naked function MUST NOT be inlined! This attribute is required for the rust compiler itself,
+    // but not for the code generation backend because at that point the naked function will just be
+    // a declaration, with a definition provided in global assembly.
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+        codegen_fn_attrs.inline = InlineAttr::Never;
+
+        // linkage must always be some flavor of external because the actual symbol is defined in
+        // assembly, and the function is just a declaration, not a definition. This conversion
+        // gives the naked function the semantics of a weakly-linked function.
+        if codegen_fn_attrs.linkage == Some(Linkage::WeakAny) {
+            codegen_fn_attrs.linkage = Some(Linkage::ExternalWeak);
+        }
+    }
+
     codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
         if !attr.has_name(sym::optimize) {
             return ia;
@@ -644,10 +658,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 )
             }
         }
-    }
-
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        codegen_fn_attrs.inline = InlineAttr::Never;
     }
 
     // Weak lang items have the same semantics as "std internal" symbols in the
