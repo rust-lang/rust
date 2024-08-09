@@ -51,17 +51,6 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
             });
         }
     }
-
-    // This ABI is only allowed on function pointers
-    if abi == Abi::CCmseNonSecureCall {
-        struct_span_code_err!(
-            tcx.dcx(),
-            span,
-            E0781,
-            "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
-        )
-        .emit();
-    }
 }
 
 fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
