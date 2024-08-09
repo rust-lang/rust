@@ -273,7 +273,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// `Unique::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
     #[inline]
-    pub fn ptr(&self) -> *mut T {
+    pub const fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
     }
 
@@ -286,7 +286,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         if T::IS_ZST { usize::MAX } else { self.cap.0 }
     }
 
