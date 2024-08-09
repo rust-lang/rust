@@ -1,0 +1,127 @@
+error[E0599]: the method `clone` exists for struct `HashMap<String, B<Z>>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:16:27
+   |
+LL | struct B<A> {
+   | ----------- doesn't satisfy `B<Z>: Clone`
+...
+LL |     let a_map = ctx.a_map.clone();
+   |                           ^^^^^ method cannot be called on `HashMap<String, B<Z>>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `B<Z>: Clone`
+           which is required by `HashMap<String, B<Z>>: Clone`
+help: consider restricting type parameter `Z`
+   |
+LL | fn foo<Z: std::clone::Clone>(ctx: &mut Ctx<Z>) {
+   |         +++++++++++++++++++
+
+error[E0599]: the method `clone` exists for struct `HashMap<String, B<S>>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:21:27
+   |
+LL | struct B<A> {
+   | ----------- doesn't satisfy `B<S>: Clone`
+...
+LL |     let a_map = ctx.a_map.clone();
+   |                           ^^^^^ method cannot be called on `HashMap<String, B<S>>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `B<S>: Clone`
+           which is required by `HashMap<String, B<S>>: Clone`
+help: consider annotating `S` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct S;
+   |
+
+error[E0599]: the method `eq` exists for struct `B<Z>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:25:20
+   |
+LL | struct B<A> {
+   | ----------- method `eq` not found for this struct because it doesn't satisfy `B<Z>: Iterator` or `B<Z>: PartialEq`
+...
+LL |     ctx.a_map["a"].eq(&ctx.a_map["a"]);
+   |                    ^^ method cannot be called on `B<Z>` due to unsatisfied trait bounds
+   |
+note: trait bound `Z: PartialEq` was not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:17
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: the following trait bounds were not satisfied:
+           `B<Z>: Iterator`
+           which is required by `&mut B<Z>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | fn qux<Z>(ctx: &mut Ctx<Z>) where Z: PartialEq {
+   |                             ++++++++++++++++++
+
+error[E0277]: the trait bound `Z: Eq` is not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:26:6
+   |
+LL |     <_ as Eq>::assert_receiver_is_total_eq(&ctx.a_map["a"]);
+   |      ^ the trait `Eq` is not implemented for `Z`, which is required by `B<Z>: Eq`
+   |
+note: required for `B<Z>` to implement `Eq`
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:28
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider restricting type parameter `Z`
+   |
+LL | fn qux<Z: std::cmp::Eq>(ctx: &mut Ctx<Z>) {
+   |         ++++++++++++++
+
+error[E0599]: the method `eq` exists for struct `B<S>`, but its trait bounds were not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:30:20
+   |
+LL | struct B<A> {
+   | ----------- method `eq` not found for this struct because it doesn't satisfy `B<S>: Iterator` or `B<S>: PartialEq`
+...
+LL | struct S;
+   | -------- doesn't satisfy `S: PartialEq`
+...
+LL |     ctx.a_map["a"].eq(&ctx.a_map["a"]);
+   |                    ^^ method cannot be called on `B<S>` due to unsatisfied trait bounds
+   |
+note: trait bound `S: PartialEq` was not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:17
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                 ^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: the following trait bounds were not satisfied:
+           `B<S>: Iterator`
+           which is required by `&mut B<S>: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `S` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct S;
+   |
+
+error[E0277]: the trait bound `S: Eq` is not satisfied
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:31:6
+   |
+LL |     <_ as Eq>::assert_receiver_is_total_eq(&ctx.a_map["a"]);
+   |      ^ the trait `Eq` is not implemented for `S`, which is required by `B<S>: Eq`
+   |
+   = help: the trait `Eq` is implemented for `B<A>`
+note: required for `B<S>` to implement `Eq`
+  --> $DIR/type-or-type-param-missing-transitive-trait-contraint.rs:10:28
+   |
+LL | #[derive(Clone, PartialEq, Eq)]
+   |                            ^^ unsatisfied trait bound introduced in this `derive` macro
+   = note: this error originates in the derive macro `Eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `S` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct S;
+   |
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

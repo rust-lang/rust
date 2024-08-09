@@ -1363,7 +1363,111 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "the following trait bounds were not satisfied:\n{bound_list}"
                     ));
                 }
-                suggested_derive = self.suggest_derive(&mut err, unsatisfied_predicates);
+
+                let mut suggest_derive = true;
+                for (pred, _, cause) in unsatisfied_predicates {
+                    let Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred))) =
+                        pred.kind().no_bound_vars()
+                    else {
+                        continue;
+                    };
+                    let lang = tcx.lang_items();
+                    if ![
+                        lang.copy_trait(),
+                        lang.clone_trait(),
+                        tcx.get_diagnostic_item(sym::Debug),
+                        tcx.get_diagnostic_item(sym::PartialEq),
+                        tcx.get_diagnostic_item(sym::Default),
+                    ]
+                    .contains(&Some(trait_pred.def_id()))
+                    {
+                        // We restrict ourselves only to built-in `derive`s.
+                        continue;
+                    }
+                    let (adt, params) = match trait_pred.self_ty().kind() {
+                        ty::Adt(adt, params) if adt.did().is_local() => (*adt, params),
+                        _ => continue,
+                    };
+                    if tcx
+                        .all_impls(trait_pred.def_id())
+                        .filter_map(|imp_did| tcx.impl_trait_header(imp_did).map(|h| (imp_did, h)))
+                        .filter(|(did, header)| {
+                            let imp = header.trait_ref.instantiate_identity();
+                            let impl_adt = match imp.self_ty().ty_adt_def() {
+                                Some(impl_adt) if adt.did().is_local() => impl_adt,
+                                _ => return false,
+                            };
+                            header.polarity == ty::ImplPolarity::Positive
+                                && impl_adt == adt
+                                && tcx.is_automatically_derived(*did)
+                        })
+                        .count()
+                        == 1
+                    {
+                        // We now know that for this predicate, there *was* a `derive(Trait)` for
+                        // the trait at hand, so we don't want to suggest writing that again.
+                        for param in &params[..] {
+                            // Look at the type parameters for the currently obligated type to see
+                            // if a restriciton of `TypeParam: Trait` would help. If the
+                            // instantiated type param is not a type param but instead an actual
+                            // type, see if we can suggest `derive(Trait)` on *that* type.
+                            // See `tests/ui/suggestions/f1000.rs`
+                            let Some(ty) = param.as_type() else {
+                                continue;
+                            };
+                            match ty.kind() {
+                                ty::Adt(adt, _) if adt.did().is_local() => {
+                                    // The type param at hand is a local type, try to suggest
+                                    // `derive(Trait)`.
+                                    let trait_ref =
+                                        ty::TraitRef::identity(tcx, trait_pred.trait_ref.def_id)
+                                            .with_self_ty(tcx, ty);
+                                    let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
+                                        trait_ref,
+                                        polarity: ty::PredicatePolarity::Positive,
+                                    });
+                                    suggested_derive = self.suggest_derive(
+                                        &mut err,
+                                        &[(
+                                            <_ as ty::UpcastFrom<_, _>>::upcast_from(
+                                                trait_pred, self.tcx,
+                                            ),
+                                            None,
+                                            cause.clone(),
+                                        )],
+                                    );
+                                }
+                                ty::Param(_) => {
+                                    // It was a type param. See if it corresponds to the current
+                                    // `fn` and suggest `T: Trait`.
+                                    if let Some(obligation) = cause {
+                                        let trait_ref = ty::TraitRef::new(
+                                            tcx,
+                                            trait_pred.trait_ref.def_id,
+                                            [ty],
+                                        );
+                                        let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
+                                            trait_ref,
+                                            polarity: ty::PredicatePolarity::Positive,
+                                        });
+                                        suggested_derive =
+                                            self.err_ctxt().suggest_restricting_param_bound(
+                                                &mut err,
+                                                trait_pred,
+                                                None,
+                                                obligation.body_id,
+                                            );
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                        suggest_derive = false
+                    }
+                }
+                if suggest_derive {
+                    suggested_derive = self.suggest_derive(&mut err, unsatisfied_predicates);
+                }
 
                 unsatisfied_bounds = true;
             }
