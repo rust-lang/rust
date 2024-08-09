@@ -199,16 +199,16 @@ pub fn env() -> Env {
     panic!("not supported on this platform")
 }
 
-pub fn getenv(_: &OsStr) -> Option<OsString> {
-    None
+pub fn getenv(key: &OsStr) -> Option<OsString> {
+    uefi_vars::get(key)
 }
 
-pub unsafe fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    uefi_vars::set(k, v)
 }
 
-pub unsafe fn unsetenv(_: &OsStr) -> io::Result<()> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot unset env vars on this platform"))
+pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
+    uefi_vars::unset(k)
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -238,4 +238,105 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     panic!("no pids on this platform")
+}
+
+mod uefi_vars {
+    use super::helpers;
+    use crate::ffi::{OsStr, OsString};
+    use crate::io;
+    use crate::mem::size_of;
+    use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+    use crate::ptr::NonNull;
+
+    // Using Shell Variable Guid from edk2/ShellPkg
+    // https://github.com/tianocore/edk2/blob/master/ShellPkg/Include/Guid/ShellVariableGuid.h
+    pub(crate) const SHELL_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
+        0x158def5a,
+        0xf656,
+        0x419c,
+        0xb0,
+        0x27,
+        &[0x7a, 0x31, 0x92, 0xc0, 0x79, 0xd2],
+    );
+
+    pub(crate) fn get(key: &OsStr) -> Option<OsString> {
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+        let mut key = key.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+
+        let mut len = 0usize;
+        let mut guid = SHELL_VARIABLE_GUID;
+
+        let ret = unsafe {
+            ((*rt.as_ptr()).get_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                crate::ptr::null_mut(),
+                &mut len,
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if ret != r_efi::efi::Status::BUFFER_TOO_SMALL {
+            return None;
+        }
+
+        let mut val = Vec::<u16>::with_capacity(len / size_of::<u16>());
+        let ret = unsafe {
+            ((*rt.as_ptr()).get_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                crate::ptr::null_mut(),
+                &mut len,
+                val.as_mut_ptr().cast(),
+            )
+        };
+
+        if ret.is_error() {
+            None
+        } else {
+            unsafe { val.set_len(len / size_of::<u16>()) };
+            Some(OsString::from_wide(&val))
+        }
+    }
+
+    pub(crate) fn set(key: &OsStr, val: &OsStr) -> io::Result<()> {
+        let mut key = key.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+        // UEFI variable value does not need to be NULL terminated.
+        let mut val = val.encode_wide().collect::<Vec<u16>>();
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+        let mut guid = SHELL_VARIABLE_GUID;
+
+        let r = unsafe {
+            ((*rt.as_ptr()).set_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
+                val.len() * size_of::<u16>(),
+                val.as_mut_ptr().cast(),
+            )
+        };
+
+        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+    }
+
+    pub(crate) fn unset(key: &OsStr) -> io::Result<()> {
+        let mut key = key.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
+        let rt: NonNull<r_efi::efi::RuntimeServices> =
+            helpers::runtime_services().expect("UEFI Runtime Services Missing").cast();
+        let mut guid = SHELL_VARIABLE_GUID;
+
+        let r = unsafe {
+            ((*rt.as_ptr()).set_variable)(
+                key.as_mut_ptr(),
+                &mut guid,
+                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
+                0,
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
+    }
 }
