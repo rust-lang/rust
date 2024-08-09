@@ -19,7 +19,7 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use super::{
     throw_unsup, throw_unsup_format, AllocBytes, AllocId, AllocKind, AllocRange, Allocation,
     ConstAllocation, CtfeProvenance, FnArg, Frame, ImmTy, InterpCx, InterpResult, MPlaceTy,
-    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance,
+    MemoryKind, Misalignment, OpTy, PlaceTy, Pointer, Provenance, CTFE_ALLOC_SALT,
 };
 
 /// Data returned by [`Machine::after_stack_pop`], and consumed by
@@ -575,6 +575,14 @@ pub trait Machine<'tcx>: Sized {
     {
         eval(ecx, val, span, layout)
     }
+
+    /// Returns the salt to be used for a deduplicated global alloation.
+    /// If the allocation is for a function, the instance is provided as well
+    /// (this lets Miri ensure unique addresses for some functions).
+    fn get_global_alloc_salt(
+        ecx: &InterpCx<'tcx, Self>,
+        instance: Option<ty::Instance<'tcx>>,
+    ) -> usize;
 }
 
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
@@ -676,5 +684,13 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (prov, offset) = ptr.into_parts();
         Some((prov.alloc_id(), offset, prov.immutable()))
+    }
+
+    #[inline(always)]
+    fn get_global_alloc_salt(
+        _ecx: &InterpCx<$tcx, Self>,
+        _instance: Option<ty::Instance<$tcx>>,
+    ) -> usize {
+        CTFE_ALLOC_SALT
     }
 }

@@ -195,7 +195,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn fn_ptr(&mut self, fn_val: FnVal<'tcx, M::ExtraFnVal>) -> Pointer<M::Provenance> {
         let id = match fn_val {
-            FnVal::Instance(instance) => self.tcx.reserve_and_set_fn_alloc(instance),
+            FnVal::Instance(instance) => {
+                let salt = M::get_global_alloc_salt(self, Some(instance));
+                self.tcx.reserve_and_set_fn_alloc(instance, salt)
+            }
             FnVal::Other(extra) => {
                 // FIXME(RalfJung): Should we have a cache here?
                 let id = self.tcx.reserve_alloc_id();

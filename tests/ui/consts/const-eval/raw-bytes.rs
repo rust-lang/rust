@@ -194,10 +194,10 @@ const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool
 //~| expected a boolean
 
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| null pointer
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR it is undefined behavior to use this value
 //~| vtable
 
 // Uninhabited types
