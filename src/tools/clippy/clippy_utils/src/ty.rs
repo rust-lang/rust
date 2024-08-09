@@ -541,7 +541,7 @@ pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).safety() == Safety::Unsafe,
+        ty::FnDef(..) | ty::FnPtr(..) => ty.fn_sig(cx.tcx).safety() == Safety::Unsafe,
         _ => false,
     }
 }
@@ -721,7 +721,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             cx.tcx.item_super_predicates(def_id).iter_instantiated(cx.tcx, args),
             cx.tcx.opt_parent(def_id),
         ),
-        ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
+        ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
             match bounds.principal() {

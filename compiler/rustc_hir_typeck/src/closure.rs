@@ -336,9 +336,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .into_iter()
                     .map(|obl| (obl.predicate, obl.cause.span)),
             ),
-            ty::FnPtr(sig) => match closure_kind {
+            ty::FnPtr(sig_tys, hdr) => match closure_kind {
                 hir::ClosureKind::Closure => {
-                    let expected_sig = ExpectedSig { cause_span: None, sig };
+                    let expected_sig = ExpectedSig { cause_span: None, sig: sig_tys.with(hdr) };
                     (Some(expected_sig), Some(ty::ClosureKind::Fn))
                 }
                 hir::ClosureKind::Coroutine(_) | hir::ClosureKind::CoroutineClosure(_) => {

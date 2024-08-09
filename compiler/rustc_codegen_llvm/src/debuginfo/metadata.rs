@@ -456,7 +456,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         {
             build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
         }
-        ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
+        ty::FnDef(..) | ty::FnPtr(..) => build_subroutine_type_di_node(cx, unique_type_id),
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::CoroutineClosure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),

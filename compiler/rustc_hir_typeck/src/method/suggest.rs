@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
             // FIXME(async_closures): These don't impl `FnOnce` by default.
-            ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
+            ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(..) => true,
             // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {
                 let Some(fn_once) = tcx.lang_items().fn_once_trait() else {

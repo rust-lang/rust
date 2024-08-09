@@ -812,7 +812,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 return upvars.visit_with(self);
             }
 
-            ty::FnPtr(_) => {
+            ty::FnPtr(..) => {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
             }

@@ -1087,9 +1087,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 values
             }
 
-            (ty::FnDef(did1, args1), ty::FnPtr(sig2)) => {
+            (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let mut values = self.cmp_fn_sig(&sig1, sig2);
+                let mut values = self.cmp_fn_sig(&sig1, &sig_tys2.with(*hdr2));
                 values.0.push_highlighted(format!(
                     " {{{}}}",
                     self.tcx.def_path_str_with_args(*did1, args1)
@@ -1097,16 +1097,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnDef(did2, args2)) => {
+            (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                let mut values = self.cmp_fn_sig(sig1, &sig2);
+                let mut values = self.cmp_fn_sig(&sig_tys1.with(*hdr1), &sig2);
                 values
                     .1
                     .push_normal(format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2)));
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
+            (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
+                self.cmp_fn_sig(&sig_tys1.with(*hdr1), &sig_tys2.with(*hdr2))
+            }
 
             _ => {
                 let mut strs = (DiagStyledString::new(), DiagStyledString::new());

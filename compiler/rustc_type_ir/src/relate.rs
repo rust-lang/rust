@@ -524,8 +524,8 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_fn_def(cx, a_def_id, args))
         }
 
-        (ty::FnPtr(a_fty), ty::FnPtr(b_fty)) => {
-            let fty = relation.relate(a_fty, b_fty)?;
+        (ty::FnPtr(a_sig_tys, a_hdr), ty::FnPtr(b_sig_tys, b_hdr)) => {
+            let fty = relation.relate(a_sig_tys.with(a_hdr), b_sig_tys.with(b_hdr))?;
             Ok(Ty::new_fn_ptr(cx, fty))
         }
 

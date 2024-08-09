@@ -352,7 +352,9 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::FnDef(def_id, generic_args) => {
                 TyKind::RigidTy(RigidTy::FnDef(tables.fn_def(*def_id), generic_args.stable(tables)))
             }
-            ty::FnPtr(poly_fn_sig) => TyKind::RigidTy(RigidTy::FnPtr(poly_fn_sig.stable(tables))),
+            ty::FnPtr(sig_tys, hdr) => {
+                TyKind::RigidTy(RigidTy::FnPtr(sig_tys.with(*hdr).stable(tables)))
+            }
             ty::Dynamic(existential_predicates, region, dyn_kind) => {
                 TyKind::RigidTy(RigidTy::Dynamic(
                     existential_predicates

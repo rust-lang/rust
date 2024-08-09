@@ -383,8 +383,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return;
         }
         match (&expected_inner.kind(), &found_inner.kind()) {
-            (ty::FnPtr(sig), ty::FnDef(did, args)) => {
-                let expected_sig = &(self.normalize_fn_sig)(*sig);
+            (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
+                let sig = sig_tys.with(*hdr);
+                let expected_sig = &(self.normalize_fn_sig)(sig);
                 let found_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
 
@@ -402,11 +403,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::CastRef { span, fn_name, sig: *sig }
+                        FunctionPointerSuggestion::CastRef { span, fn_name, sig }
                     }
                     (false, false) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::Cast { span, fn_name, sig: *sig }
+                        FunctionPointerSuggestion::Cast { span, fn_name, sig }
                     }
                 };
                 diag.subdiagnostic(sugg);
@@ -449,10 +450,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 diag.subdiagnostic(sug);
             }
-            (ty::FnDef(did, args), ty::FnPtr(sig)) => {
+            (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
                 let expected_sig =
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
-                let found_sig = &(self.normalize_fn_sig)(*sig);
+                let found_sig = &(self.normalize_fn_sig)(sig_tys.with(*hdr));
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {
                     return;

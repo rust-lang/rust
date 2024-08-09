@@ -846,7 +846,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ),
                 None,
             ),
-            ty::FnPtr(_) => (None, Some(callee.immediate())),
+            ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
 

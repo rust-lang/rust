@@ -607,10 +607,15 @@ pub fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        ty::FnPtr(fn_sig) => {
+        ty::FnPtr(sig_tys, hdr) => {
             // PF<return-type><parameter-type1..parameter-typeN>E
             let mut s = String::from("P");
-            s.push_str(&encode_fnsig(tcx, &fn_sig.skip_binder(), dict, TypeIdOptions::empty()));
+            s.push_str(&encode_fnsig(
+                tcx,
+                &sig_tys.with(*hdr).skip_binder(),
+                dict,
+                TypeIdOptions::empty(),
+            ));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }

@@ -658,7 +658,8 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, FnPtr(fty))
+        let (sig_tys, hdr) = fty.split();
+        Ty::new(tcx, FnPtr(sig_tys, hdr))
     }
 
     #[inline]
@@ -1182,7 +1183,7 @@ impl<'tcx> Ty<'tcx> {
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
-                | FnPtr(_)
+                | FnPtr(..)
                 | RawPtr(_, _)
                 | Infer(IntVar(_) | FloatVar(_))
         )
@@ -1333,7 +1334,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(f) => *f,
+            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
             Error(_) => {
                 // ignore errors (#54954)
                 Binder::dummy(ty::FnSig {
@@ -1352,12 +1353,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_fn(self) -> bool {
-        matches!(self.kind(), FnDef(..) | FnPtr(_))
+        matches!(self.kind(), FnDef(..) | FnPtr(..))
     }
 
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
-        matches!(self.kind(), FnPtr(_))
+        matches!(self.kind(), FnPtr(..))
     }
 
     #[inline]
@@ -1599,7 +1600,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1791,7 +1792,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -1941,7 +1942,7 @@ impl<'tcx> Ty<'tcx> {
             | RawPtr(_, _)
             | Ref(_, _, _)
             | FnDef(_, _)
-            | FnPtr(_)
+            | FnPtr(..)
             | Dynamic(_, _, _)
             | Closure(_, _)
             | CoroutineClosure(_, _)
@@ -1955,9 +1956,12 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
-    fn split_inputs_and_output(self) -> (&'tcx [Ty<'tcx>], Ty<'tcx>) {
-        let (output, inputs) = self.split_last().unwrap();
-        (inputs, *output)
+    fn inputs(self) -> &'tcx [Ty<'tcx>] {
+        self.split_last().unwrap().1
+    }
+
+    fn output(self) -> Ty<'tcx> {
+        *self.split_last().unwrap().0
     }
 }
 
@@ -1969,6 +1973,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
-    static_assert_size!(ty::TyKind<'_>, 32);
+    static_assert_size!(ty::TyKind<'_>, 24);
     // tidy-alphabetical-end
 }

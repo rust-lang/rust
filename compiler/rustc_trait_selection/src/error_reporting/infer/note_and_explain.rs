@@ -441,9 +441,9 @@ impl<T> Trait<T> for X {
                             }
                         }
                     }
-                    (ty::FnPtr(sig), ty::FnDef(def_id, _))
-                    | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
-                        if tcx.fn_sig(def_id).skip_binder().safety() < sig.safety() {
+                    (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
+                    | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
+                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
                             diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
                             );

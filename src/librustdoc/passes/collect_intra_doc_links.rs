@@ -495,7 +495,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::RawPtr(_, _) => Res::Primitive(RawPointer),
             ty::Ref(..) => Res::Primitive(Reference),
             ty::FnDef(..) => panic!("type alias to a function definition"),
-            ty::FnPtr(_) => Res::Primitive(Fn),
+            ty::FnPtr(..) => Res::Primitive(Fn),
             ty::Never => Res::Primitive(Never),
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
                 Res::from_def_id(self.cx.tcx, did)

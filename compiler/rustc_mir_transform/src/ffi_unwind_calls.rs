@@ -57,7 +57,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
         };
 
         let fn_def_id = match ty.kind() {
-            ty::FnPtr(_) => None,
+            ty::FnPtr(..) => None,
             &ty::FnDef(def_id, _) => {
                 // Rust calls cannot themselves create foreign unwinds (even if they use a non-Rust ABI).
                 // So the leak of the foreign unwind into Rust can only be elsewhere, not here.

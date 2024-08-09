@@ -189,9 +189,12 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.extend(args.iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(GenericArg::from)),
-            ty::FnPtr(sig) => {
-                stack.push(sig.skip_binder().output().into());
-                stack.extend(sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()));
+            ty::FnPtr(sig_tys, hdr) => {
+                let fn_sig = sig_tys.with(hdr);
+                stack.push(fn_sig.skip_binder().output().into());
+                stack.extend(
+                    fn_sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()),
+                );
             }
         },
         GenericArgKind::Lifetime(_) => {}

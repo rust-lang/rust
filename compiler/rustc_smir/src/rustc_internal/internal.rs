@@ -131,7 +131,10 @@ impl RustcInternal for RigidTy {
             RigidTy::FnDef(def, args) => {
                 rustc_ty::TyKind::FnDef(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }
-            RigidTy::FnPtr(sig) => rustc_ty::TyKind::FnPtr(sig.internal(tables, tcx)),
+            RigidTy::FnPtr(sig) => {
+                let (sig_tys, hdr) = sig.internal(tables, tcx).split();
+                rustc_ty::TyKind::FnPtr(sig_tys, hdr)
+            }
             RigidTy::Closure(def, args) => {
                 rustc_ty::TyKind::Closure(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }

@@ -872,7 +872,7 @@ impl TyCoercionStability {
                 | ty::Pat(..)
                 | ty::Float(_)
                 | ty::RawPtr(..)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Str
                 | ty::Slice(..)
                 | ty::Adt(..)

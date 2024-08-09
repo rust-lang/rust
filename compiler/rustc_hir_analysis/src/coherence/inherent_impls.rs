@@ -172,7 +172,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Never
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Tuple(..) => self.check_primitive_impl(id, self_ty),
             ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))

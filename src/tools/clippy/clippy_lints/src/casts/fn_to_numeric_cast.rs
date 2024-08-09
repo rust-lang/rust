@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
     }
 
     match cast_from.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             let mut applicability = Applicability::MaybeIncorrect;
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);

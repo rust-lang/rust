@@ -604,7 +604,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        if let (ty::FnPtr(_), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
+        if let (ty::FnPtr(..), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
             if let Some(upvars) = self.tcx.upvars_mentioned(*def_id) {
                 // Report upto four upvars being captured to reduce the amount error messages
                 // reported back to the user.

@@ -64,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     let ty = func.ty(body, tcx);
                     let sig = ty.fn_sig(tcx);
                     let fn_def_id = match ty.kind() {
-                        ty::FnPtr(_) => None,
+                        ty::FnPtr(..) => None,
                         &ty::FnDef(def_id, _) => Some(def_id),
                         _ => span_bug!(span, "invalid callee of type {:?}", ty),
                     };

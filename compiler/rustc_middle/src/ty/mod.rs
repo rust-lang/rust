@@ -2149,6 +2149,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);
+    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 48);
     // tidy-alphabetical-end
 }
