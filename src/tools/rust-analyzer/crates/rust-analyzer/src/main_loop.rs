@@ -20,10 +20,10 @@ use crate::{
     config::Config,
     diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
-    dispatch::{NotificationDispatcher, RequestDispatcher},
     flycheck::{self, FlycheckMessage},
     global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
     hack_recover_crate_name,
+    handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
     lsp::{
         from_proto, to_proto,
         utils::{notification_is, Progress},
