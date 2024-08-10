@@ -296,7 +296,7 @@ pub trait Visitor<'v>: Sized {
 
     #[track_caller]
     fn visit_nested_opaque_ty(&mut self, opaq: &'v OpaqueTy<'v>) -> Self::Result {
-        if Self::NestedFilter::INTER {
+        if Self::NestedFilter::INTRA {
             try_visit!(self.visit_opaque_ty(opaq));
         }
         Self::Result::output()
