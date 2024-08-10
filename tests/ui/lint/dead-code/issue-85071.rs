@@ -14,6 +14,6 @@ fn f() -> Foo {todo!()}
 fn main() {
     let x = f();
     //~^ WARNING: unused variable: `x`
+    //~| WARNING: unreachable definition
     let _ = x;
-    //~^ WARNING: unreachable expression
 }
