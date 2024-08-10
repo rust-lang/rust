@@ -8,7 +8,7 @@ use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_span::Symbol;
 use rustc_target::{
-    abi::{Align, Size},
+    abi::{Align, AlignFromBytesError, Size},
     spec::abi::Abi,
 };
 
@@ -199,9 +199,20 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if i128::from(size) > this.tcx.data_layout.pointer_size.signed_int_max() {
             throw_ub_format!("creating an allocation larger than half the address space");
         }
-        if !align.is_power_of_two() {
-            throw_ub_format!("creating allocation with non-power-of-two alignment {}", align);
+        if let Err(e) = Align::from_bytes(align) {
+            match e {
+                AlignFromBytesError::TooLarge(_) => {
+                    throw_unsup_format!(
+                        "creating allocation with alignment {align} exceeding rustc's maximum \
+                         supported value"
+                    );
+                }
+                AlignFromBytesError::NotPowerOfTwo(_) => {
+                    throw_ub_format!("creating allocation with non-power-of-two alignment {align}");
+                }
+            }
         }
+
         Ok(())
     }
 
