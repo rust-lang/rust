@@ -177,6 +177,26 @@ fn test_read_read_race2() {
     });
 }
 
+fn mixed_size_read_read() {
+    fn convert(a: &AtomicU16) -> &[AtomicU8; 2] {
+        unsafe { std::mem::transmute(a) }
+    }
+
+    let a = AtomicU16::new(0);
+    let a16 = &a;
+    let a8 = convert(a16);
+
+    // Just two different-sized atomic reads without any writes are fine.
+    thread::scope(|s| {
+        s.spawn(|| {
+            a16.load(Ordering::SeqCst);
+        });
+        s.spawn(|| {
+            a8[0].load(Ordering::SeqCst);
+        });
+    });
+}
+
 pub fn main() {
     test_fence_sync();
     test_multiple_reads();
@@ -185,4 +205,5 @@ pub fn main() {
     test_local_variable_lazy_write();
     test_read_read_race1();
     test_read_read_race2();
+    mixed_size_read_read();
 }

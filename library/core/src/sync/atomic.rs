@@ -33,6 +33,12 @@
 //! atomic load (via the operations provided in this module). A "modification of an atomic object"
 //! refers to an atomic store.
 //!
+//! The most important aspect of this model is that conflicting non-synchronized accesses are
+//! Undefined Behavior unless both accesses are atomic. Here, accesses are *conflicting* if they
+//! affect overlapping regions of memory and at least one of them is a write. They are
+//! *non-synchronized* if neither of them *happens-before* the other, according to the
+//! happens-before order of the memory model.
+//!
 //! The end result is *almost* equivalent to saying that creating a *shared reference* to one of the
 //! Rust atomic types corresponds to creating an `atomic_ref` in C++, with the `atomic_ref` being
 //! destroyed when the lifetime of the shared reference ends. The main difference is that Rust
@@ -41,9 +47,10 @@
 //! objects" and "non-atomic objects" (with `atomic_ref` temporarily converting a non-atomic object
 //! into an atomic object).
 //!
-//! That said, Rust *does* inherit the C++ limitation that non-synchronized atomic accesses may not
-//! partially overlap: they must be either disjoint or access the exact same memory. This in
-//! particular rules out non-synchronized differently-sized accesses to the same data.
+//! That said, Rust *does* inherit the C++ limitation that non-synchronized conflicting atomic
+//! accesses may not partially overlap: they must be either disjoint or access the exact same
+//! memory. This in particular rules out non-synchronized differently-sized atomic accesses to the
+//! same data unless all accesses are reads.
 //!
 //! [cpp]: https://en.cppreference.com/w/cpp/atomic
 //! [cpp-intro.races]: https://timsong-cpp.github.io/cppwp/n4868/intro.multithread#intro.races
@@ -63,7 +70,7 @@
 //! let atomic = AtomicU16::new(0);
 //!
 //! thread::scope(|s| {
-//!     // This is UB: conflicting concurrent accesses.
+//!     // This is UB: conflicting non-synchronized accesses, at least one of which is non-atomic.
 //!     s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
 //!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
@@ -77,16 +84,15 @@
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is fine, `join` synchronizes the code in a way such that atomic
-//!     // and non-atomic accesses can't happen "at the same time".
+//!     // This is fine: `join` synchronizes the code in a way such that the atomic
+//!     // store happens-before the non-atomic write.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
 //!     handle.join().unwrap(); // synchronize
 //!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is UB: using differently-sized atomic accesses to the same data.
-//!     // (It would be UB even if these are both loads.)
+//!     // This is UB: non-synchronized conflicting differently-sized atomic accesses.
 //!     s.spawn(|| atomic.store(1, Ordering::Relaxed));
 //!     s.spawn(|| unsafe {
 //!         let differently_sized = transmute::<&AtomicU16, &AtomicU8>(&atomic);
@@ -95,8 +101,8 @@
 //! });
 //!
 //! thread::scope(|s| {
-//!     // This is fine, `join` synchronizes the code in a way such that
-//!     // differently-sized accesses can't happen "at the same time".
+//!     // This is fine: `join` synchronizes the code in a way such that
+//!     // the 1-byte store happens-before the 2-byte store.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed));
 //!     handle.join().unwrap();
 //!     s.spawn(|| unsafe {
