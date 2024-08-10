@@ -426,12 +426,8 @@ impl FormatArgsStorage {
     }
 }
 
-/// Attempt to find the [`rustc_hir::Expr`] that corresponds to the [`FormatArgument`]'s value, if
-/// it cannot be found it will return the [`rustc_ast::Expr`].
-pub fn find_format_arg_expr<'hir, 'ast>(
-    start: &'hir Expr<'hir>,
-    target: &'ast FormatArgument,
-) -> Result<&'hir Expr<'hir>, &'ast rustc_ast::Expr> {
+/// Attempt to find the [`rustc_hir::Expr`] that corresponds to the [`FormatArgument`]'s value
+pub fn find_format_arg_expr<'hir>(start: &'hir Expr<'hir>, target: &FormatArgument) -> Option<&'hir Expr<'hir>> {
     let SpanData {
         lo,
         hi,
@@ -449,7 +445,6 @@ pub fn find_format_arg_expr<'hir, 'ast>(
             ControlFlow::Continue(())
         }
     })
-    .ok_or(&target.expr)
 }
 
 /// Span of the `:` and format specifiers

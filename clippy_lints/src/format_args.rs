@@ -224,13 +224,11 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
             if let FormatArgsPiece::Placeholder(placeholder) = piece
                 && let Ok(index) = placeholder.argument.index
                 && let Some(arg) = self.format_args.arguments.all_args().get(index)
+                && let Some(arg_expr) = find_format_arg_expr(self.expr, arg)
             {
-                let arg_expr = find_format_arg_expr(self.expr, arg);
-
                 self.check_unused_format_specifier(placeholder, arg_expr);
 
-                if let Ok(arg_expr) = arg_expr
-                    && placeholder.format_trait == FormatTrait::Display
+                if placeholder.format_trait == FormatTrait::Display
                     && placeholder.format_options == FormatOptions::default()
                     && !self.is_aliased(index)
                 {
@@ -242,28 +240,13 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
         }
     }
 
-    fn check_unused_format_specifier(
-        &self,
-        placeholder: &FormatPlaceholder,
-        arg_expr: Result<&Expr<'_>, &rustc_ast::Expr>,
-    ) {
-        let ty_or_ast_expr = arg_expr.map(|expr| self.cx.typeck_results().expr_ty(expr).peel_refs());
-
-        let is_format_args = match ty_or_ast_expr {
-            Ok(ty) => is_type_lang_item(self.cx, ty, LangItem::FormatArguments),
-            Err(expr) => matches!(expr.peel_parens_and_refs().kind, rustc_ast::ExprKind::FormatArgs(_)),
-        };
-
+    fn check_unused_format_specifier(&self, placeholder: &FormatPlaceholder, arg: &Expr<'_>) {
         let options = &placeholder.format_options;
 
-        let arg_span = match arg_expr {
-            Ok(expr) => expr.span,
-            Err(expr) => expr.span,
-        };
-
         if let Some(placeholder_span) = placeholder.span
-            && is_format_args
             && *options != FormatOptions::default()
+            && let ty = self.cx.typeck_results().expr_ty(arg).peel_refs()
+            && is_type_lang_item(self.cx, ty, LangItem::FormatArguments)
         {
             span_lint_and_then(
                 self.cx,
@@ -274,7 +257,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     let mut suggest_format = |spec| {
                         let message = format!("for the {spec} to apply consider using `format!()`");
 
-                        if let Some(mac_call) = matching_root_macro_call(self.cx, arg_span, sym::format_args_macro) {
+                        if let Some(mac_call) = matching_root_macro_call(self.cx, arg.span, sym::format_args_macro) {
                             diag.span_suggestion(
                                 self.cx.sess().source_map().span_until_char(mac_call.span, '!'),
                                 message,
