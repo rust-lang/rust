@@ -1,6 +1,11 @@
-//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-//@ min-lldb-version: 310
+// The gdb that we use in CI for aarch64-unknown-linux-gnu and x86_64-pc-windows-gnu seems unable
+// to handle by-value non-immediate arguments, which is the whole point of this test.
+// gdb on those platforms (or the version we test) just prints <optimized out> for structs/tuples
+// and attempts to read memory at 0x0 for enums.
+//@ ignore-aarch64: #128973
+//@ ignore-windows-gnu
 
+//@ min-lldb-version: 1800
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -42,11 +47,11 @@
 // lldb-command:run
 
 // lldb-command:v s
-// lldb-check:[...] Struct { a: 1, b: 2.5 }
+// lldb-check:[...] Struct { a = 1 b = 2.5 }
 // lldb-command:continue
 
 // lldb-command:v x
-// lldb-check:[...] Struct { a: 3, b: 4.5 }
+// lldb-check:[...] Struct { a = 3 b = 4.5 }
 // lldb-command:v y
 // lldb-check:[...] 5
 // lldb-command:v z

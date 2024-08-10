@@ -6,9 +6,6 @@
 
 //@ min-lldb-version: 310
 
-// This fails on lldb 6.0.1 on x86-64 Fedora 28; so ignore Linux for now.
-//@ ignore-linux
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================

@@ -2,7 +2,6 @@
 //@ ignore-android
 //@ ignore-aarch64
 //@ min-lldb-version: 310
-//@ ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 //@ aux-build:macro-stepping.rs
 
@@ -11,7 +10,7 @@
 #[macro_use]
 extern crate macro_stepping; // exports new_scope!()
 
-//@ compile-flags:-g
+//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
 
 // === GDB TESTS ===================================================================================
 
