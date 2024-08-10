@@ -243,7 +243,6 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::ExternCrate(_)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm(_)
-            | ItemKind::OpaqueTy(_)
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(_) => {}
         }

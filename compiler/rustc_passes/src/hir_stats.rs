@@ -232,7 +232,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 ForeignMod,
                 GlobalAsm,
                 TyAlias,
-                OpaqueTy,
                 Enum,
                 Struct,
                 Union,

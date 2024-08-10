@@ -2083,24 +2083,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
                 self.lower_path(opt_self_ty, path, hir_ty.hir_id, false)
             }
-            &hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
-                let opaque_ty = tcx.hir().item(item_id);
-
-                match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(&hir::OpaqueTy { .. }) => {
-                        let local_def_id = item_id.owner_id.def_id;
-                        // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
-                        // generate the def_id of an associated type for the trait and return as
-                        // type a projection.
-                        let def_id = if in_trait {
-                            tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id()
-                        } else {
-                            local_def_id.to_def_id()
-                        };
-                        self.lower_opaque_ty(def_id, lifetimes, in_trait)
-                    }
-                    ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
-                }
+            &hir::TyKind::OpaqueDef(opaque_ty, lifetimes, in_trait) => {
+                let local_def_id = opaque_ty.def_id;
+                // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
+                // generate the def_id of an associated type for the trait and return as
+                // type a projection.
+                let def_id = if in_trait {
+                    tcx.associated_type_for_impl_trait_in_trait(local_def_id).to_def_id()
+                } else {
+                    local_def_id.to_def_id()
+                };
+                self.lower_opaque_ty(def_id, lifetimes, in_trait)
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(qself, segment)) => {
                 debug!(?qself, ?segment);

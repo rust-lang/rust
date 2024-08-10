@@ -236,7 +236,6 @@ impl<'tcx> ReachableContext<'tcx> {
                     // worklist, as determined by the privacy pass
                     hir::ItemKind::ExternCrate(_)
                     | hir::ItemKind::Use(..)
-                    | hir::ItemKind::OpaqueTy(..)
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Macro(..)
                     | hir::ItemKind::Mod(..)

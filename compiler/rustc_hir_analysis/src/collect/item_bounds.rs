@@ -105,8 +105,7 @@ pub(super) fn explicit_item_bounds_with_filter(
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            let item = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_item();
-            let opaque_ty = item.expect_opaque_ty();
+            let opaque_ty = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_opaque_ty();
             return ty::EarlyBinder::bind(opaque_type_bounds(
                 tcx,
                 opaque_def_id.expect_local(),
@@ -116,7 +115,7 @@ pub(super) fn explicit_item_bounds_with_filter(
                     def_id.to_def_id(),
                     ty::GenericArgs::identity_for_item(tcx, def_id),
                 ),
-                item.span,
+                opaque_ty.span,
                 filter,
             ));
         }
@@ -159,11 +158,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             span,
             ..
         }) => associated_type_bounds(tcx, def_id, bounds, *span, filter),
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: false, .. }),
-            span,
-            ..
-        }) => {
+        hir::Node::OpaqueTy(hir::OpaqueTy { bounds, in_trait: false, span, .. }) => {
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
@@ -171,11 +166,7 @@ pub(super) fn explicit_item_bounds_with_filter(
         // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`, when we're
         // asking for the item bounds of the *opaques* in a trait's default method signature, we
         // need to map these projections back to opaques.
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: true, origin, .. }),
-            span,
-            ..
-        }) => {
+        hir::Node::OpaqueTy(hir::OpaqueTy { bounds, in_trait: true, origin, span, .. }) => {
             let (hir::OpaqueTyOrigin::FnReturn(fn_def_id)
             | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) = *origin
             else {
@@ -190,7 +181,7 @@ pub(super) fn explicit_item_bounds_with_filter(
             )
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::TyAlias(..), .. }) => &[],
-        _ => bug!("item_bounds called on {:?}", def_id),
+        node => bug!("item_bounds called on {def_id:?} => {node:?}"),
     };
     ty::EarlyBinder::bind(bounds)
 }

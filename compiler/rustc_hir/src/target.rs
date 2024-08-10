@@ -34,7 +34,6 @@ pub enum Target {
     ForeignMod,
     GlobalAsm,
     TyAlias,
-    OpaqueTy,
     Enum,
     Variant,
     Struct,
@@ -79,7 +78,6 @@ impl Target {
             | Target::ForeignMod
             | Target::GlobalAsm
             | Target::TyAlias
-            | Target::OpaqueTy
             | Target::Enum
             | Target::Variant
             | Target::Struct
@@ -114,7 +112,6 @@ impl Target {
             ItemKind::ForeignMod { .. } => Target::ForeignMod,
             ItemKind::GlobalAsm(..) => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
-            ItemKind::OpaqueTy(..) => Target::OpaqueTy,
             ItemKind::Enum(..) => Target::Enum,
             ItemKind::Struct(..) => Target::Struct,
             ItemKind::Union(..) => Target::Union,
@@ -137,7 +134,6 @@ impl Target {
             DefKind::ForeignMod => Target::ForeignMod,
             DefKind::GlobalAsm => Target::GlobalAsm,
             DefKind::TyAlias => Target::TyAlias,
-            DefKind::OpaqueTy => Target::OpaqueTy,
             DefKind::Enum => Target::Enum,
             DefKind::Struct => Target::Struct,
             DefKind::Union => Target::Union,
@@ -191,7 +187,6 @@ impl Target {
             Target::ForeignMod => "foreign module",
             Target::GlobalAsm => "global asm",
             Target::TyAlias => "type alias",
-            Target::OpaqueTy => "opaque type",
             Target::Enum => "enum",
             Target::Variant => "enum variant",
             Target::Struct => "struct",

@@ -111,6 +111,7 @@ impl<'a> FnKind<'a> {
 pub trait Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`.
     fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
+    fn hir_node_by_def_id(&self, def_id: LocalDefId) -> Node<'hir>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -121,6 +122,9 @@ pub trait Map<'hir> {
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
+        *self;
+    }
+    fn hir_node_by_def_id(&self, _: LocalDefId) -> Node<'hir> {
         *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
@@ -290,6 +294,13 @@ pub trait Visitor<'v>: Sized {
         Self::Result::output()
     }
 
+    #[track_caller]
+    fn visit_nested_opaque_ty(&mut self, opaq: &'v OpaqueTy<'v>) -> Self::Result {
+        // FIXME: should guard with INTRA/INTER? then hir id validator has to be changed
+        try_visit!(self.visit_opaque_ty(opaq));
+        Self::Result::output()
+    }
+
     fn visit_param(&mut self, param: &'v Param<'v>) -> Self::Result {
         walk_param(self, param)
     }
@@ -423,6 +434,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>) -> Self::Result {
         walk_poly_trait_ref(self, t)
     }
+    fn visit_opaque_ty(&mut self, opaq: &'v OpaqueTy<'v>) -> Self::Result {
+        walk_opaque_ty(self, opaq)
+    }
     fn visit_variant_data(&mut self, s: &'v VariantData<'v>) -> Self::Result {
         walk_struct_def(self, s)
     }
@@ -535,11 +549,6 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_ty(ty));
             try_visit!(visitor.visit_generics(generics));
-        }
-        ItemKind::OpaqueTy(&OpaqueTy { generics, bounds, .. }) => {
-            try_visit!(visitor.visit_id(item.hir_id()));
-            try_visit!(walk_generics(visitor, generics));
-            walk_list!(visitor, visit_param_bound, bounds);
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             try_visit!(visitor.visit_generics(generics));
@@ -894,8 +903,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         TyKind::Path(ref qpath) => {
             try_visit!(visitor.visit_qpath(qpath, typ.hir_id, typ.span));
         }
-        TyKind::OpaqueDef(item_id, lifetimes, _in_trait) => {
-            try_visit!(visitor.visit_nested_item(item_id));
+        TyKind::OpaqueDef(def_id, lifetimes, _in_trait) => {
+            try_visit!(visitor.visit_nested_opaque_ty(def_id));
             walk_list!(visitor, visit_generic_arg, lifetimes);
         }
         TyKind::Array(ref ty, ref length) => {
@@ -1183,6 +1192,14 @@ pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
 ) -> V::Result {
     walk_list!(visitor, visit_generic_param, trait_ref.bound_generic_params);
     visitor.visit_trait_ref(&trait_ref.trait_ref)
+}
+
+pub fn walk_opaque_ty<'v, V: Visitor<'v>>(visitor: &mut V, opaq: &'v OpaqueTy<'v>) -> V::Result {
+    let &OpaqueTy { hir_id, generics, bounds, .. } = opaq;
+    try_visit!(visitor.visit_id(hir_id));
+    try_visit!(walk_generics(visitor, generics));
+    walk_list!(visitor, visit_param_bound, bounds);
+    V::Result::output()
 }
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(

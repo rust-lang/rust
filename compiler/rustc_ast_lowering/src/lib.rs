@@ -1619,6 +1619,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_span: Span,
         lower_item_bounds: impl FnOnce(&mut Self) -> &'hir [hir::GenericBound<'hir>],
     ) -> hir::TyKind<'hir> {
+        let opaque_ty_hir_id = self.next_id();
         let opaque_ty_def_id = self.create_def(
             self.current_def_id_parent,
             opaque_ty_node_id,
@@ -1627,6 +1628,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             opaque_ty_span,
         );
         debug!(?opaque_ty_def_id);
+        self.children.push((opaque_ty_def_id, hir::MaybeOwner::NonOwner(opaque_ty_hir_id)));
 
         // Map from captured (old) lifetime to synthetic (new) lifetime.
         // Used to resolve lifetimes in the bounds of the opaque.
@@ -1699,7 +1701,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        self.with_hir_id_owner(opaque_ty_node_id, |this| {
+        let opaque_ty_def = self.with_def_id_parent(opaque_ty_def_id, |this| {
             // Install the remapping from old to new (if any). This makes sure that
             // any lifetimes that would have resolved to the def-id of captured
             // lifetimes are remapped to the new *synthetic* lifetimes of the opaque.
@@ -1737,7 +1739,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             let lifetime_mapping = self.arena.alloc_slice(&synthesized_lifetime_args);
 
-            let opaque_ty_item = hir::OpaqueTy {
+            trace!("registering opaque type with id {:#?}", opaque_ty_def_id);
+            let opaque_ty_def = hir::OpaqueTy {
+                hir_id: opaque_ty_hir_id,
+                def_id: opaque_ty_def_id,
                 generics: this.arena.alloc(hir::Generics {
                     params: generic_params,
                     predicates: &[],
@@ -1749,19 +1754,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 origin,
                 lifetime_mapping,
                 in_trait,
-            };
-
-            // Generate an `type Foo = impl Trait;` declaration.
-            trace!("registering opaque type with id {:#?}", opaque_ty_def_id);
-            let opaque_ty_item = hir::Item {
-                owner_id: hir::OwnerId { def_id: opaque_ty_def_id },
-                ident: Ident::empty(),
-                kind: hir::ItemKind::OpaqueTy(this.arena.alloc(opaque_ty_item)),
-                vis_span: this.lower_span(span.shrink_to_lo()),
                 span: this.lower_span(opaque_ty_span),
             };
-
-            hir::OwnerNode::Item(this.arena.alloc(opaque_ty_item))
+            this.arena.alloc(opaque_ty_def)
         });
 
         let generic_args = self.arena.alloc_from_iter(
@@ -1774,11 +1769,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited. It's
         // only the lifetime parameters that we must supply.
-        hir::TyKind::OpaqueDef(
-            hir::ItemId { owner_id: hir::OwnerId { def_id: opaque_ty_def_id } },
-            generic_args,
-            in_trait,
-        )
+        hir::TyKind::OpaqueDef(opaque_ty_def, generic_args, in_trait)
     }
 
     fn lower_precise_capturing_args(

@@ -739,6 +739,19 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[track_caller]
+    pub fn expect_opaque_ty(self, id: LocalDefId) -> &'hir OpaqueTy<'hir> {
+        match self.tcx.hir_node_by_def_id(id) {
+            Node::OpaqueTy(opaq) => opaq,
+            _ => {
+                bug!(
+                    "expected opaque type definition, found {}",
+                    self.node_to_string(self.tcx.local_def_id_to_hir_id(id))
+                )
+            }
+        }
+    }
+
     pub fn expect_expr(self, id: HirId) -> &'hir Expr<'hir> {
         match self.tcx.hir_node(id) {
             Node::Expr(expr) => expr,
@@ -928,6 +941,7 @@ impl<'hir> Map<'hir> {
             Node::Ty(ty) => ty.span,
             Node::AssocItemConstraint(constraint) => constraint.span,
             Node::TraitRef(tr) => tr.path.span,
+            Node::OpaqueTy(op) => op.span,
             Node::Pat(pat) => pat.span,
             Node::PatField(field) => field.span,
             Node::Arm(arm) => arm.span,
@@ -1009,6 +1023,10 @@ impl<'hir> Map<'hir> {
 impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     fn hir_node(&self, hir_id: HirId) -> Node<'hir> {
         self.tcx.hir_node(hir_id)
+    }
+
+    fn hir_node_by_def_id(&self, def_id: LocalDefId) -> Node<'hir> {
+        self.tcx.hir_node_by_def_id(def_id)
     }
 
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
@@ -1144,13 +1162,6 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
-                ItemKind::OpaqueTy(opaque) => {
-                    if opaque.in_trait {
-                        "opaque type in trait"
-                    } else {
-                        "opaque type"
-                    }
-                }
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",
@@ -1196,6 +1207,9 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::Ty(_) => node_str("type"),
         Node::AssocItemConstraint(_) => node_str("assoc item constraint"),
         Node::TraitRef(_) => node_str("trait ref"),
+        Node::OpaqueTy(opaque) => {
+            node_str(if opaque.in_trait { "opaque type in trait" } else { "opaque type" })
+        }
         Node::Pat(_) => node_str("pat"),
         Node::PatField(_) => node_str("pattern field"),
         Node::Param(_) => node_str("param"),

@@ -813,14 +813,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         lifetime: Region<'tcx>,
         add_lt_suggs: &mut Vec<(Span, String)>,
     ) -> String {
-        struct LifetimeReplaceVisitor<'tcx, 'a> {
-            tcx: TyCtxt<'tcx>,
+        struct LifetimeReplaceVisitor<'a> {
             needle: hir::LifetimeName,
             new_lt: &'a str,
             add_lt_suggs: &'a mut Vec<(Span, String)>,
         }
 
-        impl<'hir, 'tcx> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'tcx, '_> {
+        impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
             fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
                 if lt.res == self.needle {
                     let (pos, span) = lt.suggestion_position();
@@ -839,10 +838,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn visit_ty(&mut self, ty: &'hir hir::Ty<'hir>) {
-                let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind else {
+                let hir::TyKind::OpaqueDef(opaque_ty, _, _) = ty.kind else {
                     return hir::intravisit::walk_ty(self, ty);
                 };
-                let opaque_ty = self.tcx.hir().item(item_id).expect_opaque_ty();
                 if let Some(&(_, b)) =
                     opaque_ty.lifetime_mapping.iter().find(|&(a, _)| a.res == self.needle)
                 {
@@ -887,7 +885,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut visitor = LifetimeReplaceVisitor {
-            tcx: self.tcx,
             needle: hir::LifetimeName::Param(lifetime_def_id),
             add_lt_suggs,
             new_lt: &new_lt,
@@ -1281,7 +1278,7 @@ fn suggest_precise_capturing<'tcx>(
     diag: &mut Diag<'_>,
 ) {
     let hir::OpaqueTy { bounds, origin, .. } =
-        tcx.hir_node_by_def_id(opaque_def_id).expect_item().expect_opaque_ty();
+        tcx.hir_node_by_def_id(opaque_def_id).expect_opaque_ty();
 
     let hir::OpaqueTyOrigin::FnReturn(fn_def_id) = *origin else {
         return;

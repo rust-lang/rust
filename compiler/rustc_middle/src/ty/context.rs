@@ -56,7 +56,7 @@ pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::solve::SolverMode;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{search_graph, CollectAndApply, Interner, TypeFlags, WithCachedTypeInfo};
-use tracing::{debug, instrument};
+use tracing::{debug, trace};
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
@@ -2072,9 +2072,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the origin of the opaque type `def_id`.
-    #[instrument(skip(self), level = "trace", ret)]
+    #[track_caller]
     pub fn opaque_type_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin {
-        self.hir().expect_item(def_id).expect_opaque_ty().origin
+        let origin = self.hir().expect_opaque_ty(def_id).origin;
+        trace!("opaque_type_origin({def_id:?}) => {origin:?}");
+        origin
     }
 }
 
@@ -3032,8 +3034,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         loop {
             let parent = self.local_parent(opaque_lifetime_param_def_id);
-            let hir::OpaqueTy { lifetime_mapping, .. } =
-                self.hir_node_by_def_id(parent).expect_item().expect_opaque_ty();
+            let hir::OpaqueTy { lifetime_mapping, .. } = self.hir().expect_opaque_ty(parent);
 
             let Some((lifetime, _)) = lifetime_mapping
                 .iter()
