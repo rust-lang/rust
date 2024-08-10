@@ -1,4 +1,4 @@
-error[E0053]: method `foo` has an incompatible generic parameter for trait `Trait`
+error[E0053]: associated function `foo` has an incompatible generic parameter for trait `Trait`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:5:12
    |
 LL | trait Trait {
@@ -11,7 +11,7 @@ LL | impl Trait for () {
 LL |     fn foo<const M: u64>() {}
    |            ^^^^^^^^^^^^ found const parameter of type `u64`
 
-error[E0053]: method `bar` has an incompatible generic parameter for trait `Other`
+error[E0053]: associated function `bar` has an incompatible generic parameter for trait `Other`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:13:12
    |
 LL | trait Other {
@@ -24,7 +24,7 @@ LL | impl Other for () {
 LL |     fn bar<T>() {}
    |            ^ found type parameter
 
-error[E0053]: method `baz` has an incompatible generic parameter for trait `Uwu`
+error[E0053]: associated function `baz` has an incompatible generic parameter for trait `Uwu`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:21:12
    |
 LL | trait Uwu {
@@ -37,7 +37,7 @@ LL | impl Uwu for () {
 LL |     fn baz<const N: i32>() {}
    |            ^^^^^^^^^^^^ found const parameter of type `i32`
 
-error[E0053]: method `bbbb` has an incompatible generic parameter for trait `Aaaaaa`
+error[E0053]: associated function `bbbb` has an incompatible generic parameter for trait `Aaaaaa`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:29:13
    |
 LL | trait Aaaaaa {
@@ -50,7 +50,7 @@ LL | impl Aaaaaa for () {
 LL |     fn bbbb<T, const N: u32>() {}
    |             ^ found type parameter
 
-error[E0053]: method `abcd` has an incompatible generic parameter for trait `Names`
+error[E0053]: associated function `abcd` has an incompatible generic parameter for trait `Names`
   --> $DIR/mismatched_ty_const_in_trait_impl.rs:37:13
    |
 LL | trait Names {
