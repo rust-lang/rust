@@ -80,6 +80,14 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     rustdoc
 
+# Build macro expanded source (`-Zunpretty=expanded`)
+#
+# This target also formats the macro expanded code, thus it is also
+# intended to catch ICEs with formatting `-Zunpretty=expanded` output
+# like https://github.com/rust-lang/rustfmt/issues/6105.
+make -C linux LLVM=1 -j$(($(nproc) + 1)) \
+    samples/rust/rust_minimal.rsi
+
 # Re-build with Clippy enabled
 #
 # This should not introduce Clippy errors, since `CONFIG_WERROR` is not
