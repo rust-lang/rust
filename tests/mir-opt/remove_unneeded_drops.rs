@@ -22,9 +22,15 @@ fn cannot_opt_generic<T>(x: T) {
     drop(x);
 }
 
+// EMIT_MIR remove_unneeded_drops.opt_in_place.RemoveUnneededDrops.diff
+fn opt_in_place(mut x: u32) {
+    unsafe { std::ptr::drop_in_place(&mut x) }
+}
+
 fn main() {
     opt(true);
     opt_generic_copy(42);
     cannot_opt_generic(42);
     dont_opt(vec![true]);
+    opt_in_place(42);
 }

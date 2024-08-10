@@ -7,6 +7,8 @@
       let _2: ();
       let mut _3: std::boxed::Box<[i32]>;
       let mut _4: *const [i32];
++     let mut _5: *mut std::boxed::Box<[i32]>;
++     let mut _6: ();
   
       bb0: {
           StorageLive(_2);
@@ -17,7 +19,9 @@
       }
   
       bb1: {
-          drop(_3) -> [return: bb2, unwind: bb4];
+-         drop(_3) -> [return: bb2, unwind: bb4];
++         _5 = &raw mut _3;
++         _6 = std::ptr::drop_in_place::<Box<[i32]>>(move _5) -> [return: bb2, unwind: bb4];
       }
   
       bb2: {

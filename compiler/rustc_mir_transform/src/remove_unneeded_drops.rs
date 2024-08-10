@@ -4,6 +4,7 @@
 //! useful because (unlike MIR building) it runs after type checking, so it can make use of
 //! `Reveal::All` to provide more precise type information.
 
+use rustc_hir::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -21,18 +22,28 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
 
         for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator_mut();
-            if let TerminatorKind::Drop { place, target, .. } = terminator.kind {
-                let ty = place.ty(&body.local_decls, tcx);
-                if ty.ty.needs_drop(tcx, param_env) {
-                    continue;
+            let (dropped_ty, target) = match terminator.kind {
+                TerminatorKind::Drop { place, target, .. } => {
+                    (place.ty(&body.local_decls, tcx).ty, target)
                 }
-                if !tcx.consider_optimizing(|| format!("RemoveUnneededDrops {did:?} ")) {
-                    continue;
+                TerminatorKind::Call { ref func, target, .. }
+                    if let Some((def_id, generics)) = func.const_fn_def()
+                        && tcx.is_lang_item(def_id, LangItem::DropInPlace) =>
+                {
+                    (generics.type_at(0), target.unwrap())
                 }
-                debug!("SUCCESS: replacing `drop` with goto({:?})", target);
-                terminator.kind = TerminatorKind::Goto { target };
-                should_simplify = true;
+                _ => continue,
+            };
+
+            if dropped_ty.needs_drop(tcx, param_env) {
+                continue;
             }
+            if !tcx.consider_optimizing(|| format!("RemoveUnneededDrops {did:?} ")) {
+                continue;
+            }
+            debug!("SUCCESS: replacing `drop` with goto({:?})", target);
+            terminator.kind = TerminatorKind::Goto { target };
+            should_simplify = true;
         }
 
         // if we applied optimizations, we potentially have some cfg to cleanup to

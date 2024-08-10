@@ -7,6 +7,8 @@
       let _2: ();
       let mut _3: &impl Fn();
       let mut _4: ();
++     let mut _5: *mut impl Fn();
++     let mut _6: ();
   
       bb0: {
           StorageLive(_2);
@@ -22,7 +24,9 @@
           StorageDead(_3);
           StorageDead(_2);
           _0 = const ();
-          drop(_1) -> [return: bb2, unwind: bb4];
+-         drop(_1) -> [return: bb2, unwind: bb4];
++         _5 = &raw mut _1;
++         _6 = std::ptr::drop_in_place::<impl Fn()>(move _5) -> [return: bb2, unwind: bb4];
       }
   
       bb2: {

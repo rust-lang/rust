@@ -13,10 +13,10 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
+    self, GenericArg, Instance, InstanceKind, ParamEnv, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
 };
 use rustc_session::config::{DebugInfo, OptLevel};
-use rustc_span::source_map::Spanned;
+use rustc_span::source_map::{dummy_spanned, Spanned};
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
@@ -75,6 +75,87 @@ impl<'tcx> MirPass<'tcx> for Inline {
     }
 }
 
+/// Change all the `Drop(place)` terminators to `drop_in_place(&place)` calls.
+///
+/// This needs to be done before starting the inlining analysis or else the cycle
+/// detection logic will miss things. But it's a waste of time to do the work of
+/// adding locals unless we're going to try to inline things, so might as well
+/// leave the drop terminators alone in lower optimization levels.
+fn lower_drops_to_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, param_env: ParamEnv<'tcx>) {
+    // I wish this could just be `require_lang_item`, but there are so many
+    // obnoxious `no_core` tests that I'd have to update to do that.
+    let Some(drop_in_place_fn) = tcx.lang_items().drop_in_place_fn() else {
+        error!("No `drop_in_place` function; not even trying to simplify drops!");
+        return;
+    };
+
+    // We need a unit local to store the "result" of the `drop_in_place` call
+    let mut unit_local = None;
+
+    // Changing `Drop` to `Call` actually preserves the CFG because
+    // it keeps the same `target` and the same `unwind` action.
+    for block in body.basic_blocks.as_mut_preserves_cfg().iter_mut() {
+        let terminator = block.terminator.as_mut().unwrap();
+        let TerminatorKind::Drop { place: dropped_place, target, unwind, replace: _ } =
+            terminator.kind
+        else {
+            continue;
+        };
+
+        if block.is_cleanup {
+            // We don't inline into cleanup blocks, so don't rewrite drops in them either.
+            continue;
+        }
+
+        let dropped_ty = dropped_place.ty(&body.local_decls, tcx).ty;
+        if !dropped_ty.needs_drop(tcx, param_env) {
+            // Leave it for RemoveUnneededDrops to remove, since that's
+            // cheaper than doing the work to inline an empty shim.
+            continue;
+        }
+
+        if !tcx.consider_optimizing(|| format!("Drop -> drop_in_place on type {dropped_ty:?}")) {
+            return;
+        }
+
+        let dropped_operand = if let [PlaceElem::Deref] = **dropped_place.projection
+            && body.local_decls[dropped_place.local].ty.is_mutable_ptr()
+        {
+            Operand::Copy(Place::from(dropped_place.local))
+        } else {
+            let dropped_ty_ptr = Ty::new_mut_ptr(tcx, dropped_ty);
+            let ptr_local =
+                body.local_decls.push(LocalDecl::new(dropped_ty_ptr, terminator.source_info.span));
+            block.statements.push(Statement {
+                source_info: terminator.source_info,
+                kind: StatementKind::Assign(Box::new((
+                    Place::from(ptr_local),
+                    Rvalue::AddressOf(Mutability::Mut, dropped_place),
+                ))),
+            });
+            Operand::Move(Place::from(ptr_local))
+        };
+        let unit_local = *unit_local.get_or_insert_with(|| {
+            let unit_ty = tcx.types.unit;
+            body.local_decls.push(LocalDecl::new(unit_ty, terminator.source_info.span))
+        });
+        terminator.kind = TerminatorKind::Call {
+            func: Operand::function_handle(
+                tcx,
+                drop_in_place_fn,
+                [GenericArg::from(dropped_ty)],
+                terminator.source_info.span,
+            ),
+            args: Box::new([dummy_spanned(dropped_operand)]),
+            destination: Place::from(unit_local),
+            target: Some(target),
+            unwind,
+            call_source: CallSource::Misc,
+            fn_span: terminator.source_info.span,
+        };
+    }
+}
+
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let def_id = body.source.def_id().expect_local();
 
@@ -94,6 +175,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
     let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+    lower_drops_to_calls(tcx, body, param_env);
 
     let mut this = Inliner {
         tcx,
@@ -509,7 +591,9 @@ impl<'tcx> Inliner<'tcx> {
             return Err("Body is tainted");
         }
 
-        let mut threshold = if self.caller_is_inline_forwarder {
+        let mut threshold = if self.caller_is_inline_forwarder
+            || matches!(callee_body.source.instance, InstanceKind::DropGlue(..))
+        {
             self.tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
         } else if cross_crate_inlinable {
             self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)

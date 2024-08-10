@@ -7,19 +7,24 @@
       let _2: ();
       let mut _3: T;
       scope 1 (inlined std::mem::drop::<T>) {
+          let mut _4: *mut T;
+          let mut _5: ();
+          scope 2 (inlined std::ptr::drop_in_place::<T> - shim(None)) {
+          }
       }
   
       bb0: {
--         nop;
+          nop;
           StorageLive(_3);
           _3 = _1;
--         drop(_3) -> [return: bb1, unwind continue];
--     }
-- 
--     bb1: {
+          StorageLive(_4);
+          nop;
+          _4 = &raw mut _3;
+          nop;
+          StorageDead(_4);
           StorageDead(_3);
--         nop;
--         nop;
+          nop;
+          nop;
           return;
       }
   }

@@ -4,6 +4,8 @@
   fn foo() -> () {
       let mut _0: ();
       let mut _1: <IntFactory as Factory<T>>::Item;
++     let mut _2: *mut <IntFactory as Factory<T>>::Item;
++     let mut _3: ();
       scope 1 {
           debug x => _1;
       }
@@ -15,7 +17,9 @@
   
       bb1: {
           _0 = const ();
-          drop(_1) -> [return: bb2, unwind: bb3];
+-         drop(_1) -> [return: bb2, unwind: bb3];
++         _2 = &raw mut _1;
++         _3 = std::ptr::drop_in_place::<<IntFactory as Factory<T>>::Item>(move _2) -> [return: bb2, unwind: bb3];
       }
   
       bb2: {

@@ -7,13 +7,18 @@
       let _2: ();
       let mut _3: T;
       scope 1 (inlined std::mem::drop::<T>) {
+          let mut _4: *mut T;
+          let mut _5: ();
       }
   
       bb0: {
           nop;
           StorageLive(_3);
           _3 = move _1;
-          drop(_3) -> [return: bb2, unwind: bb1];
+          StorageLive(_4);
+          nop;
+          _4 = &raw mut _3;
+          _5 = std::ptr::drop_in_place::<T>(move _4) -> [return: bb2, unwind: bb1];
       }
   
       bb1 (cleanup): {
@@ -21,6 +26,8 @@
       }
   
       bb2: {
+          nop;
+          StorageDead(_4);
           StorageDead(_3);
           nop;
           nop;

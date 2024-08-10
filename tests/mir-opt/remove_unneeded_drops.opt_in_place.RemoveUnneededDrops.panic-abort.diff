@@ -1,0 +1,22 @@
+- // MIR for `opt_in_place` before RemoveUnneededDrops
++ // MIR for `opt_in_place` after RemoveUnneededDrops
+  
+  fn opt_in_place(_1: u32) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let mut _2: *mut u32;
+      let mut _3: &mut u32;
+      scope 1 (inlined std::ptr::drop_in_place::<u32> - shim(None)) {
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &mut _1;
+          _2 = &raw mut (*_3);
+          StorageDead(_2);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

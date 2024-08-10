@@ -27,6 +27,9 @@ pub fn h() {
     // CHECK-LABEL: fn h(
     // CHECK: (inlined call_twice::<!, fn() -> ! {sleep}>)
     // CHECK-NOT: inlined
+    // CHECK: inlined std::ptr::drop_in_place::<fn() -> ! {sleep}>
+    // CHECK-NOT: inlined
+    // CHECK-COUNT-2: <fn() -> ! {sleep} as Fn<()>>::call
     call_twice(sleep);
 }
 

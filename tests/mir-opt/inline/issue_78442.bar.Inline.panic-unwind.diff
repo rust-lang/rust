@@ -8,6 +8,8 @@
       let mut _3: &fn() {foo};
       let _4: fn() {foo};
       let mut _5: ();
++     let mut _6: *mut P;
++     let mut _7: ();
 +     scope 1 (inlined hide_foo) {
 +     }
   
@@ -34,7 +36,8 @@
           StorageDead(_2);
           _0 = const ();
 -         drop(_1) -> [return: bb3, unwind: bb5];
-+         drop(_1) -> [return: bb2, unwind: bb4];
++         _6 = &raw mut _1;
++         _7 = std::ptr::drop_in_place::<P>(move _6) -> [return: bb2, unwind: bb4];
       }
   
 -     bb3: {

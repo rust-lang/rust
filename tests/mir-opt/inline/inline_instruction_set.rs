@@ -22,10 +22,14 @@ macro_rules! asm {
     };
 }
 
+// FIXME: Does this *really* need to be a no_core test?
+
 #[lang = "sized"]
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "drop_in_place"]
+fn drop_in_place<T: ?Sized>(_: *mut T) {}
 
 #[instruction_set(arm::a32)]
 #[inline]

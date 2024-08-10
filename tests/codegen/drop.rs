@@ -1,5 +1,8 @@
 //@ needs-unwind - this test verifies the amount of drop calls when unwinding is used
-//@ compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes -Z inline-mir=no
+
+// Needs to disable MIR inlining or else some of the calls are directly to
+// `<SomeUniqueName as Drop>::drop` (rather than via `drop_in_place`).
 
 #![crate_type = "lib"]
 

@@ -10,6 +10,8 @@
           debug un => _1;
           scope 3 (inlined std::mem::drop::<u32>) {
               debug _x => _3;
+              scope 4 (inlined std::ptr::drop_in_place::<u32> - shim(None)) {
+              }
           }
       }
       scope 2 (inlined val) {
