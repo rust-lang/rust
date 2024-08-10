@@ -4,8 +4,8 @@ set -euo pipefail
 
 LINUX_VERSION=4c7864e81d8bbd51036dacf92fb0a400e13aaeee
 
-# Build rustc, rustdoc, cargo and clippy-driver
-../x.py build --stage 2 library rustdoc clippy
+# Build rustc, rustdoc, cargo, clippy-driver and rustfmt
+../x.py build --stage 2 library rustdoc clippy rustfmt
 ../x.py build --stage 0 cargo
 
 # Install rustup so that we can use the built toolchain easily, and also
@@ -90,3 +90,10 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) CLIPPY=1 \
     samples/rust/rust_print.o \
     drivers/net/phy/ax88796b_rust.o \
     rust/doctests_kernel_generated.o
+
+# Format the code
+#
+# This returns successfully even if there were changes, i.e. it is not
+# a check.
+make -C linux LLVM=1 -j$(($(nproc) + 1)) \
+    rustfmt
