@@ -46,5 +46,31 @@ error: diagnostics should be created using translatable messages
 LL |     let _diag = dcx.struct_err("untranslatable diagnostic");
    |                     ^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:120:5
+   |
+LL |     f("untranslatable diagnostic", crate::fluent_generated::no_crate_example);
+   |     ^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:122:5
+   |
+LL |     f(crate::fluent_generated::no_crate_example, "untranslatable diagnostic");
+   |     ^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:124:5
+   |
+LL |     f("untranslatable diagnostic", "untranslatable diagnostic");
+   |     ^
+
+error: diagnostics should be created using translatable messages
+  --> $DIR/diagnostics.rs:124:5
+   |
+LL |     f("untranslatable diagnostic", "untranslatable diagnostic");
+   |     ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 10 previous errors
 
