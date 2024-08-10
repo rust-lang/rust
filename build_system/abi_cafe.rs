@@ -14,7 +14,6 @@ static ABI_CAFE_REPO: GitRepo = GitRepo::github(
 static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe_target");
 
 pub(crate) fn run(
-    channel: &str,
     sysroot_kind: SysrootKind,
     dirs: &Dirs,
     cg_clif_dylib: &CodegenBackend,
@@ -28,7 +27,6 @@ pub(crate) fn run(
     eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(
         dirs,
-        channel,
         sysroot_kind,
         cg_clif_dylib,
         bootstrap_host_compiler,

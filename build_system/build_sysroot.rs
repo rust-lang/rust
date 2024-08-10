@@ -15,7 +15,6 @@ static LIB_DIR: RelPath = RelPath::DIST.join("lib");
 
 pub(crate) fn build_sysroot(
     dirs: &Dirs,
-    channel: &str,
     sysroot_kind: SysrootKind,
     cg_clif_dylib_src: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
@@ -84,7 +83,6 @@ pub(crate) fn build_sysroot(
 
     let host = build_sysroot_for_triple(
         dirs,
-        channel,
         bootstrap_host_compiler.clone(),
         &cg_clif_dylib_path,
         sysroot_kind,
@@ -94,7 +92,6 @@ pub(crate) fn build_sysroot(
     if !is_native {
         build_sysroot_for_triple(
             dirs,
-            channel,
             {
                 let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
                 bootstrap_target_compiler.triple = target_triple.clone();
@@ -167,7 +164,6 @@ pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
 #[must_use]
 fn build_sysroot_for_triple(
     dirs: &Dirs,
-    channel: &str,
     compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
     sysroot_kind: SysrootKind,
@@ -176,9 +172,7 @@ fn build_sysroot_for_triple(
         SysrootKind::None => build_rtstartup(dirs, &compiler)
             .unwrap_or(SysrootTarget { triple: compiler.triple, libs: vec![] }),
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
-        SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(dirs, channel, compiler, cg_clif_dylib_path)
-        }
+        SysrootKind::Clif => build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path),
     }
 }
 
@@ -219,7 +213,6 @@ fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
 #[must_use]
 fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
-    channel: &str,
     mut compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
 ) -> SysrootTarget {
@@ -231,7 +224,7 @@ fn build_clif_sysroot_for_triple(
         target_libs.libs.extend(rtstartup_target_libs.libs);
     }
 
-    let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join(channel);
+    let build_dir = STANDARD_LIBRARY.target_dir(dirs).join(&compiler.triple).join("release");
 
     if !config::get_bool("keep_sysroot") {
         // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
@@ -252,12 +245,12 @@ fn build_clif_sysroot_for_triple(
     // Necessary for MinGW to find rsbegin.o and rsend.o
     rustflags.push("--sysroot".to_owned());
     rustflags.push(RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap().to_owned());
-    if channel == "release" {
-        // Incremental compilation by default disables mir inlining. This leads to both a decent
-        // compile perf and a significant runtime perf regression. As such forcefully enable mir
-        // inlining.
-        rustflags.push("-Zinline-mir".to_owned());
-    }
+
+    // Incremental compilation by default disables mir inlining. This leads to both a decent
+    // compile perf and a significant runtime perf regression. As such forcefully enable mir
+    // inlining.
+    rustflags.push("-Zinline-mir".to_owned());
+
     if let Some(prefix) = env::var_os("CG_CLIF_STDLIB_REMAP_PATH_PREFIX") {
         rustflags.push("--remap-path-prefix".to_owned());
         rustflags.push(format!(
@@ -268,9 +261,7 @@ fn build_clif_sysroot_for_triple(
     }
     compiler.rustflags.extend(rustflags);
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
-    if channel == "release" {
-        build_cmd.arg("--release");
-    }
+    build_cmd.arg("--release");
     build_cmd.arg("--features").arg("backtrace panic-unwind compiler-builtins-no-f16-f128");
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");

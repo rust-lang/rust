@@ -10,7 +10,6 @@ pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "c
 
 pub(crate) fn build_backend(
     dirs: &Dirs,
-    channel: &str,
     bootstrap_host_compiler: &Compiler,
     use_unstable_features: bool,
 ) -> PathBuf {
@@ -32,13 +31,7 @@ pub(crate) fn build_backend(
         cmd.arg("--features").arg("unstable-features");
     }
 
-    match channel {
-        "debug" => {}
-        "release" => {
-            cmd.arg("--release");
-        }
-        _ => unreachable!(),
-    }
+    cmd.arg("--release");
 
     rustflags_to_cmd_env(&mut cmd, "RUSTFLAGS", &rustflags);
 
@@ -48,6 +41,6 @@ pub(crate) fn build_backend(
     CG_CLIF
         .target_dir(dirs)
         .join(&bootstrap_host_compiler.triple)
-        .join(channel)
+        .join("release")
         .join(get_file_name(&bootstrap_host_compiler.rustc, "rustc_codegen_cranelift", "dylib"))
 }

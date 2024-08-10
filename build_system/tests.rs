@@ -244,7 +244,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
 pub(crate) fn run_tests(
     dirs: &Dirs,
-    channel: &str,
     sysroot_kind: SysrootKind,
     use_unstable_features: bool,
     skip_tests: &[&str],
@@ -260,7 +259,6 @@ pub(crate) fn run_tests(
     if config::get_bool("testsuite.no_sysroot") && !skip_tests.contains(&"testsuite.no_sysroot") {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
-            channel,
             SysrootKind::None,
             cg_clif_dylib,
             bootstrap_host_compiler,
@@ -291,7 +289,6 @@ pub(crate) fn run_tests(
     if run_base_sysroot || run_extended_sysroot {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
-            channel,
             sysroot_kind,
             cg_clif_dylib,
             bootstrap_host_compiler,

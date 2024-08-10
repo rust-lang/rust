@@ -2,16 +2,12 @@ The build system of cg_clif.
 
 USAGE:
     ./y.sh prepare [--out-dir DIR] [--download-dir DIR]
-    ./y.sh build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.sh test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
-    ./y.sh abi-cafe [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.sh bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh build [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh test [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
+    ./y.sh abi-cafe [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh bench [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
 
 OPTIONS:
-    --debug
-            Build cg_clif and the standard library in debug mode rather than release mode.
-            Warning: An unoptimized cg_clif is very slow.
-
     --sysroot none|clif|llvm
             Which sysroot libraries to use:
             `none` will not include any standard library in the sysroot.
