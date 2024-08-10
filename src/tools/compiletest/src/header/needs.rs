@@ -1,5 +1,5 @@
 use crate::common::{Config, Debugger, Sanitizer};
-use crate::header::IgnoreDecision;
+use crate::header::{llvm_has_libzstd, IgnoreDecision};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -149,6 +149,11 @@ pub(super) fn handle_needs(
             condition: cache.symlinks,
             ignore_reason: "ignored if symlinks are unavailable",
         },
+        Need {
+            name: "needs-llvm-zstd",
+            condition: cache.llvm_zstd,
+            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {
@@ -215,6 +220,8 @@ pub(super) struct CachedNeedsConditions {
     rust_lld: bool,
     dlltool: bool,
     symlinks: bool,
+    /// Whether LLVM built with zstd, for the `needs-llvm-zstd` directive.
+    llvm_zstd: bool,
 }
 
 impl CachedNeedsConditions {
@@ -258,6 +265,7 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
+            llvm_zstd: llvm_has_libzstd(&config),
             dlltool: find_dlltool(&config),
             symlinks: has_symlinks(),
         }
