@@ -70,7 +70,7 @@ For more docs on how to build and test see [build_system/usage.txt](build_system
 |AIX|❌[^xcoff]|N/A|N/A|❌[^xcoff]|
 |Other unixes|❓|❓|❓|❓|
 |macOS|✅|✅|N/A|N/A|
-|Windows|✅[^no-rustup]|❌|N/A|N/A|
+|Windows|✅|❌|N/A|N/A|
 
 ✅: Fully supported and tested
 ❓: Maybe supported, not tested
