@@ -8,7 +8,7 @@ use rustc_hir::{
     BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat, PatKind,
     Path, PathSegment, QPath, Ty, TyKind,
 };
-use rustc_middle::ty::{self, Ty as MiddleTy};
+use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -442,30 +442,33 @@ impl LateLintPass<'_> for Diagnostics {
             _ => return,
         };
 
-        // Is the callee marked with `#[rustc_lint_diagnostics]`?
-        let has_attr = ty::Instance::try_resolve(cx.tcx, cx.param_env, def_id, fn_gen_args)
-            .ok()
-            .flatten()
-            .is_some_and(|inst| cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics));
+        Self::diagnostic_outside_of_impl(cx, span, expr.hir_id, def_id, fn_gen_args);
+        Self::untranslatable_diagnostic(cx, def_id, &arg_tys_and_spans);
+    }
+}
 
-        // Closure: is the type `{D,Subd}iagMessage`?
-        let is_diag_message = |ty: MiddleTy<'_>| {
-            if let Some(adt_def) = ty.ty_adt_def()
-                && let Some(name) = cx.tcx.get_diagnostic_name(adt_def.did())
-                && matches!(name, sym::DiagMessage | sym::SubdiagMessage)
-            {
-                true
-            } else {
-                false
-            }
-        };
+impl Diagnostics {
+    // Is the type `{D,Subd}iagMessage`?
+    fn is_diag_message<'cx>(cx: &LateContext<'cx>, ty: MiddleTy<'cx>) -> bool {
+        if let Some(adt_def) = ty.ty_adt_def()
+            && let Some(name) = cx.tcx.get_diagnostic_name(adt_def.did())
+            && matches!(name, sym::DiagMessage | sym::SubdiagMessage)
+        {
+            true
+        } else {
+            false
+        }
+    }
 
-        // Does the callee have one or more `impl Into<{D,Subd}iagMessage>` parameters?
-        let mut impl_into_diagnostic_message_params = vec![];
+    fn untranslatable_diagnostic<'cx>(
+        cx: &LateContext<'cx>,
+        def_id: DefId,
+        arg_tys_and_spans: &[(MiddleTy<'cx>, Span)],
+    ) {
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
         let predicates = cx.tcx.predicates_of(def_id).instantiate_identity(cx.tcx).predicates;
         for (i, &param_ty) in fn_sig.inputs().iter().enumerate() {
-            if let ty::Param(p) = param_ty.kind() {
+            if let ty::Param(sig_param) = param_ty.kind() {
                 // It is a type parameter. Check if it is `impl Into<{D,Subd}iagMessage>`.
                 for pred in predicates.iter() {
                     if let Some(trait_pred) = pred.as_trait_clause()
@@ -473,27 +476,53 @@ impl LateLintPass<'_> for Diagnostics {
                         && trait_ref.self_ty() == param_ty // correct predicate for the param?
                         && cx.tcx.is_diagnostic_item(sym::Into, trait_ref.def_id)
                         && let ty1 = trait_ref.args.type_at(1)
-                        && is_diag_message(ty1)
+                        && Self::is_diag_message(cx, ty1)
                     {
-                        impl_into_diagnostic_message_params.push((i, p.name));
+                        // Calls to methods with an `impl Into<{D,Subd}iagMessage>` parameter must be passed an arg
+                        // with type `{D,Subd}iagMessage` or `impl Into<{D,Subd}iagMessage>`. Otherwise, emit an
+                        // `UNTRANSLATABLE_DIAGNOSTIC` lint.
+                        let (arg_ty, arg_span) = arg_tys_and_spans[i];
+
+                        // Is the arg type `{Sub,D}iagMessage`or `impl Into<{Sub,D}iagMessage>`?
+                        let is_translatable = Self::is_diag_message(cx, arg_ty)
+                            || matches!(arg_ty.kind(), ty::Param(arg_param) if arg_param.name == sig_param.name);
+                        if !is_translatable {
+                            cx.emit_span_lint(
+                                UNTRANSLATABLE_DIAGNOSTIC,
+                                arg_span,
+                                UntranslatableDiag,
+                            );
+                        }
                     }
                 }
             }
         }
+    }
 
-        // Is the callee interesting?
-        if !has_attr && impl_into_diagnostic_message_params.is_empty() {
+    fn diagnostic_outside_of_impl<'cx>(
+        cx: &LateContext<'cx>,
+        span: Span,
+        current_id: HirId,
+        def_id: DefId,
+        fn_gen_args: GenericArgsRef<'cx>,
+    ) {
+        // Is the callee marked with `#[rustc_lint_diagnostics]`?
+        let Some(inst) =
+            ty::Instance::try_resolve(cx.tcx, cx.param_env, def_id, fn_gen_args).ok().flatten()
+        else {
             return;
-        }
+        };
+        let has_attr = cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics);
+        if !has_attr {
+            return;
+        };
 
-        // Is the parent method marked with `#[rustc_lint_diagnostics]`?
-        let mut parent_has_attr = false;
-        for (hir_id, _parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+        for (hir_id, _parent) in cx.tcx.hir().parent_iter(current_id) {
             if let Some(owner_did) = hir_id.as_owner()
                 && cx.tcx.has_attr(owner_did, sym::rustc_lint_diagnostics)
             {
-                parent_has_attr = true;
-                break;
+                // The parent method is marked with `#[rustc_lint_diagnostics]`
+                return;
             }
         }
 
@@ -502,37 +531,22 @@ impl LateLintPass<'_> for Diagnostics {
         // - inside a parent function that is itself marked with `#[rustc_lint_diagnostics]`.
         //
         // Otherwise, emit a `DIAGNOSTIC_OUTSIDE_OF_IMPL` lint.
-        if has_attr && !parent_has_attr {
-            let mut is_inside_appropriate_impl = false;
-            for (_hir_id, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
-                debug!(?parent);
-                if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent
-                    && let Impl { of_trait: Some(of_trait), .. } = impl_
-                    && let Some(def_id) = of_trait.trait_def_id()
-                    && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
-                    && matches!(name, sym::Diagnostic | sym::Subdiagnostic | sym::LintDiagnostic)
-                {
-                    is_inside_appropriate_impl = true;
-                    break;
-                }
-            }
-            debug!(?is_inside_appropriate_impl);
-            if !is_inside_appropriate_impl {
-                cx.emit_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, DiagOutOfImpl);
+        let mut is_inside_appropriate_impl = false;
+        for (_hir_id, parent) in cx.tcx.hir().parent_iter(current_id) {
+            debug!(?parent);
+            if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent
+                && let Impl { of_trait: Some(of_trait), .. } = impl_
+                && let Some(def_id) = of_trait.trait_def_id()
+                && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
+                && matches!(name, sym::Diagnostic | sym::Subdiagnostic | sym::LintDiagnostic)
+            {
+                is_inside_appropriate_impl = true;
+                break;
             }
         }
-
-        // Calls to methods with an `impl Into<{D,Subd}iagMessage>` parameter must be passed an arg
-        // with type `{D,Subd}iagMessage` or `impl Into<{D,Subd}iagMessage>`. Otherwise, emit an
-        // `UNTRANSLATABLE_DIAGNOSTIC` lint.
-        for (param_i, param_i_p_name) in impl_into_diagnostic_message_params {
-            // Is the arg type `{Sub,D}iagMessage`or `impl Into<{Sub,D}iagMessage>`?
-            let (arg_ty, arg_span) = arg_tys_and_spans[param_i];
-            let is_translatable = is_diag_message(arg_ty)
-                || matches!(arg_ty.kind(), ty::Param(p) if p.name == param_i_p_name);
-            if !is_translatable {
-                cx.emit_span_lint(UNTRANSLATABLE_DIAGNOSTIC, arg_span, UntranslatableDiag);
-            }
+        debug!(?is_inside_appropriate_impl);
+        if !is_inside_appropriate_impl {
+            cx.emit_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, DiagOutOfImpl);
         }
     }
 }
