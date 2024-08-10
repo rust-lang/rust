@@ -116,7 +116,9 @@ impl<B, C> ops::Try for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<B, C> ops::FromResidual for ControlFlow<B, C> {
+// Note: manually specifying the residual type instead of using the default to work around
+// https://github.com/rust-lang/rust/issues/99940
+impl<B, C> ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
     #[inline]
     fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
         match residual {
