@@ -6,7 +6,7 @@
 //@ needs-subprocess
 //@ ignore-backends: gcc
 
-#![allow(deprecated, invalid_value)]
+#![allow(deprecated, invalid_value, unreachable_code)]
 #![feature(never_type)]
 
 use std::{
