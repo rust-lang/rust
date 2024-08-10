@@ -62,11 +62,20 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     defconfig \
     rfl-for-rust-ci.config
 
+# Build a few Rust targets
+#
+# This does not include building the C side of the kernel nor linking,
+# which can find other issues, but it is much faster.
+#
+# This includes transforming `rustdoc` tests into KUnit ones thanks to
+# `CONFIG_RUST_KERNEL_DOCTESTS=y` above (which, for the moment, uses the
+# unstable `--test-builder` and `--no-run`).
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     samples/rust/rust_minimal.o \
     samples/rust/rust_print.o \
     drivers/net/phy/ax88796b_rust.o \
     rust/doctests_kernel_generated.o
 
+# Generate documentation
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     rustdoc
