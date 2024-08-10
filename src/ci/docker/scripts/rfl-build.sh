@@ -62,6 +62,13 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     defconfig \
     rfl-for-rust-ci.config
 
+BUILD_TARGETS="
+    samples/rust/rust_minimal.o
+    samples/rust/rust_print.o
+    drivers/net/phy/ax88796b_rust.o
+    rust/doctests_kernel_generated.o
+"
+
 # Build a few Rust targets
 #
 # This does not include building the C side of the kernel nor linking,
@@ -71,10 +78,7 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
 # `CONFIG_RUST_KERNEL_DOCTESTS=y` above (which, for the moment, uses the
 # unstable `--test-builder` and `--no-run`).
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
-    samples/rust/rust_minimal.o \
-    samples/rust/rust_print.o \
-    drivers/net/phy/ax88796b_rust.o \
-    rust/doctests_kernel_generated.o
+    $BUILD_TARGETS
 
 # Generate documentation
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
@@ -94,10 +98,7 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
 # set (thus no `-Dwarnings`) and the kernel uses `-W` for all Clippy
 # lints, including `clippy::all`. However, it could catch ICEs.
 make -C linux LLVM=1 -j$(($(nproc) + 1)) CLIPPY=1 \
-    samples/rust/rust_minimal.o \
-    samples/rust/rust_print.o \
-    drivers/net/phy/ax88796b_rust.o \
-    rust/doctests_kernel_generated.o
+    $BUILD_TARGETS
 
 # Format the code
 #
