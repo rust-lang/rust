@@ -96,7 +96,7 @@ use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
+use rustc_middle::ty::{self, RootVariableMinCaptureList, TyCtxt};
 use rustc_session::lint;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{BytePos, Span, Symbol};
@@ -1317,52 +1317,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if ty.is_inhabited_from(self.ir.tcx, m, self.typing_env) {
-            return succ;
-        }
-        match self.ir.lnks[succ] {
-            LiveNodeKind::ExprNode(succ_span, succ_id) => {
-                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
-            }
-            LiveNodeKind::VarDefNode(succ_span, succ_id) => {
-                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
-            }
-            _ => {}
-        };
-        self.exit_ln
-    }
-
-    fn warn_about_unreachable<'desc>(
-        &mut self,
-        orig_span: Span,
-        orig_ty: Ty<'tcx>,
-        expr_span: Span,
-        expr_id: HirId,
-        descr: &'desc str,
-    ) {
-        if !orig_ty.is_never() {
-            // Unreachable code warnings are already emitted during type checking.
-            // However, during type checking, full type information is being
-            // calculated but not yet available, so the check for diverging
-            // expressions due to uninhabited result types is pretty crude and
-            // only checks whether ty.is_never(). Here, we have full type
-            // information available and can issue warnings for less obviously
-            // uninhabited types (e.g. empty enums). The check above is used so
-            // that we do not emit the same warning twice if the uninhabited type
-            // is indeed `!`.
-
-            self.ir.tcx.emit_node_span_lint(
-                lint::builtin::UNREACHABLE_CODE,
-                expr_id,
-                expr_span,
-                errors::UnreachableDueToUninhabited {
-                    expr: expr_span,
-                    orig: orig_span,
-                    descr,
-                    ty: orig_ty,
-                },
-            );
-        }
+        if ty.is_inhabited_from(self.ir.tcx, m, self.typing_env) { succ } else { self.exit_ln }
     }
 }
 
