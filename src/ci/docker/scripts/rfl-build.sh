@@ -4,8 +4,8 @@ set -euo pipefail
 
 LINUX_VERSION=4c7864e81d8bbd51036dacf92fb0a400e13aaeee
 
-# Build rustc, rustdoc and cargo
-../x.py build --stage 2 library rustdoc
+# Build rustc, rustdoc, cargo and clippy-driver
+../x.py build --stage 2 library rustdoc clippy
 ../x.py build --stage 0 cargo
 
 # Install rustup so that we can use the built toolchain easily, and also
@@ -79,3 +79,14 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
 # Generate documentation
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     rustdoc
+
+# Re-build with Clippy enabled
+#
+# This should not introduce Clippy errors, since `CONFIG_WERROR` is not
+# set (thus no `-Dwarnings`) and the kernel uses `-W` for all Clippy
+# lints, including `clippy::all`. However, it could catch ICEs.
+make -C linux LLVM=1 -j$(($(nproc) + 1)) CLIPPY=1 \
+    samples/rust/rust_minimal.o \
+    samples/rust/rust_print.o \
+    drivers/net/phy/ax88796b_rust.o \
+    rust/doctests_kernel_generated.o
