@@ -1838,17 +1838,13 @@ impl Step for Assemble {
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
 
-            // For the later stages which gets distributed only copy over the
-            // `rustc_driver` library so we don't end up with an extra copy of `std`.
-            // If we're not statically linking `std` into `rustc_driver`, just copy every library
-            // to ensure `std` is included.
+            // For the later stages which gets distributed avoid copying `std` if we're
+            // statically linking `std` into `rustc_driver`.
             // We still need `std` for the initial stage as the bootstrap compiler may not
             // have the new `rustc_private` linking behavior.
-            let can_be_rustc_dep = filename.starts_with("rustc_driver-")
-                || filename.starts_with("librustc_driver-")
-                || build_compiler.stage == 0
-                || !link_std_into_rustc_driver;
-
+            let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+            let can_be_rustc_dep =
+                !is_std || !link_std_into_rustc_driver || build_compiler.stage == 0; // cfg(bootstrap)
             if can_be_rustc_dep
                 && (is_dylib(&filename) || is_debug_info(&filename))
                 && !proc_macros.contains(&filename)
