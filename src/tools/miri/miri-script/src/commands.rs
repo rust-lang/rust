@@ -35,11 +35,10 @@ impl MiriEnv {
             // Sysroot already set, use that.
             return Ok(miri_sysroot.into());
         }
-        let manifest_path = path!(self.miri_dir / "cargo-miri" / "Cargo.toml");
 
         // Make sure everything is built. Also Miri itself.
-        self.build(path!(self.miri_dir / "Cargo.toml"), &[], quiet)?;
-        self.build(&manifest_path, &[], quiet)?;
+        self.build(".", &[], quiet)?;
+        self.build("cargo-miri", &[], quiet)?;
 
         let target_flag = if let Some(target) = &target {
             vec![OsStr::new("--target"), target.as_ref()]
@@ -57,7 +56,7 @@ impl MiriEnv {
         }
 
         let mut cmd = self
-            .cargo_cmd(&manifest_path, "run")
+            .cargo_cmd("cargo-miri", "run")
             .arg("--quiet")
             .arg("--")
             .args(&["miri", "setup", "--print-sysroot"])
@@ -429,30 +428,30 @@ impl Command {
 
     fn build(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.build(path!(e.miri_dir / "Cargo.toml"), &flags, /* quiet */ false)?;
-        e.build(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags, /* quiet */ false)?;
+        e.build(".", &flags, /* quiet */ false)?;
+        e.build("cargo-miri", &flags, /* quiet */ false)?;
         Ok(())
     }
 
     fn check(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.check(path!(e.miri_dir / "Cargo.toml"), &flags)?;
-        e.check(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
+        e.check(".", &flags)?;
+        e.check("cargo-miri", &flags)?;
         Ok(())
     }
 
     fn doc(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.doc(path!(e.miri_dir / "Cargo.toml"), &flags)?;
-        e.doc(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
+        e.doc(".", &flags)?;
+        e.doc("cargo-miri", &flags)?;
         Ok(())
     }
 
     fn clippy(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.clippy(path!(e.miri_dir / "Cargo.toml"), &flags)?;
-        e.clippy(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
-        e.clippy(path!(e.miri_dir / "miri-script" / "Cargo.toml"), &flags)?;
+        e.clippy(".", &flags)?;
+        e.clippy("cargo-miri", &flags)?;
+        e.clippy("miri-script", &flags)?;
         Ok(())
     }
 
@@ -476,7 +475,7 @@ impl Command {
 
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
-        e.test(path!(e.miri_dir / "Cargo.toml"), &flags)?;
+        e.test(".", &flags)?;
         Ok(())
     }
 
@@ -510,7 +509,6 @@ impl Command {
         early_flags.push(miri_sysroot.into());
 
         // Compute everything needed to run the actual command. Also add MIRIFLAGS.
-        let miri_manifest = path!(e.miri_dir / "Cargo.toml");
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
         let quiet_flag = if verbose { None } else { Some("--quiet") };
@@ -519,13 +517,13 @@ impl Command {
         let run_miri = |e: &MiriEnv, seed_flag: Option<String>| -> Result<()> {
             // The basic command that executes the Miri driver.
             let mut cmd = if dep {
-                e.cargo_cmd(&miri_manifest, "test")
+                e.cargo_cmd(".", "test")
                     .args(&["--test", "ui"])
                     .args(quiet_flag)
                     .arg("--")
                     .args(&["--miri-run-dep-mode"])
             } else {
-                e.cargo_cmd(&miri_manifest, "run").args(quiet_flag).arg("--")
+                e.cargo_cmd(".", "run").args(quiet_flag).arg("--")
             };
             cmd.set_quiet(!verbose);
             // Add Miri flags

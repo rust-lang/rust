@@ -102,9 +102,9 @@ impl MiriEnv {
         Ok(MiriEnv { miri_dir, toolchain, sh, sysroot, cargo_extra_flags })
     }
 
-    pub fn cargo_cmd(&self, manifest_path: impl AsRef<OsStr>, cmd: &str) -> Cmd<'_> {
+    pub fn cargo_cmd(&self, crate_dir: impl AsRef<OsStr>, cmd: &str) -> Cmd<'_> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
-        let manifest_path = Path::new(manifest_path.as_ref());
+        let manifest_path = path!(self.miri_dir / crate_dir.as_ref() / "Cargo.toml");
         cmd!(
             self.sh,
             "cargo +{toolchain} {cmd} {cargo_extra_flags...} --manifest-path {manifest_path}"
@@ -117,18 +117,14 @@ impl MiriEnv {
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> Result<()> {
         let MiriEnv { sysroot, toolchain, cargo_extra_flags, .. } = self;
+        let path = path!(self.miri_dir / path.as_ref());
         // Install binaries to the miri toolchain's `sysroot` so they do not interact with other toolchains.
         // (Not using `cargo_cmd` as `install` is special and doesn't use `--manifest-path`.)
         cmd!(self.sh, "cargo +{toolchain} install {cargo_extra_flags...} --path {path} --force --root {sysroot} {args...}").run()?;
         Ok(())
     }
 
-    pub fn build(
-        &self,
-        manifest_path: impl AsRef<OsStr>,
-        args: &[String],
-        quiet: bool,
-    ) -> Result<()> {
+    pub fn build(&self, crate_dir: impl AsRef<OsStr>, args: &[String], quiet: bool) -> Result<()> {
         let quiet_flag = if quiet { Some("--quiet") } else { None };
         // We build the tests as well, (a) to avoid having rebuilds when building the tests later
         // and (b) to have more parallelism during the build of Miri and its tests.
@@ -136,7 +132,7 @@ impl MiriEnv {
         // dev-dependencies, and then for running without dev-dependencies), but the way more common
         // `./miri test` will avoid building Miri twice.
         let mut cmd = self
-            .cargo_cmd(manifest_path, "build")
+            .cargo_cmd(crate_dir, "build")
             .args(&["--bins", "--tests"])
             .args(quiet_flag)
             .args(args);
@@ -145,23 +141,23 @@ impl MiriEnv {
         Ok(())
     }
 
-    pub fn check(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(manifest_path, "check").arg("--all-targets").args(args).run()?;
+    pub fn check(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
+        self.cargo_cmd(crate_dir, "check").arg("--all-targets").args(args).run()?;
         Ok(())
     }
 
-    pub fn doc(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(manifest_path, "doc").args(args).run()?;
+    pub fn doc(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
+        self.cargo_cmd(crate_dir, "doc").args(args).run()?;
         Ok(())
     }
 
-    pub fn clippy(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(manifest_path, "clippy").arg("--all-targets").args(args).run()?;
+    pub fn clippy(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
+        self.cargo_cmd(crate_dir, "clippy").arg("--all-targets").args(args).run()?;
         Ok(())
     }
 
-    pub fn test(&self, manifest_path: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
-        self.cargo_cmd(manifest_path, "test").args(args).run()?;
+    pub fn test(&self, crate_dir: impl AsRef<OsStr>, args: &[String]) -> Result<()> {
+        self.cargo_cmd(crate_dir, "test").args(args).run()?;
         Ok(())
     }
 
