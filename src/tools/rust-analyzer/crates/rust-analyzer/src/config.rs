@@ -34,9 +34,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
-    capabilities::ClientCapabilities,
     diagnostics::DiagnosticsMapConfig,
     flycheck::{CargoOptions, FlycheckConfig},
+    lsp::capabilities::ClientCapabilities,
     lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 

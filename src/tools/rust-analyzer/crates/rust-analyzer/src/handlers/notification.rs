@@ -158,6 +158,8 @@ pub(crate) fn handle_did_save_text_document(
                 .map(|cfg| cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>())
                 .unwrap_or_default();
 
+            // FIXME: We should move this check into a QueuedTask and do semantic resolution of
+            // the files. There is only so much we can tell syntactically from the path.
             if reload::should_refresh_for_change(path, ChangeKind::Modify, additional_files) {
                 state.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change saved {path}"),

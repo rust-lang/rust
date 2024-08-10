@@ -20,10 +20,10 @@ use crate::{
     config::Config,
     diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
-    dispatch::{NotificationDispatcher, RequestDispatcher},
     flycheck::{self, FlycheckMessage},
     global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
     hack_recover_crate_name,
+    handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
     lsp::{
         from_proto, to_proto,
         utils::{notification_is, Progress},
@@ -105,6 +105,7 @@ pub(crate) enum Task {
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
     LoadProcMacros(ProcMacroProgress),
+    // FIXME: Remove this in favor of a more general QueuedTask, see `handle_did_save_text_document`
     BuildDepsHaveChanged,
 }
 
