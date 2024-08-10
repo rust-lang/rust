@@ -129,7 +129,7 @@ pub(crate) static REGEX_REPO: GitRepo = GitRepo::github(
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex_target");
 
-pub(crate) static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("coretests");
+pub(crate) static PORTABLE_SIMD_SRC: RelPath = RelPath::BUILD.join("portable-simd");
 
 pub(crate) static PORTABLE_SIMD: CargoProject =
     CargoProject::new(&PORTABLE_SIMD_SRC, "portable-simd_target");
