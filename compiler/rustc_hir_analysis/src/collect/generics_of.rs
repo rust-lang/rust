@@ -22,6 +22,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
         tcx.opt_rpitit_info(def_id.to_def_id())
     {
+        debug!("RPITIT fn_def_id={fn_def_id:?} opaque_def_id={opaque_def_id:?}");
         let trait_def_id = tcx.parent(fn_def_id);
         let opaque_ty_generics = tcx.generics_of(opaque_def_id);
         let opaque_ty_parent_count = opaque_ty_generics.parent_count;

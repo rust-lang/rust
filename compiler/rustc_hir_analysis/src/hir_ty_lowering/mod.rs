@@ -2247,7 +2247,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     span_bug!(
                         tcx.def_span(param.def_id),
                         "only expected lifetime for opaque's own generics, got {:?}",
-                        param.kind
+                        param
                     );
                 };
                 let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else {
