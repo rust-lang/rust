@@ -634,10 +634,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        if self.impl_trait_pass
-            && let hir::ItemKind::OpaqueTy(opaque) = item.kind
-        {
+    fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
+        if self.impl_trait_pass {
             let should_visit = match opaque.origin {
                 hir::OpaqueTyOrigin::FnReturn {
                     parent,
@@ -669,14 +667,16 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
                 // reachable if they are returned via `impl Trait`, even from private functions.
                 let pub_ev = EffectiveVisibility::from_vis(ty::Visibility::Public);
-                self.reach_through_impl_trait(item.owner_id.def_id, pub_ev)
-                    .generics()
-                    .predicates()
-                    .ty();
+                self.reach_through_impl_trait(opaque.def_id, pub_ev).generics().predicates().ty();
                 return;
             }
         }
 
+        // Visit nested items.
+        intravisit::walk_opaque_ty(self, opaque)
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         // Update levels of nested things and mark all items
         // in interfaces of reachable items as reachable.
         let item_ev = self.get(item.owner_id.def_id);
@@ -686,7 +686,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::GlobalAsm(..) => {}
             // The interface is empty, and all nested items are processed by `visit_item`.
-            hir::ItemKind::Mod(..) | hir::ItemKind::OpaqueTy(..) => {}
+            hir::ItemKind::Mod(..) => {}
             hir::ItemKind::Macro(macro_def, _) => {
                 if let Some(item_ev) = item_ev {
                     self.update_reachability_from_macro(item.owner_id.def_id, macro_def, item_ev);

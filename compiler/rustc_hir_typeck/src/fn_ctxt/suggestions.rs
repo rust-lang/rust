@@ -847,11 +847,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
             hir::FnRetTy::Return(hir_ty) => {
-                if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
+                if let hir::TyKind::OpaqueDef(op_ty, ..) = hir_ty.kind
                     // FIXME: account for RPITIT.
-                    && let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::OpaqueTy(op_ty), ..
-                    }) = self.tcx.hir_node(item_id.hir_id())
                     && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
                     && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
                         trait_ref.trait_ref.path.segments.last()

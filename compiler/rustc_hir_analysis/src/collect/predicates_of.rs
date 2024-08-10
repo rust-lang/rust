@@ -330,7 +330,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // Opaque types duplicate some of their generic parameters.
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
-    if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
+    if let Node::OpaqueTy(..) = node {
         let opaque_ty_node = tcx.parent_hir_node(hir_id);
         let Node::Ty(&hir::Ty { kind: TyKind::OpaqueDef(_, lifetimes), .. }) = opaque_ty_node
         else {

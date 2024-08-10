@@ -226,6 +226,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_opaque_ty(&mut self, opaq: &'hir OpaqueTy<'hir>) {
+        self.insert(opaq.span, opaq.hir_id, Node::OpaqueTy(opaq));
+
+        self.with_parent(opaq.hir_id, |this| {
+            intravisit::walk_opaque_ty(this, opaq);
+        });
+    }
+
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
         // FIXME: use real span?
         self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));

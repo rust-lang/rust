@@ -487,6 +487,31 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
+    fn visit_opaque_ty(&mut self, opaque: &'tcx rustc_hir::OpaqueTy<'tcx>) {
+        // We want to start our early-bound indices at the end of the parent scope,
+        // not including any parent `impl Trait`s.
+        let mut bound_vars = FxIndexMap::default();
+        debug!(?opaque.generics.params);
+        for param in opaque.generics.params {
+            let (def_id, reg) = ResolvedArg::early(param);
+            bound_vars.insert(def_id, reg);
+        }
+
+        let hir_id = self.tcx.local_def_id_to_hir_id(opaque.def_id);
+        let scope = Scope::Binder {
+            hir_id,
+            bound_vars,
+            s: self.scope,
+            scope_type: BinderScopeType::Normal,
+            where_bound_origin: None,
+        };
+        self.with(scope, |this| {
+            let scope = Scope::TraitRefBoundary { s: this.scope };
+            this.with(scope, |this| intravisit::walk_opaque_ty(this, opaque))
+        })
+    }
+
+    #[instrument(level = "debug", skip(self))]
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match &item.kind {
             hir::ItemKind::Impl(hir::Impl { of_trait, .. }) => {
@@ -512,38 +537,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::GlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
-            }
-            hir::ItemKind::OpaqueTy(&hir::OpaqueTy {
-                origin:
-                    hir::OpaqueTyOrigin::FnReturn { parent, .. }
-                    | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
-                    | hir::OpaqueTyOrigin::TyAlias { parent, .. },
-                generics,
-                ..
-            }) => {
-                // We want to start our early-bound indices at the end of the parent scope,
-                // not including any parent `impl Trait`s.
-                let mut bound_vars = FxIndexMap::default();
-                debug!(?generics.params);
-                for param in generics.params {
-                    let (def_id, reg) = ResolvedArg::early(param);
-                    bound_vars.insert(def_id, reg);
-                }
-
-                let scope = Scope::Root { opt_parent_item: Some(parent) };
-                self.with(scope, |this| {
-                    let scope = Scope::Binder {
-                        hir_id: item.hir_id(),
-                        bound_vars,
-                        s: this.scope,
-                        scope_type: BinderScopeType::Normal,
-                        where_bound_origin: None,
-                    };
-                    this.with(scope, |this| {
-                        let scope = Scope::TraitRefBoundary { s: this.scope };
-                        this.with(scope, |this| intravisit::walk_item(this, item))
-                    });
-                })
             }
             hir::ItemKind::TyAlias(_, generics)
             | hir::ItemKind::Const(_, generics, _)
@@ -689,17 +682,14 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| this.visit_ty(mt.ty));
             }
-            hir::TyKind::OpaqueDef(item_id, lifetimes) => {
+            hir::TyKind::OpaqueDef(opaque_ty, lifetimes) => {
+                self.visit_opaque_ty(opaque_ty);
+
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
                 //                 ^                  ^ this gets resolved in the scope of
                 //                                      the opaque_ty generics
-                let opaque_ty = self.tcx.hir().item(item_id);
-                match &opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin: _, .. }) => {}
-                    i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
-                };
 
                 // Resolve the lifetimes that are applied to the opaque type.
                 // These are resolved in the current scope.
@@ -722,9 +712,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     {
                         // Opaques do not declare their own lifetimes, so if a lifetime comes from an opaque
                         // it must be a reified late-bound lifetime from a trait goal.
-                        hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::OpaqueTy { .. }, ..
-                        }) => "higher-ranked lifetime from outer `impl Trait`",
+                        hir::Node::OpaqueTy(_) => "higher-ranked lifetime from outer `impl Trait`",
                         // Other items are fine.
                         hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => {
                             continue;
@@ -740,8 +728,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
                     let (span, label) = if lifetime.ident.span == self.tcx.def_span(lifetime_def_id)
                     {
-                        let opaque_span = self.tcx.def_span(item_id.owner_id);
-                        (opaque_span, Some(opaque_span))
+                        (opaque_ty.span, Some(opaque_ty.span))
                     } else {
                         (lifetime.ident.span, None)
                     };

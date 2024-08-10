@@ -2749,6 +2749,8 @@ pub struct BareFnTy<'hir> {
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
@@ -2762,6 +2764,7 @@ pub struct OpaqueTy<'hir> {
     /// This mapping associated a captured lifetime (first parameter) with the new
     /// early-bound lifetime that was generated for the opaque.
     pub lifetime_mapping: &'hir [(&'hir Lifetime, LocalDefId)],
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -2868,7 +2871,7 @@ pub enum TyKind<'hir> {
     /// possibly parameters) that are actually bound on the `impl Trait`.
     ///
     /// The last parameter specifies whether this opaque appears in a trait definition.
-    OpaqueDef(ItemId, &'hir [GenericArg<'hir>]),
+    OpaqueDef(&'hir OpaqueTy<'hir>, &'hir [GenericArg<'hir>]),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(
@@ -3337,8 +3340,6 @@ impl<'hir> Item<'hir> {
         expect_ty_alias, (&'hir Ty<'hir>, &'hir Generics<'hir>),
             ItemKind::TyAlias(ty, generics), (ty, generics);
 
-        expect_opaque_ty, &OpaqueTy<'hir>, ItemKind::OpaqueTy(ty), ty;
-
         expect_enum, (&EnumDef<'hir>, &'hir Generics<'hir>), ItemKind::Enum(def, generics), (def, generics);
 
         expect_struct, (&VariantData<'hir>, &'hir Generics<'hir>),
@@ -3451,8 +3452,6 @@ pub enum ItemKind<'hir> {
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
-    /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
-    OpaqueTy(&'hir OpaqueTy<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
     Enum(EnumDef<'hir>, &'hir Generics<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
@@ -3496,7 +3495,6 @@ impl ItemKind<'_> {
             ItemKind::Fn(_, ref generics, _)
             | ItemKind::TyAlias(_, ref generics)
             | ItemKind::Const(_, ref generics, _)
-            | ItemKind::OpaqueTy(OpaqueTy { ref generics, .. })
             | ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
@@ -3519,7 +3517,6 @@ impl ItemKind<'_> {
             ItemKind::ForeignMod { .. } => "extern block",
             ItemKind::GlobalAsm(..) => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
-            ItemKind::OpaqueTy(..) => "opaque type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",
@@ -3806,6 +3803,7 @@ pub enum Node<'hir> {
     Ty(&'hir Ty<'hir>),
     AssocItemConstraint(&'hir AssocItemConstraint<'hir>),
     TraitRef(&'hir TraitRef<'hir>),
+    OpaqueTy(&'hir OpaqueTy<'hir>),
     Pat(&'hir Pat<'hir>),
     PatField(&'hir PatField<'hir>),
     Arm(&'hir Arm<'hir>),
@@ -3871,6 +3869,7 @@ impl<'hir> Node<'hir> {
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
+            | Node::OpaqueTy(..)
             | Node::Infer(..)
             | Node::WhereBoundPredicate(..)
             | Node::ArrayLenInfer(..)
@@ -3996,6 +3995,7 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem { generics, .. })
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
+            Node::OpaqueTy(opaque) => Some(opaque.generics),
             _ => None,
         }
     }
@@ -4055,6 +4055,7 @@ impl<'hir> Node<'hir> {
         expect_ty,            &'hir Ty<'hir>,           Node::Ty(n),           n;
         expect_assoc_item_constraint,  &'hir AssocItemConstraint<'hir>,  Node::AssocItemConstraint(n),  n;
         expect_trait_ref,     &'hir TraitRef<'hir>,     Node::TraitRef(n),     n;
+        expect_opaque_ty,     &'hir OpaqueTy<'hir>,     Node::OpaqueTy(n),     n;
         expect_pat,           &'hir Pat<'hir>,          Node::Pat(n),          n;
         expect_pat_field,     &'hir PatField<'hir>,     Node::PatField(n),     n;
         expect_arm,           &'hir Arm<'hir>,          Node::Arm(n),          n;
