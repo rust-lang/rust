@@ -1,11 +1,9 @@
-// Checks the `debuginfo-compression` option.
+// Checks the always enabled `debuginfo-compression` option: zlib.
 
 //@ only-linux
 //@ ignore-cross-compile
 
-// FIXME: This test isn't comprehensive and isn't covering all possible combinations.
-
-use run_make_support::{assert_contains, cmd, llvm_readobj, run_in_tmpdir, rustc};
+use run_make_support::{llvm_readobj, run_in_tmpdir, rustc};
 
 fn check_compression(compression: &str, to_find: &str) {
     run_in_tmpdir(|| {
@@ -17,19 +15,10 @@ fn check_compression(compression: &str, to_find: &str) {
             .arg(&format!("-Zdebuginfo-compression={compression}"))
             .input("foo.rs")
             .run();
-        let stderr = out.stderr_utf8();
-        if stderr.is_empty() {
-            llvm_readobj().arg("-t").arg("foo.o").run().assert_stdout_contains(to_find);
-        } else {
-            assert_contains(
-                stderr,
-                format!("unknown debuginfo compression algorithm {compression}"),
-            );
-        }
+        llvm_readobj().arg("-t").arg("foo.o").run().assert_stdout_contains(to_find);
     });
 }
 
 fn main() {
     check_compression("zlib", "ZLIB");
-    check_compression("zstd", "ZSTD");
 }
