@@ -1,12 +1,12 @@
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
+use std::net;
 use std::ops::Not;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::process;
-use std::thread;
-use std::time;
+use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use path_macro::path;
@@ -19,7 +19,7 @@ use crate::Command;
 /// Used for rustc syncs.
 const JOSH_FILTER: &str =
     ":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri";
-const JOSH_PORT: &str = "42042";
+const JOSH_PORT: u16 = 42042;
 
 impl MiriEnv {
     /// Returns the location of the sysroot.
@@ -105,13 +105,11 @@ impl Command {
         let mut cmd = process::Command::new("josh-proxy");
         cmd.arg("--local").arg(local_dir);
         cmd.arg("--remote").arg("https://github.com");
-        cmd.arg("--port").arg(JOSH_PORT);
+        cmd.arg("--port").arg(JOSH_PORT.to_string());
         cmd.arg("--no-background");
         cmd.stdout(process::Stdio::null());
         cmd.stderr(process::Stdio::null());
         let josh = cmd.spawn().context("failed to start josh-proxy, make sure it is installed")?;
-        // Give it some time so hopefully the port is open. (100ms was not enough.)
-        thread::sleep(time::Duration::from_millis(200));
 
         // Create a wrapper that stops it on drop.
         struct Josh(process::Child);
@@ -125,7 +123,7 @@ impl Command {
                         .output()
                         .expect("failed to SIGINT josh-proxy");
                     // Sadly there is no "wait with timeout"... so we just give it some time to finish.
-                    thread::sleep(time::Duration::from_millis(100));
+                    std::thread::sleep(Duration::from_millis(100));
                     // Now hopefully it is gone.
                     if self.0.try_wait().expect("failed to wait for josh-proxy").is_some() {
                         return;
@@ -138,6 +136,14 @@ impl Command {
                 self.0.kill().expect("failed to SIGKILL josh-proxy");
             }
         }
+
+        // Wait until the port is open.
+        let josh_ready = net::TcpStream::connect_timeout(
+            &net::SocketAddr::from(([127, 0, 0, 1], JOSH_PORT)),
+            Duration::from_secs(1),
+        )
+        .context("failed to connect to josh-proxy")?;
+        drop(josh_ready);
 
         Ok(Josh(josh))
     }
@@ -236,6 +242,8 @@ impl Command {
         }
         // Make sure josh is running.
         let josh = Self::start_josh()?;
+        let josh_url =
+            format!("http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git");
 
         // Update rust-version file. As a separate commit, since making it part of
         // the merge has confused the heck out of josh in the past.
@@ -250,7 +258,7 @@ impl Command {
             .context("FAILED to commit rust-version file, something went wrong")?;
 
         // Fetch given rustc commit.
-        cmd!(sh, "git fetch http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
+        cmd!(sh, "git fetch {josh_url}")
             .run()
             .inspect_err(|_| {
                 // Try to un-do the previous `git commit`, to leave the repo in the state we found it.
@@ -294,6 +302,8 @@ impl Command {
         }
         // Make sure josh is running.
         let josh = Self::start_josh()?;
+        let josh_url =
+            format!("http://localhost:{JOSH_PORT}/{github_user}/rust.git{JOSH_FILTER}.git");
 
         // Find a repo we can do our preparation in.
         if let Ok(rustc_git) = env::var("RUSTC_GIT") {
@@ -338,20 +348,11 @@ impl Command {
         // Do the actual push.
         sh.change_dir(miri_dir()?);
         println!("Pushing miri changes...");
-        cmd!(
-            sh,
-            "git push http://localhost:{JOSH_PORT}/{github_user}/rust.git{JOSH_FILTER}.git HEAD:{branch}"
-        )
-        .run()?;
+        cmd!(sh, "git push {josh_url} HEAD:{branch}").run()?;
         println!();
 
         // Do a round-trip check to make sure the push worked as expected.
-        cmd!(
-            sh,
-            "git fetch http://localhost:{JOSH_PORT}/{github_user}/rust.git{JOSH_FILTER}.git {branch}"
-        )
-        .ignore_stderr()
-        .read()?;
+        cmd!(sh, "git fetch {josh_url} {branch}").ignore_stderr().read()?;
         let head = cmd!(sh, "git rev-parse HEAD").read()?;
         let fetch_head = cmd!(sh, "git rev-parse FETCH_HEAD").read()?;
         if head != fetch_head {
