@@ -3,8 +3,10 @@
 pub struct Type(pub i32);
 pub trait Trait {
     fn foo(&self);
+    fn bar();
 }
 impl Trait for Type {
     fn foo(&self) {}
+    fn bar() {}
 }
 pub fn do_something<X: Trait>(_: X) {}

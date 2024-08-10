@@ -3497,8 +3497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .detect_and_explain_multiple_crate_versions(
                                 err,
                                 pick.item.def_id,
-                                pick.item.ident(self.tcx).span,
-                                rcvr.hir_id.owner,
+                                rcvr.hir_id,
                                 *rcvr_ty,
                             );
                         if pick.autoderefs == 0 && !trait_in_other_version_found {
@@ -3705,8 +3704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             trait_in_other_version_found = self.detect_and_explain_multiple_crate_versions(
                 err,
                 assoc.def_id,
-                self.tcx.def_span(assoc.def_id),
-                ty.hir_id.owner,
+                ty.hir_id,
                 rcvr_ty,
             );
         }
@@ -4081,55 +4079,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diag<'_>,
         item_def_id: DefId,
-        item_span: Span,
-        owner: hir::OwnerId,
+        hir_id: hir::HirId,
         rcvr_ty: Ty<'_>,
     ) -> bool {
-        let pick_name = self.tcx.crate_name(item_def_id.krate);
-        let trait_did = self.tcx.parent(item_def_id);
-        let trait_name = self.tcx.item_name(trait_did);
-        if let Some(map) = self.tcx.in_scope_traits_map(owner) {
-            for trait_candidate in map.to_sorted_stable_ord().into_iter().flat_map(|v| v.1.iter()) {
-                let crate_name = self.tcx.crate_name(trait_candidate.def_id.krate);
-                if trait_candidate.def_id.krate != item_def_id.krate && crate_name == pick_name {
-                    let msg = format!(
-                        "there are multiple different versions of crate `{crate_name}` in the \
-                         dependency graph",
-                    );
-                    let candidate_name = self.tcx.item_name(trait_candidate.def_id);
-                    if candidate_name == trait_name
-                        && let Some(def_id) = trait_candidate.import_ids.get(0)
-                    {
-                        let span = self.tcx.def_span(*def_id);
-                        let mut multi_span: MultiSpan = span.into();
-                        multi_span.push_span_label(
-                            span,
-                            format!(
-                                "`{crate_name}` imported here doesn't correspond to the right \
-                                 crate version",
-                            ),
-                        );
-                        multi_span.push_span_label(
-                            self.tcx.def_span(trait_candidate.def_id),
-                            format!("this is the trait that was imported"),
-                        );
-                        multi_span.push_span_label(
-                            self.tcx.def_span(trait_did),
-                            format!("this is the trait that is needed"),
-                        );
-                        multi_span.push_span_label(
-                            item_span,
-                            format!("the method is available for `{rcvr_ty}` here"),
-                        );
-                        err.span_note(multi_span, msg);
-                    } else {
-                        err.note(msg);
-                    }
-                    return true;
-                }
-            }
+        let hir_id = self.tcx.parent_hir_id(hir_id);
+        let Some(traits) = self.tcx.in_scope_traits(hir_id) else { return false };
+        if traits.is_empty() {
+            return false;
         }
-        false
+        let trait_def_id = self.tcx.parent(item_def_id);
+        let krate = self.tcx.crate_name(trait_def_id.krate);
+        let name = self.tcx.item_name(trait_def_id);
+        let candidates: Vec<_> = traits
+            .iter()
+            .filter(|c| {
+                c.def_id.krate != trait_def_id.krate
+                    && self.tcx.crate_name(c.def_id.krate) == krate
+                    && self.tcx.item_name(c.def_id) == name
+            })
+            .map(|c| (c.def_id, c.import_ids.get(0).cloned()))
+            .collect();
+        if candidates.is_empty() {
+            return false;
+        }
+        let item_span = self.tcx.def_span(item_def_id);
+        let msg = format!(
+            "there are multiple different versions of crate `{krate}` in the dependency graph",
+        );
+        let trait_span = self.tcx.def_span(trait_def_id);
+        let mut multi_span: MultiSpan = trait_span.into();
+        multi_span.push_span_label(trait_span, format!("this is the trait that is needed"));
+        multi_span
+            .push_span_label(item_span, format!("the method is available for `{rcvr_ty}` here"));
+        for (def_id, import_def_id) in candidates {
+            if let Some(import_def_id) = import_def_id {
+                multi_span.push_span_label(
+                    self.tcx.def_span(import_def_id),
+                    format!(
+                        "`{name}` imported here doesn't correspond to the right version of crate \
+                         `{krate}`",
+                    ),
+                );
+            }
+            multi_span.push_span_label(
+                self.tcx.def_span(def_id),
+                format!("this is the trait that was imported"),
+            );
+        }
+        err.span_note(multi_span, msg);
+        true
     }
 
     /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`
