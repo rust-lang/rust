@@ -74,10 +74,13 @@ pub struct Ipv4Addr {
     octets: [u8; 4],
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for Ipv4Addr {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Hashers are often more efficient at hashing a fixed-width integer
-        // than a bytestring, so convert before hashing.
+        // than a bytestring, so convert before hashing. We don't use to_bits()
+        // here as that involves a byteswap on little-endian machines, which are
+        // more common than big-endian machines.
         u32::from_le_bytes(self.octets).hash(state);
     }
 }
@@ -164,10 +167,13 @@ pub struct Ipv6Addr {
     octets: [u8; 16],
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for Ipv6Addr {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Hashers are often more efficient at hashing a fixed-width integer
-        // than a bytestring, so convert before hashing.
+        // than a bytestring, so convert before hashing. We don't use to_bits()
+        // here as that involves byteswaps on little-endian machines, which are
+        // more common than big-endian machines.
         u128::from_le_bytes(self.octets).hash(state);
     }
 }
