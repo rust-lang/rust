@@ -1830,15 +1830,25 @@ impl Step for Assemble {
             })
             .collect::<HashSet<_>>();
 
+        let link_std_into_rustc_driver = builder.link_std_into_rustc_driver(target_compiler.host);
         let sysroot = builder.sysroot(target_compiler);
         let rustc_libdir = builder.rustc_libdir(target_compiler);
         t!(fs::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
+
+            // For the later stages which gets distributed only copy over the
+            // `rustc_driver` library so we don't end up with an extra copy of `std`.
+            // If we're not statically linking `std` into `rustc_driver`, just copy every library
+            // to ensure `std` is included.
+            // We still need `std` for the initial stage as the bootstrap compiler may not
+            // have the new `rustc_private` linking behavior.
             let can_be_rustc_dep = filename.starts_with("rustc_driver-")
                 || filename.starts_with("librustc_driver-")
-                || build_compiler.stage == 0;
+                || build_compiler.stage == 0
+                || !link_std_into_rustc_driver;
+
             if can_be_rustc_dep
                 && (is_dylib(&filename) || is_debug_info(&filename))
                 && !proc_macros.contains(&filename)
