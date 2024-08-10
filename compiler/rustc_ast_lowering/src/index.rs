@@ -146,6 +146,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.visit_body(body);
     }
 
+    fn visit_nested_opaque_ty(&mut self, opaq: &'hir OpaqueTy<'hir>) -> Self::Result {
+        self.visit_opaque_ty(opaq)
+    }
+
     fn visit_param(&mut self, param: &'hir Param<'hir>) {
         let node = Node::Param(param);
         self.insert(param.pat.span, param.hir_id, node);

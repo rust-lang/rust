@@ -296,8 +296,9 @@ pub trait Visitor<'v>: Sized {
 
     #[track_caller]
     fn visit_nested_opaque_ty(&mut self, opaq: &'v OpaqueTy<'v>) -> Self::Result {
-        // FIXME: should guard with INTRA/INTER? then hir id validator has to be changed
-        try_visit!(self.visit_opaque_ty(opaq));
+        if Self::NestedFilter::INTER {
+            try_visit!(self.visit_opaque_ty(opaq));
+        }
         Self::Result::output()
     }
 
