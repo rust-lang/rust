@@ -1,24 +1,37 @@
-// Checks the `compress-debug-sections` option on rust-lld.
+// Checks debuginfo compression both for the always-enabled zlib, and when the optional zstd is
+// enabled:
+// - via rustc's `debuginfo-compression`,
+// - and via rust-lld's `compress-debug-sections`
 
-//@ needs-rust-lld
-//@ needs-llvm-zstd
+//@ needs-llvm-zstd: we want LLVM/LLD to be built with zstd support
+//@ needs-rust-lld: the system linker will most likely not support zstd
 //@ only-linux
 //@ ignore-cross-compile
 
-// FIXME: This test isn't comprehensive and isn't covering all possible combinations.
-
-use run_make_support::{llvm_readobj, run_in_tmpdir, rustc};
+use run_make_support::{llvm_readobj, run_in_tmpdir, Rustc};
 
 fn check_compression(compression: &str, to_find: &str) {
+    // check compressed debug sections via rustc flag
+    prepare_and_check(to_find, |rustc| {
+        rustc.arg(&format!("-Zdebuginfo-compression={compression}"))
+    });
+
+    // check compressed debug sections via rust-lld flag
+    prepare_and_check(to_find, |rustc| {
+        rustc.link_arg(&format!("-Wl,--compress-debug-sections={compression}"))
+    });
+}
+
+fn prepare_and_check<F: FnOnce(&mut Rustc) -> &mut Rustc>(to_find: &str, prepare_rustc: F) {
     run_in_tmpdir(|| {
-        let out = rustc()
+        let mut rustc = Rustc::new();
+        rustc
             .arg("-Zlinker-features=+lld")
             .arg("-Clink-self-contained=+linker")
             .arg("-Zunstable-options")
             .arg("-Cdebuginfo=full")
-            .link_arg(&format!("-Wl,--compress-debug-sections={compression}"))
-            .input("main.rs")
-            .run();
+            .input("main.rs");
+        prepare_rustc(&mut rustc).run();
         llvm_readobj().arg("-t").arg("main").run().assert_stdout_contains(to_find);
     });
 }
