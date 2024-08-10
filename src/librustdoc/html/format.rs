@@ -1285,9 +1285,8 @@ impl clean::Impl {
             f.write_str(" ")?;
 
             if let Some(ref ty) = self.trait_ {
-                match self.polarity {
-                    ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {}
-                    ty::ImplPolarity::Negative => write!(f, "!")?,
+                if self.is_negative_trait_impl() {
+                    write!(f, "!")?;
                 }
                 ty.print(cx).fmt(f)?;
                 write!(f, " for ")?;

@@ -13,7 +13,7 @@
 use run_make_support::{cwd, has_extension, has_prefix, rfs, rustc, shallow_find_files};
 
 fn main() {
-    rustc().input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
+    rustc().env("RUSTC_ICE", cwd()).input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
     let default = get_text_from_ice(".").lines().count();
 
     clear_ice_files();

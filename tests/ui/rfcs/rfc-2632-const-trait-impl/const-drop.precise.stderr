@@ -40,7 +40,7 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn a<T: ~const Destruct>(_: T) {}
    |                      ^^^^^^^^
 
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-drop.rs:54:5
    |
 LL |     #[const_trait]
@@ -49,7 +49,7 @@ LL |     pub trait SomeTrait {
 LL |         fn foo();
    |               - expected 0 const parameters
 
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-drop.rs:54:5
    |
 LL |     #[const_trait]
