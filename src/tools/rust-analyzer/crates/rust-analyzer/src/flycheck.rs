@@ -3,7 +3,7 @@
 
 use std::{fmt, io, process::Command, time::Duration};
 
-use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
@@ -260,13 +260,14 @@ impl FlycheckActor {
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
-        if let Ok(msg) = inbox.try_recv() {
-            // give restarts a preference so check outputs don't block a restart or stop
-            return Some(Event::RequestStateChange(msg));
-        }
-        select! {
+        let Some(command_receiver) = &self.command_receiver else {
+            return inbox.recv().ok().map(Event::RequestStateChange);
+        };
+
+        // Biased to give restarts a preference so check outputs don't block a restart or stop
+        select_biased! {
             recv(inbox) -> msg => msg.ok().map(Event::RequestStateChange),
-            recv(self.command_receiver.as_ref().unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+            recv(command_receiver) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
 
