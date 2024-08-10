@@ -20,7 +20,7 @@ use run_make_support::{path, rustdoc};
 
 fn main() {
     let out_dir = path("rustdoc-io-error");
-    let output = fs::create_dir(&out_dir).unwrap();
+    fs::create_dir(&out_dir).unwrap();
     let mut permissions = fs::metadata(&out_dir).unwrap().permissions();
     let original_permissions = permissions.clone();
 
