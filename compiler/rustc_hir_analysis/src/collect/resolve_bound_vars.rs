@@ -485,7 +485,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
-    fn visit_opaque_ty(&mut self, opaq: &'tcx rustc_hir::OpaqueTy<'tcx>) -> Self::Result {
+    #[instrument(level = "debug", skip(self))]
+    fn visit_opaque_ty(&mut self, opaq: &'tcx rustc_hir::OpaqueTy<'tcx>) {
         let (hir::OpaqueTyOrigin::FnReturn(parent)
         | hir::OpaqueTyOrigin::AsyncFn(parent)
         | hir::OpaqueTyOrigin::TyAlias { parent, .. }) = opaq.origin;
@@ -690,6 +691,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 self.with(scope, |this| this.visit_ty(mt.ty));
             }
             hir::TyKind::OpaqueDef(opaque_ty, lifetimes, _in_trait) => {
+                self.visit_opaque_ty(opaque_ty);
+
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
