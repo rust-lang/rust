@@ -24,7 +24,7 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{sym, HasAttrs, ImportPathConfig, Name, ScopeDef, Variant};
+use hir::{sym, HasAttrs, Name, ScopeDef, Variant};
 use ide_db::{imports::import_assets::LocatedImport, RootDatabase, SymbolKind};
 use syntax::{ast, SmolStr, ToSmolStr};
 
@@ -645,11 +645,7 @@ fn enum_variants_with_paths(
         if let Some(path) = ctx.module.find_path(
             ctx.db,
             hir::ModuleDef::from(variant),
-            ImportPathConfig {
-                prefer_no_std: ctx.config.prefer_no_std,
-                prefer_prelude: ctx.config.prefer_prelude,
-                prefer_absolute: ctx.config.prefer_absolute,
-            },
+            ctx.config.import_path_config(),
         ) {
             // Variants with trivial paths are already added by the existing completion logic,
             // so we should avoid adding these twice

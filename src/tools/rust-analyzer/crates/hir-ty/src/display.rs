@@ -1069,6 +1069,7 @@ impl HirDisplay for Ty {
                             module_id,
                             PrefixKind::Plain,
                             false,
+                            // FIXME: no_std Cfg?
                             ImportPathConfig {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
