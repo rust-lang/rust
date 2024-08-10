@@ -1,6 +1,7 @@
 use super::display_buffer::DisplayBuffer;
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
+use crate::hash::{Hash, Hasher};
 use crate::iter;
 use crate::mem::transmute;
 use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
@@ -67,10 +68,18 @@ pub enum IpAddr {
 /// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     octets: [u8; 4],
+}
+
+impl Hash for Ipv4Addr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Hashers are often more efficient at hashing a fixed-width integer
+        // than a bytestring, so convert before hashing.
+        u32::from_le_bytes(self.octets).hash(state);
+    }
 }
 
 /// An IPv6 address.
@@ -149,10 +158,18 @@ pub struct Ipv4Addr {
 /// assert_eq!("::1".parse(), Ok(localhost));
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     octets: [u8; 16],
+}
+
+impl Hash for Ipv6Addr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Hashers are often more efficient at hashing a fixed-width integer
+        // than a bytestring, so convert before hashing.
+        u128::from_le_bytes(self.octets).hash(state);
+    }
 }
 
 /// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
