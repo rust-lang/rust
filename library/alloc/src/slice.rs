@@ -178,14 +178,24 @@ impl<T> [T] {
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
     /// worst-case.
     ///
-    /// If `T: Ord` does not implement a total order the resulting order is unspecified. All
-    /// original elements will remain in the slice and any possible modifications via interior
-    /// mutability are observed in the input. Same is true if `T: Ord` panics.
+    /// If the implementation of [`Ord`] for `T` does not implement a [total order] the resulting
+    /// order of elements in the slice is unspecified. All original elements will remain in the
+    /// slice and any possible modifications via interior mutability are observed in the input. Same
+    /// is true if the implementation of [`Ord`] for `T` panics.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory. See
     /// [`sort_unstable`](slice::sort_unstable). The exception are partially sorted slices, which
     /// may be better served with `slice::sort`.
+    ///
+    /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] require
+    /// additional precautions. For example, `f32::NAN != f32::NAN`, which doesn't fulfill the
+    /// reflexivity requirement of [`Ord`]. By using an alternative comparison function with
+    /// `slice::sort_by` such as [`f32::total_cmp`] or [`f64::total_cmp`] that defines a [total
+    /// order] users can sort slices containing floating-point values. Alternatively, if all values
+    /// in the slice are guaranteed to be in a subset for which [`PartialOrd::partial_cmp`] forms a
+    /// [total order], it's possible to sort the slice with `sort_by(|a, b|
+    /// a.partial_cmp(b).unwrap())`.
     ///
     /// # Current implementation
     ///
@@ -198,18 +208,21 @@ impl<T> [T] {
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
     /// clamps at `self.len() / 2`.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order].
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5, 4, 1, -3, 2];
+    /// let mut v = [4, -5, 1, -3, 2];
     ///
     /// v.sort();
-    /// assert!(v == [-5, -3, 1, 2, 4]);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
     /// ```
     ///
     /// [driftsort]: https://github.com/Voultapher/driftsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -221,30 +234,19 @@ impl<T> [T] {
         stable_sort(self, T::lt);
     }
 
-    /// Sorts the slice with a comparator function, preserving initial order of equal elements.
+    /// Sorts the slice with a comparison function, preserving initial order of equal elements.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
     /// worst-case.
     ///
-    /// The comparator function should define a total ordering for the elements in the slice. If the
-    /// ordering is not total, the order of the elements is unspecified.
+    /// If the comparison function `compare` does not implement a [total order] the resulting order
+    /// of elements in the slice is unspecified. All original elements will remain in the slice and
+    /// any possible modifications via interior mutability are observed in the input. Same is true
+    /// if `compare` panics.
     ///
-    /// If the comparator function does not implement a total order the resulting order is
-    /// unspecified. All original elements will remain in the slice and any possible modifications
-    /// via interior mutability are observed in the input. Same is true if the comparator function
-    /// panics. A total order (for all `a`, `b` and `c`):
-    ///
-    /// * total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true, and
-    /// * transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
-    ///
-    /// For example, while [`f64`] doesn't implement [`Ord`] because `NaN != NaN`, we can use
-    /// `partial_cmp` as our sort function when we know the slice doesn't contain a `NaN`.
-    ///
-    /// ```
-    /// let mut floats = [5f64, 4.0, 1.0, 3.0, 2.0];
-    /// floats.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-    /// assert_eq!(floats, [1.0, 2.0, 3.0, 4.0, 5.0]);
-    /// ```
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
     ///
     /// # Current implementation
     ///
@@ -257,21 +259,24 @@ impl<T> [T] {
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
     /// clamps at `self.len() / 2`.
     ///
-    /// If `T: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if `compare` does not implement a [total order].
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [5, 4, 1, 3, 2];
+    /// let mut v = [4, -5, 1, -3, 2];
     /// v.sort_by(|a, b| a.cmp(b));
-    /// assert!(v == [1, 2, 3, 4, 5]);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
     ///
     /// // reverse sorting
     /// v.sort_by(|a, b| b.cmp(a));
-    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
     /// ```
     ///
     /// [driftsort]: https://github.com/Voultapher/driftsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -288,9 +293,10 @@ impl<T> [T] {
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* \* log(*n*))
     /// worst-case, where the key function is *O*(*m*).
     ///
-    /// If `K: Ord` does not implement a total order the resulting order is unspecified.
-    /// All original elements will remain in the slice and any possible modifications via interior
-    /// mutability are observed in the input. Same is true if `K: Ord` panics.
+    /// If the implementation of [`Ord`] for `K` does not implement a [total order] the resulting
+    /// order of elements in the slice is unspecified. All original elements will remain in the
+    /// slice and any possible modifications via interior mutability are observed in the input. Same
+    /// is true if the implementation of [`Ord`] for `K` panics.
     ///
     /// # Current implementation
     ///
@@ -303,18 +309,21 @@ impl<T> [T] {
     /// handled without allocation, medium sized slices allocate `self.len()` and beyond that it
     /// clamps at `self.len() / 2`.
     ///
-    /// If `K: Ord` does not implement a total order, the implementation may panic.
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a [total order].
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [4i32, -5, 1, -3, 2];
     ///
     /// v.sort_by_key(|k| k.abs());
-    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// assert_eq!(v, [1, 2, -3, 4, -5]);
     /// ```
     ///
     /// [driftsort]: https://github.com/Voultapher/driftsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
@@ -336,9 +345,10 @@ impl<T> [T] {
     /// storage to remember the results of key evaluation. The order of calls to the key function is
     /// unspecified and may change in future versions of the standard library.
     ///
-    /// If `K: Ord` does not implement a total order the resulting order is unspecified.
-    /// All original elements will remain in the slice and any possible modifications via interior
-    /// mutability are observed in the input. Same is true if `K: Ord` panics.
+    /// If the implementation of [`Ord`] for `K` does not implement a [total order] the resulting
+    /// order of elements in the slice is unspecified. All original elements will remain in the
+    /// slice and any possible modifications via interior mutability are observed in the input. Same
+    /// is true if the implementation of [`Ord`] for `K` panics.
     ///
     /// For simple key functions (e.g., functions that are property accesses or basic operations),
     /// [`sort_by_key`](slice::sort_by_key) is likely to be faster.
@@ -355,16 +365,22 @@ impl<T> [T] {
     /// In the worst case, the algorithm allocates temporary storage in a `Vec<(K, usize)>` the
     /// length of the slice.
     ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a [total order].
+    ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 32, -3, 2];
+    /// let mut v = [4i32, -5, 1, -3, 2, 10];
     ///
+    /// // Strings are sorted by lexicographical order.
     /// v.sort_by_cached_key(|k| k.to_string());
-    /// assert!(v == [-3, -5, 2, 32, 4]);
+    /// assert_eq!(v, [-3, -5, 1, 10, 2, 4]);
     /// ```
     ///
     /// [ipnsort]: https://github.com/Voultapher/sort-research-rs/tree/main/ipnsort
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "slice_sort_by_cached_key", since = "1.34.0")]
