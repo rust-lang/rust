@@ -415,14 +415,17 @@ declare_lint_pass!(Diagnostics => [UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE
 
 impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let collect_args_tys_and_spans = |args: &[Expr<'_>], reserve_one_extra: bool| {
+            let mut result = Vec::with_capacity(args.len() + usize::from(reserve_one_extra));
+            result.extend(args.iter().map(|arg| (cx.typeck_results().expr_ty(arg), arg.span)));
+            result
+        };
         // Only check function calls and method calls.
-        let (span, def_id, fn_gen_args, call_tys) = match expr.kind {
+        let (span, def_id, fn_gen_args, arg_tys_and_spans) = match expr.kind {
             ExprKind::Call(callee, args) => {
                 match cx.typeck_results().node_type(callee.hir_id).kind() {
                     &ty::FnDef(def_id, fn_gen_args) => {
-                        let call_tys: Vec<_> =
-                            args.iter().map(|arg| cx.typeck_results().expr_ty(arg)).collect();
-                        (callee.span, def_id, fn_gen_args, call_tys)
+                        (callee.span, def_id, fn_gen_args, collect_args_tys_and_spans(args, false))
                     }
                     _ => return, // occurs for fns passed as args
                 }
@@ -432,10 +435,9 @@ impl LateLintPass<'_> for Diagnostics {
                 else {
                     return;
                 };
-                let mut call_tys: Vec<_> =
-                    args.iter().map(|arg| cx.typeck_results().expr_ty(arg)).collect();
-                call_tys.insert(0, cx.tcx.types.self_param); // dummy inserted for `self`
-                (span, def_id, fn_gen_args, call_tys)
+                let mut args = collect_args_tys_and_spans(args, true);
+                args.insert(0, (cx.tcx.types.self_param, _recv.span)); // dummy inserted for `self`
+                (span, def_id, fn_gen_args, args)
             }
             _ => return,
         };
@@ -525,11 +527,11 @@ impl LateLintPass<'_> for Diagnostics {
         // `UNTRANSLATABLE_DIAGNOSTIC` lint.
         for (param_i, param_i_p_name) in impl_into_diagnostic_message_params {
             // Is the arg type `{Sub,D}iagMessage`or `impl Into<{Sub,D}iagMessage>`?
-            let arg_ty = call_tys[param_i];
+            let (arg_ty, arg_span) = arg_tys_and_spans[param_i];
             let is_translatable = is_diag_message(arg_ty)
                 || matches!(arg_ty.kind(), ty::Param(p) if p.name == param_i_p_name);
             if !is_translatable {
-                cx.emit_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
+                cx.emit_span_lint(UNTRANSLATABLE_DIAGNOSTIC, arg_span, UntranslatableDiag);
             }
         }
     }
