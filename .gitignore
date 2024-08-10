@@ -20,6 +20,8 @@ Session.vim
 .vscode
 .project
 .vim/
+.helix/
+.zed/
 .favorites.json
 .settings/
 .vs/
