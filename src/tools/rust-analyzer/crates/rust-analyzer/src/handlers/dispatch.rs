@@ -97,16 +97,45 @@ impl RequestDispatcher<'_> {
         self
     }
 
-    /// Dispatches a non-latency-sensitive request onto the thread pool.
+    /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
+    /// ready this will return a default constructed [`R::Result`].
     pub(crate) fn on<const ALLOW_RETRYING: bool, R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
     ) -> &mut Self
     where
-        R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
-        R::Result: Serialize,
+        R: lsp_types::request::Request<
+                Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+                Result: Serialize + Default,
+            > + 'static,
     {
+        if !self.global_state.vfs_done {
+            if let Some(lsp_server::Request { id, .. }) =
+                self.req.take_if(|it| it.method == R::METHOD)
+            {
+                self.global_state.respond(lsp_server::Response::new_ok(id, R::Result::default()));
+            }
+            return self;
+        }
+        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
+    }
+
+    /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
+    /// ready this will return the parameter as is.
+    pub(crate) fn on_identity<const ALLOW_RETRYING: bool, R, Params>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, Params) -> anyhow::Result<R::Result>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request<Params = Params, Result = Params> + 'static,
+        Params: Serialize + DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+    {
+        if !self.global_state.vfs_done {
+            if let Some((request, params, _)) = self.parse::<R>() {
+                self.global_state.respond(lsp_server::Response::new_ok(request.id, &params))
+            }
+            return self;
+        }
         self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
     }
 
@@ -198,11 +227,7 @@ impl RequestDispatcher<'_> {
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + fmt::Debug,
     {
-        let req = match &self.req {
-            Some(req) if req.method == R::METHOD => self.req.take()?,
-            _ => return None,
-        };
-
+        let req = self.req.take_if(|it| it.method == R::METHOD)?;
         let res = crate::from_json(R::METHOD, &req.params);
         match res {
             Ok(params) => {
