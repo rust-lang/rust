@@ -141,59 +141,6 @@ impl CargoProject {
     }
 }
 
-#[must_use]
-pub(crate) fn hyperfine_command(
-    warmup: u64,
-    runs: u64,
-    prepare: Option<&str>,
-    cmds: &[(&str, &str)],
-    markdown_export: &Path,
-) -> Command {
-    let mut bench = Command::new("hyperfine");
-
-    bench.arg("--export-markdown").arg(markdown_export);
-
-    if warmup != 0 {
-        bench.arg("--warmup").arg(warmup.to_string());
-    }
-
-    if runs != 0 {
-        bench.arg("--runs").arg(runs.to_string());
-    }
-
-    if let Some(prepare) = prepare {
-        bench.arg("--prepare").arg(prepare);
-    }
-
-    for &(name, cmd) in cmds {
-        if name != "" {
-            bench.arg("-n").arg(name);
-        }
-        bench.arg(cmd);
-    }
-
-    bench
-}
-
-#[must_use]
-pub(crate) fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) -> Command {
-    let mut git_cmd = Command::new("git");
-    git_cmd
-        .arg("-c")
-        .arg("user.name=Dummy")
-        .arg("-c")
-        .arg("user.email=dummy@example.com")
-        .arg("-c")
-        .arg("core.autocrlf=false")
-        .arg("-c")
-        .arg("commit.gpgSign=false")
-        .arg(cmd);
-    if let Some(repo_dir) = repo_dir.into() {
-        git_cmd.current_dir(repo_dir);
-    }
-    git_cmd
-}
-
 #[track_caller]
 pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     let src = src.as_ref();

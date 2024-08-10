@@ -8,7 +8,7 @@ use crate::build_sysroot::STDLIB_SRC;
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_default_sysroot;
 use crate::utils::{
-    copy_dir_recursively, git_command, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
+    copy_dir_recursively, remove_dir_if_exists, retry_spawn_and_wait, spawn_and_wait,
 };
 
 pub(crate) fn prepare(dirs: &Dirs) {
@@ -284,4 +284,23 @@ pub(crate) fn apply_patches(dirs: &Dirs, crate_name: &str, source_dir: &Path, ta
         apply_patch_cmd.arg(patch).arg("-q");
         spawn_and_wait(apply_patch_cmd);
     }
+}
+
+#[must_use]
+fn git_command<'a>(repo_dir: impl Into<Option<&'a Path>>, cmd: &str) -> Command {
+    let mut git_cmd = Command::new("git");
+    git_cmd
+        .arg("-c")
+        .arg("user.name=Dummy")
+        .arg("-c")
+        .arg("user.email=dummy@example.com")
+        .arg("-c")
+        .arg("core.autocrlf=false")
+        .arg("-c")
+        .arg("commit.gpgSign=false")
+        .arg(cmd);
+    if let Some(repo_dir) = repo_dir.into() {
+        git_cmd.current_dir(repo_dir);
+    }
+    git_cmd
 }

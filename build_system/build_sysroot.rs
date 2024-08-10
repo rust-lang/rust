@@ -136,6 +136,7 @@ pub(crate) fn build_sysroot(
     target_compiler
 }
 
+#[must_use]
 struct SysrootTarget {
     triple: String,
     libs: Vec<PathBuf>,
@@ -161,7 +162,6 @@ pub(crate) static STANDARD_LIBRARY: CargoProject =
     CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
 pub(crate) static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
 
-#[must_use]
 fn build_sysroot_for_triple(
     dirs: &Dirs,
     compiler: Compiler,
@@ -176,7 +176,6 @@ fn build_sysroot_for_triple(
     }
 }
 
-#[must_use]
 fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
     let default_sysroot = crate::rustc_info::get_default_sysroot(&compiler.rustc);
 
@@ -210,7 +209,6 @@ fn build_llvm_sysroot_for_triple(compiler: Compiler) -> SysrootTarget {
     target_libs
 }
 
-#[must_use]
 fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     mut compiler: Compiler,
