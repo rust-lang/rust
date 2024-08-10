@@ -10,7 +10,7 @@ pub(crate) mod type_alias;
 pub(crate) mod union_literal;
 pub(crate) mod variant;
 
-use hir::{sym, AsAssocItem, HasAttrs, HirDisplay, ImportPathConfig, ModuleDef, ScopeDef, Type};
+use hir::{sym, AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
 use ide_db::{
     documentation::{Documentation, HasDocs},
     helpers::item_name,
@@ -294,11 +294,7 @@ pub(crate) fn render_expr(
             .unwrap_or_else(|| String::from("..."))
     };
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg).ok()?;
 

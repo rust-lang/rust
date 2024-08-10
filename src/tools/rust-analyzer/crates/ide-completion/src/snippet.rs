@@ -100,7 +100,6 @@
 // }
 // ----
 
-use hir::ImportPathConfig;
 use ide_db::imports::import_assets::LocatedImport;
 use itertools::Itertools;
 use syntax::{ast, AstNode, GreenNode, SyntaxNode};
@@ -169,11 +168,7 @@ impl Snippet {
 }
 
 fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<Vec<LocatedImport>> {
-    let import_cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let import_cfg = ctx.config.import_path_config();
 
     let resolve = |import: &GreenNode| {
         let path = ast::Path::cast(SyntaxNode::new_root(import.clone()))?;
