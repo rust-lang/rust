@@ -579,12 +579,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, coroutines, experimental!(coroutines)
     ),
 
-    // `#[pointee]` attribute to designate the pointee type in SmartPointer derive-macro
-    gated!(
-        pointee, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, derive_smart_pointer, experimental!(pointee)
-    ),
-
     // RFC 3543
     // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     gated!(
