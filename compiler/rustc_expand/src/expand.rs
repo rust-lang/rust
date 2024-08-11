@@ -512,7 +512,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.force_mode = force;
 
             let fragment_kind = invoc.fragment_kind;
-            match self.expand_invoc(invoc, &ext.kind) {
+            match self.expand_invoc(invoc, &ext) {
                 ExpandResult::Ready(fragment) => {
                     let mut derive_invocations = Vec::new();
                     let derive_placeholders = self
@@ -674,7 +674,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn expand_invoc(
         &mut self,
         invoc: Invocation,
-        ext: &SyntaxExtensionKind,
+        ext: &Lrc<SyntaxExtension>,
     ) -> ExpandResult<AstFragment, Invocation> {
         let recursion_limit = match self.cx.reduced_recursion_limit {
             Some((limit, _)) => limit,
@@ -695,7 +695,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
-            InvocationKind::Bang { mac, span } => match ext {
+            InvocationKind::Bang { mac, span } => match &ext.kind {
                 SyntaxExtensionKind::Bang(expander) => {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
@@ -725,7 +725,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Attr { attr, pos, mut item, derives } => match ext {
+            InvocationKind::Attr { attr, pos, mut item, derives } => match &ext.kind {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
@@ -804,10 +804,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Derive { path, item, is_const } => match ext {
+            InvocationKind::Derive { path, item, is_const } => match &ext.kind {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
-                    if let SyntaxExtensionKind::Derive(..) = ext {
+                    if let SyntaxExtensionKind::Derive(..) = ext.kind {
                         self.gate_proc_macro_input(&item);
                     }
                     // The `MetaItem` representing the trait to derive can't
@@ -834,18 +834,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             },
             InvocationKind::GlobDelegation { item, of_trait } => {
                 let AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
-                let suffixes = match ext {
-                    SyntaxExtensionKind::GlobDelegation(expander) => match expander.expand(self.cx)
-                    {
-                        ExpandResult::Ready(suffixes) => suffixes,
-                        ExpandResult::Retry(()) => {
-                            // Reassemble the original invocation for retrying.
-                            return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::GlobDelegation { item, of_trait },
-                                ..invoc
-                            });
+                let suffixes = match &ext.kind {
+                    SyntaxExtensionKind::GlobDelegation(expander) => {
+                        match expander.expand(self.cx) {
+                            ExpandResult::Ready(suffixes) => suffixes,
+                            ExpandResult::Retry(()) => {
+                                // Reassemble the original invocation for retrying.
+                                return ExpandResult::Retry(Invocation {
+                                    kind: InvocationKind::GlobDelegation { item, of_trait },
+                                    ..invoc
+                                });
+                            }
                         }
-                    },
+                    }
                     SyntaxExtensionKind::LegacyBang(..) => {
                         let msg = "expanded a dummy glob delegation";
                         let guar = self.cx.dcx().span_delayed_bug(span, msg);
