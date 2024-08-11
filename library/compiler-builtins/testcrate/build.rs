@@ -54,8 +54,9 @@ fn main() {
         || target.starts_with("i586-")
         || target.contains("windows-")
         // Linking says "error: function signature mismatch: __extendhfsf2" and seems to
-        // think the signature is either `(i32) -> f32` or `(f32) -> f32`
-        || target.starts_with("wasm32-")
+        // think the signature is either `(i32) -> f32` or `(f32) -> f32`. See
+        // <https://github.com/llvm/llvm-project/issues/96438>.
+        || target.starts_with("wasm")
     {
         features.insert(Feature::NoSysF16);
         features.insert(Feature::NoSysF16F128Convert);
