@@ -514,6 +514,10 @@ impl TargetSelection {
         self.contains("windows")
     }
 
+    pub fn is_windows_gnu(&self) -> bool {
+        self.ends_with("windows-gnu")
+    }
+
     /// Path to the file defining the custom target, if any.
     pub fn filepath(&self) -> Option<&Path> {
         self.file.as_ref().map(Path::new)
