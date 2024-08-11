@@ -49,14 +49,19 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
             && as_ptr_path.ident.name == sym::as_ptr
             && let ExprKind::MethodCall(unwrap_path, unwrap_receiver, ..) = as_ptr_receiver.kind
             && (unwrap_path.ident.name == sym::unwrap || unwrap_path.ident.name == sym::expect)
-            && lint_cstring_as_ptr(cx, unwrap_receiver)
+            && let source_type = cx.typeck_results().expr_ty(unwrap_receiver)
+            && let ty::Adt(def, args) = source_type.kind()
+            && cx.tcx.is_diagnostic_item(sym::Result, def.did())
+            && let ty = args.type_at(0)
+            && let ty::Adt(adt, _) = ty.kind()
+            && cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did())
         {
             cx.emit_span_lint(
                 TEMPORARY_CSTRING_AS_PTR,
                 as_ptr_path.ident.span,
                 InstantlyDangling {
                     callee: as_ptr_path.ident.name,
-                    ty: "CString".into(),
+                    ty,
                     ptr_span: as_ptr_path.ident.span,
                     temporary_span: as_ptr_receiver.span,
                 },
@@ -72,26 +77,12 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
         {
             cx.emit_span_lint(INSTANTLY_DANGLING_POINTER, method.ident.span, InstantlyDangling {
                 callee: method.ident.name,
-                ty: ty.to_string(),
+                ty,
                 ptr_span: method.ident.span,
                 temporary_span: receiver.span,
             })
         }
     }
-}
-
-fn lint_cstring_as_ptr(cx: &LateContext<'_>, source: &rustc_hir::Expr<'_>) -> bool {
-    let source_type = cx.typeck_results().expr_ty(source);
-    if let ty::Adt(def, args) = source_type.kind() {
-        if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
-            if let ty::Adt(adt, _) = args.type_at(0).kind() {
-                if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
 }
 
 fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {

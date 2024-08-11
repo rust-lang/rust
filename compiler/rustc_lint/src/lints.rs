@@ -1143,9 +1143,9 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[note]
 #[help]
 // FIXME: use #[primary_span]
-pub(crate) struct InstantlyDangling {
+pub(crate) struct InstantlyDangling<'tcx> {
     pub callee: Symbol,
-    pub ty: String,
+    pub ty: Ty<'tcx>,
     #[label(lint_label_ptr)]
     pub ptr_span: Span,
     #[label(lint_label_temporary)]
