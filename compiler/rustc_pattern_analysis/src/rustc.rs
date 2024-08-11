@@ -23,6 +23,7 @@ use crate::constructor::{
 };
 use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
+use crate::rustc::print::EnumInfo;
 use crate::usefulness::{compute_match_usefulness, PlaceValidity};
 use crate::{errors, Captures, PatCx, PrivateUninhabitedField};
 
@@ -824,77 +825,64 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> print::Pat<'tcx> {
         use print::{FieldPat, Pat, PatKind};
         let cx = self;
-        let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
-        let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
+        let hoist = |p| Box::new(cx.hoist_witness_pat(p));
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, *pat.ty()),
-            Struct | Variant(_) | UnionField => match pat.ty().kind() {
-                ty::Tuple(..) => PatKind::Leaf {
-                    subpatterns: subpatterns
-                        .enumerate()
-                        .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
-                        .collect(),
-                },
-                ty::Adt(adt_def, _) if adt_def.is_box() => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    PatKind::Deref { subpattern: subpatterns.next().unwrap() }
-                }
-                ty::Adt(adt_def, _args) => {
-                    let variant_index = RustcPatCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
-                    let subpatterns = subpatterns
-                        .enumerate()
-                        .map(|(i, pattern)| FieldPat { field: FieldIdx::new(i), pattern })
-                        .collect();
-
-                    if adt_def.is_enum() {
-                        PatKind::Variant { adt_def: *adt_def, variant_index, subpatterns }
-                    } else {
-                        PatKind::Leaf { subpatterns }
-                    }
-                }
-                _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
-            },
-            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-            // be careful to reconstruct the correct constant pattern here. However a string
-            // literal pattern will never be reported as a non-exhaustiveness witness, so we
-            // ignore this issue.
-            Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
-            Slice(slice) => {
-                match slice.kind {
-                    SliceKind::FixedLen(_) => PatKind::Slice {
-                        prefix: subpatterns.collect(),
-                        slice: None,
-                        suffix: Box::new([]),
+            Struct if pat.ty().is_box() => {
+                // Outside of the `alloc` crate, the only way to create a struct pattern
+                // of type `Box` is to use a `box` pattern via #[feature(box_patterns)].
+                PatKind::Box { subpattern: hoist(&pat.fields[0]) }
+            }
+            Struct | Variant(_) | UnionField => {
+                let enum_info = match *pat.ty().kind() {
+                    ty::Adt(adt_def, _) if adt_def.is_enum() => EnumInfo::Enum {
+                        adt_def,
+                        variant_index: RustcPatCtxt::variant_index_for_adt(pat.ctor(), adt_def),
                     },
-                    SliceKind::VarLen(prefix, _) => {
-                        let mut subpatterns = subpatterns.peekable();
-                        let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix).collect();
-                        if slice.array_len.is_some() {
-                            // Improves diagnostics a bit: if the type is a known-size array, instead
-                            // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
-                            // This is incorrect if the size is not known, since `[_, ..]` captures
-                            // arrays of lengths `>= 1` whereas `[..]` captures any length.
-                            while !prefix.is_empty() && is_wildcard(prefix.last().unwrap()) {
-                                prefix.pop();
-                            }
-                            while subpatterns.peek().is_some()
-                                && is_wildcard(subpatterns.peek().unwrap())
-                            {
-                                subpatterns.next();
-                            }
-                        }
-                        let suffix: Box<[_]> = subpatterns.collect();
-                        let wild = Pat { ty: pat.ty().inner(), kind: PatKind::Wild };
-                        PatKind::Slice {
-                            prefix: prefix.into_boxed_slice(),
-                            slice: Some(Box::new(wild)),
-                            suffix,
-                        }
+                    ty::Adt(..) | ty::Tuple(..) => EnumInfo::NotEnum,
+                    _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), *pat.ty()),
+                };
+
+                let subpatterns = pat
+                    .iter_fields()
+                    .enumerate()
+                    .map(|(i, pat)| FieldPat { field: FieldIdx::new(i), pattern: hoist(pat) })
+                    .collect::<Vec<_>>();
+
+                PatKind::StructLike { enum_info, subpatterns }
+            }
+            Ref => PatKind::Deref { subpattern: hoist(&pat.fields[0]) },
+            Slice(slice) => {
+                let (prefix_len, has_dot_dot) = match slice.kind {
+                    SliceKind::FixedLen(len) => (len, false),
+                    SliceKind::VarLen(prefix_len, _) => (prefix_len, true),
+                };
+
+                let (mut prefix, mut suffix) = pat.fields.split_at(prefix_len);
+
+                // If the pattern contains a `..`, but is applied to values of statically-known
+                // length (arrays), then we can slightly simplify diagnostics by merging any
+                // adjacent wildcard patterns into the `..`: `[x, _, .., _, y]` => `[x, .., y]`.
+                // (This simplification isn't allowed for slice values, because in that case
+                // `[x, .., y]` would match some slices that `[x, _, .., _, y]` would not.)
+                if has_dot_dot && slice.array_len.is_some() {
+                    while let [rest @ .., last] = prefix
+                        && would_print_as_wildcard(cx.tcx, last)
+                    {
+                        prefix = rest;
+                    }
+                    while let [first, rest @ ..] = suffix
+                        && would_print_as_wildcard(cx.tcx, first)
+                    {
+                        suffix = rest;
                     }
                 }
+
+                let prefix = prefix.iter().map(hoist).collect();
+                let suffix = suffix.iter().map(hoist).collect();
+
+                PatKind::Slice { prefix, has_dot_dot, suffix }
             }
             &Str(value) => PatKind::Constant { value },
             Never if self.tcx.features().never_patterns => PatKind::Never,
@@ -909,6 +897,22 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         };
 
         Pat { ty: pat.ty().inner(), kind }
+    }
+}
+
+/// Returns `true` if the given pattern would be printed as a wildcard (`_`).
+fn would_print_as_wildcard(tcx: TyCtxt<'_>, p: &WitnessPat<'_, '_>) -> bool {
+    match p.ctor() {
+        Constructor::IntRange(IntRange {
+            lo: MaybeInfiniteInt::NegInfinity,
+            hi: MaybeInfiniteInt::PosInfinity,
+        })
+        | Constructor::Wildcard
+        | Constructor::NonExhaustive
+        | Constructor::Hidden
+        | Constructor::PrivateUninhabited => true,
+        Constructor::Never if !tcx.features().never_patterns => true,
+        _ => false,
     }
 }
 
