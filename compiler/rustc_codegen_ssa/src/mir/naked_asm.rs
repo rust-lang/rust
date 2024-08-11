@@ -4,7 +4,7 @@ use rustc_middle::mir::{Body, InlineAsmOperand};
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_target::asm::InlineAsmArch;
+use rustc_span::sym;
 
 use crate::common;
 use crate::traits::{AsmCodegenMethods, BuilderMethods, GlobalAsmOperandRef, MiscCodegenMethods};
@@ -31,7 +31,8 @@ pub(crate) fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         operands.iter().map(|op| inline_to_global_operand::<Bx>(cx, instance, op)).collect();
 
     let item_data = cx.codegen_unit().items().get(&MonoItem::Fn(instance)).unwrap();
-    let (begin, end) = crate::mir::naked_asm::prefix_and_suffix(cx.tcx(), instance, item_data);
+    let name = cx.mangled_name(instance);
+    let (begin, end) = prefix_and_suffix(cx.tcx(), instance, &name, item_data);
 
     let mut template_vec = Vec::new();
     template_vec.push(rustc_ast::ast::InlineAsmTemplatePiece::String(begin.into()));
@@ -108,7 +109,7 @@ impl AsmBinaryFormat {
     fn from_target(target: &rustc_target::spec::Target) -> Self {
         if target.is_like_windows {
             Self::Coff
-        } else if target.options.vendor == "apple" {
+        } else if target.is_like_osx {
             Self::Macho
         } else {
             Self::Elf
@@ -119,24 +120,20 @@ impl AsmBinaryFormat {
 fn prefix_and_suffix<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
+    asm_name: &str,
     item_data: &MonoItemData,
 ) -> (String, String) {
     use std::fmt::Write;
 
-    let target = &tcx.sess.target;
-    let target_arch = tcx.sess.asm_arch;
-
-    let is_arm = target.arch == "arm";
-    let is_thumb = is_arm && target.llvm_target.contains("thumb");
-
-    let mangle = (target.is_like_windows && matches!(target_arch, Some(InlineAsmArch::X86)))
-        || target.options.vendor == "apple";
-
-    let asm_name = format!("{}{}", if mangle { "_" } else { "" }, tcx.symbol_name(instance).name);
+    let is_arm = tcx.sess.target.arch == "arm";
+    let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
 
     let attrs = tcx.codegen_fn_attrs(instance.def_id());
     let link_section = attrs.link_section.map(|symbol| symbol.as_str().to_string());
+    let align = attrs.alignment.map(|a| a.bytes()).unwrap_or(4);
 
+    // See https://sourceware.org/binutils/docs/as/ARM-Directives.html for info on these directives.
+    // In particular, `.arm` can also be written `.code 32` and `.thumb` as `.code 16`.
     let (arch_prefix, arch_suffix) = if is_arm {
         (
             match attrs.instruction_set {
@@ -144,8 +141,8 @@ fn prefix_and_suffix<'tcx>(
                     true => ".thumb\n.thumb_func",
                     false => ".arm",
                 },
-                Some(InstructionSetAttr::ArmA32) => ".arm",
                 Some(InstructionSetAttr::ArmT32) => ".thumb\n.thumb_func",
+                Some(InstructionSetAttr::ArmA32) => ".arm",
             },
             match is_thumb {
                 true => ".thumb",
@@ -173,7 +170,7 @@ fn prefix_and_suffix<'tcx>(
             };
 
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
-            writeln!(begin, ".balign 4").unwrap();
+            writeln!(begin, ".balign {align}").unwrap();
             writeln!(begin, ".globl {asm_name}").unwrap();
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".hidden {asm_name}").unwrap();
@@ -194,7 +191,7 @@ fn prefix_and_suffix<'tcx>(
         AsmBinaryFormat::Macho => {
             let section = link_section.unwrap_or("__TEXT,__text".to_string());
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
-            writeln!(begin, ".balign 4").unwrap();
+            writeln!(begin, ".balign {align}").unwrap();
             writeln!(begin, ".globl {asm_name}").unwrap();
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".private_extern {asm_name}").unwrap();
@@ -210,7 +207,7 @@ fn prefix_and_suffix<'tcx>(
         AsmBinaryFormat::Coff => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
-            writeln!(begin, ".balign 4").unwrap();
+            writeln!(begin, ".balign {align}").unwrap();
             writeln!(begin, ".globl {asm_name}").unwrap();
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();

@@ -865,6 +865,13 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         template_str.push_str("\n.popsection");
         self.context.add_top_level_asm(None, &template_str);
     }
+
+    fn mangled_name(&self, instance: Instance<'tcx>) -> String {
+        // TODO(@Amanieu): Additional mangling is needed on
+        // some targets to add a leading underscore (Mach-O)
+        // or byte count suffixes (x86 Windows).
+        self.tcx.symbol_name(instance).name.to_string()
+    }
 }
 
 fn modifier_to_gcc(

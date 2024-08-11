@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 #![feature(naked_functions, asm_const)]
 
-use std::arch::asm;
+use std::arch::naked_asm;
 
 #[no_mangle]
 fn test(x: u64) {
@@ -33,7 +33,7 @@ pub extern "C" fn using_const_generics<const N: u64>(x: u64) -> u64 {
     const M: u64 = 42;
 
     unsafe {
-        asm!(
+        naked_asm!(
             "xor rax, rax",
             "add rax, rdi",
             "add rax, {}",
@@ -41,7 +41,6 @@ pub extern "C" fn using_const_generics<const N: u64>(x: u64) -> u64 {
             "ret",
             const N,
             const M,
-            options(noreturn),
         )
     }
 }
@@ -64,11 +63,10 @@ impl Invert for i64 {
 #[naked]
 pub extern "C" fn generic_function<T: Invert>(x: i64) -> i64 {
     unsafe {
-        asm!(
+        naked_asm!(
             "call {}",
             "ret",
             sym <T as Invert>::invert,
-            options(noreturn),
         )
     }
 }
@@ -85,7 +83,7 @@ impl Foo {
     #[naked]
     #[no_mangle]
     extern "C" fn method(self) -> u64 {
-        unsafe { asm!("mov rax, rdi", "ret", options(noreturn)) }
+        unsafe { naked_asm!("mov rax, rdi", "ret") }
     }
 }
 
@@ -101,7 +99,7 @@ impl Bar for Foo {
     #[naked]
     #[no_mangle]
     extern "C" fn trait_method(self) -> u64 {
-        unsafe { asm!("mov rax, rdi", "ret", options(noreturn)) }
+        unsafe { naked_asm!("mov rax, rdi", "ret") }
     }
 }
 
@@ -113,5 +111,5 @@ impl Bar for Foo {
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
-    asm!("lea rax, [rdi + rsi]", "ret", options(noreturn));
+    naked_asm!("lea rax, [rdi + rsi]", "ret");
 }
