@@ -16,7 +16,7 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 use std::fmt;
-use std::ops::{Deref, Range};
+use std::ops::{Deref, Index, Range};
 
 pub trait HasSession {
     fn sess(&self) -> &Session;
@@ -184,6 +184,15 @@ impl Deref for SourceText {
 impl AsRef<str> for SourceText {
     fn as_ref(&self) -> &str {
         self.as_str()
+    }
+}
+impl<T> Index<T> for SourceText
+where
+    str: Index<T>,
+{
+    type Output = <str as Index<T>>::Output;
+    fn index(&self, idx: T) -> &Self::Output {
+        &self.as_str()[idx]
     }
 }
 impl fmt::Display for SourceText {
