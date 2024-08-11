@@ -131,6 +131,7 @@ impl NotifyActor {
                         let (entry_tx, entry_rx) = unbounded();
                         let (watch_tx, watch_rx) = unbounded();
                         let processed = AtomicUsize::new(0);
+
                         config.load.into_par_iter().enumerate().for_each(|(i, entry)| {
                             let do_watch = config.watch.contains(&i);
                             if do_watch {
@@ -167,9 +168,13 @@ impl NotifyActor {
                                 })
                                 .unwrap();
                         });
+
+                        drop(watch_tx);
                         for path in watch_rx {
                             self.watch(&path);
                         }
+
+                        drop(entry_tx);
                         for entry in entry_rx {
                             match entry {
                                 loader::Entry::Files(files) => {
@@ -180,6 +185,7 @@ impl NotifyActor {
                                 }
                             }
                         }
+
                         self.sender
                             .send(loader::Message::Progress {
                                 n_total,
