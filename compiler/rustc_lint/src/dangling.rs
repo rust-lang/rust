@@ -98,13 +98,10 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         ExprKind::Path(_) => false,
 
         // Calls return rvalues.
-        ExprKind::Call(_, _)
-        | ExprKind::MethodCall(_, _, _, _)
-        | ExprKind::Index(_, _, _)
-        | ExprKind::Binary(_, _, _) => true,
+        ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) | ExprKind::Binary(_, _, _) => true,
 
-        // This is likely a dereference.
-        ExprKind::Unary(_, _) => false,
+        // Produces lvalue.
+        ExprKind::Unary(_, _) | ExprKind::Index(_, _, _) => false,
 
         // Inner blocks are rvalues.
         ExprKind::If(_, _, _)
