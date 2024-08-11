@@ -137,7 +137,7 @@ case $HOST_TARGET in
     MANY_SEEDS=16 TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
   aarch64-apple-darwin)
-    # Host (tier 2)
+    # Host
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
