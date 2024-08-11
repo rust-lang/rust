@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ptr-to-trait-obj-different-regions-id-trait.rs:21:17
+  --> $DIR/ptr-to-trait-obj-different-regions-id-trait.rs:24:17
    |
 LL | fn m<'a>() {
    |      -- lifetime `'a` defined here
