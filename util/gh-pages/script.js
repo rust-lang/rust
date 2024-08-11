@@ -604,17 +604,6 @@ function handleBlur(event) {
 }
 
 function generateSettings() {
-    const THEMES = ["Ayu", "Coal", "Light", "Navy", "Rust"];
-    const themesElem = document.getElementById("theme-choice");
-    let children = '';
-
-    for (const theme of THEMES) {
-        const id = theme.toLowerCase();
-        children += `<option value="${id}">${theme}</option>`;
-    }
-    themesElem.innerHTML = children;
-    themesElem.onblur = handleBlur;
-
     const settings = document.getElementById("settings-dropdown");
     const settingsButton = settings.querySelector(".settings-icon")
     settingsButton.onclick = () => settings.classList.toggle("open");

@@ -30,7 +30,13 @@ Otherwise, have a great day =^.^=
         <div class="settings-icon" tabindex="-1"></div>
         <div class="settings-menu" tabindex="-1">
             <div class="setting-radio-name">Theme</div>
-            <select id="theme-choice" onchange="setTheme(this.value, true)"></select>
+            <select id="theme-choice" onchange="setTheme(this.value, true)">
+                <option value="ayu">Ayu</option>
+                <option value="coal">Coal</option>
+                <option value="light">Light</option>
+                <option value="navy">Navy</option>
+                <option value="rust">Rust</option>
+            </select>
             <label>
                 <input type="checkbox" id="disable-shortcuts" onchange="changeSetting(this)">
                 <span>Disable keyboard shortcuts</span>
