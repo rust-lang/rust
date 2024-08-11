@@ -174,7 +174,7 @@ pub(super) fn handle_needs(
             } else {
                 return IgnoreDecision::Ignore {
                     reason: if let Some(comment) = comment {
-                        format!("{} ({comment})", need.ignore_reason)
+                        format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()
                     },
