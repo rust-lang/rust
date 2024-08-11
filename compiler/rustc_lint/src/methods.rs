@@ -136,7 +136,7 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
 
 // None => not a container
 // Some(true) => CString
-// Some(false) => String, Vec, box, array
+// Some(false) => String, Vec, box, array, MaybeUninit, Cell
 fn as_container(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<bool> {
     if ty.is_array() {
         Some(false)
@@ -153,10 +153,14 @@ fn as_container(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<bool> {
             None
         }
     } else if let Some(def) = ty.ty_adt_def() {
+        for lang_item in [LangItem::String, LangItem::MaybeUninit] {
+            if cx.tcx.is_lang_item(def.did(), lang_item) {
+                return Some(false);
+            }
+        }
         match cx.tcx.get_diagnostic_name(def.did()) {
             Some(sym::cstring_type) => Some(true),
-            Some(sym::Vec) => Some(false),
-            _ if cx.tcx.is_lang_item(def.did(), LangItem::String) => Some(false),
+            Some(sym::Vec | sym::Cell) => Some(false),
             _ => None,
         }
     } else {
