@@ -1830,13 +1830,24 @@ impl Step for Assemble {
             })
             .collect::<HashSet<_>>();
 
+        let link_std_into_rustc_driver = builder.link_std_into_rustc_driver(target_compiler.host);
         let sysroot = builder.sysroot(target_compiler);
         let rustc_libdir = builder.rustc_libdir(target_compiler);
         t!(fs::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
+
+            // For the later stages which gets distributed avoid copying `std` if we're
+            // statically linking `std` into `rustc_driver`.
+            // We still need `std` for the initial stage as the bootstrap compiler may not
+            // have the new `rustc_private` linking behavior.
+            let is_std = filename.starts_with("std-") || filename.starts_with("libstd-");
+            let can_be_rustc_dep =
+                !is_std || !link_std_into_rustc_driver || build_compiler.stage == 0; // cfg(bootstrap)
+            if can_be_rustc_dep
+                && (is_dylib(&filename) || is_debug_info(&filename))
+                && !proc_macros.contains(&filename)
             {
                 builder.copy_link(&f.path(), &rustc_libdir.join(&filename));
             }
