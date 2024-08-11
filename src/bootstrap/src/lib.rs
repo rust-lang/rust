@@ -1777,9 +1777,8 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link
-            // (symlinks don't work on windows), but if that fails
-            // just fall back to a slow `copy` operation.
+            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
@@ -1790,7 +1789,7 @@ Executed at: {executed_at}"#,
                 .set_accessed(t!(metadata.accessed()))
                 .set_modified(t!(metadata.modified()));
 
-            let dst_file = t!(fs::File::open(dst));
+            let dst_file = t!(File::options().write(true).open(dst));
             t!(dst_file.set_times(file_times));
         }
     }
