@@ -193,7 +193,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .unwrap_or_else(|_| bug!("struct tail should have been computable, since we computed it in HIR"))
                         };
 
-                        let tail = tcx.struct_tail_with_normalize(
+                        let tail = tcx.struct_tail_raw(
                             ty,
                             structurally_normalize,
                             || {},
@@ -207,7 +207,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
         } else {
             let mut normalize = |ty| self.normalize(ty, location);
-            let tail = tcx.struct_tail_with_normalize(ty, &mut normalize, || {});
+            let tail = tcx.struct_tail_raw(ty, &mut normalize, || {});
             normalize(tail)
         }
     }

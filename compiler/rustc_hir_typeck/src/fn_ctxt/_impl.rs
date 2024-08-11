@@ -404,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
-            let tail = self.tcx.struct_tail_with_normalize(
+            let tail = self.tcx.struct_tail_raw(
                 ty,
                 |ty| {
                     if self.next_trait_solver() {

@@ -1110,7 +1110,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Error(_) => false,
                     }
                 } else if tcx.is_lang_item(trait_ref.def_id, LangItem::PointeeTrait) {
-                    let tail = selcx.tcx().struct_tail_with_normalize(
+                    let tail = selcx.tcx().struct_tail_raw(
                         self_ty,
                         |ty| {
                             // We throw away any obligations we get from this, since we normalize
