@@ -171,14 +171,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Attempts to returns the deeply last field of nested structures, but
-    /// does not apply any normalization in its search. Returns the same type
-    /// if input `ty` is not a structure at all.
-    pub fn struct_tail_without_normalization(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let tcx = self;
-        tcx.struct_tail_raw(ty, |ty| ty, || {})
-    }
-
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.

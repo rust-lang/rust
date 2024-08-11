@@ -226,7 +226,7 @@ pub(super) fn op_to_const<'tcx>(
                 let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
-                        ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),
+                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.param_env).kind(),
                         ty::Str | ty::Slice(..),
                     ),
                     "`ConstValue::Slice` is for slice-tailed types only, but got {}",
