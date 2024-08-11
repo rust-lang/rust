@@ -33,7 +33,8 @@ LL | impl const std::ops::Add for i32 {
    | |          |                 |
    | |          |                 `i32` is not defined in the current crate
    | |          `i32` is not defined in the current crate
-   | impl doesn't use any uncovered types from inside the current crate
+   | impl doesn't have any local type before any uncovered type parameters
+   | for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    |
    = note: define and implement a trait or new type instead
 

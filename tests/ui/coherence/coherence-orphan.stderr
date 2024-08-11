@@ -6,7 +6,8 @@ LL | impl TheTrait<usize> for isize {}
    | |    |                   |
    | |    |                   `isize` is not defined in the current crate
    | |    `usize` is not defined in the current crate
-   | impl doesn't use any uncovered types from inside the current crate
+   | impl doesn't have any local type before any uncovered type parameters
+   | for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    |
    = note: define and implement a trait or new type instead
 
@@ -17,7 +18,8 @@ LL | impl !Send for Vec<isize> {}
    | ^^^^^^^^^^^^^^^----------
    | |              |
    | |              `Vec` is not defined in the current crate
-   | impl doesn't use any uncovered types from inside the current crate
+   | impl doesn't have any local type before any uncovered type parameters
+   | for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    |
    = note: define and implement a trait or new type instead
 

@@ -1441,6 +1441,7 @@ pub enum OnlyCurrentTraits {
     Outside {
         #[primary_span]
         #[label(hir_analysis_only_current_traits_label)]
+        #[label(hir_analysis_only_current_traits_label_more_info)]
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
@@ -1449,6 +1450,7 @@ pub enum OnlyCurrentTraits {
     Primitive {
         #[primary_span]
         #[label(hir_analysis_only_current_traits_label)]
+        #[label(hir_analysis_only_current_traits_label_more_info)]
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
@@ -1457,6 +1459,7 @@ pub enum OnlyCurrentTraits {
     Arbitrary {
         #[primary_span]
         #[label(hir_analysis_only_current_traits_label)]
+        #[label(hir_analysis_only_current_traits_label_more_info)]
         span: Span,
         #[note(hir_analysis_only_current_traits_note)]
         note: (),
