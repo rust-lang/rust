@@ -15,9 +15,10 @@
 //!
 //! See <https://github.com/rust-lang/rust/pull/108714>.
 
-// FIXME(#128911): @jieyouxu: This test is sometimes for whatever forsaken reason flakey in CI, and
-// I cannot reproduce it locally. The error messages upon assertion failure in this test is
-// intentionally extremely verbose to aid debugging that issue.
+//@ ignore-windows
+// FIXME(#128911): @jieyouxu: This test is sometimes for whatever forsaken reason flakey in
+// `i686-mingw`, and I cannot reproduce it locally. The error messages upon assertion failure in
+// this test is intentionally extremely verbose to aid debugging that issue.
 
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
