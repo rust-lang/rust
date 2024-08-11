@@ -1,8 +1,8 @@
-error: this pointer will immediately dangle
+error: getting a pointer from a temporary `CString` will result in a dangling pointer
   --> $DIR/lint-temporary-cstring-as-param.rs:9:45
    |
 LL |     some_function(CString::new("").unwrap().as_ptr());
-   |                   ------------------------- ^^^^^^ this pointer will be invalid
+   |                   ------------------------- ^^^^^^ this pointer will immediately be invalid
    |                   |
    |                   this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
    |

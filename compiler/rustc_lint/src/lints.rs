@@ -1143,11 +1143,11 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[note]
 #[help]
 pub(crate) struct InstantlyDangling {
-    pub method: Symbol,
+    pub callee: Symbol,
     pub ty: String,
-    #[label(lint_ptr_label)]
+    #[label(lint_label_ptr)]
     pub ptr_span: Span,
-    #[label(lint_temporary_label)]
+    #[label(lint_label_temporary)]
     pub temporary_span: Span,
 }
 

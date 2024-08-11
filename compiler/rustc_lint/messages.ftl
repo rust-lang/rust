@@ -414,10 +414,10 @@ lint_incomplete_include =
 
 lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
-lint_instantly_dangling = this pointer will immediately dangle
-    .ptr_label = this pointer will be invalid
-    .temporary_label = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
-    .note = pointers do not have a lifetime; when calling `{$method}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+lint_instantly_dangling = getting a pointer from a temporary `{$ty}` will result in a dangling pointer
+    .label_ptr = this pointer will immediately be invalid
+    .label_temporary = this `{$ty}` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+    .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
     .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly

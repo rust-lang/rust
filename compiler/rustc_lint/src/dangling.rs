@@ -35,14 +35,15 @@ declare_lint! {
 // FIXME: does not catch UnsafeCell::get
 // FIXME: does not catch getting a ref to a temporary and then converting it to a ptr
 declare_lint! {
+    /// TODO
     pub INSTANTLY_DANGLING_POINTER,
     Warn,
     "detects getting a pointer that will immediately dangle"
 }
 
-declare_lint_pass!(InstantlyDanglingPtr => [TEMPORARY_CSTRING_AS_PTR, INSTANTLY_DANGLING_POINTER]);
+declare_lint_pass!(DanglingPointers => [TEMPORARY_CSTRING_AS_PTR, INSTANTLY_DANGLING_POINTER]);
 
-impl<'tcx> LateLintPass<'tcx> for InstantlyDanglingPtr {
+impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We have a method call.
         let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind else {
@@ -66,9 +67,9 @@ impl<'tcx> LateLintPass<'tcx> for InstantlyDanglingPtr {
             return;
         };
 
-        let span = method.ident.span;
+        let span = method_span;
         let decorator = InstantlyDangling {
-            method: method_name,
+            callee: method_name,
             ty: ty.to_string(),
             ptr_span: method_span,
             temporary_span: receiver.span,
@@ -85,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for InstantlyDanglingPtr {
 fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
     match expr.kind {
         // We are not interested in these
-        ExprKind::Cast(_, _) | ExprKind::Closure(_) | ExprKind::Tup(_) | ExprKind::Lit(_) => false,
+        ExprKind::Cast(_, _) | ExprKind::Closure(_) | ExprKind::Tup(_) => false,
 
         // Const is not temporary.
         ExprKind::ConstBlock(_) | ExprKind::Repeat(_, _) => false,
@@ -109,6 +110,8 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         ExprKind::Field(parent, _) => is_temporary_rvalue(parent),
 
         ExprKind::Struct(_, _, _) => true,
+        // These are 'static
+        ExprKind::Lit(_) => false,
         // False negatives are possible, but arrays get promoted to 'static way too often.
         ExprKind::Array(_) => false,
 

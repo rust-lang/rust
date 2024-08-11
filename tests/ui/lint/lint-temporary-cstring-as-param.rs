@@ -7,5 +7,5 @@ fn some_function(data: *const c_char) {}
 
 fn main() {
     some_function(CString::new("").unwrap().as_ptr());
-    //~^ ERROR this pointer will immediately dangle
+    //~^ ERROR getting a pointer from a temporary `CString` will result in a dangling pointer
 }
