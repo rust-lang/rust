@@ -69,22 +69,20 @@ pub(crate) struct MatchCheckCtx<'db> {
     body: DefWithBodyId,
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
-    min_exhaustive_patterns: bool,
 }
 
 impl<'db> MatchCheckCtx<'db> {
     pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
         let def_map = db.crate_def_map(module.krate());
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
-        let min_exhaustive_patterns =
-            def_map.is_unstable_feature_enabled(&sym::min_exhaustive_patterns);
-        Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
+        Self { module, body, db, exhaustive_patterns }
     }
 
     pub(crate) fn compute_match_usefulness(
         &self,
         arms: &[MatchArm<'db>],
         scrut_ty: Ty,
+        known_valid_scrutinee: Option<bool>,
     ) -> Result<UsefulnessReport<'db, Self>, ()> {
         if scrut_ty.contains_unknown() {
             return Err(());
@@ -95,8 +93,7 @@ impl<'db> MatchCheckCtx<'db> {
             }
         }
 
-        // FIXME: Determine place validity correctly. For now, err on the safe side.
-        let place_validity = PlaceValidity::MaybeInvalid;
+        let place_validity = PlaceValidity::from_bool(known_valid_scrutinee.unwrap_or(true));
         // Measured to take ~100ms on modern hardware.
         let complexity_limit = Some(500000);
         compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
@@ -328,7 +325,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
         self.exhaustive_patterns
     }
     fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
-        self.min_exhaustive_patterns
+        true
     }
 
     fn ctor_arity(
