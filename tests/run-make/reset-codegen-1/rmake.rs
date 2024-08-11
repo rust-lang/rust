@@ -9,7 +9,7 @@
 
 use std::path::Path;
 
-use run_make_support::{bin_name, rfs, rustc};
+use run_make_support::{bin_name, rustc};
 
 fn compile(output_file: &str, emit: Option<&str>) {
     let mut rustc = rustc();
