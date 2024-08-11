@@ -1139,14 +1139,16 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 
 // methods.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_cstring_ptr)]
+#[diag(lint_temporary_as_ptr)]
 #[note]
 #[help]
-pub(crate) struct CStringPtr {
+pub(crate) struct TemporaryAsPtr {
+    pub method: Symbol,
+    pub ty: String,
     #[label(lint_as_ptr_label)]
-    pub as_ptr: Span,
-    #[label(lint_unwrap_label)]
-    pub unwrap: Span,
+    pub as_ptr_span: Span,
+    #[label(lint_temporary_label)]
+    pub temporary_span: Span,
 }
 
 // multiple_supertrait_upcastable.rs
