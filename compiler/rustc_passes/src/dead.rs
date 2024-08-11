@@ -41,6 +41,7 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             | Node::TraitItem(..)
             | Node::Variant(..)
             | Node::AnonConst(..)
+            | Node::OpaqueTy(..)
     )
 }
 
@@ -494,6 +495,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             Node::ForeignItem(foreign_item) => {
                 intravisit::walk_foreign_item(self, foreign_item);
             }
+            Node::OpaqueTy(opaq) => intravisit::walk_opaque_ty(self, opaq),
             _ => {}
         }
         self.repr_has_repr_simd = had_repr_simd;
