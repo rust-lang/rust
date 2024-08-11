@@ -1,7 +1,7 @@
 use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::symbol::sym;
 
 use crate::lints::InstantlyDangling;
 use crate::{LateContext, LateLintPass, LintContext};
@@ -45,42 +45,53 @@ declare_lint_pass!(DanglingPointers => [TEMPORARY_CSTRING_AS_PTR, INSTANTLY_DANG
 
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // We have a method call.
-        let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind else {
-            return;
-        };
-        let Ident { name: method_name, span: method_span } = method.ident;
-
-        // The method is `.as_ptr()` or `.as_mut_ptr`.
-        if method_name != sym::as_ptr && method_name != sym::as_mut_ptr {
-            return;
+        if let ExprKind::MethodCall(as_ptr_path, as_ptr_receiver, ..) = expr.kind
+            && as_ptr_path.ident.name == sym::as_ptr
+            && let ExprKind::MethodCall(unwrap_path, unwrap_receiver, ..) = as_ptr_receiver.kind
+            && (unwrap_path.ident.name == sym::unwrap || unwrap_path.ident.name == sym::expect)
+            && lint_cstring_as_ptr(cx, unwrap_receiver)
+        {
+            cx.emit_span_lint(
+                TEMPORARY_CSTRING_AS_PTR,
+                as_ptr_path.ident.span,
+                InstantlyDangling {
+                    callee: as_ptr_path.ident.name,
+                    ty: "CString".into(),
+                    ptr_span: as_ptr_path.ident.span,
+                    temporary_span: as_ptr_receiver.span,
+                },
+            );
+            return; // One lint is enough
         }
 
-        // It is called on a temporary rvalue.
-        if !is_temporary_rvalue(receiver) {
-            return;
+        if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
+            && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
+            && is_temporary_rvalue(receiver)
+            && let ty = cx.typeck_results().expr_ty(receiver)
+            && is_interesting(cx, ty)
+        {
+            cx.emit_span_lint(INSTANTLY_DANGLING_POINTER, method.ident.span, InstantlyDangling {
+                callee: method.ident.name,
+                ty: ty.to_string(),
+                ptr_span: method.ident.span,
+                temporary_span: receiver.span,
+            })
         }
-
-        // The temporary value's type is array, box, Vec, String, or CString
-        let ty = cx.typeck_results().expr_ty(receiver);
-        let Some(is_cstring) = as_container(cx, ty) else {
-            return;
-        };
-
-        let span = method_span;
-        let decorator = InstantlyDangling {
-            callee: method_name,
-            ty: ty.to_string(),
-            ptr_span: method_span,
-            temporary_span: receiver.span,
-        };
-
-        if is_cstring {
-            cx.emit_span_lint(TEMPORARY_CSTRING_AS_PTR, span, decorator);
-        } else {
-            cx.emit_span_lint(INSTANTLY_DANGLING_POINTER, span, decorator);
-        };
     }
+}
+
+fn lint_cstring_as_ptr(cx: &LateContext<'_>, source: &rustc_hir::Expr<'_>) -> bool {
+    let source_type = cx.typeck_results().expr_ty(source);
+    if let ty::Adt(def, args) = source_type.kind() {
+        if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
+            if let ty::Adt(adt, _) = args.type_at(0).kind() {
+                if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
@@ -131,36 +142,26 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
     }
 }
 
-// None => not a container
-// Some(true) => CString
-// Some(false) => String, Vec, box, array, MaybeUninit, Cell
-fn as_container(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<bool> {
+// Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>,
+// or any of the above in arbitrary many nested Box'es.
+fn is_interesting(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     if ty.is_array() {
-        Some(false)
+        true
     } else if let Some(inner) = ty.boxed_ty() {
-        // We only care about Box<[..]>, Box<str>, Box<CStr>,
-        // or Box<T> iff T is another type we care about
-        if inner.is_slice()
+        inner.is_slice()
             || inner.is_str()
             || inner.ty_adt_def().is_some_and(|def| cx.tcx.is_lang_item(def.did(), LangItem::CStr))
-            || as_container(cx, inner).is_some()
-        {
-            Some(false)
-        } else {
-            None
-        }
+            || is_interesting(cx, inner)
     } else if let Some(def) = ty.ty_adt_def() {
         for lang_item in [LangItem::String, LangItem::MaybeUninit] {
             if cx.tcx.is_lang_item(def.did(), lang_item) {
-                return Some(false);
+                return true;
             }
         }
-        match cx.tcx.get_diagnostic_name(def.did()) {
-            Some(sym::cstring_type) => Some(true),
-            Some(sym::Vec | sym::Cell) => Some(false),
-            _ => None,
-        }
+        cx.tcx
+            .get_diagnostic_name(def.did())
+            .is_some_and(|name| matches!(name, sym::cstring_type | sym::Vec | sym::Cell))
     } else {
-        None
+        false
     }
 }
