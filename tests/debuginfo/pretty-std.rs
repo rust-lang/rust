@@ -1,7 +1,6 @@
 // ignore-tidy-linelength
 //@ ignore-freebsd: gdb package too new
 //@ ignore-windows-gnu: #128981
-//@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
 //@ min-gdb-version: 7.7
 //@ min-lldb-version: 1800

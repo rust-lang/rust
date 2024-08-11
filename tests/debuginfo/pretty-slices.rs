@@ -1,4 +1,3 @@
-//@ ignore-android: FIXME(#10381)
 //@ ignore-windows
 //@ compile-flags:-g
 
