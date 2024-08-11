@@ -1,4 +1,4 @@
-error: getting the inner pointer of a temporary `CString`
+error: this pointer will immediately dangle
   --> $DIR/lint-temporary-cstring-as-param.rs:9:45
    |
 LL |     some_function(CString::new("").unwrap().as_ptr());

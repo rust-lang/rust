@@ -6,12 +6,12 @@ use std::ffi::CString;
 macro_rules! mymacro {
     () => {
         let s = CString::new("some text").unwrap().as_ptr();
-        //~^ ERROR getting the inner pointer of a temporary `CString`
+        //~^ ERROR this pointer will immediately dangle
     }
 }
 
 fn main() {
     let s = CString::new("some text").unwrap().as_ptr();
-    //~^ ERROR getting the inner pointer of a temporary `CString`
+    //~^ ERROR this pointer will immediately dangle
     mymacro!();
 }

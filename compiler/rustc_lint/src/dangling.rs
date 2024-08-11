@@ -49,7 +49,6 @@ impl<'tcx> LateLintPass<'tcx> for InstantlyDanglingPtr {
             return;
         };
         let Ident { name: method_name, span: method_span } = method.ident;
-        tracing::debug!(?method);
 
         // The method is `.as_ptr()` or `.as_mut_ptr`.
         if method_name != sym::as_ptr && method_name != sym::as_mut_ptr {
@@ -57,15 +56,12 @@ impl<'tcx> LateLintPass<'tcx> for InstantlyDanglingPtr {
         }
 
         // It is called on a temporary rvalue.
-        let is_temp = is_temporary_rvalue(receiver);
-        tracing::debug!(receiver = ?receiver.kind, ?is_temp);
-        if !is_temp {
+        if !is_temporary_rvalue(receiver) {
             return;
         }
 
         // The temporary value's type is array, box, Vec, String, or CString
         let ty = cx.typeck_results().expr_ty(receiver);
-        tracing::debug!(?ty);
         let Some(is_cstring) = as_container(cx, ty) else {
             return;
         };
