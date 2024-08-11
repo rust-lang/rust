@@ -149,7 +149,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        linkchecker.delay_failure().arg(builder.out.join(host.triple).join("doc")).run(builder);
+        linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -435,7 +435,7 @@ impl Miri {
         compiler: Compiler,
         target: TargetSelection,
     ) -> PathBuf {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
+        let miri_sysroot = builder.out.join(compiler.host).join("miri-sysroot");
         let mut cargo = builder::Cargo::new(
             builder,
             compiler,
@@ -1115,7 +1115,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
 }
 
 fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
-    builder.out.join(host.triple).join("test")
+    builder.out.join(host).join("test")
 }
 
 macro_rules! default_test {
@@ -2685,7 +2685,7 @@ impl Step for Crate {
                     if builder.download_rustc() && compiler.stage > 0 {
                         let sysroot = builder
                             .out
-                            .join(compiler.host.triple)
+                            .join(compiler.host)
                             .join(format!("stage{}-test-sysroot", compiler.stage));
                         cargo.env("RUSTC_SYSROOT", sysroot);
                     }

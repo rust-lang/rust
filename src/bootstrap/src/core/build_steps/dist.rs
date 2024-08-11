@@ -275,12 +275,8 @@ fn make_win_dist(
     }
 
     //Copy platform tools to platform-specific bin directory
-    let target_bin_dir = plat_root
-        .join("lib")
-        .join("rustlib")
-        .join(target.triple)
-        .join("bin")
-        .join("self-contained");
+    let target_bin_dir =
+        plat_root.join("lib").join("rustlib").join(target).join("bin").join("self-contained");
     fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
     for src in target_tools {
         builder.copy_link_to_folder(&src, &target_bin_dir);
@@ -295,12 +291,8 @@ fn make_win_dist(
     );
 
     //Copy platform libs to platform-specific lib directory
-    let target_lib_dir = plat_root
-        .join("lib")
-        .join("rustlib")
-        .join(target.triple)
-        .join("lib")
-        .join("self-contained");
+    let target_lib_dir =
+        plat_root.join("lib").join("rustlib").join(target).join("lib").join("self-contained");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
     for src in target_libs {
         builder.copy_link_to_folder(&src, &target_lib_dir);
@@ -450,7 +442,7 @@ impl Step for Rustc {
             // component for now.
             maybe_install_llvm_runtime(builder, host, image);
 
-            let dst_dir = image.join("lib/rustlib").join(&*host.triple).join("bin");
+            let dst_dir = image.join("lib/rustlib").join(host).join("bin");
             t!(fs::create_dir_all(&dst_dir));
 
             // Copy over lld if it's there
@@ -607,7 +599,7 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
 
 /// Copy stamped files into an image's `target/lib` directory.
 fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
-    let dst = image.join("lib/rustlib").join(target.triple).join("lib");
+    let dst = image.join("lib/rustlib").join(target).join("lib");
     let self_contained_dst = dst.join("self-contained");
     t!(fs::create_dir_all(&dst));
     t!(fs::create_dir_all(&self_contained_dst));
@@ -769,7 +761,7 @@ impl Step for Analysis {
 
         let src = builder
             .stage_out(compiler, Mode::Std)
-            .join(target.triple)
+            .join(target)
             .join(builder.cargo_dir())
             .join("deps")
             .join("save-analysis");
@@ -2087,7 +2079,7 @@ fn maybe_install_llvm(
 
 /// Maybe add libLLVM.so to the target lib-dir for linking.
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir = sysroot.join("lib/rustlib").join(&*target.triple).join("lib");
+    let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.

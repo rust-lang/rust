@@ -452,7 +452,7 @@ impl Build {
         }
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
-        let build_triple = build.out.join(build.build.triple);
+        let build_triple = build.out.join(build.build);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if host.is_symlink() {
@@ -807,10 +807,7 @@ impl Build {
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self
-            .out
-            .join(&*compiler.host.triple)
-            .join(format!("stage{}-tools-bin", compiler.stage));
+        let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
     }
@@ -827,14 +824,14 @@ impl Build {
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
-        self.out.join(&*compiler.host.triple).join(format!("stage{}{}", compiler.stage, suffix))
+        self.out.join(compiler.host).join(format!("stage{}{}", compiler.stage, suffix))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
+        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory of LLVM for `target`
@@ -845,36 +842,36 @@ impl Build {
         if self.config.llvm_from_ci && self.config.build == target {
             self.config.ci_llvm_root()
         } else {
-            self.out.join(&*target.triple).join("llvm")
+            self.out.join(target).join("llvm")
         }
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("lld")
+        self.out.join(target).join("lld")
     }
 
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("doc")
+        self.out.join(target).join("doc")
     }
 
     /// Output directory for all JSON-formatted documentation for a target
     fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("json-doc")
+        self.out.join(target).join("json-doc")
     }
 
     fn test_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("test")
+        self.out.join(target).join("test")
     }
 
     /// Output directory for all documentation for a target
     fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("compiler-doc")
+        self.out.join(target).join("compiler-doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("md-doc")
+        self.out.join(target).join("md-doc")
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
@@ -954,7 +951,7 @@ impl Build {
 
     /// Directory for libraries built from C/C++ code and shared between stages.
     fn native_dir(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("native")
+        self.out.join(target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for

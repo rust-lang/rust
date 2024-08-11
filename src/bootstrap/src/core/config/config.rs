@@ -546,6 +546,14 @@ impl PartialEq<&str> for TargetSelection {
     }
 }
 
+// Targets are often used as directory names throughout bootstrap.
+// This impl makes it more ergonomics to use them as such.
+impl AsRef<Path> for TargetSelection {
+    fn as_ref(&self) -> &Path {
+        self.triple.as_ref()
+    }
+}
+
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Target {
@@ -1473,7 +1481,7 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build.triple)
+                .join(config.build)
                 .join("stage0")
                 .join("bin")
                 .join(exe("rustc", config.build))
@@ -1488,7 +1496,7 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build.triple)
+                .join(config.build)
                 .join("stage0")
                 .join("bin")
                 .join(exe("cargo", config.build))
@@ -2281,13 +2289,13 @@ impl Config {
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         assert!(self.llvm_from_ci);
-        self.out.join(&*self.build.triple).join("ci-llvm")
+        self.out.join(self.build).join("ci-llvm")
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
-        self.out.join(self.build.triple).join("ci-rustc")
+        self.out.join(self.build).join("ci-rustc")
     }
 
     /// Determine whether llvm should be linked dynamically.
