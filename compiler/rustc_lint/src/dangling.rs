@@ -96,49 +96,48 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_>, source: &rustc_hir::Expr<'_>) -> bo
 
 fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
     match expr.kind {
-        // We are not interested in these
-        ExprKind::Cast(_, _) | ExprKind::Closure(_) | ExprKind::Tup(_) => false,
-
         // Const is not temporary.
-        ExprKind::ConstBlock(_) | ExprKind::Repeat(_, _) => false,
+        ExprKind::ConstBlock(..) | ExprKind::Repeat(..) | ExprKind::Lit(..) => false,
 
         // This is literally lvalue.
-        ExprKind::Path(_) => false,
+        ExprKind::Path(..) => false,
 
         // Calls return rvalues.
-        ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) | ExprKind::Binary(_, _, _) => true,
+        ExprKind::Call(..) | ExprKind::MethodCall(..) | ExprKind::Binary(..) => true,
 
-        // Produces lvalue.
-        ExprKind::Unary(_, _) | ExprKind::Index(_, _, _) => false,
-
+        // FIXME: this is probably wrong.
         // Inner blocks are rvalues.
-        ExprKind::If(_, _, _)
-        | ExprKind::Loop(_, _, _, _)
-        | ExprKind::Match(_, _, _)
-        | ExprKind::Block(_, _) => true,
+        ExprKind::If(..) | ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::Block(..) => true,
 
-        ExprKind::DropTemps(inner) => is_temporary_rvalue(inner),
-        ExprKind::Field(parent, _) => is_temporary_rvalue(parent),
+        // FIXME: these should probably recurse and typecheck along the way.
+        //        Some false negatives are possible for now.
+        ExprKind::Index(..) | ExprKind::Field(..) | ExprKind::Unary(..) => false,
 
-        ExprKind::Struct(_, _, _) => true,
-        // These are 'static
-        ExprKind::Lit(_) => false,
-        // FIXME: False negatives are possible, but arrays get promoted to 'static way too often.
-        ExprKind::Array(_) => false,
+        ExprKind::Struct(..) => true,
+
+        // FIXME: this has false negatives, but I do not want to deal with 'static/const promotion just yet.
+        ExprKind::Array(..) => false,
 
         // These typecheck to `!`
-        ExprKind::Break(_, _) | ExprKind::Continue(_) | ExprKind::Ret(_) | ExprKind::Become(_) => {
+        ExprKind::Break(..) | ExprKind::Continue(..) | ExprKind::Ret(..) | ExprKind::Become(..) => {
             false
         }
 
         // These typecheck to `()`
-        ExprKind::Assign(_, _, _) | ExprKind::AssignOp(_, _, _) | ExprKind::Yield(_, _) => false,
+        ExprKind::Assign(..) | ExprKind::AssignOp(..) | ExprKind::Yield(..) => false,
+
+        // Compiler-magic macros
+        ExprKind::AddrOf(..) | ExprKind::OffsetOf(..) | ExprKind::InlineAsm(..) => false,
+
+        // We are not interested in these
+        ExprKind::Cast(..)
+        | ExprKind::Closure(..)
+        | ExprKind::Tup(..)
+        | ExprKind::DropTemps(..)
+        | ExprKind::Let(..) => false,
 
         // Not applicable
-        ExprKind::Type(_, _) | ExprKind::Err(_) | ExprKind::Let(_) => false,
-
-        // These are compiler-magic macros
-        ExprKind::AddrOf(_, _, _) | ExprKind::OffsetOf(_, _) | ExprKind::InlineAsm(_) => false,
+        ExprKind::Type(..) | ExprKind::Err(..) => false,
     }
 }
 
