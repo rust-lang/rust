@@ -3,7 +3,7 @@
 //! suggestions from rustc if you get anything slightly wrong in here, and overall
 //! helps with clarity as we're also referring to `char` intentionally in here.
 
-use crate::fmt::{self, Write};
+use crate::fmt;
 use crate::mem::transmute;
 
 /// One of the 128 Unicode characters from U+0000 through U+007F,
@@ -583,9 +583,10 @@ impl fmt::Display for AsciiChar {
 #[unstable(feature = "ascii_char", issue = "110998")]
 impl fmt::Debug for AsciiChar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[inline]
-        fn backslash(a: AsciiChar) -> ([AsciiChar; 4], u8) {
-            ([AsciiChar::ReverseSolidus, a, AsciiChar::Null, AsciiChar::Null], 2)
+        use AsciiChar::{Apostrophe, Null, ReverseSolidus as Backslash};
+
+        fn backslash(a: AsciiChar) -> ([AsciiChar; 6], usize) {
+            ([Apostrophe, Backslash, a, Apostrophe, Null, Null], 4)
         }
 
         let (buf, len) = match self {
@@ -595,24 +596,17 @@ impl fmt::Debug for AsciiChar {
             AsciiChar::LineFeed => backslash(AsciiChar::SmallN),
             AsciiChar::ReverseSolidus => backslash(AsciiChar::ReverseSolidus),
             AsciiChar::Apostrophe => backslash(AsciiChar::Apostrophe),
-            _ => {
-                let byte = self.to_u8();
-                if !byte.is_ascii_control() {
-                    ([*self, AsciiChar::Null, AsciiChar::Null, AsciiChar::Null], 1)
-                } else {
-                    const HEX_DIGITS: [AsciiChar; 16] = *b"0123456789abcdef".as_ascii().unwrap();
+            _ if self.to_u8().is_ascii_control() => {
+                const HEX_DIGITS: [AsciiChar; 16] = *b"0123456789abcdef".as_ascii().unwrap();
 
-                    let hi = HEX_DIGITS[usize::from(byte >> 4)];
-                    let lo = HEX_DIGITS[usize::from(byte & 0xf)];
-                    ([AsciiChar::ReverseSolidus, AsciiChar::SmallX, hi, lo], 4)
-                }
+                let byte = self.to_u8();
+                let hi = HEX_DIGITS[usize::from(byte >> 4)];
+                let lo = HEX_DIGITS[usize::from(byte & 0xf)];
+                ([Apostrophe, Backslash, AsciiChar::SmallX, hi, lo, Apostrophe], 6)
             }
+            _ => ([Apostrophe, *self, Apostrophe, Null, Null, Null], 3),
         };
 
-        f.write_char('\'')?;
-        for byte in &buf[..len as usize] {
-            f.write_str(byte.as_str())?;
-        }
-        f.write_char('\'')
+        f.write_str(buf[..len].as_str())
     }
 }
