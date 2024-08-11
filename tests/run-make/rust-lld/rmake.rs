@@ -4,8 +4,6 @@
 //@ needs-rust-lld
 //@ ignore-s390x lld does not yet support s390x as target
 
-use std::process::Output;
-
 use run_make_support::regex::Regex;
 use run_make_support::{is_msvc, rustc};
 

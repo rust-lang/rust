@@ -2,8 +2,6 @@
 // (in this case, foo.py and foo.natvis) are picked up when compiling incrementally.
 // See https://github.com/rust-lang/rust/pull/111641
 
-use std::io::Read;
-
 use run_make_support::{invalid_utf8_contains, invalid_utf8_not_contains, rfs, rustc};
 
 fn main() {
