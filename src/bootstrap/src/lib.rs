@@ -37,7 +37,9 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
 use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
+};
 
 mod core;
 mod utils;
@@ -1789,8 +1791,7 @@ Executed at: {executed_at}"#,
                 .set_accessed(t!(metadata.accessed()))
                 .set_modified(t!(metadata.modified()));
 
-            let dst_file = t!(File::options().write(true).open(dst));
-            t!(dst_file.set_times(file_times));
+            t!(set_file_times(dst, file_times));
         }
     }
 
