@@ -1016,6 +1016,8 @@ pub struct Resolver<'a, 'tcx> {
     partial_res_map: NodeMap<PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     import_res_map: NodeMap<PerNS<Option<Res>>>,
+    /// An import will be inserted into this map if it has been used.
+    import_use_map: FxHashMap<Import<'a>, Used>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
@@ -1422,6 +1424,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
+            import_use_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
@@ -1839,7 +1842,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
-    fn matches_previous_ambiguity_error(&mut self, ambi: &AmbiguityError<'_>) -> bool {
+    fn matches_previous_ambiguity_error(&self, ambi: &AmbiguityError<'_>) -> bool {
         for ambiguity_error in &self.ambiguity_errors {
             // if the span location and ident as well as its span are the same
             if ambiguity_error.kind == ambi.kind
@@ -1900,10 +1903,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            let old_used = import.used.get();
-            let new_used = Some(used);
-            if new_used > old_used {
-                import.used.set(new_used);
+            let old_used = self.import_use_map.entry(import).or_insert(used);
+            if *old_used < used {
+                *old_used = used;
             }
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);

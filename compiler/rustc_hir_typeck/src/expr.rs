@@ -2743,15 +2743,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let ty::RawPtr(ptr_ty, _) = expr_t.kind()
             && let ty::Adt(adt_def, _) = ptr_ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
-            && adt_def.variants().len() == 1
-            && adt_def
-                .variants()
-                .iter()
-                .next()
-                .unwrap()
-                .fields
-                .iter()
-                .any(|f| f.ident(self.tcx) == field)
+            && let [variant] = &adt_def.variants().raw
+            && variant.fields.iter().any(|f| f.ident(self.tcx) == field)
         {
             err.multipart_suggestion(
                 "to access the field, dereference first",

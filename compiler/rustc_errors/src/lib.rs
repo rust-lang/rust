@@ -2024,11 +2024,11 @@ pub fn a_or_an(s: &str) -> &'static str {
 ///
 /// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
 pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v.len() {
-        0 => "".to_string(),
-        1 => v[0].to_string(),
-        2 => format!("{} and {}", v[0], v[1]),
-        _ => format!("{}, {}", v[0], display_list_with_comma_and(&v[1..])),
+    match v {
+        [] => "".to_string(),
+        [a] => a.to_string(),
+        [a, b] => format!("{a} and {b}"),
+        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 
