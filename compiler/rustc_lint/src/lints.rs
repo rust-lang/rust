@@ -1139,14 +1139,14 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 
 // methods.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_temporary_as_ptr)]
+#[diag(lint_instantly_dangling)]
 #[note]
 #[help]
-pub(crate) struct TemporaryAsPtr {
+pub(crate) struct InstantlyDangling {
     pub method: Symbol,
     pub ty: String,
-    #[label(lint_as_ptr_label)]
-    pub as_ptr_span: Span,
+    #[label(lint_ptr_label)]
+    pub ptr_span: Span,
     #[label(lint_temporary_label)]
     pub temporary_span: Span,
 }

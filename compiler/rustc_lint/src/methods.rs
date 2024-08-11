@@ -3,7 +3,7 @@ use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::{Ident, sym};
 
-use crate::lints::TemporaryAsPtr;
+use crate::lints::InstantlyDangling;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -32,16 +32,17 @@ declare_lint! {
     "detects getting the inner pointer of a temporary `CString`"
 }
 
+// FIXME: does not catch UnsafeCell::get
+// FIXME: does not catch getting a ref to a temporary and then converting it to a ptr
 declare_lint! {
-    /// TODO
-    pub TEMPORARY_AS_PTR,
+    pub INSTANTLY_DANGLING_POINTER,
     Warn,
-    "detects getting the inner pointer of a temporary container"
+    "detects getting a pointer that will immediately dangle"
 }
 
-declare_lint_pass!(TemporaryCStringAsPtr => [TEMPORARY_CSTRING_AS_PTR, TEMPORARY_AS_PTR]);
+declare_lint_pass!(InstantlyDanglingPtr => [TEMPORARY_CSTRING_AS_PTR, INSTANTLY_DANGLING_POINTER]);
 
-impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
+impl<'tcx> LateLintPass<'tcx> for InstantlyDanglingPtr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We have a method call.
         let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind else {
@@ -70,17 +71,17 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
         };
 
         let span = method.ident.span;
-        let decorator = TemporaryAsPtr {
+        let decorator = InstantlyDangling {
             method: method_name,
             ty: ty.to_string(),
-            as_ptr_span: method_span,
+            ptr_span: method_span,
             temporary_span: receiver.span,
         };
 
         if is_cstring {
             cx.emit_span_lint(TEMPORARY_CSTRING_AS_PTR, span, decorator);
         } else {
-            cx.emit_span_lint(TEMPORARY_AS_PTR, span, decorator);
+            cx.emit_span_lint(INSTANTLY_DANGLING_POINTER, span, decorator);
         };
     }
 }
