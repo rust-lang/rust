@@ -308,10 +308,8 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
                 if entry.is_thin() {
-                    self.entries.push((
-                        file_name.clone().into_bytes(),
-                        ArchiveEntry::File(PathBuf::from(file_name)),
-                    ));
+                    let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
+                    self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));
                 } else {
                     self.entries.push((
                         file_name.into_bytes(),

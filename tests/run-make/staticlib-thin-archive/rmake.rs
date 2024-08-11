@@ -1,13 +1,28 @@
-// Regression test for https://github.com/rust-lang/rust/issues/107407
+// Regression test for https://github.com/rust-lang/rust/issues/107407 which
+// checks that rustc can read thin archive. Before the object crate added thin
+// archive support rustc would add emit object files to the staticlib and after
+// the object crate added thin archive support it would previously crash the
+// compiler due to a missing special case for thin archive members.
+use std::path::Path;
 
-use run_make_support::{llvm_ar, rustc, static_lib_name};
+use run_make_support::{llvm_ar, rust_lib_name, rustc, static_lib_name};
 
 fn main() {
-    rustc().input("simple_obj.rs").emit("obj").run();
-    llvm_ar().obj_to_thin_ar().output_input(static_lib_name("thin_archive"), "simple_obj.o").run();
-    rustc().input("rust_archive.rs").run();
-    // Disable lld as it ignores the symbol table in the archive file.
-    rustc()
-        .input("bin.rs") /*.arg("-Zlinker-features=-lld")*/
+    std::fs::create_dir("archive").unwrap();
+
+    // Build a thin archive
+    rustc().input("simple_obj.rs").emit("obj").output("archive/simple_obj.o").run();
+    llvm_ar()
+        .obj_to_thin_ar()
+        .output_input(
+            Path::new("archive").join(static_lib_name("thin_archive")),
+            "archive/simple_obj.o",
+        )
         .run();
+
+    // Build an rlib which includes the members of this thin archive
+    rustc().input("rust_lib.rs").library_search_path("archive").run();
+
+    // Build a binary which requires a symbol from the thin archive
+    rustc().input("bin.rs").extern_("rust_lib", rust_lib_name("rust_lib")).run();
 }
