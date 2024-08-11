@@ -1,5 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
+use std::assert_matches::assert_matches;
+
 use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
@@ -92,7 +94,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    assert!(matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+    assert_matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
 
     let inner_tys: Vec<_> = match *self_type.kind() {
         // Trivially okay as these types are all:

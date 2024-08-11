@@ -9,6 +9,8 @@
 //! coherence right now and was annoying to implement, so I am leaving it
 //! as is until we start using it for something else.
 
+use std::assert_matches::assert_matches;
+
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
@@ -273,10 +275,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     steps.push(step)
                 }
                 inspect::ProbeStep::MakeCanonicalResponse { shallow_certainty: c } => {
-                    assert!(matches!(
+                    assert_matches!(
                         shallow_certainty.replace(c),
                         None | Some(Certainty::Maybe(MaybeCause::Ambiguity))
-                    ));
+                    );
                 }
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     match probe.kind {
