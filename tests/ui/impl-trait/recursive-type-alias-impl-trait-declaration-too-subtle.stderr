@@ -1,24 +1,3 @@
-error: item does not constrain `a::Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:10:12
-   |
-LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
-   |            ^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:4:16
-   |
-LL |     type Foo = impl PartialEq<(Foo, i32)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: unconstrained opaque type
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:4:16
-   |
-LL |     type Foo = impl PartialEq<(Foo, i32)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
-
 error[E0053]: method `eq` has an incompatible type for trait
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:10:30
    |
@@ -34,14 +13,6 @@ help: change the parameter type to match the trait
    |
 LL |         fn eq(&self, _other: &(a::Bar, i32)) -> bool {
    |                              ~~~~~~~~~~~~~~
-
-error: unconstrained opaque type
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:19:16
-   |
-LL |     type Foo = impl PartialEq<(Foo, i32)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
 
 error[E0053]: method `eq` has an incompatible type for trait
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:25:30
@@ -64,6 +35,6 @@ help: change the parameter type to match the trait
 LL |         fn eq(&self, _other: &(b::Foo, i32)) -> bool {
    |                              ~~~~~~~~~~~~~~
 
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0053`.

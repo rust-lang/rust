@@ -10,15 +10,6 @@ note: for this opaque type
 LL | type OneTy<T> = impl Debug;
    |                 ^^^^^^^^^^
 
-error[E0792]: expected generic type parameter, found `u32`
-  --> $DIR/generic_nondefining_use.rs:17:5
-   |
-LL | type OneTy<T> = impl Debug;
-   |            - this generic parameter must be used with a generic type parameter
-...
-LL |     5u32
-   |     ^^^^
-
 error[E0792]: non-defining opaque type use in defining scope
   --> $DIR/generic_nondefining_use.rs:21:27
    |
@@ -42,6 +33,15 @@ note: for this opaque type
    |
 LL | type OneConst<const X: usize> = impl Debug;
    |                                 ^^^^^^^^^^
+
+error[E0792]: expected generic type parameter, found `u32`
+  --> $DIR/generic_nondefining_use.rs:17:5
+   |
+LL | type OneTy<T> = impl Debug;
+   |            - this generic parameter must be used with a generic type parameter
+...
+LL |     5u32
+   |     ^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'static`
   --> $DIR/generic_nondefining_use.rs:23:5

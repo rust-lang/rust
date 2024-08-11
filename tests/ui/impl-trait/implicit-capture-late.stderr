@@ -10,12 +10,6 @@ note: lifetime declared here
 LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
    |                                    ^^
 
-error: [o]
-  --> $DIR/implicit-capture-late.rs:10:55
-   |
-LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
-   |                                                       ^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0657`.

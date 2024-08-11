@@ -24,14 +24,6 @@ LL |         Self: 'a;
 LL |     type Item = u32;
    |              ^ lifetimes do not match type in trait
 
-error[E0277]: `()` is not an iterator
-  --> $DIR/span-bug-issue-121457.rs:13:23
-   |
-LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
-   |
-   = help: the trait `Iterator` is not implemented for `()`
-
 warning: impl trait in impl method signature does not match trait method signature
   --> $DIR/span-bug-issue-121457.rs:13:51
    |
@@ -48,6 +40,14 @@ help: replace the return type so that it matches the trait
    |
 LL |     fn iter(&self) -> impl Iterator {}
    |                       ~~~~~~~~~~~~~
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/span-bug-issue-121457.rs:13:23
+   |
+LL |     fn iter(&self) -> impl for<'missing> Iterator<Item = Self::Item<'missing>> {}
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

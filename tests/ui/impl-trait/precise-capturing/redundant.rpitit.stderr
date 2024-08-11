@@ -14,5 +14,30 @@ LL |     fn in_trait() -> impl Sized + use<'a> {}
    |
    = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
 
-error: aborting due to 2 previous errors
+error[E0391]: cycle detected when computing generics of `Test::in_trait`
+  --> $DIR/redundant.rs:18:5
+   |
+LL |     fn in_trait() -> impl Sized + use<'a, Self>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires looking up a named region...
+  --> $DIR/redundant.rs:18:5
+   |
+LL |     fn in_trait() -> impl Sized + use<'a, Self>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires resolving lifetimes...
+  --> $DIR/redundant.rs:18:5
+   |
+LL |     fn in_trait() -> impl Sized + use<'a, Self>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing generics of `Test::in_trait`, completing the cycle
+note: cycle used when computing generics of `Test::in_trait::{opaque#0}`
+  --> $DIR/redundant.rs:18:22
+   |
+LL |     fn in_trait() -> impl Sized + use<'a, Self>;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

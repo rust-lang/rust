@@ -1,29 +1,3 @@
-error: item does not constrain `StateWidget::{opaque#0}`, but has it in its signature
-  --> $DIR/failed-to-normalize-ice-99945.rs:25:8
-   |
-LL |     fn make_state(&self) -> Self::State {}
-   |        ^^^^^^^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/failed-to-normalize-ice-99945.rs:20:24
-   |
-LL | type StateWidget<'a> = impl Widget<&'a ()>;
-   |                        ^^^^^^^^^^^^^^^^^^^
-
-error: item does not constrain `StateWidget::{opaque#0}`, but has it in its signature
-  --> $DIR/failed-to-normalize-ice-99945.rs:29:4
-   |
-LL | fn new_stateful_widget<F: for<'a> Fn(&'a ()) -> StateWidget<'a>>(build: F) -> impl Widget<()> {
-   |    ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/failed-to-normalize-ice-99945.rs:20:24
-   |
-LL | type StateWidget<'a> = impl Widget<&'a ()>;
-   |                        ^^^^^^^^^^^^^^^^^^^
-
 error[E0308]: mismatched types
   --> $DIR/failed-to-normalize-ice-99945.rs:36:29
    |
@@ -45,7 +19,7 @@ LL | type StateWidget<'a> = impl Widget<&'a ()>;
 LL |     StatefulWidget(build)
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0308, E0792.
 For more information about an error, try `rustc --explain E0308`.

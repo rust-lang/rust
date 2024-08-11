@@ -1,3 +1,27 @@
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/higher-ranked-regions-basic.rs:57:41
+   |
+LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^ argument `'static` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/higher-ranked-regions-basic.rs:56:25
+   |
+LL |     type Opq0<'a, 'b> = impl Sized;
+   |                         ^^^^^^^^^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/higher-ranked-regions-basic.rs:66:41
+   |
+LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
+   |                                         ^^^^^^^^^^^^^^^^^ generic argument `'a` used twice
+   |
+note: for this opaque type
+  --> $DIR/higher-ranked-regions-basic.rs:65:25
+   |
+LL |     type Opq0<'a, 'b> = impl Sized;
+   |                         ^^^^^^^^^^
+
 error[E0792]: expected generic lifetime parameter, found `'a`
   --> $DIR/higher-ranked-regions-basic.rs:15:55
    |
@@ -46,18 +70,6 @@ LL |     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
 LL |     fn test() -> Opq2 {}
    |                       ^^
 
-error[E0792]: non-defining opaque type use in defining scope
-  --> $DIR/higher-ranked-regions-basic.rs:57:41
-   |
-LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^ argument `'static` is not a generic parameter
-   |
-note: for this opaque type
-  --> $DIR/higher-ranked-regions-basic.rs:56:25
-   |
-LL |     type Opq0<'a, 'b> = impl Sized;
-   |                         ^^^^^^^^^^
-
 error[E0792]: expected generic lifetime parameter, found `'a`
   --> $DIR/higher-ranked-regions-basic.rs:57:65
    |
@@ -65,18 +77,6 @@ LL |     type Opq0<'a, 'b> = impl Sized;
    |               -- this generic parameter must be used with a generic lifetime parameter
 LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
    |                                                                 ^^
-
-error: non-defining opaque type use in defining scope
-  --> $DIR/higher-ranked-regions-basic.rs:66:41
-   |
-LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
-   |                                         ^^^^^^^^^^^^^^^^^ generic argument `'a` used twice
-   |
-note: for this opaque type
-  --> $DIR/higher-ranked-regions-basic.rs:65:25
-   |
-LL |     type Opq0<'a, 'b> = impl Sized;
-   |                         ^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'a`
   --> $DIR/higher-ranked-regions-basic.rs:66:60

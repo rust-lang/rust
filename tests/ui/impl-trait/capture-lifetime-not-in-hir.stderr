@@ -1,14 +1,27 @@
-error: [o, o]
-  --> $DIR/capture-lifetime-not-in-hir.rs:8:29
-   |
-LL | fn foo<'a, T: Bar<'a>>() -> impl Into<T::Assoc> {
-   |                             ^^^^^^^^^^^^^^^^^^^
-
-error: [o, o, o]
-  --> $DIR/capture-lifetime-not-in-hir.rs:14:30
+error[E0391]: cycle detected when computing generics of `foo2`
+  --> $DIR/capture-lifetime-not-in-hir.rs:14:1
    |
 LL | fn foo2<'a, T: Bar<'a>>() -> impl Into<T::Assoc> + 'a {
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires looking up a named region...
+  --> $DIR/capture-lifetime-not-in-hir.rs:14:1
+   |
+LL | fn foo2<'a, T: Bar<'a>>() -> impl Into<T::Assoc> + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires resolving lifetimes...
+  --> $DIR/capture-lifetime-not-in-hir.rs:14:1
+   |
+LL | fn foo2<'a, T: Bar<'a>>() -> impl Into<T::Assoc> + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires computing generics of `foo2`, completing the cycle
+note: cycle used when checking that `foo2` is well-formed
+  --> $DIR/capture-lifetime-not-in-hir.rs:14:1
+   |
+LL | fn foo2<'a, T: Bar<'a>>() -> impl Into<T::Assoc> + 'a {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0391`.

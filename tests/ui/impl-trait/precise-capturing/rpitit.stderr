@@ -6,14 +6,6 @@ LL |     fn hello() -> impl PartialEq + use<Self>;
    |
    = note: currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
 
-error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
-  --> $DIR/rpitit.rs:11:19
-   |
-LL | trait Foo<'a> {
-   |           -- this lifetime parameter is captured
-LL |     fn hello() -> impl PartialEq + use<Self>;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime captured due to being mentioned in the bounds of the `impl Trait`
-
 error: lifetime may not live long enough
   --> $DIR/rpitit.rs:15:5
    |
@@ -46,5 +38,5 @@ LL | |     );
 
 help: `'a` and `'b` must be the same: replace one with the other
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

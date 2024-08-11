@@ -7,13 +7,6 @@ LL |
 LL |     |x| x
    |         ^
 
-error[E0720]: cannot resolve opaque type
-  --> $DIR/impl-fn-predefined-lifetimes.rs:4:35
-   |
-LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
-   |                                   ^^^^^^^^^^^^^^^ cannot resolve opaque type
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0720, E0792.
-For more information about an error, try `rustc --explain E0720`.
+For more information about this error, try `rustc --explain E0792`.

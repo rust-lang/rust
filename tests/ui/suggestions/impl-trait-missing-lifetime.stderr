@@ -41,18 +41,18 @@ LL + async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<()> { x.next() }
    |
 
 error: lifetime may not live long enough
+  --> $DIR/impl-trait-missing-lifetime.rs:9:63
+   |
+LL | fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+   |      ----- has type `x`                                       ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
   --> $DIR/impl-trait-missing-lifetime.rs:17:69
    |
 LL | async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
    | -----------------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
    | |
    | return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
-
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime.rs:9:63
-   |
-LL | fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   |      ----- has type `x`                                       ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
 
 error: aborting due to 4 previous errors
 

@@ -1,0 +1,10 @@
+warning: trait `Trait` is never used
+  --> $DIR/ret-impl-trait-fg.rs:8:7
+   |
+LL | trait Trait<'a, 'b> { }
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

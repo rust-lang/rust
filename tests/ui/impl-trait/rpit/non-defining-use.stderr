@@ -14,18 +14,6 @@ LL | fn bar<T>(val: T) -> impl Sized {
 LL |     let _: u8 = bar(0u8);
    |            ^^
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/non-defining-use.rs:8:17
-   |
-LL |     let _: u8 = bar(0u8);
-   |                 ^^^^^^^^ expected `T`, got `u8`
-   |
-note: previous use here
-  --> $DIR/non-defining-use.rs:7:22
-   |
-LL | fn bar<T>(val: T) -> impl Sized {
-   |                      ^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

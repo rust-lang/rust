@@ -11,18 +11,6 @@ LL | type TwoTys<T, U> = impl Debug;
    |                     ^^^^^^^^^^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:23:5
-   |
-LL |     t
-   |     ^
-   |
-note: type used multiple times
-  --> $DIR/generic_duplicate_param_use.rs:15:13
-   |
-LL | type TwoTys<T, U> = impl Debug;
-   |             ^  ^
-
-error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_param_use.rs:27:36
    |
 LL | fn one_lifetime<'a>(t: &'a u32) -> TwoLifetimes<'a, 'a> {
@@ -45,6 +33,18 @@ note: for this opaque type
    |
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
    |                                                  ^^^^^^^^^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_param_use.rs:23:5
+   |
+LL |     t
+   |     ^
+   |
+note: type used multiple times
+  --> $DIR/generic_duplicate_param_use.rs:15:13
+   |
+LL | type TwoTys<T, U> = impl Debug;
+   |             ^  ^
 
 error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_param_use.rs:29:5

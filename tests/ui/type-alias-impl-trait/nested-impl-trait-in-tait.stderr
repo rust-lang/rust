@@ -25,23 +25,7 @@ help: consider importing this struct
 LL + use std::thread::LocalKey;
    |
 
-error: unconstrained opaque type
-  --> $DIR/nested-impl-trait-in-tait.rs:3:17
-   |
-LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `Tait` must be used in combination with a concrete type within the same module
-
-error: unconstrained opaque type
-  --> $DIR/nested-impl-trait-in-tait.rs:3:54
-   |
-LL | pub type Tait = impl Iterator<Item = (&'db LocalKey, impl Iterator)>;
-   |                                                      ^^^^^^^^^^^^^
-   |
-   = note: `Tait` must be used in combination with a concrete type within the same module
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0261, E0412.
 For more information about an error, try `rustc --explain E0261`.

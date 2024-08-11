@@ -28,34 +28,6 @@ LL | const fn wrap(x: impl ~const PartialEq + ~const Destruct)
    |                                                 ^^^^^^^^
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:18:20
-   |
-LL |     -> impl ~const PartialEq + ~const Destruct
-   |                    ^^^^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:18:39
-   |
-LL |     -> impl ~const PartialEq + ~const Destruct
-   |                                       ^^^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:18:20
-   |
-LL |     -> impl ~const PartialEq + ~const Destruct
-   |                    ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:18:39
-   |
-LL |     -> impl ~const PartialEq + ~const Destruct
-   |                                       ^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:25:29
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
@@ -66,38 +38,6 @@ error: `~const` can only be applied to `#[const_trait]` traits
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
    |                                                ^^^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:29
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                             ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:48
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                                                ^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:29
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                             ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:25:48
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                                                ^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:29:29
@@ -124,6 +64,34 @@ error: `~const` can only be applied to `#[const_trait]` traits
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
    |                                                ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:18:20
+   |
+LL |     -> impl ~const PartialEq + ~const Destruct
+   |                    ^^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:18:39
+   |
+LL |     -> impl ~const PartialEq + ~const Destruct
+   |                                       ^^^^^^^^
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:18:20
+   |
+LL |     -> impl ~const PartialEq + ~const Destruct
+   |                    ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:18:39
+   |
+LL |     -> impl ~const PartialEq + ~const Destruct
+   |                                       ^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -243,7 +211,7 @@ LL | const fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T> + ~const Des
    |                           |
    |                           the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 33 previous errors
+error: aborting due to 29 previous errors
 
 Some errors have detailed explanations: E0493, E0635.
 For more information about an error, try `rustc --explain E0493`.

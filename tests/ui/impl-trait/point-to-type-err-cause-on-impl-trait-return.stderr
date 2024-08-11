@@ -138,33 +138,6 @@ help: change the type of the numeric literal from `u32` to `i32`
 LL |         1 => 1i32,
    |               ~~~
 
-error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:97:9
-   |
-LL | /     if let Some(42) = Some(42) {
-LL | |         0i32
-   | |         ---- expected because of this
-LL | |     } else {
-LL | |         1u32
-   | |         ^^^^ expected `i32`, found `u32`
-LL | |     }
-   | |_____- `if` and `else` have incompatible types
-   |
-help: you could change the return type to be a boxed trait object
-   |
-LL | fn apt() -> Box<dyn std::fmt::Display> {
-   |             ~~~~~~~                  +
-help: if you change the return type to expect trait objects, box the returned expressions
-   |
-LL ~         Box::new(0i32)
-LL |     } else {
-LL ~         Box::new(1u32)
-   |
-help: change the type of the numeric literal from `u32` to `i32`
-   |
-LL |         1i32
-   |          ~~~
-
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:66:13
    |
@@ -220,6 +193,33 @@ LL ~         Box::new(0i32)
 LL |     } else {
 LL ~         Box::new(1u32)
    |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:97:9
+   |
+LL | /     if let Some(42) = Some(42) {
+LL | |         0i32
+   | |         ---- expected because of this
+LL | |     } else {
+LL | |         1u32
+   | |         ^^^^ expected `i32`, found `u32`
+LL | |     }
+   | |_____- `if` and `else` have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn apt() -> Box<dyn std::fmt::Display> {
+   |             ~~~~~~~                  +
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         Box::new(0i32)
+LL |     } else {
+LL ~         Box::new(1u32)
+   |
+help: change the type of the numeric literal from `u32` to `i32`
+   |
+LL |         1i32
+   |          ~~~
 
 error: aborting due to 12 previous errors
 

@@ -86,15 +86,6 @@ LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
-error: implementation of `Bar` is not general enough
-  --> $DIR/nested-rpit-hrtb.rs:49:93
-   |
-LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
-   |                                                                                             ^^ implementation of `Bar` is not general enough
-   |
-   = note: `()` must implement `Bar<'a>`
-   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
-
 error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
   --> $DIR/nested-rpit-hrtb.rs:60:64
    |
@@ -103,6 +94,15 @@ LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b>
    |
    = help: the trait `Qux<'_>` is implemented for `()`
    = help: for that trait implementation, expected `()`, found `&'a ()`
+
+error: implementation of `Bar` is not general enough
+  --> $DIR/nested-rpit-hrtb.rs:49:93
+   |
+LL | fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
+   |                                                                                             ^^ implementation of `Bar` is not general enough
+   |
+   = note: `()` must implement `Bar<'a>`
+   = note: ...but it actually implements `Bar<'0>`, for some specific lifetime `'0`
 
 error: aborting due to 9 previous errors
 
