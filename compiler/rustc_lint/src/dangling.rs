@@ -112,7 +112,7 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         ExprKind::Struct(_, _, _) => true,
         // These are 'static
         ExprKind::Lit(_) => false,
-        // False negatives are possible, but arrays get promoted to 'static way too often.
+        // FIXME: False negatives are possible, but arrays get promoted to 'static way too often.
         ExprKind::Array(_) => false,
 
         // These typecheck to `!`
