@@ -808,7 +808,7 @@ trait UnusedDelimLint {
             return;
         }
         let spans = match value.kind {
-            ast::ExprKind::Block(ref block, None) if block.stmts.len() == 1 => block.stmts[0]
+            ast::ExprKind::Block(ref block, None) if let [stmt] = block.stmts.as_slice() => stmt
                 .span
                 .find_ancestor_inside(value.span)
                 .map(|span| (value.span.with_hi(span.lo()), value.span.with_lo(span.hi()))),
@@ -1544,14 +1544,12 @@ impl UnusedImportBraces {
             }
 
             // Trigger the lint only if there is one nested item
-            if items.len() != 1 {
-                return;
-            }
+            let [(tree, _)] = items.as_slice() else { return };
 
             // Trigger the lint if the nested item is a non-self single item
-            let node_name = match items[0].0.kind {
+            let node_name = match tree.kind {
                 ast::UseTreeKind::Simple(rename) => {
-                    let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
+                    let orig_ident = tree.prefix.segments.last().unwrap().ident;
                     if orig_ident.name == kw::SelfLower {
                         return;
                     }

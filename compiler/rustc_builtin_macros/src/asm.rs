@@ -745,10 +745,9 @@ fn expand_preparsed_asm(
             unused_operands.push((args.operands[idx].1, msg));
         }
     }
-    match unused_operands.len() {
-        0 => {}
-        1 => {
-            let (sp, msg) = unused_operands.into_iter().next().unwrap();
+    match unused_operands[..] {
+        [] => {}
+        [(sp, msg)] => {
             ecx.dcx()
                 .struct_span_err(sp, msg)
                 .with_span_label(sp, msg)

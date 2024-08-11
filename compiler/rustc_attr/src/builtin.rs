@@ -665,12 +665,12 @@ pub fn eval_condition(
                         res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
                     }),
                 sym::not => {
-                    if mis.len() != 1 {
+                    let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
-                    }
+                    };
 
-                    !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
+                    !eval_condition(mi.meta_item().unwrap(), sess, features, eval)
                 }
                 sym::target => {
                     if let Some(features) = features
@@ -1051,10 +1051,10 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     MetaItemKind::List(nested_items) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            if nested_items.len() == 1 {
+                            if let [nested_item] = nested_items.as_slice() {
                                 sess.dcx().emit_err(
                                     session_diagnostics::IncorrectReprFormatExpectInteger {
-                                        span: nested_items[0].span(),
+                                        span: nested_item.span(),
                                     },
                                 );
                             } else {
@@ -1066,10 +1066,10 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             }
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            if nested_items.len() == 1 {
+                            if let [nested_item] = nested_items.as_slice() {
                                 sess.dcx().emit_err(
                                     session_diagnostics::IncorrectReprFormatPackedExpectInteger {
-                                        span: nested_items[0].span(),
+                                        span: nested_item.span(),
                                     },
                                 );
                             } else {
