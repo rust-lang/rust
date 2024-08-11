@@ -676,7 +676,7 @@ impl<'a> Parser<'a> {
 
                             match &expr.kind {
                                 ExprKind::Path(None, ast::Path { segments, .. })
-                                    if segments.len() == 1 =>
+                                    if let [segment] = segments.as_slice() =>
                                 {
                                     if self.token == token::Colon
                                         && self.look_ahead(1, |token| {
@@ -693,8 +693,8 @@ impl<'a> Parser<'a> {
                                         let snapshot = self.create_snapshot_for_diagnostic();
                                         let label = Label {
                                             ident: Ident::from_str_and_span(
-                                                &format!("'{}", segments[0].ident),
-                                                segments[0].ident.span,
+                                                &format!("'{}", segment.ident),
+                                                segment.ident.span,
                                             ),
                                         };
                                         match self.parse_expr_labeled(label, false) {

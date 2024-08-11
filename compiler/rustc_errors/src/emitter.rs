@@ -226,17 +226,17 @@ pub trait Emitter: Translate {
     ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
             let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
-            if rest.is_empty() &&
+            if rest.is_empty()
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
-               sugg.substitutions.len() == 1 &&
+               && let [substitution] = sugg.substitutions.as_slice()
                // don't display multipart suggestions as labels
-               sugg.substitutions[0].parts.len() == 1 &&
+               && let [part] = substitution.parts.as_slice()
                // don't display long messages as labels
-               msg.split_whitespace().count() < 10 &&
+               && msg.split_whitespace().count() < 10
                // don't display multiline suggestions as labels
-               !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
-               ![
+               && !part.snippet.contains('\n')
+               && ![
                     // when this style is set we want the suggestion to be a message, not inline
                     SuggestionStyle::HideCodeAlways,
                     // trivial suggestion for tooling's sake, never shown
@@ -245,8 +245,8 @@ pub trait Emitter: Translate {
                     SuggestionStyle::ShowAlways,
                ].contains(&sugg.style)
             {
-                let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.is_empty() || sugg.style.hide_inline() {
+                let snippet = part.snippet.trim();
+                let msg = if snippet.is_empty() || sugg.style.hide_inline() {
                     // This substitution is only removal OR we explicitly don't want to show the
                     // code inline (`hide_inline`). Therefore, we don't show the substitution.
                     format!("help: {msg}")
@@ -255,19 +255,18 @@ pub trait Emitter: Translate {
                     format!(
                         "help: {}{}: `{}`",
                         msg,
-                        if self.source_map().is_some_and(|sm| is_case_difference(
-                            sm,
-                            substitution,
-                            sugg.substitutions[0].parts[0].span,
-                        )) {
+                        if self
+                            .source_map()
+                            .is_some_and(|sm| is_case_difference(sm, snippet, part.span,))
+                        {
                             " (notice the capitalization)"
                         } else {
                             ""
                         },
-                        substitution,
+                        snippet,
                     )
                 };
-                primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
+                primary_span.push_span_label(part.span, msg);
 
                 // We return only the modified primary_span
                 suggestions.clear();

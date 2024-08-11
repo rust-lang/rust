@@ -654,17 +654,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             traits::upcast_choices(self.tcx, source_trait_ref, target_trait_def_id);
 
         // must be exactly one trait ref or we'd get an ambig error etc
-        if upcast_trait_refs.len() != 1 {
+        let [upcast_trait_ref] = upcast_trait_refs.as_slice() else {
             span_bug!(
                 self.span,
                 "cannot uniquely upcast `{:?}` to `{:?}`: `{:?}`",
                 source_trait_ref,
                 target_trait_def_id,
                 upcast_trait_refs
-            );
-        }
+            )
+        };
 
-        upcast_trait_refs.into_iter().next().unwrap()
+        *upcast_trait_ref
     }
 
     fn instantiate_binder_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T

@@ -650,14 +650,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let typo_sugg = self
             .lookup_typo_candidate(path, following_seg, source.namespace(), is_expected)
             .to_opt_suggestion();
-        if path.len() == 1
+        if let [segment] = path
             && !matches!(source, PathSource::Delegation)
             && self.self_type_is_available()
         {
             if let Some(candidate) =
                 self.lookup_assoc_candidate(ident, ns, is_expected, source.is_call())
             {
-                let self_is_available = self.self_value_is_available(path[0].ident.span);
+                let self_is_available = self.self_value_is_available(segment.ident.span);
                 // Account for `Foo { field }` when suggesting `self.field` so we result on
                 // `Foo { field: self.field }`.
                 let pre = match source {
@@ -665,7 +665,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         if expr
                             .fields
                             .iter()
-                            .any(|f| f.ident == path[0].ident && f.is_shorthand) =>
+                            .any(|f| f.ident == segment.ident && f.is_shorthand) =>
                     {
                         format!("{path_str}: ")
                     }
@@ -1258,8 +1258,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             )
                         })
                         .collect();
-                if targets.len() == 1 {
-                    let target = targets[0];
+                if let [target] = targets.as_slice() {
                     return Some(TypoSuggestion::single_item_from_ident(target.0.ident, target.1));
                 }
             }
@@ -2105,8 +2104,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         filter_fn: &impl Fn(Res) -> bool,
     ) -> TypoCandidate {
         let mut names = Vec::new();
-        if path.len() == 1 {
-            let mut ctxt = path.last().unwrap().ident.span.ctxt();
+        if let [segment] = path {
+            let mut ctxt = segment.ident.span.ctxt();
 
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.

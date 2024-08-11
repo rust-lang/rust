@@ -19,9 +19,7 @@ impl DebuggerVisualizerCollector<'_> {
                 return;
             };
 
-            let hint = if hints.len() == 1 {
-                &hints[0]
-            } else {
+            let [hint] = hints.as_slice() else {
                 self.sess.dcx().emit_err(DebugVisualizerInvalid { span: attr.span });
                 return;
             };

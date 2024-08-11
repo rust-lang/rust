@@ -2213,8 +2213,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             attr.name_or_empty(),
             sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
         ) && let Some(meta) = attr.meta_item_list()
-            && meta.len() == 1
-            && let Some(item) = meta[0].meta_item()
+            && let [meta] = meta.as_slice()
+            && let Some(item) = meta.meta_item()
             && let MetaItemKind::NameValue(_) = &item.kind
             && item.path == sym::reason
         {
