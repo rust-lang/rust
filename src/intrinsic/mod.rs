@@ -127,20 +127,13 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // https://github.com/rust-lang/rust-clippy/issues/12497
         // and leave `else if use_integer_compare` to be placed "as is".
         #[allow(clippy::suspicious_else_formatting)]
-        let llval = match name {
+        let value = match name {
             _ if simple.is_some() => {
-                // FIXME(antoyo): remove this cast when the API supports function.
-                let func = unsafe {
-                    std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(simple.expect("simple"))
-                };
-                self.call(
-                    self.type_void(),
-                    None,
-                    None,
+                let func = simple.expect("simple function");
+                self.cx.context.new_call(
+                    self.location,
                     func,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                    None,
-                    None,
                 )
             }
             sym::likely => self.expect(args[0].immediate(), true),
@@ -383,7 +376,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
             _ if name_str.starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
-                    Ok(llval) => llval,
+                    Ok(value) => value,
                     Err(()) => return Ok(()),
                 }
             }
@@ -396,9 +389,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             if let PassMode::Cast { cast: ref ty, .. } = fn_abi.ret.mode {
                 let ptr_llty = self.type_ptr_to(ty.gcc_type(self));
                 let ptr = self.pointercast(result.val.llval, ptr_llty);
-                self.store(llval, ptr, result.val.align);
+                self.store(value, ptr, result.val.align);
             } else {
-                OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
+                OperandRef::from_immediate_or_packed_pair(self, value, result.layout)
                     .val
                     .store(self, result);
             }

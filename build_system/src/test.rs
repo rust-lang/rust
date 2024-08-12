@@ -92,6 +92,7 @@ struct TestArg {
     current_part: Option<usize>,
     sysroot_panic_abort: bool,
     config_info: ConfigInfo,
+    sysroot_features: Vec<String>,
 }
 
 impl TestArg {
@@ -127,6 +128,14 @@ impl TestArg {
                 "--sysroot-panic-abort" => {
                     test_arg.sysroot_panic_abort = true;
                 }
+                "--sysroot-features" => match args.next() {
+                    Some(feature) if !feature.is_empty() => {
+                        test_arg.sysroot_features.push(feature);
+                    }
+                    _ => {
+                        return Err(format!("Expected an argument after `{}`, found nothing", arg))
+                    }
+                },
                 "--help" => {
                     show_usage();
                     return Ok(None);
@@ -250,7 +259,9 @@ fn mini_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 fn build_sysroot(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[BUILD] sysroot");
-    build::build_sysroot(env, &args.config_info)?;
+    let mut config = args.config_info.clone();
+    config.features.extend(args.sysroot_features.iter().cloned());
+    build::build_sysroot(env, &config)?;
     Ok(())
 }
 

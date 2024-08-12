@@ -763,10 +763,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             _ => return_error!(InvalidMonomorphization::UnrecognizedIntrinsic { span, name }),
         };
         let builtin_name = format!("{}{}", intr_name, elem_ty_str);
-        let funcs = bx.cx.functions.borrow();
-        let function = funcs
-            .get(&builtin_name)
-            .unwrap_or_else(|| panic!("unable to find builtin function {}", builtin_name));
+        let function = bx.context.get_builtin_function(builtin_name);
 
         // TODO(antoyo): add platform-specific behavior here for architectures that have these
         // intrinsics as instructions (for instance, gpus)
@@ -784,7 +781,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                     .map(|arg| bx.extract_element(arg.immediate(), index).to_rvalue())
                     .collect()
             };
-            vector_elements.push(bx.context.new_call(None, *function, &arguments));
+            vector_elements.push(bx.context.new_call(None, function, &arguments));
         }
         let c = bx.context.new_rvalue_from_vector(None, vec_ty, &vector_elements);
         Ok(c)
