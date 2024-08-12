@@ -2,7 +2,9 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     const KEY_LEN: usize = core::mem::size_of::<u64>();
 
     let mut v = [0u8; KEY_LEN * 2];
-    imp::fill_bytes(&mut v);
+    if let Err(err) = read(&mut v) {
+        panic!("failed to retrieve random hash map seed: {err}");
+    }
 
     let key1 = v[0..KEY_LEN].try_into().unwrap();
     let key2 = v[KEY_LEN..].try_into().unwrap();
@@ -10,27 +12,78 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     (u64::from_ne_bytes(key1), u64::from_ne_bytes(key2))
 }
 
-#[cfg(all(
-    unix,
-    not(target_os = "openbsd"),
-    not(target_os = "netbsd"),
-    not(target_os = "fuchsia"),
-    not(target_os = "redox"),
-    not(target_os = "vxworks"),
-    not(target_os = "emscripten"),
-    not(target_os = "vita"),
-    not(target_vendor = "apple"),
+cfg_if::cfg_if! {
+    if #[cfg(any(
+        target_vendor = "apple",
+        target_os = "openbsd",
+        target_os = "emscripten",
+        target_os = "vita",
+        all(target_os = "netbsd", not(netbsd10)),
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    ))] {
+        // Some systems have a syscall that directly retrieves random data.
+        // If that is guaranteed to be available, use it.
+        use imp::syscall as read;
+    } else {
+        // Otherwise, try the syscall to see if it exists only on some systems
+        // and fall back to reading from the random device otherwise.
+        fn read(bytes: &mut [u8]) -> crate::io::Result<()> {
+            use crate::fs::File;
+            use crate::io::Read;
+            use crate::sync::OnceLock;
+
+            #[cfg(any(
+                target_os = "linux",
+                target_os = "android",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "freebsd",
+                target_os = "dragonfly",
+                target_os = "solaris",
+                target_os = "illumos",
+                netbsd10,
+            ))]
+            if let Some(res) = imp::syscall(bytes) {
+                return res;
+            }
+
+            const PATH: &'static str = if cfg!(target_os = "redox") {
+                "/scheme/rand"
+            } else {
+                "/dev/urandom"
+            };
+
+            static FILE: OnceLock<File> = OnceLock::new();
+
+            FILE.get_or_try_init(|| File::open(PATH))?.read_exact(bytes)
+        }
+    }
+}
+
+// All these systems a `getrandom` syscall.
+//
+// It is not guaranteed to be available, so return None to fallback to the file
+// implementation.
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "freebsd",
+    target_os = "dragonfly",
+    target_os = "solaris",
+    target_os = "illumos",
+    netbsd10,
 ))]
 mod imp {
-    use crate::fs::File;
-    use crate::io::Read;
-    #[cfg(any(target_os = "linux", target_os = "android"))]
-    use crate::sys::weak::syscall;
+    use crate::io::{Error, Result};
+    use crate::sync::atomic::{AtomicBool, Ordering};
+    use crate::sys::os::errno;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
-        use crate::sync::atomic::{AtomicBool, Ordering};
-        use crate::sys::os::errno;
+        use crate::sys::weak::syscall;
 
         // A weak symbol allows interposition, e.g. for perf measurements that want to
         // disable randomness for consistency. Otherwise, we'll try a raw syscall.
@@ -59,6 +112,7 @@ mod imp {
     }
 
     #[cfg(any(
+        target_os = "dragonfly",
         target_os = "espidf",
         target_os = "horizon",
         target_os = "freebsd",
@@ -70,51 +124,11 @@ mod imp {
         unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
 
-    #[cfg(target_os = "dragonfly")]
-    fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
-        extern "C" {
-            fn getrandom(
-                buf: *mut libc::c_void,
-                buflen: libc::size_t,
-                flags: libc::c_uint,
-            ) -> libc::ssize_t;
-        }
-        unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
-    }
-
-    #[cfg(not(any(
-        target_os = "linux",
-        target_os = "android",
-        target_os = "espidf",
-        target_os = "horizon",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "solaris",
-        target_os = "illumos",
-        netbsd10
-    )))]
-    fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
-        false
-    }
-
-    #[cfg(any(
-        target_os = "linux",
-        target_os = "android",
-        target_os = "espidf",
-        target_os = "horizon",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "solaris",
-        target_os = "illumos",
-        netbsd10
-    ))]
-    fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
-        use crate::sync::atomic::{AtomicBool, Ordering};
-        use crate::sys::os::errno;
-
+    pub fn syscall(v: &mut [u8]) -> Option<Result<()>> {
         static GETRANDOM_UNAVAILABLE: AtomicBool = AtomicBool::new(false);
+
         if GETRANDOM_UNAVAILABLE.load(Ordering::Relaxed) {
-            return false;
+            return None;
         }
 
         let mut read = 0;
@@ -125,8 +139,7 @@ mod imp {
                 if err == libc::EINTR {
                     continue;
                 } else if err == libc::ENOSYS || err == libc::EPERM {
-                    // Fall back to reading /dev/urandom if `getrandom` is not
-                    // supported on the current kernel.
+                    // `getrandom` is not supported on the current system.
                     //
                     // Also fall back in case it is disabled by something like
                     // seccomp or inside of docker.
@@ -142,123 +155,83 @@ mod imp {
                     //     https://github.com/moby/moby/issues/42680
                     //
                     GETRANDOM_UNAVAILABLE.store(true, Ordering::Relaxed);
-                    return false;
+                    return None;
                 } else if err == libc::EAGAIN {
-                    return false;
+                    // getrandom has failed because it would have blocked as the
+                    // non-blocking pool (urandom) has not been initialized in
+                    // the kernel yet due to a lack of entropy. Fallback to
+                    // reading from `/dev/urandom` which will return potentially
+                    // insecure random data to avoid blocking applications which
+                    // could depend on this call without ever knowing they do and
+                    // don't have a work around.
+                    return None;
                 } else {
-                    panic!("unexpected getrandom error: {err}");
+                    return Some(Err(Error::from_raw_os_error(err)));
                 }
             } else {
                 read += result as usize;
             }
         }
-        true
-    }
 
-    pub fn fill_bytes(v: &mut [u8]) {
-        // getrandom_fill_bytes here can fail if getrandom() returns EAGAIN,
-        // meaning it would have blocked because the non-blocking pool (urandom)
-        // has not initialized in the kernel yet due to a lack of entropy. The
-        // fallback we do here is to avoid blocking applications which could
-        // depend on this call without ever knowing they do and don't have a
-        // work around. The PRNG of /dev/urandom will still be used but over a
-        // possibly predictable entropy pool.
-        if getrandom_fill_bytes(v) {
-            return;
-        }
-
-        // getrandom failed because it is permanently or temporarily (because
-        // of missing entropy) unavailable. Open /dev/urandom, read from it,
-        // and close it again.
-        let mut file = File::open("/dev/urandom").expect("failed to open /dev/urandom");
-        file.read_exact(v).expect("failed to read /dev/urandom")
+        Some(Ok(()))
     }
 }
 
-#[cfg(target_vendor = "apple")]
+#[cfg(any(
+    target_os = "macos", // Supported since macOS 10.12+.
+    target_os = "openbsd",
+    target_os = "emscripten",
+    target_os = "vita",
+))]
 mod imp {
-    use libc::{c_int, c_void, size_t};
+    use crate::io::{Error, Result};
 
-    use crate::io;
-
-    #[inline(always)]
-    fn random_failure() -> ! {
-        panic!("unexpected random generation error: {}", io::Error::last_os_error());
-    }
-
-    #[cfg(target_os = "macos")]
-    fn getentropy_fill_bytes(v: &mut [u8]) {
-        extern "C" {
-            fn getentropy(bytes: *mut c_void, count: size_t) -> c_int;
-        }
-
+    pub fn syscall(v: &mut [u8]) -> Result<()> {
         // getentropy(2) permits a maximum buffer size of 256 bytes
         for s in v.chunks_mut(256) {
-            let ret = unsafe { getentropy(s.as_mut_ptr().cast(), s.len()) };
+            let ret = unsafe { libc::getentropy(s.as_mut_ptr().cast(), s.len()) };
             if ret == -1 {
-                random_failure()
+                return Err(Error::last_os_error());
             }
         }
-    }
 
-    #[cfg(not(target_os = "macos"))]
-    fn ccrandom_fill_bytes(v: &mut [u8]) {
+        Ok(())
+    }
+}
+
+// On Apple platforms, `CCRandomGenerateBytes` and `SecRandomCopyBytes` simply
+// call into `CCRandomCopyBytes` with `kCCRandomDefault`. `CCRandomCopyBytes`
+// manages a CSPRNG which is seeded from the kernel's CSPRNG and which runs on
+// its own thread accessed via GCD. This seems needlessly heavyweight for our purposes
+// so we only use it when `getentropy` is blocked, which appears to be the case
+// on all platforms except macOS (see #102643).
+//
+// `CCRandomGenerateBytes` is used instead of `SecRandomCopyBytes` because the former is accessible
+// via `libSystem` (libc) while the other needs to link to `Security.framework`.
+#[cfg(all(target_vendor = "apple", not(target_os = "macos")))]
+mod imp {
+    use libc::size_t;
+
+    use crate::ffi::{c_int, c_void};
+    use crate::io::{Error, Result};
+
+    pub fn syscall(v: &mut [u8]) -> Result<()> {
         extern "C" {
             fn CCRandomGenerateBytes(bytes: *mut c_void, count: size_t) -> c_int;
         }
 
         let ret = unsafe { CCRandomGenerateBytes(v.as_mut_ptr().cast(), v.len()) };
-        if ret == -1 {
-            random_failure()
-        }
-    }
-
-    pub fn fill_bytes(v: &mut [u8]) {
-        // All supported versions of macOS (10.12+) support getentropy.
-        //
-        // `getentropy` is measurably faster (via Divan) then the other alternatives so its preferred
-        // when usable.
-        #[cfg(target_os = "macos")]
-        getentropy_fill_bytes(v);
-
-        // On Apple platforms, `CCRandomGenerateBytes` and `SecRandomCopyBytes` simply
-        // call into `CCRandomCopyBytes` with `kCCRandomDefault`. `CCRandomCopyBytes`
-        // manages a CSPRNG which is seeded from the kernel's CSPRNG and which runs on
-        // its own thread accessed via GCD. This seems needlessly heavyweight for our purposes
-        // so we only use it on non-Mac OSes where the better entrypoints are blocked.
-        //
-        // `CCRandomGenerateBytes` is used instead of `SecRandomCopyBytes` because the former is accessible
-        // via `libSystem` (libc) while the other needs to link to `Security.framework`.
-        //
-        // Note that while `getentropy` has a available attribute in the macOS headers, the lack
-        // of a header in the iOS (and others) SDK means that its can cause app store rejections.
-        // Just use `CCRandomGenerateBytes` instead.
-        #[cfg(not(target_os = "macos"))]
-        ccrandom_fill_bytes(v);
-    }
-}
-
-#[cfg(any(target_os = "openbsd", target_os = "emscripten", target_os = "vita"))]
-mod imp {
-    use crate::sys::os::errno;
-
-    pub fn fill_bytes(v: &mut [u8]) {
-        // getentropy(2) permits a maximum buffer size of 256 bytes
-        for s in v.chunks_mut(256) {
-            let ret = unsafe { libc::getentropy(s.as_mut_ptr() as *mut libc::c_void, s.len()) };
-            if ret == -1 {
-                panic!("unexpected getentropy error: {}", errno());
-            }
-        }
+        if ret != -1 { Ok(()) } else { Err(Error::last_os_error()) }
     }
 }
 
 // FIXME: once the 10.x release becomes the minimum, this can be dropped for simplification.
 #[cfg(all(target_os = "netbsd", not(netbsd10)))]
 mod imp {
+    use crate::io::{Error, Result};
     use crate::ptr;
 
-    pub fn fill_bytes(v: &mut [u8]) {
+    pub fn syscall(v: &mut [u8]) -> Result<()> {
         let mib = [libc::CTL_KERN, libc::KERN_ARND];
         // kern.arandom permits a maximum buffer size of 256 bytes
         for s in v.chunks_mut(256) {
@@ -273,39 +246,30 @@ mod imp {
                     0,
                 )
             };
-            if ret == -1 || s_len != s.len() {
-                panic!(
-                    "kern.arandom sysctl failed! (returned {}, s.len() {}, oldlenp {})",
-                    ret,
-                    s.len(),
-                    s_len
-                );
+            if ret == -1 {
+                return Err(Error::last_os_error());
+            } else if s_len != s.len() {
+                // FIXME(joboet): this can't actually happen, can it?
+                panic!("read less bytes than requested from kern.arandom");
             }
         }
+
+        Ok(())
     }
 }
 
 #[cfg(target_os = "fuchsia")]
 mod imp {
+    use crate::io::Result;
+
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, len: usize);
     }
 
-    pub fn fill_bytes(v: &mut [u8]) {
-        unsafe { zx_cprng_draw(v.as_mut_ptr(), v.len()) }
-    }
-}
-
-#[cfg(target_os = "redox")]
-mod imp {
-    use crate::fs::File;
-    use crate::io::Read;
-
-    pub fn fill_bytes(v: &mut [u8]) {
-        // Open rand:, read from it, and close it again.
-        let mut file = File::open("rand:").expect("failed to open rand:");
-        file.read_exact(v).expect("failed to read rand:")
+    pub fn syscall(v: &mut [u8]) -> Result<()> {
+        unsafe { zx_cprng_draw(v.as_mut_ptr(), v.len()) };
+        Ok(())
     }
 }
 
@@ -314,25 +278,25 @@ mod imp {
     use core::sync::atomic::AtomicBool;
     use core::sync::atomic::Ordering::Relaxed;
 
-    use crate::io;
+    use crate::io::{Error, Result};
 
-    pub fn fill_bytes(v: &mut [u8]) {
+    pub fn syscall(v: &mut [u8]) -> Result<()> {
         static RNG_INIT: AtomicBool = AtomicBool::new(false);
         while !RNG_INIT.load(Relaxed) {
             let ret = unsafe { libc::randSecure() };
             if ret < 0 {
-                panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
+                return Err(Error::last_os_error());
             } else if ret > 0 {
                 RNG_INIT.store(true, Relaxed);
                 break;
             }
+
             unsafe { libc::usleep(10) };
         }
+
         let ret = unsafe {
             libc::randABytes(v.as_mut_ptr() as *mut libc::c_uchar, v.len() as libc::c_int)
         };
-        if ret < 0 {
-            panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
-        }
+        if ret >= 0 { Ok(()) } else { Err(Error::last_os_error()) }
     }
 }
