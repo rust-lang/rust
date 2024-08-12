@@ -329,6 +329,7 @@ impl NotifyActor {
         }
     }
 
+    #[track_caller]
     fn send(&self, msg: loader::Message) {
         self.sender.send(msg).unwrap();
     }
