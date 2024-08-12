@@ -7,8 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
-use rustc_semver::RustcVersion;
-use rustc_session::impl_lint_pass;
+use rustc_session::{impl_lint_pass, RustcVersion};
 use rustc_span::def_id::DefId;
 use rustc_span::{ExpnKind, Span};
 
@@ -65,18 +64,18 @@ impl IncompatibleMsrv {
                 StabilityLevel::Stable {
                     since: StableSince::Version(version),
                     ..
-                } => Some(RustcVersion::new(
-                    version.major.into(),
-                    version.minor.into(),
-                    version.patch.into(),
-                )),
+                } => Some(version),
                 _ => None,
             }) {
             version
         } else if let Some(parent_def_id) = tcx.opt_parent(def_id) {
             self.get_def_id_version(tcx, parent_def_id)
         } else {
-            RustcVersion::new(1, 0, 0)
+            RustcVersion {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            }
         };
         self.is_above_msrv.insert(def_id, version);
         version
