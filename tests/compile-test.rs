@@ -8,6 +8,8 @@ use clippy_config::ClippyConfiguration;
 use clippy_lints::LintInfo;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
+use pulldown_cmark::{Options, Parser, html};
+use rinja::{Template, filters::Safe};
 use serde::{Deserialize, Serialize};
 use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
@@ -385,6 +387,22 @@ fn ui_cargo_toml_metadata() {
     }
 }
 
+#[derive(Template)]
+#[template(path = "index_template.html")]
+struct Renderer<'a> {
+    lints: &'a Vec<LintMetadata>,
+}
+
+impl<'a> Renderer<'a> {
+    fn markdown(&self, input: &str) -> Safe<String> {
+        let parser = Parser::new_ext(input, Options::all());
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+        // Oh deer, what a hack :O
+        Safe(html_output.replace("<table", "<table class=\"table\""))
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum DiagnosticOrMessage {
@@ -447,8 +465,7 @@ impl DiagnosticCollector {
                 .collect();
             metadata.sort_unstable_by(|a, b| a.id.cmp(&b.id));
 
-            let json = serde_json::to_string_pretty(&metadata).unwrap();
-            fs::write("util/gh-pages/lints.json", json).unwrap();
+            fs::write("util/gh-pages/index.html", Renderer { lints: &metadata }.render().unwrap()).unwrap();
         });
 
         (Self { sender }, handle)
@@ -487,7 +504,7 @@ impl Flag for DiagnosticCollector {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 struct LintMetadata {
     id: String,
     id_location: Option<&'static str>,
@@ -557,6 +574,16 @@ impl LintMetadata {
                 ### Deprecation reason\n\n{reason}.\n",
             ),
             applicability: Applicability::Unspecified,
+        }
+    }
+
+    fn applicability_str(&self) -> &str {
+        match self.applicability {
+            Applicability::MachineApplicable => "MachineApplicable",
+            Applicability::HasPlaceholders => "HasPlaceholders",
+            Applicability::MaybeIncorrect => "MaybeIncorrect",
+            Applicability::Unspecified => "Unspecified",
+            _ => panic!("needs to update this code"),
         }
     }
 }

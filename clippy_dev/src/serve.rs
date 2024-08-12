@@ -19,7 +19,7 @@ pub fn run(port: u16, lint: Option<String>) -> ! {
     });
 
     loop {
-        if mtime("util/gh-pages/lints.json") < mtime("clippy_lints/src") {
+        if mtime("util/gh-pages/index.html") < mtime("clippy_lints/src") {
             Command::new(env::var("CARGO").unwrap_or("cargo".into()))
                 .arg("collect-metadata")
                 .spawn()

@@ -1,0 +1,8 @@
+[general]
+dirs = ["util/gh-pages/"]
+default_syntax = "mixed"
+
+[[syntax]]
+name = "mixed"
+expr_start = "{("
+expr_end = ")}"

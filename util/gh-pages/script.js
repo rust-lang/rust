@@ -1,21 +1,4 @@
 (function () {
-    const md = window.markdownit({
-        html: true,
-        linkify: true,
-        typographer: true,
-        highlight: function (str, lang) {
-            if (lang && hljs.getLanguage(lang)) {
-                try {
-                    return '<pre class="hljs"><code>' +
-                        hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-                        '</code></pre>';
-                } catch (__) {}
-            }
-
-            return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
-        }
-    });
-
     function scrollToLint(lintId) {
         const target = document.getElementById(lintId);
         if (!target) {
@@ -41,15 +24,6 @@
     }
 
     angular.module("clippy", [])
-        .filter('markdown', function ($sce) {
-            return function (text) {
-                return $sce.trustAsHtml(
-                    md.render(text || '')
-                        // Oh deer, what a hack :O
-                        .replace('<table', '<table class="table"')
-                );
-            };
-        })
         .directive('filterDropdown', function ($document) {
             return {
                 restrict: 'A',
@@ -470,27 +444,17 @@
             // Set up the filters from the URL parameters before we start loading the data
             loadFromURLParameters();
 
-            $http.get('./lints.json')
-                .success(function (data) {
-                    $scope.data = data;
-                    $scope.loading = false;
+            const selectedGroup = getQueryVariable("sel");
+            if (selectedGroup) {
+                selectGroup($scope, selectedGroup.toLowerCase());
+            }
 
-                    const selectedGroup = getQueryVariable("sel");
-                    if (selectedGroup) {
-                        selectGroup($scope, selectedGroup.toLowerCase());
-                    }
+            scrollToLintByURL($scope, $location);
 
-                    scrollToLintByURL($scope, $location);
-
-                    setTimeout(function () {
-                        const el = document.getElementById('filter-input');
-                        if (el) { el.focus() }
-                    }, 0);
-                })
-                .error(function (data) {
-                    $scope.error = data;
-                    $scope.loading = false;
-                });
+            setTimeout(function () {
+                const el = document.getElementById('filter-input');
+                if (el) { el.focus() }
+            }, 0);
         });
 })();
 
@@ -503,6 +467,58 @@ function getQueryVariable(variable) {
             return decodeURIComponent(pair[1]);
         }
     }
+}
+
+window.searchState = {
+    timeout: null,
+    inputElem: document.getElementById("search-input"),
+    clearInputTimeout: () => {
+        if (searchState.timeout !== null) {
+            clearTimeout(searchState.timeout);
+            searchState.timeout = null
+        }
+    },
+    resetInputTimeout: () => {
+        searchState.clearInputTimeout();
+        setTimeout(searchState.filterLints, 50);
+    },
+    filterLints: () => {
+        let searchStr = searchState.value.trim().toLowerCase();
+        if (searchStr.startsWith("clippy::")) {
+            searchStr = searchStr.slice(8);
+        }
+        const terms = searchStr.split(" ");
+
+        onEachLazy(document.querySelectorAll("article"), lint => {
+            // Search by id
+            if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
+                el.style.display = "";
+                return;
+            }
+            // Search the description
+            // The use of `for`-loops instead of `foreach` enables us to return early
+            const docsLowerCase = lint.docs.toLowerCase();
+            for (index = 0; index < terms.length; index++) {
+                // This is more likely and will therefore be checked first
+                if (docsLowerCase.indexOf(terms[index]) !== -1) {
+                    continue;
+                }
+
+                if (lint.id.indexOf(terms[index]) !== -1) {
+                    continue;
+                }
+
+                return false;
+            }
+        });
+    },
+};
+
+function handleInputChanged(event) {
+    if (event.target !== document.activeElement) {
+        return;
+    }
+    searchState.resetInputTimeout();
 }
 
 function storeValue(settingName, value) {
@@ -627,3 +643,5 @@ if (prefersDark.matches && !theme) {
 }
 let disableShortcuts = loadValue('disable-shortcuts') === "true";
 document.getElementById("disable-shortcuts").checked = disableShortcuts;
+
+hljs.highlightAll();

@@ -9,7 +9,6 @@ echo "Making the docs for master"
 mkdir out/master/
 cp util/gh-pages/index.html out/master
 cp util/gh-pages/script.js out/master
-cp util/gh-pages/lints.json out/master
 cp util/gh-pages/style.css out/master
 
 if [[ -n $TAG_NAME ]]; then
