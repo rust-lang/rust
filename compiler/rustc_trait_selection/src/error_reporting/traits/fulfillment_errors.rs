@@ -687,10 +687,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut applied_do_not_recommend = false;
         loop {
             if let ObligationCauseCode::ImplDerived(ref c) = base_cause {
-                if self.tcx.has_attrs_with_path(
-                    c.impl_or_alias_def_id,
-                    &[sym::diagnostic, sym::do_not_recommend],
-                ) {
+                if self.tcx.do_not_recommend_impl(c.impl_or_alias_def_id) {
                     let code = (*c.derived.parent_code).clone();
                     obligation.cause.map_code(|_| code);
                     obligation.predicate = c.derived.parent_trait_pred.upcast(self.tcx);
@@ -1629,11 +1626,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .tcx
                 .all_impls(def_id)
                 // ignore `do_not_recommend` items
-                .filter(|def_id| {
-                    !self
-                        .tcx
-                        .has_attrs_with_path(*def_id, &[sym::diagnostic, sym::do_not_recommend])
-                })
+                .filter(|def_id| !self.tcx.do_not_recommend_impl(*def_id))
                 // Ignore automatically derived impls and `!Trait` impls.
                 .filter_map(|def_id| self.tcx.impl_trait_header(def_id))
                 .filter_map(|header| {
@@ -1903,12 +1896,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let impl_candidates = impl_candidates
             .into_iter()
             .cloned()
-            .filter(|cand| {
-                !self.tcx.has_attrs_with_path(
-                    cand.impl_def_id,
-                    &[sym::diagnostic, sym::do_not_recommend],
-                )
-            })
+            .filter(|cand| !self.tcx.do_not_recommend_impl(cand.impl_def_id))
             .collect::<Vec<_>>();
 
         let def_id = trait_ref.def_id();
