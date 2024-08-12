@@ -18,10 +18,12 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
 
     let res = with_context(|(ecx, client)| {
         let span = invoc_id.expn_data().call_site;
-        let _timer =
-            ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
+        let _timer = ecx.sess.prof.generic_activity_with_arg_recorder(
+            "expand_derive_proc_macro_inner",
+            |recorder| {
                 recorder.record_arg_with_span(ecx.sess.source_map(), ecx.expansion_descr(), span);
-            });
+            },
+        );
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = crate::proc_macro::exec_strategy(ecx);
         let server = crate::proc_macro_server::Rustc::new(ecx);
