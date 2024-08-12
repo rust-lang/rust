@@ -2,33 +2,73 @@
 
 <!-- toc -->
 
-<!-- date-check: Jul 2023 -->
-There is no formal policy about when to update LLVM or what it can be updated to,
-but a few guidelines are applied:
+<!-- date-check: Aug 2024 -->
+Rust supports building against multiple LLVM versions:
 
-* We try to always support the latest released version
-* We try to support the last few versions
-  (and the number changes over time)
-* We allow moving to arbitrary commits during development
-* We strongly prefer to upstream all patches to LLVM before including them in rustc
+* Tip-of-tree for the current LLVM development branch is usually supported
+  within a few days. PRs for such fixes are tagged with `llvm-main`.
+* The latest released major version is always supported.
+* The one or two preceding major versions are usually supported.
 
-## Why update LLVM?
+By default, Rust uses its own fork in the [rust-lang/llvm-project repository].
+This fork is based on a `release/$N.x` branch of the upstream project, where
+`$N` is either the latest released major version, or the current major version
+in release candidate phase. The fork is never based on the `main` development
+branch.
 
-There are two reasons we would want to update LLVM:
+Our LLVM fork only accepts:
 
-* A bug could have been fixed!
-  Note that if we are the ones who fixed such a bug,
-  we prefer to upstream it, then pull it back for use by rustc.
+* Backports of changes that have already landed upstream.
+* Workarounds for build issues affecting our CI environment.
 
-* LLVM itself may have a new release.
+With the exception of one grandfathered-in patch for SGX enablement, we do not
+accept functional patches that have not been upstreamed first.
 
-Each of these reasons has a different strategy for updating LLVM, and we'll go
-over them in detail here.
+There are three types of LLVM updates, with different procedures:
 
-## Bugfix Updates
+* Backports while the current major LLVM version is supported.
+* Backports while the current major LLVM version is no longer supported (or
+  the change is not eligible for upstream backport).
+* Update to a new major LLVM version.
 
-For updates of LLVM that are to fix a small bug, we cherry-pick the bugfix to
-the branch we're already using. The steps for this are:
+## Backports (upstream supported)
+
+While the current major LLVM version is supported upstream, fixes should be
+backported upstream first, and the release branch then merged back into the
+Rust fork.
+
+1. Make sure the bugfix is in upstream LLVM.
+2. If this hasn't happened already, request a backport to the upstream release
+   branch. If you have LLVM commit access, follow the [backport process].
+   Otherwise, open an issue requesting the backport. Continue once the
+   backport has been approved and merged.
+3. Identify the branch that rustc is currently using. The `src/llvm-project`
+   submodule is always pinned to a branch of the
+   [rust-lang/llvm-project repository].
+4. Fork the rust-lang/llvm-project repository.
+5. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`).
+6. Add a remote for the upstream repository using
+   `git remote add upstream https://github.com/llvm/llvm-project.git` and
+   fetch it using `git fetch upstream`.
+7. Merge the `upstream/release/$N.x` branch.
+8. Push this branch to your fork.
+9. Send a Pull Request to rust-lang/llvm-project to the same branch as before.
+   Be sure to reference the Rust and/or LLVM issue that you're fixing in the PR
+   description.
+10. Wait for the PR to be merged.
+11. Send a PR to rust-lang/rust updating the `src/llvm-project` submodule with
+    your bugfix. This can be done locally with `git submodule update --remote
+    src/llvm-project` typically.
+12. Wait for PR to be merged.
+
+An example PR:
+[#59089](https://github.com/rust-lang/rust/pull/59089)
+
+## Backports (upstream not supported)
+
+Upstream LLVM releases are only supported for two to three months after the
+GA release. Once upstream backports are no longer accepted, changes should be
+cherry-picked directly to our fork.
 
 1. Make sure the bugfix is in upstream LLVM.
 2. Identify the branch that rustc is currently using. The `src/llvm-project`
@@ -36,16 +76,19 @@ the branch we're already using. The steps for this are:
    [rust-lang/llvm-project repository].
 3. Fork the rust-lang/llvm-project repository.
 4. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`).
-5. Cherry-pick the upstream commit onto the branch.
-6. Push this branch to your fork.
-7. Send a Pull Request to rust-lang/llvm-project to the same branch as before.
+5. Add a remote for the upstream repository using
+   `git remote add upstream https://github.com/llvm/llvm-project.git` and
+   fetch it using `git fetch upstream`.
+6. Cherry-pick the relevant commit(s) using `git cherry-pick -x`.
+7. Push this branch to your fork.
+8. Send a Pull Request to rust-lang/llvm-project to the same branch as before.
    Be sure to reference the Rust and/or LLVM issue that you're fixing in the PR
    description.
-8. Wait for the PR to be merged.
-9. Send a PR to rust-lang/rust updating the `src/llvm-project` submodule with
-   your bugfix. This can be done locally with `git submodule update --remote
-   src/llvm-project` typically.
-10. Wait for PR to be merged.
+9. Wait for the PR to be merged.
+10. Send a PR to rust-lang/rust updating the `src/llvm-project` submodule with
+    your bugfix. This can be done locally with `git submodule update --remote
+    src/llvm-project` typically.
+11. Wait for PR to be merged.
 
 An example PR:
 [#59089](https://github.com/rust-lang/rust/pull/59089)
@@ -187,3 +230,4 @@ keep in mind while going through them:
 [`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
 [wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
 [Dev Desktops]: https://forge.rust-lang.org/infra/docs/dev-desktop.html
+[backport process]: https://llvm.org/docs/GitHub.html#backporting-fixes-to-the-release-branches
