@@ -4,7 +4,6 @@ extern crate run_make_support;
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::ops::Deref;
 
 use run_make_support::rustc;
 
