@@ -205,6 +205,13 @@ fn since_epoch() {
 }
 
 #[test]
+fn before_epoch() {
+    // Check that we can represent time before the Unix epoch.
+    let a = UNIX_EPOCH - Duration::SECOND;
+    assert!(a < UNIX_EPOCH);
+}
+
+#[test]
 fn big_math() {
     // Check that the same result occurs when adding/subtracting each duration one at a time as when
     // adding/subtracting them all at once.
