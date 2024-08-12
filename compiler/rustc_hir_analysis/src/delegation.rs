@@ -1,3 +1,5 @@
+use std::assert_matches::debug_assert_matches;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -63,7 +65,7 @@ enum FnKind {
 }
 
 fn fn_kind<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> FnKind {
-    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn));
+    debug_assert_matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
 
     let parent = tcx.parent(def_id);
     match tcx.def_kind(parent) {

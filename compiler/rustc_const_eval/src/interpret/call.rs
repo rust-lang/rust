@@ -1,5 +1,6 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
+use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 
 use either::{Left, Right};
@@ -557,7 +558,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     unwind,
                 )? {
                     assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
-                    assert!(matches!(fallback.def, ty::InstanceKind::Item(_)));
+                    assert_matches!(fallback.def, ty::InstanceKind::Item(_));
                     return self.init_fn_call(
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),

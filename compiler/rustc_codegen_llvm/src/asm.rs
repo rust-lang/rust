@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use libc::{c_char, c_uint};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
@@ -89,7 +91,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // if the target feature needed by the register class is
                         // disabled. This is necessary otherwise LLVM will try
                         // to actually allocate a register for the dummy output.
-                        assert!(matches!(reg, InlineAsmRegOrRegClass::Reg(_)));
+                        assert_matches!(reg, InlineAsmRegOrRegClass::Reg(_));
                         clobbers.push(format!("~{}", reg_to_llvm(reg, None)));
                         continue;
                     } else {
