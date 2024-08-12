@@ -3,7 +3,7 @@
 
 use std::{fmt, io, process::Command, time::Duration};
 
-use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
@@ -260,13 +260,14 @@ impl FlycheckActor {
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
-        if let Ok(msg) = inbox.try_recv() {
-            // give restarts a preference so check outputs don't block a restart or stop
-            return Some(Event::RequestStateChange(msg));
-        }
-        select! {
+        let Some(command_receiver) = &self.command_receiver else {
+            return inbox.recv().ok().map(Event::RequestStateChange);
+        };
+
+        // Biased to give restarts a preference so check outputs don't block a restart or stop
+        select_biased! {
             recv(inbox) -> msg => msg.ok().map(Event::RequestStateChange),
-            recv(self.command_receiver.as_ref().unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+            recv(command_receiver) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
 
@@ -388,7 +389,7 @@ impl FlycheckActor {
         package: Option<&str>,
         saved_file: Option<&AbsPath>,
     ) -> Option<Command> {
-        let (mut cmd, args) = match &self.config {
+        match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd = Command::new(Tool::Cargo.path());
                 if let Some(sysroot_root) = &self.sysroot_root {
@@ -419,7 +420,8 @@ impl FlycheckActor {
                 cmd.arg("--keep-going");
 
                 options.apply_on_command(&mut cmd);
-                (cmd, options.extra_args.clone())
+                cmd.args(&options.extra_args);
+                Some(cmd)
             }
             FlycheckConfig::CustomCommand {
                 command,
@@ -448,34 +450,31 @@ impl FlycheckActor {
                     }
                 }
 
-                if args.contains(&SAVED_FILE_PLACEHOLDER.to_owned()) {
-                    // If the custom command has a $saved_file placeholder, and
-                    // we're saving a file, replace the placeholder in the arguments.
-                    if let Some(saved_file) = saved_file {
-                        let args = args
-                            .iter()
-                            .map(|arg| {
-                                if arg == SAVED_FILE_PLACEHOLDER {
-                                    saved_file.to_string()
-                                } else {
-                                    arg.clone()
-                                }
-                            })
-                            .collect();
-                        (cmd, args)
-                    } else {
-                        // The custom command has a $saved_file placeholder,
-                        // but we had an IDE event that wasn't a file save. Do nothing.
-                        return None;
+                // If the custom command has a $saved_file placeholder, and
+                // we're saving a file, replace the placeholder in the arguments.
+                if let Some(saved_file) = saved_file {
+                    for arg in args {
+                        if arg == SAVED_FILE_PLACEHOLDER {
+                            cmd.arg(saved_file);
+                        } else {
+                            cmd.arg(arg);
+                        }
                     }
                 } else {
-                    (cmd, args.clone())
-                }
-            }
-        };
+                    for arg in args {
+                        if arg == SAVED_FILE_PLACEHOLDER {
+                            // The custom command has a $saved_file placeholder,
+                            // but we had an IDE event that wasn't a file save. Do nothing.
+                            return None;
+                        }
 
-        cmd.args(args);
-        Some(cmd)
+                        cmd.arg(arg);
+                    }
+                }
+
+                Some(cmd)
+            }
+        }
     }
 
     #[track_caller]

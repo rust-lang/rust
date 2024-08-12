@@ -13,7 +13,7 @@ use std::{
     sync::atomic::AtomicUsize,
 };
 
-use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use crossbeam_channel::{select, unbounded, Receiver, Sender};
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator as _, ParallelIterator};
@@ -85,10 +85,13 @@ impl NotifyActor {
     }
 
     fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
-        let watcher_receiver = self.watcher.as_ref().map(|(_, receiver)| receiver);
+        let Some((_, watcher_receiver)) = &self.watcher else {
+            return receiver.recv().ok().map(Event::Message);
+        };
+
         select! {
             recv(receiver) -> it => it.ok().map(Event::Message),
-            recv(watcher_receiver.unwrap_or(&never())) -> it => Some(Event::NotifyEvent(it.unwrap())),
+            recv(watcher_receiver) -> it => Some(Event::NotifyEvent(it.unwrap())),
         }
     }
 
