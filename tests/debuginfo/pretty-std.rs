@@ -81,10 +81,10 @@
 // cdb-check:vec,d [...] : { len=4 } [Type: [...]::Vec<u64,alloc::alloc::Global>]
 // cdb-check:    [len]            : 4 [Type: [...]]
 // cdb-check:    [capacity]       : [...] [Type: [...]]
-// cdb-check:    [0]              : 4 [Type: unsigned __int64]
-// cdb-check:    [1]              : 5 [Type: unsigned __int64]
-// cdb-check:    [2]              : 6 [Type: unsigned __int64]
-// cdb-check:    [3]              : 7 [Type: unsigned __int64]
+// cdb-check:    [0]              : 4 [Type: u64]
+// cdb-check:    [1]              : 5 [Type: u64]
+// cdb-check:    [2]              : 6 [Type: u64]
+// cdb-check:    [3]              : 7 [Type: u64]
 
 // cdb-command: dx str_slice
 // cdb-check:str_slice        : "IAMA string slice!" [Type: ref$<str$>]
@@ -141,8 +141,8 @@
 // cdb-check:    [<Raw View>]     [Type: alloc::collections::vec_deque::VecDeque<i32,alloc::alloc::Global>]
 // cdb-check:    [len]            : 0x2 [Type: unsigned [...]]
 // cdb-check:    [capacity]       : 0x8 [Type: unsigned [...]]
-// cdb-check:    [0x0]            : 90 [Type: int]
-// cdb-check:    [0x1]            : 20 [Type: int]
+// cdb-check:    [0x0]            : 90 [Type: i32]
+// cdb-check:    [0x1]            : 20 [Type: i32]
 
 #![allow(unused_variables)]
 use std::collections::{LinkedList, VecDeque};
