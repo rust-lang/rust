@@ -110,7 +110,7 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 rustc_queries! {
     query derive_macro_expansion(key: (LocalExpnId, Svh, &'tcx TokenStream)) -> Result<&'tcx TokenStream, ()> {
         // eval_always
-        no_hash
+        // no_hash
         desc { "expanding a derive (proc) macro" }
         cache_on_disk_if { true }
     }
