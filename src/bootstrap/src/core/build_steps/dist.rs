@@ -2264,7 +2264,9 @@ impl Step for RustDev {
         tarball.permit_symlinks(true);
 
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
-        builder.ensure(crate::core::build_steps::gcc::Gcc { target });
+        if target.contains("linux") && target.contains("x86_64") {
+            builder.ensure(crate::core::build_steps::gcc::Gcc { target });
+        }
 
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this, you likely want to change
