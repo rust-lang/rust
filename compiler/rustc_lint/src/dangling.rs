@@ -35,7 +35,42 @@ declare_lint! {
 // FIXME: does not catch UnsafeCell::get
 // FIXME: does not catch getting a ref to a temporary and then converting it to a ptr
 declare_lint! {
-    /// TODO
+    /// The `instantly_dangling_pointer` lint detects getting a pointer to data
+    /// of a temporary that will immediately get dropped.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// # unsafe fn use_data(ptr: *const u8) {
+    /// #     dbg!(unsafe { ptr.read() });
+    /// # }
+    /// fn gather_and_use(bytes: impl Iterator<Item = u8>) {
+    ///     let x: *const u8 = bytes.collect::<Vec<u8>>().as_ptr();
+    ///     unsafe { use_data(x) }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Getting a pointer from a temporary value will not prolong its lifetime,
+    /// which means that the value can be dropped and the allocation freed
+    /// while the pointer still exists, making the pointer dangling.
+    /// This is not an error (as far as the type system is concerned)
+    /// but probably is not what the user intended either.
+    ///
+    /// If you need stronger guarantees, consider using references instead,
+    /// as they are statically verified by the borrow-checker to never dangle.
+    ///
+    /// Note: This lint does **not** get triggered by methods & functions
+    /// that intentionally produce dangling pointers, such as:
+    ///
+    /// - `core::ptr::dangling` & `core::ptr::dangling_mut`
+    /// - `core::ptr::NonNull::dangling`
+    /// - `std::alloc::Layout::dangling`
+    ///
     pub INSTANTLY_DANGLING_POINTER,
     Warn,
     "detects getting a pointer that will immediately dangle"
@@ -96,7 +131,6 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         // Calls return rvalues.
         ExprKind::Call(..) | ExprKind::MethodCall(..) | ExprKind::Binary(..) => true,
 
-        // FIXME: this is probably wrong.
         // Inner blocks are rvalues.
         ExprKind::If(..) | ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::Block(..) => true,
 
