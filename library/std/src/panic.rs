@@ -440,13 +440,12 @@ impl BacktraceStyle {
     }
 
     fn from_u8(s: u8) -> Option<Self> {
-        Some(match s {
-            0 => return None,
-            1 => BacktraceStyle::Short,
-            2 => BacktraceStyle::Full,
-            3 => BacktraceStyle::Off,
-            _ => unreachable!(),
-        })
+        match s {
+            1 => Some(BacktraceStyle::Short),
+            2 => Some(BacktraceStyle::Full),
+            3 => Some(BacktraceStyle::Off),
+            _ => None,
+        }
     }
 }
 
@@ -465,7 +464,7 @@ static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 pub fn set_backtrace_style(style: BacktraceStyle) {
     if cfg!(feature = "backtrace") {
         // If the `backtrace` feature of this crate is enabled, set the backtrace style.
-        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
+        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Relaxed);
     }
 }
 
@@ -498,7 +497,9 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         // to optimize away callers.
         return None;
     }
-    if let Some(style) = BacktraceStyle::from_u8(SHOULD_CAPTURE.load(Ordering::Acquire)) {
+
+    let current = SHOULD_CAPTURE.load(Ordering::Relaxed);
+    if let Some(style) = BacktraceStyle::from_u8(current) {
         return Some(style);
     }
 
@@ -509,8 +510,11 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         None if crate::sys::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
         None => BacktraceStyle::Off,
     };
-    set_backtrace_style(format);
-    Some(format)
+
+    match SHOULD_CAPTURE.compare_exchange(0, format.as_u8(), Ordering::Relaxed, Ordering::Relaxed) {
+        Ok(_) => Some(format),
+        Err(new) => BacktraceStyle::from_u8(new),
+    }
 }
 
 #[cfg(test)]
