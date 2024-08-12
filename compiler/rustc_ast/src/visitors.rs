@@ -6,9 +6,6 @@ macro_rules! mutability_dependent {
         fn visit_item(&mut self, i: &'ast Item) -> Self::Result {
             walk_item(self, i)
         }
-        fn visit_block(&mut self, b: &'ast Block) -> Self::Result {
-            walk_block(self, b)
-        }
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
             walk_stmt(self, s)
         }
@@ -155,10 +152,6 @@ macro_rules! mutability_dependent {
 
         fn visit_coroutine_kind(&mut self, a: &mut CoroutineKind) {
             walk_coroutine_kind(self, a);
-        }
-
-        fn visit_block(&mut self, b: &mut P<Block>) {
-            walk_block(self, b);
         }
 
         fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
@@ -482,6 +475,11 @@ macro_rules! make_ast_visitor {
             fn visit_ty(&mut self, t: ref_t!(P!(Ty))) -> result!() {
                 walk_ty(self, t)
             }
+
+            fn visit_block(&mut self, b: ref_t!(P!(Block))) -> result!() {
+                walk_block(self, b)
+            }
+
         }
     }
 }
