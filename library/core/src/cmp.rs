@@ -942,7 +942,7 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// // Antisymmetry requirement of `Ord` is not given. Only one of a < c and c < a is allowed to be
 /// // true, not both or neither.
-/// assert_eq!((a < c) as u8 + (b < c) as u8, 2);
+/// assert_eq!((a < c) as u8 + (c < a) as u8, 2);
 /// ```
 ///
 /// The documentation of [`PartialOrd`] contains further examples, for example it's wrong for
