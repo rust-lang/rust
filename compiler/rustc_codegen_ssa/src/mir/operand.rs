@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::fmt;
 
 use arrayvec::ArrayVec;
@@ -389,7 +390,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
             (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
-                assert!(matches!(self.layout.abi, Abi::Vector { .. }));
+                assert_matches!(self.layout.abi, Abi::Vector { .. });
 
                 let llfield_ty = bx.cx().backend_type(field);
 

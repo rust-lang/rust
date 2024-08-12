@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
@@ -1142,7 +1143,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if cfg!(debug_assertions) {
         for (ty, arg) in arg_tys.iter().zip(args) {
             if ty.is_simd() {
-                assert!(matches!(arg.val, OperandValue::Immediate(_)));
+                assert_matches!(arg.val, OperandValue::Immediate(_));
             }
         }
     }
