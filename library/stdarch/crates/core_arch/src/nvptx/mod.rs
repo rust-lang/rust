@@ -13,6 +13,11 @@
 
 use crate::ffi::c_void;
 
+mod packed;
+
+#[unstable(feature = "stdarch_nvptx", issue = "111199")]
+pub use packed::*;
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.nvvm.barrier0"]
