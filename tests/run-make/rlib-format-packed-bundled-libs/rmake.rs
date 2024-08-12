@@ -4,10 +4,11 @@
 // that is what this test checks.
 // See https://github.com/rust-lang/rust/pull/100101
 
-// FIXME(Oneirical): MSVC and cross-compile
+//@ ignore-cross-compile
+// Reason: cross-compilation fails to export native symbols
 
 use run_make_support::{
-    bin_name, build_native_static_lib, cwd, filename_contains, llvm_ar, llvm_nm, rfs,
+    bin_name, build_native_static_lib, cwd, filename_contains, is_msvc, llvm_ar, llvm_nm, rfs,
     rust_lib_name, rustc, shallow_find_files,
 };
 
@@ -72,10 +73,12 @@ fn main() {
         .run()
         .assert_stdout_contains_regex("native_dep_1.*native_dep_2.*native_dep_3");
 
-    //FIXME(Oneirical): This part will apparently fail on MSVC
-    llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f1");
-    llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f2");
-    llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f3");
-    llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*rust_dep_local");
-    llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*rust_dep_up");
+    // The binary "main" will not contain any symbols on MSVC.
+    if !is_msvc() {
+        llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f1");
+        llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f2");
+        llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f3");
+        llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*rust_dep_local");
+        llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*rust_dep_up");
+    }
 }
