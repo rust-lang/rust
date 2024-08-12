@@ -1626,6 +1626,11 @@ impl<'a> Formatter<'a> {
         self.buf.write_str(data)
     }
 
+    /// Glue for usage of the [`write!`] macro with implementors of this trait.
+    ///
+    /// This method should generally not be invoked manually, but rather through
+    /// the [`write!`] macro itself.
+    /// 
     /// Writes some formatted information into this instance.
     ///
     /// # Examples
