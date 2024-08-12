@@ -137,15 +137,20 @@ impl Command {
             }
         }
 
-        // Wait until the port is open.
-        let josh_ready = net::TcpStream::connect_timeout(
-            &net::SocketAddr::from(([127, 0, 0, 1], JOSH_PORT)),
-            Duration::from_secs(1),
-        )
-        .context("failed to connect to josh-proxy")?;
-        drop(josh_ready);
-
-        Ok(Josh(josh))
+        // Wait until the port is open. We try every 10ms until 1s passed.
+        for _ in 0..100 {
+            // This will generally fail immediately when the port is still closed.
+            let josh_ready = net::TcpStream::connect_timeout(
+                &net::SocketAddr::from(([127, 0, 0, 1], JOSH_PORT)),
+                Duration::from_millis(1),
+            );
+            if josh_ready.is_ok() {
+                return Ok(Josh(josh));
+            }
+            // Not ready yet.
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        bail!("Even after waiting for 1s, josh-proxy is still not available.")
     }
 
     pub fn exec(self) -> Result<()> {
