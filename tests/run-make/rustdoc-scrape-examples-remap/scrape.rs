@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use run_make_support::{htmldocck, rfs, rustc, rustdoc, source_root};
+use run_make_support::{htmldocck, rfs, rustc, rustdoc};
 
 pub fn scrape(extra_args: &[&str]) {
     let out_dir = Path::new("rustdoc");
