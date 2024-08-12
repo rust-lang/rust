@@ -25,6 +25,7 @@ use vfs::{
     AbsPath, AbsPathBuf, VfsPath,
 };
 
+#[derive(Debug)]
 pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro_server: ProcMacroServerChoice,
@@ -69,6 +70,7 @@ pub fn load_workspace(
         Box::new(loader)
     };
 
+    tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
@@ -81,6 +83,14 @@ pub fn load_workspace(
             Err((anyhow::format_err!("proc macro server disabled"), false))
         }
     };
+    match &proc_macro_server {
+        Ok(server) => {
+            tracing::info!(path=%server.path(), "Proc-macro server started")
+        }
+        Err((e, _)) => {
+            tracing::info!(%e, "Failed to start proc-macro server")
+        }
+    }
 
     let (crate_graph, proc_macros) = ws.to_crate_graph(
         &mut |path: &AbsPath| {
