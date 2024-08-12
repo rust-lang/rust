@@ -461,7 +461,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
 
         ty::FnDef(def_id, _) => {
             let sig = self_ty.fn_sig(cx);
-            if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
+            if sig.is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 fn_item_to_async_callable(cx, sig)
             } else {
                 Err(NoSolution)
@@ -469,7 +469,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         }
         ty::FnPtr(..) => {
             let sig = self_ty.fn_sig(cx);
-            if sig.skip_binder().is_fn_trait_compatible() {
+            if sig.is_fn_trait_compatible() {
                 fn_item_to_async_callable(cx, sig)
             } else {
                 Err(NoSolution)
