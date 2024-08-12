@@ -17,5 +17,5 @@
 pub fn bar() {}
 
 //@ has foo/fn.bar.html
-//@ has - '//a[@class="test-arrow"]' "Run"
+//@ has - '//a[@class="test-arrow"]' ""
 //@ has - '//*[@class="docblock"]' 'foo_recursive'

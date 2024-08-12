@@ -1835,10 +1835,14 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     function getExampleWrap(event) {
         let elem = event.target;
         while (!hasClass(elem, "example-wrap")) {
-            elem = elem.parentElement;
-            if (elem === document.body || hasClass(elem, "docblock")) {
+            if (elem === document.body ||
+                elem.tagName === "A" ||
+                elem.tagName === "BUTTON" ||
+                hasClass(elem, "docblock")
+            ) {
                 return null;
             }
+            elem = elem.parentElement;
         }
         return elem;
     }
