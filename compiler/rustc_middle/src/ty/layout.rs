@@ -986,10 +986,11 @@ where
                     safe: None,
                 })
             }
-            ty::FnPtr(sig_tys, hdr) if offset.bytes() == 0 => {
-                let fn_sig = sig_tys.with(hdr);
-                tcx.layout_of(param_env.and(Ty::new_fn_ptr(tcx, fn_sig))).ok().map(|layout| {
-                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
+            ty::FnPtr(..) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(this.ty)).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
