@@ -8,6 +8,8 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
+use std::assert_matches::debug_assert_matches;
+
 use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
@@ -54,7 +56,7 @@ mod min_specialization;
 pub fn check_impl_wf(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
     let mut res = Ok(());
-    debug_assert!(matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. }));
+    debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });
     res = res.and(enforce_impl_params_are_constrained(tcx, impl_def_id));
     if min_specialization {
         res = res.and(check_min_specialization(tcx, impl_def_id));

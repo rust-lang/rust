@@ -1,6 +1,7 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+use std::assert_matches::assert_matches;
 use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -129,7 +130,7 @@ fn visit_implementation_of_const_param_ty(
     checker: &Checker<'_>,
     kind: LangItem,
 ) -> Result<(), ErrorGuaranteed> {
-    assert!(matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+    assert_matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
 
     let tcx = checker.tcx;
     let header = checker.impl_header;

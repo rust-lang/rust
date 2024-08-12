@@ -3,6 +3,8 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::assert_matches::assert_matches;
+
 use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -116,7 +118,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // path_span must be `Some` as otherwise the if condition is true
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
-                    assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
+                    assert_matches!(later_use_kind, LaterUseKind::ClosureCapture);
                     if !borrow_span.is_some_and(|sp| sp.overlaps(var_or_use_span)) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;
@@ -147,7 +149,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // path_span must be `Some` as otherwise the if condition is true
                     let path_span = path_span.unwrap();
                     // path_span is only present in the case of closure capture
-                    assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
+                    assert_matches!(later_use_kind, LaterUseKind::ClosureCapture);
                     if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
                         let path_label = "used here by closure";
                         let capture_kind_label = message;

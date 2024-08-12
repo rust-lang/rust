@@ -342,7 +342,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             }
             // extract fields from types with `ScalarPair` ABI
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert!(matches!(layout.abi, Abi::Scalar(..)));
+                assert_matches!(layout.abi, Abi::Scalar(..));
                 Immediate::from(if offset.bytes() == 0 {
                     debug_assert_eq!(layout.size, a.size(cx));
                     a_val

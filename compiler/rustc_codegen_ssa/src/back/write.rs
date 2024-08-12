@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::assert_matches::assert_matches;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -1963,7 +1964,7 @@ impl SharedEmitterMain {
                     sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
-                    assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
+                    assert_matches!(level, Level::Error | Level::Warning | Level::Note);
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
                     let mut err = Diag::<()>::new(sess.dcx(), level, msg);
 
