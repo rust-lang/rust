@@ -438,7 +438,7 @@ fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Com
 /// (if multiple doctests are merged), `main` function,
 /// and everything needed to calculate the compiler's command-line arguments.
 /// The `# ` prefix on boring lines has also been stripped.
-struct RunnableDocTest {
+pub(crate) struct RunnableDocTest {
     full_test_code: String,
     full_test_line_offset: usize,
     test_opts: IndividualTestOptions,
@@ -710,12 +710,11 @@ impl IndividualTestOptions {
 
 /// A doctest scraped from the code, ready to be turned into a runnable test.
 ///
-/// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> [`RunnableDoctest`].
+/// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> `RunnableDoctest`.
 /// [`run_merged_tests`] converts a bunch of scraped doctests to a single runnable doctest,
 /// while [`generate_unique_doctest`] does the standalones.
 ///
 /// [`clean`]: crate::clean
-/// [`RunnableDoctest`]: crate::doctest::RunnableDoctest
 /// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
 /// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
 pub(crate) struct ScrapedDocTest {
