@@ -364,8 +364,8 @@ impl<'gcc, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         fn_abi.ptr_to_gcc_type(self)
     }
 
-    fn reg_backend_type(&self, _ty: &Reg) -> Type<'gcc> {
-        unimplemented!();
+    fn reg_backend_type(&self, ty: &Reg) -> Type<'gcc> {
+        ty.gcc_type(self)
     }
 
     fn fn_decl_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Type<'gcc> {
