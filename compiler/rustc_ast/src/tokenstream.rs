@@ -140,10 +140,13 @@ impl fmt::Debug for LazyAttrTokenStream {
 }
 
 impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
-    fn encode(&self, s: &mut S) {
-        // TODO(pr-time): welp, do we really want this impl? maybe newtype wrapper?
-        // TODO(pr-time): (also) `.flattened()` here?
-        self.to_attr_token_stream().encode(s)
+    fn encode(&self, _s: &mut S) {
+        // TODO(pr-time): Just a reminder that this exists/was tried out,
+        // but probably not necessary anymore (see below).
+        // self.to_attr_token_stream().encode(s)
+        // We should not need to anymore, now that we `flatten`?
+        // Yep, that seems to be true! :)
+        panic!("Attempted to encode LazyAttrTokenStream");
     }
 }
 

@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::ptr;
 
 use rustc_ast::tokenstream::TokenStream;
+use rustc_data_structures::svh::Svh;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::LocalExpnId;
@@ -11,9 +12,9 @@ use crate::errors;
 
 pub(super) fn provide_derive_macro_expansion<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (LocalExpnId, &'tcx TokenStream),
+    key: (LocalExpnId, Svh, &'tcx TokenStream),
 ) -> Result<&'tcx TokenStream, ()> {
-    let (invoc_id, input) = key;
+    let (invoc_id, _macro_crate_hash, input) = key;
 
     let res = with_context(|(ecx, client)| {
         let span = invoc_id.expn_data().call_site;
