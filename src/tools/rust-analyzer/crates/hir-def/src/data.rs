@@ -94,6 +94,12 @@ impl FunctionData {
             .filter(|it| !it.is_empty())
             .map(Box::new);
         let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
+        if flags.contains(FnFlags::HAS_UNSAFE_KW)
+            && !crate_graph[krate].edition.at_least_2024()
+            && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
+        {
+            flags.remove(FnFlags::HAS_UNSAFE_KW);
+        }
 
         Arc::new(FunctionData {
             name: func.name.clone(),
@@ -126,19 +132,19 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_SELF_PARAM)
     }
 
-    pub fn has_default_kw(&self) -> bool {
+    pub fn is_default(&self) -> bool {
         self.flags.contains(FnFlags::HAS_DEFAULT_KW)
     }
 
-    pub fn has_const_kw(&self) -> bool {
+    pub fn is_const(&self) -> bool {
         self.flags.contains(FnFlags::HAS_CONST_KW)
     }
 
-    pub fn has_async_kw(&self) -> bool {
+    pub fn is_async(&self) -> bool {
         self.flags.contains(FnFlags::HAS_ASYNC_KW)
     }
 
-    pub fn has_unsafe_kw(&self) -> bool {
+    pub fn is_unsafe(&self) -> bool {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
