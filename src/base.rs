@@ -595,7 +595,7 @@ fn codegen_stmt<'tcx>(
                     let val = cplace.to_cvalue(fx);
                     lval.write_cvalue(fx, val)
                 }
-                Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+                Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
                     let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);
