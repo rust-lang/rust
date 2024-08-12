@@ -90,7 +90,7 @@ note: there are multiple different versions of crate `dependency` in the depende
   | ^^^^^^^^^^^^^^^ this is the trait that is needed
 5 |     fn foo(&self);
 6 |     fn bar();
-  |     --------- the method is available for `dep_2_reexport::Type` here
+  |     --------- the associated function is available for `dep_2_reexport::Type` here
   |
  ::: multiple-dep-versions.rs:4:32
   |

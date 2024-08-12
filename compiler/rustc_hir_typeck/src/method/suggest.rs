@@ -4109,8 +4109,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_span = self.tcx.def_span(trait_def_id);
         let mut multi_span: MultiSpan = trait_span.into();
         multi_span.push_span_label(trait_span, format!("this is the trait that is needed"));
+        let descr = self.tcx.associated_item(item_def_id).descr();
         multi_span
-            .push_span_label(item_span, format!("the method is available for `{rcvr_ty}` here"));
+            .push_span_label(item_span, format!("the {descr} is available for `{rcvr_ty}` here"));
         for (def_id, import_def_id) in candidates {
             if let Some(import_def_id) = import_def_id {
                 multi_span.push_span_label(
