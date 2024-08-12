@@ -1857,7 +1857,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
         params,
         ret,
         data.is_varargs(),
-        if data.has_unsafe_kw() { Safety::Unsafe } else { Safety::Safe },
+        if data.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
         data.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
     );
     make_binders(db, &generics, sig)

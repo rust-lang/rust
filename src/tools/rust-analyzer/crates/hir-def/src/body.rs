@@ -158,7 +158,7 @@ impl Body {
                             }),
                         )
                     });
-                    is_async_fn = data.has_async_kw();
+                    is_async_fn = data.is_async();
                     src.map(|it| it.body().map(ast::Expr::from))
                 }
                 DefWithBodyId::ConstId(c) => {

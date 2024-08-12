@@ -69,13 +69,13 @@ impl HirDisplay for Function {
 
         write_visibility(module_id, self.visibility(db), f)?;
 
-        if data.has_default_kw() {
+        if data.is_default() {
             f.write_str("default ")?;
         }
-        if data.has_const_kw() {
+        if data.is_const() {
             f.write_str("const ")?;
         }
-        if data.has_async_kw() {
+        if data.is_async() {
             f.write_str("async ")?;
         }
         if self.is_unsafe_to_call(db) {
@@ -125,7 +125,7 @@ impl HirDisplay for Function {
         // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
         // Use ugly pattern match to strip the Future trait.
         // Better way?
-        let ret_type = if !data.has_async_kw() {
+        let ret_type = if !data.is_async() {
             &data.ret_type
         } else {
             match &*data.ret_type {
