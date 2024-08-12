@@ -737,6 +737,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 // a hint, and use regular stores everywhere else.
                 // (In the future, we could alternatively ensure that an sfence gets emitted after a sequence of movnt
                 // before any kind of synchronizing operation. But it's not clear how to do that with LLVM.)
+                // For more context, see <https://github.com/rust-lang/rust/issues/114582> and
+                // <https://github.com/llvm/llvm-project/issues/64521>.
                 const WELL_BEHAVED_NONTEMPORAL_ARCHS: &[&str] =
                     &["aarch64", "arm", "riscv32", "riscv64"];
 
