@@ -12,11 +12,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-use super::llvm::HashStamp;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, t};
+use crate::utils::helpers::{self, t, HashStamp};
 use crate::{generate_smart_stamp_hash, Kind};
 
 pub struct Meta {
