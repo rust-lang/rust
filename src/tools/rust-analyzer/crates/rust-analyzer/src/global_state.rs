@@ -558,8 +558,9 @@ impl GlobalState {
         self.req_queue.incoming.is_completed(&request.id)
     }
 
+    #[track_caller]
     fn send(&self, message: lsp_server::Message) {
-        self.sender.send(message).unwrap()
+        self.sender.send(message).unwrap();
     }
 
     pub(crate) fn publish_diagnostics(

@@ -478,6 +478,7 @@ impl FlycheckActor {
         Some(cmd)
     }
 
+    #[track_caller]
     fn send(&self, check_task: FlycheckMessage) {
         self.sender.send(check_task).unwrap();
     }
