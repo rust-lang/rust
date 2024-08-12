@@ -430,9 +430,32 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             i += 1;
             i - 1
         };
+
+        let apply_range_attr = |idx: AttributePlace, scalar: rustc_target::abi::Scalar| {
+            if cx.sess().opts.optimize != config::OptLevel::No
+                && llvm_util::get_version() >= (19, 0, 0)
+                && matches!(scalar.primitive(), Int(..))
+                // If the value is a boolean, the range is 0..2 and that ultimately
+                // become 0..0 when the type becomes i1, which would be rejected
+                // by the LLVM verifier.
+                && !scalar.is_bool()
+                // LLVM also rejects full range.
+                && !scalar.is_always_valid(cx)
+            {
+                attributes::apply_to_llfn(
+                    llfn,
+                    idx,
+                    &[llvm::CreateRangeAttr(cx.llcx, scalar.size(cx), scalar.valid_range(cx))],
+                );
+            }
+        };
+
         match &self.ret.mode {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+                if let abi::Abi::Scalar(scalar) = self.ret.layout.abi {
+                    apply_range_attr(llvm::AttributePlace::ReturnValue, scalar);
+                }
             }
             PassMode::Indirect { attrs, meta_attrs: _, on_stack } => {
                 assert!(!on_stack);
@@ -471,8 +494,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                     attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
                 }
-                PassMode::Direct(attrs)
-                | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
+                PassMode::Direct(attrs) => {
+                    let i = apply(attrs);
+                    if let abi::Abi::Scalar(scalar) = arg.layout.abi {
+                        apply_range_attr(llvm::AttributePlace::Argument(i), scalar);
+                    }
+                }
+                PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
                     apply(attrs);
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
@@ -481,8 +509,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(meta_attrs);
                 }
                 PassMode::Pair(a, b) => {
-                    apply(a);
-                    apply(b);
+                    let i = apply(a);
+                    let ii = apply(b);
+                    if let abi::Abi::ScalarPair(scalar_a, scalar_b) = arg.layout.abi {
+                        apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
+                        apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
+                    }
                 }
                 PassMode::Cast { cast, pad_i32 } => {
                     if *pad_i32 {
@@ -537,15 +569,18 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
             _ => {}
         }
-        if let abi::Abi::Scalar(scalar) = self.ret.layout.abi {
-            // If the value is a boolean, the range is 0..2 and that ultimately
-            // become 0..0 when the type becomes i1, which would be rejected
-            // by the LLVM verifier.
-            if let Int(..) = scalar.primitive() {
-                if !scalar.is_bool() && !scalar.is_always_valid(bx) {
-                    bx.range_metadata(callsite, scalar.valid_range(bx));
-                }
-            }
+        if bx.cx.sess().opts.optimize != config::OptLevel::No
+                && llvm_util::get_version() < (19, 0, 0)
+                && let abi::Abi::Scalar(scalar) = self.ret.layout.abi
+                && matches!(scalar.primitive(), Int(..))
+                // If the value is a boolean, the range is 0..2 and that ultimately
+                // become 0..0 when the type becomes i1, which would be rejected
+                // by the LLVM verifier.
+                && !scalar.is_bool()
+                // LLVM also rejects full range.
+                && !scalar.is_always_valid(bx)
+        {
+            bx.range_metadata(callsite, scalar.valid_range(bx));
         }
         for arg in self.args.iter() {
             match &arg.mode {
