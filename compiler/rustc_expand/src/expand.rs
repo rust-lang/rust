@@ -818,9 +818,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span,
                         path,
                     };
+                    self.cx
+                        .resolver
+                        .register_proc_macro_invoc(invoc.expansion_data.id, ext.clone());
+                    invoc.expansion_data.id.expn_data();
                     let items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
+                            self.cx.resolver.unregister_proc_macro_invoc(invoc.expansion_data.id);
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
                                 kind: InvocationKind::Derive { path: meta.path, item, is_const },
