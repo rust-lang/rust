@@ -119,8 +119,7 @@ impl NotifyActor {
                         self.watched_dir_entries.clear();
                         self.watched_file_entries.clear();
 
-                        let send = |msg| (self.sender)(msg);
-                        send(loader::Message::Progress {
+                        self.send(loader::Message::Progress {
                             n_total,
                             n_done: LoadingProgress::Started,
                             config_version,
@@ -130,7 +129,8 @@ impl NotifyActor {
                         let (entry_tx, entry_rx) = unbounded();
                         let (watch_tx, watch_rx) = unbounded();
                         let processed = AtomicUsize::new(0);
-                        config.load.into_par_iter().enumerate().for_each(move |(i, entry)| {
+
+                        config.load.into_par_iter().enumerate().for_each(|(i, entry)| {
                             let do_watch = config.watch.contains(&i);
                             if do_watch {
                                 _ = entry_tx.send(entry.clone());
@@ -140,18 +140,18 @@ impl NotifyActor {
                                 entry,
                                 do_watch,
                                 |file| {
-                                    send(loader::Message::Progress {
+                                    self.send(loader::Message::Progress {
                                         n_total,
                                         n_done: LoadingProgress::Progress(
                                             processed.load(std::sync::atomic::Ordering::Relaxed),
                                         ),
                                         dir: Some(file),
                                         config_version,
-                                    })
+                                    });
                                 },
                             );
-                            send(loader::Message::Loaded { files });
-                            send(loader::Message::Progress {
+                            self.send(loader::Message::Loaded { files });
+                            self.send(loader::Message::Progress {
                                 n_total,
                                 n_done: LoadingProgress::Progress(
                                     processed.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1,
@@ -160,9 +160,13 @@ impl NotifyActor {
                                 dir: None,
                             });
                         });
+
+                        drop(watch_tx);
                         for path in watch_rx {
                             self.watch(&path);
                         }
+
+                        drop(entry_tx);
                         for entry in entry_rx {
                             match entry {
                                 loader::Entry::Files(files) => {
@@ -173,6 +177,7 @@ impl NotifyActor {
                                 }
                             }
                         }
+
                         self.send(loader::Message::Progress {
                             n_total,
                             n_done: LoadingProgress::Finished,
@@ -316,8 +321,9 @@ impl NotifyActor {
         }
     }
 
+    #[track_caller]
     fn send(&self, msg: loader::Message) {
-        (self.sender)(msg);
+        self.sender.send(msg).unwrap();
     }
 }
 

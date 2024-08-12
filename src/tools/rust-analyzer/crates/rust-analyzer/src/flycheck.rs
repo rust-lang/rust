@@ -109,7 +109,7 @@ pub(crate) struct FlycheckHandle {
 impl FlycheckHandle {
     pub(crate) fn spawn(
         id: usize,
-        sender: Box<dyn Fn(FlycheckMessage) + Send>,
+        sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
@@ -199,7 +199,7 @@ enum StateChange {
 struct FlycheckActor {
     /// The workspace id of this flycheck instance.
     id: usize,
-    sender: Box<dyn Fn(FlycheckMessage) + Send>,
+    sender: Sender<FlycheckMessage>,
     config: FlycheckConfig,
     manifest_path: Option<AbsPathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
@@ -235,7 +235,7 @@ pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
 impl FlycheckActor {
     fn new(
         id: usize,
-        sender: Box<dyn Fn(FlycheckMessage) + Send>,
+        sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
@@ -478,8 +478,9 @@ impl FlycheckActor {
         Some(cmd)
     }
 
+    #[track_caller]
     fn send(&self, check_task: FlycheckMessage) {
-        (self.sender)(check_task);
+        self.sender.send(check_task).unwrap();
     }
 }
 

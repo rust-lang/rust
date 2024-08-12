@@ -185,8 +185,7 @@ impl GlobalState {
     pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
             let (sender, receiver) = unbounded::<vfs::loader::Message>();
-            let handle: vfs_notify::NotifyHandle =
-                vfs::loader::Handle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            let handle: vfs_notify::NotifyHandle = vfs::loader::Handle::spawn(sender);
             let handle = Box::new(handle) as Box<dyn vfs::loader::Handle>;
             Handle { handle, receiver }
         };
@@ -564,8 +563,9 @@ impl GlobalState {
         self.req_queue.incoming.is_completed(&request.id)
     }
 
+    #[track_caller]
     fn send(&self, message: lsp_server::Message) {
-        self.sender.send(message).unwrap()
+        self.sender.send(message).unwrap();
     }
 
     pub(crate) fn publish_diagnostics(
