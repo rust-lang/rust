@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
@@ -207,9 +208,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_trait {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
                 } else {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
                 }
                 Some(fn_def_id.to_def_id())
             }
@@ -218,9 +219,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_assoc_ty {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::AssocTy));
+                    assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
                 } else {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::TyAlias));
+                    assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
                 }
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
                 // Opaque types are always nested within another item, and

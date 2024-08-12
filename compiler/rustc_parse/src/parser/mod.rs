@@ -10,6 +10,7 @@ mod path;
 mod stmt;
 mod ty;
 
+use std::assert_matches::debug_assert_matches;
 use std::ops::Range;
 use std::{fmt, mem, slice};
 
@@ -1385,7 +1386,7 @@ impl<'a> Parser<'a> {
                     // can capture these tokens if necessary.
                     self.bump();
                     if self.token_cursor.stack.len() == target_depth {
-                        debug_assert!(matches!(self.token.kind, token::CloseDelim(_)));
+                        debug_assert_matches!(self.token.kind, token::CloseDelim(_));
                         break;
                     }
                 }

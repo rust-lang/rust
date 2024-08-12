@@ -1,3 +1,5 @@
+use std::assert_matches::debug_assert_matches;
+
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::{self as hir, LangItem};
@@ -457,17 +459,17 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 }
                 // Typeck has checked that Const operands are integers.
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    debug_assert!(matches!(
+                    debug_assert_matches!(
                         self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
                         ty::Error(_) | ty::Int(_) | ty::Uint(_)
-                    ));
+                    );
                 }
                 // Typeck has checked that SymFn refers to a function.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
-                    debug_assert!(matches!(
+                    debug_assert_matches!(
                         self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
                         ty::Error(_) | ty::FnDef(..)
-                    ));
+                    );
                 }
                 // AST lowering guarantees that SymStatic points to a static.
                 hir::InlineAsmOperand::SymStatic { .. } => {}
