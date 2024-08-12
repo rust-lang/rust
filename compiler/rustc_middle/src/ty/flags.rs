@@ -251,8 +251,7 @@ impl FlagComputation {
             }
 
             &ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
-                computation.add_tys(sig_tys.inputs());
-                computation.add_ty(sig_tys.output());
+                computation.add_tys(sig_tys.inputs_and_output);
             }),
         }
     }
