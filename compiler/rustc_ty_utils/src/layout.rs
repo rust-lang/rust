@@ -219,9 +219,13 @@ fn layout_of_uncached<'tcx>(
                             // its struct tail cannot be normalized either, so try to get a
                             // more descriptive layout error here, which will lead to less confusing
                             // diagnostics.
+                            //
+                            // We use the raw struct tail function here to get the first tail
+                            // that is an alias, which is likely the cause of the normalization
+                            // error.
                             match tcx.try_normalize_erasing_regions(
                                 param_env,
-                                tcx.struct_tail_without_normalization(pointee),
+                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
                             ) {
                                 Ok(_) => {}
                                 Err(better_err) => {
