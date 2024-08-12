@@ -119,14 +119,12 @@ impl NotifyActor {
                         self.watched_dir_entries.clear();
                         self.watched_file_entries.clear();
 
-                        self.sender
-                            .send(loader::Message::Progress {
-                                n_total,
-                                n_done: LoadingProgress::Started,
-                                config_version,
-                                dir: None,
-                            })
-                            .unwrap();
+                        self.send(loader::Message::Progress {
+                            n_total,
+                            n_done: LoadingProgress::Started,
+                            config_version,
+                            dir: None,
+                        });
 
                         let (entry_tx, entry_rx) = unbounded();
                         let (watch_tx, watch_rx) = unbounded();
@@ -142,31 +140,25 @@ impl NotifyActor {
                                 entry,
                                 do_watch,
                                 |file| {
-                                    self.sender
-                                        .send(loader::Message::Progress {
-                                            n_total,
-                                            n_done: LoadingProgress::Progress(
-                                                processed
-                                                    .load(std::sync::atomic::Ordering::Relaxed),
-                                            ),
-                                            dir: Some(file),
-                                            config_version,
-                                        })
-                                        .unwrap()
+                                    self.send(loader::Message::Progress {
+                                        n_total,
+                                        n_done: LoadingProgress::Progress(
+                                            processed.load(std::sync::atomic::Ordering::Relaxed),
+                                        ),
+                                        dir: Some(file),
+                                        config_version,
+                                    });
                                 },
                             );
-                            self.sender.send(loader::Message::Loaded { files }).unwrap();
-                            self.sender
-                                .send(loader::Message::Progress {
-                                    n_total,
-                                    n_done: LoadingProgress::Progress(
-                                        processed.fetch_add(1, std::sync::atomic::Ordering::AcqRel)
-                                            + 1,
-                                    ),
-                                    config_version,
-                                    dir: None,
-                                })
-                                .unwrap();
+                            self.send(loader::Message::Loaded { files });
+                            self.send(loader::Message::Progress {
+                                n_total,
+                                n_done: LoadingProgress::Progress(
+                                    processed.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1,
+                                ),
+                                config_version,
+                                dir: None,
+                            });
                         });
 
                         drop(watch_tx);
