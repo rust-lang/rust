@@ -264,130 +264,133 @@ where
             && let hir::OpaqueTyOrigin::FnReturn(parent_def_id) = opaque.origin
             && parent_def_id == self.parent_def_id
         {
-            // Compute the set of args that are captured by the opaque...
-            let mut captured = FxIndexSet::default();
-            let mut captured_regions = FxIndexSet::default();
-            let variances = self.tcx.variances_of(opaque_def_id);
-            let mut current_def_id = Some(opaque_def_id.to_def_id());
-            while let Some(def_id) = current_def_id {
-                let generics = self.tcx.generics_of(def_id);
-                for param in &generics.own_params {
-                    // A param is captured if it's invariant.
-                    if variances[param.index as usize] != ty::Invariant {
-                        continue;
-                    }
-
-                    let arg = opaque_ty.args[param.index as usize];
-                    // We need to turn all `ty::Param`/`ConstKind::Param` and
-                    // `ReEarlyParam`/`ReBound` into def ids.
-                    captured.insert(extract_def_id_from_arg(self.tcx, generics, arg));
-
-                    captured_regions.extend(arg.as_region());
-                }
-                current_def_id = generics.parent;
-            }
-
-            // Compute the set of in scope params that are not captured. Get their spans,
-            // since that's all we really care about them for emitting the diagnostic.
-            let mut uncaptured_args: FxIndexSet<_> = self
-                .in_scope_parameters
-                .iter()
-                .filter(|&(def_id, _)| !captured.contains(def_id))
-                .collect();
-
-            // These are args that we know are likely fine to "overcapture", since they can be
-            // contravariantly shortened to one of the already-captured lifetimes that they
-            // outlive.
-            let covariant_long_args: FxIndexSet<_> = uncaptured_args
-                .iter()
-                .copied()
-                .filter(|&(def_id, kind)| {
-                    let Some(ty::Bivariant | ty::Contravariant) = self.variances.get(def_id) else {
-                        return false;
-                    };
-                    let DefKind::LifetimeParam = self.tcx.def_kind(def_id) else {
-                        return false;
-                    };
-                    let uncaptured = match *kind {
-                        ParamKind::Early(name, index) => ty::Region::new_early_param(
-                            self.tcx,
-                            ty::EarlyParamRegion { name, index },
-                        ),
-                        ParamKind::Free(def_id, name) => ty::Region::new_late_param(
-                            self.tcx,
-                            self.parent_def_id.to_def_id(),
-                            ty::BoundRegionKind::BrNamed(def_id, name),
-                        ),
-                        ParamKind::Late => return false,
-                    };
-                    // Does this region outlive any captured region?
-                    captured_regions.iter().any(|r| {
-                        self.outlives_env
-                            .free_region_map()
-                            .sub_free_regions(self.tcx, *r, uncaptured)
-                    })
-                })
-                .collect();
-            // We don't care to warn on these args.
-            uncaptured_args.retain(|arg| !covariant_long_args.contains(arg));
-
             let opaque_span = self.tcx.def_span(opaque_def_id);
             let new_capture_rules =
                 opaque_span.at_least_rust_2024() || self.tcx.features().lifetime_capture_rules_2024;
-
-            // If we have uncaptured args, and if the opaque doesn't already have
-            // `use<>` syntax on it, and we're < edition 2024, then warn the user.
             if !new_capture_rules
                 && !opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..)))
-                && !uncaptured_args.is_empty()
             {
-                let suggestion = if let Ok(snippet) =
-                    self.tcx.sess.source_map().span_to_snippet(opaque_span)
-                    && snippet.starts_with("impl ")
-                {
-                    let (lifetimes, others): (Vec<_>, Vec<_>) = captured
-                        .into_iter()
-                        .partition(|def_id| self.tcx.def_kind(*def_id) == DefKind::LifetimeParam);
-                    // Take all lifetime params first, then all others (ty/ct).
-                    let generics: Vec<_> = lifetimes
-                        .into_iter()
-                        .chain(others)
-                        .map(|def_id| self.tcx.item_name(def_id).to_string())
-                        .collect();
-                    // Make sure that we're not trying to name any APITs
-                    if generics.iter().all(|name| !name.starts_with("impl ")) {
-                        Some((
-                            format!(" + use<{}>", generics.join(", ")),
-                            opaque_span.shrink_to_hi(),
-                        ))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
+                // Compute the set of args that are captured by the opaque...
+                let mut captured = FxIndexSet::default();
+                let mut captured_regions = FxIndexSet::default();
+                let variances = self.tcx.variances_of(opaque_def_id);
+                let mut current_def_id = Some(opaque_def_id.to_def_id());
+                while let Some(def_id) = current_def_id {
+                    let generics = self.tcx.generics_of(def_id);
+                    for param in &generics.own_params {
+                        // A param is captured if it's invariant.
+                        if variances[param.index as usize] != ty::Invariant {
+                            continue;
+                        }
 
-                let uncaptured_spans: Vec<_> = uncaptured_args
-                    .into_iter()
-                    .map(|(def_id, _)| self.tcx.def_span(def_id))
+                        let arg = opaque_ty.args[param.index as usize];
+                        // We need to turn all `ty::Param`/`ConstKind::Param` and
+                        // `ReEarlyParam`/`ReBound` into def ids.
+                        captured.insert(extract_def_id_from_arg(self.tcx, generics, arg));
+
+                        captured_regions.extend(arg.as_region());
+                    }
+                    current_def_id = generics.parent;
+                }
+
+                // Compute the set of in scope params that are not captured. Get their spans,
+                // since that's all we really care about them for emitting the diagnostic.
+                let mut uncaptured_args: FxIndexSet<_> = self
+                    .in_scope_parameters
+                    .iter()
+                    .filter(|&(def_id, _)| !captured.contains(def_id))
                     .collect();
 
-                self.tcx.emit_node_span_lint(
-                    IMPL_TRAIT_OVERCAPTURES,
-                    self.tcx.local_def_id_to_hir_id(opaque_def_id),
-                    opaque_span,
-                    ImplTraitOvercapturesLint {
-                        self_ty: t,
-                        num_captured: uncaptured_spans.len(),
-                        uncaptured_spans,
-                        suggestion,
-                    },
-                );
+                // These are args that we know are likely fine to "overcapture", since they can be
+                // contravariantly shortened to one of the already-captured lifetimes that they
+                // outlive.
+                let covariant_long_args: FxIndexSet<_> = uncaptured_args
+                    .iter()
+                    .copied()
+                    .filter(|&(def_id, kind)| {
+                        let Some(ty::Bivariant | ty::Contravariant) = self.variances.get(def_id)
+                        else {
+                            return false;
+                        };
+                        let DefKind::LifetimeParam = self.tcx.def_kind(def_id) else {
+                            return false;
+                        };
+                        let uncaptured = match *kind {
+                            ParamKind::Early(name, index) => ty::Region::new_early_param(
+                                self.tcx,
+                                ty::EarlyParamRegion { name, index },
+                            ),
+                            ParamKind::Free(def_id, name) => ty::Region::new_late_param(
+                                self.tcx,
+                                self.parent_def_id.to_def_id(),
+                                ty::BoundRegionKind::BrNamed(def_id, name),
+                            ),
+                            ParamKind::Late => return false,
+                        };
+                        // Does this region outlive any captured region?
+                        captured_regions.iter().any(|r| {
+                            self.outlives_env
+                                .free_region_map()
+                                .sub_free_regions(self.tcx, *r, uncaptured)
+                        })
+                    })
+                    .collect();
+                // We don't care to warn on these args.
+                uncaptured_args.retain(|arg| !covariant_long_args.contains(arg));
+
+                // If we have uncaptured args, and if the opaque doesn't already have
+                // `use<>` syntax on it, and we're < edition 2024, then warn the user.
+                if !uncaptured_args.is_empty() {
+                    let suggestion = if let Ok(snippet) =
+                        self.tcx.sess.source_map().span_to_snippet(opaque_span)
+                        && snippet.starts_with("impl ")
+                    {
+                        let (lifetimes, others): (Vec<_>, Vec<_>) =
+                            captured.into_iter().partition(|def_id| {
+                                self.tcx.def_kind(*def_id) == DefKind::LifetimeParam
+                            });
+                        // Take all lifetime params first, then all others (ty/ct).
+                        let generics: Vec<_> = lifetimes
+                            .into_iter()
+                            .chain(others)
+                            .map(|def_id| self.tcx.item_name(def_id).to_string())
+                            .collect();
+                        // Make sure that we're not trying to name any APITs
+                        if generics.iter().all(|name| !name.starts_with("impl ")) {
+                            Some((
+                                format!(" + use<{}>", generics.join(", ")),
+                                opaque_span.shrink_to_hi(),
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    let uncaptured_spans: Vec<_> = uncaptured_args
+                        .into_iter()
+                        .map(|(def_id, _)| self.tcx.def_span(def_id))
+                        .collect();
+
+                    self.tcx.emit_node_span_lint(
+                        IMPL_TRAIT_OVERCAPTURES,
+                        self.tcx.local_def_id_to_hir_id(opaque_def_id),
+                        opaque_span,
+                        ImplTraitOvercapturesLint {
+                            self_ty: t,
+                            num_captured: uncaptured_spans.len(),
+                            uncaptured_spans,
+                            suggestion,
+                        },
+                    );
+                }
             }
+
             // Otherwise, if we are edition 2024, have `use<>` syntax, and
             // have no uncaptured args, then we should warn to the user that
             // it's redundant to capture all args explicitly.
-            else if new_capture_rules
+            if new_capture_rules
                 && let Some((captured_args, capturing_span)) =
                     opaque.bounds.iter().find_map(|bound| match *bound {
                         hir::GenericBound::Use(a, s) => Some((a, s)),
