@@ -1116,9 +1116,6 @@ pub trait ResolverExpand {
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
-
-    fn register_proc_macro_invoc(&mut self, invoc_id: LocalExpnId, ext: Lrc<SyntaxExtension>);
-    fn unregister_proc_macro_invoc(&mut self, invoc_id: LocalExpnId);
 }
 
 pub trait LintStoreExpand {
