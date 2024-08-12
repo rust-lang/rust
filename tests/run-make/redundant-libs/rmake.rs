@@ -11,9 +11,7 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{
-    build_native_dynamic_lib, build_native_static_lib, cwd, is_msvc, rfs, run, rustc,
-};
+use run_make_support::{build_native_dynamic_lib, build_native_static_lib, run, rustc};
 
 fn main() {
     build_native_dynamic_lib("foo");
