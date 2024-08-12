@@ -309,7 +309,7 @@ declare_clippy_lint! {
     /// ### Known problems
     /// Inner doc comments can only appear before items, so there are certain cases where the suggestion
     /// made by this lint is not valid code. For example:
-    /// ```rs
+    /// ```rust
     /// fn foo() {}
     /// ///!
     /// fn bar() {}

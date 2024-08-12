@@ -687,10 +687,12 @@ fn cleanup_docs(docs_collection: &Vec<String>) -> String {
                     .trim()
                     .split(',')
                     // remove rustdoc directives
-                    .find(|&s| !matches!(s, "" | "ignore" | "no_run" | "should_panic"))
+                    .find(|&s| !matches!(s, "" | "ignore" | "no_run" | "should_panic" | "compile_fail"))
                     // if no language is present, fill in "rust"
                     .unwrap_or("rust");
-                let len_diff = line.len() - line.trim_start().len();
+                let len_diff = line
+                    .strip_prefix(' ')
+                    .map_or(0, |line| line.len() - line.trim_start().len());
                 if len_diff != 0 {
                     // We put back the indentation.
                     docs.push_str(&line[..len_diff]);
