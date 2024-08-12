@@ -515,6 +515,9 @@ pub fn no_documentation() {}
 
 Note that the third item is the crate root, which in this case is undocumented.
 
+If you want the JSON output to be displayed on `stdout` instead of having a file generated, you can
+use `-o -`.
+
 ### `-w`/`--output-format`: output format
 
 `--output-format json` emits documentation in the experimental
