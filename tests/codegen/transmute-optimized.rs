@@ -1,4 +1,5 @@
 //@ compile-flags: -O -Z merge-functions=disabled
+//@ min-llvm-version: 19
 #![crate_type = "lib"]
 
 // This tests that LLVM can optimize based on the niches in the source or
@@ -92,14 +93,14 @@ pub enum OneTwoThree {
 // CHECK-LABEL: i8 @ordering_transmute_onetwothree(i8
 #[no_mangle]
 pub unsafe fn ordering_transmute_onetwothree(x: std::cmp::Ordering) -> OneTwoThree {
-    // CHECK: ret i8 1
+    // CHECK: ret i8 %x
     std::mem::transmute(x)
 }
 
 // CHECK-LABEL: i8 @onetwothree_transmute_ordering(i8
 #[no_mangle]
 pub unsafe fn onetwothree_transmute_ordering(x: OneTwoThree) -> std::cmp::Ordering {
-    // CHECK: ret i8 1
+    // CHECK: ret i8 %x
     std::mem::transmute(x)
 }
 

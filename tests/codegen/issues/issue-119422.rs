@@ -3,6 +3,7 @@
 //!
 //@ compile-flags: -O --edition=2021 -Zmerge-functions=disabled
 //@ only-64bit (because the LLVM type of i64 for usize shows up)
+//@ min-llvm-version: 19
 #![crate_type = "lib"]
 
 use core::num::NonZero;

@@ -1,4 +1,5 @@
 //@ compile-flags: -O -Z merge-functions=disabled
+//@ min-llvm-version: 19
 #![crate_type = "lib"]
 
 // This tests that LLVM can optimize based on the niches in the source or

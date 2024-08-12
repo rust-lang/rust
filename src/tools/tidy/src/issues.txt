@@ -3628,7 +3628,6 @@ ui/regions/issue-56537-closure-uses-region-from-container.rs
 ui/regions/issue-6157.rs
 ui/regions/issue-72051-member-region-hang.rs
 ui/regions/issue-78262.rs
-ui/repr/issue-83505-repr-simd.rs
 ui/resolve/auxiliary/issue-112831-aux.rs
 ui/resolve/auxiliary/issue-19452-aux.rs
 ui/resolve/auxiliary/issue-21221-3.rs

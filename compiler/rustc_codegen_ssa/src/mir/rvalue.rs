@@ -240,13 +240,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if let OperandValueKind::Immediate(to_scalar) = cast_kind
                     && from_scalar.size(self.cx) == to_scalar.size(self.cx)
                 {
-                    let from_backend_ty = bx.backend_type(operand.layout);
                     let to_backend_ty = bx.backend_type(cast);
                     Some(OperandValue::Immediate(self.transmute_immediate(
                         bx,
                         imm,
                         from_scalar,
-                        from_backend_ty,
                         to_scalar,
                         to_backend_ty,
                     )))
@@ -262,13 +260,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     && in_a.size(self.cx) == out_a.size(self.cx)
                     && in_b.size(self.cx) == out_b.size(self.cx)
                 {
-                    let in_a_ibty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
-                    let in_b_ibty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
                     let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
                     let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        self.transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
-                        self.transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
+                        self.transmute_immediate(bx, imm_a, in_a, out_a, out_a_ibty),
+                        self.transmute_immediate(bx, imm_b, in_b, out_b, out_b_ibty),
                     ))
                 } else {
                     None
@@ -291,12 +287,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         to_backend_ty: Bx::Type,
     ) -> Option<Bx::Value> {
         use abi::Primitive::*;
-
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
@@ -339,20 +329,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         mut imm: Bx::Value,
         from_scalar: abi::Scalar,
-        from_backend_ty: Bx::Type,
         to_scalar: abi::Scalar,
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
+        use abi::Primitive::*;
+
         assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
 
-        use abi::Primitive::*;
         imm = bx.from_immediate(imm);
-
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
-        self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
@@ -368,53 +352,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(int_imm, to_backend_ty)
             }
         };
-        self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
-    }
-
-    fn assume_scalar_range(
-        &self,
-        bx: &mut Bx,
-        imm: Bx::Value,
-        scalar: abi::Scalar,
-        backend_ty: Bx::Type,
-    ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No | OptLevel::Less)
-            // For now, the critical niches are all over `Int`eger values.
-            // Should floating-point values or pointers ever get more complex
-            // niches, then this code will probably want to handle them too.
-            || !matches!(scalar.primitive(), abi::Primitive::Int(..))
-            || scalar.is_always_valid(self.cx)
-        {
-            return;
-        }
-
-        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
-
-        if start <= end {
-            if start > 0 {
-                let low = bx.const_uint_big(backend_ty, start);
-                let cmp = bx.icmp(IntPredicate::IntUGE, imm, low);
-                bx.assume(cmp);
-            }
-
-            let type_max = scalar.size(self.cx).unsigned_int_max();
-            if end < type_max {
-                let high = bx.const_uint_big(backend_ty, end);
-                let cmp = bx.icmp(IntPredicate::IntULE, imm, high);
-                bx.assume(cmp);
-            }
-        } else {
-            let low = bx.const_uint_big(backend_ty, start);
-            let cmp_low = bx.icmp(IntPredicate::IntUGE, imm, low);
-
-            let high = bx.const_uint_big(backend_ty, end);
-            let cmp_high = bx.icmp(IntPredicate::IntULE, imm, high);
-
-            let or = bx.or(cmp_low, cmp_high);
-            bx.assume(or);
-        }
     }
 
     pub fn codegen_rvalue_unsized(
