@@ -106,9 +106,11 @@ pub struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
-        // FIXME use ArArchiveBuilder on most targets again once reading thin archives is
-        // implemented
-        if true {
+        // Keeping LlvmArchiveBuilder around in case of a regression caused by using
+        // ArArchiveBuilder.
+        // FIXME(#128955) remove a couple of months after #128936 gets merged in case
+        // no regression is found.
+        if false {
             Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
         } else {
             Box::new(ArArchiveBuilder::new(sess, &LLVM_OBJECT_READER))
