@@ -195,7 +195,7 @@ fn reconstruct_place_meta<'tcx>(
 
     let mut last_valtree = valtree;
     // Traverse the type, and update `last_valtree` as we go.
-    let tail = tcx.struct_tail_with_normalize(
+    let tail = tcx.struct_tail_raw(
         layout.ty,
         |ty| ty,
         || {
