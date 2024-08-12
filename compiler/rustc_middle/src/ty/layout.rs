@@ -362,7 +362,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_unsafe_ptr();
 
-                let tail = tcx.struct_tail_with_normalize(
+                let tail = tcx.struct_tail_raw(
                     pointee,
                     |ty| match tcx.try_normalize_erasing_regions(param_env, ty) {
                         Ok(ty) => ty,
