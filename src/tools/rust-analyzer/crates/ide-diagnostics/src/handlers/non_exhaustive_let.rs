@@ -44,4 +44,43 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn option_nonexhaustive_inside_blocks() {
+        check_diagnostics(
+            r#"
+//- minicore: option
+fn main() {
+    '_a: {
+        let None = Some(5);
+          //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+    }
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+//- minicore: future, option
+fn main() {
+    let _ = async {
+        let None = Some(5);
+          //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+    };
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+//- minicore: option
+fn main() {
+    unsafe {
+        let None = Some(5);
+          //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
+    }
+}
+"#,
+        );
+    }
 }
