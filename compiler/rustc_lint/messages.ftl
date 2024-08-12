@@ -775,6 +775,10 @@ lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::Manual
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
 
+lint_unexpected_builtin_cfg = unexpected `--cfg {$cfg}` flag
+    .controlled_by = config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`
+    .incoherent = manually setting a built-in cfg can and does create incoherent behaviors
+
 lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_println}` to the top of the `build.rs`
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}

@@ -912,16 +912,9 @@ mod parse {
         match v {
             None => false,
             Some(s) => {
-                let parts = s.split('=').collect::<Vec<_>>();
-                if parts.len() != 2 {
-                    return false;
-                }
-                let crate_name = parts[0].to_string();
-                let fuel = parts[1].parse::<u64>();
-                if fuel.is_err() {
-                    return false;
-                }
-                *slot = Some((crate_name, fuel.unwrap()));
+                let [crate_name, fuel] = *s.split('=').collect::<Vec<_>>() else { return false };
+                let Ok(fuel) = fuel.parse::<u64>() else { return false };
+                *slot = Some((crate_name.to_string(), fuel));
                 true
             }
         }
@@ -1827,6 +1820,8 @@ options! {
         the same values as the target option of the same name"),
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics (default: no)"),
+    metrics_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "stores metrics about the errors being emitted by rustc to disk"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),

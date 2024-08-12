@@ -1,8 +1,8 @@
-//@ revisions: NORMAL WINDOWS
+//@ revisions: NORMAL WIN
 //@ compile-flags: -C no-prepopulate-passes
 //@[NORMAL] ignore-windows
-//@[WINDOWS] only-windows
-//@[WINDOWS] only-x86_64
+//@[WIN] only-windows
+//@[WIN] only-x86_64
 
 #![crate_type = "lib"]
 #![feature(rust_cold_cc)]
@@ -14,8 +14,8 @@
 
 // See the comment in `Target::adjust_abi` for why this differs
 
-// WINDOWS: define void @this_should_never_happen(i16
-// WINDOWS: call void @this_should_never_happen(i16
+// WIN: define void @this_should_never_happen(i16
+// WIN: call void @this_should_never_happen(i16
 
 #[no_mangle]
 pub extern "rust-cold" fn this_should_never_happen(x: u16) {}

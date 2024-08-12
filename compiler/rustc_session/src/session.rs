@@ -950,10 +950,10 @@ fn default_emitter(
         t => t,
     };
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+            let short = kind.short();
 
-            if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
+            if let HumanReadableErrorType::AnnotateSnippet = kind {
                 let emitter = AnnotateSnippetEmitter::new(
                     Some(source_map),
                     bundle,
@@ -978,13 +978,14 @@ fn default_emitter(
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
+        config::ErrorOutputType::Json { pretty, json_rendered, color_config } => Box::new(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
                 fallback_bundle,
                 pretty,
                 json_rendered,
+                color_config,
             )
             .registry(Some(registry))
             .fluent_bundle(bundle)
@@ -1425,20 +1426,23 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let fallback_bundle =
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+            let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .short_message(short),
             )
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::new(
-            Box::new(io::BufWriter::new(io::stderr())),
-            Lrc::new(SourceMap::new(FilePathMapping::empty())),
-            fallback_bundle,
-            pretty,
-            json_rendered,
-        )),
+        config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
+            Box::new(JsonEmitter::new(
+                Box::new(io::BufWriter::new(io::stderr())),
+                Lrc::new(SourceMap::new(FilePathMapping::empty())),
+                fallback_bundle,
+                pretty,
+                json_rendered,
+                color_config,
+            ))
+        }
     };
     emitter
 }

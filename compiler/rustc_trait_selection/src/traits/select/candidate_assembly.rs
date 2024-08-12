@@ -467,8 +467,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::FnDef(..) | ty::FnPtr(..) => {
-                candidates.vec.push(AsyncClosureCandidate);
+            // Provide an impl, but only for suitable `fn` pointers.
+            ty::FnPtr(sig) => {
+                if sig.is_fn_trait_compatible() {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
+            }
+            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
+            ty::FnDef(def_id, _) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
             }
             _ => {}
         }

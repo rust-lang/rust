@@ -272,6 +272,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -299,7 +300,6 @@
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
-#![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
@@ -586,7 +586,7 @@ pub mod net;
 pub mod num;
 pub mod os;
 pub mod panic;
-#[unstable(feature = "core_pattern_types", issue = "none")]
+#[unstable(feature = "core_pattern_types", issue = "123646")]
 pub mod pat;
 pub mod path;
 #[unstable(feature = "anonymous_pipe", issue = "127154")]

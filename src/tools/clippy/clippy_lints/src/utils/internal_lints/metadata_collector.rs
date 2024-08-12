@@ -7,13 +7,12 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
-use crate::renamed_lints::RENAMED_LINTS;
 use crate::utils::internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type};
 use clippy_config::{get_configuration_metadata, ClippyConfiguration};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
-use clippy_utils::{last_path_segment, match_def_path, match_function_call, match_path, paths};
+use clippy_utils::{last_path_segment, match_function_call, match_path, paths};
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -85,11 +84,6 @@ const SUGGESTION_DIAG_METHODS: [(&str, bool); 9] = [
     ("tool_only_multipart_suggestion", true),
     ("span_suggestions", true),
 ];
-const SUGGESTION_FUNCTIONS: [&[&str]; 2] = [
-    &["clippy_utils", "diagnostics", "multispan_sugg"],
-    &["clippy_utils", "diagnostics", "multispan_sugg_with_applicability"],
-];
-const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "ClippyDeprecatedLint"];
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
 const APPLICABILITY_NAME_INDEX: usize = 2;
@@ -165,9 +159,9 @@ impl MetadataCollector {
     fn get_lint_configs(&self, lint_name: &str) -> Option<String> {
         self.config
             .iter()
-            .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
+            .filter(|config| config.lints.iter().any(|&lint| lint == lint_name))
             .map(ToString::to_string)
-            .reduce(|acc, x| acc + &x)
+            .reduce(|acc, x| acc + "\n\n" + &x)
             .map(|configurations| {
                 format!(
                     r#"
@@ -216,6 +210,13 @@ impl Drop for MetadataCollector {
 
         let mut applicability_info = std::mem::take(&mut self.applicability_info);
 
+        // Add deprecated lints
+        self.lints.extend(
+            crate::deprecated_lints::DEPRECATED
+                .iter()
+                .zip(crate::deprecated_lints::DEPRECATED_VERSION)
+                .filter_map(|((lint, reason), version)| LintMetadata::new_deprecated(lint, reason, version)),
+        );
         // Mapping the final data
         let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
         for x in &mut lints {
@@ -261,7 +262,7 @@ Please use that command to update the file and do not edit it by hand.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 struct LintMetadata {
     id: String,
-    id_span: SerializableSpan,
+    id_span: Option<SerializableSpan>,
     group: String,
     level: String,
     docs: String,
@@ -285,7 +286,7 @@ impl LintMetadata {
     ) -> Self {
         Self {
             id,
-            id_span,
+            id_span: Some(id_span),
             group,
             level: level.to_string(),
             version,
@@ -293,6 +294,29 @@ impl LintMetadata {
             applicability: None,
             former_ids: BTreeSet::new(),
         }
+    }
+
+    fn new_deprecated(name: &str, reason: &str, version: &str) -> Option<Self> {
+        // The reason starts with a lowercase letter and end without a period.
+        // This needs to be fixed for the website.
+        let mut reason = reason.to_owned();
+        if let Some(reason) = reason.get_mut(0..1) {
+            reason.make_ascii_uppercase();
+        }
+        name.strip_prefix("clippy::").map(|name| Self {
+            id: name.into(),
+            id_span: None,
+            group: DEPRECATED_LINT_GROUP_STR.into(),
+            level: DEPRECATED_LINT_LEVEL.into(),
+            version: version.into(),
+            docs: format!(
+                "### What it does\n\n\
+                Nothing. This lint has been deprecated\n\n\
+                ### Deprecation reason\n\n{reason}.\n",
+            ),
+            applicability: None,
+            former_ids: BTreeSet::new(),
+        })
     }
 }
 
@@ -564,24 +588,6 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                     raw_docs,
                 ));
             }
-
-            if is_deprecated_lint(cx, ty)
-                // disallow check
-                && let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase()
-                // Metadata the little we can get from a deprecated lint
-                && let Some(raw_docs) = extract_attr_docs_or_lint(cx, item)
-            {
-                let version = get_lint_version(cx, item);
-
-                self.lints.push(LintMetadata::new(
-                    lint_name,
-                    SerializableSpan::from_item(cx, item),
-                    DEPRECATED_LINT_GROUP_STR.to_string(),
-                    DEPRECATED_LINT_LEVEL,
-                    version,
-                    raw_docs,
-                ));
-            }
         }
     }
 
@@ -684,6 +690,11 @@ fn cleanup_docs(docs_collection: &Vec<String>) -> String {
                     .find(|&s| !matches!(s, "" | "ignore" | "no_run" | "should_panic"))
                     // if no language is present, fill in "rust"
                     .unwrap_or("rust");
+                let len_diff = line.len() - line.trim_start().len();
+                if len_diff != 0 {
+                    // We put back the indentation.
+                    docs.push_str(&line[..len_diff]);
+                }
                 docs.push_str("```");
                 docs.push_str(lang);
 
@@ -766,16 +777,6 @@ fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
         .find_map(|(group_name, group_level)| (*group_name == lint_group).then_some(*group_level))
 }
 
-pub(super) fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
-    if let hir::TyKind::Path(ref path) = ty.kind {
-        if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
-            return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
-        }
-    }
-
-    false
-}
-
 fn collect_renames(lints: &mut Vec<LintMetadata>) {
     for lint in lints {
         let mut collected = String::new();
@@ -783,7 +784,7 @@ fn collect_renames(lints: &mut Vec<LintMetadata>) {
 
         loop {
             if let Some(lint_name) = names.pop() {
-                for (k, v) in RENAMED_LINTS {
+                for (k, v) in crate::deprecated_lints::RENAMED {
                     if let Some(name) = v.strip_prefix(CLIPPY_LINT_GROUP_PREFIX)
                         && name == lint_name
                         && let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX)
@@ -1055,33 +1056,21 @@ impl<'a, 'hir> Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
             return;
         }
 
-        match &expr.kind {
-            ExprKind::Call(fn_expr, _args) => {
-                let found_function = SUGGESTION_FUNCTIONS
-                    .iter()
-                    .any(|func_path| match_function_call(self.cx, fn_expr, func_path).is_some());
-                if found_function {
-                    // These functions are all multi part suggestions
-                    self.add_single_span_suggestion();
-                }
-            },
-            ExprKind::MethodCall(path, recv, _, _arg_span) => {
-                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
-                if match_type(self.cx, self_ty, &paths::DIAG) {
-                    let called_method = path.ident.name.as_str().to_string();
-                    for (method_name, is_multi_part) in &SUGGESTION_DIAG_METHODS {
-                        if *method_name == called_method {
-                            if *is_multi_part {
-                                self.add_multi_part_suggestion();
-                            } else {
-                                self.add_single_span_suggestion();
-                            }
-                            break;
+        if let ExprKind::MethodCall(path, recv, _, _arg_span) = &expr.kind {
+            let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(recv));
+            if match_type(self.cx, self_ty, &paths::DIAG) {
+                let called_method = path.ident.name.as_str().to_string();
+                for (method_name, is_multi_part) in &SUGGESTION_DIAG_METHODS {
+                    if *method_name == called_method {
+                        if *is_multi_part {
+                            self.add_multi_part_suggestion();
+                        } else {
+                            self.add_single_span_suggestion();
                         }
+                        break;
                     }
                 }
-            },
-            _ => {},
+            }
         }
 
         intravisit::walk_expr(self, expr);

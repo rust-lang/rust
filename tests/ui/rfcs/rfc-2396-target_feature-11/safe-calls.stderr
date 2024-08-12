@@ -4,8 +4,8 @@ error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and req
 LL |     sse2();
    |     ^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: sse and sse2
-   = note: the sse and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+   = help: in order for the call to be safe, the context requires the following additional target feature: sse2
+   = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 
 error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:29:5
@@ -13,8 +13,7 @@ error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: avx, sse, sse2, sse3, sse4.1, sse4.2, ssse3, and bmi2
-   = note: the sse and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+   = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
 error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:31:5
@@ -22,8 +21,7 @@ error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsa
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: avx, sse, sse2, sse3, sse4.1, sse4.2, ssse3, and bmi2
-   = note: the sse and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+   = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
 error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:38:5
@@ -31,7 +29,7 @@ error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: avx, sse3, sse4.1, sse4.2, ssse3, and bmi2
+   = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
 error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:40:5
@@ -39,7 +37,7 @@ error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsa
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: avx, sse3, sse4.1, sse4.2, ssse3, and bmi2
+   = help: in order for the call to be safe, the context requires the following additional target features: avx and bmi2
 
 error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:47:5
@@ -63,8 +61,8 @@ error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and req
 LL | const _: () = sse2();
    |               ^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: sse and sse2
-   = note: the sse and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+   = help: in order for the call to be safe, the context requires the following additional target feature: sse2
+   = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 
 error[E0133]: call to function `sse2_and_fxsr` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:64:15
@@ -72,8 +70,8 @@ error[E0133]: call to function `sse2_and_fxsr` with `#[target_feature]` is unsaf
 LL | const _: () = sse2_and_fxsr();
    |               ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
    |
-   = help: in order for the call to be safe, the context requires the following additional target features: sse, sse2, and fxsr
-   = note: the fxsr, sse, and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+   = help: in order for the call to be safe, the context requires the following additional target features: sse2 and fxsr
+   = note: the fxsr and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
 
 error[E0133]: call to function `sse2` with `#[target_feature]` is unsafe and requires unsafe block
   --> $DIR/safe-calls.rs:69:5
@@ -82,8 +80,8 @@ LL |     sse2();
    |     ^^^^^^ call to function with `#[target_feature]`
    |
    = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
-   = help: in order for the call to be safe, the context requires the following additional target features: sse and sse2
-   = note: the sse and sse2 target features being enabled in the build configuration does not remove the requirement to list them in `#[target_feature]`
+   = help: in order for the call to be safe, the context requires the following additional target feature: sse2
+   = note: the sse2 target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/safe-calls.rs:68:1
    |

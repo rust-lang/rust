@@ -1736,6 +1736,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_error(tcx, guar)
             };
 
+            // Check that the expected field type is WF. Otherwise, we emit no use-site error
+            // in the case of coercions for non-WF fields, which leads to incorrect error
+            // tainting. See issue #126272.
+            self.register_wf_obligation(
+                field_type.into(),
+                field.expr.span,
+                ObligationCauseCode::WellFormed(None),
+            );
+
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
             let ty = self.check_expr_with_hint(field.expr, field_type);
@@ -2734,15 +2743,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let ty::RawPtr(ptr_ty, _) = expr_t.kind()
             && let ty::Adt(adt_def, _) = ptr_ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
-            && adt_def.variants().len() == 1
-            && adt_def
-                .variants()
-                .iter()
-                .next()
-                .unwrap()
-                .fields
-                .iter()
-                .any(|f| f.ident(self.tcx) == field)
+            && let [variant] = &adt_def.variants().raw
+            && variant.fields.iter().any(|f| f.ident(self.tcx) == field)
         {
             err.multipart_suggestion(
                 "to access the field, dereference first",

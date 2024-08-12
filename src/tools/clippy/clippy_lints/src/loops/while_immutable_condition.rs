@@ -1,5 +1,5 @@
 use super::WHILE_IMMUTABLE_CONDITION;
-use clippy_utils::consts::constant;
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
 use rustc_hir::def::{DefKind, Res};
@@ -10,7 +10,7 @@ use rustc_lint::LateContext;
 use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
-    if constant(cx, cx.typeck_results(), cond).is_some() {
+    if ConstEvalCtxt::new(cx).eval(cond).is_some() {
         // A pure constant condition (e.g., `while false`) is not linted.
         return;
     }

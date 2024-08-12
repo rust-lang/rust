@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+use std::str;
 
 /// This macro creates the version string during compilation from the
 /// current environment
@@ -101,49 +101,46 @@ impl std::fmt::Debug for VersionInfo {
 
 #[must_use]
 pub fn get_commit_hash() -> Option<String> {
-    std::process::Command::new("git")
-        .args(["rev-parse", "--short", "HEAD"])
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
         .output()
-        .ok()
-        .and_then(|r| String::from_utf8(r.stdout).ok())
+        .ok()?;
+    let mut stdout = output.status.success().then_some(output.stdout)?;
+    stdout.truncate(10);
+    String::from_utf8(stdout).ok()
 }
 
 #[must_use]
 pub fn get_commit_date() -> Option<String> {
-    std::process::Command::new("git")
+    let output = std::process::Command::new("git")
         .args(["log", "-1", "--date=short", "--pretty=format:%cd"])
         .output()
-        .ok()
-        .and_then(|r| String::from_utf8(r.stdout).ok())
+        .ok()?;
+    let stdout = output.status.success().then_some(output.stdout)?;
+    String::from_utf8(stdout).ok()
 }
 
 #[must_use]
 pub fn get_channel() -> String {
-    match std::env::var("CFG_RELEASE_CHANNEL") {
-        Ok(channel) => channel,
-        Err(_) => {
-            // if that failed, try to ask rustc -V, do some parsing and find out
-            match std::process::Command::new("rustc")
-                .arg("-V")
-                .output()
-                .ok()
-                .and_then(|r| String::from_utf8(r.stdout).ok())
-            {
-                Some(rustc_output) => {
-                    if rustc_output.contains("beta") {
-                        String::from("beta")
-                    } else if rustc_output.contains("stable") {
-                        String::from("stable")
-                    } else {
-                        // default to nightly if we fail to parse
-                        String::from("nightly")
-                    }
-                },
-                // default to nightly
-                None => String::from("nightly"),
-            }
-        },
+    if let Ok(channel) = std::env::var("CFG_RELEASE_CHANNEL") {
+        return channel;
     }
+
+    // if that failed, try to ask rustc -V, do some parsing and find out
+    if let Ok(output) = std::process::Command::new("rustc").arg("-V").output() {
+        if output.status.success() {
+            if let Ok(rustc_output) = str::from_utf8(&output.stdout) {
+                if rustc_output.contains("beta") {
+                    return String::from("beta");
+                } else if rustc_output.contains("stable") {
+                    return String::from("stable");
+                }
+            }
+        }
+    }
+
+    // default to nightly
+    String::from("nightly")
 }
 
 #[cfg(test)]

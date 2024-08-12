@@ -21,7 +21,7 @@ mod wrong_transmute;
 
 use clippy_config::msrvs::Msrv;
 use clippy_config::Conf;
-use clippy_utils::in_constant;
+use clippy_utils::is_in_const_context;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -595,7 +595,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
             // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
             // - char conversions (https://github.com/rust-lang/rust/issues/89259)
-            let const_context = in_constant(cx, e.hir_id);
+            let const_context = is_in_const_context(cx);
 
             let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
                 [] => (cx.typeck_results().expr_ty(arg), false),

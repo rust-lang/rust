@@ -1,11 +1,12 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
@@ -18,7 +19,7 @@ pub fn from_target_feature(
     tcx: TyCtxt<'_>,
     attr: &ast::Attribute,
     supported_target_features: &UnordMap<String, Option<Symbol>>,
-    target_features: &mut Vec<Symbol>,
+    target_features: &mut Vec<TargetFeature>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
     let bad_item = |span| {
@@ -99,14 +100,26 @@ pub fn from_target_feature(
         }));
     }
 
-    // Add both explicit and implied target features, using a set to deduplicate
-    let mut target_features_set = UnordSet::new();
+    // Add explicit features
+    target_features.extend(
+        added_target_features.iter().copied().map(|name| TargetFeature { name, implied: false }),
+    );
+
+    // Add implied features
+    let mut implied_target_features = UnordSet::new();
     for feature in added_target_features.iter() {
-        target_features_set
-            .extend_unord(tcx.implied_target_features(*feature).clone().into_items());
+        implied_target_features.extend(tcx.implied_target_features(*feature).clone());
     }
-    target_features_set.extend(added_target_features);
-    target_features.extend(target_features_set.into_sorted_stable_ord())
+    for feature in added_target_features.iter() {
+        implied_target_features.remove(feature);
+    }
+    target_features.extend(
+        implied_target_features
+            .into_sorted_stable_ord()
+            .iter()
+            .copied()
+            .map(|name| TargetFeature { name, implied: true }),
+    )
 }
 
 /// Computes the set of target features used in a function for the purposes of
@@ -115,7 +128,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
-        target_features.extend(&attrs.target_features);
+        target_features.extend(attrs.target_features.iter().map(|feature| feature.name));
         match attrs.instruction_set {
             None => {}
             Some(InstructionSetAttr::ArmA32) => {
@@ -160,31 +173,13 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .supported_target_features()
                     .iter()
-                    .map(|&(a, b)| (a.to_string(), b.as_feature_name()))
+                    .map(|&(a, b, _)| (a.to_string(), b.as_feature_name()))
                     .collect()
             }
         },
         implied_target_features: |tcx, feature| {
-            let implied_features = tcx
-                .sess
-                .target
-                .implied_target_features()
-                .iter()
-                .map(|(f, i)| (Symbol::intern(f), i))
-                .collect::<FxHashMap<_, _>>();
-
-            // implied target features have their own implied target features, so we traverse the
-            // map until there are no more features to add
-            let mut features = UnordSet::new();
-            let mut new_features = vec![feature];
-            while let Some(new_feature) = new_features.pop() {
-                if features.insert(new_feature) {
-                    if let Some(implied_features) = implied_features.get(&new_feature) {
-                        new_features.extend(implied_features.iter().copied().map(Symbol::intern))
-                    }
-                }
-            }
-            features
+            UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
+                .into_sorted_stable_ord()
         },
         asm_target_features,
         ..*providers

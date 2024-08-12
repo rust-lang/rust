@@ -12,7 +12,7 @@ use tracing::debug;
 use crate::context::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
-use crate::{attributes, base, llvm};
+use crate::{base, llvm};
 
 impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
@@ -86,8 +86,6 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         }
 
         debug!("predefine_fn: instance = {:?}", instance);
-
-        attributes::from_fn_attrs(self, lldecl, instance);
 
         unsafe {
             if self.should_assume_dso_local(lldecl, false) {

@@ -244,7 +244,7 @@ fn layout_of_uncached<'tcx>(
 
                 metadata
             } else {
-                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+                let unsized_part = tcx.struct_tail_for_codegen(pointee, param_env);
 
                 match unsized_part.kind() {
                     ty::Foreign(..) => {

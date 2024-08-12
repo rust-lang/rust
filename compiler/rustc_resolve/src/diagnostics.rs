@@ -1052,6 +1052,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 parent_scope,
                                 false,
                                 false,
+                                None,
                             ) {
                                 suggestions.extend(
                                     ext.helper_attrs
@@ -1505,6 +1506,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 parent_scope,
                 None,
                 false,
+                None,
                 None,
             ) {
                 let desc = match binding.res() {
@@ -1983,6 +1985,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         failed_segment_idx: usize,
         ident: Ident,
@@ -2066,11 +2069,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         parent_scope,
                         None,
                         ignore_binding,
+                        ignore_import,
                     )
                     .ok()
                 } else if let Some(ribs) = ribs
                     && let Some(TypeNS | ValueNS) = opt_ns
                 {
+                    assert!(ignore_import.is_none());
                     match self.resolve_ident_in_lexical_scope(
                         ident,
                         ns_to_try,
@@ -2091,6 +2096,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None,
                         false,
                         ignore_binding,
+                        ignore_import,
                     )
                     .ok()
                 };
@@ -2132,6 +2138,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } else if ident.name.as_str().chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
             // Check whether the name refers to an item in the value namespace.
             let binding = if let Some(ribs) = ribs {
+                assert!(ignore_import.is_none());
                 self.resolve_ident_in_lexical_scope(
                     ident,
                     ValueNS,
@@ -2206,6 +2213,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
                 false,
                 ignore_binding,
+                ignore_import,
             ) {
                 let descr = binding.res().descr();
                 (format!("{descr} `{ident}` is not a crate or module"), suggestion)
@@ -2259,7 +2267,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2278,7 +2286,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -2309,7 +2317,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope, None);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2343,7 +2351,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.maybe_resolve_path(&path, None, parent_scope);
+            let result = self.maybe_resolve_path(&path, None, parent_scope, None);
             debug!(
                 "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                 name, path, result
@@ -2509,12 +2517,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Finds a cfg-ed out item inside `module` with the matching name.
-    pub(crate) fn find_cfg_stripped(
-        &mut self,
-        err: &mut Diag<'_>,
-        segment: &Symbol,
-        module: DefId,
-    ) {
+    pub(crate) fn find_cfg_stripped(&self, err: &mut Diag<'_>, segment: &Symbol, module: DefId) {
         let local_items;
         let symbols = if module.is_local() {
             local_items = self

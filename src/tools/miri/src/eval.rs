@@ -463,6 +463,7 @@ pub fn eval_entry<'tcx>(
     let res = match res {
         Err(res) => res,
         // `Ok` can never happen
+        #[cfg(bootstrap)]
         Ok(never) => match never {},
     };
 

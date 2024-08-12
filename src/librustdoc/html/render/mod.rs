@@ -1780,20 +1780,23 @@ fn render_impl(
 
     let mut impl_items = Buffer::empty_from(w);
     let mut default_impl_items = Buffer::empty_from(w);
+    let impl_ = i.inner_impl();
 
-    for trait_item in &i.inner_impl().items {
-        doc_impl_item(
-            &mut default_impl_items,
-            &mut impl_items,
-            cx,
-            trait_item,
-            if trait_.is_some() { &i.impl_item } else { parent },
-            link,
-            render_mode,
-            false,
-            trait_,
-            rendering_params,
-        );
+    if !impl_.is_negative_trait_impl() {
+        for trait_item in &impl_.items {
+            doc_impl_item(
+                &mut default_impl_items,
+                &mut impl_items,
+                cx,
+                trait_item,
+                if trait_.is_some() { &i.impl_item } else { parent },
+                link,
+                render_mode,
+                false,
+                trait_,
+                rendering_params,
+            );
+        }
     }
 
     fn render_default_items(
@@ -1844,13 +1847,15 @@ fn render_impl(
     // We don't emit documentation for default items if they appear in the
     // Implementations on Foreign Types or Implementors sections.
     if rendering_params.show_default_items {
-        if let Some(t) = trait_ {
+        if let Some(t) = trait_
+            && !impl_.is_negative_trait_impl()
+        {
             render_default_items(
                 &mut default_impl_items,
                 &mut impl_items,
                 cx,
                 t,
-                i.inner_impl(),
+                impl_,
                 &i.impl_item,
                 render_mode,
                 rendering_params,
@@ -1882,7 +1887,7 @@ fn render_impl(
         }
 
         if let Some(ref dox) = i.impl_item.opt_doc_value() {
-            if trait_.is_none() && i.inner_impl().items.is_empty() {
+            if trait_.is_none() && impl_.items.is_empty() {
                 w.write_str(
                     "<div class=\"item-info\">\
                          <div class=\"stab empty-impl\">This impl block contains no items.</div>\

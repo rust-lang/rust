@@ -407,6 +407,10 @@ rustc_queries! {
         desc { |tcx| "elaborating item assumptions for `{}`", tcx.def_path_str(key) }
     }
 
+    query impl_super_outlives(key: DefId) -> ty::EarlyBinder<'tcx, ty::Clauses<'tcx>> {
+        desc { |tcx| "elaborating supertrait outlives for trait of `{}`", tcx.def_path_str(key) }
+    }
+
     /// Look up all native libraries this crate depends on.
     /// These are assembled from the following places:
     /// - `extern` blocks (depending on their `link` attributes)
@@ -2183,7 +2187,7 @@ rustc_queries! {
         desc { "looking up supported target features" }
     }
 
-    query implied_target_features(feature: Symbol) -> &'tcx UnordSet<Symbol> {
+    query implied_target_features(feature: Symbol) -> &'tcx Vec<Symbol> {
         arena_cache
         eval_always
         desc { "looking up implied target features" }

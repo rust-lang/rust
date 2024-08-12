@@ -1,12 +1,12 @@
 // Test that structs aligned to 128 bits are passed with the correct ABI on aarch64.
 
-//@ revisions:linux darwin windows
+//@ revisions: linux darwin win
 //@[linux] compile-flags: --target aarch64-unknown-linux-gnu
 //@[darwin] compile-flags: --target aarch64-apple-darwin
-//@[windows] compile-flags: --target aarch64-pc-windows-msvc
+//@[win] compile-flags: --target aarch64-pc-windows-msvc
 //@[linux] needs-llvm-components: aarch64
 //@[darwin] needs-llvm-components: aarch64
-//@[windows] needs-llvm-components: aarch64
+//@[win] needs-llvm-components: aarch64
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]
@@ -39,9 +39,9 @@ pub struct Wrapped8 {
 }
 
 extern "C" {
-    // linux:   declare void @test_8([2 x i64], [2 x i64], [2 x i64])
-    // darwin:  declare void @test_8([2 x i64], [2 x i64], [2 x i64])
-    // windows: declare void @test_8([2 x i64], [2 x i64], [2 x i64])
+    // linux:  declare void @test_8([2 x i64], [2 x i64], [2 x i64])
+    // darwin: declare void @test_8([2 x i64], [2 x i64], [2 x i64])
+    // win:    declare void @test_8([2 x i64], [2 x i64], [2 x i64])
     fn test_8(a: Align8, b: Transparent8, c: Wrapped8);
 }
 
@@ -69,9 +69,9 @@ pub struct Wrapped16 {
 }
 
 extern "C" {
-    // linux:   declare void @test_16([2 x i64], [2 x i64], i128)
-    // darwin:  declare void @test_16(i128, i128, i128)
-    // windows: declare void @test_16(i128, i128, i128)
+    // linux:  declare void @test_16([2 x i64], [2 x i64], i128)
+    // darwin: declare void @test_16(i128, i128, i128)
+    // win:    declare void @test_16(i128, i128, i128)
     fn test_16(a: Align16, b: Transparent16, c: Wrapped16);
 }
 
@@ -94,9 +94,9 @@ pub struct WrappedI128 {
 }
 
 extern "C" {
-    // linux:   declare void @test_i128(i128, i128, i128)
-    // darwin:  declare void @test_i128(i128, i128, i128)
-    // windows: declare void @test_i128(i128, i128, i128)
+    // linux:  declare void @test_i128(i128, i128, i128)
+    // darwin: declare void @test_i128(i128, i128, i128)
+    // win:    declare void @test_i128(i128, i128, i128)
     fn test_i128(a: I128, b: TransparentI128, c: WrappedI128);
 }
 
@@ -121,9 +121,9 @@ pub struct WrappedPacked {
 }
 
 extern "C" {
-    // linux:   declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
-    // darwin:  declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
-    // windows: declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
+    // linux:  declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
+    // darwin: declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
+    // win:    declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
     fn test_packed(a: Packed, b: TransparentPacked, c: WrappedPacked);
 }
 

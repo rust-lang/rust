@@ -12,6 +12,7 @@ Target triplets available:
 - `i686-wrs-vxworks`
 - `armv7-wrs-vxworks-eabihf`
 - `powerpc-wrs-vxworks`
+- `powerpc64-wrs-vxworks`
 - `powerpc-wrs-vxworks-spe`
 
 ## Target maintainers
@@ -19,6 +20,12 @@ Target triplets available:
 - B I Mohammed Abbas ([@biabbas](https://github.com/biabbas))
 
 ## Requirements
+
+### OS version
+
+The minimum supported version is VxWorks 7.
+
+## Building
 
 Rust for each target can be cross-compiled with its specific target vsb configuration. Std support is added but not yet fully tested.
 
@@ -36,6 +43,7 @@ target = [
     "i686-wrs-vxworks",
     "armv7-wrs-vxworks-eabihf",
     "powerpc-wrs-vxworks",
+    "powerpc64-wrs-vxworks",
     "powerpc-wrs-vxworks-spe",
 ]
 ```

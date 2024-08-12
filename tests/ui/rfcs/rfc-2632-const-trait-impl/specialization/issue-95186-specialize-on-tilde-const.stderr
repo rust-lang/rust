@@ -1,4 +1,4 @@
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95186-specialize-on-tilde-const.rs:14:1
    |
 LL | #[const_trait]
@@ -7,7 +7,7 @@ LL | trait Foo {
 LL |     fn foo();
    |           - expected 0 const parameters
 
-error[E0049]: method `foo` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `foo` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95186-specialize-on-tilde-const.rs:14:1
    |
 LL | #[const_trait]
@@ -18,7 +18,7 @@ LL |     fn foo();
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0049]: method `bar` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `bar` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95186-specialize-on-tilde-const.rs:30:1
    |
 LL | #[const_trait]
@@ -27,7 +27,7 @@ LL | trait Bar {
 LL |     fn bar() {}
    |           - expected 0 const parameters
 
-error[E0049]: method `bar` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `bar` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/issue-95186-specialize-on-tilde-const.rs:30:1
    |
 LL | #[const_trait]

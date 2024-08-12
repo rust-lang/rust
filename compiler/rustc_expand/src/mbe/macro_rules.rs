@@ -268,7 +268,10 @@ fn expand_macro<'cx>(
         }
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
+            let (span, guar) =
+                diagnostics::failed_to_match_macro(cx.psess(), sp, def_span, name, arg, lhses);
+            cx.trace_macros_diag();
+            DummyResult::any(span, guar)
         }
     }
 }

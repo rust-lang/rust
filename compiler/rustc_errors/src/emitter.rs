@@ -43,19 +43,14 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
-    Default(ColorConfig),
-    AnnotateSnippet(ColorConfig),
-    Short(ColorConfig),
+    Default,
+    AnnotateSnippet,
+    Short,
 }
 
 impl HumanReadableErrorType {
-    /// Returns a (`short`, `color`) tuple
-    pub fn unzip(self) -> (bool, ColorConfig) {
-        match self {
-            HumanReadableErrorType::Default(cc) => (false, cc),
-            HumanReadableErrorType::Short(cc) => (true, cc),
-            HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
-        }
+    pub fn short(&self) -> bool {
+        *self == HumanReadableErrorType::Short
     }
 }
 
@@ -231,17 +226,17 @@ pub trait Emitter: Translate {
     ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
             let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
-            if rest.is_empty() &&
+            if rest.is_empty()
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
-               sugg.substitutions.len() == 1 &&
+               && let [substitution] = sugg.substitutions.as_slice()
                // don't display multipart suggestions as labels
-               sugg.substitutions[0].parts.len() == 1 &&
+               && let [part] = substitution.parts.as_slice()
                // don't display long messages as labels
-               msg.split_whitespace().count() < 10 &&
+               && msg.split_whitespace().count() < 10
                // don't display multiline suggestions as labels
-               !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
-               ![
+               && !part.snippet.contains('\n')
+               && ![
                     // when this style is set we want the suggestion to be a message, not inline
                     SuggestionStyle::HideCodeAlways,
                     // trivial suggestion for tooling's sake, never shown
@@ -250,8 +245,8 @@ pub trait Emitter: Translate {
                     SuggestionStyle::ShowAlways,
                ].contains(&sugg.style)
             {
-                let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
-                let msg = if substitution.is_empty() || sugg.style.hide_inline() {
+                let snippet = part.snippet.trim();
+                let msg = if snippet.is_empty() || sugg.style.hide_inline() {
                     // This substitution is only removal OR we explicitly don't want to show the
                     // code inline (`hide_inline`). Therefore, we don't show the substitution.
                     format!("help: {msg}")
@@ -260,19 +255,18 @@ pub trait Emitter: Translate {
                     format!(
                         "help: {}{}: `{}`",
                         msg,
-                        if self.source_map().is_some_and(|sm| is_case_difference(
-                            sm,
-                            substitution,
-                            sugg.substitutions[0].parts[0].span,
-                        )) {
+                        if self
+                            .source_map()
+                            .is_some_and(|sm| is_case_difference(sm, snippet, part.span,))
+                        {
                             " (notice the capitalization)"
                         } else {
                             ""
                         },
-                        substitution,
+                        snippet,
                     )
                 };
-                primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
+                primary_span.push_span_label(part.span, msg);
 
                 // We return only the modified primary_span
                 suggestions.clear();
@@ -2595,9 +2589,7 @@ fn num_decimal_digits(num: usize) -> usize {
 
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 // Keep the following list in sync with `rustc_span::char_width`.
-// ATTENTION: keep lexicografically sorted so that the binary search will work
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
-    // tidy-alphabetical-start
     // In terminals without Unicode support the following will be garbled, but in *all* terminals
     // the underlying codepoint will be as well. We could gate this replacement behind a "unicode
     // support" gate.
@@ -2610,7 +2602,7 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{0006}', "␆"),
     ('\u{0007}', "␇"),
     ('\u{0008}', "␈"),
-    ('\u{0009}', "    "), // We do our own tab replacement
+    ('\t', "    "), // We do our own tab replacement
     ('\u{000b}', "␋"),
     ('\u{000c}', "␌"),
     ('\u{000d}', "␍"),
@@ -2643,13 +2635,23 @@ const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     ('\u{2067}', "�"),
     ('\u{2068}', "�"),
     ('\u{2069}', "�"),
-    // tidy-alphabetical-end
 ];
 
 fn normalize_whitespace(s: &str) -> String {
-    // Scan the input string for a character in the ordered table above. If it's present, replace
-    // it with it's alternative string (it can be more than 1 char!). Otherwise, retain the input
-    // char. At the end, allocate all chars into a string in one operation.
+    const {
+        let mut i = 1;
+        while i < OUTPUT_REPLACEMENTS.len() {
+            assert!(
+                OUTPUT_REPLACEMENTS[i - 1].0 < OUTPUT_REPLACEMENTS[i].0,
+                "The OUTPUT_REPLACEMENTS array must be sorted (for binary search to work) \
+                and must contain no duplicate entries"
+            );
+            i += 1;
+        }
+    }
+    // Scan the input string for a character in the ordered table above.
+    // If it's present, replace it with its alternative string (it can be more than 1 char!).
+    // Otherwise, retain the input char.
     s.chars().fold(String::with_capacity(s.len()), |mut s, c| {
         match OUTPUT_REPLACEMENTS.binary_search_by_key(&c, |(k, _)| *k) {
             Ok(i) => s.push_str(OUTPUT_REPLACEMENTS[i].1),

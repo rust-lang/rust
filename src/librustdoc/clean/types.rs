@@ -2446,6 +2446,10 @@ impl Impl {
             .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name).collect())
             .unwrap_or_default()
     }
+
+    pub(crate) fn is_negative_trait_impl(&self) -> bool {
+        matches!(self.polarity, ty::ImplPolarity::Negative)
+    }
 }
 
 #[derive(Clone, Debug)]

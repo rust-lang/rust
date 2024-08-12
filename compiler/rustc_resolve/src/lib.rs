@@ -1016,6 +1016,8 @@ pub struct Resolver<'a, 'tcx> {
     partial_res_map: NodeMap<PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     import_res_map: NodeMap<PerNS<Option<Res>>>,
+    /// An import will be inserted into this map if it has been used.
+    import_use_map: FxHashMap<Import<'a>, Used>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
@@ -1128,9 +1130,6 @@ pub struct Resolver<'a, 'tcx> {
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
     struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
-
-    /// Features declared for this crate.
-    declared_features: FxHashSet<Symbol>,
 
     lint_buffer: LintBuffer,
 
@@ -1402,7 +1401,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let registered_tools = tcx.registered_tools(());
 
-        let features = tcx.features();
         let pub_vis = ty::Visibility::<DefId>::Public;
         let edition = tcx.sess.edition();
 
@@ -1426,6 +1424,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
+            import_use_map: Default::default(),
             label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
@@ -1506,7 +1505,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
             containers_deriving_copy: Default::default(),
-            declared_features: features.declared_features.clone(),
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,
@@ -1844,7 +1842,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
-    fn matches_previous_ambiguity_error(&mut self, ambi: &AmbiguityError<'_>) -> bool {
+    fn matches_previous_ambiguity_error(&self, ambi: &AmbiguityError<'_>) -> bool {
         for ambiguity_error in &self.ambiguity_errors {
             // if the span location and ident as well as its span are the same
             if ambiguity_error.kind == ambi.kind
@@ -1905,10 +1903,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            let old_used = import.used.get();
-            let new_used = Some(used);
-            if new_used > old_used {
-                import.used.set(new_used);
+            let old_used = self.import_use_map.entry(import).or_insert(used);
+            if *old_used < used {
+                *old_used = used;
             }
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
@@ -2120,7 +2117,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        match self.maybe_resolve_path(&segments, Some(ns), &parent_scope) {
+        match self.maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) => path_res.full_res(),
             PathResult::Module(ModuleOrUniformRoot::ExternPrelude) | PathResult::Failed { .. } => {
@@ -2204,6 +2201,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ident,
             ValueNS,
             parent_scope,
+            None,
         ) else {
             return;
         };

@@ -41,7 +41,6 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// let infinite_iter = 0..;
-    /// # #[allow(unused)]
     /// [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));
     /// ```
     #[clippy::version = "pre 1.29.0"]

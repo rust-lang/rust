@@ -283,6 +283,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     parent_scope,
                     finalize.then(|| Finalize::new(id, path.span)),
                     None,
+                    None,
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
@@ -372,8 +373,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             has_attributes: !item.attrs.is_empty(),
             root_span,
             root_id,
-            vis: Cell::new(Some(vis)),
-            used: Default::default(),
+            vis,
         });
 
         self.r.indeterminate_imports.push(import);
@@ -888,9 +888,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             root_span: item.span,
             span: item.span,
             module_path: Vec::new(),
-            vis: Cell::new(Some(vis)),
-            used: Cell::new(used.then_some(Used::Other)),
+            vis,
         });
+        if used {
+            self.r.import_use_map.insert(import, Used::Other);
+        }
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
         if parent == self.r.graph_root {
@@ -1089,8 +1091,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 root_span: span,
                 span,
                 module_path: Vec::new(),
-                vis: Cell::new(Some(ty::Visibility::Restricted(CRATE_DEF_ID))),
-                used: Default::default(),
+                vis: ty::Visibility::Restricted(CRATE_DEF_ID),
             })
         };
 
@@ -1125,6 +1126,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     ident,
                     MacroNS,
                     &self.parent_scope,
+                    None,
                 );
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span, false);
@@ -1253,9 +1255,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     root_span: span,
                     span,
                     module_path: Vec::new(),
-                    vis: Cell::new(Some(vis)),
-                    used: Cell::new(Some(Used::Other)),
+                    vis,
                 });
+                self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);
                 self.r.define(self.r.graph_root, ident, MacroNS, import_binding);
             } else {

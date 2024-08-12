@@ -2380,6 +2380,16 @@ pub mod unexpected_cfg_value {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_unexpected_builtin_cfg)]
+#[note(lint_controlled_by)]
+#[note(lint_incoherent)]
+pub struct UnexpectedBuiltinCfg {
+    pub(crate) cfg: String,
+    pub(crate) cfg_name: Symbol,
+    pub(crate) controlled_by: &'static str,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_macro_use_deprecated)]
 #[help]
 pub struct MacroUseDeprecated;

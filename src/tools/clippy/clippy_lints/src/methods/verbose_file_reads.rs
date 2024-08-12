@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_method;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir::{Expr, ExprKind, QPath};
@@ -23,6 +23,9 @@ pub(super) fn check<'tcx>(
         && matches!(recv.kind, ExprKind::Path(QPath::Resolved(None, _)))
         && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(recv).peel_refs(), sym::File)
     {
-        span_lint_and_help(cx, VERBOSE_FILE_READS, expr.span, msg, None, help);
+        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+        span_lint_and_then(cx, VERBOSE_FILE_READS, expr.span, msg, |diag| {
+            diag.help(help);
+        });
     }
 }

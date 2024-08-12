@@ -1244,6 +1244,9 @@ mod prim_f64 {}
 /// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
 /// so it will always be a software implementation significantly slower than `f64`.
 ///
+/// _Note: `f128` support is incomplete. Many platforms will not be able to link math functions. On
+/// x86 in particular, these functions do link but their results are always incorrect._
+///
 /// *[See also the `std::f128::consts` module](crate::f128::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Quadruple-precision_floating-point_format

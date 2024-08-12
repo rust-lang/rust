@@ -192,6 +192,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -225,7 +226,6 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(marker_trait_attr)]
-#![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
 #![feature(must_not_suspend)]
@@ -391,7 +391,7 @@ pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;
-#[unstable(feature = "core_pattern_types", issue = "none")]
+#[unstable(feature = "core_pattern_types", issue = "123646")]
 pub mod pat;
 pub mod pin;
 #[unstable(feature = "new_range_api", issue = "125687")]

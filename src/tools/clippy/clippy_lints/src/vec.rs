@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_copy;
@@ -159,7 +159,7 @@ impl UselessVec {
 
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
-                if let Some(Constant::Int(len_constant)) = constant(cx, cx.typeck_results(), len) {
+                if let Some(Constant::Int(len_constant)) = ConstEvalCtxt::new(cx).eval(len) {
                     // vec![ty; N] works when ty is Clone, [ty; N] requires it to be Copy also
                     if !is_copy(cx, cx.typeck_results().expr_ty(elem)) {
                         return;

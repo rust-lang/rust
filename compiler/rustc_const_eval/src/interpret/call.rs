@@ -317,19 +317,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             && attrs
                 .target_features
                 .iter()
-                .any(|feature| !self.tcx.sess.target_features.contains(feature))
+                .any(|feature| !self.tcx.sess.target_features.contains(&feature.name))
         {
             throw_ub_custom!(
                 fluent::const_eval_unavailable_target_features_for_fn,
                 unavailable_feats = attrs
                     .target_features
                     .iter()
-                    .filter(|&feature| !self.tcx.sess.target_features.contains(feature))
+                    .filter(|&feature| !feature.implied
+                        && !self.tcx.sess.target_features.contains(&feature.name))
                     .fold(String::new(), |mut s, feature| {
                         if !s.is_empty() {
                             s.push_str(", ");
                         }
-                        s.push_str(feature.as_str());
+                        s.push_str(feature.name.as_str());
                         s
                     }),
             );
@@ -677,9 +678,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else {
                     // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    let receiver_tail = self
-                        .tcx
-                        .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
+                    let receiver_tail =
+                        self.tcx.struct_tail_for_codegen(receiver_place.layout.ty, self.param_env);
                     let ty::Dynamic(receiver_trait, _, ty::Dyn) = receiver_tail.kind() else {
                         span_bug!(
                             self.cur_span(),
