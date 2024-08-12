@@ -304,7 +304,8 @@ impl<'db> MatchCheckCtx<'db> {
             &Str(void) => match void {},
             Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Never => PatKind::Never,
-            Missing | F32Range(..) | F64Range(..) | Opaque(..) | Or => {
+            Missing | F16Range(..) | F32Range(..) | F64Range(..) | F128Range(..) | Opaque(..)
+            | Or => {
                 never!("can't convert to pattern: {:?}", pat.ctor());
                 PatKind::Wild
             }
@@ -323,9 +324,6 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.exhaustive_patterns
-    }
-    fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
-        true
     }
 
     fn ctor_arity(
@@ -353,8 +351,9 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
             },
             Ref => 1,
             Slice(..) => unimplemented!(),
-            Never | Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..)
-            | Opaque(..) | NonExhaustive | PrivateUninhabited | Hidden | Missing | Wildcard => 0,
+            Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
+            | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
+            | Hidden | Missing | Wildcard => 0,
             Or => {
                 never!("The `Or` constructor doesn't have a fixed arity");
                 0
@@ -416,8 +415,9 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                 }
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
-            Never | Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..)
-            | Opaque(..) | NonExhaustive | PrivateUninhabited | Hidden | Missing | Wildcard => {
+            Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
+            | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
+            | Hidden | Missing | Wildcard => {
                 smallvec![]
             }
             Or => {
