@@ -3176,6 +3176,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
+
+    /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
+    pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true })
+            && self.impl_trait_header(def_id).is_some_and(|header| header.do_not_recommend)
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
