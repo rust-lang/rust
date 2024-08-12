@@ -12,14 +12,31 @@ use crate::targets::{is_darwin, is_msvc, is_windows};
 /// Built from a C file.
 #[track_caller]
 pub fn build_native_static_lib(lib_name: &str) -> PathBuf {
+    build_native_static_lib_internal(lib_name, false)
+}
+
+/// Builds an optimized static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
+/// Built from a C file.
+#[track_caller]
+pub fn build_native_static_lib_optimized(lib_name: &str) -> PathBuf {
+    build_native_static_lib_internal(lib_name, true)
+}
+
+#[track_caller]
+fn build_native_static_lib_internal(lib_name: &str, optimzed: bool) -> PathBuf {
     let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
     let src = format!("{lib_name}.c");
     let lib_path = static_lib_name(lib_name);
-    if is_msvc() {
-        cc().arg("-c").out_exe(&obj_file).input(src).run();
-    } else {
-        cc().arg("-v").arg("-c").out_exe(&obj_file).input(src).run();
-    };
+
+    let mut cc = cc();
+    if !is_msvc() {
+        cc.arg("-v");
+    }
+    if optimzed {
+        cc.optimize();
+    }
+    cc.arg("-c").out_exe(&obj_file).input(src).optimize().run();
+
     let obj_file = if is_msvc() {
         PathBuf::from(format!("{lib_name}.obj"))
     } else {

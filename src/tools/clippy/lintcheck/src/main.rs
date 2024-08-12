@@ -119,7 +119,8 @@ impl Crate {
         cmd.arg(if config.fix { "fix" } else { "check" })
             .arg("--quiet")
             .current_dir(&self.path)
-            .env("CLIPPY_ARGS", clippy_args.join("__CLIPPY_HACKERY__"));
+            .env("CLIPPY_ARGS", clippy_args.join("__CLIPPY_HACKERY__"))
+            .env("CLIPPY_DISABLE_DOCS_LINKS", "1");
 
         if let Some(server) = server {
             // `cargo clippy` is a wrapper around `cargo check` that mainly sets `RUSTC_WORKSPACE_WRAPPER` to
@@ -284,29 +285,24 @@ fn lintcheck(config: LintcheckConfig) {
     let (crates, recursive_options) = read_crates(&config.sources_toml_path);
 
     let counter = AtomicUsize::new(1);
-    let mut lint_level_args: Vec<String> = vec![];
+    let mut lint_level_args: Vec<String> = vec!["--cap-lints=allow".into()];
     if config.lint_filter.is_empty() {
-        lint_level_args.push("--cap-lints=warn".to_string());
-
-        // Set allow-by-default to warn
-        if config.warn_all {
-            [
+        let groups = if config.all_lints {
+            &[
+                "clippy::all",
                 "clippy::cargo",
                 "clippy::nursery",
                 "clippy::pedantic",
                 "clippy::restriction",
-            ]
-            .iter()
-            .map(|group| format!("--warn={group}"))
-            .collect_into(&mut lint_level_args);
+            ][..]
         } else {
-            ["clippy::cargo", "clippy::pedantic"]
-                .iter()
-                .map(|group| format!("--warn={group}"))
-                .collect_into(&mut lint_level_args);
-        }
+            &["clippy::all", "clippy::pedantic"]
+        };
+        groups
+            .iter()
+            .map(|group| format!("--force-warn={group}"))
+            .collect_into(&mut lint_level_args);
     } else {
-        lint_level_args.push("--cap-lints=allow".to_string());
         config
             .lint_filter
             .iter()

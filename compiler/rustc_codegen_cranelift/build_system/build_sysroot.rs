@@ -312,7 +312,6 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
         let obj = RTSTARTUP_SYSROOT.to_path(dirs).join(format!("{file}.o"));
         let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
         build_rtstartup_cmd
-            .arg("-Ainternal_features") // Missing #[allow(internal_features)]
             .arg("--target")
             .arg(&compiler.triple)
             .arg("--emit=obj")

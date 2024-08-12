@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use rustc_errors::Diag;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
@@ -13,7 +13,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet, IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 
@@ -77,33 +77,32 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                 &generics_snip[1..generics_snip.len() - 1]
             };
 
-            multispan_sugg(
-                diag,
-                "consider adding a type parameter",
-                vec![
-                    (
-                        generics_suggestion_span,
-                        format!(
-                            "<{generics_snip}{}S: ::std::hash::BuildHasher{}>",
-                            if generics_snip.is_empty() { "" } else { ", " },
-                            if vis.suggestions.is_empty() {
-                                ""
-                            } else {
-                                // request users to add `Default` bound so that generic constructors can be used
-                                " + Default"
-                            },
-                        ),
+            let mut suggestions = vec![
+                (
+                    generics_suggestion_span,
+                    format!(
+                        "<{generics_snip}{}S: ::std::hash::BuildHasher{}>",
+                        if generics_snip.is_empty() { "" } else { ", " },
+                        if vis.suggestions.is_empty() {
+                            ""
+                        } else {
+                            // request users to add `Default` bound so that generic constructors can be used
+                            " + Default"
+                        },
                     ),
-                    (
-                        target.span(),
-                        format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
-                    ),
-                ],
-            );
+                ),
+                (
+                    target.span(),
+                    format!("{}<{}, S>", target.type_name(), target.type_arguments(),),
+                ),
+            ];
+            suggestions.extend(vis.suggestions);
 
-            if !vis.suggestions.is_empty() {
-                multispan_sugg(diag, "...and use generic constructor", vis.suggestions);
-            }
+            diag.multipart_suggestion(
+                "add a type parameter for `BuildHasher`",
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
         }
 
         if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {

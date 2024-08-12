@@ -155,7 +155,7 @@ mod break_keyword {}
 /// const WORDS: &str = "hello convenience!";
 /// ```
 ///
-/// `const` items looks remarkably similar to `static` items, which introduces some confusion as
+/// `const` items look remarkably similar to `static` items, which introduces some confusion as
 /// to which one should be used at which times. To put it simply, constants are inlined wherever
 /// they're used, making using them identical to simply replacing the name of the `const` with its
 /// value. Static variables, on the other hand, point to a single location in memory, which all

@@ -332,13 +332,9 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
     pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'tcx>> {
         let mut candidates = vec![];
-        let last_eval_step = match self.evaluation_kind {
-            inspect::CanonicalGoalEvaluationKind::Overflow
-            | inspect::CanonicalGoalEvaluationKind::CycleInStack
-            | inspect::CanonicalGoalEvaluationKind::ProvisionalCacheHit => {
-                warn!("unexpected root evaluation: {:?}", self.evaluation_kind);
-                return vec![];
-            }
+        let last_eval_step = match &self.evaluation_kind {
+            // An annoying edge case in case the recursion limit is 0.
+            inspect::CanonicalGoalEvaluationKind::Overflow => return vec![],
             inspect::CanonicalGoalEvaluationKind::Evaluation { final_revision } => final_revision,
         };
 

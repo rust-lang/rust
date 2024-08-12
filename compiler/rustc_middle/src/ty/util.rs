@@ -186,11 +186,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Should only be called if `ty` has no inference variables and does not
     /// need its lifetimes preserved (e.g. as part of codegen); otherwise
     /// normalization attempt may cause compiler bugs.
-    pub fn struct_tail_erasing_lifetimes(
-        self,
-        ty: Ty<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Ty<'tcx> {
+    pub fn struct_tail_for_codegen(self, ty: Ty<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let tcx = self;
         tcx.struct_tail_with_normalize(ty, |ty| tcx.normalize_erasing_regions(param_env, ty), || {})
     }
@@ -203,7 +199,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// handle `<T as Trait>::Assoc` and `impl Trait`); pass the identity
     /// function to indicate no normalization should take place.
     ///
-    /// See also `struct_tail_erasing_lifetimes`, which is suitable for use
+    /// See also `struct_tail_for_codegen`, which is suitable for use
     /// during codegen.
     pub fn struct_tail_with_normalize(
         self,
@@ -272,13 +268,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Same as applying `struct_tail` on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
     /// structure definitions.
-    /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
+    /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, dyn Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     ///
     /// Should only be called if the types have no inference variables and do
     /// not need their lifetimes preserved (e.g., as part of codegen); otherwise,
     /// normalization attempt may cause compiler bugs.
-    pub fn struct_lockstep_tails_erasing_lifetimes(
+    pub fn struct_lockstep_tails_for_codegen(
         self,
         source: Ty<'tcx>,
         target: Ty<'tcx>,
@@ -296,7 +292,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     ///
-    /// See also `struct_lockstep_tails_erasing_lifetimes`, which is suitable for use
+    /// See also `struct_lockstep_tails_for_codegen`, which is suitable for use
     /// during codegen.
     pub fn struct_lockstep_tails_with_normalize(
         self,

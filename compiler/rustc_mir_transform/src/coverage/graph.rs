@@ -350,8 +350,8 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         // An inline asm terminator can normally be chained, except when it diverges or uses asm
         // goto.
         InlineAsm { ref targets, .. } => {
-            if targets.len() == 1 {
-                CoverageSuccessors::Chainable(targets[0])
+            if let [target] = targets[..] {
+                CoverageSuccessors::Chainable(target)
             } else {
                 CoverageSuccessors::NotChainable(targets)
             }

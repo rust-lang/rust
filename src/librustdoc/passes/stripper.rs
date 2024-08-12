@@ -95,7 +95,14 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             }
 
             clean::ModuleItem(..) => {
-                if i.item_id.is_local() && i.visibility(self.tcx) != Some(Visibility::Public) {
+                if i.item_id.is_local()
+                    && !is_item_reachable(
+                        self.tcx,
+                        self.is_json_output,
+                        self.effective_visibilities,
+                        i.item_id,
+                    )
+                {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = strip_item(self.fold_item_recur(i));

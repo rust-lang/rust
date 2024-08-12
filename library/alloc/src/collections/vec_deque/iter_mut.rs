@@ -28,6 +28,20 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
     }
 }
 
+#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for IterMut<'_, T> {
+    /// Creates an empty `vec_deque::IterMut`.
+    ///
+    /// ```
+    /// # use std::collections::vec_deque;
+    /// let iter: vec_deque::IterMut<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        IterMut { i1: Default::default(), i2: Default::default() }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;

@@ -1,18 +1,18 @@
 error: unreachable pattern
-  --> $DIR/empty-types.rs:51:9
+  --> $DIR/empty-types.rs:49:9
    |
 LL |         _ => {}
    |         ^
    |
    = note: this pattern matches no values because `!` is uninhabited
 note: the lint level is defined here
-  --> $DIR/empty-types.rs:17:9
+  --> $DIR/empty-types.rs:15:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:54:9
+  --> $DIR/empty-types.rs:52:9
    |
 LL |         _x => {}
    |         ^^
@@ -20,7 +20,7 @@ LL |         _x => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error[E0004]: non-exhaustive patterns: type `&!` is non-empty
-  --> $DIR/empty-types.rs:58:11
+  --> $DIR/empty-types.rs:56:11
    |
 LL |     match ref_never {}
    |           ^^^^^^^^^
@@ -34,69 +34,43 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
-  --> $DIR/empty-types.rs:70:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:70:9
    |
-LL |     match tuple_half_never {}
-   |           ^^^^^^^^^^^^^^^^
+LL |         (_, _) => {}
+   |         ^^^^^^
    |
-   = note: the matched value is of type `(u32, !)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
-   |
-LL ~     match tuple_half_never {
-LL +         _ => todo!(),
-LL +     }
-   |
-
-error[E0004]: non-exhaustive patterns: type `(!, !)` is non-empty
-  --> $DIR/empty-types.rs:77:11
-   |
-LL |     match tuple_never {}
-   |           ^^^^^^^^^^^
-   |
-   = note: the matched value is of type `(!, !)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
-   |
-LL ~     match tuple_never {
-LL +         _ => todo!(),
-LL +     }
-   |
+   = note: this pattern matches no values because `(u32, !)` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:87:9
+  --> $DIR/empty-types.rs:76:9
+   |
+LL |         _ => {}
+   |         ^
+   |
+   = note: this pattern matches no values because `(!, !)` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:79:9
+   |
+LL |         (_, _) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `(!, !)` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:83:9
    |
 LL |         _ => {}
    |         ^
    |
    = note: this pattern matches no values because `!` is uninhabited
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(_)` not covered
-  --> $DIR/empty-types.rs:91:11
+error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
+  --> $DIR/empty-types.rs:87:11
    |
 LL |     match res_u32_never {}
-   |           ^^^^^^^^^^^^^ patterns `Ok(_)` and `Err(_)` not covered
-   |
-note: `Result<u32, !>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Result<u32, !>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
-   |
-LL ~     match res_u32_never {
-LL +         Ok(_) | Err(_) => todo!(),
-LL +     }
-   |
-
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/empty-types.rs:93:11
-   |
-LL |     match res_u32_never {
-   |           ^^^^^^^^^^^^^ pattern `Err(_)` not covered
+   |           ^^^^^^^^^^^^^ pattern `Ok(_)` not covered
    |
 note: `Result<u32, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -106,12 +80,29 @@ note: `Result<u32, !>` defined here
    = note: the matched value is of type `Result<u32, !>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         Ok(_) => {},
-LL +         Err(_) => todo!()
+LL ~     match res_u32_never {
+LL +         Ok(_) => todo!(),
+LL +     }
    |
 
+error: unreachable pattern
+  --> $DIR/empty-types.rs:94:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `!` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:99:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `!` is uninhabited
+
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
-  --> $DIR/empty-types.rs:101:11
+  --> $DIR/empty-types.rs:96:11
    |
 LL |     match res_u32_never {
    |           ^^^^^^^^^^^^^ pattern `Ok(1_u32..=u32::MAX)` not covered
@@ -129,21 +120,7 @@ LL ~         Ok(1_u32..=u32::MAX) => todo!()
    |
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-types.rs:106:9
-   |
-LL |     let Ok(_x) = res_u32_never;
-   |         ^^^^^^ pattern `Err(_)` not covered
-   |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
-   = note: the matched value is of type `Result<u32, !>`
-help: you might want to use `let else` to handle the variant that isn't matched
-   |
-LL |     let Ok(_x) = res_u32_never else { todo!() };
-   |                                ++++++++++++++++
-
-error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-types.rs:108:9
+  --> $DIR/empty-types.rs:102:9
    |
 LL |     let Ok(_x) = res_u32_never.as_ref();
    |         ^^^^^^ pattern `Err(_)` not covered
@@ -157,7 +134,7 @@ LL |     let Ok(_x) = res_u32_never.as_ref() else { todo!() };
    |                                         ++++++++++++++++
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-types.rs:112:9
+  --> $DIR/empty-types.rs:106:9
    |
 LL |     let Ok(_x) = &res_u32_never;
    |         ^^^^^^ pattern `&Err(_)` not covered
@@ -170,47 +147,56 @@ help: you might want to use `let else` to handle the variant that isn't matched
 LL |     let Ok(_x) = &res_u32_never else { todo!() };
    |                                 ++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(_)` not covered
-  --> $DIR/empty-types.rs:116:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:112:9
    |
-LL |     match result_never {}
-   |           ^^^^^^^^^^^^ patterns `Ok(_)` and `Err(_)` not covered
+LL |         _ => {}
+   |         ^
    |
-note: `Result<!, !>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Result<!, !>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
-   |
-LL ~     match result_never {
-LL +         Ok(_) | Err(_) => todo!(),
-LL +     }
-   |
-
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/empty-types.rs:121:11
-   |
-LL |     match result_never {
-   |           ^^^^^^^^^^^^ pattern `Err(_)` not covered
-   |
-note: `Result<!, !>` defined here
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-   = note: not covered
-   = note: the matched value is of type `Result<!, !>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
-   |
-LL |         Ok(_) => {}, Err(_) => todo!()
-   |                    +++++++++++++++++++
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:140:13
+  --> $DIR/empty-types.rs:115:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:118:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:119:9
+   |
+LL |         _ => {}
+   |         ^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:122:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:123:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:132:13
    |
 LL |             _ => {}
    |             ^
@@ -218,33 +204,31 @@ LL |             _ => {}
    = note: this pattern matches no values because `Void` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:143:13
+  --> $DIR/empty-types.rs:135:13
    |
 LL |             _ if false => {}
    |             ^
    |
    = note: this pattern matches no values because `Void` is uninhabited
 
-error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/empty-types.rs:146:15
+error: unreachable pattern
+  --> $DIR/empty-types.rs:143:13
    |
-LL |         match opt_void {
-   |               ^^^^^^^^ pattern `Some(_)` not covered
+LL |             Some(_) => {}
+   |             ^^^^^^^
    |
-note: `Option<Void>` defined here
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   = note: this pattern matches no values because `Void` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:147:13
    |
-   = note: not covered
-   = note: the matched value is of type `Option<Void>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
-   |
-LL ~             None => {},
-LL +             Some(_) => todo!()
-   |
+LL |             None => {}
+   |             ---- matches all the values already
+LL |             _ => {}
+   |             ^ unreachable pattern
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/empty-types.rs:165:15
+  --> $DIR/empty-types.rs:156:15
    |
 LL |         match *ref_opt_void {
    |               ^^^^^^^^^^^^^ pattern `Some(_)` not covered
@@ -255,6 +239,7 @@ note: `Option<Void>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Option<Void>`
+   = note: `Void` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             None => {},
@@ -262,7 +247,7 @@ LL +             Some(_) => todo!()
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:208:13
+  --> $DIR/empty-types.rs:199:13
    |
 LL |             _ => {}
    |             ^
@@ -270,7 +255,7 @@ LL |             _ => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:213:13
+  --> $DIR/empty-types.rs:204:13
    |
 LL |             _ => {}
    |             ^
@@ -278,7 +263,7 @@ LL |             _ => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:218:13
+  --> $DIR/empty-types.rs:209:13
    |
 LL |             _ => {}
    |             ^
@@ -286,7 +271,7 @@ LL |             _ => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:223:13
+  --> $DIR/empty-types.rs:214:13
    |
 LL |             _ => {}
    |             ^
@@ -294,7 +279,7 @@ LL |             _ => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:229:13
+  --> $DIR/empty-types.rs:220:13
    |
 LL |             _ => {}
    |             ^
@@ -302,15 +287,39 @@ LL |             _ => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:288:9
+  --> $DIR/empty-types.rs:279:9
    |
 LL |         _ => {}
    |         ^
    |
    = note: this pattern matches no values because `!` is uninhabited
 
+error: unreachable pattern
+  --> $DIR/empty-types.rs:282:9
+   |
+LL |         (_, _) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `(!, !)` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:285:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:286:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^
+   |
+   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
-  --> $DIR/empty-types.rs:316:11
+  --> $DIR/empty-types.rs:307:11
    |
 LL |     match *x {}
    |           ^^
@@ -324,7 +333,7 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `(!, !)` is non-empty
-  --> $DIR/empty-types.rs:318:11
+  --> $DIR/empty-types.rs:309:11
    |
 LL |     match *x {}
    |           ^^
@@ -338,7 +347,7 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(_)` and `Err(_)` not covered
-  --> $DIR/empty-types.rs:320:11
+  --> $DIR/empty-types.rs:311:11
    |
 LL |     match *x {}
    |           ^^ patterns `Ok(_)` and `Err(_)` not covered
@@ -360,7 +369,7 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `[!; 3]` is non-empty
-  --> $DIR/empty-types.rs:322:11
+  --> $DIR/empty-types.rs:313:11
    |
 LL |     match *x {}
    |           ^^
@@ -374,7 +383,7 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `&[!]` is non-empty
-  --> $DIR/empty-types.rs:327:11
+  --> $DIR/empty-types.rs:318:11
    |
 LL |     match slice_never {}
    |           ^^^^^^^^^^^
@@ -388,12 +397,13 @@ LL +     }
    |
 
 error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
-  --> $DIR/empty-types.rs:329:11
+  --> $DIR/empty-types.rs:320:11
    |
 LL |     match slice_never {
    |           ^^^^^^^^^^^ pattern `&[_, ..]` not covered
    |
    = note: the matched value is of type `&[!]`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         [] => {},
@@ -401,7 +411,7 @@ LL +         &[_, ..] => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `&[]`, `&[_]` and `&[_, _]` not covered
-  --> $DIR/empty-types.rs:338:11
+  --> $DIR/empty-types.rs:329:11
    |
 LL |     match slice_never {
    |           ^^^^^^^^^^^ patterns `&[]`, `&[_]` and `&[_, _]` not covered
@@ -414,7 +424,7 @@ LL +         &[] | &[_] | &[_, _] => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `&[]` and `&[_, ..]` not covered
-  --> $DIR/empty-types.rs:352:11
+  --> $DIR/empty-types.rs:343:11
    |
 LL |     match slice_never {
    |           ^^^^^^^^^^^ patterns `&[]` and `&[_, ..]` not covered
@@ -428,7 +438,7 @@ LL +         &[] | &[_, ..] => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: type `[!]` is non-empty
-  --> $DIR/empty-types.rs:359:11
+  --> $DIR/empty-types.rs:350:11
    |
 LL |     match *slice_never {}
    |           ^^^^^^^^^^^^
@@ -441,22 +451,32 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error[E0004]: non-exhaustive patterns: type `[!; 3]` is non-empty
-  --> $DIR/empty-types.rs:366:11
+error: unreachable pattern
+  --> $DIR/empty-types.rs:359:9
    |
-LL |     match array_3_never {}
-   |           ^^^^^^^^^^^^^
+LL |         _ => {}
+   |         ^
    |
-   = note: the matched value is of type `[!; 3]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
+   = note: this pattern matches no values because `[!; 3]` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:362:9
    |
-LL ~     match array_3_never {
-LL +         _ => todo!(),
-LL +     }
+LL |         [_, _, _] => {}
+   |         ^^^^^^^^^
    |
+   = note: this pattern matches no values because `[!; 3]` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:365:9
+   |
+LL |         [_, ..] => {}
+   |         ^^^^^^^
+   |
+   = note: this pattern matches no values because `[!; 3]` is uninhabited
 
 error[E0004]: non-exhaustive patterns: type `[!; 0]` is non-empty
-  --> $DIR/empty-types.rs:389:11
+  --> $DIR/empty-types.rs:379:11
    |
 LL |     match array_0_never {}
    |           ^^^^^^^^^^^^^
@@ -470,7 +490,7 @@ LL +     }
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:396:9
+  --> $DIR/empty-types.rs:386:9
    |
 LL |         [] => {}
    |         -- matches all the values already
@@ -478,7 +498,7 @@ LL |         _ => {}
    |         ^ unreachable pattern
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
-  --> $DIR/empty-types.rs:398:11
+  --> $DIR/empty-types.rs:388:11
    |
 LL |     match array_0_never {
    |           ^^^^^^^^^^^^^ pattern `[]` not covered
@@ -491,8 +511,42 @@ LL ~         [..] if false => {},
 LL +         [] => todo!()
    |
 
+error: unreachable pattern
+  --> $DIR/empty-types.rs:407:9
+   |
+LL |         Some(_) => {}
+   |         ^^^^^^^
+   |
+   = note: this pattern matches no values because `!` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:412:9
+   |
+LL |         Some(_a) => {}
+   |         ^^^^^^^^
+   |
+   = note: this pattern matches no values because `!` is uninhabited
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:417:9
+   |
+LL |         None => {}
+   |         ---- matches all the values already
+LL |         // !useful, !reachable
+LL |         _ => {}
+   |         ^ unreachable pattern
+
+error: unreachable pattern
+  --> $DIR/empty-types.rs:422:9
+   |
+LL |         None => {}
+   |         ---- matches all the values already
+LL |         // !useful, !reachable
+LL |         _a => {}
+   |         ^^ unreachable pattern
+
 error[E0004]: non-exhaustive patterns: `&Some(_)` not covered
-  --> $DIR/empty-types.rs:452:11
+  --> $DIR/empty-types.rs:442:11
    |
 LL |     match ref_opt_never {
    |           ^^^^^^^^^^^^^ pattern `&Some(_)` not covered
@@ -503,6 +557,7 @@ note: `Option<!>` defined here
    |
    = note: not covered
    = note: the matched value is of type `&Option<!>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         &None => {},
@@ -510,7 +565,7 @@ LL +         &Some(_) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/empty-types.rs:493:11
+  --> $DIR/empty-types.rs:483:11
    |
 LL |     match *ref_opt_never {
    |           ^^^^^^^^^^^^^^ pattern `Some(_)` not covered
@@ -521,6 +576,7 @@ note: `Option<!>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Option<!>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
@@ -528,7 +584,7 @@ LL +         Some(_) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/empty-types.rs:541:11
+  --> $DIR/empty-types.rs:531:11
    |
 LL |     match *ref_res_never {
    |           ^^^^^^^^^^^^^^ pattern `Err(_)` not covered
@@ -539,6 +595,7 @@ note: `Result<!, !>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Result<!, !>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_) => {},
@@ -546,7 +603,7 @@ LL +         Err(_) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
-  --> $DIR/empty-types.rs:552:11
+  --> $DIR/empty-types.rs:542:11
    |
 LL |     match *ref_res_never {
    |           ^^^^^^^^^^^^^^ pattern `Err(_)` not covered
@@ -557,6 +614,7 @@ note: `Result<!, !>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Result<!, !>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Ok(_a) => {},
@@ -564,7 +622,7 @@ LL +         Err(_) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
-  --> $DIR/empty-types.rs:571:11
+  --> $DIR/empty-types.rs:561:11
    |
 LL |     match *ref_tuple_half_never {}
    |           ^^^^^^^^^^^^^^^^^^^^^
@@ -578,7 +636,7 @@ LL +     }
    |
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:604:9
+  --> $DIR/empty-types.rs:594:9
    |
 LL |         _ => {}
    |         ^
@@ -586,7 +644,7 @@ LL |         _ => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:607:9
+  --> $DIR/empty-types.rs:597:9
    |
 LL |         _x => {}
    |         ^^
@@ -594,7 +652,7 @@ LL |         _x => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:610:9
+  --> $DIR/empty-types.rs:600:9
    |
 LL |         _ if false => {}
    |         ^
@@ -602,7 +660,7 @@ LL |         _ if false => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error: unreachable pattern
-  --> $DIR/empty-types.rs:613:9
+  --> $DIR/empty-types.rs:603:9
    |
 LL |         _x if false => {}
    |         ^^
@@ -610,12 +668,13 @@ LL |         _x if false => {}
    = note: this pattern matches no values because `!` is uninhabited
 
 error[E0004]: non-exhaustive patterns: `&_` not covered
-  --> $DIR/empty-types.rs:638:11
+  --> $DIR/empty-types.rs:628:11
    |
 LL |     match ref_never {
    |           ^^^^^^^^^ pattern `&_` not covered
    |
    = note: the matched value is of type `&!`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
    = note: references are always considered inhabited
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
@@ -625,7 +684,7 @@ LL +         &_ => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
-  --> $DIR/empty-types.rs:654:11
+  --> $DIR/empty-types.rs:644:11
    |
 LL |     match *ref_result_never {
    |           ^^^^^^^^^^^^^^^^^ pattern `Ok(_)` not covered
@@ -636,6 +695,7 @@ note: `Result<!, !>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Result<!, !>`
+   = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         Err(_) => {},
@@ -643,7 +703,7 @@ LL +         Ok(_) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/empty-types.rs:674:11
+  --> $DIR/empty-types.rs:664:11
    |
 LL |     match *x {
    |           ^^ pattern `Some(_)` not covered
@@ -654,13 +714,14 @@ note: `Option<Result<!, !>>` defined here
    |
    = note: not covered
    = note: the matched value is of type `Option<Result<!, !>>`
+   = note: `Result<!, !>` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         None => {},
 LL +         Some(_) => todo!()
    |
 
-error: aborting due to 49 previous errors
+error: aborting due to 64 previous errors
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.

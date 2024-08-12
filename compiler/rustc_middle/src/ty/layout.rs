@@ -869,7 +869,7 @@ where
                             metadata
                         }
                     } else {
-                        match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
+                        match tcx.struct_tail_for_codegen(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
                             ty::Dynamic(data, _, ty::Dyn) => mk_dyn_vtable(data.principal()),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
@@ -1348,7 +1348,7 @@ impl<'tcx> TyCtxt<'tcx> {
             layout = layout.field(&cx, index);
             if !layout.is_sized() {
                 // If it is not sized, then the tail must still have at least a known static alignment.
-                let tail = self.struct_tail_erasing_lifetimes(layout.ty, param_env);
+                let tail = self.struct_tail_for_codegen(layout.ty, param_env);
                 if !matches!(tail.kind(), ty::Slice(..)) {
                     bug!(
                         "offset of not-statically-aligned field (type {:?}) cannot be computed statically",

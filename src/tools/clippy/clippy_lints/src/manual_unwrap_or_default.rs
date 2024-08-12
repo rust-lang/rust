@@ -10,7 +10,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{in_constant, is_default_equivalent, peel_blocks, span_contains_comment};
+use clippy_utils::{is_default_equivalent, is_in_const_context, peel_blocks, span_contains_comment};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -174,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualUnwrapOrDefault {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(if_let_or_match) = IfLetOrMatch::parse(cx, expr)
             && !expr.span.from_expansion()
-            && !in_constant(cx, expr.hir_id)
+            && !is_in_const_context(cx)
         {
             handle(cx, if_let_or_match, expr);
         }

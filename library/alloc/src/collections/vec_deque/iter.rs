@@ -28,6 +28,20 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     }
 }
 
+#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `vec_deque::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::vec_deque;
+    /// let iter: vec_deque::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
+    fn default() -> Self {
+        Iter { i1: Default::default(), i2: Default::default() }
+    }
+}
+
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {

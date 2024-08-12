@@ -1165,17 +1165,23 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Node::ImplItem(ii) => {
             let kind = match ii.kind {
-                ImplItemKind::Const(..) => "assoc const",
-                ImplItemKind::Fn(..) => "method",
-                ImplItemKind::Type(_) => "assoc type",
+                ImplItemKind::Const(..) => "associated constant",
+                ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplicitSelfKind::None => "associated function",
+                    _ => "method",
+                },
+                ImplItemKind::Type(_) => "associated type",
             };
             format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
         }
         Node::TraitItem(ti) => {
             let kind = match ti.kind {
-                TraitItemKind::Const(..) => "assoc constant",
-                TraitItemKind::Fn(..) => "trait method",
-                TraitItemKind::Type(..) => "assoc type",
+                TraitItemKind::Const(..) => "associated constant",
+                TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplicitSelfKind::None => "associated function",
+                    _ => "trait method",
+                },
+                TraitItemKind::Type(..) => "associated type",
             };
 
             format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))

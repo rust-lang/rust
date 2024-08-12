@@ -205,11 +205,11 @@ dependencies = [
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.3.0"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8412a2d690663356cba5a2532f3ed55d1e8090743bc6695b88403b27df67733"
+checksum = "3f2bcb7cf51decfbbfc7ef476e28b0775b13e5eb1190f8b7df145cd53d4f4374"
 dependencies = [
- "object 0.35.0",
+ "object 0.36.2",
 ]
 
 [[package]]
@@ -564,7 +564,7 @@ dependencies = [
  "termize",
  "tokio",
  "toml 0.7.8",
- "ui_test 0.24.0",
+ "ui_test 0.25.0",
  "walkdir",
 ]
 
@@ -572,6 +572,7 @@ dependencies = [
 name = "clippy_config"
 version = "0.1.82"
 dependencies = [
+ "itertools",
  "rustc-semver",
  "serde",
  "toml 0.7.8",
@@ -1406,8 +1407,11 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cargo_metadata 0.18.1",
+ "rinja",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -2456,15 +2460,6 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.35.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8ec7ab813848ba4522158d5517a6093db1ded27575b070f4177b8d12b41db5e"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "object"
 version = "0.36.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f203fa8daa7bb185f760ae12bd8e097f63d17041dcdcaf675ac54cdf863170e"
@@ -3103,7 +3098,10 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d3762e3740cdbf2fd2be465cc2c26d643ad17353cc2e0223d211c1b096118bd"
 dependencies = [
+ "humansize",
  "itoa",
+ "num-traits",
+ "percent-encoding",
  "rinja_derive",
 ]
 
@@ -4939,9 +4937,9 @@ dependencies = [
 
 [[package]]
 name = "spanned"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed14ba8b4b82241bd5daba2c49185d4a0581a0058355fe96537338f002b8605d"
+checksum = "86af297923fbcfd107c20a189a6e9c872160df71a7190ae4a7a6c5dce4b2feb6"
 dependencies = [
  "bstr",
  "color-eyre",
@@ -5565,9 +5563,9 @@ dependencies = [
 
 [[package]]
 name = "ui_test"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc1c6c78d55482388711c8d417b8e547263046a607512278fed274c54633bbe4"
+checksum = "f7e4f339f62edc873975c47115f9e71c5454ddaa37c1142b42fc0b2672c8dacb"
 dependencies = [
  "annotate-snippets 0.11.4",
  "anyhow",

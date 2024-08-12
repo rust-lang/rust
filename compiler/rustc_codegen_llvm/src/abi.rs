@@ -5,10 +5,10 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
-use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
+use rustc_middle::{bug, ty};
 use rustc_session::config;
 pub use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int, Size};
@@ -16,6 +16,7 @@ pub use rustc_target::spec::abi::Abi;
 use rustc_target::spec::SanitizerSet;
 use smallvec::SmallVec;
 
+use crate::attributes::llfn_attrs_from_instance;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace};
@@ -310,7 +311,16 @@ pub trait FnAbiLlvmExt<'ll, 'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
+
+    /// Apply attributes to a function declaration/definition.
+    fn apply_attrs_llfn(
+        &self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        llfn: &'ll Value,
+        instance: Option<ty::Instance<'tcx>>,
+    );
+
+    /// Apply attributes to a function call.
     fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
 }
 
@@ -396,7 +406,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         self.conv.into()
     }
 
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
+    fn apply_attrs_llfn(
+        &self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        llfn: &'ll Value,
+        instance: Option<ty::Instance<'tcx>>,
+    ) {
         let mut func_attrs = SmallVec::<[_; 3]>::new();
         if self.ret.layout.abi.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
@@ -476,6 +491,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(&cast.attrs);
                 }
             }
+        }
+
+        // If the declaration has an associated instance, compute extra attributes based on that.
+        if let Some(instance) = instance {
+            llfn_attrs_from_instance(cx, llfn, instance);
         }
     }
 

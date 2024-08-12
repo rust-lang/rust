@@ -486,7 +486,7 @@ pub fn target_features(
     sess.target
         .supported_target_features()
         .iter()
-        .filter_map(|&(feature, gate)| {
+        .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
             } else {

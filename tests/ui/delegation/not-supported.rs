@@ -53,7 +53,7 @@ mod generics {
         //~| ERROR method `foo2` has 0 type parameters but its trait declaration has 1 type parameter
         reuse <F as Trait>::foo3;
         //~^ ERROR early bound generics are not supported for associated delegation items
-        //~| ERROR lifetime parameters or bounds on method `foo3` do not match the trait declaration
+        //~| ERROR lifetime parameters or bounds on associated function `foo3` do not match the trait declaration
     }
 
     struct GenericS<T>(T);

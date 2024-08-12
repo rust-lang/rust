@@ -1,5 +1,5 @@
 //@ known-bug: rust-lang/rust#126896
-//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes
+//@ compile-flags: -Zvalidate-mir -Zinline-mir=yes
 
 #![feature(type_alias_impl_trait)]
 type Two<'a, 'b> = impl std::fmt::Debug;

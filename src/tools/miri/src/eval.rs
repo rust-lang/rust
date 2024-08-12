@@ -460,11 +460,8 @@ pub fn eval_entry<'tcx>(
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
-    let res = match res {
-        Err(res) => res,
-        // `Ok` can never happen
-        Ok(never) => match never {},
-    };
+    // `Ok` can never happen.
+    let Err(res) = res;
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
     // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).

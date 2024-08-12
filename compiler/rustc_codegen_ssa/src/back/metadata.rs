@@ -208,6 +208,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "powerpc64" => (Architecture::PowerPc64, None),
         "riscv32" => (Architecture::Riscv32, None),
         "riscv64" => (Architecture::Riscv64, None),
+        "sparc" => (Architecture::Sparc32Plus, None),
         "sparc64" => (Architecture::Sparc64, None),
         "avr" => (Architecture::Avr, None),
         "msp430" => (Architecture::Msp430, None),

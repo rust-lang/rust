@@ -12,7 +12,8 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
+    TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
@@ -531,7 +532,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
         if place.layout.is_unsized() {
-            let tail = self.tcx.struct_tail_with_normalize(place.layout.ty, |ty| ty, || {});
+            let tail = self.tcx.struct_tail_for_codegen(place.layout.ty, self.param_env());
             if matches!(tail.kind(), ty::Foreign(..)) {
                 // Unsized locals and, at least conceptually, even unsized arguments must be copied
                 // around, which requires dynamically determining their size. Therefore, we cannot

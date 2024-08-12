@@ -149,7 +149,7 @@ pub unsafe fn create_module<'ll>(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
-        let tm = crate::back::write::create_informational_target_machine(tcx.sess);
+        let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
         unsafe {
             llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
         }
@@ -775,10 +775,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.debugtrap", fn() -> void);
         ifn!("llvm.frameaddress", fn(t_i32) -> ptr);
 
-        ifn!("llvm.powi.f16", fn(t_f16, t_i32) -> t_f16);
-        ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
-        ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64);
-        ifn!("llvm.powi.f128", fn(t_f128, t_i32) -> t_f128);
+        ifn!("llvm.powi.f16.i32", fn(t_f16, t_i32) -> t_f16);
+        ifn!("llvm.powi.f32.i32", fn(t_f32, t_i32) -> t_f32);
+        ifn!("llvm.powi.f64.i32", fn(t_f64, t_i32) -> t_f64);
+        ifn!("llvm.powi.f128.i32", fn(t_f128, t_i32) -> t_f128);
 
         ifn!("llvm.pow.f16", fn(t_f16, t_f16) -> t_f16);
         ifn!("llvm.pow.f32", fn(t_f32, t_f32) -> t_f32);

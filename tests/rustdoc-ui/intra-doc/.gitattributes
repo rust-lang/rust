@@ -1,1 +1,1 @@
-warning-crlf.rs eol=crlf
+warning-crlf.rs -text

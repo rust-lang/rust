@@ -16,7 +16,6 @@ pub const BINARYHEAP_ITER: [&str; 5] = ["alloc", "collections", "binary_heap", "
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const BTREESET_ITER: [&str; 6] = ["alloc", "collections", "btree", "set", "BTreeSet", "iter"];
-pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
 pub const CORE_ITER_CLONED: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "cloned"];
 pub const CORE_ITER_COPIED: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "copied"];
 pub const CORE_ITER_FILTER: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "filter"];

@@ -98,6 +98,15 @@ impl AssocItem {
         }
     }
 
+    pub fn descr(&self) -> &'static str {
+        match self.kind {
+            ty::AssocKind::Const => "const",
+            ty::AssocKind::Fn if self.fn_has_self_parameter => "method",
+            ty::AssocKind::Fn => "associated function",
+            ty::AssocKind::Type => "type",
+        }
+    }
+
     pub fn is_impl_trait_in_trait(&self) -> bool {
         self.opt_rpitit_info.is_some()
     }

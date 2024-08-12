@@ -225,21 +225,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Find something that we can name
                 let upper_bound = self.approx_universal_upper_bound(vid);
-                let upper_bound = &self.definitions[upper_bound];
-                match upper_bound.external_name {
-                    Some(reg) => reg,
-                    None => {
-                        // Nothing exact found, so we pick the first one that we find.
-                        let scc = self.constraint_sccs.scc(vid);
-                        for vid in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
-                            match self.definitions[vid].external_name {
-                                None => {}
-                                Some(region) if region.is_static() => {}
-                                Some(region) => return region,
-                            }
-                        }
-                        region
-                    }
+                if let Some(universal_region) = self.definitions[upper_bound].external_name {
+                    return universal_region;
+                }
+
+                // Nothing exact found, so we pick a named upper bound, if there's only one.
+                // If there's >1 universal region, then we probably are dealing w/ an intersection
+                // region which cannot be mapped back to a universal.
+                // FIXME: We could probably compute the LUB if there is one.
+                let scc = self.constraint_sccs.scc(vid);
+                let upper_bounds: Vec<_> = self
+                    .rev_scc_graph
+                    .as_ref()
+                    .unwrap()
+                    .upper_bounds(scc)
+                    .filter_map(|vid| self.definitions[vid].external_name)
+                    .filter(|r| !r.is_static())
+                    .collect();
+                match &upper_bounds[..] {
+                    [universal_region] => *universal_region,
+                    _ => region,
                 }
             }
             _ => region,

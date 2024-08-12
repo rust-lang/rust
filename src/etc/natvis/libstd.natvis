@@ -104,14 +104,14 @@
   </Type>
 
   <Type Name="std::ffi::os_str::OsString">
-    <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
+    <DisplayString>{(char*)inner.inner.bytes.buf.inner.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
     <Expand>
       <Synthetic Name="[chars]">
-        <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
+        <DisplayString>{(char*)inner.inner.bytes.buf.inner.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>inner.inner.bytes.len</Size>
-            <ValuePointer>(char*)inner.inner.bytes.buf.ptr.pointer.pointer</ValuePointer>
+            <ValuePointer>(char*)inner.inner.bytes.buf.inner.ptr.pointer.pointer</ValuePointer>
           </ArrayItems>
         </Expand>
       </Synthetic>

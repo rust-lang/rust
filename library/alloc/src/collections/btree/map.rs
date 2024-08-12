@@ -2016,6 +2016,20 @@ impl<K, V> Default for Range<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for RangeMut<'_, K, V> {
+    /// Creates an empty `btree_map::RangeMut`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::RangeMut<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        RangeMut { inner: Default::default(), _marker: PhantomData }
+    }
+}
+
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
@@ -2049,6 +2063,20 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
+
+#[stable(feature = "default_iters_sequel", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for ValuesMut<'_, K, V> {
+    /// Creates an empty `btree_map::ValuesMut`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::ValuesMut<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    fn default() -> Self {
+        ValuesMut { inner: Default::default() }
+    }
+}
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> Iterator for IntoKeys<K, V, A> {

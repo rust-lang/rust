@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res};
@@ -48,29 +48,28 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
             return;
         };
 
-        let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
-        let span = hygiene::walk_chain(err_arg.span, try_arg.span.ctxt());
-        let mut applicability = Applicability::MachineApplicable;
-        let origin_snippet = snippet_with_applicability(cx, span, "_", &mut applicability);
-        let ret_prefix = if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::Ret(_))) {
-            "" // already returns
-        } else {
-            "return "
-        };
-        let suggestion = if err_ty == expr_err_ty {
-            format!("{ret_prefix}{prefix}{origin_snippet}{suffix}")
-        } else {
-            format!("{ret_prefix}{prefix}{origin_snippet}.into(){suffix}")
-        };
-
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             TRY_ERR,
             expr.span,
             "returning an `Err(_)` with the `?` operator",
-            "try",
-            suggestion,
-            applicability,
+            |diag| {
+                let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
+                let span = hygiene::walk_chain(err_arg.span, try_arg.span.ctxt());
+                let mut applicability = Applicability::MachineApplicable;
+                let origin_snippet = snippet_with_applicability(cx, span, "_", &mut applicability);
+                let ret_prefix = if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::Ret(_))) {
+                    "" // already returns
+                } else {
+                    "return "
+                };
+                let suggestion = if err_ty == expr_err_ty {
+                    format!("{ret_prefix}{prefix}{origin_snippet}{suffix}")
+                } else {
+                    format!("{ret_prefix}{prefix}{origin_snippet}.into(){suffix}")
+                };
+                diag.span_suggestion(expr.span, "try", suggestion, applicability);
+            },
         );
     }
 }

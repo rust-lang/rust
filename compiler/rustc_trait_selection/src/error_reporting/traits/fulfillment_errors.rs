@@ -944,8 +944,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // The current method call returns `Result<_, ()>`
                 && self.can_eq(obligation.param_env, ty, found_ty)
                 // There's a single argument in the method call and it is a closure
-                && args.len() == 1
-                && let Some(arg) = args.get(0)
+                && let [arg] = args
                 && let hir::ExprKind::Closure(closure) = arg.kind
                 // The closure has a block for its body with no tail expression
                 && let body = self.tcx.hir().body(closure.body)
