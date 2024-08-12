@@ -225,4 +225,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `llvm.libzstd` to control whether llvm is built with zstd support.",
     },
+    ChangeInfo {
+        change_id: 128841,
+        severity: ChangeSeverity::Warning,
+        summary: "./x test --rustc-args was renamed to --compiletest-rustc-args as it only applies there. ./x miri --rustc-args was also removed.",
+    },
 ];
