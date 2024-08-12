@@ -1,6 +1,5 @@
 #![allow(unused_macros)]
-#![feature(f128)]
-#![feature(f16)]
+#![cfg_attr(f128_enabled, feature(f128))]
 
 use testcrate::*;
 
@@ -131,7 +130,7 @@ mod float_mul {
     }
 }
 
-#[cfg(not(feature = "no-f16-f128"))]
+#[cfg(f128_enabled)]
 #[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
 #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod float_mul_f128 {
@@ -145,7 +144,7 @@ mod float_mul_f128 {
     }
 }
 
-#[cfg(not(feature = "no-f16-f128"))]
+#[cfg(f128_enabled)]
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
 mod float_mul_f128_ppc {
     use super::*;

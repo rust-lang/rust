@@ -1,7 +1,7 @@
-#![feature(f128)]
+#![cfg_attr(f128_enabled, feature(f128))]
 
 use compiler_builtins::float::sub;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_main, Criterion};
 use testcrate::float_bench;
 
 float_bench! {
@@ -66,6 +66,7 @@ float_bench! {
     ],
 }
 
+#[cfg(f128_enabled)]
 float_bench! {
     name: sub_f128,
     sig: (a: f128, b: f128) -> f128,
@@ -77,5 +78,16 @@ float_bench! {
     asm: []
 }
 
-criterion_group!(float_sub, sub_f32, sub_f64, sub_f128);
+pub fn float_sub() {
+    let mut criterion = Criterion::default().configure_from_args();
+
+    sub_f32(&mut criterion);
+    sub_f64(&mut criterion);
+
+    #[cfg(f128_enabled)]
+    {
+        sub_f128(&mut criterion);
+    }
+}
+
 criterion_main!(float_sub);

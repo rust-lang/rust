@@ -1,5 +1,3 @@
-#![feature(f128)]
-
 use compiler_builtins::float::div;
 use criterion::{criterion_group, criterion_main, Criterion};
 use testcrate::float_bench;

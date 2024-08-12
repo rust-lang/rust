@@ -350,9 +350,11 @@ macro_rules! impl_testio {
     }
 }
 
-#[cfg(not(feature = "no-f16-f128"))]
-impl_testio!(float f16, f128);
+#[cfg(f16_enabled)]
+impl_testio!(float f16);
 impl_testio!(float f32, f64);
+#[cfg(f128_enabled)]
+impl_testio!(float f128);
 impl_testio!(int i16, i32, i64, i128);
 impl_testio!(int u16, u32, u64, u128);
 impl_testio!((float, int)(f32, i32));

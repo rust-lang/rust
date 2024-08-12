@@ -1,7 +1,7 @@
-#![feature(f128)]
+#![cfg_attr(f128_enabled, feature(f128))]
 
 use compiler_builtins::float::mul;
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_main, Criterion};
 use testcrate::float_bench;
 
 float_bench! {
@@ -66,6 +66,7 @@ float_bench! {
     ],
 }
 
+#[cfg(f128_enabled)]
 float_bench! {
     name: mul_f128,
     sig: (a: f128, b: f128) -> f128,
@@ -77,5 +78,16 @@ float_bench! {
     asm: []
 }
 
-criterion_group!(float_mul, mul_f32, mul_f64, mul_f128);
+pub fn float_mul() {
+    let mut criterion = Criterion::default().configure_from_args();
+
+    mul_f32(&mut criterion);
+    mul_f64(&mut criterion);
+
+    #[cfg(f128_enabled)]
+    {
+        mul_f128(&mut criterion);
+    }
+}
+
 criterion_main!(float_mul);
