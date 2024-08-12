@@ -130,10 +130,18 @@ impl MultiItemModifier for DeriveProcMacro {
             let input = tcx.arena.alloc(input.flattened()) as &TokenStream;
             let invoc_id = ecx.current_expansion.id;
 
+            // TODO(pr-time): Just using the crate hash to notice when the proc-macro code has
+            // changed. How to *correctly* depend on exactly the macro definition?
+            // I.e., depending on the crate hash is just a HACK (and leaves garbage in the
+            // incremental compilation dir).
+            let macro_def_id = invoc_id.expn_data().macro_def_id.unwrap();
+            let proc_macro_crate_hash = tcx.crate_hash(macro_def_id.krate);
+
             assert_eq!(invoc_id.expn_data().call_site, span);
 
             let res = crate::derive_macro_expansion::enter_context((ecx, self.client), move || {
-                let res = tcx.derive_macro_expansion((invoc_id, input)).cloned();
+                let res =
+                    tcx.derive_macro_expansion((invoc_id, proc_macro_crate_hash, input)).cloned();
                 res
             });
 

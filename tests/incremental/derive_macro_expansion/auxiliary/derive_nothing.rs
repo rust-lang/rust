@@ -10,15 +10,11 @@ use proc_macro::TokenStream;
 pub fn derive(input: TokenStream) -> TokenStream {
     eprintln!("invoked");
 
-    r#"
+    return r#"
         pub mod nothing_mod {
-            // #[cfg(cfail1)]
             pub fn nothing() {
                 eprintln!("nothing");
             }
-
-            // #[cfg(cfail2)]
-            // fn nothingx() {}
         }
-    "#.parse().unwrap()
+    "#.parse().unwrap();
 }

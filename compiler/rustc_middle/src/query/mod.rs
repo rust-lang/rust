@@ -108,10 +108,11 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
-    query derive_macro_expansion(key: (LocalExpnId, &'tcx TokenStream)) -> Result<&'tcx TokenStream, ()> {
-        eval_always
+    query derive_macro_expansion(key: (LocalExpnId, Svh, &'tcx TokenStream)) -> Result<&'tcx TokenStream, ()> {
+        // eval_always
         no_hash
         desc { "expanding a derive (proc) macro" }
+        cache_on_disk_if { true }
     }
 
     /// This exists purely for testing the interactions between delayed bugs and incremental.
