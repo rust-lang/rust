@@ -35,7 +35,7 @@ use crate::session_diagnostics::{
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
 };
 use crate::universal_regions::DefiningTy;
-use crate::{borrowck_errors, MirBorrowckCtxt};
+use crate::{borrowck_errors, fluent_generated as fluent, MirBorrowckCtxt};
 
 impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
@@ -198,7 +198,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
     // and the span which bounded to the trait for adding 'static lifetime suggestion
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
         diag: &mut Diag<'_>,
@@ -251,23 +250,28 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         debug!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
-            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else { return; };
-            diag.span_note(
-                *trait_span,
-                "due to current limitations in the borrow checker, this implies a `'static` lifetime"
-            );
-            let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local()) else { return; };
-            let Def(_, trait_res_defid) = trait_ref.path.res else { return; };
+            let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else {
+                return;
+            };
+            diag.span_note(*trait_span, fluent::borrowck_limitations_implies_static);
+            let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local())
+            else {
+                return;
+            };
+            let Def(_, trait_res_defid) = trait_ref.path.res else {
+                return;
+            };
             debug!(?generics_fn);
             generics_fn.predicates.iter().for_each(|predicate| {
-                let BoundPredicate(
-                    WhereBoundPredicate {
-                        span: bounded_span,
-                        bounded_ty,
-                        bounds,
-                        ..
-                    }
-                ) = predicate else { return; };
+                let BoundPredicate(WhereBoundPredicate {
+                    span: bounded_span,
+                    bounded_ty,
+                    bounds,
+                    ..
+                }) = predicate
+                else {
+                    return;
+                };
                 bounds.iter().for_each(|bd| {
                     if let Trait(PolyTraitRef { trait_ref: tr_ref, .. }, _) = bd
                         && let Def(_, res_defid) = tr_ref.path.res
@@ -277,16 +281,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         && generics_fn.params
                             .iter()
                             .rfind(|param| param.def_id.to_def_id() == defid)
-                            .is_some() {
-                            suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
-                        }
+                            .is_some()
+                    {
+                        suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
+                    }
                 });
             });
         });
         if suggestions.len() > 0 {
             suggestions.dedup();
             diag.multipart_suggestion_verbose(
-                "consider restricting the type parameter to the `'static` lifetime",
+                fluent::borrowck_restrict_to_static,
                 suggestions,
                 Applicability::MaybeIncorrect,
             );
@@ -976,7 +981,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     #[instrument(skip(self, err), level = "debug")]
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
@@ -994,16 +998,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span
-                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
-                multi_span.push_span_label(
-                    ident.span,
-                    "calling this method introduces the `impl`'s `'static` requirement",
-                );
+                multi_span.push_span_label(*span, fluent::borrowck_implicit_static);
+                multi_span.push_span_label(ident.span, fluent::borrowck_implicit_static_introduced);
                 err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
-                    "consider relaxing the implicit `'static` requirement",
+                    fluent::borrowck_implicit_static_relax,
                     " + '_",
                     Applicability::MaybeIncorrect,
                 );
@@ -1045,7 +1045,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     /// When encountering a lifetime error caused by the return type of a closure, check the
     /// corresponding trait bound and see if dereferencing the closure return value would satisfy
     /// them. If so, we produce a structured suggestion.
@@ -1166,7 +1165,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if ocx.select_all_or_error().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
                 tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
-                "dereference the return value",
+                fluent::borrowck_dereference_suggestion,
                 "*".repeat(count),
                 Applicability::MachineApplicable,
             );
@@ -1174,7 +1173,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     }
 
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diag<'_>) {
         let map = self.infcx.tcx.hir();
         let body = map.body_owned_by(self.mir_def_id());
@@ -1213,7 +1211,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         if let Some(closure_span) = closure_span {
             diag.span_suggestion_verbose(
                 closure_span,
-                "consider adding 'move' keyword before the nested closure",
+                fluent::borrowck_move_closure_suggestion,
                 "move ",
                 Applicability::MaybeIncorrect,
             );

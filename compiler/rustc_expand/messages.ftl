@@ -129,6 +129,9 @@ expand_module_multiple_candidates =
 expand_must_repeat_once =
     this must repeat at least once
 
+expand_non_inline_modules_in_proc_macro_input_are_unstable =
+    non-inline modules in proc macro input are unstable
+
 expand_not_a_meta_item =
     not a meta item
 
