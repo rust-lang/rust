@@ -49,7 +49,7 @@ cfg_if::cfg_if! {
             }
 
             const PATH: &'static str = if cfg!(target_os = "redox") {
-                "rand:"
+                "/scheme/rand"
             } else {
                 "/dev/urandom"
             };
