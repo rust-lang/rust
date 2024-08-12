@@ -115,6 +115,13 @@ impl MultiItemModifier for DeriveProcMacro {
         item: Annotatable,
         _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+        let _timer = ecx.sess.prof.generic_activity_with_arg_recorder(
+            "expand_derive_proc_macro_outer",
+            |recorder| {
+                recorder.record_arg_with_span(ecx.sess.source_map(), ecx.expansion_descr(), span);
+            },
+        );
+
         // We need special handling for statement items
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
         let is_stmt = matches!(item, Annotatable::Stmt(..));
