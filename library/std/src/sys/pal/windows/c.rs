@@ -8,8 +8,6 @@
 use core::ffi::{c_uint, c_ulong, c_ushort, c_void, CStr};
 use core::{mem, ptr};
 
-pub(super) mod windows_targets;
-
 mod windows_sys;
 pub use windows_sys::*;
 
