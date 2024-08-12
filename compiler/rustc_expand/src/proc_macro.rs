@@ -126,7 +126,7 @@ impl MultiItemModifier for DeriveProcMacro {
         crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
         let input = item.to_tokens();
         let res = ty::tls::with(|tcx| {
-            // TODO: without flattened some (weird) tests fail, but no idea if it's correct/enough
+            // TODO(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
             let input = tcx.arena.alloc(input.flattened()) as &TokenStream;
             let invoc_id = ecx.current_expansion.id;
 
