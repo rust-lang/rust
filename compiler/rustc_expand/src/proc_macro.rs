@@ -147,9 +147,12 @@ impl MultiItemModifier for DeriveProcMacro {
             assert_eq!(invoc_id.expn_data().call_site, span);
 
             let res = crate::derive_macro_expansion::enter_context((ecx, self.client), move || {
-                let res =
-                    tcx.derive_macro_expansion((invoc_id, proc_macro_crate_hash, input)).cloned();
-                res
+                let key = (invoc_id, proc_macro_crate_hash, input);
+                if tcx.sess.opts.unstable_opts.cache_all_derive_macros {
+                    tcx.derive_macro_expansion(key).cloned()
+                } else {
+                    crate::derive_macro_expansion::provide_derive_macro_expansion(tcx, key).cloned()
+                }
             });
 
             res
