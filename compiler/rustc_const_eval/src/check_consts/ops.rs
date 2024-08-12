@@ -23,7 +23,7 @@ use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
 use super::ConstCx;
-use crate::errors;
+use crate::{errors, fluent_generated};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -310,7 +310,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
-            err.note("consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`");
+            err.note(fluent_generated::const_eval_lazy_lock);
         }
 
         err
@@ -334,7 +334,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         // FIXME: make this translatable
         #[allow(rustc::untranslatable_diagnostic)]
         if ccx.is_const_stable_const_fn() {
-            err.help("const-stable functions can only call other const-stable functions");
+            err.help(fluent_generated::const_eval_const_stable);
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
                 err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));
@@ -605,8 +605,6 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
             span,
             format!("referencing statics in {}s is unstable", ccx.const_kind(),),
         );
-        // FIXME: make this translatable
-        #[allow(rustc::untranslatable_diagnostic)]
         err
             .note("`static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.")
             .help("to fix this, the value can be extracted to a `const` and then used.");
