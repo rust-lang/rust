@@ -534,6 +534,14 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
         Ok(idents)
     }
+
+    fn register_proc_macro_invoc(&mut self, _invoc_id: LocalExpnId, _ext: Lrc<SyntaxExtension>) {
+        // TODO: dunno if need this yet
+    }
+
+    fn unregister_proc_macro_invoc(&mut self, _invoc_id: LocalExpnId) {
+        // TODO: dunno if need this yet
+    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {

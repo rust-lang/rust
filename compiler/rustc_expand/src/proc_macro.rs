@@ -2,6 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
+use rustc_middle::ty;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::Span;
@@ -31,7 +32,7 @@ impl<T> pm::bridge::server::MessagePipe<T> for MessagePipe<T> {
     }
 }
 
-fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
+pub fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
     pm::bridge::server::MaybeCrossThread::<MessagePipe<_>>::new(
         ecx.sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,
@@ -124,36 +125,27 @@ impl MultiItemModifier for DeriveProcMacro {
         // altogether. See #73345.
         crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
         let input = item.to_tokens();
-        let stream = {
-            let _timer =
-                ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
-                    recorder.record_arg_with_span(
-                        ecx.sess.source_map(),
-                        ecx.expansion_descr(),
-                        span,
-                    );
-                });
-            let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-            let strategy = exec_strategy(ecx);
-            let server = proc_macro_server::Rustc::new(ecx);
-            match self.client.run(&strategy, server, input, proc_macro_backtrace) {
-                Ok(stream) => stream,
-                Err(e) => {
-                    ecx.dcx().emit_err({
-                        errors::ProcMacroDerivePanicked {
-                            span,
-                            message: e.as_str().map(|message| {
-                                errors::ProcMacroDerivePanickedHelp { message: message.into() }
-                            }),
-                        }
-                    });
-                    return ExpandResult::Ready(vec![]);
-                }
-            }
+        let res = ty::tls::with(|tcx| {
+            // TODO: without flattened some (weird) tests fail, but no idea if it's correct/enough
+            let input = tcx.arena.alloc(input.flattened()) as &TokenStream;
+            let invoc_id = ecx.current_expansion.id;
+
+            assert_eq!(invoc_id.expn_data().call_site, span);
+
+            let res = crate::derive_macro_expansion::enter_context((ecx, self.client), move || {
+                let res = tcx.derive_macro_expansion((invoc_id, input)).cloned();
+                res
+            });
+
+            res
+        });
+        let Ok(output) = res else {
+            // error will already have been emitted
+            return ExpandResult::Ready(vec![]);
         };
 
         let error_count_before = ecx.dcx().err_count();
-        let mut parser = Parser::new(&ecx.sess.psess, stream, Some("proc-macro derive"));
+        let mut parser = Parser::new(&ecx.sess.psess, output, Some("proc-macro derive"));
         let mut items = vec![];
 
         loop {

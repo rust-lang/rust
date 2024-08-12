@@ -29,10 +29,15 @@ mod proc_macro_server;
 pub use mbe::macro_rules::compile_declarative_macro;
 pub mod base;
 pub mod config;
+pub(crate) mod derive_macro_expansion;
 pub mod expand;
 pub mod module;
 // FIXME(Nilstrieb) Translate proc_macro diagnostics
 #[allow(rustc::untranslatable_diagnostic)]
 pub mod proc_macro;
+
+pub fn provide(providers: &mut rustc_middle::util::Providers) {
+    providers.derive_macro_expansion = derive_macro_expansion::expand;
+}
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
