@@ -928,7 +928,7 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     pub fn split(self) -> (ty::Binder<I, FnSigTys<I>>, FnHeader<I>) {
         let hdr =
             FnHeader { c_variadic: self.c_variadic(), safety: self.safety(), abi: self.abi() };
-        (self.map_bound(|sig| FnSigTys(sig.inputs_and_output)), hdr)
+        (self.map_bound(|sig| FnSigTys { inputs_and_output: sig.inputs_and_output }), hdr)
     }
 }
 
@@ -971,15 +971,17 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 #[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-pub struct FnSigTys<I: Interner>(pub I::Tys);
+pub struct FnSigTys<I: Interner> {
+    pub inputs_and_output: I::Tys,
+}
 
 impl<I: Interner> FnSigTys<I> {
     pub fn inputs(self) -> I::FnInputTys {
-        self.0.inputs()
+        self.inputs_and_output.inputs()
     }
 
     pub fn output(self) -> I::Ty {
-        self.0.output()
+        self.inputs_and_output.output()
     }
 }
 
@@ -987,7 +989,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     // Used to combine the two fields in `TyKind::FnPtr` into a single value.
     pub fn with(self, hdr: FnHeader<I>) -> ty::Binder<I, FnSig<I>> {
         self.map_bound(|sig_tys| FnSig {
-            inputs_and_output: sig_tys.0,
+            inputs_and_output: sig_tys.inputs_and_output,
             c_variadic: hdr.c_variadic,
             safety: hdr.safety,
             abi: hdr.abi,
@@ -1006,7 +1008,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     }
 
     pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {
-        self.map_bound(|sig_tys| sig_tys.0)
+        self.map_bound(|sig_tys| sig_tys.inputs_and_output)
     }
 
     #[inline]

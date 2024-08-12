@@ -311,8 +311,8 @@ impl<I: Interner> DeepRejectCtxt<I> {
             }
             ty::FnPtr(obl_sig_tys, obl_hdr) => match k {
                 ty::FnPtr(impl_sig_tys, impl_hdr) => {
-                    let obl_sig_tys = obl_sig_tys.skip_binder().0;
-                    let impl_sig_tys = impl_sig_tys.skip_binder().0;
+                    let obl_sig_tys = obl_sig_tys.skip_binder().inputs_and_output;
+                    let impl_sig_tys = impl_sig_tys.skip_binder().inputs_and_output;
 
                     obl_hdr == impl_hdr
                         && obl_sig_tys.len() == impl_sig_tys.len()
