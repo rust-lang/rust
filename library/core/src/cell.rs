@@ -1895,11 +1895,17 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// uniqueness guarantee for mutable references is unaffected. There is *no* legal way to obtain
 /// aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
+/// `UnsafeCell` does nothing to avoid data races; they are still undefined behavior. If multiple
+/// threads have access to the same `UnsafeCell`, they must follow the usual rules of the
+/// [concurrent memory model]: conflicting non-synchronized accesses must be done via the APIs in
+/// [`core::sync::atomic`].
+///
 /// The `UnsafeCell` API itself is technically very simple: [`.get()`] gives you a raw pointer
 /// `*mut T` to its contents. It is up to _you_ as the abstraction designer to use that raw pointer
 /// correctly.
 ///
 /// [`.get()`]: `UnsafeCell::get`
+/// [concurrent memory model]: ../sync/atomic/index.html#memory-model-for-atomic-accesses
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
@@ -1921,10 +1927,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
 /// live memory and the compiler is allowed to insert spurious reads if it can prove that this
 /// memory has not yet been deallocated.
-///
-/// - At all times, you must avoid data races. If multiple threads have access to
-/// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other
-/// accesses (or use atomics).
 ///
 /// To assist with proper design, the following scenarios are explicitly declared legal
 /// for single-threaded code:

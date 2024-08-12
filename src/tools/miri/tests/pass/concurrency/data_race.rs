@@ -197,6 +197,22 @@ fn mixed_size_read_read() {
     });
 }
 
+fn failing_rmw_is_read() {
+    let a = AtomicUsize::new(0);
+    thread::scope(|s| {
+        s.spawn(|| unsafe {
+            // Non-atomic read.
+            let _val = *(&a as *const AtomicUsize).cast::<usize>();
+        });
+
+        s.spawn(|| {
+            // RMW that will fail.
+            // This is not considered a write, so there is no data race here.
+            a.compare_exchange(1, 2, Ordering::SeqCst, Ordering::SeqCst).unwrap_err();
+        });
+    });
+}
+
 pub fn main() {
     test_fence_sync();
     test_multiple_reads();
@@ -206,4 +222,5 @@ pub fn main() {
     test_read_read_race1();
     test_read_read_race2();
     mixed_size_read_read();
+    failing_rmw_is_read();
 }

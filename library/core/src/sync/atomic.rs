@@ -33,12 +33,6 @@
 //! atomic load (via the operations provided in this module). A "modification of an atomic object"
 //! refers to an atomic store.
 //!
-//! The most important aspect of this model is that conflicting non-synchronized accesses are
-//! Undefined Behavior unless both accesses are atomic. Here, accesses are *conflicting* if they
-//! affect overlapping regions of memory and at least one of them is a write. They are
-//! *non-synchronized* if neither of them *happens-before* the other, according to the
-//! happens-before order of the memory model.
-//!
 //! The end result is *almost* equivalent to saying that creating a *shared reference* to one of the
 //! Rust atomic types corresponds to creating an `atomic_ref` in C++, with the `atomic_ref` being
 //! destroyed when the lifetime of the shared reference ends. The main difference is that Rust
@@ -47,20 +41,25 @@
 //! objects" and "non-atomic objects" (with `atomic_ref` temporarily converting a non-atomic object
 //! into an atomic object).
 //!
-//! That said, Rust *does* inherit the C++ limitation that non-synchronized conflicting atomic
-//! accesses may not partially overlap: they must be either disjoint or access the exact same
-//! memory. This in particular rules out non-synchronized differently-sized atomic accesses to the
-//! same data unless all accesses are reads.
+//! The most important aspect of this model is that *data races* are undefined behavior. A data race
+//! is defined as conflicting non-synchronized accesses where at least one of the accesses is
+//! non-atomic. Here, accesses are *conflicting* if they affect overlapping regions of memory and at
+//! least one of them is a write. They are *non-synchronized* if neither of them *happens-before*
+//! the other, according to the happens-before order of the memory model.
+//!
+//! The other possible cause of undefined behavior in the memory model are mixed-size accesses: Rust
+//! inherits the C++ limitation that non-synchronized conflicting atomic accesses may not partially
+//! overlap. In other words, every pair of non-synchronized atomic accesses must be either disjoint,
+//! access the exact same memory (including using the same access size), or both be reads.
+//!
+//! Each atomic access takes an [`Ordering`] which defines how the operation interacts with the
+//! happens-before order. These orderings behave the same as the corresponding [C++20 atomic
+//! orderings][cpp_memory_order]. For more information, see the [nomicon].
 //!
 //! [cpp]: https://en.cppreference.com/w/cpp/atomic
 //! [cpp-intro.races]: https://timsong-cpp.github.io/cppwp/n4868/intro.multithread#intro.races
-//!
-//! Each method takes an [`Ordering`] which represents the strength of
-//! the memory barrier for that operation. These orderings behave the
-//! same as the corresponding [C++20 atomic orderings][1]. For more information see the [nomicon][2].
-//!
-//! [1]: https://en.cppreference.com/w/cpp/atomic/memory_order
-//! [2]: ../../../nomicon/atomics.html
+//! [cpp_memory_order]: https://en.cppreference.com/w/cpp/atomic/memory_order
+//! [nomicon]: ../../../nomicon/atomics.html
 //!
 //! ```rust,no_run undefined_behavior
 //! use std::sync::atomic::{AtomicU16, AtomicU8, Ordering};
@@ -157,7 +156,7 @@
 //!
 //! # Atomic accesses to read-only memory
 //!
-//! In general, *all* atomic accesses on read-only memory are Undefined Behavior. For instance, attempting
+//! In general, *all* atomic accesses on read-only memory are undefined behavior. For instance, attempting
 //! to do a `compare_exchange` that will definitely fail (making it conceptually a read-only
 //! operation) can still cause a segmentation fault if the underlying memory page is mapped read-only. Since
 //! atomic `load`s might be implemented using compare-exchange operations, even a `load` can fault
@@ -173,7 +172,7 @@
 //!
 //! As an exception from the general rule stated above, "sufficiently small" atomic loads with
 //! `Ordering::Relaxed` are implemented in a way that works on read-only memory, and are hence not
-//! Undefined Behavior. The exact size limit for what makes a load "sufficiently small" varies
+//! undefined behavior. The exact size limit for what makes a load "sufficiently small" varies
 //! depending on the target:
 //!
 //! | `target_arch` | Size limit |
