@@ -2326,7 +2326,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block)
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
@@ -2340,7 +2339,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         &self.tcx.sess,
                         sym::generic_arg_infer,
                         c.value.span,
-                        "using `_` for array lengths is unstable",
+                        fluent_generated::ast_lowering_underscore_array_length_unstable,
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
                     hir::ArrayLen::Body(self.lower_anon_const_to_const_arg(c))
