@@ -227,7 +227,7 @@ fn compute_replacement<'tcx>(
                     }
                 }
             }
-            Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+            Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
                 let mut place = *place;
                 // Try to see through `place` in order to collapse reborrow chains.
                 if place.projection.first() == Some(&PlaceElem::Deref)

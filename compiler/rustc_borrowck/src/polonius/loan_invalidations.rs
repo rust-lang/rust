@@ -269,7 +269,7 @@ impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            &Rvalue::AddressOf(mutability, place) => {
+            &Rvalue::RawPtr(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,

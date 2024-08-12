@@ -419,8 +419,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             // Do not try creating references (#67862)
-            Rvalue::AddressOf(_, place) | Rvalue::Ref(_, _, place) => {
-                trace!("skipping AddressOf | Ref for {:?}", place);
+            Rvalue::RawPtr(_, place) | Rvalue::Ref(_, _, place) => {
+                trace!("skipping RawPtr | Ref for {:?}", place);
 
                 // This may be creating mutable references or immutable references to cells.
                 // If that happens, the pointed to value could be mutated via that reference.
@@ -616,7 +616,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 ImmTy::from_scalar(Scalar::from_target_usize(len, self), layout).into()
             }
 
-            Ref(..) | AddressOf(..) => return None,
+            Ref(..) | RawPtr(..) => return None,
 
             NullaryOp(ref null_op, ty) => {
                 let op_layout = self.use_ecx(|this| this.ecx.layout_of(ty))?;
@@ -969,9 +969,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
             | NonMutatingUse(NonMutatingUseContext::FakeBorrow)
-            | NonMutatingUse(NonMutatingUseContext::AddressOf)
+            | NonMutatingUse(NonMutatingUseContext::RawBorrow)
             | MutatingUse(MutatingUseContext::Borrow)
-            | MutatingUse(MutatingUseContext::AddressOf) => {
+            | MutatingUse(MutatingUseContext::RawBorrow) => {
                 trace!("local {:?} can't be propagated because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }

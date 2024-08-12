@@ -325,7 +325,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             Assign { .. } | AssignOp { .. } | InlineAsm { .. } | Let { .. } => true,
 
             // These evaluate to a value.
-            AddressOf { .. }
+            RawBorrow { .. }
             | Adt { .. }
             | Array { .. }
             | Binary { .. }
