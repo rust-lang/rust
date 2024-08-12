@@ -4025,7 +4025,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.78.0"]
     pub MANUAL_C_STR_LITERALS,
-    pedantic,
+    complexity,
     r#"creating a `CStr` through functions when `c""` literals can be used"#
 }
 
