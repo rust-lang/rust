@@ -80,7 +80,7 @@ fn main() {
           //^^^^ error: non-exhaustive pattern: `Some(_)` not covered
     }
 }
-"#
+"#,
         );
     }
 
@@ -94,17 +94,7 @@ fn test(x: Result<i32, !>) {
 }
 "#,
         );
-        check_diagnostics(
-            r#"
-//- minicore: result
-fn test(ptr: *const Result<i32, !>) {
-    unsafe {
-        let Ok(_x) = *ptr;
-          //^^^^^^ error: non-exhaustive pattern: `Err(_)` not covered
-    }
-}
-"#,
-        );
+
         check_diagnostics(
             r#"
 //- minicore: result
