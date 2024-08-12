@@ -1,7 +1,6 @@
 #![allow(unused_macros)]
 #![allow(unreachable_code)]
-#![feature(f128)]
-#![feature(f16)]
+#![cfg_attr(f128_enabled, feature(f128))]
 
 #[cfg(not(target_arch = "powerpc64"))]
 use testcrate::*;
@@ -94,7 +93,7 @@ mod float_comparisons {
     }
 
     #[test]
-    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(f128_enabled)]
     fn cmp_f128() {
         #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
         use compiler_builtins::float::cmp::{

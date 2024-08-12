@@ -1,44 +1,8 @@
 use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
 
-#[allow(dead_code)]
-struct Target {
-    triple: String,
-    os: String,
-    arch: String,
-    vendor: String,
-    env: String,
-    pointer_width: u8,
-    little_endian: bool,
-    features: Vec<String>,
-}
+mod configure;
 
-impl Target {
-    fn from_env() -> Self {
-        let little_endian = match env::var("CARGO_CFG_TARGET_ENDIAN").unwrap().as_str() {
-            "little" => true,
-            "big" => false,
-            x => panic!("unknown endian {x}"),
-        };
-
-        Self {
-            triple: env::var("TARGET").unwrap(),
-            os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
-            arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
-            vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
-            env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
-            pointer_width: env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
-                .unwrap()
-                .parse()
-                .unwrap(),
-            little_endian,
-            features: env::var("CARGO_CFG_TARGET_FEATURE")
-                .unwrap_or_default()
-                .split(",")
-                .map(ToOwned::to_owned)
-                .collect(),
-        }
-    }
-}
+use configure::{configure_f16_f128, Target};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -259,49 +223,6 @@ fn configure_check_cfg() {
     // FIXME: these come from libm and should be changed there
     println!("cargo::rustc-check-cfg=cfg(feature, values(\"checked\"))");
     println!("cargo::rustc-check-cfg=cfg(assert_no_panic)");
-}
-
-/// Configure whether or not `f16` and `f128` support should be enabled.
-fn configure_f16_f128(target: &Target) {
-    // Set whether or not `f16` and `f128` are supported at a basic level by LLVM. This only means
-    // that the backend will not crash when using these types. This does not mean that the
-    // backend does the right thing, or that the platform doesn't have ABI bugs.
-    //
-    // We do this here rather than in `rust-lang/rust` because configuring via cargo features is
-    // not straightforward.
-    //
-    // Original source of this list:
-    // <https://github.com/rust-lang/compiler-builtins/pull/652#issuecomment-2266151350>
-    let (f16_ok, f128_ok) = match target.arch.as_str() {
-        // `f16` and `f128` both crash <https://github.com/llvm/llvm-project/issues/94434>
-        "arm64ec" => (false, false),
-        // `f16` crashes <https://github.com/llvm/llvm-project/issues/50374>
-        "s390x" => (false, true),
-        // `f128` crashes <https://github.com/llvm/llvm-project/issues/96432>
-        "mips64" | "mips64r6" => (true, false),
-        // `f128` crashes <https://github.com/llvm/llvm-project/issues/101545>
-        "powerpc64" if &target.os == "aix" => (true, false),
-        // `f128` crashes <https://github.com/llvm/llvm-project/issues/41838>
-        "sparc" | "sparcv9" => (true, false),
-        // `f16` miscompiles <https://github.com/llvm/llvm-project/issues/96438>
-        "wasm32" | "wasm64" => (false, true),
-        // Most everything else works as of LLVM 19
-        _ => (true, true),
-    };
-
-    // If the feature is set, disable these types.
-    let disable_both = env::var_os("CARGO_FEATURE_NO_F16_F128").is_some();
-
-    println!("cargo::rustc-check-cfg=cfg(f16_enabled)");
-    println!("cargo::rustc-check-cfg=cfg(f128_enabled)");
-
-    if f16_ok && !disable_both {
-        println!("cargo::rustc-cfg=f16_enabled");
-    }
-
-    if f128_ok && !disable_both {
-        println!("cargo::rustc-cfg=f128_enabled");
-    }
 }
 
 #[cfg(feature = "c")]

@@ -1,4 +1,3 @@
-#![feature(f128)]
 #![allow(improper_ctypes)]
 
 use compiler_builtins::float::conv;

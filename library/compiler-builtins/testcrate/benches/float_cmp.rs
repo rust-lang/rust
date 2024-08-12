@@ -1,6 +1,6 @@
-#![feature(f128)]
+#![cfg_attr(f128_enabled, feature(f128))]
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_main, Criterion};
 use testcrate::float_bench;
 
 use compiler_builtins::float::cmp;
@@ -190,13 +190,19 @@ float_bench! {
     asm: []
 }
 
-criterion_group!(
-    float_cmp,
-    cmp_f32_gt,
-    cmp_f32_unord,
-    cmp_f64_gt,
-    cmp_f64_unord,
-    cmp_f128_gt,
-    cmp_f128_unord
-);
+pub fn float_cmp() {
+    let mut criterion = Criterion::default().configure_from_args();
+
+    cmp_f32_gt(&mut criterion);
+    cmp_f32_unord(&mut criterion);
+    cmp_f64_gt(&mut criterion);
+    cmp_f64_unord(&mut criterion);
+
+    #[cfg(f128_enabled)]
+    {
+        cmp_f128_gt(&mut criterion);
+        cmp_f128_unord(&mut criterion);
+    }
+}
+
 criterion_main!(float_cmp);
