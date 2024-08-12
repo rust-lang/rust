@@ -88,7 +88,7 @@ fn make_mir_scope<'ll, 'tcx>(
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
     let file_metadata = file_metadata(cx, &loc.file);
 
-    let parent_dbg_scope = match scope_data.inlined {
+    let dbg_scope = match scope_data.inlined {
         Some((callee, _)) => {
             // FIXME(eddyb) this would be `self.monomorphize(&callee)`
             // if this is moved to `rustc_codegen_ssa::mir::debuginfo`.
@@ -102,17 +102,15 @@ fn make_mir_scope<'ll, 'tcx>(
                 cx.dbg_scope_fn(callee, callee_fn_abi, None)
             })
         }
-        None => parent_scope.dbg_scope,
-    };
-
-    let dbg_scope = unsafe {
-        llvm::LLVMRustDIBuilderCreateLexicalBlock(
-            DIB(cx),
-            parent_dbg_scope,
-            file_metadata,
-            loc.line,
-            loc.col,
-        )
+        None => unsafe {
+            llvm::LLVMRustDIBuilderCreateLexicalBlock(
+                DIB(cx),
+                parent_scope.dbg_scope,
+                file_metadata,
+                loc.line,
+                loc.col,
+            )
+        },
     };
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {
