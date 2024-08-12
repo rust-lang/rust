@@ -20,6 +20,7 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
+use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
 /// The version placeholder that recently stabilized features contain inside the
@@ -521,7 +522,6 @@ pub struct Condition {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -593,7 +593,6 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn eval_condition(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -680,7 +679,7 @@ pub fn eval_condition(
                             sess,
                             sym::cfg_target_compact,
                             cfg.span,
-                            "compact `cfg(target(..))` is experimental and subject to change",
+                            fluent_generated::attr_unstable_cfg_target_compact,
                         )
                         .emit();
                     }

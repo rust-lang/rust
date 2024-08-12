@@ -1191,7 +1191,7 @@ impl Config {
         }
     }
 
-    pub fn parse(args: &[String]) -> Config {
+    pub fn parse(flags: Flags) -> Config {
         #[cfg(test)]
         fn get_toml(_: &Path) -> TomlConfig {
             TomlConfig::default()
@@ -1221,11 +1221,10 @@ impl Config {
                     exit!(2);
                 })
         }
-        Self::parse_inner(args, get_toml)
+        Self::parse_inner(flags, get_toml)
     }
 
-    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
-        let mut flags = Flags::parse(args);
+    pub(crate) fn parse_inner(mut flags: Flags, get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut config = Config::default_opts();
 
         // Set flags.

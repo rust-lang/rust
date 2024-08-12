@@ -8,6 +8,7 @@
 //! Typical examples would include: minimum element in SCC, maximum element
 //! reachable from it, etc.
 
+use std::assert_matches::debug_assert_matches;
 use std::fmt::Debug;
 use std::ops::Range;
 
@@ -569,7 +570,7 @@ where
                     // This None marks that we still have the initialize this node's frame.
                     debug!(?depth, ?node);
 
-                    debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
+                    debug_assert_matches!(self.node_states[node], NodeState::NotVisited);
 
                     // Push `node` onto the stack.
                     self.node_states[node] = NodeState::BeingVisited {

@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use arrayvec::ArrayVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
@@ -220,7 +222,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match operand.val {
             OperandValue::Ref(source_place_val) => {
                 assert_eq!(source_place_val.llextra, None);
-                assert!(matches!(operand_kind, OperandValueKind::Ref));
+                assert_matches!(operand_kind, OperandValueKind::Ref);
                 Some(bx.load_operand(source_place_val.with_type(cast)).val)
             }
             OperandValue::ZeroSized => {

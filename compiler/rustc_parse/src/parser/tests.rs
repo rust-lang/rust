@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::io::prelude::*;
 use std::iter::Peekable;
 use std::path::{Path, PathBuf};
@@ -1747,7 +1748,7 @@ fn out_of_line_mod() {
         .unwrap();
 
         let ast::ItemKind::Mod(_, mod_kind) = &item.kind else { panic!() };
-        assert!(matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2));
+        assert_matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2);
     });
 }
 

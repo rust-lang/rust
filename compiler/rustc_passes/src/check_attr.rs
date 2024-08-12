@@ -1142,7 +1142,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// of one item. Read the documentation of [`check_doc_inline`] for more information.
     ///
     /// [`check_doc_inline`]: Self::check_doc_inline
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_doc_attrs(
         &self,
         attr: &Attribute,
@@ -1220,7 +1219,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                     &self.tcx.sess,
                                     sym::rustdoc_internals,
                                     meta.span(),
-                                    "the `#[doc(rust_logo)]` attribute is used for Rust branding",
+                                    fluent::passes_doc_rust_logo,
                                 )
                                 .emit();
                             }
@@ -1736,7 +1735,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn check_repr(
         &self,
         attrs: &[Attribute],
@@ -1793,7 +1791,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             &self.tcx.sess,
                             sym::fn_align,
                             hint.span(),
-                            "`repr(align)` attributes on functions are unstable",
+                            fluent::passes_repr_align_function,
                         )
                         .emit();
                     }

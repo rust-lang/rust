@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -63,7 +64,7 @@ where
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
     fn normalize_alias_ty(&mut self, alias_ty: Ty<'tcx>) -> Result<Ty<'tcx>, Vec<E>> {
-        assert!(matches!(alias_ty.kind(), ty::Alias(..)));
+        assert_matches!(alias_ty.kind(), ty::Alias(..));
 
         let infcx = self.at.infcx;
         let tcx = infcx.tcx;

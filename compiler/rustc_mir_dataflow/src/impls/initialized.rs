@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::Idx;
 use rustc_middle::bug;
@@ -496,7 +498,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, '_, 'tcx> {
         });
         if self.skip_unreachable_unwind.contains(location.block) {
             let mir::TerminatorKind::Drop { target, unwind, .. } = terminator.kind else { bug!() };
-            assert!(matches!(unwind, mir::UnwindAction::Cleanup(_)));
+            assert_matches!(unwind, mir::UnwindAction::Cleanup(_));
             TerminatorEdges::Single(target)
         } else {
             terminator.edges()

@@ -13,7 +13,7 @@
 // 2. When the sysroot gets copied, some symlinks must be re-created,
 // which is a privileged action on Windows.
 
-use run_make_support::{bin_name, rfs, rust_lib_name, rustc};
+use run_make_support::{rfs, rust_lib_name, rustc};
 
 fn main() {
     // test 1: fat lto
