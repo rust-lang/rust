@@ -22,6 +22,7 @@ const JOSH_FILTER: &str =
 const JOSH_PORT: u16 = 42042;
 
 impl MiriEnv {
+    /// Prepares the environment: builds miri and cargo-miri and a sysroot.
     /// Returns the location of the sysroot.
     ///
     /// If the target is None the sysroot will be built for the host machine.
@@ -34,12 +35,10 @@ impl MiriEnv {
             // Sysroot already set, use that.
             return Ok(miri_sysroot.into());
         }
-        let manifest_path = path!(self.miri_dir / "cargo-miri" / "Cargo.toml");
-        let Self { toolchain, cargo_extra_flags, .. } = &self;
 
         // Make sure everything is built. Also Miri itself.
-        self.build(path!(self.miri_dir / "Cargo.toml"), &[], quiet)?;
-        self.build(&manifest_path, &[], quiet)?;
+        self.build(".", &[], quiet)?;
+        self.build("cargo-miri", &[], quiet)?;
 
         let target_flag = if let Some(target) = &target {
             vec![OsStr::new("--target"), target.as_ref()]
@@ -56,10 +55,12 @@ impl MiriEnv {
             eprintln!();
         }
 
-        let mut cmd = cmd!(self.sh,
-            "cargo +{toolchain} --quiet run {cargo_extra_flags...} --manifest-path {manifest_path} --
-             miri setup --print-sysroot {target_flag...}"
-        );
+        let mut cmd = self
+            .cargo_cmd("cargo-miri", "run")
+            .arg("--quiet")
+            .arg("--")
+            .args(&["miri", "setup", "--print-sysroot"])
+            .args(target_flag);
         cmd.set_quiet(quiet);
         let output = cmd.read()?;
         self.sh.set_var("MIRI_SYSROOT", &output);
@@ -162,8 +163,8 @@ impl Command {
             | Command::Test { .. }
             | Command::Run { .. }
             | Command::Fmt { .. }
-            | Command::Clippy { .. }
-            | Command::Cargo { .. } => Self::auto_actions()?,
+            | Command::Doc { .. }
+            | Command::Clippy { .. } => Self::auto_actions()?,
             | Command::Toolchain { .. }
             | Command::Bench { .. }
             | Command::RustcPull { .. }
@@ -177,9 +178,9 @@ impl Command {
             Command::Test { bless, flags, target } => Self::test(bless, flags, target),
             Command::Run { dep, verbose, many_seeds, target, edition, flags } =>
                 Self::run(dep, verbose, many_seeds, target, edition, flags),
+            Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
-            Command::Cargo { flags } => Self::cargo(flags),
             Command::Bench { target, benches } => Self::bench(target, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
@@ -433,39 +434,37 @@ impl Command {
 
     fn build(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.build(path!(e.miri_dir / "Cargo.toml"), &flags, /* quiet */ false)?;
-        e.build(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags, /* quiet */ false)?;
+        e.build(".", &flags, /* quiet */ false)?;
+        e.build("cargo-miri", &flags, /* quiet */ false)?;
         Ok(())
     }
 
     fn check(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.check(path!(e.miri_dir / "Cargo.toml"), &flags)?;
-        e.check(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
+        e.check(".", &flags)?;
+        e.check("cargo-miri", &flags)?;
+        Ok(())
+    }
+
+    fn doc(flags: Vec<String>) -> Result<()> {
+        let e = MiriEnv::new()?;
+        e.doc(".", &flags)?;
+        e.doc("cargo-miri", &flags)?;
         Ok(())
     }
 
     fn clippy(flags: Vec<String>) -> Result<()> {
         let e = MiriEnv::new()?;
-        e.clippy(path!(e.miri_dir / "Cargo.toml"), &flags)?;
-        e.clippy(path!(e.miri_dir / "cargo-miri" / "Cargo.toml"), &flags)?;
-        e.clippy(path!(e.miri_dir / "miri-script" / "Cargo.toml"), &flags)?;
-        Ok(())
-    }
-
-    fn cargo(flags: Vec<String>) -> Result<()> {
-        let e = MiriEnv::new()?;
-        let toolchain = &e.toolchain;
-        // We carefully kept the working dir intact, so this will run cargo *on the workspace in the
-        // current working dir*, not on the main Miri workspace. That is exactly what RA needs.
-        cmd!(e.sh, "cargo +{toolchain} {flags...}").run()?;
+        e.clippy(".", &flags)?;
+        e.clippy("cargo-miri", &flags)?;
+        e.clippy("miri-script", &flags)?;
         Ok(())
     }
 
     fn test(bless: bool, mut flags: Vec<String>, target: Option<String>) -> Result<()> {
         let mut e = MiriEnv::new()?;
 
-        // Prepare a sysroot.
+        // Prepare a sysroot. (Also builds cargo-miri, which we need.)
         e.build_miri_sysroot(/* quiet */ false, target.as_deref())?;
 
         // Forward information to test harness.
@@ -482,7 +481,7 @@ impl Command {
 
         // Then test, and let caller control flags.
         // Only in root project as `cargo-miri` has no tests.
-        e.test(path!(e.miri_dir / "Cargo.toml"), &flags)?;
+        e.test(".", &flags)?;
         Ok(())
     }
 
@@ -510,32 +509,27 @@ impl Command {
         early_flags.push("--edition".into());
         early_flags.push(edition.as_deref().unwrap_or("2021").into());
 
-        // Prepare a sysroot, add it to the flags.
+        // Prepare a sysroot, add it to the flags. (Also builds cargo-miri, which we need.)
         let miri_sysroot = e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref())?;
         early_flags.push("--sysroot".into());
         early_flags.push(miri_sysroot.into());
 
         // Compute everything needed to run the actual command. Also add MIRIFLAGS.
-        let miri_manifest = path!(e.miri_dir / "Cargo.toml");
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
-        let toolchain = &e.toolchain;
-        let extra_flags = &e.cargo_extra_flags;
         let quiet_flag = if verbose { None } else { Some("--quiet") };
         // This closure runs the command with the given `seed_flag` added between the MIRIFLAGS and
         // the `flags` given on the command-line.
-        let run_miri = |sh: &Shell, seed_flag: Option<String>| -> Result<()> {
+        let run_miri = |e: &MiriEnv, seed_flag: Option<String>| -> Result<()> {
             // The basic command that executes the Miri driver.
             let mut cmd = if dep {
-                cmd!(
-                    sh,
-                    "cargo +{toolchain} {quiet_flag...} test {extra_flags...} --manifest-path {miri_manifest} --test ui -- --miri-run-dep-mode"
-                )
+                e.cargo_cmd(".", "test")
+                    .args(&["--test", "ui"])
+                    .args(quiet_flag)
+                    .arg("--")
+                    .args(&["--miri-run-dep-mode"])
             } else {
-                cmd!(
-                    sh,
-                    "cargo +{toolchain} {quiet_flag...} run {extra_flags...} --manifest-path {miri_manifest} --"
-                )
+                e.cargo_cmd(".", "run").args(quiet_flag).arg("--")
             };
             cmd.set_quiet(!verbose);
             // Add Miri flags
@@ -551,14 +545,14 @@ impl Command {
         };
         // Run the closure once or many times.
         if let Some(seed_range) = many_seeds {
-            e.run_many_times(seed_range, |sh, seed| {
+            e.run_many_times(seed_range, |e, seed| {
                 eprintln!("Trying seed: {seed}");
-                run_miri(sh, Some(format!("-Zmiri-seed={seed}"))).inspect_err(|_| {
+                run_miri(e, Some(format!("-Zmiri-seed={seed}"))).inspect_err(|_| {
                     eprintln!("FAILING SEED: {seed}");
                 })
             })?;
         } else {
-            run_miri(&e.sh, None)?;
+            run_miri(&e, None)?;
         }
         Ok(())
     }
@@ -585,6 +579,6 @@ impl Command {
             .filter_ok(|item| item.file_type().is_file())
             .map_ok(|item| item.into_path());
 
-        e.format_files(files, &e.toolchain[..], &config_path, &flags)
+        e.format_files(files, &config_path, &flags)
     }
 }

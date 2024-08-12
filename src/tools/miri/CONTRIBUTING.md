@@ -173,24 +173,24 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo-miri/Cargo.toml",
         "miri-script/Cargo.toml",
     ],
+    "rust-analyzer.check.invocationLocation": "root",
+    "rust-analyzer.check.invocationStrategy": "once",
     "rust-analyzer.check.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
-        "cargo",
         "clippy", // make this `check` when working with a locally built rustc
         "--message-format=json",
-        "--all-targets",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
+    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
-        "cargo",
         "check",
         "--message-format=json",
-        "--all-targets",
     ],
 }
 ```
@@ -309,6 +309,7 @@ anyone but Miri itself. They are used to communicate between different Miri
 binaries, and as such worth documenting:
 
 * `CARGO_EXTRA_FLAGS` is understood by `./miri` and passed to all host cargo invocations.
+  It is reserved for CI usage; setting the wrong flags this way can easily confuse the script.
 * `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
   actually not interpret the code but compile it like rustc would. With `target`, Miri sets
   some compiler flags to prepare the code for interpretation; with `host`, this is not done.
