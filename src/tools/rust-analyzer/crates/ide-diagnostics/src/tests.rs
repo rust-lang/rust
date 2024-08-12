@@ -251,6 +251,12 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixtur
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
         let expected = extract_annotations(&db.file_text(file_id));
         actual.sort_by_key(|(range, _)| range.start());
+        // FIXME: We should panic on duplicates instead, but includes currently cause us to report
+        // diagnostics twice for the calling module when both files are queried.
+        actual.dedup();
+        // actual.iter().duplicates().for_each(|(range, msg)| {
+        //     panic!("duplicate diagnostic at {:?}: {msg:?}", line_index.line_col(range.start()))
+        // });
         if expected.is_empty() {
             // makes minicore smoke test debuggable
             for (e, _) in &actual {

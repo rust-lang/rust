@@ -502,4 +502,16 @@ mod bar {
 "#,
         );
     }
+
+    #[test]
+    fn include_macro_works() {
+        check_diagnostics(
+            r#"
+//- minicore: include
+//- /main.rs
+include!("bar/foo/mod.rs");
+//- /bar/foo/mod.rs
+"#,
+        );
+    }
 }
