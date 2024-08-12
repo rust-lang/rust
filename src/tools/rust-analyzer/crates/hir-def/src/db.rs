@@ -160,7 +160,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
 
     #[salsa::invoke(StaticData::static_data_query)]
-    fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
+    fn static_data(&self, statik: StaticId) -> Arc<StaticData>;
 
     #[salsa::invoke(Macro2Data::macro2_data_query)]
     fn macro2_data(&self, makro: Macro2Id) -> Arc<Macro2Data>;

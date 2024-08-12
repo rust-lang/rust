@@ -82,8 +82,8 @@ impl FallibleTypeFolder<Interner> for Filler<'_> {
                         };
                         filler.try_fold_ty(infer.type_of_rpit[idx].clone(), outer_binder)
                     }
-                    crate::ImplTraitId::AssociatedTypeImplTrait(..) => {
-                        not_supported!("associated type impl trait");
+                    crate::ImplTraitId::TypeAliasImplTrait(..) => {
+                        not_supported!("type alias impl trait");
                     }
                     crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
                         not_supported!("async block impl trait");

@@ -275,7 +275,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 };
                 chalk_ir::Binders::new(binders, bound)
             }
-            crate::ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+            crate::ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                 let datas = self
                     .db
                     .type_alias_impl_traits(alias)

@@ -9,6 +9,7 @@ mod patterns;
 mod regression;
 mod simple;
 mod traits;
+mod type_alias_impl_traits;
 
 use std::env;
 
