@@ -291,7 +291,7 @@ where
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
         }
 
-        Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+        Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
             if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
                 let base_ty = place_base.ty(cx.body, cx.tcx).ty;
