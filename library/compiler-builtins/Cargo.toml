@@ -15,6 +15,7 @@ if necessary!
 include = [
   '/Cargo.toml',
   '/build.rs',
+  '/configure.rs',
   '/src/*',
   '/examples/*',
   '/LICENSE.txt',
