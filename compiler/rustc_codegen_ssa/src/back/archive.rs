@@ -307,10 +307,15 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             let file_name = String::from_utf8(entry.name().to_vec())
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
-                self.entries.push((
-                    file_name.into_bytes(),
-                    ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
-                ));
+                if entry.is_thin() {
+                    let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
+                    self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));
+                } else {
+                    self.entries.push((
+                        file_name.into_bytes(),
+                        ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
+                    ));
+                }
             }
         }
 
