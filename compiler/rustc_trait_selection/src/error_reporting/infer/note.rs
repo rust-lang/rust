@@ -52,7 +52,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .add_to_diag(err);
                 }
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_region_param_bound }
                     .add_to_diag(err);
             }
@@ -199,7 +199,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note,
                 })
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
