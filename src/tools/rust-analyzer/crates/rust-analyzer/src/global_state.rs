@@ -504,7 +504,7 @@ impl GlobalState {
         handler: ReqHandler,
     ) {
         let request = self.req_queue.outgoing.register(R::METHOD.to_owned(), params, handler);
-        self.sender.send(request.into()).unwrap();
+        self.send(request.into());
     }
 
     pub(crate) fn complete_request(&mut self, response: lsp_server::Response) {
@@ -521,7 +521,7 @@ impl GlobalState {
         params: N::Params,
     ) {
         let not = lsp_server::Notification::new(N::METHOD.to_owned(), params);
-        self.sender.send(not.into()).unwrap();
+        self.send(not.into());
     }
 
     pub(crate) fn register_request(
@@ -544,18 +544,22 @@ impl GlobalState {
 
             let duration = start.elapsed();
             tracing::debug!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
-            self.sender.send(response.into()).unwrap();
+            self.send(response.into());
         }
     }
 
     pub(crate) fn cancel(&mut self, request_id: lsp_server::RequestId) {
         if let Some(response) = self.req_queue.incoming.cancel(request_id) {
-            self.sender.send(response.into()).unwrap();
+            self.send(response.into());
         }
     }
 
     pub(crate) fn is_completed(&self, request: &lsp_server::Request) -> bool {
         self.req_queue.incoming.is_completed(&request.id)
+    }
+
+    fn send(&self, message: lsp_server::Message) {
+        self.sender.send(message).unwrap()
     }
 
     pub(crate) fn publish_diagnostics(
