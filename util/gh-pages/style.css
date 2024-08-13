@@ -396,3 +396,7 @@ body {
     background: var(--bg);
     color: var(--fg);
 }
+
+article.collapsed .lint-docs {
+    display: none;
+}

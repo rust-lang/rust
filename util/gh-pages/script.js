@@ -1,19 +1,4 @@
 (function () {
-    function scrollToLint(lintId) {
-        const target = document.getElementById(lintId);
-        if (!target) {
-            return;
-        }
-        target.scrollIntoView();
-    }
-
-    function scrollToLintByURL($scope, $location) {
-        const removeListener = $scope.$on('ngRepeatFinished', function (ngRepeatFinishedEvent) {
-            scrollToLint($location.path().substring(1));
-            removeListener();
-        });
-    }
-
     function selectGroup($scope, selectedGroup) {
         const groups = $scope.groups;
         for (const group in groups) {
@@ -365,37 +350,10 @@
                 return $scope.applicabilities[lint.applicability];
             };
 
-            // Show details for one lint
-            $scope.openLint = function (lint) {
-                $scope.open[lint.id] = true;
-                $location.path(lint.id);
-            };
-
             $scope.toggleExpansion = function(lints, isExpanded) {
                 lints.forEach(lint => {
                     $scope.open[lint.id] = isExpanded;
                 });
-            }
-
-            $scope.copyToClipboard = function (lint) {
-                const clipboard = document.getElementById("clipboard-" + lint.id);
-                if (clipboard) {
-                    let resetClipboardTimeout = null;
-                    const resetClipboardIcon = clipboard.innerHTML;
-
-                    function resetClipboard() {
-                        resetClipboardTimeout = null;
-                        clipboard.innerHTML = resetClipboardIcon;
-                    }
-
-                    navigator.clipboard.writeText("clippy::" + lint.id);
-
-                    clipboard.innerHTML = "&#10003;";
-                    if (resetClipboardTimeout !== null) {
-                        clearTimeout(resetClipboardTimeout);
-                    }
-                    resetClipboardTimeout = setTimeout(resetClipboard, 1000);
-                }
             }
 
             // Get data
@@ -412,8 +370,6 @@
             if (selectedGroup) {
                 selectGroup($scope, selectedGroup.toLowerCase());
             }
-
-            scrollToLintByURL($scope, $location);
 
             setTimeout(function () {
                 const el = document.getElementById('filter-input');
@@ -432,6 +388,65 @@ function getQueryVariable(variable) {
         }
     }
 }
+
+function storeValue(settingName, value) {
+    try {
+        localStorage.setItem(`clippy-lint-list-${settingName}`, value);
+    } catch (e) { }
+}
+
+function loadValue(settingName) {
+    return localStorage.getItem(`clippy-lint-list-${settingName}`);
+}
+
+function setTheme(theme, store) {
+    let enableHighlight = false;
+    let enableNight = false;
+    let enableAyu = false;
+
+    switch(theme) {
+        case "ayu":
+            enableAyu = true;
+            break;
+        case "coal":
+        case "navy":
+            enableNight = true;
+            break;
+        case "rust":
+            enableHighlight = true;
+            break;
+        default:
+            enableHighlight = true;
+            theme = "light";
+            break;
+    }
+
+    document.getElementsByTagName("body")[0].className = theme;
+
+    document.getElementById("githubLightHighlight").disabled = enableNight || !enableHighlight;
+    document.getElementById("githubDarkHighlight").disabled = !enableNight && !enableAyu;
+
+    document.getElementById("styleHighlight").disabled = !enableHighlight;
+    document.getElementById("styleNight").disabled = !enableNight;
+    document.getElementById("styleAyu").disabled = !enableAyu;
+
+    if (store) {
+        storeValue("theme", theme);
+    } else {
+        document.getElementById(`theme-choice`).value = theme;
+    }
+}
+
+// loading the theme after the initial load
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+const theme = loadValue('theme');
+if (prefersDark.matches && !theme) {
+    setTheme("coal", false);
+} else {
+    setTheme(theme, false);
+}
+let disableShortcuts = loadValue('disable-shortcuts') === "true";
+document.getElementById("disable-shortcuts").checked = disableShortcuts;
 
 window.searchState = {
     timeout: null,
@@ -486,6 +501,11 @@ window.searchState = {
                 lint.style.display = "none";
             }
         });
+        if (searchStr.length > 0) {
+            window.location.hash = `/${searchStr}`;
+        } else {
+            window.location.hash = '';
+        }
     },
 };
 
@@ -494,54 +514,6 @@ function handleInputChanged(event) {
         return;
     }
     searchState.resetInputTimeout();
-}
-
-function storeValue(settingName, value) {
-    try {
-        localStorage.setItem(`clippy-lint-list-${settingName}`, value);
-    } catch (e) { }
-}
-
-function loadValue(settingName) {
-    return localStorage.getItem(`clippy-lint-list-${settingName}`);
-}
-
-function setTheme(theme, store) {
-    let enableHighlight = false;
-    let enableNight = false;
-    let enableAyu = false;
-
-    switch(theme) {
-        case "ayu":
-            enableAyu = true;
-            break;
-        case "coal":
-        case "navy":
-            enableNight = true;
-            break;
-        case "rust":
-            enableHighlight = true;
-            break;
-        default:
-            enableHighlight = true;
-            theme = "light";
-            break;
-    }
-
-    document.getElementsByTagName("body")[0].className = theme;
-
-    document.getElementById("githubLightHighlight").disabled = enableNight || !enableHighlight;
-    document.getElementById("githubDarkHighlight").disabled = !enableNight && !enableAyu;
-
-    document.getElementById("styleHighlight").disabled = !enableHighlight;
-    document.getElementById("styleNight").disabled = !enableNight;
-    document.getElementById("styleAyu").disabled = !enableAyu;
-
-    if (store) {
-        storeValue("theme", theme);
-    } else {
-        document.getElementById(`theme-choice`).value = theme;
-    }
 }
 
 function handleShortcut(ev) {
@@ -584,6 +556,52 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
+function expandLintId(lintId) {
+    searchState.inputElem.value = lintId;
+    searchState.filterLints();
+
+    // Expand the lint.
+    const lintElem = document.getElementById(lintId);
+    const isCollapsed = lintElem.classList.remove("collapsed");
+    lintElem.querySelector(".label-doc-folding").innerText = "-";
+}
+
+// Show details for one lint
+function openLint(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    expandLintId(event.target.getAttribute("href").slice(1));
+}
+
+function expandLint(lintId) {
+    const lintElem = document.getElementById(lintId);
+    const isCollapsed = lintElem.classList.toggle("collapsed");
+    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "-";
+}
+
+function copyToClipboard(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const clipboard = event.target;
+
+    let resetClipboardTimeout = null;
+    const resetClipboardIcon = clipboard.innerHTML;
+
+    function resetClipboard() {
+        resetClipboardTimeout = null;
+        clipboard.innerHTML = resetClipboardIcon;
+    }
+
+    navigator.clipboard.writeText("clippy::" + clipboard.parentElement.id.slice(5));
+
+    clipboard.innerHTML = "&#10003;";
+    if (resetClipboardTimeout !== null) {
+        clearTimeout(resetClipboardTimeout);
+    }
+    resetClipboardTimeout = setTimeout(resetClipboard, 1000);
+}
+
 function handleBlur(event) {
     const parent = document.getElementById("settings-dropdown");
     if (!parent.contains(document.activeElement) &&
@@ -617,15 +635,23 @@ function generateSearch() {
 generateSettings();
 generateSearch();
 
-// loading the theme after the initial load
-const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-const theme = loadValue('theme');
-if (prefersDark.matches && !theme) {
-    setTheme("coal", false);
-} else {
-    setTheme(theme, false);
+function scrollToLint(lintId) {
+    const target = document.getElementById(lintId);
+    if (!target) {
+        return;
+    }
+    target.scrollIntoView();
+    expandLintId(lintId);
 }
-let disableShortcuts = loadValue('disable-shortcuts') === "true";
-document.getElementById("disable-shortcuts").checked = disableShortcuts;
 
-hljs.highlightAll();
+// If the page we arrive on has link to a given lint, we scroll to it.
+function scrollToLintByURL() {
+    const lintId = window.location.hash.substring(2);
+    if (lintId.length > 0) {
+        scrollToLint(lintId);
+    }
+}
+
+scrollToLintByURL();
+
+onEachLazy(document.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));

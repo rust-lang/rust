@@ -199,14 +199,13 @@ Otherwise, have a great day =^.^=
                 </div>
             </div>
             {% for lint in lints %}
-                <article class="panel panel-default" id="{(lint.id)}">
-                    <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
+                <article class="panel panel-default collapsed" id="{(lint.id)}">
+                    <header class="panel-heading" onclick="expandLint('{(lint.id)}')">
                         <h2 class="panel-title">
-                            <div class="panel-title-name">
+                            <div class="panel-title-name" id="lint-{(lint.id)}">
                                 <span>{(lint.id)}</span>
-                                <a href="#{(lint.id)}" class="anchor label label-default"
-                                    ng-click="openLint(lint); $event.preventDefault(); $event.stopPropagation()">&para;</a>
-                                <a href="" id="clipboard-{(lint.id)}" class="anchor label label-default" ng-click="copyToClipboard(lint); $event.stopPropagation()">
+                                <a href="#{(lint.id)}" class="anchor label label-default" onclick="openLint(event)">&para;</a>
+                                <a href="" class="anchor label label-default" onclick="copyToClipboard(event)">
                                     &#128203;
                                 </a>
                             </div>
@@ -217,8 +216,7 @@ Otherwise, have a great day =^.^=
                                 <span class="label label-lint-level label-lint-level-{(lint.level)}">{(lint.level)}</span>
 
 
-                                <span class="label label-doc-folding" ng-show="open[lint.id]">&minus;</span>
-                                <span class="label label-doc-folding" ng-hide="open[lint.id]">&plus;</span>
+                                <span class="label label-doc-folding">&plus;</span>
                             </div>
                         </h2>
                     </header>
@@ -239,13 +237,13 @@ Otherwise, have a great day =^.^=
                             </div>
                             {# Open related issues #}
                             <div class="lint-additional-info-item">
-                                <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>
+                                <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{(lint.id)}">Related Issues</a>
                             </div>
 
                             {# Jump to source #}
                             {% if let Some(id_location) = lint.id_location %}
                                 <div class="lint-additional-info-item">
-                                    <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{id_location}}">View Source</a>
+                                    <a href="https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/{(id_location)}">View Source</a>
                             {% endif %}
                             </div>
                         </div>
@@ -315,7 +313,6 @@ Otherwise, have a great day =^.^=
         </style>
     </a>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/languages/rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
