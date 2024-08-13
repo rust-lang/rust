@@ -116,7 +116,6 @@ pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZero<u64>, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
-    CreatedCallId(CallId),
     CreatedAlloc(AllocId, Size, Align, MemoryKind),
     FreedAlloc(AllocId),
     AccessedAlloc(AllocId, AccessKind),
@@ -607,7 +606,6 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
-            | CreatedCallId(..)
             | CreatedAlloc(..)
             | AccessedAlloc(..)
             | FreedAlloc(..)
@@ -625,7 +623,6 @@ impl<'tcx> MiriMachine<'tcx> {
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"
                 ),
             PoppedPointerTag(item, cause) => format!("popped tracked tag for item {item:?}{cause}"),
-            CreatedCallId(id) => format!("function call with id {id}"),
             CreatedAlloc(AllocId(id), size, align, kind) =>
                 format!(
                     "created {kind} allocation of {size} bytes (alignment {align} bytes) with id {id}",

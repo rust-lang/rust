@@ -1368,7 +1368,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let borrow_tracker = ecx.machine.borrow_tracker.as_ref();
 
         let extra = FrameExtra {
-            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame(&ecx.machine)),
+            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame()),
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
