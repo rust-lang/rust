@@ -239,7 +239,7 @@ Otherwise, have a great day =^.^=
                         <!-- Applicability -->
                         <div class="lint-additional-info-item">
                             <span> Applicability: </span>
-                            <span class="label label-default label-applicability">{{lint.applicability.applicability}}</span>
+                            <span class="label label-default label-applicability">{{lint.applicability}}</span>
                             <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a>
                         </div>
                         <!-- Clippy version -->
@@ -252,8 +252,8 @@ Otherwise, have a great day =^.^=
                             <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>
                         </div>
                         <!-- Jump to source -->
-                        <div class="lint-additional-info-item" ng-if="lint.id_span">
-                            <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{lint.id_span.path}}#L{{lint.id_span.line}}">View Source</a>
+                        <div class="lint-additional-info-item" ng-if="lint.id_location">
+                            <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/{{lint.id_location}}">View Source</a>
                         </div>
                     </div>
                 </div>

@@ -96,13 +96,13 @@
                 cargo: true,
                 complexity: true,
                 correctness: true,
-                deprecated: false,
                 nursery: true,
                 pedantic: true,
                 perf: true,
                 restriction: true,
                 style: true,
                 suspicious: true,
+                deprecated: false,
             }
 
             $scope.groups = {
@@ -126,11 +126,10 @@
             );
 
             const APPLICABILITIES_FILTER_DEFAULT = {
-                Unspecified: true,
-                Unresolved: true,
                 MachineApplicable: true,
                 MaybeIncorrect: true,
-                HasPlaceholders: true
+                HasPlaceholders: true,
+                Unspecified: true,
             };
 
             $scope.applicabilities = {
@@ -425,7 +424,7 @@
             }
 
             $scope.byApplicabilities = function (lint) {
-                return $scope.applicabilities[lint.applicability.applicability];
+                return $scope.applicabilities[lint.applicability];
             };
 
             // Show details for one lint

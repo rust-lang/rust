@@ -30,8 +30,11 @@ color-print = "0.3.4"
 anstream = "0.6.0"
 
 [dev-dependencies]
+cargo_metadata = "0.18.1"
 ui_test = "0.25"
 regex = "1.5.5"
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.122"
 toml = "0.7.3"
 walkdir = "2.3"
 filetime = "0.2.9"
@@ -41,7 +44,6 @@ itertools = "0.12"
 clippy_utils = { path = "clippy_utils" }
 if_chain = "1.0"
 quote = "1.0.25"
-serde = { version = "1.0.145", features = ["derive"] }
 syn = { version = "2.0", features = ["full"] }
 futures = "0.3"
 parking_lot = "0.12"
