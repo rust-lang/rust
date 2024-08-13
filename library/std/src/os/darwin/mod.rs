@@ -13,7 +13,10 @@
 //! `aarch64-apple-darwin` target names, which are mostly named that way for
 //! legacy reasons.
 
-pub(crate) mod fs;
+#![stable(feature = "os_darwin", since = "CURRENT_RUSTC_VERSION")]
+#![doc(cfg(target_vendor = "apple"))]
+
+pub mod fs;
 // deprecated, but used for public reexport under `std::os::unix::raw`, as
 // well as `std::os::macos`/`std::os::ios`, because those modules precede the
 // decision to remove these.
