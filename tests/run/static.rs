@@ -34,6 +34,7 @@ trait Copy {
 }
 
 impl Copy for isize {}
+impl<T: ?Sized> Copy for *mut T {}
 
 #[lang = "receiver"]
 trait Receiver {
