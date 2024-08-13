@@ -1191,37 +1191,39 @@ impl Config {
         }
     }
 
-    pub fn parse(flags: Flags) -> Config {
-        #[cfg(test)]
-        fn get_toml(_: &Path) -> TomlConfig {
-            TomlConfig::default()
-        }
+    #[cfg(test)]
+    fn get_toml(_: &Path) -> TomlConfig {
+        TomlConfig::default()
+    }
 
-        #[cfg(not(test))]
-        fn get_toml(file: &Path) -> TomlConfig {
-            let contents =
-                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
-            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
-            // TomlConfig and sub types to be monomorphized 5x by toml.
-            toml::from_str(&contents)
-                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-                .unwrap_or_else(|err| {
-                    if let Ok(Some(changes)) = toml::from_str(&contents)
-                        .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table)).map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
-                    {
-                        if !changes.is_empty() {
-                            println!(
-                                "WARNING: There have been changes to x.py since you last updated:\n{}",
-                                crate::human_readable_changes(&changes)
-                            );
-                        }
+    #[cfg(not(test))]
+    fn get_toml(file: &Path) -> TomlConfig {
+        let contents =
+            t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
+        // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+        // TomlConfig and sub types to be monomorphized 5x by toml.
+        toml::from_str(&contents)
+            .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            .unwrap_or_else(|err| {
+                if let Ok(Some(changes)) = toml::from_str(&contents)
+                    .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
+                    .map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
+                {
+                    if !changes.is_empty() {
+                        println!(
+                            "WARNING: There have been changes to x.py since you last updated:\n{}",
+                            crate::human_readable_changes(&changes)
+                        );
                     }
+                }
 
-                    eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
-                    exit!(2);
-                })
-        }
-        Self::parse_inner(flags, get_toml)
+                eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
+                exit!(2);
+            })
+    }
+
+    pub fn parse(flags: Flags) -> Config {
+        Self::parse_inner(flags, Self::get_toml)
     }
 
     pub(crate) fn parse_inner(mut flags: Flags, get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
@@ -2656,10 +2658,10 @@ fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
     macro_rules! err {
         ($name:expr) => {
             if $name.is_some() {
-                return Err(format!(
-                    "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
+                    return Err(format!(
+                        "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
                     stringify!($name).replace("_", "-")
-                ));
+                    ));
             }
         };
     }
@@ -2667,10 +2669,10 @@ fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
     macro_rules! warn {
         ($name:expr) => {
             if $name.is_some() {
-                println!(
-                    "WARNING: `rust.{}` has no effect with `rust.download-rustc`.",
+                    println!(
+                        "WARNING: `rust.{}` has no effect with `rust.download-rustc`.",
                     stringify!($name).replace("_", "-")
-                );
+                    );
             }
         };
     }
