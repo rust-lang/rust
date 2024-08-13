@@ -3735,15 +3735,14 @@ impl<'test> TestCx<'test> {
         }
 
         if self.config.bless {
-            cmd.env("RUSTC_BLESS_TEST", "--bless");
-            // Assume this option is active if the environment variable is "defined", with _any_ value.
-            // As an example, a `Makefile` can use this option by:
+            // If we're running in `--bless` mode, set an environment variable to tell
+            // `run_make_support` to bless snapshot files instead of checking them.
             //
-            //   ifdef RUSTC_BLESS_TEST
-            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
-            //   else
-            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
-            //   endif
+            // The value is this test's source directory, because the support code
+            // will need that path in order to bless the _original_ snapshot files,
+            // not the copies in `rmake_out`.
+            // (See <https://github.com/rust-lang/rust/issues/129038>.)
+            cmd.env("RUSTC_BLESS_TEST", &self.testpaths.file);
         }
 
         if self.config.target.contains("msvc") && !self.config.cc.is_empty() {
