@@ -83,4 +83,26 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn min_exhaustive() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, !>) {
+    let Ok(_y) = x;
+}
+"#,
+        );
+
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, &'static !>) {
+    let Ok(_y) = x;
+      //^^^^^^ error: non-exhaustive pattern: `Err(_)` not covered
+}
+"#,
+        );
+    }
 }
