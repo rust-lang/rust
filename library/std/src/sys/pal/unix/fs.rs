@@ -1552,17 +1552,6 @@ impl fmt::Debug for File {
             None
         }
 
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "freebsd",
-            target_os = "hurd",
-            target_os = "netbsd",
-            target_os = "openbsd",
-            target_os = "vxworks",
-            target_os = "solaris",
-            target_os = "illumos",
-            target_vendor = "apple",
-        ))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {
@@ -1574,22 +1563,6 @@ impl fmt::Debug for File {
                 libc::O_WRONLY => Some((false, true)),
                 _ => None,
             }
-        }
-
-        #[cfg(not(any(
-            target_os = "linux",
-            target_os = "freebsd",
-            target_os = "hurd",
-            target_os = "netbsd",
-            target_os = "openbsd",
-            target_os = "vxworks",
-            target_os = "solaris",
-            target_os = "illumos",
-            target_vendor = "apple",
-        )))]
-        fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
-            // FIXME(#24570): implement this for other Unix platforms
-            None
         }
 
         let fd = self.as_raw_fd();
