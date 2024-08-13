@@ -1,5 +1,4 @@
 //! These structs are a subset of the ones found in `rustc_errors::json`.
-//! They are only used for deserialization of JSON output provided by libtest.
 
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
