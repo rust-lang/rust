@@ -2829,7 +2829,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     // Do not suggest relaxing if there is an explicit `Sized` obligation.
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
-                                        .any(|tr| tr.trait_def_id() == tcx.lang_items().sized_trait())
+                                        .any(|tr| tr.trait_def_id().is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized)))
                                 {
                                     let (span, separator) = if let [.., last] = bounds {
                                         (last.span().shrink_to_hi(), " +")

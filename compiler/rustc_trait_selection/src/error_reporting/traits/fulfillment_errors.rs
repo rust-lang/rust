@@ -230,8 +230,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             post_message,
                         );
 
-                        let (err_msg, safe_transmute_explanation) = if Some(main_trait_ref.def_id())
-                            == self.tcx.lang_items().transmute_trait()
+                        let (err_msg, safe_transmute_explanation) = if self.tcx.is_lang_item(main_trait_ref.def_id(), LangItem::TransmuteTrait)
                         {
                             // Recompute the safe transmute reason and use that for the error reporting
                             match self.get_safe_transmute_error_and_reason(
