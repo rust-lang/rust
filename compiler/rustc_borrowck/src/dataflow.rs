@@ -1,16 +1,15 @@
+use std::fmt;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
 };
-use rustc_middle::ty::RegionVid;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
-use rustc_mir_dataflow::ResultsVisitable;
-use rustc_mir_dataflow::{fmt::DebugWithContext, GenKill};
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, Results};
-use std::fmt;
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, GenKill, Results, ResultsVisitable};
 
 use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 

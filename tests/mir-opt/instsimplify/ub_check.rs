@@ -1,7 +1,7 @@
-//@ test-mir-pass: InstSimplify
+//@ test-mir-pass: InstSimplify-after-simplifycfg
 //@ compile-flags: -Cdebug-assertions=no -Zinline-mir
 
-// EMIT_MIR ub_check.unwrap_unchecked.InstSimplify.diff
+// EMIT_MIR ub_check.unwrap_unchecked.InstSimplify-after-simplifycfg.diff
 pub fn unwrap_unchecked(x: Option<i32>) -> i32 {
     // CHECK-LABEL: fn unwrap_unchecked(
     // CHECK-NOT: UbChecks()

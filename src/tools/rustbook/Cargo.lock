@@ -662,6 +662,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mdbook-spec"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "mdbook",
+ "once_cell",
+ "pathdiff",
+ "regex",
+ "semver",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "mdbook-trpl-listing"
 version = "0.1.0"
 dependencies = [
@@ -793,6 +807,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.52.6",
 ]
+
+[[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "percent-encoding"
@@ -1079,6 +1099,7 @@ dependencies = [
  "env_logger",
  "mdbook",
  "mdbook-i18n-helpers",
+ "mdbook-spec",
  "mdbook-trpl-listing",
  "mdbook-trpl-note",
 ]

@@ -1,7 +1,6 @@
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 use crate::path::{Dirs, RelPath};
 use crate::rustc_info::get_file_name;
@@ -272,7 +271,7 @@ fn build_clif_sysroot_for_triple(
     if channel == "release" {
         build_cmd.arg("--release");
     }
-    build_cmd.arg("--features").arg("backtrace panic-unwind");
+    build_cmd.arg("--features").arg("backtrace panic-unwind compiler-builtins-no-f16-f128");
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
@@ -313,7 +312,6 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
         let obj = RTSTARTUP_SYSROOT.to_path(dirs).join(format!("{file}.o"));
         let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
         build_rtstartup_cmd
-            .arg("-Ainternal_features") // Missing #[allow(internal_features)]
             .arg("--target")
             .arg(&compiler.triple)
             .arg("--emit=obj")

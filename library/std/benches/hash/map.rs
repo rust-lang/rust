@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use std::collections::HashMap;
+
 use test::Bencher;
 
 #[bench]

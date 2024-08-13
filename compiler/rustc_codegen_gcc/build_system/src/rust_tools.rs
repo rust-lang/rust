@@ -1,12 +1,12 @@
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::path::PathBuf;
+
 use crate::config::ConfigInfo;
 use crate::utils::{
     get_toolchain, run_command_with_output_and_env_no_err, rustc_toolchain_version_info,
     rustc_version_info,
 };
-
-use std::collections::HashMap;
-use std::ffi::OsStr;
-use std::path::PathBuf;
 
 fn args(command: &str) -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo"/"rustc" option.

@@ -2,43 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
-use crate::mir::interpret::{AllocRange, Scalar};
-use crate::mir::visit::MirVisitable;
-use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
-use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, Instance, InstanceKind, UserTypeAnnotationIndex};
-use crate::ty::{GenericArg, GenericArgsRef};
-
-use rustc_data_structures::captures::Captures;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
-use rustc_hir::def::{CtorKind, Namespace};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::{
-    self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
-};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_session::Session;
-use rustc_span::source_map::Spanned;
-use rustc_target::abi::{FieldIdx, VariantIdx};
-
-use polonius_engine::Atom;
-pub use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::BitSet;
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_serialize::{Decodable, Encodable};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
-
-use either::Either;
-use tracing::trace;
-
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -46,9 +9,42 @@ use std::fmt::{self, Debug, Formatter};
 use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
+pub use basic_blocks::BasicBlocks;
+use either::Either;
+use polonius_engine::Atom;
+pub use rustc_ast::Mutability;
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::graph::dominators::Dominators;
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
+use rustc_hir::def::{CtorKind, Namespace};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
+use rustc_hir::{
+    self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
+};
+use rustc_index::bit_set::BitSet;
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_serialize::{Decodable, Encodable};
+use rustc_session::Session;
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::{FieldIdx, VariantIdx};
+use tracing::trace;
+
 pub use self::query::*;
 use self::visit::TyContext;
-pub use basic_blocks::BasicBlocks;
+use crate::mir::interpret::{AllocRange, Scalar};
+use crate::mir::visit::MirVisitable;
+use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::ty::print::{pretty_print_const, with_no_trimmed_paths, FmtPrinter, Printer};
+use crate::ty::visit::TypeVisitableExt;
+use crate::ty::{
+    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
+    UserTypeAnnotationIndex,
+};
 
 mod basic_blocks;
 mod consts;
@@ -70,16 +66,17 @@ pub mod traversal;
 mod type_foldable;
 pub mod visit;
 
-pub use self::generic_graph::graphviz_safe_def_name;
-pub use self::graphviz::write_mir_graphviz;
-pub use self::pretty::{
-    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
-};
 pub use consts::*;
 use pretty::pretty_print_const_value;
 pub use statement::*;
 pub use syntax::*;
 pub use terminator::*;
+
+pub use self::generic_graph::graphviz_safe_def_name;
+pub use self::graphviz::write_mir_graphviz;
+pub use self::pretty::{
+    create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty, PassWhere,
+};
 
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
@@ -386,15 +383,17 @@ pub struct Body<'tcx> {
 
     /// Constants that are required to evaluate successfully for this MIR to be well-formed.
     /// We hold in this field all the constants we are not able to evaluate yet.
+    /// `None` indicates that the list has not been computed yet.
     ///
     /// This is soundness-critical, we make a guarantee that all consts syntactically mentioned in a
     /// function have successfully evaluated if the function ever gets executed at runtime.
-    pub required_consts: Vec<ConstOperand<'tcx>>,
+    pub required_consts: Option<Vec<ConstOperand<'tcx>>>,
 
     /// Further items that were mentioned in this function and hence *may* become monomorphized,
     /// depending on optimizations. We use this to avoid optimization-dependent compile errors: the
     /// collector recursively traverses all "mentioned" items and evaluates all their
     /// `required_consts`.
+    /// `None` indicates that the list has not been computed yet.
     ///
     /// This is *not* soundness-critical and the contents of this list are *not* a stable guarantee.
     /// All that's relevant is that this set is optimization-level-independent, and that it includes
@@ -402,7 +401,7 @@ pub struct Body<'tcx> {
     /// set after drop elaboration, so some drop calls that can never be reached are not considered
     /// "mentioned".) See the documentation of `CollectionMode` in
     /// `compiler/rustc_monomorphize/src/collector.rs` for more context.
-    pub mentioned_items: Vec<Spanned<MentionedItem<'tcx>>>,
+    pub mentioned_items: Option<Vec<Spanned<MentionedItem<'tcx>>>>,
 
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
@@ -480,8 +479,8 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
-            required_consts: Vec::new(),
-            mentioned_items: Vec::new(),
+            required_consts: None,
+            mentioned_items: None,
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
@@ -510,8 +509,8 @@ impl<'tcx> Body<'tcx> {
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
-            required_consts: Vec::new(),
-            mentioned_items: Vec::new(),
+            required_consts: None,
+            mentioned_items: None,
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             injection_phase: None,
@@ -787,6 +786,40 @@ impl<'tcx> Body<'tcx> {
 
         // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
         caller_location.unwrap_or_else(|| from_span(source_info.span))
+    }
+
+    #[track_caller]
+    pub fn set_required_consts(&mut self, required_consts: Vec<ConstOperand<'tcx>>) {
+        assert!(
+            self.required_consts.is_none(),
+            "required_consts for {:?} have already been set",
+            self.source.def_id()
+        );
+        self.required_consts = Some(required_consts);
+    }
+    #[track_caller]
+    pub fn required_consts(&self) -> &[ConstOperand<'tcx>] {
+        match &self.required_consts {
+            Some(l) => l,
+            None => panic!("required_consts for {:?} have not yet been set", self.source.def_id()),
+        }
+    }
+
+    #[track_caller]
+    pub fn set_mentioned_items(&mut self, mentioned_items: Vec<Spanned<MentionedItem<'tcx>>>) {
+        assert!(
+            self.mentioned_items.is_none(),
+            "mentioned_items for {:?} have already been set",
+            self.source.def_id()
+        );
+        self.mentioned_items = Some(mentioned_items);
+    }
+    #[track_caller]
+    pub fn mentioned_items(&self) -> &[Spanned<MentionedItem<'tcx>>] {
+        match &self.mentioned_items {
+            Some(l) => l,
+            None => panic!("mentioned_items for {:?} have not yet been set", self.source.def_id()),
+        }
     }
 }
 
@@ -1815,8 +1848,9 @@ impl DefLocation {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(BasicBlockData<'_>, 128);
     static_assert_size!(LocalDecl<'_>, 40);

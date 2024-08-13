@@ -47,15 +47,17 @@ use tracing::debug;
 
 mod caching_source_map_view;
 pub mod source_map;
-pub use self::caching_source_map_view::CachingSourceMapView;
 use source_map::{SourceMap, SourceMapInputs};
+
+pub use self::caching_source_map_view::CachingSourceMapView;
 
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
-pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
+pub use hygiene::{
+    DesugaringKind, ExpnData, ExpnHash, ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext,
+};
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
@@ -71,10 +73,6 @@ pub mod fatal_error;
 
 pub mod profiling;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
-use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
-
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
 use std::hash::Hash;
@@ -83,8 +81,10 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, iter};
 
-use md5::Digest;
-use md5::Md5;
+use md5::{Digest, Md5};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
+use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 use sha1::Sha1;
 use sha2::Sha256;
 

@@ -1,18 +1,16 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use core::slice::memchr;
+
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::ops::Drop;
 use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
-use crate::str;
 use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
 use crate::sys::unsupported;
-use crate::vec;
-use core::slice::memchr;
+use crate::{fmt, io, str, vec};
 
 // Add a few symbols not in upstream `libc` just yet.
 mod libc {

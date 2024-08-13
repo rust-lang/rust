@@ -5,6 +5,7 @@ pub mod diagnostics;
 mod item;
 mod stack;
 
+use std::cell::RefCell;
 use std::cmp;
 use std::fmt::Write;
 use std::mem;
@@ -672,7 +673,8 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             // attempt to use it for a non-zero-sized access.
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
-            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr()) {
+            if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr(), 0)
+            {
                 log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
                 // Still give it the new provenance, it got retagged after all.
                 return Ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
@@ -684,7 +686,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
 
-        let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr())?;
+        let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr(), 0)?;
         log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
 
         trace!(
@@ -820,7 +822,19 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
         let size = match size {
             Some(size) => size,
-            None => return Ok(place.clone()),
+            None => {
+                // The first time this happens, show a warning.
+                thread_local! { static WARNING_SHOWN: RefCell<bool> = const { RefCell::new(false) }; }
+                WARNING_SHOWN.with_borrow_mut(|shown| {
+                    if *shown {
+                        return;
+                    }
+                    // Not yet shown. Show it!
+                    *shown = true;
+                    this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
+                });
+                return Ok(place.clone());
+            }
         };
 
         // Compute new borrow.

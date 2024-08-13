@@ -3,13 +3,17 @@
 
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 
-pub use crate::options::*;
+use std::collections::btree_map::{
+    Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
+};
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsStr;
+use std::hash::Hash;
+use std::path::{Path, PathBuf};
+use std::str::{self, FromStr};
+use std::sync::LazyLock;
+use std::{fmt, fs, iter};
 
-use crate::errors::FileWriteFail;
-use crate::search_paths::SearchPath;
-use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use crate::{filesearch, lint, HashStableContext};
-use crate::{EarlyDiagCtxt, Session};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -19,21 +23,16 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
-use rustc_target::spec::{FramePointer, LinkSelfContainedComponents, LinkerFeatures};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
-use std::collections::btree_map::{
-    Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
+use rustc_target::spec::{
+    FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, Target, TargetTriple,
 };
-use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::OsStr;
-use std::fmt;
-use std::fs;
-use std::hash::Hash;
-use std::iter;
-use std::path::{Path, PathBuf};
-use std::str::{self, FromStr};
-use std::sync::LazyLock;
 use tracing::debug;
+
+use crate::errors::FileWriteFail;
+pub use crate::options::*;
+use crate::search_paths::SearchPath;
+use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
+use crate::{filesearch, lint, EarlyDiagCtxt, HashStableContext, Session};
 
 mod cfg;
 pub mod sigpipe;
@@ -603,7 +602,7 @@ impl OutputType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
-    HumanReadable(HumanReadableErrorType),
+    HumanReadable(HumanReadableErrorType, ColorConfig),
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
     Json {
         /// Render the JSON in a human readable way (with indents and newlines).
@@ -611,12 +610,13 @@ pub enum ErrorOutputType {
         /// The JSON output includes a `rendered` field that includes the rendered
         /// human output.
         json_rendered: HumanReadableErrorType,
+        color_config: ColorConfig,
     },
 }
 
 impl Default for ErrorOutputType {
     fn default() -> Self {
-        Self::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
+        Self::HumanReadable(HumanReadableErrorType::Default, ColorConfig::Auto)
     }
 }
 
@@ -839,10 +839,14 @@ pub enum Input {
 
 impl Input {
     pub fn filestem(&self) -> &str {
-        match *self {
-            Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap(),
-            Input::Str { .. } => "rust_out",
+        if let Input::File(ifile) = self {
+            // If for some reason getting the file stem as a UTF-8 string fails,
+            // then fallback to a fixed name.
+            if let Some(name) = ifile.file_stem().and_then(OsStr::to_str) {
+                return name;
+            }
         }
+        "rust_out"
     }
 
     pub fn source_name(&self) -> FileName {
@@ -1301,7 +1305,10 @@ pub(crate) const fn default_lib_output() -> CrateType {
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
-    // Combine the configuration requested by the session (command line) with
+    // First disallow some configuration given on the command line
+    cfg::disallow_cfgs(sess, &user_cfg);
+
+    // Then combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
     user_cfg.extend(cfg::default_configuration(sess));
     user_cfg
@@ -1625,6 +1632,7 @@ pub fn parse_color(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Col
 /// Possible json config files
 pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
+    pub json_color: ColorConfig,
     json_artifact_notifications: bool,
     pub json_unused_externs: JsonUnusedExterns,
     json_future_incompat: bool,
@@ -1662,8 +1670,7 @@ impl JsonUnusedExterns {
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
 pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
-    let mut json_rendered: fn(ColorConfig) -> HumanReadableErrorType =
-        HumanReadableErrorType::Default;
+    let mut json_rendered = HumanReadableErrorType::Default;
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = JsonUnusedExterns::No;
@@ -1690,7 +1697,8 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
     }
 
     JsonConfig {
-        json_rendered: json_rendered(json_color),
+        json_rendered,
+        json_color,
         json_artifact_notifications,
         json_unused_externs,
         json_future_incompat,
@@ -1702,6 +1710,7 @@ pub fn parse_error_format(
     early_dcx: &mut EarlyDiagCtxt,
     matches: &getopts::Matches,
     color: ColorConfig,
+    json_color: ColorConfig,
     json_rendered: HumanReadableErrorType,
 ) -> ErrorOutputType {
     // We need the `opts_present` check because the driver will send us Matches
@@ -1711,18 +1720,22 @@ pub fn parse_error_format(
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_deref() {
             None | Some("human") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default, color)
             }
             Some("human-annotate-rs") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(color))
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet, color)
             }
-            Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
-            Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
-            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
-
+            Some("json") => {
+                ErrorOutputType::Json { pretty: false, json_rendered, color_config: json_color }
+            }
+            Some("pretty-json") => {
+                ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
+            }
+            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short, color),
             Some(arg) => {
                 early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::HumanReadable(
-                    HumanReadableErrorType::Default(color),
+                    HumanReadableErrorType::Default,
+                    color,
                 ));
                 early_dcx.early_fatal(format!(
                     "argument for `--error-format` must be `human`, `json` or \
@@ -1731,7 +1744,7 @@ pub fn parse_error_format(
             }
         }
     } else {
-        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
+        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default, color)
     };
 
     match error_format {
@@ -1785,7 +1798,7 @@ fn check_error_format_stability(
         if let ErrorOutputType::Json { pretty: true, .. } = error_format {
             early_dcx.early_fatal("`--error-format=pretty-json` is unstable");
         }
-        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
+        if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet, _) =
             error_format
         {
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
@@ -2386,12 +2399,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let JsonConfig {
         json_rendered,
+        json_color,
         json_artifact_notifications,
         json_unused_externs,
         json_future_incompat,
     } = parse_json(early_dcx, matches);
 
-    let error_format = parse_error_format(early_dcx, matches, color, json_rendered);
+    let error_format = parse_error_format(early_dcx, matches, color, json_color, json_rendered);
 
     early_dcx.abort_if_error_and_set_error_format(error_format);
 
@@ -2765,9 +2779,10 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 }
 
 pub mod nightly_options {
+    use rustc_feature::UnstableFeatures;
+
     use super::{OptionStability, RustcOptGroup};
     use crate::EarlyDiagCtxt;
-    use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         match_is_nightly_build(matches)
@@ -2960,6 +2975,22 @@ pub enum WasiExecModel {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
+    use std::collections::BTreeMap;
+    use std::hash::{DefaultHasher, Hash};
+    use std::num::NonZero;
+    use std::path::PathBuf;
+
+    use rustc_data_structures::fx::FxIndexMap;
+    use rustc_data_structures::stable_hasher::Hash64;
+    use rustc_errors::LanguageIdentifier;
+    use rustc_feature::UnstableFeatures;
+    use rustc_span::edition::Edition;
+    use rustc_span::RealFileName;
+    use rustc_target::spec::{
+        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
+    };
+
     use super::{
         BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FunctionReturn,
@@ -2971,20 +3002,6 @@ pub(crate) mod dep_tracking {
     };
     use crate::lint;
     use crate::utils::NativeLib;
-    use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hasher::Hash64;
-    use rustc_errors::LanguageIdentifier;
-    use rustc_feature::UnstableFeatures;
-    use rustc_span::edition::Edition;
-    use rustc_span::RealFileName;
-    use rustc_target::spec::{
-        CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
-        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel, WasmCAbi,
-    };
-    use std::collections::BTreeMap;
-    use std::hash::{DefaultHasher, Hash};
-    use std::num::NonZero;
-    use std::path::PathBuf;
 
     pub(crate) trait DepTrackingHash {
         fn hash(

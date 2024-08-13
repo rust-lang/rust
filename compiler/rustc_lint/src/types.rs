@@ -1,39 +1,33 @@
-use crate::{
-    fluent_generated as fluent,
-    lints::{
-        AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
-        AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
-        AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
-        InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex,
-        OverflowingBinHexSign, OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt,
-        OverflowingIntHelp, OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange,
-        UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
-    },
-};
-use crate::{LateContext, LateLintPass, LintContext};
-use rustc_ast as ast;
-use rustc_attr as attr;
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
-use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
-    self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
-use rustc_target::abi::{Abi, Size, WrappingRange};
-use rustc_target::abi::{Integer, TagEncoding, Variants};
+use rustc_span::{source_map, Span, Symbol};
+use rustc_target::abi::{Abi, Integer, Size, TagEncoding, Variants, WrappingRange};
 use rustc_target::spec::abi::Abi as SpecAbi;
-use std::iter;
-use std::ops::ControlFlow;
 use tracing::debug;
+use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+
+use crate::lints::{
+    AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
+    AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+    AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
+    InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
+    OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp,
+    OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons,
+    UseInclusiveRange, VariantSizeDifferencesDiag,
+};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `unused_comparisons` lint detects comparisons made useless by
@@ -217,15 +211,12 @@ fn lint_overflowing_range_endpoint<'tcx>(
     if !is_range_literal(struct_expr) {
         return false;
     };
-    let ExprKind::Struct(_, eps, _) = &struct_expr.kind else { return false };
-    if eps.len() != 2 {
-        return false;
-    }
+    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else { return false };
 
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
     // overflowing and only by 1.
-    if !(eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max) {
+    if !(end.expr.hir_id == expr.hir_id && lit_val - 1 == max) {
         return false;
     };
 
@@ -238,7 +229,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     };
 
     let sub_sugg = if expr.span.lo() == lit_span.lo() {
-        let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
+        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else { return false };
         UseInclusiveRange::WithoutParen {
             sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
@@ -315,11 +306,7 @@ fn report_bin_hex_error(
 ) {
     let (t, actually) = match ty {
         attr::IntType::SignedInt(t) => {
-            let actually = if negative {
-                -(size.sign_extend(val) as i128)
-            } else {
-                size.sign_extend(val) as i128
-            };
+            let actually = if negative { -(size.sign_extend(val)) } else { size.sign_extend(val) };
             (t.name_str(), actually.to_string())
         }
         attr::IntType::UnsignedInt(t) => {
@@ -468,8 +455,11 @@ fn lint_int_literal<'tcx>(
         }
 
         let span = if negative { type_limits.negated_expr_span.unwrap() } else { e.span };
-        let lit =
-            cx.sess().source_map().span_to_snippet(span).expect("must get snippet from literal");
+        let lit = cx
+            .sess()
+            .source_map()
+            .span_to_snippet(span)
+            .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
@@ -495,6 +485,7 @@ fn lint_uint_literal<'tcx>(
         ast::LitKind::Int(v, _) => v.get(),
         _ => bug!(),
     };
+
     if lit_val < min || lit_val > max {
         if let Node::Expr(par_e) = cx.tcx.parent_hir_node(e.hir_id) {
             match par_e.kind {
@@ -536,7 +527,7 @@ fn lint_uint_literal<'tcx>(
                     .sess()
                     .source_map()
                     .span_to_snippet(lit.span)
-                    .expect("must get snippet from literal"),
+                    .unwrap_or_else(|_| lit_val.to_string()),
                 min,
                 max,
             },
@@ -561,14 +552,14 @@ fn lint_literal<'tcx>(
         }
         ty::Uint(t) => lint_uint_literal(cx, e, lit, t),
         ty::Float(t) => {
-            let is_infinite = match lit.node {
+            let (is_infinite, sym) = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
                     // FIXME(f16_f128): add this check once `is_infinite` is reliable (ABI
                     // issues resolved).
-                    ty::FloatTy::F16 => Ok(false),
-                    ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                    ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                    ty::FloatTy::F128 => Ok(false),
+                    ty::FloatTy::F16 => (Ok(false), v),
+                    ty::FloatTy::F32 => (v.as_str().parse().map(f32::is_infinite), v),
+                    ty::FloatTy::F64 => (v.as_str().parse().map(f64::is_infinite), v),
+                    ty::FloatTy::F128 => (Ok(false), v),
                 },
                 _ => bug!(),
             };
@@ -582,7 +573,7 @@ fn lint_literal<'tcx>(
                             .sess()
                             .source_map()
                             .span_to_snippet(lit.span)
-                            .expect("must get snippet from literal"),
+                            .unwrap_or_else(|_| sym.to_string()),
                     },
                 );
             }

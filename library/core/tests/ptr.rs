@@ -810,9 +810,12 @@ fn ptr_metadata() {
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
         assert_ne!(address_2, address_3);
-        // Same erased type and same trait => same vtable pointer
-        assert_eq!(address_3, address_4);
-        assert_eq!(address_3, address_5);
+        // Same erased type and same trait => same vtable pointer.
+        // This is *not guaranteed*, so we skip it in Miri.
+        if !cfg!(miri) {
+            assert_eq!(address_3, address_4);
+            assert_eq!(address_3, address_5);
+        }
     }
 }
 
@@ -1050,7 +1053,7 @@ fn nonnull_tagged_pointer_with_provenance() {
         /// A mask for the non-data-carrying bits of the address.
         pub const ADDRESS_MASK: usize = usize::MAX << Self::NUM_BITS;
 
-        /// Create a new tagged pointer from a possibly null pointer.
+        /// Creates a new tagged pointer from a possibly null pointer.
         pub fn new(pointer: *mut T) -> Option<TaggedPointer<T>> {
             Some(TaggedPointer(NonNull::new(pointer)?))
         }

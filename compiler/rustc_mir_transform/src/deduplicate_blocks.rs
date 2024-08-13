@@ -1,7 +1,9 @@
 //! This pass finds basic blocks that are completely equal,
 //! and replaces all uses with just one of them.
 
-use std::{collections::hash_map::Entry, hash::Hash, hash::Hasher, iter};
+use std::collections::hash_map::Entry;
+use std::hash::{Hash, Hasher};
+use std::iter;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::visit::MutVisitor;

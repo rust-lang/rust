@@ -1,5 +1,4 @@
-use super::alloc::User;
-use super::alloc::{copy_from_userspace, copy_to_userspace};
+use super::alloc::{copy_from_userspace, copy_to_userspace, User};
 
 #[test]
 fn test_copy_to_userspace_function() {

@@ -60,7 +60,7 @@ impl<T: 'static> Storage<T> {
         Storage { key: LazyKey::new(Some(destroy_value::<T>)), marker: PhantomData }
     }
 
-    /// Get a pointer to the TLS value, potentially initializing it with the
+    /// Gets a pointer to the TLS value, potentially initializing it with the
     /// provided parameters. If the TLS variable has been destroyed, a null
     /// pointer is returned.
     ///

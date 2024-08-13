@@ -10,6 +10,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
@@ -28,6 +29,18 @@
 
 extern crate self as rustc_errors;
 
+use std::assert_matches::assert_matches;
+use std::backtrace::{Backtrace, BacktraceStatus};
+use std::borrow::Cow;
+use std::cell::Cell;
+use std::error::Report;
+use std::hash::Hash;
+use std::io::Write;
+use std::num::NonZero;
+use std::ops::DerefMut;
+use std::path::{Path, PathBuf};
+use std::{fmt, panic};
+
 pub use codes::*;
 pub use diagnostic::{
     BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
@@ -39,42 +52,28 @@ pub use diagnostic_impls::{
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
-pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DiagMessage, FluentBundle, LanguageIdentifier,
-    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
-};
-pub use rustc_lint_defs::{pluralize, Applicability};
-pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
-pub use rustc_span::ErrorGuaranteed;
-pub use snippet::Style;
-
-// Used by external projects such as `rust-gpu`.
-// See https://github.com/rust-lang/rust/pull/115393.
-pub use termcolor::{Color, ColorSpec, WriteColor};
-
-use emitter::{is_case_difference, DynEmitter, Emitter};
+use emitter::{is_case_difference, is_different, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
+pub use rustc_error_messages::{
+    fallback_fluent_bundle, fluent_bundle, DiagMessage, FluentBundle, LanguageIdentifier,
+    LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
+};
 use rustc_lint_defs::LintExpectationId;
+pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_macros::{Decodable, Encodable};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
+pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span, DUMMY_SP};
-use std::backtrace::{Backtrace, BacktraceStatus};
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::error::Report;
-use std::fmt;
-use std::hash::Hash;
-use std::io::Write;
-use std::num::NonZero;
-use std::ops::DerefMut;
-use std::panic;
-use std::path::{Path, PathBuf};
+pub use snippet::Style;
+// Used by external projects such as `rust-gpu`.
+// See https://github.com/rust-lang/rust/pull/115393.
+pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
-
 use Level::*;
 
 pub mod annotate_snippet_emitter_writer;
@@ -360,10 +359,16 @@ impl CodeSuggestion {
                             _ => 1,
                         })
                         .sum();
-                    line_highlight.push(SubstitutionHighlight {
-                        start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len) as usize,
-                    });
+                    if !is_different(sm, &part.snippet, part.span) {
+                        // Account for cases where we are suggesting the same code that's already
+                        // there. This shouldn't happen often, but in some cases for multipart
+                        // suggestions it's much easier to handle it here than in the origin.
+                    } else {
+                        line_highlight.push(SubstitutionHighlight {
+                            start: (cur_lo.col.0 as isize + acc) as usize,
+                            end: (cur_lo.col.0 as isize + acc + len) as usize,
+                        });
+                    }
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
                     // Account for the difference between the width of the current code and the
@@ -395,7 +400,11 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
-                Some((buf, substitution.parts, highlights, only_capitalization))
+                if highlights.iter().all(|parts| parts.is_empty()) {
+                    None
+                } else {
+                    Some((buf, substitution.parts, highlights, only_capitalization))
+                }
             })
             .collect()
     }
@@ -1483,7 +1492,7 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
             // stashed below, so they'll trigger the must_produce_diag check.
-            assert!(matches!(diagnostic.level, Error | Warning | Allow | Expect(_)));
+            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect(_));
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
@@ -2017,11 +2026,11 @@ pub fn a_or_an(s: &str) -> &'static str {
 ///
 /// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
 pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v.len() {
-        0 => "".to_string(),
-        1 => v[0].to_string(),
-        2 => format!("{} and {}", v[0], v[1]),
-        _ => format!("{}, {}", v[0], display_list_with_comma_and(&v[1..])),
+    match v {
+        [] => "".to_string(),
+        [a] => a.to_string(),
+        [a, b] => format!("{a} and {b}"),
+        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

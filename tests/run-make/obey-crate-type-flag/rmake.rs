@@ -5,10 +5,11 @@
 
 //@ ignore-cross-compile
 
+use std::path::Path;
+
 use run_make_support::{
     cwd, dynamic_lib_name, has_extension, rfs, rust_lib_name, rustc, shallow_find_files,
 };
-use std::path::Path;
 
 fn main() {
     rustc().input("test.rs").run();

@@ -1,0 +1,14 @@
+error: attribute should be applied to closures
+  --> $DIR/invalid_attr_usage.rs:5:1
+   |
+LL | #[coroutine]
+   | ^^^^^^^^^^^^
+
+error: attribute should be applied to closures
+  --> $DIR/invalid_attr_usage.rs:9:1
+   |
+LL | #[coroutine]
+   | ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

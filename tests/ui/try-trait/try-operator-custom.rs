@@ -31,7 +31,6 @@ impl<U, V> Try for MyResult<U, V> {
 impl<U, V, W> FromResidual<MyResult<Never, V>> for MyResult<U, W> where V: Into<W> {
     fn from_residual(x: MyResult<Never, V>) -> Self {
         match x {
-            MyResult::Awesome(u) => match u {},
             MyResult::Terrible(e) => MyResult::Terrible(e.into()),
         }
     }
@@ -42,7 +41,6 @@ type ResultResidual<E> = Result<std::convert::Infallible, E>;
 impl<U, V, W> FromResidual<ResultResidual<V>> for MyResult<U, W> where V: Into<W> {
     fn from_residual(x: ResultResidual<V>) -> Self {
         match x {
-            Ok(v) => match v {}
             Err(e) => MyResult::Terrible(e.into()),
         }
     }
@@ -51,7 +49,6 @@ impl<U, V, W> FromResidual<ResultResidual<V>> for MyResult<U, W> where V: Into<W
 impl<U, V, W> FromResidual<MyResult<Never, V>> for Result<U, W> where V: Into<W> {
     fn from_residual(x: MyResult<Never, V>) -> Self {
         match x {
-            MyResult::Awesome(u) => match u {},
             MyResult::Terrible(e) => Err(e.into()),
         }
     }

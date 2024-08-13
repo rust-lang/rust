@@ -581,7 +581,7 @@ pub use core::fmt::Alignment;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub use core::fmt::FormatterFn;
+pub use core::fmt::{from_fn, FromFn};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{write, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -600,8 +600,7 @@ pub use core::fmt::{LowerHex, Pointer, UpperHex};
 #[cfg(not(no_global_oom_handling))]
 use crate::string;
 
-/// The `format` function takes an [`Arguments`] struct and returns the resulting
-/// formatted string.
+/// Takes an [`Arguments`] struct and returns the resulting formatted string.
 ///
 /// The [`Arguments`] instance can be created with the [`format_args!`] macro.
 ///

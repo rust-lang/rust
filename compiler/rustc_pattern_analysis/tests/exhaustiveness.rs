@@ -1,11 +1,9 @@
 //! Test exhaustiveness checking.
 
 use common::*;
-use rustc_pattern_analysis::{
-    pat::{DeconstructedPat, WitnessPat},
-    usefulness::PlaceValidity,
-    MatchArm,
-};
+use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
+use rustc_pattern_analysis::usefulness::PlaceValidity;
+use rustc_pattern_analysis::MatchArm;
 
 #[macro_use]
 mod common;

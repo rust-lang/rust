@@ -1,7 +1,8 @@
 use proc_macro::{Diagnostic, Level, MultiSpan};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{spanned::Spanned, Attribute, Error as SynError, Meta};
+use syn::spanned::Spanned;
+use syn::{Attribute, Error as SynError, Meta};
 
 #[derive(Debug)]
 pub(crate) enum DiagnosticDeriveError {

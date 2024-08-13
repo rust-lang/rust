@@ -518,8 +518,8 @@ lint_non_binding_let_multi_suggestion =
 lint_non_binding_let_on_drop_type =
     non-binding let on a type that implements `Drop`
 
-lint_non_binding_let_on_sync_lock =
-    non-binding let on a synchronization lock
+lint_non_binding_let_on_sync_lock = non-binding let on a synchronization lock
+    .label = this lock is not assigned to a binding and is immediately dropped
 
 lint_non_binding_let_suggestion =
     consider binding to an unused variable to avoid immediately dropping the value
@@ -700,10 +700,10 @@ lint_reason_must_be_string_literal = reason must be a string literal
 lint_reason_must_come_last = reason in lint attribute must come last
 
 lint_redundant_import = the item `{$ident}` is imported redundantly
-    .label_imported_here = the item `{ident}` is already imported here
-    .label_defined_here = the item `{ident}` is already defined here
-    .label_imported_prelude = the item `{ident}` is already imported by the extern prelude
-    .label_defined_prelude = the item `{ident}` is already defined by the extern prelude
+    .label_imported_here = the item `{$ident}` is already imported here
+    .label_defined_here = the item `{$ident}` is already defined here
+    .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
+    .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
 
 lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
     .note = the most public imported item is `{$max_vis}`
@@ -774,6 +774,10 @@ lint_tykind_kind = usage of `ty::TyKind::<kind>`
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
+
+lint_unexpected_builtin_cfg = unexpected `--cfg {$cfg}` flag
+    .controlled_by = config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`
+    .incoherent = manually setting a built-in cfg can and does create incoherent behaviors
 
 lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_println}` to the top of the `build.rs`
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead

@@ -5,12 +5,13 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use rustc_ast as ast;
+use std::cell::Cell;
+use std::vec;
+
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_hir as hir;
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
@@ -20,9 +21,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::FileName;
 use rustc_target::spec::abi::Abi;
-
-use std::cell::Cell;
-use std::vec;
+use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
     to_string(&map, |s| s.print_node(map.hir_node(hir_id)))

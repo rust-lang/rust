@@ -1178,7 +1178,7 @@ fn pclmulqdq<'tcx>(
         // if the i-th bit in right is set
         if (right & (1 << i)) != 0 {
             // xor result with `left` shifted to the left by i positions
-            result ^= (left as u128) << i;
+            result ^= u128::from(left) << i;
         }
     }
 

@@ -1,41 +1,27 @@
 use std::borrow::Cow;
 
 use libc::c_uint;
-use rustc_codegen_ssa::{
-    debuginfo::{type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo},
-    traits::ConstMethods,
-};
-
+use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
+use rustc_codegen_ssa::debuginfo::wants_c_like_enum_debuginfo;
+use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_index::IndexVec;
-use rustc_middle::{
-    bug,
-    ty::{
-        self,
-        layout::{LayoutOf, TyAndLayout},
-        AdtDef, CoroutineArgs, CoroutineArgsExt, Ty,
-    },
-};
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
 use smallvec::smallvec;
 
-use crate::{
-    common::CodegenCx,
-    debuginfo::{
-        metadata::{
-            build_field_di_node,
-            enums::{tag_base_type, DiscrResult},
-            file_metadata, size_and_align_of, type_di_node,
-            type_map::{self, Stub, UniqueTypeId},
-            unknown_file_metadata, visibility_di_flags, DINodeCreationResult, SmallVec,
-            NO_GENERICS, NO_SCOPE_METADATA, UNKNOWN_LINE_NUMBER,
-        },
-        utils::DIB,
-    },
-    llvm::{
-        self,
-        debuginfo::{DIFile, DIFlags, DIType},
-    },
+use crate::common::CodegenCx;
+use crate::debuginfo::metadata::enums::{tag_base_type, DiscrResult};
+use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
+use crate::debuginfo::metadata::{
+    build_field_di_node, file_metadata, size_and_align_of, type_di_node, unknown_file_metadata,
+    visibility_di_flags, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
+    UNKNOWN_LINE_NUMBER,
 };
+use crate::debuginfo::utils::DIB;
+use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
+use crate::llvm::{self};
 
 // The names of the associated constants in each variant wrapper struct.
 // These have to match up with the names being used in `intrinsic.natvis`.

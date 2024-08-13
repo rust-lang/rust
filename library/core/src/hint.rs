@@ -3,8 +3,7 @@
 //! Hints to compiler that affects how code should be emitted or optimized.
 //! Hints may be compile time or runtime.
 
-use crate::intrinsics;
-use crate::ub_checks;
+use crate::{intrinsics, ub_checks};
 
 /// Informs the compiler that the site which is calling this function is not
 /// reachable, possibly enabling further optimizations.
@@ -195,8 +194,8 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 #[track_caller]
 #[inline(always)]
 #[doc(alias = "assume")]
-#[stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "hint_assert_unchecked", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "hint_assert_unchecked", since = "1.81.0")]
+#[rustc_const_stable(feature = "hint_assert_unchecked", since = "1.81.0")]
 pub const unsafe fn assert_unchecked(cond: bool) {
     // SAFETY: The caller promised `cond` is true.
     unsafe {

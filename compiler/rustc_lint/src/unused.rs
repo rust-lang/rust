@@ -1,11 +1,6 @@
-use crate::lints::{
-    PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
-    UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
-    UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
-    UnusedResult,
-};
-use crate::Lint;
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
@@ -14,15 +9,19 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
-use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, adjustment, Ty};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{BytePos, Span};
-use std::iter;
-use std::ops::ControlFlow;
 use tracing::instrument;
+
+use crate::lints::{
+    PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
+    UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
+    UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
+    UnusedResult,
+};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Lint, LintContext};
 
 declare_lint! {
     /// The `unused_must_use` lint detects unused result of a type flagged as
@@ -676,6 +675,13 @@ trait UnusedDelimLint {
             return true;
         }
 
+        // Do not lint against parentheses around `&raw [const|mut] expr`.
+        // These parentheses will have to be added e.g. when calling a method on the result of this
+        // expression, and we want to avoid churn wrt adding and removing parentheses.
+        if matches!(inner.kind, ast::ExprKind::AddrOf(ast::BorrowKind::Raw, ..)) {
+            return true;
+        }
+
         // Check if LHS needs parens to prevent false-positives in cases like
         // `fn x() -> u8 { ({ 0 } + 1) }`.
         //
@@ -802,7 +808,7 @@ trait UnusedDelimLint {
             return;
         }
         let spans = match value.kind {
-            ast::ExprKind::Block(ref block, None) if block.stmts.len() == 1 => block.stmts[0]
+            ast::ExprKind::Block(ref block, None) if let [stmt] = block.stmts.as_slice() => stmt
                 .span
                 .find_ancestor_inside(value.span)
                 .map(|span| (value.span.with_hi(span.lo()), value.span.with_lo(span.hi()))),
@@ -1205,7 +1211,8 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::{Mutability, PatKind::*};
+        use ast::Mutability;
+        use ast::PatKind::*;
         let keep_space = (false, false);
         match &p.kind {
             // Do not lint on `(..)` as that will result in the other arms being useless.
@@ -1537,14 +1544,12 @@ impl UnusedImportBraces {
             }
 
             // Trigger the lint only if there is one nested item
-            if items.len() != 1 {
-                return;
-            }
+            let [(tree, _)] = items.as_slice() else { return };
 
             // Trigger the lint if the nested item is a non-self single item
-            let node_name = match items[0].0.kind {
+            let node_name = match tree.kind {
                 ast::UseTreeKind::Simple(rename) => {
-                    let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
+                    let orig_ident = tree.prefix.segments.last().unwrap().ident;
                     if orig_ident.name == kw::SelfLower {
                         return;
                     }

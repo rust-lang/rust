@@ -1,20 +1,20 @@
 //! Error Reporting for when the lifetime for a type doesn't match the `impl` selected for a predicate
 //! to hold.
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{note_and_explain, IntroducesStaticBecauseUnmetLifetimeReq};
-use crate::errors::{
-    DoesNotOutliveStaticFromImpl, ImplicitStaticLifetimeSubdiag, MismatchedStaticLifetime,
-};
-use crate::infer::RegionResolutionError;
-use crate::infer::{SubregionOrigin, TypeTrace};
-use crate::traits::ObligationCauseCode;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
+
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
+use crate::errors::{
+    note_and_explain, DoesNotOutliveStaticFromImpl, ImplicitStaticLifetimeSubdiag,
+    IntroducesStaticBecauseUnmetLifetimeReq, MismatchedStaticLifetime,
+};
+use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
+use crate::traits::ObligationCauseCode;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorGuaranteed> {

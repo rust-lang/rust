@@ -26,8 +26,8 @@ pub mod util;
 use std::sync::atomic::AtomicBool;
 
 pub use errors::ReportErrorExt;
-
-use rustc_middle::{ty, util::Providers};
+use rustc_middle::ty;
+use rustc_middle::util::Providers;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

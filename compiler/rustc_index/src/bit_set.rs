@@ -1,20 +1,15 @@
-use std::fmt;
-use std::iter;
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds, Shl};
 use std::rc::Rc;
-use std::slice;
+use std::{fmt, iter, mem, slice};
 
 use arrayvec::ArrayVec;
-use smallvec::{smallvec, SmallVec};
-
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use smallvec::{smallvec, SmallVec};
+use Chunk::*;
 
 use crate::{Idx, IndexVec};
-
-use Chunk::*;
 
 #[cfg(test)]
 mod tests;

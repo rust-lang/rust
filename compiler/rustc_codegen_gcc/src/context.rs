@@ -6,8 +6,7 @@ use gccjit::{
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, MiscMethods};
-use rustc_data_structures::base_n::ToBaseN;
-use rustc_data_structures::base_n::ALPHANUMERIC_ONLY;
+use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
@@ -17,10 +16,10 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_span::{source_map::respan, Span, DUMMY_SP};
-use rustc_target::abi::{
-    call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
-};
+use rustc_span::source_map::respan;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, TlsModel, WasmCAbi};
 
 use crate::callee::get_fn;

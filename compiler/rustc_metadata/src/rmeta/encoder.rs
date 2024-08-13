@@ -1,5 +1,8 @@
-use crate::errors::{FailCreateFileEncoder, FailWriteFile};
-use crate::rmeta::*;
+use std::borrow::Borrow;
+use std::collections::hash_map::Entry;
+use std::fs::File;
+use std::io::{Read, Seek, Write};
+use std::path::{Path, PathBuf};
 
 use rustc_ast::Attribute;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -27,12 +30,10 @@ use rustc_span::symbol::sym;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
 };
-use std::borrow::Borrow;
-use std::collections::hash_map::Entry;
-use std::fs::File;
-use std::io::{Read, Seek, Write};
-use std::path::{Path, PathBuf};
 use tracing::{debug, instrument, trace};
+
+use crate::errors::{FailCreateFileEncoder, FailWriteFile};
+use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::FileEncoder,

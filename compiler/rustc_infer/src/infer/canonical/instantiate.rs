@@ -6,12 +6,12 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, TyCtxt};
+
+use crate::infer::canonical::{Canonical, CanonicalVarValues};
 
 /// FIXME(-Znext-solver): This or public because it is shared with the
 /// new trait solver implementation. We should deduplicate canonicalization.

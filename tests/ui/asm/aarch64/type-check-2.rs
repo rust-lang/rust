@@ -15,15 +15,6 @@ fn main() {
     unsafe {
         // Inputs must be initialized
 
-        // Sym operands must point to a function or static
-
-        const C: i32 = 0;
-        static S: i32 = 0;
-        asm!("{}", sym S);
-        asm!("{}", sym main);
-        asm!("{}", sym C);
-        //~^ ERROR invalid `sym` operand
-
         // Register operands must be Copy
 
         asm!("{:v}", in(vreg) SimdNonCopy(0.0, 0.0, 0.0, 0.0));
@@ -65,12 +56,3 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
-
-// Sym operands must point to a function or static
-
-const C: i32 = 0;
-static S: i32 = 0;
-global_asm!("{}", sym S);
-global_asm!("{}", sym main);
-global_asm!("{}", sym C);
-//~^ ERROR invalid `sym` operand

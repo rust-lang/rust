@@ -4,16 +4,14 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
-use tracing::trace;
-
 use rustc_hir::def::Namespace;
 use rustc_middle::mir::interpret::ScalarSizeMismatch;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, ScalarInt, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_middle::{mir, ty};
+use rustc_middle::{bug, mir, span_bug, ty};
 use rustc_target::abi::{self, Abi, HasDataLayout, Size};
+use tracing::trace;
 
 use super::{
     alloc_range, err_ub, from_known_layout, mir_assign_valid_types, throw_ub, CtfeProvenance,
@@ -186,6 +184,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar(val: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(layout.abi.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
+        debug_assert_eq!(val.size(), layout.size);
         ImmTy { imm: val.into(), layout }
     }
 
@@ -343,7 +342,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             }
             // extract fields from types with `ScalarPair` ABI
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert!(matches!(layout.abi, Abi::Scalar(..)));
+                assert_matches!(layout.abi, Abi::Scalar(..));
                 Immediate::from(if offset.bytes() == 0 {
                     debug_assert_eq!(layout.size, a.size(cx));
                     a_val
@@ -835,8 +834,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);

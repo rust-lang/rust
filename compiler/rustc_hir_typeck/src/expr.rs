@@ -2,33 +2,13 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
-use crate::cast;
-use crate::coercion::CoerceMany;
-use crate::coercion::DynamicCoerceMany;
-use crate::errors::ReturnLikeStatementKind;
-use crate::errors::TypeMismatchFruTypo;
-use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
-use crate::errors::{
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    YieldExprOutsideOfCoroutine,
-};
-use crate::fatally_break_rust;
-use crate::type_error_struct;
-use crate::CoroutineTypes;
-use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::{
-    report_unexpected_variant_res, BreakableCtxt, Diverges, FnCtxt, Needs,
-    TupleArgumentsFlag::DontTupleArguments,
-};
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey,
-    Subdiagnostic,
+    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, StashKey, Subdiagnostic,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -36,14 +16,12 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer;
-use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
@@ -54,10 +32,23 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCauseCode};
-
+use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use smallvec::SmallVec;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use crate::coercion::{CoerceMany, DynamicCoerceMany};
+use crate::errors::{
+    AddressOfTemporaryTaken, FieldMultiplySpecifiedInInitializer,
+    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, ReturnLikeStatementKind,
+    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
+    YieldExprOutsideOfCoroutine,
+};
+use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::TupleArgumentsFlag::DontTupleArguments;
+use crate::{
+    cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct, BreakableCtxt,
+    CoroutineTypes, Diverges, FnCtxt, Needs,
+};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_has_type_or_error(
@@ -1315,6 +1306,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // No way to know whether it's diverging because
             // of a `break` or an outer `break` or `return`.
             self.diverges.set(Diverges::Maybe);
+        } else {
+            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
         // If we permit break with a value, then result type is
@@ -1742,6 +1735,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 Ty::new_error(tcx, guar)
             };
+
+            // Check that the expected field type is WF. Otherwise, we emit no use-site error
+            // in the case of coercions for non-WF fields, which leads to incorrect error
+            // tainting. See issue #126272.
+            self.register_wf_obligation(
+                field_type.into(),
+                field.expr.span,
+                ObligationCauseCode::WellFormed(None),
+            );
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
@@ -2741,15 +2743,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let ty::RawPtr(ptr_ty, _) = expr_t.kind()
             && let ty::Adt(adt_def, _) = ptr_ty.kind()
             && let ExprKind::Field(base_expr, _) = expr.kind
-            && adt_def.variants().len() == 1
-            && adt_def
-                .variants()
-                .iter()
-                .next()
-                .unwrap()
-                .fields
-                .iter()
-                .any(|f| f.ident(self.tcx) == field)
+            && let [variant] = &adt_def.variants().raw
+            && variant.fields.iter().any(|f| f.ident(self.tcx) == field)
         {
             err.multipart_suggestion(
                 "to access the field, dereference first",
@@ -3346,18 +3341,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let container = self.lower_ty(container).normalized;
-
-        if let Some(ident_2) = fields.get(1)
-            && !self.tcx.features().offset_of_nested
-        {
-            rustc_session::parse::feature_err(
-                &self.tcx.sess,
-                sym::offset_of_nested,
-                ident_2.span,
-                "only a single ident or integer is stable as the field in offset_of",
-            )
-            .emit();
-        }
 
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;

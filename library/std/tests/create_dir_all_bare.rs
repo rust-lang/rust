@@ -3,9 +3,8 @@
 //! Note that this test changes the current directory so
 //! should not be in the same process as other tests.
 
-use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 mod common;
 

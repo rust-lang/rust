@@ -1,14 +1,12 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::atomic::{
-    AtomicU32,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::AtomicU32;
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use crate::sync::once::ExclusiveState;
 use crate::sys::futex::{futex_wait, futex_wake_all};
 
 // On some platforms, the OS is very nice and handles the waiter queue for us.
-// This means we only need one atomic value with 5 states:
+// This means we only need one atomic value with 4 states:
 
 /// No initialization has run yet, and no thread is currently using the Once.
 const INCOMPLETE: u32 = 0;
@@ -19,15 +17,19 @@ const POISONED: u32 = 1;
 /// Some thread is currently attempting to run initialization. It may succeed,
 /// so all future threads need to wait for it to finish.
 const RUNNING: u32 = 2;
-/// Some thread is currently attempting to run initialization and there are threads
-/// waiting for it to finish.
-const QUEUED: u32 = 3;
 /// Initialization has completed and all future calls should finish immediately.
-const COMPLETE: u32 = 4;
+const COMPLETE: u32 = 3;
 
-// Threads wait by setting the state to QUEUED and calling `futex_wait` on the state
+// An additional bit indicates whether there are waiting threads:
+
+/// May only be set if the state is not COMPLETE.
+const QUEUED: u32 = 4;
+
+// Threads wait by setting the QUEUED bit and calling `futex_wait` on the state
 // variable. When the running thread finishes, it will wake all waiting threads using
 // `futex_wake_all`.
+
+const STATE_MASK: u32 = 0b11;
 
 pub struct OnceState {
     poisoned: bool,
@@ -47,7 +49,7 @@ impl OnceState {
 }
 
 struct CompletionGuard<'a> {
-    state: &'a AtomicU32,
+    state_and_queued: &'a AtomicU32,
     set_state_on_drop_to: u32,
 }
 
@@ -56,32 +58,32 @@ impl<'a> Drop for CompletionGuard<'a> {
         // Use release ordering to propagate changes to all threads checking
         // up on the Once. `futex_wake_all` does its own synchronization, hence
         // we do not need `AcqRel`.
-        if self.state.swap(self.set_state_on_drop_to, Release) == QUEUED {
-            futex_wake_all(self.state);
+        if self.state_and_queued.swap(self.set_state_on_drop_to, Release) & QUEUED != 0 {
+            futex_wake_all(self.state_and_queued);
         }
     }
 }
 
 pub struct Once {
-    state: AtomicU32,
+    state_and_queued: AtomicU32,
 }
 
 impl Once {
     #[inline]
     pub const fn new() -> Once {
-        Once { state: AtomicU32::new(INCOMPLETE) }
+        Once { state_and_queued: AtomicU32::new(INCOMPLETE) }
     }
 
     #[inline]
     pub fn is_completed(&self) -> bool {
         // Use acquire ordering to make all initialization changes visible to the
         // current thread.
-        self.state.load(Acquire) == COMPLETE
+        self.state_and_queued.load(Acquire) == COMPLETE
     }
 
     #[inline]
     pub(crate) fn state(&mut self) -> ExclusiveState {
-        match *self.state.get_mut() {
+        match *self.state_and_queued.get_mut() {
             INCOMPLETE => ExclusiveState::Incomplete,
             POISONED => ExclusiveState::Poisoned,
             COMPLETE => ExclusiveState::Complete,
@@ -89,31 +91,73 @@ impl Once {
         }
     }
 
-    // This uses FnMut to match the API of the generic implementation. As this
-    // implementation is quite light-weight, it is generic over the closure and
-    // so avoids the cost of dynamic dispatch.
     #[cold]
     #[track_caller]
-    pub fn call(&self, ignore_poisoning: bool, f: &mut impl FnMut(&public::OnceState)) {
-        let mut state = self.state.load(Acquire);
+    pub fn wait(&self, ignore_poisoning: bool) {
+        let mut state_and_queued = self.state_and_queued.load(Acquire);
         loop {
+            let state = state_and_queued & STATE_MASK;
+            let queued = state_and_queued & QUEUED != 0;
             match state {
+                COMPLETE => return,
+                POISONED if !ignore_poisoning => {
+                    // Panic to propagate the poison.
+                    panic!("Once instance has previously been poisoned");
+                }
+                _ => {
+                    // Set the QUEUED bit if it has not already been set.
+                    if !queued {
+                        state_and_queued += QUEUED;
+                        if let Err(new) = self.state_and_queued.compare_exchange_weak(
+                            state,
+                            state_and_queued,
+                            Relaxed,
+                            Acquire,
+                        ) {
+                            state_and_queued = new;
+                            continue;
+                        }
+                    }
+
+                    futex_wait(&self.state_and_queued, state_and_queued, None);
+                    state_and_queued = self.state_and_queued.load(Acquire);
+                }
+            }
+        }
+    }
+
+    #[cold]
+    #[track_caller]
+    pub fn call(&self, ignore_poisoning: bool, f: &mut dyn FnMut(&public::OnceState)) {
+        let mut state_and_queued = self.state_and_queued.load(Acquire);
+        loop {
+            let state = state_and_queued & STATE_MASK;
+            let queued = state_and_queued & QUEUED != 0;
+            match state {
+                COMPLETE => return,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
                     panic!("Once instance has previously been poisoned");
                 }
                 INCOMPLETE | POISONED => {
                     // Try to register the current thread as the one running.
-                    if let Err(new) =
-                        self.state.compare_exchange_weak(state, RUNNING, Acquire, Acquire)
-                    {
-                        state = new;
+                    let next = RUNNING + if queued { QUEUED } else { 0 };
+                    if let Err(new) = self.state_and_queued.compare_exchange_weak(
+                        state_and_queued,
+                        next,
+                        Acquire,
+                        Acquire,
+                    ) {
+                        state_and_queued = new;
                         continue;
                     }
+
                     // `waiter_queue` will manage other waiting threads, and
                     // wake them up on drop.
-                    let mut waiter_queue =
-                        CompletionGuard { state: &self.state, set_state_on_drop_to: POISONED };
+                    let mut waiter_queue = CompletionGuard {
+                        state_and_queued: &self.state_and_queued,
+                        set_state_on_drop_to: POISONED,
+                    };
                     // Run the function, letting it know if we're poisoned or not.
                     let f_state = public::OnceState {
                         inner: OnceState {
@@ -125,21 +169,27 @@ impl Once {
                     waiter_queue.set_state_on_drop_to = f_state.inner.set_state_to.get();
                     return;
                 }
-                RUNNING | QUEUED => {
-                    // Set the state to QUEUED if it is not already.
-                    if state == RUNNING
-                        && let Err(new) =
-                            self.state.compare_exchange_weak(RUNNING, QUEUED, Relaxed, Acquire)
-                    {
-                        state = new;
-                        continue;
+                _ => {
+                    // All other values must be RUNNING.
+                    assert!(state == RUNNING);
+
+                    // Set the QUEUED bit if it is not already set.
+                    if !queued {
+                        state_and_queued += QUEUED;
+                        if let Err(new) = self.state_and_queued.compare_exchange_weak(
+                            state,
+                            state_and_queued,
+                            Relaxed,
+                            Acquire,
+                        ) {
+                            state_and_queued = new;
+                            continue;
+                        }
                     }
 
-                    futex_wait(&self.state, QUEUED, None);
-                    state = self.state.load(Acquire);
+                    futex_wait(&self.state_and_queued, state_and_queued, None);
+                    state_and_queued = self.state_and_queued.load(Acquire);
                 }
-                COMPLETE => return,
-                _ => unreachable!("state is never set to invalid values"),
             }
         }
     }

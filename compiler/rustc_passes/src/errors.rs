@@ -1,13 +1,11 @@
-use std::{
-    io::Error,
-    path::{Path, PathBuf},
-};
+use std::io::Error;
+use std::path::{Path, PathBuf};
 
-use crate::fluent_generated as fluent;
 use rustc_ast::Label;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee,
-    Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -15,6 +13,7 @@ use rustc_middle::ty::{MainDefinition, Ty};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use crate::check_attr::ProcMacroKind;
+use crate::fluent_generated as fluent;
 use crate::lang_items::Duplicate;
 
 #[derive(LintDiagnostic)]
@@ -68,6 +67,10 @@ pub struct CoverageNotFnOrClosure {
     #[label]
     pub defn_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(passes_optimize_not_fn_or_closure)]
+pub struct OptimizeNotFnOrClosure;
 
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
@@ -631,6 +634,13 @@ pub struct LinkOrdinal {
 pub struct Confusables {
     #[primary_span]
     pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_coroutine_on_non_closure)]
+pub struct CoroutineOnNonClosure {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

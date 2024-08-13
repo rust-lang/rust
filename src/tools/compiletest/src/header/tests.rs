@@ -2,10 +2,9 @@ use std::io::Read;
 use std::path::Path;
 use std::str::FromStr;
 
+use super::iter_header;
 use crate::common::{Config, Debugger, Mode};
 use crate::header::{parse_normalize_rule, EarlyProps, HeadersCache};
-
-use super::iter_header;
 
 fn make_test_description<R: Read>(
     config: &Config,

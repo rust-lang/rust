@@ -1,8 +1,9 @@
 // Assert that the search index is generated deterministically, regardless of the
 // order that crates are documented in.
 
-use run_make_support::{diff, rustdoc};
 use std::path::Path;
+
+use run_make_support::{diff, rustdoc};
 
 fn main() {
     let foo_first = Path::new("foo_first");

@@ -1,6 +1,7 @@
-use super::*;
 use core::iter::*;
 use core::num::NonZero;
+
+use super::*;
 
 #[test]
 fn test_chain() {

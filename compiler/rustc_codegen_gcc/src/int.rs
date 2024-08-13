@@ -6,18 +6,13 @@ use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, T
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{ParamEnv, Ty};
-use rustc_target::abi::{
-    call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode},
-    Endian,
-};
+use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
+use rustc_target::abi::Endian;
 use rustc_target::spec;
 
-use crate::builder::ToGccComp;
-use crate::{
-    builder::Builder,
-    common::{SignType, TypeReflection},
-    context::CodegenCx,
-};
+use crate::builder::{Builder, ToGccComp};
+use crate::common::{SignType, TypeReflection};
+use crate::context::CodegenCx;
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn gcc_urem(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -266,7 +261,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         lhs: <Self as BackendTypes>::Value,
         rhs: <Self as BackendTypes>::Value,
     ) -> (<Self as BackendTypes>::Value, <Self as BackendTypes>::Value) {
-        use rustc_middle::ty::{Int, IntTy::*, Uint, UintTy::*};
+        use rustc_middle::ty::IntTy::*;
+        use rustc_middle::ty::UintTy::*;
+        use rustc_middle::ty::{Int, Uint};
 
         let new_kind = match *typ.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),

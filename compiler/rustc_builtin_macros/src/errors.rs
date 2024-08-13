@@ -1,9 +1,11 @@
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
-    SingleLabelManySpans, SubdiagMessageOp, Subdiagnostic,
+    Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan, SingleLabelManySpans,
+    SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_requires_cfg_pattern)]
@@ -291,13 +293,6 @@ pub(crate) struct DerivePathArgsList {
 #[diag(builtin_macros_derive_path_args_value)]
 pub(crate) struct DerivePathArgsValue {
     #[suggestion(code = "", applicability = "machine-applicable")]
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_derive_unsafe_path)]
-pub(crate) struct DeriveUnsafePath {
     #[primary_span]
     pub(crate) span: Span,
 }
@@ -854,6 +849,15 @@ pub(crate) struct GlobalAsmUnsupportedOption {
     pub(crate) symbol: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub(crate) full_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_global_asm_unsupported_operand)]
+pub(crate) struct GlobalAsmUnsupportedOperand<'a> {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: &'a str,
 }
 
 #[derive(Diagnostic)]

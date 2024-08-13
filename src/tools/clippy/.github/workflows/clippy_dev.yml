@@ -16,6 +16,7 @@ on:
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -D warnings
 
 jobs:
   clippy_dev:
@@ -28,7 +29,7 @@ jobs:
 
     # Run
     - name: Build
-      run: cargo build --features deny-warnings
+      run: cargo build
       working-directory: clippy_dev
 
     - name: Test update_lints
@@ -38,6 +39,8 @@ jobs:
       run: cargo dev fmt --check
 
     - name: Test cargo dev new lint
+      env:
+        RUSTFLAGS: -A unused-imports
       run: |
         cargo dev new_lint --name new_early_pass --pass early
         cargo dev new_lint --name new_late_pass --pass late

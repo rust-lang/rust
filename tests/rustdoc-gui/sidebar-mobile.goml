@@ -25,9 +25,12 @@ click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"left": "0px"})
 
 // Make sure the "struct Foo" header is hidden, since the mobile topbar already does it.
-assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='Foo']/parent::h2", {"display": "none"})
+assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[normalize-space()='Foo']/parent::h2", {"display": "none"})
 // Make sure the global navigation is still here.
-assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='In crate test_docs']/parent::h2", {"display": "block"})
+assert-css: (
+    "//nav[contains(@class, 'sidebar')]//h2/a[normalize-space()='In crate test_docs']/parent::h2",
+    {"display": "block"}
+)
 
 // Click elsewhere.
 click: "body"

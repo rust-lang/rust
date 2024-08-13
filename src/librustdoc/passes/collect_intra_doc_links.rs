@@ -2,12 +2,15 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
+use std::borrow::Cow;
+use std::fmt::Display;
+use std::mem;
+use std::ops::Range;
+
 use pulldown_cmark::LinkType;
 use rustc_ast::util::comments::may_have_doc_links;
-use rustc_data_structures::{
-    fx::{FxHashMap, FxHashSet},
-    intern::Interned,
-};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, DiagMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
@@ -15,9 +18,9 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
-use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
 use rustc_resolve::rustdoc::{
-    source_span_for_markdown_range, strip_generics_from_path, MalformedGenerics,
+    has_primitive_or_keyword_docs, prepare_to_doc_link_resolution, source_span_for_markdown_range,
+    strip_generics_from_path, MalformedGenerics,
 };
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
@@ -25,13 +28,8 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
 
-use std::borrow::Cow;
-use std::fmt::Display;
-use std::mem;
-use std::ops::Range;
-
-use crate::clean::{self, utils::find_nearest_parent_module};
-use crate::clean::{Crate, Item, ItemLink, PrimitiveType};
+use crate::clean::utils::find_nearest_parent_module;
+use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::html::markdown::{markdown_links, MarkdownLink, MarkdownLinkRange};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};

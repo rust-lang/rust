@@ -1,7 +1,6 @@
 //! This checks the output of some `--print` options when
 //! output to a file (instead of stdout)
 
-use std::ffi::OsString;
 use std::path::PathBuf;
 
 use run_make_support::{rfs, rustc, target};
@@ -44,10 +43,8 @@ fn check(args: Option) {
     // --print={option}=PATH
     let output = {
         let tmp_path = PathBuf::from(format!("{}.txt", args.option));
-        let mut print_arg = OsString::from(format!("--print={}=", args.option));
-        print_arg.push(tmp_path.as_os_str());
 
-        rustc().target(args.target).arg(print_arg).run();
+        rustc().target(args.target).print(&format!("{}={}", args.option, tmp_path.display())).run();
 
         rfs::read_to_string(&tmp_path)
     };

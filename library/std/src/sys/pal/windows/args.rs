@@ -8,8 +8,6 @@ mod tests;
 
 use super::os::current_exe;
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
@@ -18,9 +16,7 @@ use crate::sys::process::ensure_no_nuls;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::wstr::WStrUnits;
 use crate::sys_common::AsInner;
-use crate::vec;
-
-use crate::iter;
+use crate::{fmt, io, iter, vec};
 
 /// This is the const equivalent to `NonZero::new(n).unwrap()`
 ///

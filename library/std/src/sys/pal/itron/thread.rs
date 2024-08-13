@@ -1,22 +1,17 @@
 //! Thread implementation backed by μITRON tasks. Assumes `acre_tsk` and
 //! `exd_tsk` are available.
 
-use super::{
-    abi,
-    error::{expect_success, expect_success_aborting, ItronError},
-    task,
-    time::dur2reltims,
-};
-use crate::{
-    cell::UnsafeCell,
-    ffi::CStr,
-    hint, io,
-    mem::ManuallyDrop,
-    num::NonZero,
-    ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering},
-    time::Duration,
-};
+use super::error::{expect_success, expect_success_aborting, ItronError};
+use super::time::dur2reltims;
+use super::{abi, task};
+use crate::cell::UnsafeCell;
+use crate::ffi::CStr;
+use crate::mem::ManuallyDrop;
+use crate::num::NonZero;
+use crate::ptr::NonNull;
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::time::Duration;
+use crate::{hint, io};
 
 pub struct Thread {
     p_inner: NonNull<ThreadInner>,
@@ -308,7 +303,7 @@ impl Drop for Thread {
     }
 }
 
-/// Terminate and delete the specified task.
+/// Terminates and deletes the specified task.
 ///
 /// This function will abort if `deleted_task` refers to the calling task.
 ///
@@ -337,7 +332,7 @@ unsafe fn terminate_and_delete_task(deleted_task: abi::ID) {
     expect_success_aborting(unsafe { abi::del_tsk(deleted_task) }, &"del_tsk");
 }
 
-/// Terminate and delete the calling task.
+/// Terminates and deletes the calling task.
 ///
 /// Atomicity is not required - i.e., it can be assumed that other threads won't
 /// `ter_tsk` the calling task while this function is still in progress. (This

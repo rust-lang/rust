@@ -66,12 +66,12 @@ click: "#sidebar-button"
 // We wait for the sidebar to be expanded.
 wait-for-css: (".src-sidebar-expanded nav.sidebar", {"width": "300px"})
 assert: "//*[@class='dir-entry' and @open]/*[text()='lib2']"
-assert: "//*[@class='dir-entry' and @open]/*[text()='another_folder']"
-assert: "//*[@class='dir-entry' and @open]/*[text()='sub_mod']"
+assert: "//*[@class='dir-entry' and @open]/*[normalize-space()='another_folder']"
+assert: "//*[@class='dir-entry' and @open]/*[normalize-space()='sub_mod']"
 // Only "another_folder" should be "open" in "lib2".
-assert: "//*[@class='dir-entry' and not(@open)]/*[text()='another_mod']"
+assert: "//*[@class='dir-entry' and not(@open)]/*[normalize-space()='another_mod']"
 // All other trees should be collapsed.
-assert-count: ("//*[@id='src-sidebar']/details[not(text()='lib2') and not(@open)]", 11)
+assert-count: ("//*[@id='src-sidebar']/details[not(normalize-space()='lib2') and not(@open)]", 11)
 
 // We now switch to mobile mode.
 set-window-size: (600, 600)

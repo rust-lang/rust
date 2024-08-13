@@ -12,19 +12,16 @@ use hir::def_id::DefId;
 use hir::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
-use rustc_infer::traits::ObligationCause;
-use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
+use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 
+use super::SelectionCandidate::*;
+use super::{BuiltinImplConditions, SelectionCandidateSet, SelectionContext, TraitObligationStack};
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
-
-use super::BuiltinImplConditions;
-use super::SelectionCandidate::*;
-use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, stack), level = "debug")]
@@ -470,8 +467,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::FnDef(..) | ty::FnPtr(..) => {
-                candidates.vec.push(AsyncClosureCandidate);
+            // Provide an impl, but only for suitable `fn` pointers.
+            ty::FnPtr(sig) => {
+                if sig.is_fn_trait_compatible() {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
+            }
+            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
+            ty::FnDef(def_id, _) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
             }
             _ => {}
         }

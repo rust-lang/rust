@@ -1,12 +1,11 @@
-use super::link::{self, ensure_removed};
-use super::lto::{self, SerializedModule};
-use super::symbol_export::symbol_name_for_instance_in_crate;
+use std::any::Any;
+use std::assert_matches::assert_matches;
+use std::marker::PhantomData;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
+use std::{fs, io, mem, str, thread};
 
-use crate::errors;
-use crate::traits::*;
-use crate::{
-    CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-};
 use jobserver::{Acquired, Client};
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -30,26 +29,25 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::exported_symbols::SymbolExportInfo;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType, Lto, OutFileName, OutputFilenames, OutputType};
-use rustc_session::config::{Passes, SwitchWithOptPath};
+use rustc_session::config::{
+    self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
+};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
-
-use crate::errors::ErrorCreatingRemarkDir;
-use std::any::Any;
-use std::fs;
-use std::io;
-use std::marker::PhantomData;
-use std::mem;
-use std::path::{Path, PathBuf};
-use std::str;
-use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::Arc;
-use std::thread;
 use tracing::debug;
+
+use super::link::{self, ensure_removed};
+use super::lto::{self, SerializedModule};
+use super::symbol_export::symbol_name_for_instance_in_crate;
+use crate::errors::ErrorCreatingRemarkDir;
+use crate::traits::*;
+use crate::{
+    errors, CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen,
+    ModuleKind,
+};
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
@@ -1966,7 +1964,7 @@ impl SharedEmitterMain {
                     sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
-                    assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
+                    assert_matches!(level, Level::Error | Level::Warning | Level::Note);
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
                     let mut err = Diag::<()>::new(sess.dcx(), level, msg);
 

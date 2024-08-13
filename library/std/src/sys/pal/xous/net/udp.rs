@@ -1,13 +1,13 @@
+use core::convert::TryInto;
+use core::sync::atomic::{AtomicUsize, Ordering};
+
 use super::*;
 use crate::cell::Cell;
-use crate::fmt;
-use crate::io;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use crate::os::xous::services;
 use crate::sync::Arc;
 use crate::time::Duration;
-use core::convert::TryInto;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use crate::{fmt, io};
 
 macro_rules! unimpl {
     () => {

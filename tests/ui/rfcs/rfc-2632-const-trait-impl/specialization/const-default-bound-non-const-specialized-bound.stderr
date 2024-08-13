@@ -1,4 +1,4 @@
-error[E0049]: method `bar` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `bar` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:16:1
    |
 LL | #[const_trait]
@@ -16,7 +16,7 @@ LL | |     T: Foo, //FIXME ~ ERROR missing `~const` qualifier
 LL | |     T: Specialize,
    | |__________________^
 
-error[E0049]: method `baz` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `baz` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:36:1
    |
 LL | #[const_trait]
@@ -25,7 +25,7 @@ LL | trait Baz {
 LL |     fn baz();
    |           - expected 0 const parameters
 
-error[E0049]: method `baz` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `baz` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:36:1
    |
 LL | #[const_trait]

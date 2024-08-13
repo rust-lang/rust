@@ -16,7 +16,9 @@
 //! 4. We check that the error code is actually emitted by the compiler.
 //!   - This is done by searching `compiler/` with a regex.
 
-use std::{ffi::OsStr, fs, path::Path};
+use std::ffi::OsStr;
+use std::fs;
+use std::path::Path;
 
 use regex::Regex;
 
@@ -317,7 +319,7 @@ fn check_error_codes_tests(
         if !found_code {
             verbose_print!(
                 verbose,
-                "warning: Error code {code}`` has a UI test file, but doesn't contain its own error code!"
+                "warning: Error code `{code}` has a UI test file, but doesn't contain its own error code!"
             );
         }
     }

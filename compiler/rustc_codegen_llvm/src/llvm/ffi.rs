@@ -1,18 +1,16 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use std::marker::PhantomData;
+
+use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
     DebugEmissionKind, DebugNameTableKind,
 };
-
-use libc::{c_char, c_int, c_uint, size_t};
-use libc::{c_ulonglong, c_void};
-
-use std::marker::PhantomData;
-
 use super::RustString;
 
 pub type Bool = c_uint;
@@ -428,6 +426,7 @@ pub enum MetadataType {
     MD_nontemporal = 9,
     MD_mem_parallel_loop_access = 10,
     MD_nonnull = 11,
+    MD_unpredictable = 15,
     MD_align = 17,
     MD_type = 19,
     MD_vcall_visibility = 28,
@@ -697,8 +696,9 @@ pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void
 pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod debuginfo {
-    use super::{InvariantOpaque, Metadata};
     use bitflags::bitflags;
+
+    use super::{InvariantOpaque, Metadata};
 
     #[repr(C)]
     pub struct DIBuilder<'a>(InvariantOpaque<'a>);
@@ -1575,6 +1575,12 @@ extern "C" {
     pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
     pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
     pub fn LLVMRustCreateMemoryEffectsAttr(C: &Context, effects: MemoryEffects) -> &Attribute;
+    pub fn LLVMRustCreateRangeAttribute(
+        C: &Context,
+        num_bits: c_uint,
+        lower_words: *const u64,
+        upper_words: *const u64,
+    ) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(

@@ -66,7 +66,7 @@ parse_box_not_pat = expected pattern, found {$descr}
     .suggestion = escape `box` to use it as an identifier
 
 parse_box_syntax_removed = `box_syntax` has been removed
-    .suggestion = use `Box::new()` instead
+parse_box_syntax_removed_suggestion = use `Box::new()` instead
 
 parse_cannot_be_raw_ident = `{$ident}` cannot be a raw identifier
 
@@ -365,6 +365,7 @@ parse_inner_doc_comment_not_permitted = expected outer doc comment
     .sugg_change_inner_to_outer = to annotate the {$item}, change the doc comment from inner to outer style
 
 parse_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
+    .label = this is not an unsafe attribute
     .suggestion = remove the `unsafe(...)`
     .note = extraneous unsafe is not allowed in attributes
 

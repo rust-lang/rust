@@ -10,7 +10,7 @@ const RAW_EQ_PADDING: bool = unsafe {
 const RAW_EQ_PTR: bool = unsafe {
     std::intrinsics::raw_eq(&(&0), &(&1))
 //~^ ERROR evaluation of constant value failed
-//~| `raw_eq` on bytes with provenance
+//~| unable to turn pointer into integer
 };
 
 pub fn main() {

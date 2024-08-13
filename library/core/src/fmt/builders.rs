@@ -1018,7 +1018,8 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 }
 
-/// Implements [`fmt::Debug`] and [`fmt::Display`] using a function.
+/// Creates a type whose [`fmt::Debug`] and [`fmt::Display`] impls are provided with the function
+/// `f`.
 ///
 /// # Examples
 ///
@@ -1030,17 +1031,25 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{}", value), "a");
 /// assert_eq!(format!("{:?}", value), "'a'");
 ///
-/// let wrapped = fmt::FormatterFn(|f| write!(f, "{value:?}"));
+/// let wrapped = fmt::from_fn(|f| write!(f, "{value:?}"));
 /// assert_eq!(format!("{}", wrapped), "'a'");
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub struct FormatterFn<F>(pub F)
+pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
+    FromFn(f)
+}
+
+/// Implements [`fmt::Debug`] and [`fmt::Display`] using a function.
+///
+/// Created with [`from_fn`].
+#[unstable(feature = "debug_closure_helpers", issue = "117729")]
+pub struct FromFn<F>(F)
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result;
 
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-impl<F> fmt::Debug for FormatterFn<F>
+impl<F> fmt::Debug for FromFn<F>
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
 {
@@ -1050,7 +1059,7 @@ where
 }
 
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-impl<F> fmt::Display for FormatterFn<F>
+impl<F> fmt::Display for FromFn<F>
 where
     F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result,
 {

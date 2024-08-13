@@ -3,13 +3,14 @@ use std::hash::Hash;
 
 use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
-    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, ItemSummary, Module,
-    OpaqueTy, Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias,
-    Type, TypeAlias, TypeBinding, TypeBindingKind, Union, Variant, VariantKind, WherePredicate,
+    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, ItemSummary, Module, Path,
+    Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeAlias,
+    TypeBinding, TypeBindingKind, Union, Variant, VariantKind, WherePredicate,
 };
 use serde_json::Value;
 
-use crate::{item_kind::Kind, json_find, Error, ErrorKind};
+use crate::item_kind::Kind;
+use crate::{json_find, Error, ErrorKind};
 
 // This is a rustc implementation detail that we rely on here
 const LOCAL_CRATE_ID: u32 = 0;
@@ -100,7 +101,6 @@ impl<'a> Validator<'a> {
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
                 ItemEnum::Impl(x) => self.check_impl(x, id),
                 ItemEnum::TypeAlias(x) => self.check_type_alias(x),
-                ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
                 ItemEnum::Constant { type_, const_ } => {
                     self.check_type(type_);
                     self.check_constant(const_);
@@ -227,11 +227,6 @@ impl<'a> Validator<'a> {
     fn check_type_alias(&mut self, x: &'a TypeAlias) {
         self.check_generics(&x.generics);
         self.check_type(&x.type_);
-    }
-
-    fn check_opaque_ty(&mut self, x: &'a OpaqueTy) {
-        x.bounds.iter().for_each(|b| self.check_generic_bound(b));
-        self.check_generics(&x.generics);
     }
 
     fn check_constant(&mut self, _x: &'a Constant) {

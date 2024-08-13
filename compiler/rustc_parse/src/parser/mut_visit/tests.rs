@@ -1,9 +1,10 @@
-use crate::parser::tests::{matches_codepattern, string_to_crate};
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast_pretty::pprust;
 use rustc_span::create_default_session_globals_then;
 use rustc_span::symbol::Ident;
+
+use crate::parser::tests::{matches_codepattern, string_to_crate};
 
 // This version doesn't care about getting comments or doc-strings in.
 fn print_crate_items(krate: &ast::Crate) -> String {

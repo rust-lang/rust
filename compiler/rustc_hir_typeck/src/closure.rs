@@ -1,27 +1,26 @@
 //! Code for type-checking closure expressions.
 
-use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
+use std::iter;
+use std::ops::ControlFlow;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
-use rustc_infer::infer::{InferOk, InferResult};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
 use rustc_type_ir::ClosureKind;
-use std::iter;
-use std::ops::ControlFlow;
+
+use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]

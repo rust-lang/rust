@@ -1,4 +1,9 @@
-use crate::errors;
+use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
+use std::{env, iter, thread};
+
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 #[cfg(parallel_compiler)]
@@ -16,13 +21,9 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::symbol::sym;
 use rustc_target::spec::Target;
-use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
-use std::thread;
-use std::{env, iter};
 use tracing::info;
+
+use crate::errors;
 
 /// Function pointer type that constructs a new CodegenBackend.
 pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -136,11 +137,13 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     sm_inputs: SourceMapInputs,
     f: F,
 ) -> R {
-    use rustc_data_structures::{defer, jobserver, sync::FromDyn};
+    use std::process;
+
+    use rustc_data_structures::sync::FromDyn;
+    use rustc_data_structures::{defer, jobserver};
     use rustc_middle::ty::tls;
     use rustc_query_impl::QueryCtxt;
     use rustc_query_system::query::{break_query_cycles, QueryContext};
-    use std::process;
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
@@ -383,7 +386,6 @@ fn get_codegen_sysroot(
     }
 }
 
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub(crate) fn check_attr_crate_type(
     sess: &Session,
     attrs: &[ast::Attribute],

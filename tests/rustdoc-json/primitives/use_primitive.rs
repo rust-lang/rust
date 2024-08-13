@@ -15,6 +15,5 @@ mod usize {}
 
 //@ is "$.index[*].inner.import[?(@.name=='my_i32')].id" null
 pub use i32 as my_i32;
-
 //@ is "$.index[*].inner.import[?(@.name=='u32')].id" null
 pub use u32;

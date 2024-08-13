@@ -1,13 +1,5 @@
 //! Error Reporting for static impl Traits.
 
-use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
-    ButCallingIntroduces, ButNeedsToSatisfy, DynTraitConstraintSuggestion, MoreTargeted,
-    ReqIntroducedLocations,
-};
-use crate::infer::RegionResolutionError;
-use crate::infer::{SubregionOrigin, TypeTrace};
-use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnostic};
 use rustc_hir::def_id::DefId;
@@ -19,10 +11,17 @@ use rustc_hir::{
 use rustc_middle::ty::{
     self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use rustc_span::def_id::LocalDefId;
+use crate::error_reporting::infer::nice_region_error::NiceRegionError;
+use crate::errors::{
+    ButCallingIntroduces, ButNeedsToSatisfy, DynTraitConstraintSuggestion, MoreTargeted,
+    ReqIntroducedLocations,
+};
+use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
+use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,

@@ -5,8 +5,7 @@
 pub use rustc_middle::ty::relate::RelateResult;
 pub use rustc_next_trait_solver::relate::*;
 
-pub use self::combine::CombineFields;
-pub use self::combine::PredicateEmittingRelation;
+pub use self::combine::{CombineFields, PredicateEmittingRelation};
 
 #[allow(hidden_glob_reexports)]
 pub(super) mod combine;

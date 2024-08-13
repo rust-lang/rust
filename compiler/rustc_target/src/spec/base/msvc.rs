@@ -1,5 +1,6 @@
-use crate::spec::{DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
+
+use crate::spec::{DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // Suppress the verbose logo and authorship debugging output, which would needlessly

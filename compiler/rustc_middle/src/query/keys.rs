@@ -1,18 +1,17 @@
 //! Defines the set of legal keys that can be used in queries.
 
-use crate::infer::canonical::Canonical;
-use crate::mir;
-use crate::traits;
-use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::{TyAndLayout, ValidityRequirement};
-use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::{GenericArg, GenericArgsRef};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
+
+use crate::infer::canonical::Canonical;
+use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::{TyAndLayout, ValidityRequirement};
+use crate::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
+use crate::{mir, traits};
 
 /// Placeholder for `CrateNum`'s "local" counterpart
 #[derive(Copy, Clone, Debug)]

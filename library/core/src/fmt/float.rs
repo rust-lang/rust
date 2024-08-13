@@ -1,7 +1,6 @@
 use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
-use crate::num::flt2dec;
-use crate::num::fmt as numfmt;
+use crate::num::{flt2dec, fmt as numfmt};
 
 #[doc(hidden)]
 trait GeneralFormat: PartialOrd {

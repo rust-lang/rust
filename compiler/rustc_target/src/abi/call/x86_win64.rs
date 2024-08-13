@@ -1,5 +1,5 @@
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::Abi;
+use crate::abi::{Abi, Float, Primitive};
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
@@ -18,8 +18,12 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
-            Abi::Scalar(_) => {
-                if a.layout.size.bytes() > 8 {
+            Abi::Scalar(scalar) => {
+                // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
+                // with what LLVM expects.
+                if a.layout.size.bytes() > 8
+                    && !matches!(scalar.primitive(), Primitive::Float(Float::F128))
+                {
                     a.make_indirect();
                 } else {
                     a.extend_integer_width_to(32);

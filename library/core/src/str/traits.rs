@@ -1,14 +1,11 @@
 //! Trait implementations for `str`.
 
+use super::ParseBoolError;
 use crate::cmp::Ordering;
 use crate::intrinsics::unchecked_sub;
-use crate::ops;
-use crate::ptr;
-use crate::range;
 use crate::slice::SliceIndex;
 use crate::ub_checks::assert_unsafe_precondition;
-
-use super::ParseBoolError;
+use crate::{ops, ptr, range};
 
 /// Implements ordering of strings.
 ///

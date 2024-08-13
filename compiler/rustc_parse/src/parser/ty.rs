@@ -1,13 +1,3 @@
-use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
-
-use crate::errors::{
-    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
-    FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
-    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
-    NestedCVariadicType, ReturnTypesUseThinArrow,
-};
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
@@ -20,6 +10,15 @@ use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use thin_vec::{thin_vec, ThinVec};
+
+use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
+use crate::errors::{
+    self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
+    FnPointerCannotBeAsync, FnPointerCannotBeConst, FnPtrWithGenerics, FnPtrWithGenericsSugg,
+    HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
+    NestedCVariadicType, ReturnTypesUseThinArrow,
+};
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 /// Signals whether parsing a type should allow `+`.
 ///

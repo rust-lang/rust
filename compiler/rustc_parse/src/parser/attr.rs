@@ -1,15 +1,15 @@
-use crate::errors;
-use crate::fluent_generated as fluent;
-use crate::maybe_whole;
-
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter};
-use rustc_errors::{codes::*, Diag, PResult};
-use rustc_span::{sym, symbol::kw, BytePos, Span};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, PResult};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
+
+use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle};
+use crate::{errors, fluent_generated as fluent, maybe_whole};
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -29,6 +29,12 @@ enum OuterAttributeType {
     DocComment,
     DocBlockComment,
     Attribute,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum AllowLeadingUnsafe {
+    Yes,
+    No,
 }
 
 impl<'a> Parser<'a> {
@@ -307,8 +313,8 @@ impl<'a> Parser<'a> {
                 // inner attribute, for possible later processing in a `LazyAttrTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
-                    let range = start_pos..end_pos;
-                    self.capture_state.inner_attr_ranges.insert(attr.id, range);
+                    let parser_range = ParserRange(start_pos..end_pos);
+                    self.capture_state.inner_attr_parser_ranges.insert(attr.id, parser_range);
                 }
                 attrs.push(attr);
             } else {
@@ -332,7 +338,7 @@ impl<'a> Parser<'a> {
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
     pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
-        let cfg_predicate = self.parse_meta_item()?;
+        let cfg_predicate = self.parse_meta_item(AllowLeadingUnsafe::No)?;
         self.expect(&token::Comma)?;
 
         // Presumably, the majority of the time there will only be one attr.
@@ -368,7 +374,10 @@ impl<'a> Parser<'a> {
     /// MetaItem = SimplePath ( '=' UNSUFFIXED_LIT | '(' MetaSeq? ')' )? ;
     /// MetaSeq = MetaItemInner (',' MetaItemInner)* ','? ;
     /// ```
-    pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
+    pub fn parse_meta_item(
+        &mut self,
+        unsafe_allowed: AllowLeadingUnsafe,
+    ) -> PResult<'a, ast::MetaItem> {
         // We can't use `maybe_whole` here because it would bump in the `None`
         // case, which we don't want.
         if let token::Interpolated(nt) = &self.token.kind
@@ -384,7 +393,11 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
-        let is_unsafe = self.eat_keyword(kw::Unsafe);
+        let is_unsafe = if unsafe_allowed == AllowLeadingUnsafe::Yes {
+            self.eat_keyword(kw::Unsafe)
+        } else {
+            false
+        };
         let unsafety = if is_unsafe {
             let unsafe_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
@@ -427,7 +440,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(), // we provide a better error below
         }
 
-        match self.parse_meta_item() {
+        match self.parse_meta_item(AllowLeadingUnsafe::No) {
             Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
             Err(err) => err.cancel(), // we provide a better error below
         }

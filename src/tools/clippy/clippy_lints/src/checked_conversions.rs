@@ -4,7 +4,7 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
+use clippy_utils::{is_in_const_context, is_integer_literal, SpanlessEq};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
                 _ => return,
             }
             && !in_external_macro(cx.sess(), item.span)
-            && !in_constant(cx, item.hir_id)
+            && !is_in_const_context(cx)
             && self.msrv.meets(msrvs::TRY_FROM)
             && let Some(cv) = match op2 {
                 // todo: check for case signed -> larger unsigned == only x >= 0

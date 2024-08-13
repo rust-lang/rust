@@ -1,12 +1,13 @@
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::deriving::{path_local, path_std};
 use rustc_ast::ptr::P;
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use thin_vec::thin_vec;
+
+use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::deriving::{path_local, path_std};
 
 pub(crate) fn expand_deriving_partial_eq(
     cx: &ExtCtxt<'_>,

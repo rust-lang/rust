@@ -1,19 +1,19 @@
+use std::any::Any;
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
-use std::{any::Any, backtrace::Backtrace, fmt};
+use std::fmt;
 
 use either::Either;
-
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
-use rustc_span::Symbol;
-use rustc_span::{def_id::DefId, Span, DUMMY_SP};
+use rustc_span::def_id::DefId;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
@@ -329,16 +329,22 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer after it got freed.
     PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
-    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
     PointerOutOfBounds {
         alloc_id: AllocId,
         alloc_size: Size,
         ptr_offset: i64,
-        ptr_size: Size,
+        /// The size of the memory range that was expected to be in-bounds.
+        inbounds_size: i64,
         msg: CheckInAllocMsg,
     },
     /// Using an integer as a pointer in the wrong way.
-    DanglingIntPointer(u64, CheckInAllocMsg),
+    DanglingIntPointer {
+        addr: u64,
+        /// The size of the memory range that was expected to be in-bounds (or 0 if we need an
+        /// allocation but not any actual memory there, e.g. for function pointers).
+        inbounds_size: i64,
+        msg: CheckInAllocMsg,
+    },
     /// Used a pointer with bad alignment.
     AlignmentCheckFailed(Misalignment, CheckAlignMsg),
     /// Writing to read-only memory.

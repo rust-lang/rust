@@ -1,4 +1,5 @@
 use std::collections::LinkedList;
+
 use test::Bencher;
 
 #[bench]

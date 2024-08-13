@@ -25,15 +25,6 @@
 //! // ... something using html
 //! ```
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Diag, DiagMessage};
-use rustc_hir::def_id::DefId;
-use rustc_middle::ty::TyCtxt;
-pub(crate) use rustc_resolve::rustdoc::main_body_opts;
-use rustc_resolve::rustdoc::may_be_doc_link;
-use rustc_span::edition::Edition;
-use rustc_span::{Span, Symbol};
-
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::Write;
@@ -42,6 +33,19 @@ use std::ops::{ControlFlow, Range};
 use std::path::PathBuf;
 use std::str::{self, CharIndices};
 use std::sync::OnceLock;
+
+use pulldown_cmark::{
+    html, BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter,
+    Options, Parser, Tag, TagEnd,
+};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{Diag, DiagMessage};
+use rustc_hir::def_id::DefId;
+use rustc_middle::ty::TyCtxt;
+pub(crate) use rustc_resolve::rustdoc::main_body_opts;
+use rustc_resolve::rustdoc::may_be_doc_link;
+use rustc_span::edition::Edition;
+use rustc_span::{Span, Symbol};
 
 use crate::clean::RenderedLink;
 use crate::doctest;
@@ -52,11 +56,6 @@ use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
 use crate::html::toc::TocBuilder;
-
-use pulldown_cmark::{
-    html, BrokenLink, BrokenLinkCallback, CodeBlockKind, CowStr, Event, LinkType, OffsetIter,
-    Options, Parser, Tag, TagEnd,
-};
 
 #[cfg(test)]
 mod tests;
@@ -305,7 +304,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(format!(
                 "<a class=\"test-arrow\" \
                     target=\"_blank\" \
-                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\">Run</a>",
+                    title=\"Run code\" \
+                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\"></a>",
             ))
         });
 
@@ -925,6 +925,7 @@ pub(crate) struct TagIterator<'a, 'tcx> {
     data: &'a str,
     is_in_attribute_block: bool,
     extra: Option<&'a ExtraInfo<'tcx>>,
+    is_error: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -951,13 +952,20 @@ struct Indices {
 
 impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'tcx>>) -> Self {
-        Self { inner: data.char_indices().peekable(), data, is_in_attribute_block: false, extra }
+        Self {
+            inner: data.char_indices().peekable(),
+            data,
+            is_in_attribute_block: false,
+            extra,
+            is_error: false,
+        }
     }
 
-    fn emit_error(&self, err: impl Into<DiagMessage>) {
+    fn emit_error(&mut self, err: impl Into<DiagMessage>) {
         if let Some(extra) = self.extra {
             extra.error_invalid_codeblock_attr(err);
         }
+        self.is_error = true;
     }
 
     fn skip_separators(&mut self) -> Option<usize> {
@@ -1155,6 +1163,9 @@ impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
     type Item = LangStringToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.is_error {
+            return None;
+        }
         let Some(start) = self.skip_separators() else {
             if self.is_in_attribute_block {
                 self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
@@ -1343,14 +1354,15 @@ impl LangString {
             }
         };
 
-        call(&mut TagIterator::new(string, extra));
+        let mut tag_iter = TagIterator::new(string, extra);
+        call(&mut tag_iter);
 
         // ignore-foo overrides ignore
         if !ignores.is_empty() {
             data.ignore = Ignore::Some(ignores);
         }
 
-        data.rust &= !seen_custom_tag && (!seen_other_tags || seen_rust_tags);
+        data.rust &= !seen_custom_tag && (!seen_other_tags || seen_rust_tags) && !tag_iter.is_error;
 
         data
     }

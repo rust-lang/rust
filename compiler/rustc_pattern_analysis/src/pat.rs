@@ -5,10 +5,9 @@ use std::fmt;
 
 use smallvec::{smallvec, SmallVec};
 
+use self::Constructor::*;
 use crate::constructor::{Constructor, Slice, SliceKind};
 use crate::{PatCx, PrivateUninhabitedField};
-
-use self::Constructor::*;
 
 /// A globally unique id to distinguish patterns.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

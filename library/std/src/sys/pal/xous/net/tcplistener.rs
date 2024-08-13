@@ -1,11 +1,11 @@
+use core::convert::TryInto;
+use core::sync::atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering};
+
 use super::*;
-use crate::fmt;
-use crate::io;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use crate::os::xous::services;
 use crate::sync::Arc;
-use core::convert::TryInto;
-use core::sync::atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering};
+use crate::{fmt, io};
 
 macro_rules! unimpl {
     () => {

@@ -1,5 +1,6 @@
+use crate::iter::FusedIterator;
 use crate::num::NonZero;
-use crate::{iter::FusedIterator, ops::Try};
+use crate::ops::Try;
 
 /// An iterator that repeats endlessly.
 ///

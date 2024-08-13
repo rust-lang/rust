@@ -141,8 +141,15 @@ impl<'tcx> NewPermission {
     ) -> Option<Self> {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.param_env());
         let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.param_env());
+        let is_protected = kind == RetagKind::FnEntry;
+        // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
+        // interior mutability and protectors interact poorly.
+        // To eliminate the case of Protected Reserved IM we override interior mutability
+        // in the case of a protected reference: protected references are always considered
+        // "freeze".
         let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze),
+            Mutability::Mut if ty_is_unpin =>
+                Permission::new_reserved(ty_is_freeze || is_protected),
             Mutability::Not if ty_is_freeze => Permission::new_frozen(),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
@@ -151,7 +158,7 @@ impl<'tcx> NewPermission {
             _ => return None,
         };
 
-        let protector = (kind == RetagKind::FnEntry).then_some(ProtectorKind::StrongProtector);
+        let protector = is_protected.then_some(ProtectorKind::StrongProtector);
         Some(Self { zero_size: false, initial_state, protector })
     }
 
@@ -216,7 +223,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         trace!("Reborrow of size {:?}", ptr_size);
-        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr()) {
+        let (alloc_id, base_offset, parent_prov) = match this.ptr_try_get_alloc_id(place.ptr(), 0) {
             Ok(data) => {
                 // Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
                 // After all, the pointer may be lazily initialized outside this initial range.

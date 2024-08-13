@@ -1,3 +1,4 @@
+//@ normalize-stderr-test: "\d+ bytes" -> "$$BYTES bytes"
 #![feature(const_ptr_sub_ptr)]
 #![feature(core_intrinsics)]
 
@@ -36,7 +37,7 @@ pub const DIFFERENT_INT: isize = { // offset_from with two different integers: l
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
-    //~| different pointers without provenance
+    //~| dangling pointer
 };
 
 const OUT_OF_BOUNDS_1: isize = {
@@ -45,7 +46,7 @@ const OUT_OF_BOUNDS_1: isize = {
     let end_ptr = (start_ptr).wrapping_add(length);
     // First ptr is out of bounds
     unsafe { ptr_offset_from(end_ptr, start_ptr) } //~ERROR evaluation of constant value failed
-    //~| pointer to 10 bytes starting at offset 0 is out-of-bounds
+    //~| expected a pointer to 10 bytes of memory
 };
 
 const OUT_OF_BOUNDS_2: isize = {
@@ -54,7 +55,7 @@ const OUT_OF_BOUNDS_2: isize = {
     let end_ptr = (start_ptr).wrapping_add(length);
     // Second ptr is out of bounds
     unsafe { ptr_offset_from(start_ptr, end_ptr) } //~ERROR evaluation of constant value failed
-    //~| pointer to 10 bytes starting at offset 0 is out-of-bounds
+    //~| expected a pointer to the end of 10 bytes of memory
 };
 
 pub const DIFFERENT_ALLOC_UNSIGNED: usize = {

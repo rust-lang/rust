@@ -14,9 +14,9 @@ use rustc_session::Session;
 use rustc_span::Symbol;
 
 use crate::debuginfo::TypeDebugContext;
+use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-use crate::{prelude::*, BackendConfig};
-use crate::{CodegenCx, CodegenMode};
+use crate::{BackendConfig, CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,

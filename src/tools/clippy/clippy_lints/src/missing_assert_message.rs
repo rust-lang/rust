@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
 use clippy_utils::macros::{find_assert_args, find_assert_eq_args, root_macro_call_first_node, PanicExpn};
 use rustc_hir::Expr;
@@ -79,13 +79,15 @@ impl<'tcx> LateLintPass<'tcx> for MissingAssertMessage {
         };
 
         if let PanicExpn::Empty = panic_expn {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 MISSING_ASSERT_MESSAGE,
                 macro_call.span,
                 "assert without any message",
-                None,
-                "consider describing why the failing assert is problematic",
+                |diag| {
+                    diag.help("consider describing why the failing assert is problematic");
+                },
             );
         }
     }

@@ -1,6 +1,7 @@
-use super::*;
 use std::io::Write;
 use std::str::from_utf8;
+
+use super::*;
 
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
     let mut actual_msg = Vec::new();

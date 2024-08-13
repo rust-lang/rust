@@ -5,10 +5,8 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_macros::HashStable;
-use rustc_session::lint::{
-    builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintId,
-};
+use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
+use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintId};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{symbol, DesugaringKind, Span, Symbol, DUMMY_SP};
@@ -230,9 +228,11 @@ pub fn explain_lint_level_source(
                 err.note_once(format!(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
-                err.help_once(format!(
-                    "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
-                ));
+                if matches!(orig_level, Level::Warn | Level::Deny) {
+                    err.help_once(format!(
+                        "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
+                    ));
+                }
             }
         }
         LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {

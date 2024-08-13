@@ -2,14 +2,11 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use crate::infer::canonical::Canonical;
-use crate::ty::InferTy::*;
-use crate::ty::{
-    self, AdtDef, BoundRegionKind, Discr, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
-};
-use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
-use crate::ty::{List, ParamEnv};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
+use std::ops::{ControlFlow, Range};
+
 use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
@@ -22,16 +19,17 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi;
 use rustc_type_ir::visit::TypeVisitableExt;
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::{ControlFlow, Range};
-use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
-
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
 use super::GenericParamDefKind;
+use crate::infer::canonical::Canonical;
+use crate::ty::InferTy::*;
+use crate::ty::{
+    self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
@@ -1592,7 +1590,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
+        let tail = tcx.struct_tail_raw(self, normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -1616,10 +1614,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(..)
             // `dyn*` has metadata = ().
             | ty::Dynamic(_, _, ty::DynStar)
-            // If returned by `struct_tail_with_normalize` this is a unit struct
+            // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
-            // If returned by `struct_tail_with_normalize` this is the empty tuple,
+            // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => Ok(tcx.types.unit),
 
@@ -1966,8 +1964,9 @@ impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
     static_assert_size!(ty::TyKind<'_>, 32);

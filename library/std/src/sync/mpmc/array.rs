@@ -13,7 +13,6 @@ use super::error::*;
 use super::select::{Operation, Selected, Token};
 use super::utils::{Backoff, CachePadded};
 use super::waker::SyncWaker;
-
 use crate::cell::UnsafeCell;
 use crate::mem::MaybeUninit;
 use crate::ptr;

@@ -15,17 +15,17 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(test))]
-use crate::intrinsics;
-#[cfg(not(test))]
-use crate::sys::cmath;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f32::{
     consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
     MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
 };
+
+#[cfg(not(test))]
+use crate::intrinsics;
+#[cfg(not(test))]
+use crate::sys::cmath;
 
 #[cfg(not(test))]
 impl f32 {
@@ -574,7 +574,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
-        crate::sys::log2f32(self)
+        unsafe { intrinsics::log2f32(self) }
     }
 
     /// Returns the base 10 logarithm of the number.

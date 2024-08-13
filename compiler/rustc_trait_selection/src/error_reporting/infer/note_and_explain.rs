@@ -2,14 +2,12 @@ use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::print::Printer;
-use rustc_middle::{
-    traits::ObligationCause,
-    ty::{self, error::TypeError, print::FmtPrinter, suggest_constraining_type_param, Ty},
-};
-use rustc_span::{def_id::DefId, sym, BytePos, Span, Symbol};
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::print::{FmtPrinter, Printer};
+use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
+use rustc_span::def_id::DefId;
+use rustc_span::{sym, BytePos, Span, Symbol};
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxtExt;

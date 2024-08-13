@@ -410,7 +410,8 @@ fn result_opt_conversions() {
 #[test]
 fn result_try_trait_v2_branch() {
     use core::num::NonZero;
-    use core::ops::{ControlFlow::*, Try};
+    use core::ops::ControlFlow::*;
+    use core::ops::Try;
 
     assert_eq!(Ok::<i32, i32>(4).branch(), Continue(4));
     assert_eq!(Err::<i32, i32>(4).branch(), Break(Err(4)));

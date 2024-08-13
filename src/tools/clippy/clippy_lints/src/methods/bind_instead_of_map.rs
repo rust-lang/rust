@@ -1,5 +1,5 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::find_all_ret_expressions;
@@ -136,15 +136,16 @@ impl BindInsteadOfMap {
             return false;
         };
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, msg, |diag| {
-            multispan_sugg_with_applicability(
-                diag,
-                "try",
+            diag.multipart_suggestion(
+                format!("use `{}` instead", self.good_method_name),
+                std::iter::once((span, self.good_method_name.into()))
+                    .chain(
+                        suggs
+                            .into_iter()
+                            .map(|(span1, span2)| (span1, snippet(cx, span2, "_").into())),
+                    )
+                    .collect(),
                 Applicability::MachineApplicable,
-                std::iter::once((span, self.good_method_name.into())).chain(
-                    suggs
-                        .into_iter()
-                        .map(|(span1, span2)| (span1, snippet(cx, span2, "_").into())),
-                ),
             );
         });
         true

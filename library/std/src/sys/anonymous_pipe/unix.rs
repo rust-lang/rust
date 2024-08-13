@@ -1,16 +1,15 @@
-use crate::{
-    io,
-    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd},
-    pipe::{PipeReader, PipeWriter},
-    process::Stdio,
-    sys::{fd::FileDesc, pipe::anon_pipe},
-    sys_common::{FromInner, IntoInner},
-};
+use crate::io;
+use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::pipe::{PipeReader, PipeWriter};
+use crate::process::Stdio;
+use crate::sys::fd::FileDesc;
+use crate::sys::pipe::anon_pipe;
+use crate::sys_common::{FromInner, IntoInner};
 
-pub(crate) type AnonPipe = FileDesc;
+pub type AnonPipe = FileDesc;
 
 #[inline]
-pub(crate) fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+pub fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     anon_pipe().map(|(rx, wx)| (rx.into_inner(), wx.into_inner()))
 }
 
@@ -35,7 +34,7 @@ impl From<PipeReader> for OwnedFd {
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl FromRawFd for PipeReader {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FileDesc::from_raw_fd(raw_fd))
+        unsafe { Self(FileDesc::from_raw_fd(raw_fd)) }
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -72,7 +71,7 @@ impl From<PipeWriter> for OwnedFd {
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl FromRawFd for PipeWriter {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FileDesc::from_raw_fd(raw_fd))
+        unsafe { Self(FileDesc::from_raw_fd(raw_fd)) }
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]

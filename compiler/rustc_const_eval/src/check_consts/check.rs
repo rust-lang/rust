@@ -1,5 +1,9 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
+use std::assert_matches::assert_matches;
+use std::mem;
+use std::ops::Deref;
+
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -9,17 +13,13 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
-use rustc_middle::ty::{Instance, InstanceKind, TypeVisitableExt};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
-
-use std::mem;
-use std::ops::Deref;
-
 use tracing::{debug, instrument, trace};
 
 use super::ops::{self, NonConstOp, Status};
@@ -591,7 +591,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if is_int_bool_or_char(lhs_ty) && is_int_bool_or_char(rhs_ty) {
                     // Int, bool, and char operations are fine.
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
-                    assert!(matches!(
+                    assert_matches!(
                         op,
                         BinOp::Eq
                             | BinOp::Ne
@@ -600,7 +600,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             | BinOp::Ge
                             | BinOp::Gt
                             | BinOp::Offset
-                    ));
+                    );
 
                     self.check_op(ops::RawPtrComparison);
                 } else if lhs_ty.is_floating_point() || rhs_ty.is_floating_point() {
@@ -635,10 +635,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         trace!(
             "visit_projection_elem: place_ref={:?} elem={:?} \
             context={:?} location={:?}",
-            place_ref,
-            elem,
-            context,
-            location,
+            place_ref, elem, context, location,
         );
 
         self.super_projection_elem(place_ref, elem, context, location);

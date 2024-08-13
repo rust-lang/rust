@@ -9,10 +9,9 @@
 
 #![stable(feature = "core_ascii", since = "1.26.0")]
 
-use crate::escape;
-use crate::fmt;
 use crate::iter::FusedIterator;
 use crate::num::NonZero;
+use crate::{escape, fmt};
 
 mod ascii_char;
 #[unstable(feature = "ascii_char", issue = "110998")]

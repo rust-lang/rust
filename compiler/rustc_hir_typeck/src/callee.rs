@@ -1,24 +1,17 @@
-use super::method::probe::ProbeScope;
-use super::method::MethodCallee;
-use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use std::{iter, slice};
 
-use crate::errors;
 use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::traits::ObligationCauseCode;
-use rustc_infer::{
-    infer,
-    traits::{self, Obligation, ObligationCause},
-};
+use rustc_infer::infer;
+use rustc_infer::traits::{self, Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
@@ -28,7 +21,10 @@ use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-use std::{iter, slice};
+use super::method::probe::ProbeScope;
+use super::method::MethodCallee;
+use super::{Expectation, FnCtxt, TupleArgumentsFlag};
+use crate::errors;
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific

@@ -432,6 +432,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
+    + Elaboratable<I>
 {
     fn as_clause(self) -> Option<I::Clause>;
 
@@ -450,6 +451,8 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
+    + UpcastFrom<I, ty::TraitPredicate<I>>
+    + UpcastFrom<I, ty::Binder<I, ty::TraitPredicate<I>>>
     + UpcastFrom<I, ty::ProjectionPredicate<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ProjectionPredicate<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>

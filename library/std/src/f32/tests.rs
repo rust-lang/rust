@@ -1,6 +1,5 @@
 use crate::f32::consts;
-use crate::num::FpCategory as Fp;
-use crate::num::*;
+use crate::num::{FpCategory as Fp, *};
 
 /// Smallest number
 #[allow(dead_code)] // unused on x86

@@ -1,7 +1,9 @@
-use crate::errors;
-use crate::interface::{Compiler, Result};
-use crate::proc_macro_decls;
-use crate::util;
+use std::any::Any;
+use std::ffi::OsString;
+use std::io::{self, BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock};
+use std::{env, fs, iter};
 
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -27,22 +29,17 @@ use rustc_resolve::Resolver;
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::output::filename_for_input;
-use rustc_session::output::{collect_crate_types, find_crate_name};
+use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::FileName;
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
-
-use std::any::Any;
-use std::ffi::OsString;
-use std::io::{self, BufWriter, Write};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
-use std::{env, fs, iter};
 use tracing::{info, instrument};
+
+use crate::interface::{Compiler, Result};
+use crate::{errors, proc_macro_decls, util};
 
 pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
     let krate = sess
@@ -547,7 +544,13 @@ fn resolver_for_lowering_raw<'tcx>(
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
-    let mut resolver = Resolver::new(tcx, &pre_configured_attrs, krate.spans.inner_span, &arenas);
+    let mut resolver = Resolver::new(
+        tcx,
+        &pre_configured_attrs,
+        krate.spans.inner_span,
+        krate.spans.inject_use_span,
+        &arenas,
+    );
     let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
@@ -815,6 +818,19 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     });
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
+
+    // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
+    // (either its `mir_for_ctfe` or `optimized_mir`) since that helps uncover any bugs
+    // in MIR optimizations that may only be reachable through codegen, or other codepaths
+    // that requires the optimized/ctfe MIR, such as polymorphization, coroutine bodies,
+    // or evaluating consts.
+    if tcx.sess.opts.unstable_opts.validate_mir {
+        sess.time("ensuring_final_MIR_is_computable", || {
+            tcx.hir().par_body_owners(|def_id| {
+                tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
+            });
+        });
+    }
 }
 
 /// Runs the type-checking, region checking and other miscellaneous analysis

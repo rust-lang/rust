@@ -4,7 +4,10 @@ error[E0432]: unresolved import `unresolved`
 LL | use unresolved::*;
    |     ^^^^^^^^^^ you might be missing crate `unresolved`
    |
-   = help: consider adding `extern crate unresolved` to use the `unresolved` crate
+help: consider importing the `unresolved` crate
+   |
+LL + extern crate unresolved;
+   |
 
 error: aborting due to 1 previous error
 

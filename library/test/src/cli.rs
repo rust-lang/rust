@@ -1,11 +1,11 @@
 //! Module converting command-line arguments into test configuration.
 
 use std::env;
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
 use super::time::TestTimeOptions;
-use std::io::{self, IsTerminal};
 
 #[derive(Debug)]
 pub struct TestOpts {

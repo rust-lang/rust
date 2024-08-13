@@ -1,11 +1,9 @@
-use rustc_middle::bug;
-use rustc_middle::ty::{
-    layout::{LayoutCx, TyAndLayout},
-    TyCtxt,
-};
-use rustc_target::abi::*;
-
 use std::assert_matches::assert_matches;
+
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
+use rustc_middle::ty::TyCtxt;
+use rustc_target::abi::*;
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn sanity_check_layout<'tcx>(
@@ -251,7 +249,7 @@ pub(super) fn sanity_check_layout<'tcx>(
     if let Variants::Multiple { variants, .. } = &layout.variants {
         for variant in variants.iter() {
             // No nested "multiple".
-            assert!(matches!(variant.variants, Variants::Single { .. }));
+            assert_matches!(variant.variants, Variants::Single { .. });
             // Variants should have the same or a smaller size as the full thing,
             // and same for alignment.
             if variant.size > layout.size {

@@ -1,18 +1,13 @@
 //! Definitions of integer that is known not to equal zero.
 
+use super::{IntErrorKind, ParseIntError};
 use crate::cmp::Ordering;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::hint;
-use crate::intrinsics;
 use crate::marker::{Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::ptr;
 use crate::str::FromStr;
-use crate::ub_checks;
-
-use super::{IntErrorKind, ParseIntError};
+use crate::{fmt, hint, intrinsics, ptr, ub_checks};
 
 /// A marker trait for primitive types which can be zero.
 ///

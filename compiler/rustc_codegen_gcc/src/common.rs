@@ -1,5 +1,4 @@
-use gccjit::LValue;
-use gccjit::{RValue, ToRValue, Type};
+use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, MiscMethods, StaticMethods};
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::mir::Mutability;
@@ -159,6 +158,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let typ = self.type_struct(&fields, packed);
         let struct_type = typ.is_struct().expect("struct type");
         self.context.new_struct_constructor(None, struct_type.as_type(), None, values)
+    }
+
+    fn const_vector(&self, values: &[RValue<'gcc>]) -> RValue<'gcc> {
+        let typ = self.type_vector(values[0].get_type(), values.len() as u64);
+        self.context.new_rvalue_from_vector(None, typ, values)
     }
 
     fn const_to_opt_uint(&self, _v: RValue<'gcc>) -> Option<u64> {

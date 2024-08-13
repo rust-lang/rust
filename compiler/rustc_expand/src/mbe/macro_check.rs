@@ -105,8 +105,7 @@
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
 
-use crate::errors;
-use crate::mbe::{KleeneToken, TokenTree};
+use std::iter;
 
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
@@ -116,14 +115,13 @@ use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::kw;
-use rustc_span::{symbol::MacroRulesNormalizedIdent, ErrorGuaranteed, Span};
-
+use rustc_span::symbol::{kw, MacroRulesNormalizedIdent};
+use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 
-use std::iter;
-
 use super::quoted::VALID_FRAGMENT_NAMES_MSG_2021;
+use crate::errors;
+use crate::mbe::{KleeneToken, TokenTree};
 
 /// Stack represented as linked list.
 ///

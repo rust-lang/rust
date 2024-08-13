@@ -57,10 +57,8 @@ unsafe impl GlobalAlloc for System {
 
 #[cfg(target_feature = "atomics")]
 mod lock {
-    use crate::sync::atomic::{
-        AtomicI32,
-        Ordering::{Acquire, Release},
-    };
+    use crate::sync::atomic::AtomicI32;
+    use crate::sync::atomic::Ordering::{Acquire, Release};
 
     static LOCKED: AtomicI32 = AtomicI32::new(0);
 

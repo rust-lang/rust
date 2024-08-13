@@ -1,11 +1,11 @@
-use crate::lints::CStringPtr;
-use crate::LateContext;
-use crate::LateLintPass;
-use crate::LintContext;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
+
+use crate::lints::CStringPtr;
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `temporary_cstring_as_ptr` lint detects getting the inner pointer of

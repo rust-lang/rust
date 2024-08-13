@@ -1,7 +1,8 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use crate::errors;
+use std::assert_matches::assert_matches;
+use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
@@ -10,8 +11,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::{self, RegionResolutionError};
+use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -22,9 +22,9 @@ use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
 };
-use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_trait_selection::traits::{self, ObligationCause};
-use std::collections::BTreeMap;
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+
+use crate::errors;
 
 pub(super) fn check_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -130,7 +130,7 @@ fn visit_implementation_of_const_param_ty(
     checker: &Checker<'_>,
     kind: LangItem,
 ) -> Result<(), ErrorGuaranteed> {
-    assert!(matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy));
+    assert_matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
 
     let tcx = checker.tcx;
     let header = checker.impl_header;

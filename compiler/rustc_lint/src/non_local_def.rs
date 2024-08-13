@@ -1,24 +1,23 @@
 use rustc_errors::MultiSpan;
+use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::HirId;
-use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
-use rustc_hir::{Path, QPath};
+use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, QPath, TyKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
-use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, Binder, EarlyBinder, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::Span;
-use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind, Symbol};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, ExpnKind, MacroKind, Span, Symbol};
 use rustc_trait_selection::error_reporting::traits::ambiguity::{
     compute_applicable_impls_for_diagnostics, CandidateSource,
 };
 use rustc_trait_selection::infer::TyCtxtInferExt;
 
-use crate::fluent_generated as fluent;
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`

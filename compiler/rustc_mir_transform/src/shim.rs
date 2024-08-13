@@ -1,26 +1,27 @@
+use std::assert_matches::assert_matches;
+use std::{fmt, iter};
+
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
+};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{source_map::Spanned, Span, DUMMY_SP};
+use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
+use rustc_span::source_map::Spanned;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
-
-use std::assert_matches::assert_matches;
-use std::fmt;
-use std::iter;
 
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
     instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
-use rustc_middle::mir::patch::MirPatch;
-use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 
 mod async_destructor_ctor;
 
@@ -154,7 +155,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             &deref_separator::Derefer,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::MakeShim,
-            &instsimplify::InstSimplify,
+            &instsimplify::InstSimplify::BeforeInline,
             &abort_unwinding_calls::AbortUnwindingCalls,
             &add_call_guards::CriticalCallEdges,
         ],
@@ -304,7 +305,7 @@ fn new_body<'tcx>(
     arg_count: usize,
     span: Span,
 ) -> Body<'tcx> {
-    Body::new(
+    let mut body = Body::new(
         source,
         basic_blocks,
         IndexVec::from_elem_n(
@@ -325,7 +326,10 @@ fn new_body<'tcx>(
         None,
         // FIXME(compiler-errors): is this correct?
         None,
-    )
+    );
+    // Shims do not directly mention any consts.
+    body.set_required_consts(Vec::new());
+    body
 }
 
 pub struct DropShimElaborator<'a, 'tcx> {
@@ -968,13 +972,16 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     let source = MirSource::item(ctor_id);
-    let body = new_body(
+    let mut body = new_body(
         source,
         IndexVec::from_elem_n(start_block, 1),
         local_decls,
         sig.inputs().len(),
         span,
     );
+    // A constructor doesn't mention any other items (and we don't run the usual optimization passes
+    // so this would otherwise not get filled).
+    body.set_mentioned_items(Vec::new());
 
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -989,7 +996,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 /// }
 /// ```
 fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
-    assert!(matches!(self_ty.kind(), ty::FnPtr(..)), "expected fn ptr, found {self_ty}");
+    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
     let span = tcx.def_span(def_id);
     let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
         span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");

@@ -1,17 +1,3 @@
-use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
-use crate::errors::{
-    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
-    DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
-    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
-    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
-    ParenRangeSuggestion, PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern,
-    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
-    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
-    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
-    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
-};
-use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{walk_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, Delimiter, Token};
@@ -26,6 +12,21 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, ErrorGuaranteed, Span};
 use thin_vec::{thin_vec, ThinVec};
+
+use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing};
+use crate::errors::{
+    self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
+    DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
+    ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
+    InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
+    ParenRangeSuggestion, PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern,
+    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
+    TrailingVertNotAllowed, UnexpectedExpressionInPattern, UnexpectedLifetimeInPattern,
+    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
+};
+use crate::parser::expr::could_be_unclosed_char_literal;
+use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Expected {
@@ -402,8 +403,9 @@ impl<'a> Parser<'a> {
 
             // Parse an associative expression such as `+ expr`, `% expr`, ...
             // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
-            let lhs = LhsExpr::Parsed { expr, starts_statement: false };
-            if let Ok(expr) = snapshot.parse_expr_assoc_with(0, lhs).map_err(|err| err.cancel()) {
+            if let Ok(expr) =
+                snapshot.parse_expr_assoc_rest_with(0, false, expr).map_err(|err| err.cancel())
+            {
                 // We got a valid expression.
                 self.restore_snapshot(snapshot);
                 self.restrictions.remove(Restrictions::IS_PAT);

@@ -1,32 +1,29 @@
-use crate::infer::{InferCtxt, TyOrConstInferVar};
-use crate::traits::normalize::normalize_with_depth_to;
+use std::marker::PhantomData;
+
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::obligation_forest::ProcessResult;
-use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
-use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_data_structures::obligation_forest::{
+    Error, ForestObligation, ObligationForest, ObligationProcessor, Outcome, ProcessResult,
+};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::traits::{FromSolverError, ProjectionCacheKey};
-use rustc_infer::traits::{PolyTraitObligation, SelectionError, TraitEngine};
+use rustc_infer::traits::{
+    FromSolverError, PolyTraitObligation, ProjectionCacheKey, SelectionError, TraitEngine,
+};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, Binder, Const, TypeVisitableExt};
-use std::marker::PhantomData;
+use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
 
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
-use super::wf;
-use super::EvaluationResult;
-use super::PredicateObligation;
-use super::Unimplemented;
-use super::{const_evaluatable, ScrubbedTraitError};
-use super::{FulfillmentError, FulfillmentErrorCode};
-
+use super::{
+    const_evaluatable, wf, EvaluationResult, FulfillmentError, FulfillmentErrorCode,
+    PredicateObligation, ScrubbedTraitError, Unimplemented,
+};
 use crate::error_reporting::InferCtxtErrorExt;
-use crate::traits::project::PolyProjectionObligation;
-use crate::traits::project::ProjectionCacheKeyExt as _;
+use crate::infer::{InferCtxt, TyOrConstInferVar};
+use crate::traits::normalize::normalize_with_depth_to;
+use crate::traits::project::{PolyProjectionObligation, ProjectionCacheKeyExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {

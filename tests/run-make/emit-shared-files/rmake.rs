@@ -5,8 +5,9 @@
 // `all-shared` should only emit files that can be shared between crates.
 // See https://github.com/rust-lang/rust/pull/83478
 
-use run_make_support::{has_extension, has_prefix, rustdoc, shallow_find_files};
 use std::path::Path;
+
+use run_make_support::{has_extension, has_prefix, rustdoc, shallow_find_files};
 
 fn main() {
     rustdoc()

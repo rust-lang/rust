@@ -8,8 +8,7 @@ pub struct System;
 #[cfg(any(windows, unix, target_os = "redox"))]
 mod realloc_fallback {
     use core::alloc::{GlobalAlloc, Layout};
-    use core::cmp;
-    use core::ptr;
+    use core::{cmp, ptr};
     impl super::System {
         pub(crate) unsafe fn realloc_fallback(
             &self,
@@ -34,6 +33,7 @@ mod platform {
     use core::alloc::{GlobalAlloc, Layout};
     use core::ffi::c_void;
     use core::ptr;
+
     use System;
     extern "C" {
         fn posix_memalign(memptr: *mut *mut c_void, align: usize, size: usize) -> i32;
@@ -71,6 +71,7 @@ mod platform {
 #[allow(nonstandard_style)]
 mod platform {
     use core::alloc::{GlobalAlloc, Layout};
+
     use System;
     type LPVOID = *mut u8;
     type HANDLE = LPVOID;

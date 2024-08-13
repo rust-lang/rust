@@ -1,9 +1,8 @@
 use crate::ffi::CStr;
-use crate::io;
-use crate::mem;
 use crate::num::NonZero;
 use crate::sys::unsupported;
 use crate::time::Duration;
+use crate::{io, mem};
 
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {

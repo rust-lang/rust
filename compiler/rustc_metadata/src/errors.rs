@@ -1,9 +1,8 @@
-use std::{
-    io::Error,
-    path::{Path, PathBuf},
-};
+use std::io::Error;
+use std::path::{Path, PathBuf};
 
-use rustc_errors::{codes::*, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
@@ -39,6 +38,8 @@ pub struct CrateDepMultiple {
     pub crate_name: Symbol,
     #[subdiagnostic]
     pub non_static_deps: Vec<NonStaticCrateDep>,
+    #[subdiagnostic]
+    pub rustc_driver_help: Option<RustcDriverHelp>,
 }
 
 #[derive(Subdiagnostic)]
@@ -46,6 +47,10 @@ pub struct CrateDepMultiple {
 pub struct NonStaticCrateDep {
     pub crate_name: Symbol,
 }
+
+#[derive(Subdiagnostic)]
+#[help(metadata_crate_dep_rustc_driver)]
+pub struct RustcDriverHelp;
 
 #[derive(Diagnostic)]
 #[diag(metadata_two_panic_runtimes)]

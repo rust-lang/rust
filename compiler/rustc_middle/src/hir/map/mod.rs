@@ -1,8 +1,3 @@
-use crate::hir::ModuleItems;
-use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
-use crate::query::LocalCrate;
-use crate::ty::TyCtxt;
-use rustc_ast as ast;
 use rustc_ast::visit::{walk_list, VisitorResult};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -13,12 +8,17 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
-use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::spec::abi::Abi;
+use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
+
+use crate::hir::ModuleItems;
+use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::query::LocalCrate;
+use crate::ty::TyCtxt;
 
 // FIXME: the structure was necessary in the past but now it
 // only serves as "namespace" for HIR-related methods, and can be
@@ -746,6 +746,10 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn opt_delegation_sig_id(self, def_id: LocalDefId) -> Option<DefId> {
+        self.tcx.opt_hir_owner_node(def_id)?.fn_decl()?.opt_delegation_sig_id()
+    }
+
     #[inline]
     fn opt_ident(self, id: HirId) -> Option<Ident> {
         match self.tcx.hir_node(id) {
@@ -1161,17 +1165,23 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Node::ImplItem(ii) => {
             let kind = match ii.kind {
-                ImplItemKind::Const(..) => "assoc const",
-                ImplItemKind::Fn(..) => "method",
-                ImplItemKind::Type(_) => "assoc type",
+                ImplItemKind::Const(..) => "associated constant",
+                ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplicitSelfKind::None => "associated function",
+                    _ => "method",
+                },
+                ImplItemKind::Type(_) => "associated type",
             };
             format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
         }
         Node::TraitItem(ti) => {
             let kind = match ti.kind {
-                TraitItemKind::Const(..) => "assoc constant",
-                TraitItemKind::Fn(..) => "trait method",
-                TraitItemKind::Type(..) => "assoc type",
+                TraitItemKind::Const(..) => "associated constant",
+                TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplicitSelfKind::None => "associated function",
+                    _ => "trait method",
+                },
+                TraitItemKind::Type(..) => "associated type",
             };
 
             format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))

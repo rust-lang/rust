@@ -1,10 +1,11 @@
+use std::fmt;
+use std::num::NonZero;
+
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
-use std::fmt;
-use std::num::NonZero;
 
 use crate::ty::TyCtxt;
 
@@ -233,7 +234,7 @@ impl ScalarInt {
         let data = i.into();
         // `into` performed sign extension, we have to truncate
         let r = Self::raw(size.truncate(data as u128), size);
-        (r, size.sign_extend(r.data) as i128 != data)
+        (r, size.sign_extend(r.data) != data)
     }
 
     #[inline]
@@ -334,7 +335,7 @@ impl ScalarInt {
     #[inline]
     pub fn to_int(self, size: Size) -> i128 {
         let b = self.to_bits(size);
-        size.sign_extend(b) as i128
+        size.sign_extend(b)
     }
 
     /// Converts the `ScalarInt` to i8.

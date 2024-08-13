@@ -2,7 +2,7 @@
 //@ test-mir-pass: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(offset_of_enum, offset_of_nested)]
+#![feature(offset_of_enum)]
 
 use std::marker::PhantomData;
 use std::mem::offset_of;

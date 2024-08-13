@@ -7,6 +7,8 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
+use std::ops::RangeInclusive;
+
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
@@ -16,7 +18,6 @@ use stable_mir::abi::Layout;
 use stable_mir::mir::mono::InstanceDef;
 use stable_mir::ty::{MirConstId, Span, TyConstId};
 use stable_mir::{CtorKind, ItemKind};
-use std::ops::RangeInclusive;
 use tracing::debug;
 
 use crate::rustc_internal::IndexMap;

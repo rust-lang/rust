@@ -1,3 +1,5 @@
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::bug;
@@ -15,8 +17,6 @@ use rustc_target::abi::call::{
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
 use tracing::debug;
-
-use std::iter;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { fn_abi_of_fn_ptr, fn_abi_of_instance, ..*providers };
@@ -549,7 +549,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
-                let tail = cx.tcx.struct_tail_with_normalize(arg.layout.ty, |ty| ty, || {});
+                let tail = cx.tcx.struct_tail_for_codegen(arg.layout.ty, cx.param_env());
                 if matches!(tail.kind(), ty::Foreign(..)) {
                     // These types do not have metadata, so having `meta_attrs` is bogus.
                     // Conceptually, unsized arguments must be copied around, which requires dynamically

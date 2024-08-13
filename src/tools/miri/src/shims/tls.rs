@@ -315,6 +315,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // FIXME: Technically, the reason should be `DLL_PROCESS_DETACH` when the main thread exits
         // but std treats both the same.
         let reason = this.eval_windows("c", "DLL_THREAD_DETACH");
+        let null_ptr =
+            ImmTy::from_scalar(Scalar::null_ptr(this), this.machine.layouts.const_raw_ptr);
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         // FIXME: `h` should be a handle to the current module and what `pv` should be is unknown
@@ -322,7 +324,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.call_function(
             thread_callback,
             Abi::System { unwind: false },
-            &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
+            &[null_ptr.clone(), ImmTy::from_scalar(reason, this.machine.layouts.u32), null_ptr],
             None,
             StackPopCleanup::Root { cleanup: true },
         )?;
@@ -343,7 +345,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_function(
                 instance,
                 Abi::C { unwind: false },
-                &[data.into()],
+                &[ImmTy::from_scalar(data, this.machine.layouts.mut_raw_ptr)],
                 None,
                 StackPopCleanup::Root { cleanup: true },
             )?;
@@ -380,7 +382,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_function(
                 instance,
                 Abi::C { unwind: false },
-                &[ptr.into()],
+                &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
                 None,
                 StackPopCleanup::Root { cleanup: true },
             )?;

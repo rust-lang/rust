@@ -1,55 +1,56 @@
+use std::cell::{Cell, RefCell};
+use std::fmt;
+
 pub use at::DefineOpaqueTypes;
+use free_regions::RegionRelations;
 pub use freshen::TypeFreshener;
+use lexical_region_resolve::LexicalRegionResolutions;
 pub use lexical_region_resolve::RegionResolutionError;
-pub use relate::combine::CombineFields;
-pub use relate::combine::PredicateEmittingRelation;
+use opaque_types::OpaqueTypeStorage;
+use region_constraints::{
+    GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
+};
+pub use relate::combine::{CombineFields, PredicateEmittingRelation};
 pub use relate::StructurallyRelateAliases;
-use rustc_errors::DiagCtxtHandle;
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::unify as ut;
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_hir as hir;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
+use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableValue, ConstVidKey, EffectVarValue, EffectVidKey,
+};
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
+use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::traits::select;
+use rustc_middle::traits::solve::{Goal, NoSolution};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::fold::{
+    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
+use rustc_middle::ty::visit::TypeVisitableExt;
 pub use rustc_middle::ty::IntVarValue;
+use rustc_middle::ty::{
+    self, ConstVid, EffectVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
+    GenericParamDefKind, InferConst, IntVid, Ty, TyCtxt, TyVid,
+};
+use rustc_middle::{bug, span_bug};
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
+use snapshot::undo_log::InferCtxtUndoLogs;
+use type_variable::TypeVariableOrigin;
 pub use BoundRegionConversionTime::*;
 pub use RegionVariableOrigin::*;
 pub use SubregionOrigin::*;
 
 use crate::infer::relate::RelateResult;
 use crate::traits::{self, ObligationCause, ObligationInspector, PredicateObligation, TraitEngine};
-use free_regions::RegionRelations;
-use lexical_region_resolve::LexicalRegionResolutions;
-use opaque_types::OpaqueTypeStorage;
-use region_constraints::{GenericKind, VarInfos, VerifyBound};
-use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
-use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::undo_log::Rollback;
-use rustc_data_structures::unify as ut;
-use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_macros::extension;
-use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::infer::unify_key::ConstVariableOrigin;
-use rustc_middle::infer::unify_key::ConstVariableValue;
-use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
-use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::select;
-use rustc_middle::traits::solve::{Goal, NoSolution};
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BoundVarReplacerDelegate;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
-use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
-use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
-use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
-use snapshot::undo_log::InferCtxtUndoLogs;
-use std::cell::{Cell, RefCell};
-use std::fmt;
-use type_variable::TypeVariableOrigin;
 
 pub mod at;
 pub mod canonical;
@@ -1317,38 +1318,36 @@ impl<'tcx> InferCtxt<'tcx> {
             return inner;
         }
 
-        struct ToFreshVars<'a, 'tcx> {
-            infcx: &'a InferCtxt<'tcx>,
-            span: Span,
-            lbrct: BoundRegionConversionTime,
-            map: FxHashMap<ty::BoundVar, ty::GenericArg<'tcx>>,
+        let bound_vars = value.bound_vars();
+        let mut args = Vec::with_capacity(bound_vars.len());
+
+        for bound_var_kind in bound_vars {
+            let arg: ty::GenericArg<'_> = match bound_var_kind {
+                ty::BoundVariableKind::Ty(_) => self.next_ty_var(span).into(),
+                ty::BoundVariableKind::Region(br) => {
+                    self.next_region_var(BoundRegion(span, br, lbrct)).into()
+                }
+                ty::BoundVariableKind::Const => self.next_const_var(span).into(),
+            };
+            args.push(arg);
         }
 
-        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'_, 'tcx> {
+        struct ToFreshVars<'tcx> {
+            args: Vec<ty::GenericArg<'tcx>>,
+        }
+
+        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
             fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
-                self.map
-                    .entry(br.var)
-                    .or_insert_with(|| {
-                        self.infcx
-                            .next_region_var(BoundRegion(self.span, br.kind, self.lbrct))
-                            .into()
-                    })
-                    .expect_region()
+                self.args[br.var.index()].expect_region()
             }
             fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
-                self.map
-                    .entry(bt.var)
-                    .or_insert_with(|| self.infcx.next_ty_var(self.span).into())
-                    .expect_ty()
+                self.args[bt.var.index()].expect_ty()
             }
             fn replace_const(&mut self, bv: ty::BoundVar) -> ty::Const<'tcx> {
-                self.map
-                    .entry(bv)
-                    .or_insert_with(|| self.infcx.next_const_var(self.span).into())
-                    .expect_const()
+                self.args[bv.index()].expect_const()
             }
         }
-        let delegate = ToFreshVars { infcx: self, span, lbrct, map: Default::default() };
+        let delegate = ToFreshVars { args };
         self.tcx.replace_bound_vars_uncached(value, delegate)
     }
 

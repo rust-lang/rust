@@ -1,10 +1,11 @@
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
+
 #[cfg(feature = "nightly")]
 use rustc_data_structures::fingerprint::Fingerprint;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
-use std::ops::Deref;
 
 use crate::{DebruijnIndex, TypeFlags};
 

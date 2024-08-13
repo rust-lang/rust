@@ -38,6 +38,17 @@ pub fn dynamic_lib_name(name: &str) -> String {
     format!("{}{name}.{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_EXTENSION)
 }
 
+/// Construct the name of the import library for the dynamic library, exclusive to MSVC and
+/// accepted by link.exe.
+#[track_caller]
+#[must_use]
+pub fn msvc_import_dynamic_lib_name(name: &str) -> String {
+    assert!(is_msvc(), "this function is exclusive to MSVC");
+    assert!(!name.contains(char::is_whitespace), "import library name cannot contain whitespace");
+
+    format!("{name}.dll.lib")
+}
+
 /// Construct the dynamic library extension based on the target.
 #[must_use]
 pub fn dynamic_lib_extension() -> &'static str {

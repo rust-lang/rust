@@ -1,7 +1,8 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{
-    self, Delimiter, Nonterminal::*, NonterminalKind, NtExprKind::*, NtPatKind::*, Token,
-};
+use rustc_ast::token::Nonterminal::*;
+use rustc_ast::token::NtExprKind::*;
+use rustc_ast::token::NtPatKind::*;
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
@@ -38,6 +39,7 @@ impl<'a> Parser<'a> {
         }
 
         match kind {
+            // `expr_2021` and earlier
             NonterminalKind::Expr(Expr2021 { .. }) => {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
@@ -45,8 +47,16 @@ impl<'a> Parser<'a> {
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Const)
             }
+            // Current edition expressions
             NonterminalKind::Expr(Expr) => {
-                token.can_begin_expr()
+                // In Edition 2024, `_` is considered an expression, so we
+                // need to allow it here because `token.can_begin_expr()` does
+                // not consider `_` to be an expression.
+                //
+                // Because `can_begin_expr` is used elsewhere, we need to reduce
+                // the scope of where the `_` is considered an expression to
+                // just macro parsing code.
+                (token.can_begin_expr() || token.is_keyword(kw::Underscore))
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
             }

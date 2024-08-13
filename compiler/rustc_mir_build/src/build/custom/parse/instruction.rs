@@ -1,15 +1,16 @@
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::mir::*;
+use rustc_middle::thir::*;
+use rustc_middle::ty;
 use rustc_middle::ty::cast::mir_cast_kind;
-use rustc_middle::{mir::*, thir::*, ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
+use super::{parse_by_kind, PResult, ParseCtxt};
 use crate::build::custom::ParseError;
 use crate::build::expr::as_constant::as_constant_inner;
-
-use super::{parse_by_kind, PResult, ParseCtxt};
 
 impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     pub(crate) fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
@@ -73,6 +74,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call(mir_call, args) => {
                 self.parse_call(args)
+            },
+            @call(mir_tail_call, args) => {
+                self.parse_tail_call(args)
             },
             ExprKind::Match { scrutinee, arms, .. } => {
                 let discr = self.parse_operand(*scrutinee)?;
@@ -180,6 +184,25 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     call_source: if *from_hir_call { CallSource::Normal } else {
                         CallSource::OverloadedOperator
                     },
+                    fn_span: *fn_span,
+                })
+            },
+        )
+    }
+
+    fn parse_tail_call(&self, args: &[ExprId]) -> PResult<TerminatorKind<'tcx>> {
+        parse_by_kind!(self, args[0], _, "tail call",
+            ExprKind::Call { fun, args, fn_span, .. } => {
+                let fun = self.parse_operand(*fun)?;
+                let args = args
+                    .iter()
+                    .map(|arg|
+                        Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
+                    )
+                    .collect::<PResult<Box<[_]>>>()?;
+                Ok(TerminatorKind::TailCall {
+                    func: fun,
+                    args,
                     fn_span: *fn_span,
                 })
             },

@@ -1,13 +1,8 @@
 // ignore-tidy-filelength
 
-use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
-use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
-use crate::late::{LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseSet};
-use crate::ty::fast_reject::SimplifiedType;
-use crate::{errors, path_names_to_string};
-use crate::{Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{PathResult, PathSource, Segment};
-use rustc_hir::def::Namespace::{self, *};
+use std::borrow::Cow;
+use std::iter;
+use std::ops::Deref;
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_ty, FnCtxt, FnKind, LifetimeCtxt, Visitor};
@@ -16,34 +11,38 @@ use rustc_ast::{
     MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
+    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
     SuggestionStyle,
 };
 use rustc_hir as hir;
+use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
-use rustc_session::lint;
-use rustc_session::Session;
+use rustc_middle::ty;
+use rustc_session::{lint, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
-use rustc_middle::ty;
-
-use std::borrow::Cow;
-use std::iter;
-use std::ops::Deref;
-
 use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::NoConstantGenericsReason;
+use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
+use crate::late::{
+    AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
+    LifetimeUseSet, RibKind,
+};
+use crate::ty::fast_reject::SimplifiedType;
+use crate::{
+    errors, path_names_to_string, Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource,
+    Segment,
+};
 
 type Res = def::Res<ast::NodeId>;
 
@@ -651,14 +650,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let typo_sugg = self
             .lookup_typo_candidate(path, following_seg, source.namespace(), is_expected)
             .to_opt_suggestion();
-        if path.len() == 1
+        if let [segment] = path
             && !matches!(source, PathSource::Delegation)
             && self.self_type_is_available()
         {
             if let Some(candidate) =
                 self.lookup_assoc_candidate(ident, ns, is_expected, source.is_call())
             {
-                let self_is_available = self.self_value_is_available(path[0].ident.span);
+                let self_is_available = self.self_value_is_available(segment.ident.span);
                 // Account for `Foo { field }` when suggesting `self.field` so we result on
                 // `Foo { field: self.field }`.
                 let pre = match source {
@@ -666,7 +665,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         if expr
                             .fields
                             .iter()
-                            .any(|f| f.ident == path[0].ident && f.is_shorthand) =>
+                            .any(|f| f.ident == segment.ident && f.is_shorthand) =>
                     {
                         format!("{path_str}: ")
                     }
@@ -1259,8 +1258,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             )
                         })
                         .collect();
-                if targets.len() == 1 {
-                    let target = targets[0];
+                if let [target] = targets.as_slice() {
                     return Some(TypoSuggestion::single_item_from_ident(target.0.ident, target.1));
                 }
             }
@@ -2059,6 +2057,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 ident,
                 ns,
                 &self.parent_scope,
+                None,
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
@@ -2105,8 +2104,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         filter_fn: &impl Fn(Res) -> bool,
     ) -> TypoCandidate {
         let mut names = Vec::new();
-        if path.len() == 1 {
-            let mut ctxt = path.last().unwrap().ident.span.ctxt();
+        if let [segment] = path {
+            let mut ctxt = segment.ident.span.ctxt();
 
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.

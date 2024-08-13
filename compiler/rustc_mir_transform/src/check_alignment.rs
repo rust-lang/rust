@@ -1,10 +1,8 @@
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::mir::{
-    interpret::Scalar,
-    visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor},
-};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 

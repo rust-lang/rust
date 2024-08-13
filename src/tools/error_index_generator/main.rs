@@ -5,18 +5,16 @@ extern crate rustc_log;
 extern crate rustc_session;
 
 extern crate rustc_errors;
-use rustc_errors::codes::DIAGNOSTICS;
-
 use std::env;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::Write;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use mdbook::book::{parse_summary, BookItem, Chapter};
 use mdbook::{Config, MDBook};
+use rustc_errors::codes::DIAGNOSTICS;
 
 enum OutputFormat {
     HTML,

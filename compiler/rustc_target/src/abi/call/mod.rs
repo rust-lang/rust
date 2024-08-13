@@ -1,10 +1,11 @@
-use crate::abi::{self, Abi, Align, FieldsShape, Size};
-use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
-use rustc_macros::HashStable_Generic;
-use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
+
+use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
+
+use crate::abi::{self, Abi, Align, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -237,8 +238,10 @@ impl Reg {
                 _ => panic!("unsupported integer: {self:?}"),
             },
             RegKind::Float => match self.size.bits() {
+                16 => dl.f16_align.abi,
                 32 => dl.f32_align.abi,
                 64 => dl.f64_align.abi,
+                128 => dl.f128_align.abi,
                 _ => panic!("unsupported float: {self:?}"),
             },
             RegKind::Vector => dl.vector_align(self.size).abi,
@@ -967,8 +970,9 @@ impl FromStr for Conv {
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ArgAbi<'_, usize>, 56);
     static_assert_size!(FnAbi<'_, usize>, 80);

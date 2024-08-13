@@ -525,19 +525,6 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
 }
 
-/// Peels off all references on the type. Returns the underlying type and the number of references
-/// removed.
-pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
-    fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
-        if let ty::Ref(_, ty, _) = ty.kind() {
-            peel(*ty, count + 1)
-        } else {
-            (ty, count)
-        }
-    }
-    peel(ty, 0)
-}
-
 /// Peels off all references on the type. Returns the underlying type, the number of references
 /// removed, and whether the pointer is ultimately mutable or not.
 pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {

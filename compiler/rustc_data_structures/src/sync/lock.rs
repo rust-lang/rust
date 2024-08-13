@@ -19,18 +19,19 @@ pub enum Mode {
 }
 
 mod maybe_sync {
-    use super::Mode;
-    use crate::sync::mode;
-    #[cfg(parallel_compiler)]
-    use crate::sync::{DynSend, DynSync};
-    use parking_lot::lock_api::RawMutex as _;
-    use parking_lot::RawMutex;
-    use std::cell::Cell;
-    use std::cell::UnsafeCell;
+    use std::cell::{Cell, UnsafeCell};
     use std::intrinsics::unlikely;
     use std::marker::PhantomData;
     use std::mem::ManuallyDrop;
     use std::ops::{Deref, DerefMut};
+
+    use parking_lot::lock_api::RawMutex as _;
+    use parking_lot::RawMutex;
+
+    use super::Mode;
+    use crate::sync::mode;
+    #[cfg(parallel_compiler)]
+    use crate::sync::{DynSend, DynSync};
 
     /// A guard holding mutable access to a `Lock` which is in a locked state.
     #[must_use = "if unused the Lock will immediately unlock"]
@@ -186,11 +187,11 @@ mod maybe_sync {
 }
 
 mod no_sync {
-    use super::Mode;
     use std::cell::RefCell;
-
     #[doc(no_inline)]
     pub use std::cell::RefMut as LockGuard;
+
+    use super::Mode;
 
     pub struct Lock<T>(RefCell<T>);
 

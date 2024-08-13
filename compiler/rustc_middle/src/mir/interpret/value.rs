@@ -1,20 +1,16 @@
 use std::fmt;
 
 use either::{Either, Left, Right};
-
-use rustc_apfloat::{
-    ieee::{Double, Half, Quad, Single},
-    Float,
-};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_apfloat::Float;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_target::abi::{HasDataLayout, Size};
-
-use crate::ty::ScalarInt;
 
 use super::{
     AllocId, CtfeProvenance, InterpResult, Pointer, PointerArithmetic, Provenance,
     ScalarSizeMismatch,
 };
+use crate::ty::ScalarInt;
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a
 /// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes in
@@ -397,7 +393,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_int(self, size: Size) -> InterpResult<'tcx, i128> {
         let b = self.to_bits(size)?;
-        Ok(size.sign_extend(b) as i128)
+        Ok(size.sign_extend(b))
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.

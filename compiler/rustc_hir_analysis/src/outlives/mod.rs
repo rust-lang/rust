@@ -1,8 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt, Upcast};
+use rustc_middle::ty::{self, CratePredicatesMap, GenericArgKind, TyCtxt, Upcast};
 use rustc_span::Span;
 
 pub(crate) mod dump;

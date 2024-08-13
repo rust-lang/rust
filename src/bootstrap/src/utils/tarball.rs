@@ -7,8 +7,8 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::core::builder::Builder;
-use crate::core::{build_steps::dist::distdir, builder::Kind};
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::{Builder, Kind};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
 use crate::utils::{channel, helpers};
@@ -317,6 +317,12 @@ impl<'a> Tarball<'a> {
             channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
             channel::write_commit_info_file(&self.overlay_dir, info);
         }
+
+        // Add config file if present.
+        if let Some(config) = &self.builder.config.config {
+            self.add_renamed_file(config, &self.overlay_dir, "builder-config");
+        }
+
         for file in self.overlay.legal_and_readme() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }

@@ -2,10 +2,9 @@ mod sync_bitset;
 
 use self::sync_bitset::*;
 use crate::cell::Cell;
-use crate::mem;
 use crate::num::NonZero;
-use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::{mem, ptr};
 
 #[cfg(target_pointer_width = "64")]
 const USIZE_BITS: usize = 64;
