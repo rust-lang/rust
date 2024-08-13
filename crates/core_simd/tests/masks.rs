@@ -99,7 +99,6 @@ macro_rules! test_mask_api {
                 assert_eq!(Mask::<$type, 2>::from_bitmask(bitmask), mask);
             }
 
-            #[cfg(feature = "all_lane_counts")]
             #[test]
             fn roundtrip_bitmask_conversion_odd() {
                 let values = [
