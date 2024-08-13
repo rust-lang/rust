@@ -112,14 +112,8 @@ impl Diff {
         let (expected_name, actual_name, output, actual) = self.run_common();
 
         if !output.is_empty() {
-            // If we can bless (meaning we have a file to write into and the `RUSTC_BLESS_TEST`
-            // environment variable set), then we write into the file and return.
-            if let Some(ref expected_file) = self.expected_file {
-                if std::env::var("RUSTC_BLESS_TEST").is_ok() {
-                    println!("Blessing `{}`", expected_file.display());
-                    fs::write(expected_file, actual);
-                    return;
-                }
+            if self.maybe_bless_expected_file(&actual) {
+                return;
             }
             panic!(
                 "test failed: `{}` is different from `{}`\n\n{}",
@@ -134,19 +128,28 @@ impl Diff {
         let (expected_name, actual_name, output, actual) = self.run_common();
 
         if output.is_empty() {
-            // If we can bless (meaning we have a file to write into and the `RUSTC_BLESS_TEST`
-            // environment variable set), then we write into the file and return.
-            if let Some(ref expected_file) = self.expected_file {
-                if std::env::var("RUSTC_BLESS_TEST").is_ok() {
-                    println!("Blessing `{}`", expected_file.display());
-                    fs::write(expected_file, actual);
-                    return;
-                }
+            if self.maybe_bless_expected_file(&actual) {
+                return;
             }
             panic!(
                 "test failed: `{}` is not different from `{}`\n\n{}",
                 expected_name, actual_name, output
             )
         }
+    }
+
+    /// If we have an expected file to write into, and `RUSTC_BLESS_TEST` is
+    /// set, then write the actual output into the file and return `true`.
+    fn maybe_bless_expected_file(&self, actual: &str) -> bool {
+        let Some(ref expected_file) = self.expected_file else {
+            return false;
+        };
+        if std::env::var("RUSTC_BLESS_TEST").is_err() {
+            return false;
+        }
+
+        println!("Blessing `{}`", expected_file.display());
+        fs::write(expected_file, actual);
+        true
     }
 }
