@@ -96,9 +96,32 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             // from an edition before 2024.
             &UnsafeOpKind::CallToUnsafeFunction(Some(id))
                 if !span.at_least_rust_2024()
-                    && self.tcx.has_attr(id, sym::rustc_deprecated_safe_2024) =>
+                    && let Some(attr) = self.tcx.get_attr(id, sym::rustc_deprecated_safe_2024) =>
             {
+                let suggestion = attr
+                    .meta_item_list()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .find(|item| item.has_name(sym::audit_that))
+                    .map(|item| {
+                        item.value_str().expect(
+                            "`#[rustc_deprecated_safe_2024(audit_that)]` must have a string value",
+                        )
+                    });
+
                 let sm = self.tcx.sess.source_map();
+                let guarantee = suggestion
+                    .as_ref()
+                    .map(|suggestion| format!("that {}", suggestion))
+                    .unwrap_or_else(|| String::from("its unsafe preconditions"));
+                let suggestion = suggestion
+                    .and_then(|suggestion| {
+                        sm.indentation_before(span).map(|indent| {
+                            format!("{}// TODO: Audit that {}.\n", indent, suggestion) // ignore-tidy-todo
+                        })
+                    })
+                    .unwrap_or_default();
+
                 self.tcx.emit_node_span_lint(
                     DEPRECATED_SAFE_2024,
                     self.hir_context,
@@ -106,8 +129,9 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
+                        guarantee,
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
-                            indent: sm.indentation_before(span).unwrap_or_default(),
+                            start_of_line_suggestion: suggestion,
                             start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),
                             left: span.shrink_to_lo(),
                             right: span.shrink_to_hi(),
