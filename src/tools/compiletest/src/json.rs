@@ -127,11 +127,10 @@ pub fn extract_rendered(output: &str) -> String {
                     // Ignore the notification.
                     None
                 } else {
-                    print!(
-                        "failed to decode compiler output as json: line: {}\noutput: {}",
-                        line, output
-                    );
-                    panic!()
+                    // This function is called for both compiler and non-compiler output,
+                    // so if the line isn't recognized as JSON from the compiler then
+                    // just print it as-is.
+                    Some(format!("{line}\n"))
                 }
             } else {
                 // preserve non-JSON lines, such as ICEs
