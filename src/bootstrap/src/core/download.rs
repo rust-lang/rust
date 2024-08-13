@@ -379,7 +379,7 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let bin_root = self.out.join(host.triple).join("stage0");
+        let bin_root = self.out.join(host).join("stage0");
         let clippy_stamp = bin_root.join(".clippy-stamp");
         let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
@@ -412,7 +412,7 @@ impl Config {
         let channel = format!("{version}-{date}");
 
         let host = self.build;
-        let bin_root = self.out.join(host.triple).join("rustfmt");
+        let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
@@ -519,7 +519,7 @@ impl Config {
         extra_components: &[&str],
         download_component: fn(&Config, String, &str, &str),
     ) {
-        let host = self.build.triple;
+        let host = self.build;
         let bin_root = self.out.join(host).join(sysroot);
         let rustc_stamp = bin_root.join(".rustc-stamp");
 
@@ -592,7 +592,7 @@ impl Config {
             t!(fs::create_dir_all(&cache_dir));
         }
 
-        let bin_root = self.out.join(self.build.triple).join(destination);
+        let bin_root = self.out.join(self.build).join(destination);
         let tarball = cache_dir.join(&filename);
         let (base_url, url, should_verify) = match mode {
             DownloadSource::CI => {

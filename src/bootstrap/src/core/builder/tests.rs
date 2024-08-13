@@ -633,7 +633,7 @@ mod dist {
         config.paths = vec!["library/std".into()];
         config.cmd = Subcommand::Test {
             test_args: vec![],
-            rustc_args: vec![],
+            compiletest_rustc_args: vec![],
             no_fail_fast: false,
             no_doc: true,
             doc: false,
@@ -704,7 +704,7 @@ mod dist {
         let mut config = configure(&["A-A"], &["A-A"]);
         config.cmd = Subcommand::Test {
             test_args: vec![],
-            rustc_args: vec![],
+            compiletest_rustc_args: vec![],
             no_fail_fast: false,
             doc: true,
             no_doc: false,

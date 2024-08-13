@@ -1171,7 +1171,7 @@ impl<'a> Builder<'a> {
                     .sysroot(self.compiler)
                     .join(lib)
                     .join("rustlib")
-                    .join(self.target.triple)
+                    .join(self.target)
                     .join("lib");
                 // Avoid deleting the rustlib/ directory we just copied
                 // (in `impl Step for Sysroot`).
@@ -1254,7 +1254,7 @@ impl<'a> Builder<'a> {
 
         // Ensure that the downloaded LLVM libraries can be found.
         if self.config.llvm_from_ci {
-            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
+            let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
 
@@ -1504,9 +1504,9 @@ impl<'a> Builder<'a> {
                 Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
                 Mode::Std => {
                     if self.config.cmd.json() {
-                        out_dir.join(target.triple).join("json-doc")
+                        out_dir.join(target).join("json-doc")
                     } else {
-                        out_dir.join(target.triple).join("doc")
+                        out_dir.join(target).join("doc")
                     }
                 }
                 _ => panic!("doc mode {mode:?} not expected"),
@@ -2225,11 +2225,6 @@ impl<'a> Builder<'a> {
             rustflags.arg("--cfg=parallel_compiler");
             rustdocflags.arg("--cfg=parallel_compiler");
         }
-
-        // Pass the value of `--rustc-args` from test command. If it's not a test command, this won't set anything.
-        self.config.cmd.rustc_args().iter().for_each(|v| {
-            rustflags.arg(v);
-        });
 
         Cargo {
             command: cargo,
