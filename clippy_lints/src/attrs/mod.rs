@@ -310,8 +310,8 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// #[allow(unused_mut)]
     /// fn foo() -> usize {
-    ///    let mut a = Vec::new();
-    ///    a.len()
+    ///     let mut a = Vec::new();
+    ///     a.len()
     /// }
     /// ```
     /// Use instead:
