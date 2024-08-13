@@ -1520,6 +1520,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("swap_remove index (is {index}) should be < len (is {len})");
         }
@@ -1568,6 +1569,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("insertion index (is {index}) should be <= len (is {len})");
         }
@@ -1630,6 +1632,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
@@ -2318,6 +2321,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
+        #[optimize(size)]
         fn assert_failed(at: usize, len: usize) -> ! {
             panic!("`at` split index (is {at}) should be <= len (is {len})");
         }

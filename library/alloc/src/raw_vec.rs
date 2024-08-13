@@ -782,6 +782,7 @@ where
 // Central function for reserve error handling.
 #[cfg(not(no_global_oom_handling))]
 #[cold]
+#[optimize(size)]
 fn handle_error(e: TryReserveError) -> ! {
     match e.kind() {
         CapacityOverflow => capacity_overflow(),

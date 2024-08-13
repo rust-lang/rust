@@ -498,6 +498,7 @@ impl<T> OnceLock<T> {
     }
 
     #[cold]
+    #[optimize(size)]
     fn initialize<F, E>(&self, f: F) -> Result<(), E>
     where
         F: FnOnce() -> Result<T, E>,
