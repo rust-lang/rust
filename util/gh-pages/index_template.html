@@ -180,9 +180,9 @@ Otherwise, have a great day =^.^=
                     <div class="col-12 col-md-5 search-control">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="search-input">Filter:</label>
-                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string (`S` or `/` to focus)" id="search-input" onblur="updatePath()" onchange="handleInputChanged()" />
+                            <input type="text" class="form-control filter-input" placeholder="Keywords or search string (`S` or `/` to focus)" id="search-input" />
                             <span class="input-group-btn">
-                                <button class="filter-clear btn" type="button" ng-click="search = ''; updatePath();">
+                                <button class="filter-clear btn" type="button" onclick="searchState.clearInput(event)">
                                     Clear
                                 </button>
                             </span>
@@ -199,22 +199,22 @@ Otherwise, have a great day =^.^=
                 </div>
             </div>
             {% for lint in lints %}
-                <article class="panel panel-default" id="{{lint.id}}">
+                <article class="panel panel-default" id="{(lint.id)}">
                     <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
                         <h2 class="panel-title">
                             <div class="panel-title-name">
                                 <span>{(lint.id)}</span>
-                                <a href="#{{lint.id}}" class="anchor label label-default"
+                                <a href="#{(lint.id)}" class="anchor label label-default"
                                     ng-click="openLint(lint); $event.preventDefault(); $event.stopPropagation()">&para;</a>
-                                <a href="" id="clipboard-{{lint.id}}" class="anchor label label-default" ng-click="copyToClipboard(lint); $event.stopPropagation()">
+                                <a href="" id="clipboard-{(lint.id)}" class="anchor label label-default" ng-click="copyToClipboard(lint); $event.stopPropagation()">
                                     &#128203;
                                 </a>
                             </div>
 
                             <div class="panel-title-addons">
-                                <span class="label label-lint-group label-default label-group-{{lint.group}}">{(lint.group)}</span>
+                                <span class="label label-lint-group label-default label-group-{(lint.group)}">{(lint.group)}</span>
 
-                                <span class="label label-lint-level label-lint-level-{{lint.level}}">{(lint.level)}</span>
+                                <span class="label label-lint-level label-lint-level-{(lint.level)}">{(lint.level)}</span>
 
 
                                 <span class="label label-doc-folding" ng-show="open[lint.id]">&minus;</span>
@@ -223,7 +223,7 @@ Otherwise, have a great day =^.^=
                         </h2>
                     </header>
 
-                    <div class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
+                    <div class="list-group lint-docs">
                         <div class="list-group-item lint-doc-md">{(markdown(lint.docs))}</div>
                         <div class="lint-additional-info-container">
                             {# Applicability #}
@@ -232,18 +232,21 @@ Otherwise, have a great day =^.^=
                                 <span class="label label-default label-applicability">{( lint.applicability_str() )}</span>
                                 <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a>
                             </div>
-                            <!-- Clippy version -->
+                            {# Clippy version #}
                             <div class="lint-additional-info-item">
                                 <span>{% if lint.group == "deprecated" %}Deprecated{% else %} Added{% endif %} in: </span>
                                 <span class="label label-default label-version">{(lint.version)}</span>
                             </div>
-                            <!-- Open related issues -->
+                            {# Open related issues #}
                             <div class="lint-additional-info-item">
                                 <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>
                             </div>
-                            <!-- Jump to source -->
-                            <div class="lint-additional-info-item" ng-if="lint.id_location">
-                                <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{lint.id_location.path}}">View Source</a>
+
+                            {# Jump to source #}
+                            {% if let Some(id_location) = lint.id_location %}
+                                <div class="lint-additional-info-item">
+                                    <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{id_location}}">View Source</a>
+                            {% endif %}
                             </div>
                         </div>
                     </div>

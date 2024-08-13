@@ -361,42 +361,6 @@
                 return $scope.groups[lint.group];
             };
 
-            $scope.bySearch = function (lint, index, array) {
-                let searchStr = $scope.search;
-                // It can be `null` I haven't missed this value
-                if (searchStr == null) {
-                    return true;
-                }
-                searchStr = searchStr.toLowerCase();
-                if (searchStr.startsWith("clippy::")) {
-                    searchStr = searchStr.slice(8);
-                }
-
-                // Search by id
-                if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
-                    return true;
-                }
-
-                // Search the description
-                // The use of `for`-loops instead of `foreach` enables us to return early
-                const terms = searchStr.split(" ");
-                const docsLowerCase = lint.docs.toLowerCase();
-                for (index = 0; index < terms.length; index++) {
-                    // This is more likely and will therefore be checked first
-                    if (docsLowerCase.indexOf(terms[index]) !== -1) {
-                        continue;
-                    }
-
-                    if (lint.id.indexOf(terms[index]) !== -1) {
-                        continue;
-                    }
-
-                    return false;
-                }
-
-                return true;
-            }
-
             $scope.byApplicabilities = function (lint) {
                 return $scope.applicabilities[lint.applicability];
             };
@@ -472,6 +436,11 @@ function getQueryVariable(variable) {
 window.searchState = {
     timeout: null,
     inputElem: document.getElementById("search-input"),
+    lastSearch: '',
+    clearInput: () => {
+        searchState.inputElem.value = "";
+        searchState.filterLints();
+    },
     clearInputTimeout: () => {
         if (searchState.timeout !== null) {
             clearTimeout(searchState.timeout);
@@ -483,32 +452,38 @@ window.searchState = {
         setTimeout(searchState.filterLints, 50);
     },
     filterLints: () => {
-        let searchStr = searchState.value.trim().toLowerCase();
+        searchState.clearInputTimeout();
+
+        let searchStr = searchState.inputElem.value.trim().toLowerCase();
         if (searchStr.startsWith("clippy::")) {
             searchStr = searchStr.slice(8);
         }
+        if (searchState.lastSearch === searchStr) {
+            return;
+        }
+        searchState.lastSearch = searchStr;
         const terms = searchStr.split(" ");
 
         onEachLazy(document.querySelectorAll("article"), lint => {
             // Search by id
             if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
-                el.style.display = "";
+                lint.style.display = "";
                 return;
             }
             // Search the description
             // The use of `for`-loops instead of `foreach` enables us to return early
-            const docsLowerCase = lint.docs.toLowerCase();
+            const docsLowerCase = lint.textContent.toLowerCase();
             for (index = 0; index < terms.length; index++) {
                 // This is more likely and will therefore be checked first
                 if (docsLowerCase.indexOf(terms[index]) !== -1) {
-                    continue;
+                    return;
                 }
 
                 if (lint.id.indexOf(terms[index]) !== -1) {
-                    continue;
+                    return;
                 }
 
-                return false;
+                lint.style.display = "none";
             }
         });
     },
@@ -631,7 +606,16 @@ function generateSettings() {
     );
 }
 
+function generateSearch() {
+    searchState.inputElem.addEventListener("change", handleInputChanged);
+    searchState.inputElem.addEventListener("input", handleInputChanged);
+    searchState.inputElem.addEventListener("keydown", handleInputChanged);
+    searchState.inputElem.addEventListener("keyup", handleInputChanged);
+    searchState.inputElem.addEventListener("paste", handleInputChanged);
+}
+
 generateSettings();
+generateSearch();
 
 // loading the theme after the initial load
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");

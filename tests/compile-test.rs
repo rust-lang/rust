@@ -10,7 +10,7 @@ use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
 use pulldown_cmark::{Options, Parser, html};
 use rinja::{Template, filters::Safe};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
 use ui_test::custom_flags::rustfix::RustfixMode;
