@@ -1630,7 +1630,7 @@ impl<'a> Formatter<'a> {
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
-    /// 
+    ///
     /// Writes some formatted information into this instance.
     ///
     /// # Examples
