@@ -2,7 +2,7 @@ use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     ast::{self, AstNode, HasGenericParams, HasVisibility},
-    match_ast, SyntaxNode,
+    match_ast, SyntaxKind, SyntaxNode,
 };
 
 use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -100,7 +100,9 @@ fn edit_struct_def(
                 ast::make::tokens::single_newline().text(),
             );
             edit.insert(tuple_fields_text_range.start(), w.syntax().text());
-            edit.insert(tuple_fields_text_range.start(), ",");
+            if !w.syntax().last_token().is_some_and(|t| t.kind() == SyntaxKind::COMMA) {
+                edit.insert(tuple_fields_text_range.start(), ",");
+            }
             edit.insert(
                 tuple_fields_text_range.start(),
                 ast::make::tokens::single_newline().text(),
@@ -879,6 +881,29 @@ use crate::{A::Variant, Inner};
 fn f() {
     let a = Variant { field1: Inner };
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn where_clause_with_trailing_comma() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+trait Foo {}
+
+struct Bar$0<T>(pub T)
+where
+    T: Foo,;
+"#,
+            r#"
+trait Foo {}
+
+struct Bar<T>
+where
+    T: Foo,
+{ pub field1: T }
+
 "#,
         );
     }
