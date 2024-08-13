@@ -2050,54 +2050,41 @@ macro_rules! uint_impl {
         #[inline]
         #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            let mut base = self;
-
-            if intrinsics::is_val_statically_known(exp) {
-                // Unroll multiplications for small exponent values.
-                // This gives the optimizer a way to efficiently inline call sites
-                // for the most common use cases with constant exponents.
-                // Currently, LLVM is unable to unroll the loop below.
-                match exp {
-                    0 => return 1,
-                    1 => return base,
-                    2 => return base.wrapping_mul(base),
-                    3 => {
-                        let squared = base.wrapping_mul(base);
-                        return squared.wrapping_mul(base);
-                    }
-                    4 => {
-                        let squared = base.wrapping_mul(base);
-                        return squared.wrapping_mul(squared);
-                    }
-                    5 => {
-                        let squared = base.wrapping_mul(base);
-                        return squared.wrapping_mul(squared).wrapping_mul(base);
-                    }
-                    6 => {
-                        let cubed = base.wrapping_mul(base).wrapping_mul(base);
-                        return cubed.wrapping_mul(cubed);
-                    }
-                    _ => {}
-                }
-            } else {
-                if exp == 0 {
-                    return 1;
-                }
+            if exp == 0 {
+                return 1;
             }
-            debug_assert!(exp != 0);
-
+            let mut base = self;
             let mut acc: Self = 1;
 
-            loop {
-                if (exp & 1) == 1 {
-                    acc = acc.wrapping_mul(base);
-                    // since exp!=0, finally the exp must be 1.
-                    if exp == 1 {
-                        return acc;
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
                     }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
                 }
-                exp /= 2;
-                base = base.wrapping_mul(base);
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary.
+                acc.wrapping_mul(base)
+            } else {
+                // This is faster than the above when the exponent is not known
+                // at compile time. We can't use the same code for the constant
+                // exponent case because LLVM is currently unable to unroll
+                // this loop.
+                loop {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                        // since exp!=0, finally the exp must be 1.
+                        if exp == 1 {
+                            return acc;
+                        }
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
+                }
             }
         }
 
@@ -2578,54 +2565,42 @@ macro_rules! uint_impl {
         #[rustc_inherit_overflow_checks]
         #[rustc_allow_const_fn_unstable(is_val_statically_known)]
         pub const fn pow(self, mut exp: u32) -> Self {
-            let mut base = self;
-
-            if intrinsics::is_val_statically_known(exp) {
-                // Unroll multiplications for small exponent values.
-                // This gives the optimizer a way to efficiently inline call sites
-                // for the most common use cases with constant exponents.
-                // Currently, LLVM is unable to unroll the loop below.
-                match exp {
-                    0 => return 1,
-                    1 => return base,
-                    2 => return base * base,
-                    3 => {
-                        let squared = base * base;
-                        return squared * base;
-                    }
-                    4 => {
-                        let squared = base * base;
-                        return squared * squared;
-                    }
-                    5 => {
-                        let squared = base * base;
-                        return squared * squared * base;
-                    }
-                    6 => {
-                        let cubed = base * base * base;
-                        return cubed * cubed;
-                    }
-                    _ => {}
-                }
-            } else {
-                if exp == 0 {
-                    return 1;
-                }
+            if exp == 0 {
+                return 1;
             }
-            debug_assert!(exp != 0);
-
+            let mut base = self;
             let mut acc = 1;
 
-            loop {
-                if (exp & 1) == 1 {
-                    acc = acc * base;
-                    // since exp!=0, finally the exp must be 1.
-                    if exp == 1 {
-                        return acc;
+            if intrinsics::is_val_statically_known(exp) {
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
                     }
+                    exp /= 2;
+                    base = base * base;
                 }
-                exp /= 2;
-                base = base * base;
+
+                // since exp!=0, finally the exp must be 1.
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                acc * base
+            } else {
+                // This is faster than the above when the exponent is not known
+                // at compile time. We can't use the same code for the constant
+                // exponent case because LLVM is currently unable to unroll
+                // this loop.
+                loop {
+                    if (exp & 1) == 1 {
+                        acc = acc * base;
+                        // since exp!=0, finally the exp must be 1.
+                        if exp == 1 {
+                            return acc;
+                        }
+                    }
+                    exp /= 2;
+                    base = base * base;
+                }
             }
         }
 
