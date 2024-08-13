@@ -670,11 +670,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 let step3 = self.or(left, right);
 
                 // Fourth step.
-                if width == 8 {
-                    step3
-                } else {
-                    self.gcc_bswap(step3, width)
-                }
+                if width == 8 { step3 } else { self.gcc_bswap(step3, width) }
             }
             128 => {
                 // TODO(antoyo): find a more efficient implementation?

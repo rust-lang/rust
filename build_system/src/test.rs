@@ -133,7 +133,7 @@ impl TestArg {
                         test_arg.sysroot_features.push(feature);
                     }
                     _ => {
-                        return Err(format!("Expected an argument after `{}`, found nothing", arg))
+                        return Err(format!("Expected an argument after `{}`, found nothing", arg));
                     }
                 },
                 "--help" => {
