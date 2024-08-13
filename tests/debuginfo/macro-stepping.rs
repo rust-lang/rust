@@ -2,6 +2,7 @@
 //@ ignore-android
 //@ ignore-aarch64
 //@ min-lldb-version: 310
+//@ min-gdb-version: 13.0
 
 //@ aux-build:macro-stepping.rs
 

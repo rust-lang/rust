@@ -1,5 +1,5 @@
 //@ min-lldb-version: 1800
-//@ ignore-i686-pc-windows-gnu
+//@ min-gdb-version: 13.0
 
 //@ compile-flags:-g
 
