@@ -1206,7 +1206,7 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_expr_tuple_field_access(
-        &mut self,
+        &self,
         lo: Span,
         ident_span: Span,
         base: P<Expr>,
