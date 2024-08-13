@@ -8,24 +8,23 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::{env, io};
+
+use build_helper::ci::CiEnv;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::channel;
+use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, output, t, unhashed_basename, up_to_date,
 };
 use crate::{generate_smart_stamp_hash, CLang, GitRepo, Kind};
-
-use crate::utils::exec::command;
-use build_helper::ci::CiEnv;
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -89,7 +88,7 @@ impl LdFlags {
 /// if not).
 pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> LlvmBuildStatus {
     // If we have llvm submodule initialized already, sync it.
-    builder.update_existing_submodule(&Path::new("src").join("llvm-project"));
+    builder.update_existing_submodule("src/llvm-project");
 
     builder.config.maybe_download_ci_llvm();
 
@@ -110,7 +109,8 @@ pub fn prebuilt_llvm_config(builder: &Builder<'_>, target: TargetSelection) -> L
     }
 
     // Initialize the llvm submodule if not initialized already.
-    builder.update_submodule(&Path::new("src").join("llvm-project"));
+    // If submodules are disabled, this does nothing.
+    builder.update_submodule("src/llvm-project");
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
@@ -194,6 +194,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     let supported_platforms = [
         // tier 1
         ("aarch64-unknown-linux-gnu", false),
+        ("aarch64-apple-darwin", false),
         ("i686-pc-windows-gnu", false),
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
@@ -202,7 +203,6 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         ("x86_64-pc-windows-gnu", true),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        ("aarch64-apple-darwin", false),
         ("aarch64-pc-windows-msvc", false),
         ("aarch64-unknown-linux-musl", false),
         ("arm-unknown-linux-gnueabi", false),
@@ -368,9 +368,7 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Disable zstd to avoid a dependency on libzstd.so.
-        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
-
+        // Libraries for ELF section compression.
         if !target.is_windows() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
@@ -824,6 +822,14 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
         }
     }
 
+    // Libraries for ELF section compression.
+    if builder.config.llvm_libzstd {
+        cfg.define("LLVM_ENABLE_ZSTD", "FORCE_ON");
+        cfg.define("LLVM_USE_STATIC_ZSTD", "TRUE");
+    } else {
+        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
+    }
+
     if let Some(ref linker) = builder.config.llvm_use_linker {
         cfg.define("LLVM_USE_LINKER", linker);
     }
@@ -1197,7 +1203,10 @@ impl Step for CrtBeginEnd {
 
     /// Build crtbegin.o/crtend.o for musl target.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(Path::new("src/llvm-project"));
+        builder.require_submodule(
+            "src/llvm-project",
+            Some("The LLVM sources are required for the CRT from `compiler-rt`."),
+        );
 
         let out_dir = builder.native_dir(self.target).join("crt");
 
@@ -1270,7 +1279,10 @@ impl Step for Libunwind {
 
     /// Build libunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.update_submodule(Path::new("src/llvm-project"));
+        builder.require_submodule(
+            "src/llvm-project",
+            Some("The LLVM sources are required for libunwind."),
+        );
 
         if builder.config.dry_run() {
             return PathBuf::new();

@@ -3,13 +3,12 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
+use std::{fmt, mem};
 
 use crate::core::builder::Step;
 

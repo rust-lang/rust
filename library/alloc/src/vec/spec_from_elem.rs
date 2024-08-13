@@ -1,9 +1,8 @@
 use core::ptr;
 
+use super::{IsZero, Vec};
 use crate::alloc::Allocator;
 use crate::raw_vec::RawVec;
-
-use super::{IsZero, Vec};
 
 // Specialization trait used for Vec::from_elem
 pub(super) trait SpecFromElem: Sized {

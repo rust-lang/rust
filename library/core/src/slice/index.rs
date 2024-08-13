@@ -1,9 +1,8 @@
 //! Indexing implementations for `[T]`.
 
 use crate::intrinsics::const_eval_select;
-use crate::ops;
-use crate::range;
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{ops, range};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, I> ops::Index<I> for [T]
@@ -214,6 +213,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
     /// Returns a pointer to the output at this location, without
     /// performing any bounds checking.
+    ///
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
@@ -223,6 +223,7 @@ pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
     /// Returns a mutable pointer to the output at this location, without
     /// performing any bounds checking.
+    ///
     /// Calling this method with an out-of-bounds index or a dangling `slice` pointer
     /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
@@ -802,13 +803,13 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     }
 }
 
-/// Performs bounds-checking of a range.
+/// Performs bounds checking of a range.
 ///
 /// This method is similar to [`Index::index`] for slices, but it returns a
 /// [`Range`] equivalent to `range`. You can use this method to turn any range
 /// into `start` and `end` values.
 ///
-/// `bounds` is the range of the slice to use for bounds-checking. It should
+/// `bounds` is the range of the slice to use for bounds checking. It should
 /// be a [`RangeTo`] range that ends at the length of the slice.
 ///
 /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
@@ -898,7 +899,7 @@ where
     ops::Range { start, end }
 }
 
-/// Performs bounds-checking of a range without panicking.
+/// Performs bounds checking of a range without panicking.
 ///
 /// This is a version of [`range()`] that returns [`None`] instead of panicking.
 ///
@@ -951,7 +952,8 @@ where
     if start > end || end > len { None } else { Some(ops::Range { start, end }) }
 }
 
-/// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in debug) overflow checking
+/// Converts a pair of `ops::Bound`s into `ops::Range` without performing any
+/// bounds checking or (in debug) overflow checking.
 pub(crate) fn into_range_unchecked(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
@@ -970,7 +972,7 @@ pub(crate) fn into_range_unchecked(
     start..end
 }
 
-/// Convert pair of `ops::Bound`s into `ops::Range`.
+/// Converts pair of `ops::Bound`s into `ops::Range`.
 /// Returns `None` on overflowing indices.
 pub(crate) fn into_range(
     len: usize,
@@ -995,7 +997,7 @@ pub(crate) fn into_range(
     Some(start..end)
 }
 
-/// Convert pair of `ops::Bound`s into `ops::Range`.
+/// Converts pair of `ops::Bound`s into `ops::Range`.
 /// Panics on overflowing indices.
 pub(crate) fn into_slice_range(
     len: usize,

@@ -1,8 +1,5 @@
-use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{Parser, Restrictions, TokenType};
-use crate::errors::PathSingleColon;
-use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, maybe_whole};
+use std::mem;
+
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -14,9 +11,14 @@ use rustc_ast::{
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
-use std::mem;
 use thin_vec::ThinVec;
 use tracing::debug;
+
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
+use super::{Parser, Restrictions, TokenType};
+use crate::errors::PathSingleColon;
+use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
+use crate::{errors, maybe_whole};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -311,7 +313,8 @@ impl<'a> Parser<'a> {
                 }
 
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
-                self.eat(&token::PathSep);
+                // First, eat `::` if it exists.
+                let _ = self.eat(&token::PathSep);
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
                     // `<'a, T, A = U>`
@@ -823,7 +826,8 @@ impl<'a> Parser<'a> {
             // We can only resolve single-segment paths at the moment, because multi-segment paths
             // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
             ast::ExprKind::Path(None, path)
-                if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+                if let [segment] = path.segments.as_slice()
+                    && segment.args.is_none() =>
             {
                 true
             }

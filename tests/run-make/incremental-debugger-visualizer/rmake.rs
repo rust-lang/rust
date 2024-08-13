@@ -3,7 +3,6 @@
 // See https://github.com/rust-lang/rust/pull/111641
 
 use run_make_support::{invalid_utf8_contains, invalid_utf8_not_contains, rfs, rustc};
-use std::io::Read;
 
 fn main() {
     rfs::create_file("foo.py");

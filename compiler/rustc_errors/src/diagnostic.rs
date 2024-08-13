@@ -1,16 +1,3 @@
-use crate::snippet::Style;
-use crate::{
-    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
-    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
-};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
-use rustc_error_messages::FluentValue;
-use rustc_lint_defs::{Applicability, LintExpectationId};
-use rustc_macros::{Decodable, Encodable};
-use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
@@ -18,7 +5,21 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
+
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_error_messages::{fluent_value_from_str_list_sep_by_and, FluentValue};
+use rustc_lint_defs::{Applicability, LintExpectationId};
+use rustc_macros::{Decodable, Encodable};
+use rustc_span::source_map::Spanned;
+use rustc_span::symbol::Symbol;
+use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
+
+use crate::snippet::Style;
+use crate::{
+    CodeSuggestion, DiagCtxtHandle, DiagMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
+    MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
+};
 
 /// Error type for `DiagInner`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `DiagInner`.
@@ -740,6 +741,16 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
+    #[rustc_lint_diagnostics]
+    pub fn highlighted_span_note(
+        &mut self,
+        span: impl Into<MultiSpan>,
+        msg: Vec<StringPart>,
+    ) -> &mut Self {
+        self.sub_with_highlights(Level::Note, msg, span.into());
+        self
+    }
+
     /// This is like [`Diag::note()`], but it's only printed once.
     #[rustc_lint_diagnostics]
     pub fn note_once(&mut self, msg: impl Into<SubdiagMessage>) -> &mut Self {
@@ -811,6 +822,17 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     #[rustc_lint_diagnostics]
     pub fn highlighted_help(&mut self, msg: Vec<StringPart>) -> &mut Self {
         self.sub_with_highlights(Level::Help, msg, MultiSpan::new());
+        self
+    }
+
+    /// Add a help message attached to this diagnostic with a customizable highlighted message.
+    #[rustc_lint_diagnostics]
+    pub fn highlighted_span_help(
+        &mut self,
+        span: impl Into<MultiSpan>,
+        msg: Vec<StringPart>,
+    ) -> &mut Self {
+        self.sub_with_highlights(Level::Help, msg, span.into());
         self
     }
 
@@ -898,8 +920,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        suggestion.sort_unstable();
-        suggestion.dedup_by(|(s1, m1), (s2, m2)| s1.source_equal(*s2) && m1 == m2);
+        let mut seen = crate::FxHashSet::default();
+        suggestion.retain(|(span, msg)| seen.insert((span.lo(), span.hi(), msg.clone())));
 
         let parts = suggestion
             .into_iter()

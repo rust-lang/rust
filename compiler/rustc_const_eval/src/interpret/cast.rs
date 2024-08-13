@@ -12,11 +12,10 @@ use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 use tracing::trace;
 
+use super::util::ensure_monomorphic_enough;
 use super::{
-    err_inval, throw_ub, throw_ub_custom, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate,
-    InterpCx, Machine, OpTy, PlaceTy,
+    err_inval, throw_ub, throw_ub_custom, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
 };
-
 use crate::fluent_generated as fluent;
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
@@ -387,7 +386,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_erasing_lifetimes(source_ty, cast_ty, self.param_env);
+            self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.param_env);
 
         match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
@@ -401,6 +400,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             (ty::Dynamic(data_a, _, ty::Dyn), ty::Dynamic(data_b, _, ty::Dyn)) => {
                 let val = self.read_immediate(src)?;
+                // MIR building generates odd NOP casts, prevent them from causing unexpected trouble.
+                // See <https://github.com/rust-lang/rust/issues/128880>.
+                // FIXME: ideally we wouldn't have to do this.
+                if data_a == data_b {
+                    return self.write_immediate(*val, dest);
+                }
                 // Take apart the old pointer, and find the dynamic type.
                 let (old_data, old_vptr) = val.to_scalar_pair();
                 let old_data = old_data.to_pointer(self)?;

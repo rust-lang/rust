@@ -180,16 +180,14 @@ use std::cmp::{self, max, min, Ordering};
 use std::fmt;
 use std::iter::once;
 
-use smallvec::SmallVec;
-
 use rustc_apfloat::ieee::{DoubleS, HalfS, IeeeFloat, QuadS, SingleS};
 use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
+use smallvec::SmallVec;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
-
 use crate::PatCx;
 
 /// Whether we have seen a constructor in the column or not.

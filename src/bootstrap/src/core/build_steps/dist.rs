@@ -9,19 +9,17 @@
 //! pieces of `rustup.rs`!
 
 use std::collections::HashSet;
-use std::env;
 use std::ffi::OsStr;
-use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use object::read::archive::ArchiveFile;
 use object::BinaryFormat;
 
-use crate::core::build_steps::compile;
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::tool::{self, Tool};
+use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::{self, Info};
@@ -108,7 +106,6 @@ impl Step for JsonDocs {
         builder.ensure(crate::core::build_steps::doc::Std::new(
             builder.top_stage,
             host,
-            builder,
             DocumentationFormat::Json,
         ));
 
@@ -278,12 +275,8 @@ fn make_win_dist(
     }
 
     //Copy platform tools to platform-specific bin directory
-    let target_bin_dir = plat_root
-        .join("lib")
-        .join("rustlib")
-        .join(target.triple)
-        .join("bin")
-        .join("self-contained");
+    let target_bin_dir =
+        plat_root.join("lib").join("rustlib").join(target).join("bin").join("self-contained");
     fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
     for src in target_tools {
         builder.copy_link_to_folder(&src, &target_bin_dir);
@@ -298,12 +291,8 @@ fn make_win_dist(
     );
 
     //Copy platform libs to platform-specific lib directory
-    let target_lib_dir = plat_root
-        .join("lib")
-        .join("rustlib")
-        .join(target.triple)
-        .join("lib")
-        .join("self-contained");
+    let target_lib_dir =
+        plat_root.join("lib").join("rustlib").join(target).join("lib").join("self-contained");
     fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
     for src in target_libs {
         builder.copy_link_to_folder(&src, &target_lib_dir);
@@ -453,7 +442,7 @@ impl Step for Rustc {
             // component for now.
             maybe_install_llvm_runtime(builder, host, image);
 
-            let dst_dir = image.join("lib/rustlib").join(&*host.triple).join("bin");
+            let dst_dir = image.join("lib/rustlib").join(host).join("bin");
             t!(fs::create_dir_all(&dst_dir));
 
             // Copy over lld if it's there
@@ -610,7 +599,7 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
 
 /// Copy stamped files into an image's `target/lib` directory.
 fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
-    let dst = image.join("lib/rustlib").join(target.triple).join("lib");
+    let dst = image.join("lib/rustlib").join(target).join("lib");
     let self_contained_dst = dst.join("self-contained");
     t!(fs::create_dir_all(&dst));
     t!(fs::create_dir_all(&self_contained_dst));
@@ -772,7 +761,7 @@ impl Step for Analysis {
 
         let src = builder
             .stage_out(compiler, Mode::Std)
-            .join(target.triple)
+            .join(target)
             .join(builder.cargo_dir())
             .join("deps")
             .join("save-analysis");
@@ -907,7 +896,7 @@ impl Step for Src {
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         if !builder.config.dry_run() {
-            builder.update_submodule(Path::new("src/llvm-project"));
+            builder.require_submodule("src/llvm-project", None);
         }
 
         let tarball = Tarball::new_targetless(builder, "rust-src");
@@ -921,7 +910,6 @@ impl Step for Src {
         // translation code in `imported_source_files` in `src/librustc_metadata/rmeta/decoder.rs`
         let dst_src = tarball.image_dir().join("lib/rustlib/src/rust");
 
-        let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
         // (essentially libstd and all of its path dependencies).
         copy_src_dirs(
@@ -940,9 +928,6 @@ impl Step for Src {
             ],
             &dst_src,
         );
-        for file in src_files.iter() {
-            builder.copy_link(&builder.src.join(file), &dst_src.join(file));
-        }
 
         tarball.generate()
     }
@@ -1022,10 +1007,7 @@ impl Step for PlainSourceTarball {
             // FIXME: This code looks _very_ similar to what we have in `src/core/build_steps/vendor.rs`
             // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
 
-            // Ensure we have all submodules from src and other directories checked out.
-            for submodule in build_helper::util::parse_gitmodules(&builder.src) {
-                builder.update_submodule(Path::new(submodule));
-            }
+            builder.require_and_update_all_submodules();
 
             // Vendor all Cargo dependencies
             let mut cmd = command(&builder.initial_cargo);
@@ -1039,6 +1021,8 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
+                .arg("--sync")
+                .arg(builder.src.join("./library/Cargo.toml"))
                 .arg("--sync")
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 .arg("--sync")
@@ -1517,7 +1501,7 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
-        if target.ends_with("windows-gnu") {
+        if target.is_windows_gnu() {
             tarballs.push(builder.ensure(Mingw { host: target }).expect("missing mingw"));
         }
 
@@ -1691,7 +1675,7 @@ impl Step for Extended {
                     prepare(tool);
                 }
             }
-            if target.ends_with("windows-gnu") {
+            if target.is_windows_gnu() {
                 prepare("rust-mingw");
             }
 
@@ -1838,7 +1822,7 @@ impl Step for Extended {
                 .arg("-t")
                 .arg(etc.join("msi/remove-duplicates.xsl"))
                 .run(builder);
-            if target.ends_with("windows-gnu") {
+            if target.is_windows_gnu() {
                 command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
@@ -1884,7 +1868,7 @@ impl Step for Extended {
                 if built_tools.contains("miri") {
                     cmd.arg("-dMiriDir=miri");
                 }
-                if target.ends_with("windows-gnu") {
+                if target.is_windows_gnu() {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
                 cmd.run(builder);
@@ -1909,7 +1893,7 @@ impl Step for Extended {
             }
             candle("AnalysisGroup.wxs".as_ref());
 
-            if target.ends_with("windows-gnu") {
+            if target.is_windows_gnu() {
                 candle("GccGroup.wxs".as_ref());
             }
 
@@ -1949,7 +1933,7 @@ impl Step for Extended {
                 cmd.arg("DocsGroup.wixobj");
             }
 
-            if target.ends_with("windows-gnu") {
+            if target.is_windows_gnu() {
                 cmd.arg("GccGroup.wixobj");
             }
             // ICE57 wrongly complains about the shortcuts
@@ -1981,7 +1965,7 @@ fn add_env(builder: &Builder<'_>, cmd: &mut BootstrapCommand, target: TargetSele
 
     if target.contains("windows-gnullvm") {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "LLVM");
-    } else if target.contains("windows-gnu") {
+    } else if target.is_windows_gnu() {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "GNU");
     } else {
         cmd.env("CFG_MINGW", "0").env("CFG_ABI", "MSVC");
@@ -2095,7 +2079,7 @@ fn maybe_install_llvm(
 
 /// Maybe add libLLVM.so to the target lib-dir for linking.
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir = sysroot.join("lib/rustlib").join(&*target.triple).join("lib");
+    let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
@@ -2128,8 +2112,13 @@ impl Step for LlvmTools {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "llvm-tools");
-        // FIXME: allow using the names of the tools themselves?
-        run.alias("llvm-tools").default_condition(default)
+
+        let mut run = run.alias("llvm-tools");
+        for tool in LLVM_TOOLS {
+            run = run.alias(tool);
+        }
+
+        run.default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2137,6 +2126,32 @@ impl Step for LlvmTools {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        fn tools_to_install(paths: &[PathBuf]) -> Vec<&'static str> {
+            let mut tools = vec![];
+
+            for path in paths {
+                let path = path.to_str().unwrap();
+
+                // Include all tools if path is 'llvm-tools'.
+                if path == "llvm-tools" {
+                    return LLVM_TOOLS.to_owned();
+                }
+
+                for tool in LLVM_TOOLS {
+                    if path == *tool {
+                        tools.push(*tool);
+                    }
+                }
+            }
+
+            // If no specific tool is requested, include all tools.
+            if tools.is_empty() {
+                tools = LLVM_TOOLS.to_owned();
+            }
+
+            tools
+        }
+
         let target = self.target;
 
         /* run only if llvm-config isn't used */
@@ -2157,7 +2172,7 @@ impl Step for LlvmTools {
             // Prepare the image directory
             let src_bindir = builder.llvm_out(target).join("bin");
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
-            for tool in LLVM_TOOLS {
+            for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
                 tarball.add_file(&exe, &dst_bindir, 0o755);
             }

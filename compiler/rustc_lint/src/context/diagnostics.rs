@@ -4,8 +4,9 @@
 use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_errors::elided_lifetime_in_path_suggestion;
-use rustc_errors::{Applicability, Diag, DiagArgValue, LintDiagnostic};
+use rustc_errors::{
+    elided_lifetime_in_path_suggestion, Applicability, Diag, DiagArgValue, LintDiagnostic,
+};
 use rustc_middle::middle::stability;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::Session;
@@ -436,6 +437,9 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         .decorate_lint(diag),
         BuiltinLintDiag::OutOfScopeMacroCalls { path } => {
             lints::OutOfScopeMacroCalls { path }.decorate_lint(diag)
+        }
+        BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
+            lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
     }
 }

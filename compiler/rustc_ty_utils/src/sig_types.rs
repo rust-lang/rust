@@ -3,7 +3,8 @@
 
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
-use rustc_hir::{def::DefKind, def_id::LocalDefId};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;

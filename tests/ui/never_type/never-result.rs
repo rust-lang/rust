@@ -2,9 +2,8 @@
 
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-
+#![allow(unreachable_patterns)]
 // Test that we can extract a ! through pattern matching then use it as several different types.
-
 #![feature(never_type)]
 
 fn main() {
@@ -16,6 +15,6 @@ fn main() {
             let w: i32 = y;
             let e: String = y;
             y
-        },
+        }
     }
 }

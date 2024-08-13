@@ -1,30 +1,22 @@
 // ignore-tidy-filelength
 
-use super::diagnostics::SnapshotParser;
-use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
-use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{
-    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
-    SemiColonMode, SeqSep, TokenType, Trailing,
-};
+use core::mem;
+use core::ops::ControlFlow;
 
-use crate::errors;
-use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentIsRaw;
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
-use core::mem;
-use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::{walk_expr, Visitor};
-use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
-use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
-use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
-use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
+use rustc_ast::{
+    self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
+    ClosureBinder, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall, MetaItemLit,
+    Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, DUMMY_NODE_ID,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -39,13 +31,14 @@ use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::instrument;
 
-#[derive(Debug)]
-pub(super) enum LhsExpr {
-    // Already parsed just the outer attributes.
-    Unparsed { attrs: AttrWrapper },
-    // Already parsed the expression.
-    Parsed { expr: P<Expr>, starts_statement: bool },
-}
+use super::diagnostics::SnapshotParser;
+use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
+use super::{
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
+    SemiColonMode, SeqSep, TokenType, Trailing,
+};
+use crate::{errors, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(Debug)]
 enum DestructuredFloat {
@@ -112,30 +105,31 @@ impl<'a> Parser<'a> {
         r: Restrictions,
         attrs: AttrWrapper,
     ) -> PResult<'a, P<Expr>> {
-        self.with_res(r, |this| this.parse_expr_assoc_with(0, LhsExpr::Unparsed { attrs }))
+        self.with_res(r, |this| this.parse_expr_assoc_with(0, attrs))
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
     pub(super) fn parse_expr_assoc_with(
         &mut self,
         min_prec: usize,
-        lhs: LhsExpr,
+        attrs: AttrWrapper,
     ) -> PResult<'a, P<Expr>> {
-        let mut starts_stmt = false;
-        let mut lhs = match lhs {
-            LhsExpr::Parsed { expr, starts_statement } => {
-                starts_stmt = starts_statement;
-                expr
-            }
-            LhsExpr::Unparsed { attrs } => {
-                if self.token.is_range_separator() {
-                    return self.parse_expr_prefix_range(attrs);
-                } else {
-                    self.parse_expr_prefix(attrs)?
-                }
-            }
+        let lhs = if self.token.is_range_separator() {
+            return self.parse_expr_prefix_range(attrs);
+        } else {
+            self.parse_expr_prefix(attrs)?
         };
+        self.parse_expr_assoc_rest_with(min_prec, false, lhs)
+    }
 
+    /// Parses the rest of an associative expression (i.e. the part after the lhs) with operators
+    /// of at least `min_prec` precedence.
+    pub(super) fn parse_expr_assoc_rest_with(
+        &mut self,
+        min_prec: usize,
+        starts_stmt: bool,
+        mut lhs: P<Expr>,
+    ) -> PResult<'a, P<Expr>> {
         if !self.should_continue_as_assoc_expr(&lhs) {
             return Ok(lhs);
         }
@@ -271,7 +265,7 @@ impl<'a> Parser<'a> {
             };
             let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
                 let attrs = this.parse_outer_attributes()?;
-                this.parse_expr_assoc_with(prec + prec_adjustment, LhsExpr::Unparsed { attrs })
+                this.parse_expr_assoc_with(prec + prec_adjustment, attrs)
             })?;
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
@@ -446,7 +440,7 @@ impl<'a> Parser<'a> {
             let maybe_lt = self.token.clone();
             let attrs = self.parse_outer_attributes()?;
             Some(
-                self.parse_expr_assoc_with(prec + 1, LhsExpr::Unparsed { attrs })
+                self.parse_expr_assoc_with(prec + 1, attrs)
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
             )
         } else {
@@ -503,12 +497,9 @@ impl<'a> Parser<'a> {
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
                 let attrs = this.parse_outer_attributes()?;
-                this.parse_expr_assoc_with(
-                    op.unwrap().precedence() + 1,
-                    LhsExpr::Unparsed { attrs },
-                )
-                .map(|x| (lo.to(x.span), Some(x)))
-                .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
+                this.parse_expr_assoc_with(op.unwrap().precedence() + 1, attrs)
+                    .map(|x| (lo.to(x.span), Some(x)))
+                    .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
             } else {
                 (lo, None)
             };
@@ -617,10 +608,12 @@ impl<'a> Parser<'a> {
     /// Parse `box expr` - this syntax has been removed, but we still parse this
     /// for now to provide a more useful error
     fn parse_expr_box(&mut self, box_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        let (span, _) = self.parse_expr_prefix_common(box_kw)?;
-        let inner_span = span.with_lo(box_kw.hi());
-        let code = self.psess.source_map().span_to_snippet(inner_span).unwrap();
-        let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span: span, code: code.trim() });
+        let (span, expr) = self.parse_expr_prefix_common(box_kw)?;
+        // Make a multipart suggestion instead of `span_to_snippet` in case source isn't available
+        let box_kw_and_lo = box_kw.until(self.interpolated_or_expr_span(&expr));
+        let hi = span.shrink_to_hi();
+        let sugg = errors::AddBoxNew { box_kw_and_lo, hi };
+        let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span, sugg });
         Ok((span, ExprKind::Err(guar)))
     }
 
@@ -701,12 +694,12 @@ impl<'a> Parser<'a> {
                         // `foo: `
                         ExprKind::Path(None, ast::Path { segments, .. }),
                         token::Ident(kw::For | kw::Loop | kw::While, IdentIsRaw::No),
-                    ) if segments.len() == 1 => {
+                    ) if let [segment] = segments.as_slice() => {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
                             ident: Ident::from_str_and_span(
-                                &format!("'{}", segments[0].ident),
-                                segments[0].ident.span,
+                                &format!("'{}", segment.ident),
+                                segment.ident.span,
                             ),
                         };
                         match self.parse_expr_labeled(label, false) {
@@ -886,7 +879,7 @@ impl<'a> Parser<'a> {
         mut e: P<Expr>,
         lo: Span,
     ) -> PResult<'a, P<Expr>> {
-        let res = ensure_sufficient_stack(|| {
+        let mut res = ensure_sufficient_stack(|| {
             loop {
                 let has_question =
                     if self.prev_token.kind == TokenKind::Ident(kw::Return, IdentIsRaw::No) {
@@ -933,17 +926,13 @@ impl<'a> Parser<'a> {
 
         // Stitch the list of outer attributes onto the return value. A little
         // bit ugly, but the best way given the current code structure.
-        if attrs.is_empty() {
-            res
-        } else {
-            res.map(|expr| {
-                expr.map(|mut expr| {
-                    attrs.extend(expr.attrs);
-                    expr.attrs = attrs;
-                    expr
-                })
-            })
+        if !attrs.is_empty()
+            && let Ok(expr) = &mut res
+        {
+            mem::swap(&mut expr.attrs, &mut attrs);
+            expr.attrs.extend(attrs)
         }
+        res
     }
 
     pub(super) fn parse_dot_suffix_expr(
@@ -2644,10 +2633,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::Eq)?;
         }
         let attrs = self.parse_outer_attributes()?;
-        let expr = self.parse_expr_assoc_with(
-            1 + prec_let_scrutinee_needs_par(),
-            LhsExpr::Unparsed { attrs },
-        )?;
+        let expr = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), attrs)?;
         let span = lo.to(expr.span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }
@@ -3152,7 +3138,8 @@ impl<'a> Parser<'a> {
 
                 if !require_comma {
                     arm_body = Some(expr);
-                    this.eat(&token::Comma);
+                    // Eat a comma if it exists, though.
+                    let _ = this.eat(&token::Comma);
                     Ok(Recovered::No)
                 } else if let Some((span, guar)) =
                     this.parse_arm_body_missing_braces(&expr, arrow_span)
@@ -3653,7 +3640,7 @@ impl<'a> Parser<'a> {
                         fields.push(f);
                     }
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
-                    self.eat(&token::Comma);
+                    let _ = self.eat(&token::Comma);
                 }
             }
         }

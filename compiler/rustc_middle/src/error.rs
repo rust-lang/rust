@@ -1,7 +1,8 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use rustc_errors::{codes::*, DiagArgName, DiagArgValue, DiagMessage};
+use rustc_errors::codes::*;
+use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 

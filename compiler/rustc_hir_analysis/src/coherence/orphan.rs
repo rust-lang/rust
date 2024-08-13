@@ -1,19 +1,21 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use crate::errors;
-
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_trait_selection::traits::{self, IsFirstInputType, UncoveredTyParams};
-use rustc_trait_selection::traits::{OrphanCheckErr, OrphanCheckMode};
+use rustc_trait_selection::traits::{
+    self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
+};
+
+use crate::errors;
 
 #[instrument(level = "debug", skip(tcx))]
 pub(crate) fn orphan_check_impl(

@@ -164,7 +164,7 @@ struct AncillaryDataIter<'a, T> {
 }
 
 impl<'a, T> AncillaryDataIter<'a, T> {
-    /// Create `AncillaryDataIter` struct to iterate through the data unit in the control message.
+    /// Creates `AncillaryDataIter` struct to iterate through the data unit in the control message.
     ///
     /// # Safety
     ///
@@ -220,7 +220,7 @@ pub struct SocketCred(libc::sockcred2);
 #[doc(cfg(any(target_os = "android", target_os = "linux")))]
 #[cfg(any(target_os = "android", target_os = "linux"))]
 impl SocketCred {
-    /// Create a Unix credential struct.
+    /// Creates a Unix credential struct.
     ///
     /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -235,7 +235,7 @@ impl SocketCred {
         self.0.pid = pid;
     }
 
-    /// Get the current PID.
+    /// Gets the current PID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_pid(&self) -> libc::pid_t {
@@ -248,7 +248,7 @@ impl SocketCred {
         self.0.uid = uid;
     }
 
-    /// Get the current UID.
+    /// Gets the current UID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_uid(&self) -> libc::uid_t {
@@ -261,7 +261,7 @@ impl SocketCred {
         self.0.gid = gid;
     }
 
-    /// Get the current GID.
+    /// Gets the current GID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_gid(&self) -> libc::gid_t {
@@ -271,7 +271,7 @@ impl SocketCred {
 
 #[cfg(target_os = "freebsd")]
 impl SocketCred {
-    /// Create a Unix credential struct.
+    /// Creates a Unix credential struct.
     ///
     /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -295,7 +295,7 @@ impl SocketCred {
         self.0.sc_pid = pid;
     }
 
-    /// Get the current PID.
+    /// Gets the current PID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_pid(&self) -> libc::pid_t {
@@ -308,7 +308,7 @@ impl SocketCred {
         self.0.sc_euid = uid;
     }
 
-    /// Get the current UID.
+    /// Gets the current UID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_uid(&self) -> libc::uid_t {
@@ -321,7 +321,7 @@ impl SocketCred {
         self.0.sc_egid = gid;
     }
 
-    /// Get the current GID.
+    /// Gets the current GID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_gid(&self) -> libc::gid_t {
@@ -331,7 +331,7 @@ impl SocketCred {
 
 #[cfg(target_os = "netbsd")]
 impl SocketCred {
-    /// Create a Unix credential struct.
+    /// Creates a Unix credential struct.
     ///
     /// PID, UID and GID is set to 0.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
@@ -353,7 +353,7 @@ impl SocketCred {
         self.0.sc_pid = pid;
     }
 
-    /// Get the current PID.
+    /// Gets the current PID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_pid(&self) -> libc::pid_t {
@@ -366,7 +366,7 @@ impl SocketCred {
         self.0.sc_uid = uid;
     }
 
-    /// Get the current UID.
+    /// Gets the current UID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_uid(&self) -> libc::uid_t {
@@ -379,7 +379,7 @@ impl SocketCred {
         self.0.sc_gid = gid;
     }
 
-    /// Get the current GID.
+    /// Gets the current GID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_gid(&self) -> libc::gid_t {
@@ -466,7 +466,7 @@ pub enum AncillaryData<'a> {
 }
 
 impl<'a> AncillaryData<'a> {
-    /// Create an `AncillaryData::ScmRights` variant.
+    /// Creates an `AncillaryData::ScmRights` variant.
     ///
     /// # Safety
     ///
@@ -478,7 +478,7 @@ impl<'a> AncillaryData<'a> {
         AncillaryData::ScmRights(scm_rights)
     }
 
-    /// Create an `AncillaryData::ScmCredentials` variant.
+    /// Creates an `AncillaryData::ScmCredentials` variant.
     ///
     /// # Safety
     ///
@@ -605,7 +605,7 @@ pub struct SocketAncillary<'a> {
 }
 
 impl<'a> SocketAncillary<'a> {
-    /// Create an ancillary data with the given buffer.
+    /// Creates an ancillary data with the given buffer.
     ///
     /// # Example
     ///

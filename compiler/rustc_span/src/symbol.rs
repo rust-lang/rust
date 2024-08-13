@@ -2,6 +2,9 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
+use std::hash::{Hash, Hasher};
+use std::{fmt, str};
+
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
@@ -9,10 +12,6 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{symbols, Decodable, Encodable, HashStable_Generic};
-
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::str;
 
 use crate::{with_session_globals, Edition, Span, DUMMY_SP};
 
@@ -277,6 +276,7 @@ symbols! {
         Path,
         PathBuf,
         Pending,
+        PinCoerceUnsized,
         Pointer,
         Poll,
         ProcMacro,
@@ -1217,6 +1217,7 @@ symbols! {
         mir_static_mut,
         mir_storage_dead,
         mir_storage_live,
+        mir_tail_call,
         mir_unreachable,
         mir_unwind_cleanup,
         mir_unwind_continue,
@@ -1618,6 +1619,7 @@ symbols! {
         rustc_dirty,
         rustc_do_not_const_check,
         rustc_doc_primitive,
+        rustc_driver,
         rustc_dummy,
         rustc_dump_def_parents,
         rustc_dump_item_bounds,
@@ -1702,9 +1704,11 @@ symbols! {
         saturating_add,
         saturating_div,
         saturating_sub,
+        select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,
         semitransparent,
+        sha512_sm_x86,
         shadow_call_stack,
         shl,
         shl_assign,
@@ -2446,13 +2450,11 @@ pub mod kw {
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
-    use super::Symbol;
-
-    #[doc(inline)]
-    pub use super::sym_generated::*;
-
     // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
+    #[doc(inline)]
+    pub use super::sym_generated::*;
+    use super::Symbol;
 
     /// Get the symbol for an integer.
     ///

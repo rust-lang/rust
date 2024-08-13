@@ -1,8 +1,9 @@
+use core::iter::repeat;
+
 use crate::ffi::CString;
 use crate::hint::black_box;
 use crate::path::Path;
 use crate::sys::common::small_c_string::run_path_with_cstr;
-use core::iter::repeat;
 
 #[test]
 fn stack_allocation_works() {

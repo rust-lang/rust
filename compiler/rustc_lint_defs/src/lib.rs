@@ -1,4 +1,3 @@
-pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -7,15 +6,15 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::HashStableContext;
-use rustc_hir::HirId;
+use rustc_hir::{HashStableContext, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::MacroRulesNormalizedIdent;
-use rustc_span::{sym, symbol::Ident, Span, Symbol};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::abi::Abi;
-
 use serde::{Deserialize, Serialize};
+
+pub use self::Level::*;
 
 pub mod builtin;
 
@@ -747,6 +746,11 @@ pub enum BuiltinLintDiag {
     OutOfScopeMacroCalls {
         path: String,
     },
+    UnexpectedBuiltinCfg {
+        cfg: String,
+        cfg_name: Symbol,
+        controlled_by: &'static str,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -754,7 +758,7 @@ pub enum BuiltinLintDiag {
 #[derive(Debug)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-    pub span: MultiSpan,
+    pub span: Option<MultiSpan>,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -792,7 +796,7 @@ impl LintBuffer {
         self.add_early_lint(BufferedEarlyLint {
             lint_id: LintId::of(lint),
             node_id,
-            span: span.into(),
+            span: Some(span.into()),
             diagnostic,
         });
     }

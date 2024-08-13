@@ -1,8 +1,8 @@
+use std::borrow::Cow;
+
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-
-use std::borrow::Cow;
 
 use super::MaybeBorrowedLocals;
 use crate::{GenKill, ResultsCursor};

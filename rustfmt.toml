@@ -2,6 +2,8 @@
 version = "Two"
 use_small_heuristics = "Max"
 merge_derives = false
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"
 
 # Files to ignore. Each entry uses gitignore syntax, but `!` prefixes aren't allowed.
 ignore = [
@@ -22,8 +24,6 @@ ignore = [
     "/tests/rustdoc-ui/",             # Some have syntax errors, some are whitespace-sensitive.
     "/tests/ui/",                     # Some have syntax errors, some are whitespace-sensitive.
     "/tests/ui-fulldeps/",            # Some are whitespace-sensitive (e.g. `// ~ERROR` comments).
-    # #[cfg(bootstrap)] so that t-release sees this when they search for it
-    "/tests/rustdoc-json/impl-trait-precise-capturing.rs",
 
     # Do not format submodules.
     # FIXME: sync submodule list with tidy/bootstrap/etc

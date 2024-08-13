@@ -43,8 +43,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
-use core::fmt;
-use core::hash;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
 use core::iter::FusedIterator;
@@ -55,9 +53,8 @@ use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
-use core::ptr;
-use core::slice;
 use core::str::pattern::Pattern;
+use core::{fmt, hash, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Allocator;
@@ -903,7 +900,7 @@ impl String {
     /// let rebuilt = unsafe { String::from_raw_parts(ptr, len, cap) };
     /// assert_eq!(rebuilt, "hello");
     /// ```
-    #[must_use = "`self` will be dropped if the result is not used"]
+    #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()

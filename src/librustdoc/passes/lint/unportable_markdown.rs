@@ -10,13 +10,14 @@
 //!
 //! <https://rustc-dev-guide.rust-lang.org/bug-fix-procedure.html#add-the-lint-to-the-list-of-removed-lists>
 
-use crate::clean::Item;
-use crate::core::DocContext;
-use pulldown_cmark as cmarkn;
-use pulldown_cmark_old as cmarko;
+use std::collections::{BTreeMap, BTreeSet};
+
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
-use std::collections::{BTreeMap, BTreeSet};
+use {pulldown_cmark as cmarkn, pulldown_cmark_old as cmarko};
+
+use crate::clean::Item;
+use crate::core::DocContext;
 
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     let tcx = cx.tcx;

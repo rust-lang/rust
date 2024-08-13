@@ -1,26 +1,26 @@
-use crate::config::*;
-use crate::search_paths::SearchPath;
-use crate::utils::NativeLib;
-use crate::{lint, EarlyDiagCtxt};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::profiling::TimePassesFormat;
-use rustc_data_structures::stable_hasher::Hash64;
-use rustc_errors::ColorConfig;
-use rustc_errors::{LanguageIdentifier, TerminalUrl};
-use rustc_feature::UnstableFeatures;
-use rustc_span::edition::Edition;
-use rustc_span::RealFileName;
-use rustc_span::SourceFileHashAlgorithm;
-use rustc_target::spec::{
-    CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
-    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
-    WasmCAbi,
-};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
 use std::str;
+
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::profiling::TimePassesFormat;
+use rustc_data_structures::stable_hasher::Hash64;
+use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
+use rustc_feature::UnstableFeatures;
+use rustc_span::edition::Edition;
+use rustc_span::{RealFileName, SourceFileHashAlgorithm};
+use rustc_target::spec::{
+    CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
+    RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    WasmCAbi,
+};
+
+use crate::config::*;
+use crate::search_paths::SearchPath;
+use crate::utils::NativeLib;
+use crate::{lint, EarlyDiagCtxt};
 
 macro_rules! insert {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {
@@ -447,8 +447,9 @@ mod desc {
 }
 
 mod parse {
-    pub(crate) use super::*;
     use std::str::FromStr;
+
+    pub(crate) use super::*;
 
     /// This is for boolean options that don't take a value and start with
     /// `no-`. This style of option is deprecated.
@@ -911,16 +912,9 @@ mod parse {
         match v {
             None => false,
             Some(s) => {
-                let parts = s.split('=').collect::<Vec<_>>();
-                if parts.len() != 2 {
-                    return false;
-                }
-                let crate_name = parts[0].to_string();
-                let fuel = parts[1].parse::<u64>();
-                if fuel.is_err() {
-                    return false;
-                }
-                *slot = Some((crate_name, fuel.unwrap()));
+                let [crate_name, fuel] = *s.split('=').collect::<Vec<_>>() else { return false };
+                let Ok(fuel) = fuel.parse::<u64>() else { return false };
+                *slot = Some((crate_name.to_string(), fuel));
                 true
             }
         }
@@ -1826,6 +1820,8 @@ options! {
         the same values as the target option of the same name"),
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics (default: no)"),
+    metrics_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "stores metrics about the errors being emitted by rustc to disk"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),

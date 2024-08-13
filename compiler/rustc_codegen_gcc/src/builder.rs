@@ -28,9 +28,8 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
-use rustc_target::abi::{
-    self, call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange,
-};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
 
 use crate::common::{type_is_pointer, SignType, TypeReflection};
@@ -1128,6 +1127,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().add_assignment(self.location, aligned_destination, val);
         // TODO(antoyo): handle align and flags.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
+        // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
+        // LLVM backend for details.
         self.cx.context.new_rvalue_zero(self.type_i32())
     }
 

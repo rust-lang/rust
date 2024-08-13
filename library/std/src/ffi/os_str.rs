@@ -4,18 +4,15 @@
 mod tests;
 
 use crate::borrow::{Borrow, Cow};
-use crate::cmp;
 use crate::collections::TryReserveError;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
-use crate::slice;
 use crate::str::FromStr;
 use crate::sync::Arc;
-
 use crate::sys::os_str::{Buf, Slice};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{cmp, fmt, slice};
 
 /// A type that can represent owned, mutable platform-native strings, but is
 /// cheaply inter-convertible with Rust strings.

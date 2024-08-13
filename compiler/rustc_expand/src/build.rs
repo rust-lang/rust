@@ -1,11 +1,14 @@
-use crate::base::ExtCtxt;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp};
-use rustc_ast::{attr, token, util::literal};
+use rustc_ast::util::literal;
+use rustc_ast::{
+    self as ast, attr, token, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
+};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::base::ExtCtxt;
 
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {

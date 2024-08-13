@@ -15,7 +15,7 @@ pub struct WStrUnits<'a> {
 }
 
 impl WStrUnits<'_> {
-    /// Create the iterator. Returns `None` if `lpwstr` is null.
+    /// Creates the iterator. Returns `None` if `lpwstr` is null.
     ///
     /// SAFETY: `lpwstr` must point to a null-terminated wide string that lives
     /// at least as long as the lifetime of this struct.

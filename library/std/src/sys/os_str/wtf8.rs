@@ -2,12 +2,11 @@
 //! wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-use crate::fmt;
-use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::wtf8::{check_utf8_boundary, Wtf8, Wtf8Buf};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{fmt, mem};
 
 #[derive(Clone, Hash)]
 pub struct Buf {

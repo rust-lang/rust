@@ -1,24 +1,7 @@
-use crate::errors::{CheckNameUnknownTool, RequestedLevel, UnsupportedGroup};
-use crate::lints::{
-    DeprecatedLintNameFromCommandLine, RemovedLintFromCommandLine, RenamedLintFromCommandLine,
-    UnknownLintFromCommandLine,
-};
-use crate::{
-    builtin::MISSING_DOCS,
-    context::{CheckLintNameResult, LintStore},
-    fluent_generated as fluent,
-    late::unerased_lint_store,
-    lints::{
-        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAttributeLint, RemovedLint,
-        RenamedLint, RenamedLintSuggestion, UnknownLint, UnknownLintSuggestion,
-    },
-};
-use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
-use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
 use rustc_index::IndexVec;
@@ -30,21 +13,30 @@ use rustc_middle::lint::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
-use rustc_session::lint::{
-    builtin::{
-        self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
-        UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
-    },
-    Level, Lint, LintExpectationId, LintId,
+use rustc_session::lint::builtin::{
+    self, FORBIDDEN_LINT_GROUPS, RENAMED_AND_REMOVED_LINTS, SINGLE_USE_LIFETIMES,
+    UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
+use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use tracing::{debug, instrument};
+use {rustc_ast as ast, rustc_hir as hir};
 
+use crate::builtin::MISSING_DOCS;
+use crate::context::{CheckLintNameResult, LintStore};
 use crate::errors::{
-    MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
-    UnknownToolInScopedLint,
+    CheckNameUnknownTool, MalformedAttribute, MalformedAttributeSub, OverruledAttribute,
+    OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
+};
+use crate::fluent_generated as fluent;
+use crate::late::unerased_lint_store;
+use crate::lints::{
+    DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
+    OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
+    RenamedLintFromCommandLine, RenamedLintSuggestion, UnknownLint, UnknownLintFromCommandLine,
+    UnknownLintSuggestion,
 };
 
 /// Collection of lint levels for the whole crate.
@@ -725,7 +717,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         };
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn add(&mut self, attrs: &[ast::Attribute], is_crate_node: bool, source_hir_id: Option<HirId>) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
@@ -1047,7 +1038,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
             // FIXME: make this translatable
             #[allow(rustc::diagnostic_outside_of_impl)]
-            #[allow(rustc::untranslatable_diagnostic)]
             lint_level(self.sess, lint, level, src, Some(span.into()), |lint| {
                 lint.primary_message(fluent::lint_unknown_gated_lint);
                 lint.arg("name", lint_id.lint.name_lower());

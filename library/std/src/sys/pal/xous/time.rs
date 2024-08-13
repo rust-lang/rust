@@ -1,7 +1,7 @@
 use crate::os::xous::ffi::blocking_scalar;
-use crate::os::xous::services::{
-    systime_server, ticktimer_server, SystimeScalar::GetUtcTimeMs, TicktimerScalar::ElapsedMs,
-};
+use crate::os::xous::services::SystimeScalar::GetUtcTimeMs;
+use crate::os::xous::services::TicktimerScalar::ElapsedMs;
+use crate::os::xous::services::{systime_server, ticktimer_server};
 use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]

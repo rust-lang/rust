@@ -3,35 +3,28 @@
 #[cfg(test)]
 mod tests;
 
-use crate::cmp;
+use core::ffi::c_void;
+
+use super::api::{self, WinError};
 use crate::collections::BTreeMap;
-use crate::env;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
-use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
-use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::num::NonZero;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
-use crate::ptr;
 use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
 use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
-use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys::stdio;
+use crate::sys::{cvt, path, stdio};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
-
-use core::ffi::c_void;
-
-use super::api::{self, WinError};
+use crate::{cmp, env, fmt, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -549,7 +542,7 @@ where
     None
 }
 
-/// Check if a file exists without following symlinks.
+/// Checks if a file exists without following symlinks.
 fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
         let path = args::to_user_path(path).ok()?;
@@ -571,7 +564,7 @@ impl Stdio {
             Ok(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
                 let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
-                io.into_raw_handle();
+                let _ = io.into_raw_handle(); // Don't close the handle
                 ret
             },
             // If no stdio handle is available, then propagate the null value.

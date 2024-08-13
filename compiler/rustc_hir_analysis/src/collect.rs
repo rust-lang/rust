@@ -14,6 +14,10 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+use std::cell::Cell;
+use std::iter;
+use std::ops::Bound;
+
 use rustc_ast::Recovered;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -24,8 +28,7 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, walk_generics, Visitor};
-use rustc_hir::{self as hir};
-use rustc_hir::{GenericParamKind, Node};
+use rustc_hir::{self as hir, GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
@@ -39,9 +42,6 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
-use std::cell::Cell;
-use std::iter;
-use std::ops::Bound;
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
@@ -67,6 +67,7 @@ pub fn provide(providers: &mut Providers) {
         item_super_predicates: item_bounds::item_super_predicates,
         explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
         item_non_self_assumptions: item_bounds::item_non_self_assumptions,
+        impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
         predicates_defined_on,
@@ -1207,25 +1208,29 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(def_id);
 
-    let (is_auto, safety, items) = match item.kind {
+    let (is_alias, is_auto, safety, items) = match item.kind {
         hir::ItemKind::Trait(is_auto, safety, .., items) => {
-            (is_auto == hir::IsAuto::Yes, safety, items)
+            (false, is_auto == hir::IsAuto::Yes, safety, items)
         }
-        hir::ItemKind::TraitAlias(..) => (false, hir::Safety::Safe, &[][..]),
+        hir::ItemKind::TraitAlias(..) => (true, false, hir::Safety::Safe, &[][..]),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
-    let constness = if tcx.has_attr(def_id, sym::const_trait) {
+    // Only regular traits can be const.
+    let constness = if !is_alias && tcx.has_attr(def_id, sym::const_trait) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
     };
+
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
-    let is_marker = tcx.has_attr(def_id, sym::marker);
+    // Only regular traits can be marker.
+    let is_marker = !is_alias && tcx.has_attr(def_id, sym::marker);
+
     let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let is_fundamental = tcx.has_attr(def_id, sym::fundamental);
 
@@ -1695,6 +1700,8 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
             trait_ref: ty::EarlyBinder::bind(trait_ref),
             safety: impl_.safety,
             polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+            do_not_recommend: tcx.features().do_not_recommend
+                && tcx.has_attrs_with_path(def_id, &[sym::diagnostic, sym::do_not_recommend]),
         }
     })
 }

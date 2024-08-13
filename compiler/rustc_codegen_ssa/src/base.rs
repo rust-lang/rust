@@ -1,19 +1,8 @@
-use crate::assert_module_sources::CguReuse;
-use crate::back::link::are_upstream_rust_objects_already_included;
-use crate::back::metadata::create_compressed_metadata_file;
-use crate::back::write::{
-    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
-    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
-};
-use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
-use crate::errors;
-use crate::meth;
-use crate::mir;
-use crate::mir::operand::OperandValue;
-use crate::mir::place::PlaceRef;
-use crate::traits::*;
-use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind};
+use std::cmp;
+use std::collections::BTreeSet;
+use std::time::{Duration, Instant};
 
+use itertools::Itertools;
 use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -26,9 +15,8 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
-use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_middle::middle::lang_items;
+use rustc_middle::middle::{exported_symbols, lang_items};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::mir::BinOp;
 use rustc_middle::query::Providers;
@@ -39,13 +27,22 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::abi::FIRST_VARIANT;
-
-use std::cmp;
-use std::collections::BTreeSet;
-use std::time::{Duration, Instant};
-
-use itertools::Itertools;
 use tracing::{debug, info};
+
+use crate::assert_module_sources::CguReuse;
+use crate::back::link::are_upstream_rust_objects_already_included;
+use crate::back::metadata::create_compressed_metadata_file;
+use crate::back::write::{
+    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
+    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
+};
+use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
+use crate::mir::operand::OperandValue;
+use crate::mir::place::PlaceRef;
+use crate::traits::*;
+use crate::{
+    errors, meth, mir, CachedModuleCodegen, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
+};
 
 pub fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match op {
@@ -146,7 +143,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let cx = bx.cx();
     let (source, target) =
-        cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, bx.param_env());
+        cx.tcx().struct_lockstep_tails_for_codegen(source, target, bx.param_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.eval_target_usize(cx.tcx(), ty::ParamEnv::reveal_all()))

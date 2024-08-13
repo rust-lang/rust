@@ -1,13 +1,12 @@
 // Utility Functions.
 
-use super::namespace::item_namespace;
-use super::CodegenUnitDebugContext;
-
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use tracing::trace;
 
+use super::namespace::item_namespace;
+use super::CodegenUnitDebugContext;
 use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIArray, DIBuilder, DIDescriptor, DIScope};
@@ -63,7 +62,7 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     pointee_ty: Ty<'tcx>,
 ) -> Option<FatPtrKind> {
-    let pointee_tail_ty = cx.tcx.struct_tail_erasing_lifetimes(pointee_ty, cx.param_env());
+    let pointee_tail_ty = cx.tcx.struct_tail_for_codegen(pointee_ty, cx.param_env());
     let layout = cx.layout_of(pointee_tail_ty);
     trace!(
         "fat_pointer_kind: {:?} has layout {:?} (is_unsized? {})",

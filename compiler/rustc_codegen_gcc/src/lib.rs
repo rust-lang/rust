@@ -79,14 +79,11 @@ use std::ops::Deref;
 use std::sync::atomic::AtomicBool;
 #[cfg(not(feature = "master"))]
 use std::sync::atomic::Ordering;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-use back::lto::ThinBuffer;
-use back::lto::ThinData;
+use back::lto::{ThinBuffer, ThinData};
 use errors::LTONotSupported;
-use gccjit::CType;
-use gccjit::{Context, OptimizationLevel};
+use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -489,7 +486,7 @@ pub fn target_features(
     sess.target
         .supported_target_features()
         .iter()
-        .filter_map(|&(feature, gate)| {
+        .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
             } else {

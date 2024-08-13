@@ -20,25 +20,8 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
-use crate::fluent_generated as fluent;
-use crate::{
-    errors::BuiltinEllipsisInclusiveRangePatterns,
-    lints::{
-        BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
-        BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
-        BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-        BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
-        BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-        BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-        BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-        BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
-        BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-        BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
-        BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, InvalidAsmLabel,
-    },
-    EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
-};
+use std::fmt::Write;
+
 use ast::token::TokenKind;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -55,9 +38,9 @@ use rustc_middle::bug;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::Upcast;
-use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Upcast, VariantDef};
+// hardwired lints from rustc_lint_defs
+pub use rustc_session::lint::builtin::*;
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::edition::Edition;
@@ -67,15 +50,29 @@ use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_target::abi::Abi;
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, misc::type_allowed_to_implement_copy};
+use rustc_trait_selection::traits::{self};
 
+use crate::errors::BuiltinEllipsisInclusiveRangePatterns;
+use crate::lints::{
+    BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDeprecatedAttrLink,
+    BuiltinDeprecatedAttrLinkSuggestion, BuiltinDeprecatedAttrUsed, BuiltinDerefNullptr,
+    BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
+    BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
+    BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
+    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
+    BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+    BuiltinWhileTrue, InvalidAsmLabel,
+};
 use crate::nonstandard_style::{method_context, MethodLateContext};
-
-use std::fmt::Write;
-
-// hardwired lints from rustc_lint_defs
-pub use rustc_session::lint::builtin::*;
+use crate::{
+    fluent_generated as fluent, EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level,
+    LintContext,
+};
 
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
@@ -1672,7 +1669,8 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             return;
         }
 
-        use self::ast::{PatKind, RangeSyntax::DotDotDot};
+        use self::ast::PatKind;
+        use self::ast::RangeSyntax::DotDotDot;
 
         /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
         /// corresponding to the ellipsis.
@@ -1926,14 +1924,13 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
         tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
         item: DefId,
         lifetime: DefId,
     ) -> Vec<ty::Region<'tcx>> {
         let item_generics = tcx.generics_of(item);
 
         inferred_outlives
-            .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyParam(ebr)
@@ -1949,11 +1946,10 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
+        inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
-            .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
@@ -2096,7 +2092,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 (
                                     Self::lifetimes_outliving_lifetime(
                                         cx.tcx,
-                                        inferred_outlives,
+                                        // don't warn if the inferred span actually came from the predicate we're looking at
+                                        // this happens if the type is recursively defined
+                                        inferred_outlives
+                                            .iter()
+                                            .filter(|(_, span)| !predicate.span.contains(*span)),
                                         item.owner_id.to_def_id(),
                                         region_def_id,
                                     ),
@@ -2118,7 +2118,14 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     };
                                     let index = ty_generics.param_def_id_to_index[&def_id];
                                     (
-                                        Self::lifetimes_outliving_type(inferred_outlives, index),
+                                        Self::lifetimes_outliving_type(
+                                            // don't warn if the inferred span actually came from the predicate we're looking at
+                                            // this happens if the type is recursively defined
+                                            inferred_outlives.iter().filter(|(_, span)| {
+                                                !predicate.span.contains(*span)
+                                            }),
+                                            index,
+                                        ),
                                         &predicate.bounds,
                                         predicate.span,
                                         predicate.origin == PredicateOrigin::WhereClause,

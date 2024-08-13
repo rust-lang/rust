@@ -14,9 +14,7 @@ pub mod ich;
 pub mod query;
 mod values;
 
-pub use error::HandleCycleError;
-pub use error::LayoutOfDepth;
-pub use error::QueryOverflow;
+pub use error::{HandleCycleError, LayoutOfDepth, QueryOverflow};
 pub use values::Value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

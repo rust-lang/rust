@@ -1,6 +1,6 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_config::Conf;
-use clippy_utils::consts::{constant, constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary};
@@ -162,7 +162,7 @@ impl ArithmeticSideEffects {
         {
             return Some(n.get());
         }
-        if let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), expr) {
+        if let Some(Constant::Int(n)) = ConstEvalCtxt::new(cx).eval(expr) {
             return Some(n);
         }
         None
@@ -200,7 +200,7 @@ impl ArithmeticSideEffects {
         lhs: &'tcx hir::Expr<'_>,
         rhs: &'tcx hir::Expr<'_>,
     ) {
-        if constant_simple(cx, cx.typeck_results(), expr).is_some() {
+        if ConstEvalCtxt::new(cx).eval_simple(expr).is_some() {
             return;
         }
         if !matches!(
@@ -280,7 +280,7 @@ impl ArithmeticSideEffects {
         let Some(arg) = args.first() else {
             return;
         };
-        if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
+        if ConstEvalCtxt::new(cx).eval_simple(receiver).is_some() {
             return;
         }
         let instance_ty = cx.typeck_results().expr_ty(receiver);
@@ -308,7 +308,7 @@ impl ArithmeticSideEffects {
         let hir::UnOp::Neg = un_op else {
             return;
         };
-        if constant(cx, cx.typeck_results(), un_expr).is_some() {
+        if ConstEvalCtxt::new(cx).eval(un_expr).is_some() {
             return;
         }
         let ty = cx.typeck_results().expr_ty(expr).peel_refs();

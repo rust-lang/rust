@@ -56,22 +56,21 @@
 //   allowed, so no need for `SeqCst`.
 
 use crate::cell::Cell;
-use crate::fmt;
-use crate::ptr;
-use crate::sync as public;
-use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
+use crate::sync::atomic::Ordering::{AcqRel, Acquire, Release};
+use crate::sync::atomic::{AtomicBool, AtomicPtr};
 use crate::sync::once::ExclusiveState;
 use crate::thread::{self, Thread};
+use crate::{fmt, ptr, sync as public};
 
-type Masked = ();
+type StateAndQueue = *mut ();
 
 pub struct Once {
-    state_and_queue: AtomicPtr<Masked>,
+    state_and_queue: AtomicPtr<()>,
 }
 
 pub struct OnceState {
     poisoned: bool,
-    set_state_on_drop_to: Cell<*mut Masked>,
+    set_state_on_drop_to: Cell<StateAndQueue>,
 }
 
 // Four states that a Once can be in, encoded into the lower bits of
@@ -83,7 +82,8 @@ const COMPLETE: usize = 0x3;
 
 // Mask to learn about the state. All other bits are the queue of waiters if
 // this is in the RUNNING state.
-const STATE_MASK: usize = 0x3;
+const STATE_MASK: usize = 0b11;
+const QUEUE_MASK: usize = !STATE_MASK;
 
 // Representation of a node in the linked list of waiters, used while in the
 // RUNNING state.
@@ -95,15 +95,23 @@ const STATE_MASK: usize = 0x3;
 struct Waiter {
     thread: Cell<Option<Thread>>,
     signaled: AtomicBool,
-    next: *const Waiter,
+    next: Cell<*const Waiter>,
 }
 
 // Head of a linked list of waiters.
 // Every node is a struct on the stack of a waiting thread.
 // Will wake up the waiters when it gets dropped, i.e. also on panic.
 struct WaiterQueue<'a> {
-    state_and_queue: &'a AtomicPtr<Masked>,
-    set_state_on_drop_to: *mut Masked,
+    state_and_queue: &'a AtomicPtr<()>,
+    set_state_on_drop_to: StateAndQueue,
+}
+
+fn to_queue(current: StateAndQueue) -> *const Waiter {
+    current.mask(QUEUE_MASK).cast()
+}
+
+fn to_state(current: StateAndQueue) -> usize {
+    current.addr() & STATE_MASK
 }
 
 impl Once {
@@ -119,7 +127,7 @@ impl Once {
         // operations visible to us, and, this being a fast path, weaker
         // ordering helps with performance. This `Acquire` synchronizes with
         // `Release` operations on the slow path.
-        self.state_and_queue.load(Ordering::Acquire).addr() == COMPLETE
+        self.state_and_queue.load(Acquire).addr() == COMPLETE
     }
 
     #[inline]
@@ -129,6 +137,25 @@ impl Once {
             POISONED => ExclusiveState::Poisoned,
             COMPLETE => ExclusiveState::Complete,
             _ => unreachable!("invalid Once state"),
+        }
+    }
+
+    #[cold]
+    #[track_caller]
+    pub fn wait(&self, ignore_poisoning: bool) {
+        let mut current = self.state_and_queue.load(Acquire);
+        loop {
+            let state = to_state(current);
+            match state {
+                COMPLETE => return,
+                POISONED if !ignore_poisoning => {
+                    // Panic to propagate the poison.
+                    panic!("Once instance has previously been poisoned");
+                }
+                _ => {
+                    current = wait(&self.state_and_queue, current, !ignore_poisoning);
+                }
+            }
         }
     }
 
@@ -146,9 +173,10 @@ impl Once {
     #[cold]
     #[track_caller]
     pub fn call(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&public::OnceState)) {
-        let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
+        let mut current = self.state_and_queue.load(Acquire);
         loop {
-            match state_and_queue.addr() {
+            let state = to_state(current);
+            match state {
                 COMPLETE => break,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
@@ -156,16 +184,16 @@ impl Once {
                 }
                 POISONED | INCOMPLETE => {
                     // Try to register this thread as the one RUNNING.
-                    let exchange_result = self.state_and_queue.compare_exchange(
-                        state_and_queue,
-                        ptr::without_provenance_mut(RUNNING),
-                        Ordering::Acquire,
-                        Ordering::Acquire,
-                    );
-                    if let Err(old) = exchange_result {
-                        state_and_queue = old;
+                    if let Err(new) = self.state_and_queue.compare_exchange_weak(
+                        current,
+                        current.mask(QUEUE_MASK).wrapping_byte_add(RUNNING),
+                        Acquire,
+                        Acquire,
+                    ) {
+                        current = new;
                         continue;
                     }
+
                     // `waiter_queue` will manage other waiting threads, and
                     // wake them up on drop.
                     let mut waiter_queue = WaiterQueue {
@@ -176,54 +204,57 @@ impl Once {
                     // poisoned or not.
                     let init_state = public::OnceState {
                         inner: OnceState {
-                            poisoned: state_and_queue.addr() == POISONED,
+                            poisoned: state == POISONED,
                             set_state_on_drop_to: Cell::new(ptr::without_provenance_mut(COMPLETE)),
                         },
                     };
                     init(&init_state);
                     waiter_queue.set_state_on_drop_to = init_state.inner.set_state_on_drop_to.get();
-                    break;
+                    return;
                 }
                 _ => {
                     // All other values must be RUNNING with possibly a
                     // pointer to the waiter queue in the more significant bits.
-                    assert!(state_and_queue.addr() & STATE_MASK == RUNNING);
-                    wait(&self.state_and_queue, state_and_queue);
-                    state_and_queue = self.state_and_queue.load(Ordering::Acquire);
+                    assert!(state == RUNNING);
+                    current = wait(&self.state_and_queue, current, true);
                 }
             }
         }
     }
 }
 
-fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
-    // Note: the following code was carefully written to avoid creating a
-    // mutable reference to `node` that gets aliased.
+fn wait(
+    state_and_queue: &AtomicPtr<()>,
+    mut current: StateAndQueue,
+    return_on_poisoned: bool,
+) -> StateAndQueue {
+    let node = &Waiter {
+        thread: Cell::new(Some(thread::current())),
+        signaled: AtomicBool::new(false),
+        next: Cell::new(ptr::null()),
+    };
+
     loop {
-        // Don't queue this thread if the status is no longer running,
-        // otherwise we will not be woken up.
-        if current_state.addr() & STATE_MASK != RUNNING {
-            return;
+        let state = to_state(current);
+        let queue = to_queue(current);
+
+        // If initialization has finished, return.
+        if state == COMPLETE || (return_on_poisoned && state == POISONED) {
+            return current;
         }
 
-        // Create the node for our current thread.
-        let node = Waiter {
-            thread: Cell::new(Some(thread::current())),
-            signaled: AtomicBool::new(false),
-            next: current_state.with_addr(current_state.addr() & !STATE_MASK) as *const Waiter,
-        };
-        let me = core::ptr::addr_of!(node) as *const Masked as *mut Masked;
+        // Update the node for our current thread.
+        node.next.set(queue);
 
         // Try to slide in the node at the head of the linked list, making sure
         // that another thread didn't just replace the head of the linked list.
-        let exchange_result = state_and_queue.compare_exchange(
-            current_state,
-            me.with_addr(me.addr() | RUNNING),
-            Ordering::Release,
-            Ordering::Relaxed,
-        );
-        if let Err(old) = exchange_result {
-            current_state = old;
+        if let Err(new) = state_and_queue.compare_exchange_weak(
+            current,
+            ptr::from_ref(node).wrapping_byte_add(state) as StateAndQueue,
+            Release,
+            Acquire,
+        ) {
+            current = new;
             continue;
         }
 
@@ -232,14 +263,15 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
         // would drop our `Waiter` node and leave a hole in the linked list
         // (and a dangling reference). Guard against spurious wakeups by
         // reparking ourselves until we are signaled.
-        while !node.signaled.load(Ordering::Acquire) {
+        while !node.signaled.load(Acquire) {
             // If the managing thread happens to signal and unpark us before we
             // can park ourselves, the result could be this thread never gets
             // unparked. Luckily `park` comes with the guarantee that if it got
             // an `unpark` just before on an unparked thread it does not park.
             thread::park();
         }
-        break;
+
+        return state_and_queue.load(Acquire);
     }
 }
 
@@ -253,11 +285,10 @@ impl fmt::Debug for Once {
 impl Drop for WaiterQueue<'_> {
     fn drop(&mut self) {
         // Swap out our state with however we finished.
-        let state_and_queue =
-            self.state_and_queue.swap(self.set_state_on_drop_to, Ordering::AcqRel);
+        let current = self.state_and_queue.swap(self.set_state_on_drop_to, AcqRel);
 
         // We should only ever see an old state which was RUNNING.
-        assert_eq!(state_and_queue.addr() & STATE_MASK, RUNNING);
+        assert_eq!(current.addr() & STATE_MASK, RUNNING);
 
         // Walk the entire linked list of waiters and wake them up (in lifo
         // order, last to register is first to wake up).
@@ -266,16 +297,13 @@ impl Drop for WaiterQueue<'_> {
             // free `node` if there happens to be has a spurious wakeup.
             // So we have to take out the `thread` field and copy the pointer to
             // `next` first.
-            let mut queue =
-                state_and_queue.with_addr(state_and_queue.addr() & !STATE_MASK) as *const Waiter;
+            let mut queue = to_queue(current);
             while !queue.is_null() {
-                let next = (*queue).next;
+                let next = (*queue).next.get();
                 let thread = (*queue).thread.take().unwrap();
-                (*queue).signaled.store(true, Ordering::Release);
-                // ^- FIXME (maybe): This is another case of issue #55005
-                // `store()` has a potentially dangling ref to `signaled`.
-                queue = next;
+                (*queue).signaled.store(true, Release);
                 thread.unpark();
+                queue = next;
             }
         }
     }

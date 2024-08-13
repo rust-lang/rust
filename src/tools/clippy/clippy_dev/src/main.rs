@@ -1,4 +1,3 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -74,7 +73,7 @@ fn main() {
             new_name,
             uplift,
         } => update_lints::rename(&old_name, new_name.as_ref().unwrap_or(&old_name), uplift),
-        DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, reason.as_deref()),
+        DevCommand::Deprecate { name, reason } => update_lints::deprecate(&name, &reason),
     }
 }
 
@@ -223,7 +222,7 @@ enum DevCommand {
         name: String,
         #[arg(long, short)]
         /// The reason for deprecation
-        reason: Option<String>,
+        reason: String,
     },
 }
 

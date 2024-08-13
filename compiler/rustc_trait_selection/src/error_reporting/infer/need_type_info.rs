@@ -1,13 +1,11 @@
-use crate::error_reporting::TypeErrCtxt;
-use crate::errors::{
-    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
-    SourceKindMultiSuggestion, SourceKindSubdiag,
-};
-use crate::infer::InferCtxt;
-use rustc_errors::{codes::*, Diag, IntoDiagArg};
+use std::borrow::Cow;
+use std::iter;
+use std::path::PathBuf;
+
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, IntoDiagArg};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::def::{CtorOf, DefKind, Namespace};
+use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, LetStmt, LocalSource};
@@ -21,9 +19,13 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
-use std::borrow::Cow;
-use std::iter;
-use std::path::PathBuf;
+
+use crate::error_reporting::TypeErrCtxt;
+use crate::errors::{
+    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
+    SourceKindMultiSuggestion, SourceKindSubdiag,
+};
+use crate::infer::InferCtxt;
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -932,13 +934,13 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             // which makes this somewhat difficult and prevents us from just
             // using `self.path_inferred_arg_iter` here.
             hir::ExprKind::Struct(&hir::QPath::Resolved(_self_ty, path), _, _)
-            // FIXME(TaKO8Ki): Ideally we should support this. For that
-            // we have to map back from the self type to the
-            // type alias though. That's difficult.
+            // FIXME(TaKO8Ki): Ideally we should support other kinds,
+            // such as `TyAlias` or `AssocTy`. For that we have to map
+            // back from the self type to the type alias though. That's difficult.
             //
             // See the `need_type_info/issue-103053.rs` test for
             // a example.
-            if !matches!(path.res, Res::Def(DefKind::TyAlias, _)) => {
+            if matches!(path.res, Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) => {
                 if let Some(ty) = self.opt_node_type(expr.hir_id)
                     && let ty::Adt(_, args) = ty.kind()
                 {

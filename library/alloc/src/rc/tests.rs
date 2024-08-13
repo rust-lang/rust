@@ -1,7 +1,7 @@
-use super::*;
-
 use std::cell::RefCell;
 use std::clone::Clone;
+
+use super::*;
 
 #[test]
 fn test_clone() {

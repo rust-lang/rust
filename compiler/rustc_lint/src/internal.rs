@@ -1,22 +1,26 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
-    NonGlobImportTypeIrInherent, QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag,
-    TykindKind, UntranslatableDiag,
-};
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_hir::def::Res;
-use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
-use rustc_hir::{BinOp, BinOpKind, HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{
+    BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat, PatKind,
+    Path, PathSegment, QPath, Ty, TyKind,
+};
 use rustc_middle::ty::{self, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use tracing::debug;
+
+use crate::lints::{
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
+    NonGlobImportTypeIrInherent, QueryInstability, SpanUseEqCtxtDiag, TyQualified, TykindDiag,
+    TykindKind, UntranslatableDiag,
+};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
 declare_tool_lint! {
     /// The `default_hash_type` lint detects use of [`std::collections::HashMap`] and

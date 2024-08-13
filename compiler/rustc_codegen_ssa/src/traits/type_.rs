@@ -1,13 +1,13 @@
-use super::misc::MiscMethods;
-use super::Backend;
-use super::HasCodegen;
-use crate::common::TypeKind;
-use crate::mir::place::PlaceRef;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Float, Integer};
+
+use super::misc::MiscMethods;
+use super::{Backend, HasCodegen};
+use crate::common::TypeKind;
+use crate::mir::place::PlaceRef;
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
@@ -91,7 +91,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             return false;
         }
 
-        let tail = self.tcx().struct_tail_erasing_lifetimes(ty, param_env);
+        let tail = self.tcx().struct_tail_for_codegen(ty, param_env);
         match tail.kind() {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,

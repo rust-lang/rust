@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{higher, match_def_path, paths};
 use rustc_hir::{BinOpKind, Expr, ExprKind, LangItem, MatchSource};
@@ -81,13 +81,15 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
             _ => return,
         };
         if is_format(cx, arg) {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 FORMAT_PUSH_STRING,
                 expr.span,
                 "`format!(..)` appended to existing `String`",
-                None,
-                "consider using `write!` to avoid the extra allocation",
+                |diag| {
+                    diag.help("consider using `write!` to avoid the extra allocation");
+                },
             );
         }
     }

@@ -1,11 +1,9 @@
-use crate::errors::*;
-use crate::fluent_generated as fluent;
-
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
@@ -26,6 +24,9 @@ use rustc_session::lint::builtin::{
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{sym, Span};
 use tracing::instrument;
+
+use crate::errors::*;
+use crate::fluent_generated as fluent;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let typeck_results = tcx.typeck(def_id);
@@ -482,9 +483,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         // Check if the match is exhaustive.
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            if source == hir::MatchSource::ForLoopDesugar && arms.len() == 2 {
+            if source == hir::MatchSource::ForLoopDesugar
+                && let [_, snd_arm] = *arms
+            {
                 // the for loop pattern is not irrefutable
-                let pat = &self.thir[arms[1]].pattern;
+                let pat = &self.thir[snd_arm].pattern;
                 // `pat` should be `Some(<pat_field>)` from a desugared for loop.
                 debug_assert_eq!(pat.span.desugaring_kind(), Some(DesugaringKind::ForLoop));
                 let PatKind::Variant { ref subpatterns, .. } = pat.kind else { bug!() };
@@ -694,9 +697,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
-        let witness_1_is_privately_uninhabited = if (self.tcx.features().exhaustive_patterns
-            || self.tcx.features().min_exhaustive_patterns)
-            && let Some(witness_1) = witnesses.get(0)
+        let witness_1_is_privately_uninhabited = if let Some(witness_1) = witnesses.get(0)
             && let ty::Adt(adt, args) = witness_1.ty().kind()
             && adt.is_enum()
             && let Constructor::Variant(variant_index) = witness_1.ctor()
@@ -1058,7 +1059,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
             } else if cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
-            } else if cx.is_uninhabited(ty.inner()) && cx.tcx.features().min_exhaustive_patterns {
+            } else if cx.is_uninhabited(ty.inner()) {
                 // The type is uninhabited yet there is a witness: we must be in the `MaybeInvalid`
                 // case.
                 err.note(format!("`{ty}` is uninhabited but is not being matched by value, so a wildcard `_` is required"));
@@ -1077,7 +1078,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let suggested_arm = if suggest_the_witnesses {
         let pattern = witnesses
             .iter()
-            .map(|witness| cx.hoist_witness_pat(witness).to_string())
+            .map(|witness| cx.print_witness_pat(witness))
             .collect::<Vec<String>>()
             .join(" | ");
         if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns {
@@ -1195,13 +1196,13 @@ fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[WitnessPat<'p, 'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.hoist_witness_pat(pat).to_string();
+    let pat_to_str = |pat: &WitnessPat<'p, 'tcx>| cx.print_witness_pat(pat);
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", cx.hoist_witness_pat(witness)),
+        [witness] => format!("`{}`", cx.print_witness_pat(witness)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), cx.hoist_witness_pat(tail))
+            format!("`{}` and `{}`", head.join("`, `"), cx.print_witness_pat(tail))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);

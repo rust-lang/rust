@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-LINUX_VERSION=c13320499ba0efd93174ef6462ae8a7a2933f6e7
+LINUX_VERSION=v6.11-rc1
 
 # Build rustc, rustdoc and cargo
 ../x.py build --stage 1 library rustdoc
@@ -65,4 +65,8 @@ make -C linux LLVM=1 -j$(($(nproc) + 1)) \
 make -C linux LLVM=1 -j$(($(nproc) + 1)) \
     samples/rust/rust_minimal.o \
     samples/rust/rust_print.o \
-    drivers/net/phy/ax88796b_rust.o
+    drivers/net/phy/ax88796b_rust.o \
+    rust/doctests_kernel_generated.o
+
+make -C linux LLVM=1 -j$(($(nproc) + 1)) \
+    rustdoc

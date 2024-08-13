@@ -1,4 +1,5 @@
 use core::ops::*;
+
 use test::Bencher;
 
 // Overhead of dtors

@@ -1,12 +1,17 @@
-error: Undefined Behavior: overflowing in-bounds pointer arithmetic
+error: Undefined Behavior: out-of-bounds pointer arithmetic: expected a pointer to the end of $BYTES bytes of memory, but got ALLOC which is at the beginning of the allocation
   --> $DIR/ptr_offset_overflow.rs:LL:CC
    |
-LL |     let _val = unsafe { x.offset(isize::MIN) };
-   |                         ^^^^^^^^^^^^^^^^^^^^ overflowing in-bounds pointer arithmetic
+LL |     let x = unsafe { x.offset(isize::MIN) };
+   |                      ^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to the end of $BYTES bytes of memory, but got ALLOC which is at the beginning of the allocation
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
+help: ALLOC was allocated here:
+  --> $DIR/ptr_offset_overflow.rs:LL:CC
+   |
+LL |     let v = [0i8; 4];
+   |         ^
+   = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/ptr_offset_overflow.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

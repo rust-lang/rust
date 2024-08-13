@@ -1,12 +1,7 @@
-use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
-use crate::common::Funclet;
-use crate::context::CodegenCx;
-use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
-use crate::llvm_util;
-use crate::type_::Type;
-use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
+use std::borrow::Cow;
+use std::ops::Deref;
+use std::{iter, ptr};
+
 use libc::{c_char, c_uint};
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -17,20 +12,27 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
+    TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
-use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
+use rustc_target::abi::call::FnAbi;
+use rustc_target::abi::{self, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::Deref;
-use std::ptr;
 use tracing::{debug, instrument};
+
+use crate::abi::FnAbiLlvmExt;
+use crate::common::Funclet;
+use crate::context::CodegenCx;
+use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
+use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
+use crate::{attributes, llvm_util};
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -390,8 +392,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
+        use rustc_middle::ty::IntTy::*;
+        use rustc_middle::ty::UintTy::*;
         use rustc_middle::ty::{Int, Uint};
-        use rustc_middle::ty::{IntTy::*, UintTy::*};
 
         let new_kind = match ty.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
@@ -529,7 +532,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
         if place.layout.is_unsized() {
-            let tail = self.tcx.struct_tail_with_normalize(place.layout.ty, |ty| ty, || {});
+            let tail = self.tcx.struct_tail_for_codegen(place.layout.ty, self.param_env());
             if matches!(tail.kind(), ty::Foreign(..)) {
                 // Unsized locals and, at least conceptually, even unsized arguments must be copied
                 // around, which requires dynamically determining their size. Therefore, we cannot
@@ -725,13 +728,32 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMSetVolatile(store, llvm::True);
             }
             if flags.contains(MemFlags::NONTEMPORAL) {
-                // According to LLVM [1] building a nontemporal store must
-                // *always* point to a metadata value of the integer 1.
-                //
-                // [1]: https://llvm.org/docs/LangRef.html#store-instruction
-                let one = self.cx.const_i32(1);
-                let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
-                llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+                // Make sure that the current target architectures supports "sane" non-temporal
+                // stores, i.e., non-temporal stores that are equivalent to regular stores except
+                // for performance. LLVM doesn't seem to care about this, and will happily treat
+                // `!nontemporal` stores as-if they were normal stores (for reordering optimizations
+                // etc) even on x86, despite later lowering them to MOVNT which do *not* behave like
+                // regular stores but require special fences.
+                // So we keep a list of architectures where `!nontemporal` is known to be truly just
+                // a hint, and use regular stores everywhere else.
+                // (In the future, we could alternatively ensure that an sfence gets emitted after a sequence of movnt
+                // before any kind of synchronizing operation. But it's not clear how to do that with LLVM.)
+                // For more context, see <https://github.com/rust-lang/rust/issues/114582> and
+                // <https://github.com/llvm/llvm-project/issues/64521>.
+                const WELL_BEHAVED_NONTEMPORAL_ARCHS: &[&str] =
+                    &["aarch64", "arm", "riscv32", "riscv64"];
+
+                let use_nontemporal =
+                    WELL_BEHAVED_NONTEMPORAL_ARCHS.contains(&&*self.cx.tcx.sess.target.arch);
+                if use_nontemporal {
+                    // According to LLVM [1] building a nontemporal store must
+                    // *always* point to a metadata value of the integer 1.
+                    //
+                    // [1]: https://llvm.org/docs/LangRef.html#store-instruction
+                    let one = self.cx.const_i32(1);
+                    let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
+                    llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+                }
             }
             store
         }
@@ -1348,6 +1370,16 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             llvm::LLVMSetMetadata(
                 load,
                 llvm::MD_noundef as c_uint,
+                llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0),
+            );
+        }
+    }
+
+    pub fn set_unpredictable(&mut self, inst: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(
+                inst,
+                llvm::MD_unpredictable as c_uint,
                 llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0),
             );
         }

@@ -1,5 +1,6 @@
-use crate::os::xous::ffi::{connect, Connection};
 use core::sync::atomic::{AtomicU32, Ordering};
+
+use crate::os::xous::ffi::{connect, Connection};
 
 pub(crate) enum SystimeScalar {
     GetUtcTimeMs,
@@ -13,7 +14,7 @@ impl Into<[usize; 5]> for SystimeScalar {
     }
 }
 
-/// Return a `Connection` to the systime server. This server is used for reporting the
+/// Returns a `Connection` to the systime server. This server is used for reporting the
 /// realtime clock.
 pub(crate) fn systime_server() -> Connection {
     static SYSTIME_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);

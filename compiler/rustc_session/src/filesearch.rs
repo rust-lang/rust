@@ -1,12 +1,13 @@
 //! A module for searching for libraries
 
-use crate::search_paths::{PathKind, SearchPath};
+use std::path::{Path, PathBuf};
+use std::{env, fs};
+
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use smallvec::{smallvec, SmallVec};
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
 use tracing::debug;
+
+use crate::search_paths::{PathKind, SearchPath};
 
 #[derive(Clone)]
 pub struct FileSearch<'a> {
@@ -18,6 +19,11 @@ pub struct FileSearch<'a> {
 }
 
 impl<'a> FileSearch<'a> {
+    pub fn cli_search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
+        let kind = self.kind;
+        self.cli_search_paths.iter().filter(move |sp| sp.kind.matches(kind))
+    }
+
     pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
         let kind = self.kind;
         self.cli_search_paths
@@ -129,12 +135,10 @@ fn current_dll_path() -> Result<PathBuf, String> {
     use std::io;
     use std::os::windows::prelude::*;
 
-    use windows::{
-        core::PCWSTR,
-        Win32::Foundation::HMODULE,
-        Win32::System::LibraryLoader::{
-            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-        },
+    use windows::core::PCWSTR;
+    use windows::Win32::Foundation::HMODULE;
+    use windows::Win32::System::LibraryLoader::{
+        GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
     };
 
     let mut module = HMODULE::default();

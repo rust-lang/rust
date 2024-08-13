@@ -1,5 +1,4 @@
 use super::HashSet;
-
 use crate::hash::RandomState;
 use crate::panic::{catch_unwind, AssertUnwindSafe};
 use crate::sync::atomic::{AtomicU32, Ordering};

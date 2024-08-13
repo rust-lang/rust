@@ -2,8 +2,7 @@
 
 //@ only-linux
 
-use run_make_support::llvm_readobj;
-use run_make_support::rustc;
+use run_make_support::{llvm_readobj, rustc};
 
 fn compile(relro_level: &str) {
     rustc().arg(format!("-Crelro-level={relro_level}")).input("hello.rs").run();

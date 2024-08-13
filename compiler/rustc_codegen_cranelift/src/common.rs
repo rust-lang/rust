@@ -107,7 +107,7 @@ pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         return false;
     }
 
-    let tail = tcx.struct_tail_erasing_lifetimes(ty, ParamEnv::reveal_all());
+    let tail = tcx.struct_tail_for_codegen(ty, ParamEnv::reveal_all());
     match tail.kind() {
         ty::Foreign(..) => false,
         ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,

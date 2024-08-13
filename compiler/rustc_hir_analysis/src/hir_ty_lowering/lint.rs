@@ -1,8 +1,10 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{codes::*, Diag, EmissionGuarantee, StashKey};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, EmissionGuarantee, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
+use rustc_lint_defs::builtin::BARE_TRAIT_OBJECTS;
+use rustc_lint_defs::Applicability;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 

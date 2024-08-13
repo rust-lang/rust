@@ -1,3 +1,33 @@
+use std::{iter, mem};
+
+use itertools::Itertools;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::codes::*;
+use rustc_errors::{
+    a_or_an, display_list_with_comma_and, pluralize, Applicability, Diag, ErrorGuaranteed,
+    MultiSpan, StashKey,
+};
+use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{ExprKind, HirId, Node, QPath};
+use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
+use rustc_hir_analysis::check::potentially_plural_count;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_index::IndexVec;
+use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
+use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
+use rustc_session::Session;
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
+use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
+use {rustc_ast as ast, rustc_hir as hir};
+
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
@@ -7,43 +37,12 @@ use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::method::MethodCallee;
+use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
-use crate::{errors, Expectation::*};
 use crate::{
-    struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
+    errors, struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
     TupleArgumentsFlag,
 };
-use itertools::Itertools;
-use rustc_ast as ast;
-use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    a_or_an, codes::*, display_list_with_comma_and, pluralize, Applicability, Diag,
-    ErrorGuaranteed, MultiSpan, StashKey,
-};
-use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind, Res};
-use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, HirId, Node, QPath};
-use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
-use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_index::IndexVec;
-use rustc_infer::infer::TypeTrace;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
-use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
-use rustc_span::symbol::{kw, Ident};
-use rustc_span::{sym, BytePos, Span, DUMMY_SP};
-use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
-use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
-
-use std::iter;
-use std::mem;
 
 #[derive(Clone, Copy, Default)]
 pub enum DivergingBlockBehavior {
@@ -1141,8 +1140,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .get(arg_idx + 1)
                                 .map(|&(_, sp)| sp)
                                 .unwrap_or_else(|| {
-                                    // Subtract one to move before `)`
-                                    call_expr.span.with_lo(call_expr.span.hi() - BytePos(1))
+                                    // Try to move before `)`. Note that `)` here is not necessarily
+                                    // the latin right paren, it could be a Unicode-confusable that
+                                    // looks like a `)`, so we must not use `- BytePos(1)`
+                                    // manipulations here.
+                                    self.tcx().sess.source_map().end_point(call_expr.span)
                                 });
 
                             // Include next comma

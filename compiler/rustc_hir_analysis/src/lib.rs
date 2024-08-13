@@ -62,6 +62,7 @@ This API is completely unstable and subject to change.
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(assert_matches)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
@@ -83,6 +84,7 @@ pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
+mod delegation;
 pub mod hir_ty_lowering;
 // FIXME: This module shouldn't be public.
 pub mod collect;
@@ -100,7 +102,8 @@ use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
@@ -145,6 +148,10 @@ pub fn provide(providers: &mut Providers) {
     variance::provide(providers);
     outlives::provide(providers);
     hir_wf_check::provide(providers);
+    *providers = Providers {
+        inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
+        ..*providers
+    };
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) {

@@ -35,16 +35,18 @@
 //! // and are then unable to coerce `&7i32` to `&mut i32`.
 //! ```
 
-use crate::errors::SuggestBoxingForReturnImplTrait;
-use crate::FnCtxt;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag};
+use std::ops::Deref;
+
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
-use rustc_infer::traits::{IfExpressionCause, MatchExpressionArmCause};
-use rustc_infer::traits::{Obligation, PredicateObligation};
+use rustc_infer::traits::{
+    IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
+};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::span_bug;
 use rustc_middle::traits::BuiltinImplSource;
@@ -63,9 +65,10 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
-
 use smallvec::{smallvec, SmallVec};
-use std::ops::Deref;
+
+use crate::errors::SuggestBoxingForReturnImplTrait;
+use crate::FnCtxt;
 
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,

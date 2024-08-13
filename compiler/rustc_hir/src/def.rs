@@ -1,5 +1,5 @@
-use crate::definitions::DefPathData;
-use crate::hir;
+use std::array::IntoIter;
+use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
@@ -11,8 +11,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 
-use std::array::IntoIter;
-use std::fmt::Debug;
+use crate::definitions::DefPathData;
+use crate::hir;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]

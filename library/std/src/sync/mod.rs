@@ -159,16 +159,19 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::sync::{Arc, Weak};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 pub use core::sync::Exclusive;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::sync::{Arc, Weak};
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::{Condvar, WaitTimeoutResult};
+#[stable(feature = "lazy_cell", since = "1.80.0")]
+pub use self::lazy_lock::LazyLock;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::mutex::MappedMutexGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -176,20 +179,16 @@ pub use self::mutex::{Mutex, MutexGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 pub use self::once::{Once, OnceState, ONCE_INIT};
+#[stable(feature = "once_cell", since = "1.70.0")]
+pub use self::once_lock::OnceLock;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
+#[unstable(feature = "reentrant_lock", issue = "121440")]
+pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-#[stable(feature = "lazy_cell", since = "1.80.0")]
-pub use self::lazy_lock::LazyLock;
-#[stable(feature = "once_cell", since = "1.70.0")]
-pub use self::once_lock::OnceLock;
-
-#[unstable(feature = "reentrant_lock", issue = "121440")]
-pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 
 pub mod mpsc;
 

@@ -20,8 +20,9 @@
 //! the field `next_edge`). Each of those fields is an array that should
 //! be indexed by the direction (see the type `Direction`).
 
-use rustc_index::bit_set::BitSet;
 use std::fmt::Debug;
+
+use rustc_index::bit_set::BitSet;
 use tracing::debug;
 
 #[cfg(test)]

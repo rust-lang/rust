@@ -1,38 +1,32 @@
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
-use std::fmt;
-use std::io;
 use std::io::Read;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::{fmt, io};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
-    self, parse_crate_types_from_list, parse_externs, parse_target_triple, CrateType,
+    self, get_cmd_lint_options, nightly_options, parse_crate_types_from_list, parse_externs,
+    parse_target_triple, CodegenOptions, CrateType, ErrorOutputType, Externs, Input,
+    JsonUnusedExterns, UnstableOptions,
 };
-use rustc_session::config::{get_cmd_lint_options, nightly_options};
-use rustc_session::config::{CodegenOptions, ErrorOutputType, Externs, Input};
-use rustc_session::config::{JsonUnusedExterns, UnstableOptions};
-use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::EarlyDiagCtxt;
+use rustc_session::{getopts, EarlyDiagCtxt};
 use rustc_span::edition::Edition;
 use rustc_span::FileName;
 use rustc_target::spec::TargetTriple;
 
 use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
-use crate::html;
 use crate::html::markdown::IdMap;
 use crate::html::render::StylePath;
 use crate::html::static_files;
-use crate::opts;
 use crate::passes::{self, Condition};
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
-use crate::theme;
+use crate::{html, opts, theme};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) enum OutputFormat {
@@ -368,9 +362,10 @@ impl Options {
         }
 
         let color = config::parse_color(early_dcx, matches);
-        let config::JsonConfig { json_rendered, json_unused_externs, .. } =
+        let config::JsonConfig { json_rendered, json_unused_externs, json_color, .. } =
             config::parse_json(early_dcx, matches);
-        let error_format = config::parse_error_format(early_dcx, matches, color, json_rendered);
+        let error_format =
+            config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
         let codegen_options = CodegenOptions::build(early_dcx, matches);

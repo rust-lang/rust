@@ -711,11 +711,13 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE 754 doesn't assign any
-    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
-    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// positive sign bit and positive infinity.
+    ///
+    /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
+    /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
+    /// conserved over arithmetic operations, the result of `is_sign_positive` on
+    /// a NaN might produce an unexpected result in some cases. See [explanation
+    /// of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -742,11 +744,13 @@ impl f64 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE 754 doesn't assign any
-    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
-    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
-    /// See [explanation of NaN as a special value](f32) for more info.
+    /// negative sign bit and negative infinity.
+    ///
+    /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
+    /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
+    /// conserved over arithmetic operations, the result of `is_sign_negative` on
+    /// a NaN might produce an unexpected result in some cases. See [explanation
+    /// of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -801,6 +805,7 @@ impl f64 {
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
+    #[inline]
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_up(self) -> Self {
@@ -849,6 +854,7 @@ impl f64 {
     /// [`INFINITY`]: Self::INFINITY
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
+    #[inline]
     #[unstable(feature = "float_next_up_down", issue = "91399")]
     #[rustc_const_unstable(feature = "float_next_up_down", issue = "91399")]
     pub const fn next_down(self) -> Self {
@@ -1047,6 +1053,7 @@ impl f64 {
     /// assert_eq!(1f64.midpoint(4.0), 2.5);
     /// assert_eq!((-5.5f64).midpoint(8.0), 1.25);
     /// ```
+    #[inline]
     #[unstable(feature = "num_midpoint", issue = "110840")]
     pub fn midpoint(self, other: f64) -> f64 {
         const LO: f64 = f64::MIN_POSITIVE * 2.;
@@ -1060,13 +1067,13 @@ impl f64 {
             // Overflow is impossible
             (a + b) / 2.
         } else if abs_a < LO {
-            // Not safe to halve a
+            // Not safe to halve `a` (would underflow)
             a + (b / 2.)
         } else if abs_b < LO {
-            // Not safe to halve b
+            // Not safe to halve `b` (would underflow)
             (a / 2.) + b
         } else {
-            // Not safe to halve a and b
+            // Safe to halve `a` and `b`
             (a / 2.) + (b / 2.)
         }
     }
@@ -1252,7 +1259,7 @@ impl f64 {
         intrinsics::const_eval_select((v,), ct_u64_to_f64, rt_u64_to_f64)
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -1273,7 +1280,7 @@ impl f64 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -1294,7 +1301,7 @@ impl f64 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
@@ -1328,7 +1335,7 @@ impl f64 {
         self.to_bits().to_ne_bytes()
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Creates a floating point value from its representation as a byte array in big endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1347,7 +1354,7 @@ impl f64 {
         Self::from_bits(u64::from_be_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in little endian.
+    /// Creates a floating point value from its representation as a byte array in little endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1366,7 +1373,7 @@ impl f64 {
         Self::from_bits(u64::from_le_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in native endian.
+    /// Creates a floating point value from its representation as a byte array in native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -1396,7 +1403,7 @@ impl f64 {
         Self::from_bits(u64::from_ne_bytes(bytes))
     }
 
-    /// Return the ordering between `self` and `other`.
+    /// Returns the ordering between `self` and `other`.
     ///
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to

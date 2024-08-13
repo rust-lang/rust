@@ -1,14 +1,12 @@
 //! This module contains the hybrid top-level loop combining bottom-up Mergesort with top-down
 //! Quicksort.
 
-use crate::cmp;
-use crate::intrinsics;
 use crate::mem::MaybeUninit;
-
 use crate::slice::sort::shared::find_existing_run;
 use crate::slice::sort::shared::smallsort::StableSmallSortTypeImpl;
 use crate::slice::sort::stable::merge::merge;
 use crate::slice::sort::stable::quicksort::quicksort;
+use crate::{cmp, intrinsics};
 
 /// Sorts `v` based on comparison function `is_less`. If `eager_sort` is true,
 /// it will only do small-sorts and physical merges, ensuring O(N * log(N))
@@ -273,7 +271,7 @@ fn stable_quicksort<T, F: FnMut(&T, &T) -> bool>(
 }
 
 /// Compactly stores the length of a run, and whether or not it is sorted. This
-/// can always fit in a usize because the maximum slice length is isize::MAX.
+/// can always fit in a `usize` because the maximum slice length is [`isize::MAX`].
 #[derive(Copy, Clone)]
 struct DriftsortRun(usize);
 

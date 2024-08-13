@@ -1,9 +1,11 @@
 //! Code for debugging the dep-graph.
 
-use super::{DepNode, DepNodeIndex};
+use std::error::Error;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use std::error::Error;
+
+use super::{DepNode, DepNodeIndex};
 
 /// A dep-node filter goes from a user-defined string to a query over
 /// nodes. Right now the format is like this:
@@ -44,15 +46,14 @@ pub struct EdgeFilter {
 
 impl EdgeFilter {
     pub fn new(test: &str) -> Result<EdgeFilter, Box<dyn Error>> {
-        let parts: Vec<_> = test.split("->").collect();
-        if parts.len() != 2 {
-            Err(format!("expected a filter like `a&b -> c&d`, not `{test}`").into())
-        } else {
+        if let [source, target] = *test.split("->").collect::<Vec<_>>() {
             Ok(EdgeFilter {
-                source: DepNodeFilter::new(parts[0]),
-                target: DepNodeFilter::new(parts[1]),
+                source: DepNodeFilter::new(source),
+                target: DepNodeFilter::new(target),
                 index_to_node: Lock::new(FxHashMap::default()),
             })
+        } else {
+            Err(format!("expected a filter like `a&b -> c&d`, not `{test}`").into())
         }
     }
 

@@ -1,12 +1,11 @@
-use crate::diagnostic::DiagLocation;
-use crate::{fluent_generated as fluent, DiagCtxtHandle, Subdiagnostic};
-use crate::{
-    Diag, DiagArgValue, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
-    SubdiagMessageOp,
-};
-use rustc_ast as ast;
+use std::backtrace::Backtrace;
+use std::borrow::Cow;
+use std::fmt;
+use std::num::ParseIntError;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
+
 use rustc_ast_pretty::pprust;
-use rustc_hir as hir;
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
@@ -14,12 +13,13 @@ use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use rustc_type_ir::{ClosureKind, FloatTy};
-use std::backtrace::Backtrace;
-use std::borrow::Cow;
-use std::fmt;
-use std::num::ParseIntError;
-use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use crate::diagnostic::DiagLocation;
+use crate::{
+    fluent_generated as fluent, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee,
+    ErrCode, IntoDiagArg, Level, SubdiagMessageOp, Subdiagnostic,
+};
 
 pub struct DiagArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
@@ -66,6 +66,7 @@ macro_rules! into_diag_arg_for_number {
             impl IntoDiagArg for $ty {
                 fn into_diag_arg(self) -> DiagArgValue {
                     // Convert to a string if it won't fit into `Number`.
+                    #[allow(irrefutable_let_patterns)]
                     if let Ok(n) = TryInto::<i32>::try_into(self) {
                         DiagArgValue::Number(n)
                     } else {

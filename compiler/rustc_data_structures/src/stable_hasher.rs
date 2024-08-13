@@ -1,19 +1,20 @@
-use rustc_index::bit_set::{self, BitSet};
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZero;
 
+use rustc_index::bit_set::{self, BitSet};
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use smallvec::SmallVec;
+
 #[cfg(test)]
 mod tests;
 
-pub use crate::hashes::{Hash128, Hash64};
+pub use rustc_stable_hash::{
+    FromStableHash, SipHasher128Hash as StableHasherHash, StableSipHasher128 as StableHasher,
+};
 
-pub use rustc_stable_hash::FromStableHash;
-pub use rustc_stable_hash::SipHasher128Hash as StableHasherHash;
-pub use rustc_stable_hash::StableSipHasher128 as StableHasher;
+pub use crate::hashes::{Hash128, Hash64};
 
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.

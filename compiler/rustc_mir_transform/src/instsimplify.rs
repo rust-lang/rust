@@ -1,21 +1,37 @@
 //! Performs various peephole optimizations.
 
-use crate::simplify::simplify_duplicate_switch_targets;
-use crate::take_array;
 use rustc_ast::attr;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;
-use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, layout, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 
-pub struct InstSimplify;
+use crate::simplify::simplify_duplicate_switch_targets;
+use crate::take_array;
+
+pub enum InstSimplify {
+    BeforeInline,
+    AfterSimplifyCfg,
+}
+
+impl InstSimplify {
+    pub fn name(&self) -> &'static str {
+        match self {
+            InstSimplify::BeforeInline => "InstSimplify-before-inline",
+            InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",
+        }
+    }
+}
 
 impl<'tcx> MirPass<'tcx> for InstSimplify {
+    fn name(&self) -> &'static str {
+        self.name()
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
@@ -248,9 +264,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         };
 
         // It's definitely not a clone if there are multiple arguments
-        if args.len() != 1 {
-            return;
-        }
+        let [arg] = &args[..] else { return };
 
         let Some(destination_block) = *target else { return };
 
@@ -264,7 +278,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 
         // These types are easily available from locals, so check that before
         // doing DefId lookups to figure out what we're actually calling.
-        let arg_ty = args[0].node.ty(self.local_decls, self.tcx);
+        let arg_ty = arg.node.ty(self.local_decls, self.tcx);
 
         let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind() else { return };
 

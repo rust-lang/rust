@@ -234,24 +234,20 @@ impl f128 {
     /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
-    #[cfg(not(bootstrap))]
     #[allow(clippy::eq_op)]
     #[rustc_diagnostic_item = "f128_nan"]
     #[unstable(feature = "f128", issue = "116909")]
     pub const NAN: f128 = 0.0_f128 / 0.0_f128;
 
     /// Infinity (∞).
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     pub const INFINITY: f128 = 1.0_f128 / 0.0_f128;
 
     /// Negative infinity (−∞).
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     pub const NEG_INFINITY: f128 = -1.0_f128 / 0.0_f128;
 
     /// Sign bit
-    #[cfg(not(bootstrap))]
     pub(crate) const SIGN_MASK: u128 = 0x8000_0000_0000_0000_0000_0000_0000_0000;
 
     /// Exponent mask
@@ -261,11 +257,9 @@ impl f128 {
     pub(crate) const MAN_MASK: u128 = 0x0000_ffff_ffff_ffff_ffff_ffff_ffff_ffff;
 
     /// Minimum representable positive value (min subnormal)
-    #[cfg(not(bootstrap))]
     const TINY_BITS: u128 = 0x1;
 
     /// Minimum representable negative value (min negative subnormal)
-    #[cfg(not(bootstrap))]
     const NEG_TINY_BITS: u128 = Self::TINY_BITS | Self::SIGN_MASK;
 
     /// Returns `true` if this value is NaN.
@@ -284,7 +278,6 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
@@ -295,7 +288,6 @@ impl f128 {
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub(crate) const fn abs_private(self) -> f128 {
         // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
@@ -326,7 +318,6 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_infinite(self) -> bool {
@@ -354,7 +345,6 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_finite(self) -> bool {
@@ -389,7 +379,6 @@ impl f128 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_subnormal(self) -> bool {
@@ -422,7 +411,6 @@ impl f128 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_normal(self) -> bool {
@@ -448,7 +436,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
@@ -557,7 +544,6 @@ impl f128 {
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub fn next_up(self) -> Self {
@@ -612,7 +598,6 @@ impl f128 {
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub fn next_down(self) -> Self {
@@ -649,7 +634,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn recip(self) -> Self {
@@ -670,7 +654,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_degrees(self) -> Self {
@@ -694,7 +677,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_radians(self) -> f128 {
@@ -702,6 +684,182 @@ impl f128 {
         const RADS_PER_DEG: f128 =
             0.0174532925199432957692369076848861271344287188854172545609719_f128;
         self * RADS_PER_DEG
+    }
+
+    /// Returns the maximum of the two numbers, ignoring NaN.
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmax.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// # // Using aarch64 because `reliable_f128_math` is needed
+    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    ///
+    /// let x = 1.0f128;
+    /// let y = 2.0f128;
+    ///
+    /// assert_eq!(x.max(y), y);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn max(self, other: f128) -> f128 {
+        intrinsics::maxnumf128(self, other)
+    }
+
+    /// Returns the minimum of the two numbers, ignoring NaN.
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmin.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// # // Using aarch64 because `reliable_f128_math` is needed
+    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    ///
+    /// let x = 1.0f128;
+    /// let y = 2.0f128;
+    ///
+    /// assert_eq!(x.min(y), x);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn min(self, other: f128) -> f128 {
+        intrinsics::minnumf128(self, other)
+    }
+
+    /// Returns the maximum of the two numbers, propagating NaN.
+    ///
+    /// This returns NaN when *either* argument is NaN, as opposed to
+    /// [`f128::max`] which only returns NaN when *both* arguments are NaN.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_minimum_maximum)]
+    /// # // Using aarch64 because `reliable_f128_math` is needed
+    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    ///
+    /// let x = 1.0f128;
+    /// let y = 2.0f128;
+    ///
+    /// assert_eq!(x.maximum(y), y);
+    /// assert!(x.maximum(f128::NAN).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
+    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f128) for more info.
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn maximum(self, other: f128) -> f128 {
+        if self > other {
+            self
+        } else if other > self {
+            other
+        } else if self == other {
+            if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
+        } else {
+            self + other
+        }
+    }
+
+    /// Returns the minimum of the two numbers, propagating NaN.
+    ///
+    /// This returns NaN when *either* argument is NaN, as opposed to
+    /// [`f128::min`] which only returns NaN when *both* arguments are NaN.
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_minimum_maximum)]
+    /// # // Using aarch64 because `reliable_f128_math` is needed
+    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    ///
+    /// let x = 1.0f128;
+    /// let y = 2.0f128;
+    ///
+    /// assert_eq!(x.minimum(y), x);
+    /// assert!(x.minimum(f128::NAN).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
+    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f128) for more info.
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn minimum(self, other: f128) -> f128 {
+        if self < other {
+            self
+        } else if other < self {
+            other
+        } else if self == other {
+            if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
+        } else {
+            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+            self + other
+        }
+    }
+
+    /// Calculates the middle point of `self` and `rhs`.
+    ///
+    /// This returns NaN when *either* argument is NaN or if a combination of
+    /// +inf and -inf is provided as arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(num_midpoint)]
+    /// # // Using aarch64 because `reliable_f128_math` is needed
+    /// # #[cfg(all(target_arch = "aarch64", target_os = "linux"))] {
+    ///
+    /// assert_eq!(1f128.midpoint(4.0), 2.5);
+    /// assert_eq!((-5.5f128).midpoint(8.0), 1.25);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "num_midpoint", issue = "110840")]
+    pub fn midpoint(self, other: f128) -> f128 {
+        const LO: f128 = f128::MIN_POSITIVE * 2.;
+        const HI: f128 = f128::MAX / 2.;
+
+        let (a, b) = (self, other);
+        let abs_a = a.abs_private();
+        let abs_b = b.abs_private();
+
+        if abs_a <= HI && abs_b <= HI {
+            // Overflow is impossible
+            (a + b) / 2.
+        } else if abs_a < LO {
+            // Not safe to halve `a` (would underflow)
+            a + (b / 2.)
+        } else if abs_b < LO {
+            // Not safe to halve `b` (would underflow)
+            (a / 2.) + b
+        } else {
+            // Safe to halve `a` and `b`
+            (a / 2.) + (b / 2.)
+        }
     }
 
     /// Rounds toward zero and converts to any primitive integer type,
@@ -898,7 +1056,7 @@ impl f128 {
         intrinsics::const_eval_select((v,), ct_u128_to_f128, rt_u128_to_f128)
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -924,7 +1082,7 @@ impl f128 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -950,7 +1108,7 @@ impl f128 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
@@ -987,7 +1145,7 @@ impl f128 {
         self.to_bits().to_ne_bytes()
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Creates a floating point value from its representation as a byte array in big endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1014,7 +1172,7 @@ impl f128 {
         Self::from_bits(u128::from_be_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in little endian.
+    /// Creates a floating point value from its representation as a byte array in little endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1041,7 +1199,7 @@ impl f128 {
         Self::from_bits(u128::from_le_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in native endian.
+    /// Creates a floating point value from its representation as a byte array in native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -1078,7 +1236,7 @@ impl f128 {
         Self::from_bits(u128::from_ne_bytes(bytes))
     }
 
-    /// Return the ordering between `self` and `other`.
+    /// Returns the ordering between `self` and `other`.
     ///
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to
@@ -1141,7 +1299,6 @@ impl f128 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i128;
@@ -1201,7 +1358,6 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn clamp(mut self, min: f128, max: f128) -> f128 {

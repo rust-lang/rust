@@ -1,8 +1,7 @@
 //! Converts unsigned integers into a string representation with some base.
 //! Bases up to and including 36 can be used for case-insensitive things.
 
-use std::ascii;
-use std::fmt;
+use std::{ascii, fmt};
 
 #[cfg(test)]
 mod tests;

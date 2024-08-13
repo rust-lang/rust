@@ -23,7 +23,6 @@ mod equality;
 mod iter;
 
 pub(crate) use drain::drain_array_with;
-
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
@@ -890,6 +889,7 @@ impl<T> Guard<'_, T> {
 }
 
 impl<T> Drop for Guard<'_, T> {
+    #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
 

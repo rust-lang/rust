@@ -93,7 +93,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(0))
     }
 
-    fn gettimeofday(&mut self, tv_op: &OpTy<'tcx>, tz_op: &OpTy<'tcx>) -> InterpResult<'tcx, i32> {
+    fn gettimeofday(
+        &mut self,
+        tv_op: &OpTy<'tcx>,
+        tz_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("gettimeofday");
@@ -106,7 +110,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if !this.ptr_is_null(tz)? {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -115,7 +119,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.write_int_fields(&[tv_sec.into(), tv_usec.into()], &tv)?;
 
-        Ok(0)
+        Ok(Scalar::from_i32(0))
     }
 
     // The localtime() function shall convert the time in seconds since the Epoch pointed to by
@@ -308,7 +312,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         req_op: &OpTy<'tcx>,
         _rem: &OpTy<'tcx>, // Signal handlers are not supported, so rem will never be written to.
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("nanosleep");
@@ -320,7 +324,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => {
                 let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
-                return Ok(-1);
+                return Ok(Scalar::from_i32(-1));
             }
         };
 
@@ -333,7 +337,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 @timeout = |_this| { Ok(()) }
             ),
         );
-        Ok(0)
+        Ok(Scalar::from_i32(0))
     }
 
     #[allow(non_snake_case)]

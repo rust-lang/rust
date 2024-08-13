@@ -1,5 +1,6 @@
-use crate::token::CommentKind;
 use rustc_span::{BytePos, Symbol};
+
+use crate::token::CommentKind;
 
 #[cfg(test)]
 mod tests;

@@ -13,12 +13,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::cmp::Ordering;
-use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
-use core::mem;
 use core::ptr::NonNull;
+use core::{fmt, mem};
 
 use super::SpecExtend;
 use crate::alloc::{Allocator, Global};

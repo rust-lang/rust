@@ -28,17 +28,16 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
-use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs,
-    LocalDecl, MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
-    SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
+    AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
+    MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
-use rustc_middle::query;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, span_bug};
-use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
+use rustc_middle::{bug, query, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
 
 #[macro_use]
@@ -339,12 +338,15 @@ fn mir_promoted(
 
     // Collect `required_consts` *before* promotion, so if there are any consts being promoted
     // we still add them to the list in the outer MIR body.
-    let mut required_consts = Vec::new();
-    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
-    for (bb, bb_data) in traversal::reverse_postorder(&body) {
-        required_consts_visitor.visit_basic_block_data(bb, bb_data);
+    RequiredConstsVisitor::compute_required_consts(&mut body);
+    // If this has an associated by-move async closure body, that doesn't get run through these
+    // passes itself, it gets "tagged along" by the pass manager. `RequiredConstsVisitor` is not
+    // a regular pass so we have to also apply it manually to the other body.
+    if let Some(coroutine) = body.coroutine.as_mut() {
+        if let Some(by_move_body) = coroutine.by_move_body.as_mut() {
+            RequiredConstsVisitor::compute_required_consts(by_move_body);
+        }
     }
-    body.required_consts = required_consts;
 
     // What we need to run borrowck etc.
     let promote_pass = promote_consts::PromoteTemps::default();
@@ -561,9 +563,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         tcx,
         body,
         &[
-            // Before doing anything, remember which items are being mentioned so that the set of items
-            // visited does not depend on the optimization level.
-            &mentioned_items::MentionedItems,
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             // Before inlining: trim down MIR with passes to reduce inlining work.
@@ -571,6 +570,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
             // Also simple, so can just do first
             &lower_slice_len::LowerSliceLenCalls,
+            // Perform instsimplify before inline to eliminate some trivial calls (like clone shims).
+            &instsimplify::InstSimplify::BeforeInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after inlining.
@@ -590,7 +591,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
-            &instsimplify::InstSimplify,
+            // After simplifycfg, it allows us to discover new opportunities for peephole optimizations.
+            &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
@@ -652,6 +654,19 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
     if body.tainted_by_errors.is_some() {
         return body;
+    }
+
+    // Before doing anything, remember which items are being mentioned so that the set of items
+    // visited does not depend on the optimization level.
+    // We do not use `run_passes` for this as that might skip the pass if `injection_phase` is set.
+    mentioned_items::MentionedItems.run_pass(tcx, &mut body);
+    // If this has an associated by-move async closure body, that doesn't get run through these
+    // passes itself, it gets "tagged along" by the pass manager. Since we're not using the pass
+    // manager we have to do this by hand.
+    if let Some(coroutine) = body.coroutine.as_mut() {
+        if let Some(by_move_body) = coroutine.by_move_body.as_mut() {
+            mentioned_items::MentionedItems.run_pass(tcx, by_move_body);
+        }
     }
 
     // If `mir_drops_elaborated_and_const_checked` found that the current body has unsatisfiable

@@ -1,17 +1,15 @@
+use core::slice::memchr;
+
 use super::hermit_abi;
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::os::hermit::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
-use crate::str;
 use crate::sync::Mutex;
 use crate::sys::unsupported;
-use crate::vec;
-use core::slice::memchr;
+use crate::{fmt, io, str, vec};
 
 pub fn errno() -> i32 {
     unsafe { hermit_abi::get_errno() }
@@ -70,21 +68,21 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
-static mut ENV: Option<Mutex<HashMap<OsString, OsString>>> = None;
+static ENV: Mutex<Option<HashMap<OsString, OsString>>> = Mutex::new(None);
 
 pub fn init_environment(env: *const *const i8) {
+    let mut guard = ENV.lock().unwrap();
+    let map = guard.insert(HashMap::new());
+
+    if env.is_null() {
+        return;
+    }
+
     unsafe {
-        ENV = Some(Mutex::new(HashMap::new()));
-
-        if env.is_null() {
-            return;
-        }
-
-        let mut guard = ENV.as_ref().unwrap().lock().unwrap();
         let mut environ = env;
         while !(*environ).is_null() {
             if let Some((key, value)) = parse(CStr::from_ptr(*environ).to_bytes()) {
-                guard.insert(key, value);
+                map.insert(key, value);
             }
             environ = environ.add(1);
         }
@@ -156,30 +154,26 @@ impl Iterator for Env {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-    unsafe {
-        let guard = ENV.as_ref().unwrap().lock().unwrap();
-        let mut result = Vec::new();
+    let guard = ENV.lock().unwrap();
+    let env = guard.as_ref().unwrap();
 
-        for (key, value) in guard.iter() {
-            result.push((key.clone(), value.clone()));
-        }
+    let result = env.iter().map(|(key, value)| (key.clone(), value.clone())).collect::<Vec<_>>();
 
-        return Env { iter: result.into_iter() };
-    }
+    Env { iter: result.into_iter() }
 }
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {
-    unsafe { ENV.as_ref().unwrap().lock().unwrap().get_mut(k).cloned() }
+    ENV.lock().unwrap().as_ref().unwrap().get(k).cloned()
 }
 
 pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let (k, v) = (k.to_owned(), v.to_owned());
-    ENV.as_ref().unwrap().lock().unwrap().insert(k, v);
+    ENV.lock().unwrap().as_mut().unwrap().insert(k, v);
     Ok(())
 }
 
 pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
-    ENV.as_ref().unwrap().lock().unwrap().remove(k);
+    ENV.lock().unwrap().as_mut().unwrap().remove(k);
     Ok(())
 }
 
@@ -192,9 +186,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe {
-        hermit_abi::exit(code);
-    }
+    unsafe { hermit_abi::exit(code) }
 }
 
 pub fn getpid() -> u32 {

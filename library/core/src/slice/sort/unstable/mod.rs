@@ -2,14 +2,13 @@
 
 use crate::intrinsics;
 use crate::mem::SizedTypeProperties;
-
 use crate::slice::sort::shared::find_existing_run;
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 
 pub(crate) mod heapsort;
 pub(crate) mod quicksort;
 
-/// Unstable sort called ipnsort by Lukas Bergdoll.
+/// Unstable sort called ipnsort by Lukas Bergdoll and Orson Peters.
 /// Design document:
 /// <https://github.com/Voultapher/sort-research-rs/blob/main/writeup/ipnsort_introduction/text.md>
 ///

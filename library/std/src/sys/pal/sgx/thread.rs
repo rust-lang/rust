@@ -1,11 +1,11 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
+
+use super::abi::usercalls;
 use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::time::Duration;
-
-use super::abi::usercalls;
 
 pub struct Thread(task_queue::JoinHandle);
 

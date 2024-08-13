@@ -18,8 +18,7 @@ use rustc_middle::ty;
 use thin_vec::ThinVec;
 
 use crate::clean;
-use crate::clean::GenericArgs as PP;
-use crate::clean::WherePredicate as WP;
+use crate::clean::{GenericArgs as PP, WherePredicate as WP};
 use crate::core::DocContext;
 
 pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVec<WP> {
@@ -146,7 +145,6 @@ pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generi
     // should be handled when cleaning associated types.
     generics.where_predicates.retain(|pred| {
         if let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred
-            && *param != rustc_span::symbol::kw::SelfUpper
             && bounds.iter().any(|b| b.is_sized_bound(cx))
         {
             sized_params.insert(*param);

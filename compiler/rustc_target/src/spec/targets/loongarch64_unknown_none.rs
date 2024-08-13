@@ -1,11 +1,12 @@
-use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     Target {
         llvm_target: "loongarch64-unknown-none".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
+            description: Some("Freestanding/bare-metal LoongArch64".into()),
             tier: Some(2),
             host_tools: Some(false),
             std: Some(false),

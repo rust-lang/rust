@@ -1,32 +1,20 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::{import_candidates, DiagMode, Suggestion};
-use crate::errors::{
-    CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
-    CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub, IsNotDirectlyImportable,
-    ItemsInTraitsAreNotImportable,
-};
-use crate::Determinacy::{self, *};
-use crate::{module_to_string, names_to_string, ImportSuggestion};
-use crate::{AmbiguityError, Namespace::*};
-use crate::{AmbiguityKind, BindingKey, ResolutionError, Resolver, Segment};
-use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
-use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult, Used};
+use std::cell::Cell;
+use std::mem;
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_hir::def_id::DefId;
-use rustc_middle::metadata::ModChild;
-use rustc_middle::metadata::Reexport;
-use rustc_middle::span_bug;
-use rustc_middle::ty;
+use rustc_middle::metadata::{ModChild, Reexport};
+use rustc_middle::{span_bug, ty};
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    UNUSED_IMPORTS,
+    REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -36,8 +24,20 @@ use rustc_span::Span;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use std::cell::Cell;
-use std::mem;
+use crate::diagnostics::{import_candidates, DiagMode, Suggestion};
+use crate::errors::{
+    CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
+    CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
+    ConsiderAddingMacroExport, ConsiderMarkingAsPub, IsNotDirectlyImportable,
+    ItemsInTraitsAreNotImportable,
+};
+use crate::Determinacy::{self, *};
+use crate::Namespace::*;
+use crate::{
+    module_to_string, names_to_string, AmbiguityError, AmbiguityKind, BindingKey, Finalize,
+    ImportSuggestion, Module, ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind,
+    ParentScope, PathResult, PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used,
+};
 
 type Res = def::Res<NodeId>;
 
@@ -48,6 +48,7 @@ pub(crate) enum ImportKind<'a> {
         /// `source` in `use prefix::source as target`.
         source: Ident,
         /// `target` in `use prefix::source as target`.
+        /// It will directly use `source` when the format is `use prefix::source`.
         target: Ident,
         /// Bindings to which `source` refers to.
         source_bindings: PerNS<Cell<Result<NameBinding<'a>, Determinacy>>>,
@@ -174,8 +175,7 @@ pub(crate) struct ImportData<'a> {
     pub module_path: Vec<Segment>,
     /// The resolution of `module_path`.
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'a>>>,
-    pub vis: Cell<Option<ty::Visibility>>,
-    pub used: Cell<Option<Used>>,
+    pub vis: ty::Visibility,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -192,10 +192,6 @@ impl<'a> ImportData<'a> {
             ImportKind::Single { nested, .. } => nested,
             _ => false,
         }
-    }
-
-    pub(crate) fn expect_vis(&self) -> ty::Visibility {
-        self.vis.get().expect("encountered cleared import visibility")
     }
 
     pub(crate) fn id(&self) -> Option<NodeId> {
@@ -266,7 +262,7 @@ fn pub_use_of_private_extern_crate_hack(
     match (&import.kind, &binding.kind) {
         (ImportKind::Single { .. }, NameBindingKind::Import { import: binding_import, .. })
             if let ImportKind::ExternCrate { id, .. } = binding_import.kind
-                && import.expect_vis().is_public() =>
+                && import.vis.is_public() =>
         {
             Some(id)
         }
@@ -278,7 +274,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Given a binding and an import that resolves to it,
     /// return the corresponding binding defined by the import.
     pub(crate) fn import(&self, binding: NameBinding<'a>, import: Import<'a>) -> NameBinding<'a> {
-        let import_vis = import.expect_vis().to_def_id();
+        let import_vis = import.vis.to_def_id();
         let vis = if binding.vis.is_at_least(import_vis, self.tcx)
             || pub_use_of_private_extern_crate_hack(import, binding).is_some()
         {
@@ -487,7 +483,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             });
             self.record_use(target, dummy_binding, Used::Other);
         } else if import.imported_module.get().is_none() {
-            import.used.set(Some(Used::Other));
+            self.import_use_map.insert(import, Used::Other);
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
             }
@@ -772,11 +768,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let module = if let Some(module) = import.imported_module.get() {
             module
         } else {
-            // For better failure detection, pretend that the import will
-            // not define any names while resolving its module path.
-            let orig_vis = import.vis.take();
-            let path_res = self.maybe_resolve_path(&import.module_path, None, &import.parent_scope);
-            import.vis.set(orig_vis);
+            let path_res = self.maybe_resolve_path(
+                &import.module_path,
+                None,
+                &import.parent_scope,
+                Some(import),
+            );
 
             match path_res {
                 PathResult::Module(module) => module,
@@ -806,16 +803,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 if let Err(Undetermined) = source_bindings[ns].get() {
-                    // For better failure detection, pretend that the import will
-                    // not define any names while resolving its module path.
-                    let orig_vis = import.vis.take();
                     let binding = this.maybe_resolve_ident_in_module(
                         module,
                         source,
                         ns,
                         &import.parent_scope,
+                        Some(import),
                     );
-                    import.vis.set(orig_vis);
                     source_bindings[ns].set(binding);
                 } else {
                     return;
@@ -854,7 +848,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Optionally returns an unresolved import error. This error is buffered and used to
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: Import<'a>) -> Option<UnresolvedImportError> {
-        let orig_vis = import.vis.take();
         let ignore_binding = match &import.kind {
             ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
@@ -873,11 +866,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &import.parent_scope,
             Some(finalize),
             ignore_binding,
+            Some(import),
         );
 
         let no_ambiguity =
             ambiguity_errors_len(&self.ambiguity_errors) == prev_ambiguity_errors_len;
-        import.vis.set(orig_vis);
+
         let module = match path_res {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
@@ -1012,8 +1006,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     if !is_prelude
                         && let Some(max_vis) = max_vis.get()
-                        && let import_vis = import.expect_vis()
-                        && !max_vis.is_at_least(import_vis, self.tcx)
+                        && !max_vis.is_at_least(import.vis, self.tcx)
                     {
                         let def_id = self.local_def_id(id);
                         self.lint_buffer.buffer_lint(
@@ -1022,7 +1015,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             import.span,
                             BuiltinLintDiag::RedundantImportVisibility {
                                 max_vis: max_vis.to_string(def_id, self.tcx),
-                                import_vis: import_vis.to_string(def_id, self.tcx),
+                                import_vis: import.vis.to_string(def_id, self.tcx),
                                 span: import.span,
                             },
                         );
@@ -1037,9 +1030,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // importing it if available.
             let mut path = import.module_path.clone();
             path.push(Segment::from_ident(ident));
-            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(&path, None, &import.parent_scope, Some(finalize), ignore_binding)
-            {
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(
+                &path,
+                None,
+                &import.parent_scope,
+                Some(finalize),
+                ignore_binding,
+                None,
+            ) {
                 let res = module.res().map(|r| (r, ident));
                 for error in &mut self.privacy_errors[privacy_errors_len..] {
                     error.outermost_res = res;
@@ -1050,7 +1048,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut all_ns_err = true;
         self.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
-                let orig_vis = import.vis.take();
                 let binding = this.resolve_ident_in_module(
                     module,
                     ident,
@@ -1058,8 +1055,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     &import.parent_scope,
                     Some(Finalize { report_private: false, ..finalize }),
                     target_bindings[ns].get(),
+                    Some(import),
                 );
-                import.vis.set(orig_vis);
 
                 match binding {
                     Ok(binding) => {
@@ -1121,6 +1118,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         ns,
                         &import.parent_scope,
                         Some(finalize),
+                        None,
                         None,
                     );
                     if binding.is_ok() {
@@ -1232,7 +1230,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut crate_private_reexport = false;
         self.per_ns(|this, ns| {
             if let Ok(binding) = source_bindings[ns].get() {
-                if !binding.vis.is_at_least(import.expect_vis(), this.tcx) {
+                if !binding.vis.is_at_least(import.vis, this.tcx) {
                     reexport_error = Some((ns, binding));
                     if let ty::Visibility::Restricted(binding_def_id) = binding.vis {
                         if binding_def_id.is_top_level_module() {
@@ -1348,7 +1346,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // module defined by a block).
         // Skip if the import is public or was used through non scope-based resolution,
         // e.g. through a module-relative path.
-        if import.used.get() == Some(Used::Other)
+        if self.import_use_map.get(&import) == Some(&Used::Other)
             || self.effective_visibilities.is_exported(self.local_def_id(id))
         {
             return false;
@@ -1369,6 +1367,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None,
                     false,
                     target_bindings[ns].get(),
+                    None,
                 ) {
                     Ok(other_binding) => {
                         is_redundant = binding.res() == other_binding.res()
@@ -1387,14 +1386,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            /* FIXME(unused_imports): Add this back as a new lint
-            self.lint_buffer.buffer_lint_with_diagnostic(
-                UNUSED_IMPORTS,
+            self.lint_buffer.buffer_lint(
+                REDUNDANT_IMPORTS,
                 id,
                 import.span,
                 BuiltinLintDiag::RedundantImport(redundant_spans, source),
             );
-            */
             return true;
         }
 

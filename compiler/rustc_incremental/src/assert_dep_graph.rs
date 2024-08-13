@@ -33,12 +33,12 @@
 //! fn baz() { foo(); }
 //! ```
 
-use crate::errors;
-use rustc_ast as ast;
+use std::env;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
-use rustc_graphviz as dot;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
@@ -49,10 +49,10 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use std::env;
-use std::fs::{self, File};
-use std::io::{BufWriter, Write};
 use tracing::debug;
+use {rustc_ast as ast, rustc_graphviz as dot, rustc_hir as hir};
+
+use crate::errors;
 
 #[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {

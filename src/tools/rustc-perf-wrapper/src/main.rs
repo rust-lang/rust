@@ -1,7 +1,10 @@
-use crate::config::{Profile, Scenario};
-use clap::Parser;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 use std::process::Command;
+
+use clap::Parser;
+
+use crate::config::{Profile, Scenario};
 
 mod config;
 
@@ -16,9 +19,6 @@ pub struct Args {
     cmd: PerfCommand,
 
     #[clap(flatten)]
-    opts: SharedOpts,
-
-    #[clap(flatten)]
     ctx: BuildContext,
 }
 
@@ -26,22 +26,37 @@ pub struct Args {
 enum PerfCommand {
     /// Run `profile_local eprintln`.
     /// This executes the compiler on the given benchmarks and stores its stderr output.
-    Eprintln,
+    Eprintln {
+        #[clap(flatten)]
+        opts: SharedOpts,
+    },
     /// Run `profile_local samply`
     /// This executes the compiler on the given benchmarks and profiles it with `samply`.
     /// You need to install `samply`, e.g. using `cargo install samply`.
-    Samply,
+    Samply {
+        #[clap(flatten)]
+        opts: SharedOpts,
+    },
     /// Run `profile_local cachegrind`.
     /// This executes the compiler on the given benchmarks under `Cachegrind`.
-    Cachegrind,
-}
+    Cachegrind {
+        #[clap(flatten)]
+        opts: SharedOpts,
+    },
+    Benchmark {
+        /// Identifier to associate benchmark results with
+        id: String,
 
-impl PerfCommand {
-    fn is_profiling(&self) -> bool {
-        match self {
-            PerfCommand::Eprintln | PerfCommand::Samply | PerfCommand::Cachegrind => true,
-        }
-    }
+        #[clap(flatten)]
+        opts: SharedOpts,
+    },
+    Compare {
+        /// The name of the base artifact to be compared.
+        base: String,
+
+        /// The name of the modified artifact to be compared.
+        modified: String,
+    },
 }
 
 #[derive(Debug, clap::Parser)]
@@ -50,6 +65,11 @@ struct SharedOpts {
     /// If unspecified, all benchmarks will be executed.
     #[clap(long, global = true, value_delimiter = ',')]
     include: Vec<String>,
+
+    /// Select the benchmarks matching a prefix in this comma-separated list that you don't want to run.
+    #[clap(long, global = true, value_delimiter = ',')]
+    exclude: Vec<String>,
+
     /// Select the scenarios that should be benchmarked.
     #[clap(
         long,
@@ -85,35 +105,67 @@ fn main() {
 
 fn run(args: Args) {
     let mut cmd = Command::new(args.ctx.collector);
+    let db_path = args.ctx.results_dir.join("results.db");
+
     match &args.cmd {
-        PerfCommand::Eprintln => {
-            cmd.arg("profile_local").arg("eprintln");
-        }
-        PerfCommand::Samply => {
-            cmd.arg("profile_local").arg("samply");
-        }
-        PerfCommand::Cachegrind => {
-            cmd.arg("profile_local").arg("cachegrind");
-        }
-    }
-    if args.cmd.is_profiling() {
-        cmd.arg("--out-dir").arg(&args.ctx.results_dir);
-    }
+        PerfCommand::Eprintln { opts }
+        | PerfCommand::Samply { opts }
+        | PerfCommand::Cachegrind { opts } => {
+            cmd.arg("profile_local");
+            cmd.arg(match &args.cmd {
+                PerfCommand::Eprintln { .. } => "eprintln",
+                PerfCommand::Samply { .. } => "samply",
+                PerfCommand::Cachegrind { .. } => "cachegrind",
+                _ => unreachable!(),
+            });
 
-    if !args.opts.include.is_empty() {
-        cmd.arg("--include").arg(args.opts.include.join(","));
+            cmd.arg("--out-dir").arg(&args.ctx.results_dir);
+
+            apply_shared_opts(&mut cmd, opts);
+            execute_benchmark(&mut cmd, &args.ctx.compiler);
+
+            println!("You can find the results at `{}`", args.ctx.results_dir.display());
+        }
+        PerfCommand::Benchmark { id, opts } => {
+            cmd.arg("bench_local");
+            cmd.arg("--db").arg(&db_path);
+            cmd.arg("--id").arg(id);
+
+            apply_shared_opts(&mut cmd, opts);
+            create_dir_all(&args.ctx.results_dir).unwrap();
+            execute_benchmark(&mut cmd, &args.ctx.compiler);
+        }
+        PerfCommand::Compare { base, modified } => {
+            cmd.arg("bench_cmp");
+            cmd.arg("--db").arg(&db_path);
+            cmd.arg(base).arg(modified);
+
+            create_dir_all(&args.ctx.results_dir).unwrap();
+            cmd.status().expect("error while running rustc-perf bench_cmp");
+        }
     }
-    if !args.opts.profiles.is_empty() {
+}
+
+fn apply_shared_opts(cmd: &mut Command, opts: &SharedOpts) {
+    if !opts.include.is_empty() {
+        cmd.arg("--include").arg(opts.include.join(","));
+    }
+    if !opts.exclude.is_empty() {
+        cmd.arg("--exclude").arg(opts.exclude.join(","));
+    }
+    if !opts.profiles.is_empty() {
         cmd.arg("--profiles")
-            .arg(args.opts.profiles.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
+            .arg(opts.profiles.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
     }
-    if !args.opts.scenarios.is_empty() {
+    if !opts.scenarios.is_empty() {
         cmd.arg("--scenarios")
-            .arg(args.opts.scenarios.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
+            .arg(opts.scenarios.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
     }
-    cmd.arg(&args.ctx.compiler);
+}
 
-    println!("Running `rustc-perf` using `{}`", args.ctx.compiler.display());
+fn execute_benchmark(cmd: &mut Command, compiler: &PathBuf) {
+    cmd.arg(compiler);
+    println!("Running `rustc-perf` using `{}`", compiler.display());
 
     const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
@@ -123,8 +175,4 @@ fn run(args: Args) {
     // with compile-time benchmarks.
     let cmd = cmd.current_dir(rustc_perf_dir);
     cmd.status().expect("error while running rustc-perf collector");
-
-    if args.cmd.is_profiling() {
-        println!("You can find the results at `{}`", args.ctx.results_dir.display());
-    }
 }

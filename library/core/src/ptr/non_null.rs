@@ -1,15 +1,13 @@
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
 use crate::marker::Unsize;
 use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr;
+use crate::pin::PinCoerceUnsized;
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
+use crate::{fmt, hash, intrinsics, ptr};
 
 /// `*mut T` but non-zero and [covariant].
 ///
@@ -1171,15 +1169,22 @@ impl<T: ?Sized> NonNull<T> {
     /// `align`.
     ///
     /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::MAX`. It is permissible for the implementation to *always*
-    /// return `usize::MAX`. Only your algorithm's performance can depend
-    /// on getting a usable offset here, not its correctness.
+    /// `usize::MAX`.
     ///
     /// The offset is expressed in number of `T` elements, and not bytes.
     ///
     /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// When this is called during compile-time evaluation (which is unstable), the implementation
+    /// may return `usize::MAX` in cases where that can never happen at runtime. This is because the
+    /// actual alignment of pointers is not known yet during compile-time, so an offset with
+    /// guaranteed alignment can sometimes not be computed. For example, a buffer declared as `[u8;
+    /// N]` might be allocated at an odd or an even address, but at compile-time this is not yet
+    /// known, so the execution has to be correct for either choice. It is therefore impossible to
+    /// find an offset that is guaranteed to be 2-aligned. (This behavior is subject to change, as usual
+    /// for unstable APIs.)
     ///
     /// # Panics
     ///
@@ -1726,6 +1731,9 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Uns
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
+
+#[stable(feature = "pin", since = "1.33.0")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> fmt::Debug for NonNull<T> {

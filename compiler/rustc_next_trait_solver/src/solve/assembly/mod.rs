@@ -3,12 +3,11 @@
 pub(super) mod structural_traits;
 
 use derive_where::derive_where;
-use rustc_type_ir::elaborate;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, Interner, Upcast as _};
+use rustc_type_ir::{self as ty, elaborate, Interner, Upcast as _};
 use tracing::{debug, instrument};
 
 use crate::delegate::SolverDelegate;
@@ -699,6 +698,18 @@ where
                 if ecx.trait_ref_is_knowable(goal.param_env, trait_ref)? {
                     Err(NoSolution)
                 } else {
+                    // While the trait bound itself may be unknowable, we may be able to
+                    // prove that a super trait is not implemented. For this, we recursively
+                    // prove the super trait bounds of the current goal.
+                    //
+                    // We skip the goal itself as that one would cycle.
+                    let predicate: I::Predicate = trait_ref.upcast(cx);
+                    ecx.add_goals(
+                        GoalSource::Misc,
+                        elaborate::elaborate(cx, [predicate])
+                            .skip(1)
+                            .map(|predicate| goal.with(cx, predicate)),
+                    );
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             },

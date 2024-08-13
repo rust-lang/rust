@@ -1,10 +1,12 @@
-use crate::Build;
-use build_helper::ci::CiEnv;
-use build_helper::drop_bomb::DropBomb;
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
 use std::process::{Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio};
+
+use build_helper::ci::CiEnv;
+use build_helper::drop_bomb::DropBomb;
+
+use crate::Build;
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -173,8 +175,8 @@ impl BootstrapCommand {
     }
 
     /// If in a CI environment, forces the command to run with colors.
-    pub fn force_coloring_in_ci(&mut self, ci_env: CiEnv) {
-        if ci_env != CiEnv::None {
+    pub fn force_coloring_in_ci(&mut self) {
+        if CiEnv::is_ci() {
             // Due to use of stamp/docker, the output stream of bootstrap is not
             // a TTY in CI, so coloring is by-default turned off.
             // The explicit `TERM=xterm` environment is needed for

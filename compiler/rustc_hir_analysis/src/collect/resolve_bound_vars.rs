@@ -7,6 +7,8 @@
 //! is also responsible for assigning their semantics to implicit lifetimes in trait objects.
 
 use core::ops::ControlFlow;
+use std::fmt;
+
 use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
@@ -23,7 +25,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
-use std::fmt;
 
 use crate::errors;
 

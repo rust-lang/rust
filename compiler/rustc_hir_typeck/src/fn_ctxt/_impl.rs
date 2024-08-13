@@ -1,8 +1,6 @@
-use crate::callee::{self, DeferredCallResolution};
-use crate::errors::{self, CtorIsPrivate};
-use crate::method::{self, MethodCallee};
-use crate::rvalue_scopes;
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
+use std::collections::hash_map::Entry;
+use std::slice;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
@@ -26,9 +24,9 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericParamDefKind, IsIdentity, Ty, TyCtxt, UserType,
+    self, AdtKind, CanonicalUserType, GenericArgKind, GenericArgsRef, GenericParamDefKind,
+    IsIdentity, Ty, TyCtxt, UserArgs, UserSelfTy, UserType,
 };
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef, UserArgs, UserSelfTy};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
@@ -41,37 +39,51 @@ use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
 
-use std::collections::hash_map::Entry;
-use std::slice;
+use crate::callee::{self, DeferredCallResolution};
+use crate::errors::{self, CtorIsPrivate};
+use crate::method::{self, MethodCallee};
+use crate::{rvalue_scopes, BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
-        // FIXME: Combine these two 'if' expressions into one once
-        // let chains are implemented
-        if let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() {
-            // If span arose from a desugaring of `if` or `while`, then it is the condition itself,
-            // which diverges, that we are about to lint on. This gives suboptimal diagnostics.
-            // Instead, stop here so that the `if`- or `while`-expression's block is linted instead.
-            if !span.is_desugaring(DesugaringKind::CondTemporary)
-                && !span.is_desugaring(DesugaringKind::Async)
-                && !orig_span.is_desugaring(DesugaringKind::Await)
-            {
-                self.diverges.set(Diverges::WarnedAlways);
+        let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
+            return;
+        };
 
-                debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+        match span.desugaring_kind() {
+            // If span arose from a desugaring of `if` or `while`, then it is the condition
+            // itself, which diverges, that we are about to lint on. This gives suboptimal
+            // diagnostics. Instead, stop here so that the `if`- or `while`-expression's
+            // block is linted instead.
+            Some(DesugaringKind::CondTemporary) => return,
 
-                let msg = format!("unreachable {kind}");
-                self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
-                    lint.primary_message(msg.clone());
-                    lint.span_label(span, msg).span_label(
-                        orig_span,
-                        custom_note.unwrap_or("any code following this expression is unreachable"),
-                    );
-                })
-            }
+            // Don't lint if the result of an async block or async function is `!`.
+            // This does not affect the unreachable lints *within* the body.
+            Some(DesugaringKind::Async) => return,
+
+            // Don't lint *within* the `.await` operator, since that's all just desugaring
+            // junk. We only want to lint if there is a subsequent expression after the
+            // `.await` operator.
+            Some(DesugaringKind::Await) => return,
+
+            _ => {}
         }
+
+        // Don't warn twice.
+        self.diverges.set(Diverges::WarnedAlways);
+
+        debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+
+        let msg = format!("unreachable {kind}");
+        self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
+            lint.primary_message(msg.clone());
+            lint.span_label(span, msg).span_label(
+                orig_span,
+                custom_note.unwrap_or("any code following this expression is unreachable"),
+            );
+        })
     }
 
     /// Resolves type and const variables in `ty` if possible. Unlike the infcx
@@ -392,8 +404,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         if !ty.references_error() {
-            let tail =
-                self.tcx.struct_tail_with_normalize(ty, |ty| self.normalize(span, ty), || {});
+            let tail = self.tcx.struct_tail_raw(
+                ty,
+                |ty| {
+                    if self.next_trait_solver() {
+                        self.try_structurally_resolve_type(span, ty)
+                    } else {
+                        self.normalize(span, ty)
+                    }
+                },
+                || {},
+            );
             // Sized types have static alignment, and so do slices.
             if tail.is_trivially_sized(self.tcx) || matches!(tail.kind(), ty::Slice(..)) {
                 // Nothing else is required here.

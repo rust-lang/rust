@@ -1,7 +1,7 @@
-use crate::cmp;
+use libc::{c_int, c_void, size_t, sockaddr, socklen_t, MSG_PEEK};
+
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
@@ -9,8 +9,7 @@ use crate::sys::pal::unix::IsMinusOne;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::{Duration, Instant};
-
-use libc::{c_int, c_void, size_t, sockaddr, socklen_t, MSG_PEEK};
+use crate::{cmp, mem};
 
 cfg_if::cfg_if! {
     if #[cfg(target_vendor = "apple")] {

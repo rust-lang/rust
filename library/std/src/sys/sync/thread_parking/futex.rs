@@ -36,7 +36,7 @@ pub struct Parker {
 // Ordering::Release when writing NOTIFIED (the 'token') in unpark(), and using
 // Ordering::Acquire when checking for this state in park().
 impl Parker {
-    /// Construct the futex parker. The UNIX parker implementation
+    /// Constructs the futex parker. The UNIX parker implementation
     /// requires this to happen in-place.
     pub unsafe fn new_in_place(parker: *mut Parker) {
         unsafe { parker.write(Self { state: Atomic::new(EMPTY) }) };

@@ -11,6 +11,8 @@
 //   within the brackets).
 // * `"` is treated as the start of a string.
 
+use std::fmt::Write;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
@@ -18,13 +20,12 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{
+    self, ExistentialProjection, GenericArgKind, GenericArgsRef, ParamEnv, Ty, TyCtxt,
+};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Integer;
 use smallvec::SmallVec;
-
-use std::fmt::Write;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
 

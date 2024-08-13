@@ -17,27 +17,25 @@ use rustc_middle::mir::{
     ClosureRegionRequirements, ConstraintCategory, Local, Location, ReturnConstraint,
     TerminatorKind,
 };
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::ObligationCauseCode;
+use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
+use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
-use crate::{
-    constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet},
-    diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo},
-    member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
-    nll::PoloniusOutput,
-    region_infer::reverse_sccs::ReverseSccGraph,
-    region_infer::values::{
-        LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
-    },
-    type_check::{free_region_relations::UniversalRegionRelations, Locations},
-    universal_regions::UniversalRegions,
-    BorrowckInferCtxt,
+use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
+use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
+use crate::nll::PoloniusOutput;
+use crate::region_infer::reverse_sccs::ReverseSccGraph;
+use crate::region_infer::values::{
+    LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
 };
+use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::type_check::Locations;
+use crate::universal_regions::UniversalRegions;
+use crate::BorrowckInferCtxt;
 
 mod dump_mir;
 mod graphviz;

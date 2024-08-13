@@ -1,9 +1,7 @@
 use rustc_hir::def_id::DefIdSet;
 
-use crate::{
-    clean::{self, Import, ImportSource, Item},
-    fold::DocFolder,
-};
+use crate::clean::{self, Import, ImportSource, Item};
+use crate::fold::DocFolder;
 
 /// Get the id's of all items that are `pub use`d in the crate.
 ///

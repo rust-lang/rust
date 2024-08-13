@@ -1,10 +1,10 @@
 //! List of the unstable feature gates.
 
-use super::{to_nonzero, Feature};
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+
+use super::{to_nonzero, Feature};
 
 pub struct UnstableFeature {
     pub feature: Feature,
@@ -431,8 +431,6 @@ declare_features! (
     (unstable, custom_test_frameworks, "1.30.0", Some(50297)),
     /// Allows declarative macros 2.0 (`macro`).
     (unstable, decl_macro, "1.17.0", Some(39412)),
-    /// Allows default type parameters to influence type inference.
-    (unstable, default_type_parameter_fallback, "1.3.0", Some(27336)),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
@@ -518,12 +516,9 @@ declare_features! (
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
-    (unstable, macro_metavar_expr_concat, "CURRENT_RUSTC_VERSION", Some(124225)),
+    (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
-    /// Allows exhaustive pattern matching on types that contain uninhabited types in cases that are
-    /// unambiguously sound.
-    (unstable, min_exhaustive_patterns, "1.77.0", Some(119612)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -560,14 +555,12 @@ declare_features! (
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561)),
     /// Allows using enums in offset_of!
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
-    /// Allows using multiple nested field accesses in offset_of!
-    (unstable, offset_of_nested, "1.77.0", Some(120140)),
     /// Allows using fields with slice type in offset_of!
-    (unstable, offset_of_slice, "CURRENT_RUSTC_VERSION", Some(126151)),
+    (unstable, offset_of_slice, "1.81.0", Some(126151)),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
-    (unstable, patchable_function_entry, "CURRENT_RUSTC_VERSION", Some(123115)),
+    (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
@@ -579,7 +572,7 @@ declare_features! (
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
-    (incomplete, ref_pat_eat_one_layer_2024_structural, "CURRENT_RUSTC_VERSION", Some(123076)),
+    (incomplete, ref_pat_eat_one_layer_2024_structural, "1.81.0", Some(123076)),
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.
@@ -593,6 +586,8 @@ declare_features! (
     (incomplete, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
+    /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
+    (unstable, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
     /// Shortern the tail expression lifetime
     (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -631,8 +626,6 @@ declare_features! (
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows unsafe attributes.
     (unstable, unsafe_attributes, "1.80.0", Some(123757)),
-    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
-    (unstable, unsafe_extern_blocks, "1.80.0", Some(123743)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),
@@ -645,9 +638,9 @@ declare_features! (
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
     /// Allows use of x86 `AMX` target-feature attributes and intrinsics
-    (unstable, x86_amx_intrinsics, "CURRENT_RUSTC_VERSION", Some(126622)),
+    (unstable, x86_amx_intrinsics, "1.81.0", Some(126622)),
     /// Allows use of the `xop` target-feature
-    (unstable, xop_target_feature, "CURRENT_RUSTC_VERSION", Some(127208)),
+    (unstable, xop_target_feature, "1.81.0", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!

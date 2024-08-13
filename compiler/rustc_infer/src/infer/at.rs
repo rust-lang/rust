@@ -25,12 +25,11 @@
 //! sometimes useful when the types of `c` and `d` are not traceable
 //! things. (That system should probably be refactored.)
 
-use super::*;
-
-use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
 use rustc_middle::bug;
 use rustc_middle::ty::{Const, ImplSubject};
 
+use super::*;
+use crate::infer::relate::{Relate, StructurallyRelateAliases, TypeRelation};
 use crate::traits::Obligation;
 
 /// Whether we should define opaque types or just treat them opaquely.

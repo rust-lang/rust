@@ -1,8 +1,5 @@
 use std::path::PathBuf;
 
-use crate::ty::GenericArg;
-use crate::ty::{self, ShortInstance, Ty, TyCtxt};
-
 use hir::def::Namespace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
@@ -11,10 +8,11 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use tracing::{debug, instrument, trace};
 
+use crate::ty::{self, GenericArg, ShortInstance, Ty, TyCtxt};
+
 // `pretty` is a separate module only for organization.
 mod pretty;
 pub use self::pretty::*;
-
 use super::Lift;
 
 pub type PrintError = std::fmt::Error;

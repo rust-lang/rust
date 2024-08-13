@@ -1,8 +1,7 @@
-use std::env;
 use std::error::Error;
-use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
+use std::{env, fs};
 
 /// 32-bit ARM is not supported by Microsoft so ARM types are not generated.
 /// Therefore we need to inject a few types to make the bindings work.

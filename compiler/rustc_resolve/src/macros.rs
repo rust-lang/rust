@@ -1,13 +1,9 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::errors::CannotDetermineMacroResolution;
-use crate::errors::{self, AddAsNonDerive, CannotFindIdentInThisScope};
-use crate::errors::{MacroExpectedFound, RemoveSurroundingDerive};
-use crate::Namespace::*;
-use crate::{BindingKey, BuiltinMacroState, Determinacy, MacroData, NameBindingKind, Used};
-use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
-use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
+use std::cell::Cell;
+use std::mem;
+
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, attr, Crate, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_pretty::pprust;
@@ -15,8 +11,10 @@ use rustc_attr::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
-use rustc_expand::base::{Annotatable, DeriveResolution, Indeterminate, ResolverExpand};
-use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{
+    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
+    SyntaxExtensionKind,
+};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
@@ -24,8 +22,7 @@ use rustc_expand::expand::{
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::RegisteredTools;
-use rustc_middle::ty::{TyCtxt, Visibility};
+use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACROS, UNUSED_MACRO_RULES,
@@ -34,12 +31,21 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{self, ExpnData, ExpnKind, LocalExpnId};
-use rustc_span::hygiene::{AstPass, MacroKind};
+use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use std::cell::Cell;
-use std::mem;
+
+use crate::errors::{
+    self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
+    MacroExpectedFound, RemoveSurroundingDerive,
+};
+use crate::imports::Import;
+use crate::Namespace::*;
+use crate::{
+    BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, MacroData, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
+    Resolver, ScopeSet, Segment, ToNameBinding, Used,
+};
 
 type Res = def::Res<NodeId>;
 
@@ -103,8 +109,8 @@ pub(crate) fn sub_namespace_match(
 // `format!("{}", path)`, because that tries to insert
 // line-breaks and is slow.
 fn fast_print_path(path: &ast::Path) -> Symbol {
-    if path.segments.len() == 1 {
-        path.segments[0].ident.name
+    if let [segment] = path.segments.as_slice() {
+        segment.ident.name
     } else {
         let mut path_str = String::with_capacity(64);
         for (i, segment) in path.segments.iter().enumerate() {
@@ -394,6 +400,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                         &parent_scope,
                         true,
                         force,
+                        None,
                     ) {
                         Ok((Some(ext), _)) => {
                             if !ext.helper_attrs.is_empty() {
@@ -546,6 +553,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             force,
             deleg_impl,
             invoc_in_mod_inert_attr.map(|def_id| (def_id, node_id)),
+            None,
         ) {
             Ok((Some(ext), res)) => (ext, res),
             Ok((None, res)) => (self.dummy_ext(kind), res),
@@ -699,8 +707,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
-        self.resolve_macro_or_delegation_path(path, kind, parent_scope, trace, force, None, None)
+        self.resolve_macro_or_delegation_path(
+            path,
+            kind,
+            parent_scope,
+            trace,
+            force,
+            None,
+            None,
+            ignore_import,
+        )
     }
 
     fn resolve_macro_or_delegation_path(
@@ -712,6 +730,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         force: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
@@ -719,16 +738,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Possibly apply the macro helper hack
         if deleg_impl.is_none()
             && kind == Some(MacroKind::Bang)
-            && path.len() == 1
-            && path[0].ident.span.ctxt().outer_expn_data().local_inner_macros
+            && let [segment] = path.as_slice()
+            && segment.ident.span.ctxt().outer_expn_data().local_inner_macros
         {
-            let root = Ident::new(kw::DollarCrate, path[0].ident.span);
+            let root = Ident::new(kw::DollarCrate, segment.ident.span);
             path.insert(0, Segment::from_ident(root));
         }
 
         let res = if deleg_impl.is_some() || path.len() > 1 {
             let ns = if deleg_impl.is_some() { TypeNS } else { MacroNS };
-            let res = match self.maybe_resolve_path(&path, Some(ns), parent_scope) {
+            let res = match self.maybe_resolve_path(&path, Some(ns), parent_scope, ignore_import) {
                 PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => Ok(res),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
@@ -762,6 +781,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 parent_scope,
                 None,
                 force,
+                None,
                 None,
             );
             if let Err(Determinacy::Undetermined) = binding {
@@ -847,6 +867,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &parent_scope,
                 Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
                 None,
+                None,
             ) {
                 PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => {
                     check_consistency(self, &path, path_span, kind, initial_res, res)
@@ -866,7 +887,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         if let PathResult::Failed { span, label, module, .. } = path_res {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) =
-                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
+                                self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
                                 && partial_res.unresolved_segments() == 0
                             {
                                 let sm = self.tcx.sess.source_map();
@@ -916,6 +937,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
                 None,
+                None,
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
@@ -961,6 +983,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Some(Finalize::new(ast::CRATE_NODE_ID, ident.span)),
                 true,
                 None,
+                None,
             );
         }
     }
@@ -978,7 +1001,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let feature = stability.feature;
 
                 let is_allowed = |feature| {
-                    self.declared_features.contains(&feature) || span.allows_unstable(feature)
+                    self.tcx.features().declared_features.contains(&feature)
+                        || span.allows_unstable(feature)
                 };
                 let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
                 if !is_allowed(feature) && !allowed_by_implication {
@@ -1065,6 +1089,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 None,
                 false,
                 None,
+                None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
                 self.tcx.sess.psess.buffer_lint(
@@ -1138,7 +1163,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut indeterminate = false;
         for ns in namespaces {
-            match self.maybe_resolve_path(path, Some(*ns), &parent_scope) {
+            match self.maybe_resolve_path(path, Some(*ns), &parent_scope, None) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);

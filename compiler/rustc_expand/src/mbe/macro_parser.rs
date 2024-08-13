@@ -70,10 +70,10 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
-pub(crate) use NamedMatch::*;
-pub(crate) use ParseResult::*;
-
-use crate::mbe::{macro_rules::Tracker, KleeneOp, TokenTree};
+use std::borrow::Cow;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::fmt::Display;
+use std::rc::Rc;
 
 use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
 use rustc_ast_pretty::pprust;
@@ -81,13 +81,13 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{ParseNtResult, Parser};
-use rustc_span::symbol::Ident;
-use rustc_span::symbol::MacroRulesNormalizedIdent;
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
-use std::borrow::Cow;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::fmt::Display;
-use std::rc::Rc;
+pub(crate) use NamedMatch::*;
+pub(crate) use ParseResult::*;
+
+use crate::mbe::macro_rules::Tracker;
+use crate::mbe::{KleeneOp, TokenTree};
 
 /// A unit within a matcher that a `MatcherPos` can refer to. Similar to (and derived from)
 /// `mbe::TokenTree`, but designed specifically for fast and easy traversal during matching.

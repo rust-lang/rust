@@ -1,0 +1,51 @@
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/name-same-as-generic-type-issue-128249.rs:4:30
+   |
+LL |     fn one(&self, val:  impl Trait<Type: Default>);
+   |                              ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `Type`
+  --> $DIR/name-same-as-generic-type-issue-128249.rs:1:7
+   |
+LL | trait Trait<Type> {
+   |       ^^^^^ ----
+help: add missing generic argument
+   |
+LL |     fn one(&self, val:  impl Trait<Type, Type: Default>);
+   |                                    +++++
+
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/name-same-as-generic-type-issue-128249.rs:7:15
+   |
+LL |     fn two<T: Trait<Type: Default>>(&self) -> T;
+   |               ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `Type`
+  --> $DIR/name-same-as-generic-type-issue-128249.rs:1:7
+   |
+LL | trait Trait<Type> {
+   |       ^^^^^ ----
+help: add missing generic argument
+   |
+LL |     fn two<T: Trait<Type, Type: Default>>(&self) -> T;
+   |                     +++++
+
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/name-same-as-generic-type-issue-128249.rs:11:12
+   |
+LL |         T: Trait<Type: Default>,;
+   |            ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `Type`
+  --> $DIR/name-same-as-generic-type-issue-128249.rs:1:7
+   |
+LL | trait Trait<Type> {
+   |       ^^^^^ ----
+help: add missing generic argument
+   |
+LL |         T: Trait<Type, Type: Default>,;
+   |                  +++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

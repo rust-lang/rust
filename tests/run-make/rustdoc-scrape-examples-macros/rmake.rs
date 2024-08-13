@@ -11,8 +11,7 @@ fn main() {
     let dylib_name = rustc()
         .crate_name(proc_crate_name)
         .crate_type("dylib")
-        .arg("--print")
-        .arg("file-names")
+        .print("file-names")
         .arg("-")
         .run()
         .stdout_utf8();

@@ -1,12 +1,13 @@
 //@ ignore-windows
 // This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit enums.
 
-use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
-use object::{Object, ObjectSection};
-use run_make_support::{gimli, object, rfs, rustc};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
+
+use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
+use object::{Object, ObjectSection};
+use run_make_support::{gimli, object, rfs, rustc};
 
 fn main() {
     let output = PathBuf::from("repr128");

@@ -23,22 +23,21 @@
 //  - `check_unused` finally emits the diagnostics based on the data generated
 //    in the last step
 
-use crate::imports::{Import, ImportKind};
-use crate::module_to_string;
-use crate::Resolver;
-
-use crate::{LexicalScopeBinding, NameBindingKind};
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
-use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES};
-use rustc_session::lint::builtin::{UNUSED_IMPORTS, UNUSED_QUALIFICATIONS};
+use rustc_session::lint::builtin::{
+    MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
+};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
+
+use crate::imports::{Import, ImportKind};
+use crate::{module_to_string, LexicalScopeBinding, NameBindingKind, Resolver};
 
 struct UnusedImport {
     use_tree: ast::UseTree,
@@ -382,9 +381,9 @@ impl Resolver<'_, '_> {
 
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
-                _ if import.used.get().is_some()
-                    || import.expect_vis().is_public()
-                    || import.span.is_dummy() =>
+                _ if import.vis.is_public()
+                    || import.span.is_dummy()
+                    || self.import_use_map.contains_key(import) =>
                 {
                     if let ImportKind::MacroUse { .. } = import.kind {
                         if !import.span.is_dummy() {

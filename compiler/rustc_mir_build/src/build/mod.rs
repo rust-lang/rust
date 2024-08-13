@@ -1,5 +1,3 @@
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
 use itertools::Itertools;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
@@ -21,12 +19,13 @@ use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, Pa
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
+use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::scope::DropKind;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -16,7 +16,7 @@ pub type SmallAtomic = AtomicU32;
 /// Must be the underlying type of SmallAtomic
 pub type SmallPrimitive = u32;
 
-/// Wait for a futex_wake operation to wake us.
+/// Waits for a `futex_wake` operation to wake us.
 ///
 /// Returns directly if the futex doesn't hold the expected value.
 ///
@@ -87,7 +87,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
     }
 }
 
-/// Wake up one thread that's blocked on futex_wait on this futex.
+/// Wakes up one thread that's blocked on `futex_wait` on this futex.
 ///
 /// Returns true if this actually woke up such a thread,
 /// or false if no thread was waiting on this futex.
@@ -100,7 +100,7 @@ pub fn futex_wake(futex: &AtomicU32) -> bool {
     unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
 }
 
-/// Wake up all threads that are waiting on futex_wait on this futex.
+/// Wakes up all threads that are waiting on `futex_wait` on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake_all(futex: &AtomicU32) {
     let ptr = futex as *const AtomicU32;

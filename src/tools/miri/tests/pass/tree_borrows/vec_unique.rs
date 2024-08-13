@@ -1,3 +1,5 @@
+// FIXME: This test is broken since https://github.com/rust-lang/rust/pull/126793,
+// possibly related to the additional struct between Vec and Unique.
 //@revisions: default uniq
 // We disable the GC for this test because it would change what is printed.
 //@compile-flags: -Zmiri-tree-borrows -Zmiri-provenance-gc=0

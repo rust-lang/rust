@@ -1,14 +1,16 @@
-use std::ffi;
 use std::ffi::OsStr;
 use std::io::Write;
-use std::panic;
 use std::path::Path;
 use std::process::{Command as StdCommand, ExitStatus, Output, Stdio};
-
-use crate::util::handle_failed_output;
-use crate::{assert_contains, assert_equals, assert_not_contains};
+use std::{ffi, panic};
 
 use build_helper::drop_bomb::DropBomb;
+
+use crate::util::handle_failed_output;
+use crate::{
+    assert_contains, assert_contains_regex, assert_equals, assert_not_contains,
+    assert_not_contains_regex,
+};
 
 /// This is a custom command wrapper that simplifies working with commands and makes it easier to
 /// ensure that we check the exit status of executed processes.
@@ -164,11 +166,19 @@ pub struct CompletedProcess {
 
 impl CompletedProcess {
     #[must_use]
+    #[track_caller]
     pub fn stdout_utf8(&self) -> String {
         String::from_utf8(self.output.stdout.clone()).expect("stdout is not valid UTF-8")
     }
 
     #[must_use]
+    #[track_caller]
+    pub fn invalid_stdout_utf8(&self) -> String {
+        String::from_utf8_lossy(&self.output.stdout.clone()).to_string()
+    }
+
+    #[must_use]
+    #[track_caller]
     pub fn stderr_utf8(&self) -> String {
         String::from_utf8(self.output.stderr.clone()).expect("stderr is not valid UTF-8")
     }
@@ -192,10 +202,24 @@ impl CompletedProcess {
         self
     }
 
+    /// Checks that `stdout` does not contain the regex pattern `unexpected`.
+    #[track_caller]
+    pub fn assert_stdout_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
+        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
+        self
+    }
+
     /// Checks that `stdout` contains `expected`.
     #[track_caller]
     pub fn assert_stdout_contains<S: AsRef<str>>(&self, expected: S) -> &Self {
         assert_contains(&self.stdout_utf8(), expected);
+        self
+    }
+
+    /// Checks that `stdout` contains the regex pattern `expected`.
+    #[track_caller]
+    pub fn assert_stdout_contains_regex<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_contains_regex(&self.stdout_utf8(), expected);
         self
     }
 
@@ -213,10 +237,24 @@ impl CompletedProcess {
         self
     }
 
+    /// Checks that `stderr` contains the regex pattern `expected`.
+    #[track_caller]
+    pub fn assert_stderr_contains_regex<S: AsRef<str>>(&self, expected: S) -> &Self {
+        assert_contains_regex(&self.stderr_utf8(), expected);
+        self
+    }
+
     /// Checks that `stderr` does not contain `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains<S: AsRef<str>>(&self, unexpected: S) -> &Self {
-        assert_not_contains(&self.stdout_utf8(), unexpected);
+        assert_not_contains(&self.stderr_utf8(), unexpected);
+        self
+    }
+
+    /// Checks that `stderr` does not contain the regex pattern `unexpected`.
+    #[track_caller]
+    pub fn assert_stderr_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
+        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
         self
     }
 

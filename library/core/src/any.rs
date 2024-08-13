@@ -86,9 +86,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
+use crate::{fmt, hash, intrinsics};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait

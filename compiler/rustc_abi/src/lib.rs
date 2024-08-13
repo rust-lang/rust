@@ -6,21 +6,20 @@
 // tidy-alphabetical-end
 
 use std::fmt;
+#[cfg(feature = "nightly")]
+use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
-use rustc_index::{Idx, IndexSlice, IndexVec};
-
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic};
-#[cfg(feature = "nightly")]
-use std::iter::Step;
 
 mod layout;
 #[cfg(test)]
@@ -517,7 +516,7 @@ impl Size {
     /// Truncates `value` to `self` bits and then sign-extends it to 128 bits
     /// (i.e., if it is negative, fill with 1's on the left).
     #[inline]
-    pub fn sign_extend(self, value: u128) -> u128 {
+    pub fn sign_extend(self, value: u128) -> i128 {
         let size = self.bits();
         if size == 0 {
             // Truncated until nothing is left.
@@ -527,7 +526,7 @@ impl Size {
         let shift = 128 - size;
         // Shift the unsigned value to the left, then shift back to the right as signed
         // (essentially fills with sign bit on the left).
-        (((value << shift) as i128) >> shift) as u128
+        ((value << shift) as i128) >> shift
     }
 
     /// Truncates `value` to `self` bits.
@@ -545,7 +544,7 @@ impl Size {
 
     #[inline]
     pub fn signed_int_min(&self) -> i128 {
-        self.sign_extend(1_u128 << (self.bits() - 1)) as i128
+        self.sign_extend(1_u128 << (self.bits() - 1))
     }
 
     #[inline]

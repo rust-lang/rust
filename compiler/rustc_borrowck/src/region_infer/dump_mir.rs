@@ -3,11 +3,13 @@
 //! state of region inference. This code handles emitting the region
 //! context internal state.
 
-use super::{OutlivesConstraint, RegionInferenceContext};
-use crate::type_check::Locations;
+use std::io::{self, Write};
+
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::TyCtxt;
-use std::io::{self, Write};
+
+use super::{OutlivesConstraint, RegionInferenceContext};
+use crate::type_check::Locations;
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like

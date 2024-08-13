@@ -229,24 +229,20 @@ impl f16 {
     /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
-    #[cfg(not(bootstrap))]
     #[allow(clippy::eq_op)]
     #[rustc_diagnostic_item = "f16_nan"]
     #[unstable(feature = "f16", issue = "116909")]
     pub const NAN: f16 = 0.0_f16 / 0.0_f16;
 
     /// Infinity (∞).
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     pub const INFINITY: f16 = 1.0_f16 / 0.0_f16;
 
     /// Negative infinity (−∞).
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     pub const NEG_INFINITY: f16 = -1.0_f16 / 0.0_f16;
 
     /// Sign bit
-    #[cfg(not(bootstrap))]
     pub(crate) const SIGN_MASK: u16 = 0x8000;
 
     /// Exponent mask
@@ -256,11 +252,9 @@ impl f16 {
     pub(crate) const MAN_MASK: u16 = 0x03ff;
 
     /// Minimum representable positive value (min subnormal)
-    #[cfg(not(bootstrap))]
     const TINY_BITS: u16 = 0x1;
 
     /// Minimum representable negative value (min negative subnormal)
-    #[cfg(not(bootstrap))]
     const NEG_TINY_BITS: u16 = Self::TINY_BITS | Self::SIGN_MASK;
 
     /// Returns `true` if this value is NaN.
@@ -278,7 +272,6 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[allow(clippy::eq_op)] // > if you intended to check if the operand is NaN, use `.is_nan()` instead :)
     pub const fn is_nan(self) -> bool {
@@ -289,7 +282,6 @@ impl f16 {
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub(crate) const fn abs_private(self) -> f16 {
         // SAFETY: This transmutation is fine. Probably. For the reasons std is using it.
@@ -317,7 +309,6 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_infinite(self) -> bool {
@@ -344,7 +335,6 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_finite(self) -> bool {
@@ -377,7 +367,6 @@ impl f16 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_subnormal(self) -> bool {
@@ -408,7 +397,6 @@ impl f16 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn is_normal(self) -> bool {
@@ -433,7 +421,6 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     pub const fn classify(self) -> FpCategory {
@@ -478,7 +465,6 @@ impl f16 {
     /// but getting floats correct is important for not accidentally leaking const eval
     /// runtime-deviating logic which may or may not be acceptable.
     #[inline]
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
         // SAFETY: The caller is not asking questions for which this will tell lies.
@@ -593,7 +579,6 @@ impl f16 {
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub fn next_up(self) -> Self {
@@ -648,7 +633,6 @@ impl f16 {
     /// [`MIN`]: Self::MIN
     /// [`MAX`]: Self::MAX
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     // #[unstable(feature = "float_next_up_down", issue = "91399")]
     pub fn next_down(self) -> Self {
@@ -685,7 +669,6 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn recip(self) -> Self {
@@ -706,7 +689,6 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_degrees(self) -> Self {
@@ -730,13 +712,183 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn to_radians(self) -> f16 {
         // Use a literal for better precision.
         const RADS_PER_DEG: f16 = 0.017453292519943295769236907684886_f16;
         self * RADS_PER_DEG
+    }
+
+    /// Returns the maximum of the two numbers, ignoring NaN.
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmax.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.max(y), y);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn max(self, other: f16) -> f16 {
+        intrinsics::maxnumf16(self, other)
+    }
+
+    /// Returns the minimum of the two numbers, ignoring NaN.
+    ///
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmin.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.min(y), x);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn min(self, other: f16) -> f16 {
+        intrinsics::minnumf16(self, other)
+    }
+
+    /// Returns the maximum of the two numbers, propagating NaN.
+    ///
+    /// This returns NaN when *either* argument is NaN, as opposed to
+    /// [`f16::max`] which only returns NaN when *both* arguments are NaN.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_minimum_maximum)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.maximum(y), y);
+    /// assert!(x.maximum(f16::NAN).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
+    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f16) for more info.
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn maximum(self, other: f16) -> f16 {
+        if self > other {
+            self
+        } else if other > self {
+            other
+        } else if self == other {
+            if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
+        } else {
+            self + other
+        }
+    }
+
+    /// Returns the minimum of the two numbers, propagating NaN.
+    ///
+    /// This returns NaN when *either* argument is NaN, as opposed to
+    /// [`f16::min`] which only returns NaN when *both* arguments are NaN.
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_minimum_maximum)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// let x = 1.0f16;
+    /// let y = 2.0f16;
+    ///
+    /// assert_eq!(x.minimum(y), x);
+    /// assert!(x.minimum(f16::NAN).is_nan());
+    /// # }
+    /// ```
+    ///
+    /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
+    /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
+    /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
+    /// operand is conserved; see [explanation of NaN as a special value](f16) for more info.
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
+    pub fn minimum(self, other: f16) -> f16 {
+        if self < other {
+            self
+        } else if other < self {
+            other
+        } else if self == other {
+            if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
+        } else {
+            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+            self + other
+        }
+    }
+
+    /// Calculates the middle point of `self` and `rhs`.
+    ///
+    /// This returns NaN when *either* argument is NaN or if a combination of
+    /// +inf and -inf is provided as arguments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(num_midpoint)]
+    /// # #[cfg(target_arch = "aarch64")] { // FIXME(f16_F128): rust-lang/rust#123885
+    ///
+    /// assert_eq!(1f16.midpoint(4.0), 2.5);
+    /// assert_eq!((-5.5f16).midpoint(8.0), 1.25);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "num_midpoint", issue = "110840")]
+    pub fn midpoint(self, other: f16) -> f16 {
+        const LO: f16 = f16::MIN_POSITIVE * 2.;
+        const HI: f16 = f16::MAX / 2.;
+
+        let (a, b) = (self, other);
+        let abs_a = a.abs_private();
+        let abs_b = b.abs_private();
+
+        if abs_a <= HI && abs_b <= HI {
+            // Overflow is impossible
+            (a + b) / 2.
+        } else if abs_a < LO {
+            // Not safe to halve `a` (would underflow)
+            a + (b / 2.)
+        } else if abs_b < LO {
+            // Not safe to halve `b` (would underflow)
+            (a / 2.) + b
+        } else {
+            // Safe to halve `a` and `b`
+            (a / 2.) + (b / 2.)
+        }
     }
 
     /// Rounds toward zero and converts to any primitive integer type,
@@ -933,7 +1085,7 @@ impl f16 {
         intrinsics::const_eval_select((v,), ct_u16_to_f16, rt_u16_to_f16)
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -958,7 +1110,7 @@ impl f16 {
         self.to_bits().to_be_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
@@ -983,7 +1135,7 @@ impl f16 {
         self.to_bits().to_le_bytes()
     }
 
-    /// Return the memory representation of this floating point number as a byte array in
+    /// Returns the memory representation of this floating point number as a byte array in
     /// native byte order.
     ///
     /// As the target platform's native endianness is used, portable code
@@ -1021,7 +1173,7 @@ impl f16 {
         self.to_bits().to_ne_bytes()
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Creates a floating point value from its representation as a byte array in big endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1044,7 +1196,7 @@ impl f16 {
         Self::from_bits(u16::from_be_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in little endian.
+    /// Creates a floating point value from its representation as a byte array in little endian.
     ///
     /// See [`from_bits`](Self::from_bits) for some discussion of the
     /// portability of this operation (there are almost no issues).
@@ -1067,7 +1219,7 @@ impl f16 {
         Self::from_bits(u16::from_le_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in native endian.
+    /// Creates a floating point value from its representation as a byte array in native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
@@ -1101,7 +1253,7 @@ impl f16 {
         Self::from_bits(u16::from_ne_bytes(bytes))
     }
 
-    /// Return the ordering between `self` and `other`.
+    /// Returns the ordering between `self` and `other`.
     ///
     /// Unlike the standard partial comparison between floating point numbers,
     /// this comparison always produces an ordering in accordance to
@@ -1167,7 +1319,6 @@ impl f16 {
     /// ```
     #[inline]
     #[must_use]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i16;
@@ -1226,7 +1377,6 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn clamp(mut self, min: f16, max: f16) -> f16 {

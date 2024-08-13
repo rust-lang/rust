@@ -1,12 +1,15 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
-use crate::fluent_generated as fluent;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::symbol::Ident;
+use rustc_span::{Span, Symbol};
+
+use crate::fluent_generated as fluent;
 mod pattern_types;
 pub use pattern_types::*;
 pub mod wrong_number_of_generic_args;
@@ -1572,7 +1575,7 @@ pub struct RefOfMutStatic<'a> {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_not_supported_delegation)]
-pub struct NotSupportedDelegation<'a> {
+pub struct UnsupportedDelegation<'a> {
     #[primary_span]
     pub span: Span,
     pub descr: &'a str,

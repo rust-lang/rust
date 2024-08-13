@@ -1,5 +1,5 @@
 error: extern blocks must be unsafe
-  --> $DIR/extern-items.rs:9:1
+  --> $DIR/extern-items.rs:7:1
    |
 LL | / extern "C" {
 LL | |

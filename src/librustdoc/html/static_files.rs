@@ -3,10 +3,11 @@
 //! All the static files are included here for centralized access in case anything other than the
 //! HTML rendering code (say, the theme checker) needs to access one of these files.
 
-use rustc_data_structures::fx::FxHasher;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 use std::{fmt, str};
+
+use rustc_data_structures::fx::FxHasher;
 
 pub(crate) struct StaticFile {
     pub(crate) filename: PathBuf,

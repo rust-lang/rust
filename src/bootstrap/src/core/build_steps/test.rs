@@ -3,27 +3,22 @@
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
-use std::env;
-use std::ffi::OsStr;
-use std::ffi::OsString;
-use std::fs;
-use std::iter;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::{env, fs, iter};
 
 use clap_complete::shells;
 
-use crate::core::build_steps::compile;
-use crate::core::build_steps::dist;
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::llvm;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
+use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder;
-use crate::core::builder::crate_description;
-use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
-use crate::core::config::flags::get_completion;
-use crate::core::config::flags::Subcommand;
+use crate::core::builder::{
+    crate_description, Builder, Compiler, Kind, RunConfig, ShouldRun, Step,
+};
+use crate::core::config::flags::{get_completion, Subcommand};
 use crate::core::config::TargetSelection;
 use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{
@@ -73,7 +68,7 @@ impl Step for CrateBootstrap {
             compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            "test",
+            Kind::Test,
             path,
             SourceType::InTree,
             &[],
@@ -124,7 +119,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
             compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            "test",
+            Kind::Test,
             "src/tools/linkchecker",
             SourceType::InTree,
             &[],
@@ -154,7 +149,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        linkchecker.delay_failure().arg(builder.out.join(host.triple).join("doc")).run(builder);
+        linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -289,7 +284,7 @@ impl Step for Cargo {
             compiler,
             Mode::ToolRustc,
             self.host,
-            "test",
+            Kind::Test,
             "src/tools/cargo",
             SourceType::Submodule,
             &[],
@@ -360,7 +355,7 @@ impl Step for RustAnalyzer {
             compiler,
             Mode::ToolRustc,
             host,
-            "test",
+            Kind::Test,
             crate_path,
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
@@ -412,7 +407,7 @@ impl Step for Rustfmt {
             compiler,
             Mode::ToolRustc,
             host,
-            "test",
+            Kind::Test,
             "src/tools/rustfmt",
             SourceType::InTree,
             &[],
@@ -439,15 +434,15 @@ impl Miri {
         builder: &Builder<'_>,
         compiler: Compiler,
         target: TargetSelection,
-    ) -> String {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
+    ) -> PathBuf {
+        let miri_sysroot = builder.out.join(compiler.host).join("miri-sysroot");
         let mut cargo = builder::Cargo::new(
             builder,
             compiler,
             Mode::Std,
             SourceType::Submodule,
             target,
-            "miri-setup",
+            Kind::MiriSetup,
         );
 
         // Tell `cargo miri setup` where to find the sources.
@@ -472,7 +467,7 @@ impl Miri {
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
         builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
-        sysroot.to_owned()
+        PathBuf::from(sysroot)
     }
 }
 
@@ -525,6 +520,16 @@ impl Step for Miri {
         builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
 
+        // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
+        // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
+        if !builder.config.dry_run() {
+            let ui_test_dep_dir = builder.stage_out(host_compiler, Mode::ToolStd).join("miri_ui");
+            // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
+            // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
+            // We can hence use that directly as a signal to clear the ui test dir.
+            builder.clear_if_dirty(&ui_test_dep_dir, &miri_sysroot);
+        }
+
         // Run `cargo test`.
         // This is with the Miri crate, so it uses the host compiler.
         let mut cargo = tool::prepare_tool_cargo(
@@ -532,7 +537,7 @@ impl Step for Miri {
             host_compiler,
             Mode::ToolRustc,
             host,
-            "test",
+            Kind::Test,
             "src/tools/miri",
             SourceType::InTree,
             &[],
@@ -622,7 +627,7 @@ impl Step for CargoMiri {
             compiler,
             Mode::ToolStd, // it's unclear what to use here, we're not building anything just doing a smoke test!
             target,
-            "miri-test",
+            Kind::MiriTest,
             "src/tools/miri/test-cargo-miri",
             SourceType::Submodule,
             &[],
@@ -682,7 +687,7 @@ impl Step for CompiletestTest {
             // when std sources change.
             Mode::ToolStd,
             host,
-            "test",
+            Kind::Test,
             "src/tools/compiletest",
             SourceType::InTree,
             &[],
@@ -732,7 +737,7 @@ impl Step for Clippy {
             compiler,
             Mode::ToolRustc,
             host,
-            "test",
+            Kind::Test,
             "src/tools/clippy",
             SourceType::InTree,
             &[],
@@ -852,7 +857,6 @@ impl Step for RustdocJSStd {
         builder.ensure(crate::core::build_steps::doc::Std::new(
             builder.top_stage,
             self.target,
-            builder,
             DocumentationFormat::Html,
         ));
         let _guard = builder.msg(
@@ -1111,7 +1115,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
 }
 
 fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
-    builder.out.join(host.triple).join("test")
+    builder.out.join(host).join("test")
 }
 
 macro_rules! default_test {
@@ -1282,7 +1286,7 @@ impl Step for RunMakeSupport {
             self.compiler,
             Mode::ToolStd,
             self.target,
-            "build",
+            Kind::Build,
             "src/tools/run-make-support",
             SourceType::InTree,
             &[],
@@ -1326,7 +1330,7 @@ impl Step for CrateRunMakeSupport {
             compiler,
             Mode::ToolBootstrap,
             host,
-            "test",
+            Kind::Test,
             "src/tools/run-make-support",
             SourceType::InTree,
             &[],
@@ -1372,7 +1376,7 @@ impl Step for CrateBuildHelper {
             compiler,
             Mode::ToolBootstrap,
             host,
-            "test",
+            Kind::Test,
             "src/tools/build_helper",
             SourceType::InTree,
             &[],
@@ -1813,7 +1817,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
-        flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
+        flags.extend(builder.config.cmd.compiletest_rustc_args().iter().map(|s| s.to_string()));
 
         if suite != "mir-opt" {
             if let Some(linker) = builder.linker(target) {
@@ -2092,7 +2096,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let git_config = builder.config.git_config();
         cmd.arg("--git-repository").arg(git_config.git_repository);
         cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
-        cmd.force_coloring_in_ci(builder.ci_env);
+        cmd.force_coloring_in_ci();
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
@@ -2254,7 +2258,12 @@ impl BookTest {
 }
 
 macro_rules! test_book {
-    ($($name:ident, $path:expr, $book_name:expr, default=$default:expr;)+) => {
+    ($(
+        $name:ident, $path:expr, $book_name:expr,
+        default=$default:expr
+        $(,submodules = $submodules:expr)?
+        ;
+    )+) => {
         $(
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct $name {
@@ -2277,6 +2286,11 @@ macro_rules! test_book {
                 }
 
                 fn run(self, builder: &Builder<'_>) {
+                    $(
+                        for submodule in $submodules {
+                            builder.require_submodule(submodule, None);
+                        }
+                    )*
                     builder.ensure(BookTest {
                         compiler: self.compiler,
                         path: PathBuf::from($path),
@@ -2290,15 +2304,15 @@ macro_rules! test_book {
 }
 
 test_book!(
-    Nomicon, "src/doc/nomicon", "nomicon", default=false;
-    Reference, "src/doc/reference", "reference", default=false;
+    Nomicon, "src/doc/nomicon", "nomicon", default=false, submodules=["src/doc/nomicon"];
+    Reference, "src/doc/reference", "reference", default=false, submodules=["src/doc/reference"];
     RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
     RustcBook, "src/doc/rustc", "rustc", default=true;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false;
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false;
-    TheBook, "src/doc/book", "book", default=false;
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false, submodules=["src/doc/rust-by-example"];
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false, submodules=["src/doc/embedded-book"];
+    TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"];
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
-    EditionGuide, "src/doc/edition-guide", "edition-guide", default=false;
+    EditionGuide, "src/doc/edition-guide", "edition-guide", default=false, submodules=["src/doc/edition-guide"];
 );
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2396,8 +2410,8 @@ impl Step for RustcGuide {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let relative_path = Path::new("src").join("doc").join("rustc-dev-guide");
-        builder.update_submodule(&relative_path);
+        let relative_path = "src/doc/rustc-dev-guide";
+        builder.require_submodule(relative_path, None);
 
         let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook).delay_failure();
@@ -2626,7 +2640,7 @@ impl Step for Crate {
                 mode,
                 SourceType::InTree,
                 target,
-                "miri-test",
+                Kind::MiriTest,
             );
             // This hack helps bootstrap run standard library tests in Miri. The issue is as
             // follows: when running `cargo miri test` on libcore, cargo builds a local copy of core
@@ -2649,14 +2663,7 @@ impl Step for Crate {
             }
 
             // Build `cargo test` command
-            builder::Cargo::new(
-                builder,
-                compiler,
-                mode,
-                SourceType::InTree,
-                target,
-                builder.kind.as_str(),
-            )
+            builder::Cargo::new(builder, compiler, mode, SourceType::InTree, target, builder.kind)
         };
 
         match mode {
@@ -2678,7 +2685,7 @@ impl Step for Crate {
                     if builder.download_rustc() && compiler.stage > 0 {
                         let sysroot = builder
                             .out
-                            .join(compiler.host.triple)
+                            .join(compiler.host)
                             .join(format!("stage{}-test-sysroot", compiler.stage));
                         cargo.env("RUSTC_SYSROOT", sysroot);
                     }
@@ -2748,7 +2755,7 @@ impl Step for CrateRustdoc {
             compiler,
             Mode::ToolRustc,
             target,
-            builder.kind.as_str(),
+            builder.kind,
             "src/tools/rustdoc",
             SourceType::InTree,
             &[],
@@ -2840,7 +2847,7 @@ impl Step for CrateRustdocJsonTypes {
             compiler,
             Mode::ToolRustc,
             target,
-            builder.kind.as_str(),
+            builder.kind,
             "src/rustdoc-json-types",
             SourceType::InTree,
             &[],
@@ -3003,7 +3010,7 @@ impl Step for Bootstrap {
         let _guard = builder.msg(Kind::Test, 0, "bootstrap", host, host);
 
         // Some tests require cargo submodule to be present.
-        builder.build.update_submodule(Path::new("src/tools/cargo"));
+        builder.build.require_submodule("src/tools/cargo", None);
 
         let mut check_bootstrap = command(builder.python());
         check_bootstrap
@@ -3074,7 +3081,7 @@ impl Step for TierCheck {
             self.compiler,
             Mode::ToolStd,
             self.compiler.host,
-            "run",
+            Kind::Run,
             "src/tools/tier-check",
             SourceType::InTree,
             &[],
@@ -3146,7 +3153,7 @@ impl Step for RustInstaller {
             compiler,
             Mode::ToolBootstrap,
             bootstrap_host,
-            "test",
+            Kind::Test,
             "src/tools/rust-installer",
             SourceType::InTree,
             &[],
@@ -3316,7 +3323,7 @@ impl Step for CodegenCranelift {
                 Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
                 SourceType::InTree,
                 target,
-                "run",
+                Kind::Run,
             );
 
             cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
@@ -3448,7 +3455,7 @@ impl Step for CodegenGCC {
                 Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
                 SourceType::InTree,
                 target,
-                "run",
+                Kind::Run,
             );
 
             cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
@@ -3536,7 +3543,7 @@ impl Step for TestFloatParse {
             compiler,
             Mode::ToolStd,
             bootstrap_host,
-            "test",
+            Kind::Test,
             path,
             SourceType::InTree,
             &[],
@@ -3559,7 +3566,7 @@ impl Step for TestFloatParse {
             compiler,
             Mode::ToolStd,
             bootstrap_host,
-            "run",
+            Kind::Run,
             path,
             SourceType::InTree,
             &[],

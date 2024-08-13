@@ -8,7 +8,6 @@
 
 use run_make_support::regex::Regex;
 use run_make_support::rustc;
-use std::process::Output;
 
 fn main() {
     // A regular compilation should use rust-lld by default. We'll check that by asking the linker

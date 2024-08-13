@@ -1,6 +1,6 @@
+use test::{black_box, Bencher};
+
 use super::{LONG, MEDIUM, SHORT};
-use test::black_box;
-use test::Bencher;
 
 macro_rules! benches {
     ($( fn $name: ident($arg: ident: &[u8]) $body: block )+) => {

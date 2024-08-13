@@ -5,13 +5,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::clone;
-use crate::cmp;
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
+use crate::alloc::Layout;
 use crate::marker::DiscriminantKind;
-use crate::ptr;
+use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
 
 mod manually_drop;
 #[stable(feature = "manually_drop", since = "1.20.0")]
@@ -1243,6 +1239,10 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const IS_ZST: bool = size_of::<Self>() == 0;
+
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const LAYOUT: Layout = Layout::new::<Self>();
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
@@ -1326,7 +1326,8 @@ impl<T> SizedTypeProperties for T {}
 /// # Examples
 ///
 /// ```
-/// #![feature(offset_of_enum, offset_of_nested)]
+/// # #![cfg_attr(bootstrap, feature(offset_of_nested))]
+/// #![feature(offset_of_enum)]
 ///
 /// use std::mem;
 /// #[repr(C)]

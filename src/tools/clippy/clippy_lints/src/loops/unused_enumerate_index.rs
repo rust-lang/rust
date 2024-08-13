@@ -1,7 +1,8 @@
 use super::UNUSED_ENUMERATE_INDEX;
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{pat_is_wild, sugg};
+use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
@@ -28,13 +29,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, arg: &Expr<'_
             "you seem to use `.enumerate()` and immediately discard the index",
             |diag| {
                 let base_iter = sugg::Sugg::hir(cx, self_arg, "base iter");
-                multispan_sugg(
-                    diag,
+                diag.multipart_suggestion(
                     "remove the `.enumerate()` call",
                     vec![
                         (pat.span, snippet(cx, elem.span, "..").into_owned()),
                         (arg.span, base_iter.to_string()),
                     ],
+                    Applicability::MachineApplicable,
                 );
             },
         );

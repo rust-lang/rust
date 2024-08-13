@@ -247,6 +247,8 @@
 //!       otherwise branch.
 //!  - [`Call`] has an associated function as well, with special syntax:
 //!    `Call(ret_val = function(arg1, arg2, ...), ReturnTo(next_block), UnwindContinue())`.
+//!  - [`TailCall`] does not have a return destination or next block, so its syntax is just
+//!    `TailCall(function(arg1, arg2, ...))`.
 
 #![unstable(
     feature = "custom_mir",
@@ -276,8 +278,7 @@ pub enum UnwindTerminateReason {
     InCleanup,
 }
 
-pub use UnwindTerminateReason::Abi as ReasonAbi;
-pub use UnwindTerminateReason::InCleanup as ReasonInCleanup;
+pub use UnwindTerminateReason::{Abi as ReasonAbi, InCleanup as ReasonInCleanup};
 
 macro_rules! define {
     ($name:literal, $( #[ $meta:meta ] )* fn $($sig:tt)*) => {
@@ -350,6 +351,12 @@ define!("mir_call",
     /// - [`UnwindTerminate`]
     /// - [`UnwindCleanup`]
     fn Call(call: (), goto: ReturnToArg, unwind_action: UnwindActionArg)
+);
+define!("mir_tail_call",
+    /// Call a function.
+    ///
+    /// The argument must be of the form `fun(arg1, arg2, ...)`.
+    fn TailCall<T>(call: T)
 );
 define!("mir_unwind_resume",
     /// A terminator that resumes the unwinding.

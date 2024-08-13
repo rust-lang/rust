@@ -1,6 +1,6 @@
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
@@ -30,10 +30,10 @@ pub fn check_validity_requirement<'tcx>(
         return Ok(!layout.abi.is_uninhabited());
     }
 
+    let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
     if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
-        might_permit_raw_init_strict(layout, tcx, kind)
+        might_permit_raw_init_strict(layout, &layout_cx, kind)
     } else {
-        let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
         might_permit_raw_init_lax(layout, &layout_cx, kind)
     }
 }
@@ -42,12 +42,12 @@ pub fn check_validity_requirement<'tcx>(
 /// details.
 fn might_permit_raw_init_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
-    tcx: TyCtxt<'tcx>,
+    cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
-    let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
+    let mut cx = InterpCx::new(cx.tcx, rustc_span::DUMMY_SP, cx.param_env, machine);
 
     let allocated = cx
         .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
@@ -67,7 +67,7 @@ fn might_permit_raw_init_strict<'tcx>(
     // This does *not* actually check that references are dereferenceable, but since all types that
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
-    Ok(cx.validate_operand(&ot).is_ok())
+    Ok(cx.validate_operand(&ot, /*recursive*/ false).is_ok())
 }
 
 /// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for

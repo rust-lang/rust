@@ -11,13 +11,6 @@
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 
-use crate::abi::{FnAbi, FnAbiLlvmExt};
-use crate::attributes;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::llvm::AttributePlace::Function;
-use crate::type_::Type;
-use crate::value::Value;
 use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_data_structures::fx::FxIndexSet;
@@ -25,6 +18,13 @@ use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
 use tracing::debug;
+
+use crate::abi::{FnAbi, FnAbiLlvmExt};
+use crate::context::CodegenCx;
+use crate::llvm::AttributePlace::Function;
+use crate::type_::Type;
+use crate::value::Value;
+use crate::{attributes, llvm};
 
 /// Declare a function.
 ///
@@ -137,7 +137,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::Visibility::Default,
             fn_abi.llvm_type(self),
         );
-        fn_abi.apply_attrs_llfn(self, llfn);
+        fn_abi.apply_attrs_llfn(self, llfn, instance);
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {

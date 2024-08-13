@@ -18,17 +18,15 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fmt::Display;
 use std::fs::{self, File};
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::str;
 use std::sync::OnceLock;
 use std::time::SystemTime;
+use std::{env, io, str};
 
-use build_helper::ci::{gha, CiEnv};
+use build_helper::ci::gha;
 use build_helper::exit;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
@@ -37,9 +35,7 @@ use utils::helpers::hex_encode;
 
 use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{flags, LldMode};
-use crate::core::config::{DryRun, Target};
-use crate::core::config::{LlvmLibunwind, TargetSelection};
+use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
 use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
@@ -47,8 +43,9 @@ mod core;
 mod utils;
 
 pub use core::builder::PathSet;
-pub use core::config::flags::Subcommand;
+pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::Config;
+
 pub use utils::change_tracker::{
     find_recent_config_change_ids, human_readable_changes, CONFIG_CHANGE_HISTORY,
 };
@@ -171,7 +168,6 @@ pub struct Build {
     crates: HashMap<String, Crate>,
     crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
-    ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
     prerelease_version: Cell<Option<u32>>,
 
@@ -403,7 +399,6 @@ impl Build {
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
-            ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
 
@@ -441,7 +436,13 @@ impl Build {
             // Cargo.toml files.
             let rust_submodules = ["library/backtrace", "library/stdarch"];
             for s in rust_submodules {
-                build.update_submodule(Path::new(s));
+                build.require_submodule(
+                    s,
+                    Some(
+                        "The submodule is required for the standard library \
+                         and the main Cargo workspace.",
+                    ),
+                );
             }
             // Now, update all existing submodules.
             build.update_existing_submodules();
@@ -451,7 +452,7 @@ impl Build {
         }
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
-        let build_triple = build.out.join(build.build.triple);
+        let build_triple = build.out.join(build.build);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if host.is_symlink() {
@@ -470,12 +471,17 @@ impl Build {
         build
     }
 
-    // modified from `check_submodule` and `update_submodule` in bootstrap.py
     /// Given a path to the directory of a submodule, update it.
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
-    pub(crate) fn update_submodule(&self, relative_path: &Path) {
-        if !self.config.submodules(self.rust_info()) {
+    ///
+    /// This *does not* update the submodule if `config.toml` explicitly says
+    /// not to, or if we're not in a git repository (like a plain source
+    /// tarball). Typically [`Build::require_submodule`] should be
+    /// used instead to provide a nice error to the user if the submodule is
+    /// missing.
+    fn update_submodule(&self, relative_path: &str) {
+        if !self.config.submodules() {
             return;
         }
 
@@ -522,7 +528,7 @@ impl Build {
             return;
         }
 
-        println!("Updating submodule {}", relative_path.display());
+        println!("Updating submodule {relative_path}");
         helpers::git(Some(&self.src))
             .run_always()
             .args(["submodule", "-q", "sync"])
@@ -576,11 +582,53 @@ impl Build {
         }
     }
 
+    /// Updates a submodule, and exits with a failure if submodule management
+    /// is disabled and the submodule does not exist.
+    ///
+    /// The given submodule name should be its path relative to the root of
+    /// the main repository.
+    ///
+    /// The given `err_hint` will be shown to the user if the submodule is not
+    /// checked out and submodule management is disabled.
+    pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        // When testing bootstrap itself, it is much faster to ignore
+        // submodules. Almost all Steps work fine without their submodules.
+        if cfg!(test) && !self.config.submodules() {
+            return;
+        }
+        self.update_submodule(submodule);
+        let absolute_path = self.config.src.join(submodule);
+        if dir_is_empty(&absolute_path) {
+            let maybe_enable = if !self.config.submodules()
+                && self.config.rust_info.is_managed_git_subrepository()
+            {
+                "\nConsider setting `build.submodules = true` or manually initializing the submodules."
+            } else {
+                ""
+            };
+            let err_hint = err_hint.map_or_else(String::new, |e| format!("\n{e}"));
+            eprintln!(
+                "submodule {submodule} does not appear to be checked out, \
+                 but it is required for this step{maybe_enable}{err_hint}"
+            );
+            exit!(1);
+        }
+    }
+
+    /// Updates all submodules, and exits with an error if submodule
+    /// management is disabled and the submodule does not exist.
+    pub fn require_and_update_all_submodules(&self) {
+        for submodule in build_helper::util::parse_gitmodules(&self.src) {
+            self.require_submodule(submodule, None);
+        }
+    }
+
     /// If any submodule has been initialized already, sync it unconditionally.
     /// This avoids contributors checking in a submodule change by accident.
-    pub fn update_existing_submodules(&self) {
-        // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+    fn update_existing_submodules(&self) {
+        // Avoid running git when there isn't a git checkout, or the user has
+        // explicitly disabled submodules in `config.toml`.
+        if !self.config.submodules() {
             return;
         }
         let output = helpers::git(Some(&self.src))
@@ -592,22 +640,23 @@ impl Build {
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = Path::new(line.split_once(' ').unwrap().1);
+            let submodule = line.split_once(' ').unwrap().1;
+            let path = Path::new(submodule);
             // Don't update the submodule unless it's already been cloned.
-            if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+            if GitInfo::new(false, path).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
             }
         }
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &Path) {
+    pub fn update_existing_submodule(&self, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(self.rust_info()) {
+        if !self.config.submodules() {
             return;
         }
 
-        if GitInfo::new(false, submodule).is_managed_git_subrepository() {
+        if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
             self.update_submodule(submodule);
         }
     }
@@ -758,10 +807,7 @@ impl Build {
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self
-            .out
-            .join(&*compiler.host.triple)
-            .join(format!("stage{}-tools-bin", compiler.stage));
+        let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
         t!(fs::create_dir_all(&out));
         out
     }
@@ -778,14 +824,14 @@ impl Build {
             Mode::ToolBootstrap => "-bootstrap-tools",
             Mode::ToolStd | Mode::ToolRustc => "-tools",
         };
-        self.out.join(&*compiler.host.triple).join(format!("stage{}{}", compiler.stage, suffix))
+        self.out.join(compiler.host).join(format!("stage{}{}", compiler.stage, suffix))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
+        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory of LLVM for `target`
@@ -796,36 +842,36 @@ impl Build {
         if self.config.llvm_from_ci && self.config.build == target {
             self.config.ci_llvm_root()
         } else {
-            self.out.join(&*target.triple).join("llvm")
+            self.out.join(target).join("llvm")
         }
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("lld")
+        self.out.join(target).join("lld")
     }
 
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("doc")
+        self.out.join(target).join("doc")
     }
 
     /// Output directory for all JSON-formatted documentation for a target
     fn json_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("json-doc")
+        self.out.join(target).join("json-doc")
     }
 
     fn test_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("test")
+        self.out.join(target).join("test")
     }
 
     /// Output directory for all documentation for a target
     fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("compiler-doc")
+        self.out.join(target).join("compiler-doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("md-doc")
+        self.out.join(target).join("md-doc")
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
@@ -905,7 +951,7 @@ impl Build {
 
     /// Directory for libraries built from C/C++ code and shared between stages.
     fn native_dir(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("native")
+        self.out.join(target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
@@ -937,7 +983,8 @@ impl Build {
     }
 
     /// Execute a command and return its output.
-    /// This method should be used for all command executions in bootstrap.
+    /// Note: Ideally, you should use one of the BootstrapCommand::run* functions to
+    /// execute commands. They internally call this method.
     #[track_caller]
     fn run(
         &self,
@@ -1008,20 +1055,28 @@ Executed at: {executed_at}"#,
                 CommandOutput::did_not_start(stdout, stderr)
             }
         };
+
+        let fail = |message: &str| {
+            if self.is_verbose() {
+                println!("{message}");
+            } else {
+                println!("Command has failed. Rerun with -v to see more details.");
+            }
+            exit!(1);
+        };
+
         if !output.is_success() {
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
-                        println!("{message}");
-                        exit!(1);
+                        fail(&message);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
                     failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
-                    println!("{message}");
-                    exit!(1);
+                    fail(&message);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already

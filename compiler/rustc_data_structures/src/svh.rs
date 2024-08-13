@@ -5,10 +5,12 @@
 //! mismatches where we have two versions of the same crate that were
 //! compiled from distinct sources.
 
+use std::fmt;
+
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
+
 use crate::fingerprint::Fingerprint;
 use crate::stable_hasher;
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
-use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable_Generic, Decodable_Generic, Hash)]
 pub struct Svh {

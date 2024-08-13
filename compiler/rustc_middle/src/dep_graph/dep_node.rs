@@ -56,18 +56,17 @@
 //!
 //! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
 
-use crate::mir::mono::MonoItem;
-use crate::ty::TyCtxt;
-
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
+pub use rustc_query_system::dep_graph::dep_node::DepKind;
 use rustc_query_system::dep_graph::FingerprintStyle;
+pub use rustc_query_system::dep_graph::{DepContext, DepNode, DepNodeParams};
 use rustc_span::symbol::Symbol;
 
-pub use rustc_query_system::dep_graph::dep_node::DepKind;
-pub use rustc_query_system::dep_graph::{DepContext, DepNode, DepNodeParams};
+use crate::mir::mono::MonoItem;
+use crate::ty::TyCtxt;
 
 macro_rules! define_dep_nodes {
     (

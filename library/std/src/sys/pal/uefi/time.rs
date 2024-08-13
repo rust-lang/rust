@@ -59,11 +59,12 @@ impl SystemTime {
 }
 
 pub(crate) mod system_time_internal {
+    use r_efi::efi::{RuntimeServices, Time};
+
     use super::super::helpers;
     use super::*;
     use crate::mem::MaybeUninit;
     use crate::ptr::NonNull;
-    use r_efi::efi::{RuntimeServices, Time};
 
     pub fn now() -> Option<SystemTime> {
         let runtime_services: NonNull<RuntimeServices> = helpers::runtime_services()?;
@@ -114,13 +115,14 @@ pub(crate) mod system_time_internal {
 }
 
 pub(crate) mod instant_internal {
+    use r_efi::protocols::timestamp;
+
     use super::super::helpers;
     use super::*;
     use crate::mem::MaybeUninit;
     use crate::ptr::NonNull;
     use crate::sync::atomic::{AtomicPtr, Ordering};
     use crate::sys_common::mul_div_u64;
-    use r_efi::protocols::timestamp;
 
     const NS_PER_SEC: u64 = 1_000_000_000;
 
@@ -173,10 +175,6 @@ pub(crate) mod instant_internal {
 
     #[cfg(target_arch = "x86_64")]
     fn timestamp_rdtsc() -> Option<Duration> {
-        if !crate::arch::x86_64::has_cpuid() {
-            return None;
-        }
-
         static FREQUENCY: crate::sync::OnceLock<u64> = crate::sync::OnceLock::new();
 
         // Get Frequency in Mhz
@@ -198,10 +196,6 @@ pub(crate) mod instant_internal {
 
     #[cfg(target_arch = "x86")]
     fn timestamp_rdtsc() -> Option<Duration> {
-        if !crate::arch::x86::has_cpuid() {
-            return None;
-        }
-
         static FREQUENCY: crate::sync::OnceLock<u64> = crate::sync::OnceLock::new();
 
         let freq = FREQUENCY

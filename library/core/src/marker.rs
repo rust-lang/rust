@@ -9,8 +9,7 @@
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
-use crate::hash::Hash;
-use crate::hash::Hasher;
+use crate::hash::{Hash, Hasher};
 
 /// Implements a given marker trait for multiple types at the same time.
 ///
@@ -871,7 +870,7 @@ marker_impls! {
 ///
 /// *However*, you cannot use [`mem::replace`] on `!Unpin` data which is *pinned* by being wrapped
 /// inside a [`Pin<Ptr>`] pointing at it. This is because you cannot (safely) use a
-/// [`Pin<Ptr>`] to get an `&mut T` to its pointee value, which you would need to call
+/// [`Pin<Ptr>`] to get a `&mut T` to its pointee value, which you would need to call
 /// [`mem::replace`], and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
@@ -1061,7 +1060,6 @@ pub trait FnPtr: Copy + Clone {
 }
 
 /// Derive macro generating impls of traits related to smart pointers.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
 #[unstable(feature = "derive_smart_pointer", issue = "123430")]
@@ -1079,7 +1077,6 @@ pub macro SmartPointer($item:item) {
     reason = "internal module for implementing effects"
 )]
 #[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
-#[cfg(not(bootstrap))]
 pub mod effects {
     #[lang = "EffectsNoRuntime"]
     pub struct NoRuntime;

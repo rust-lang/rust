@@ -6,7 +6,7 @@ use std::ptr;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::in_constant;
+use clippy_utils::is_in_const_context;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::ty::{implements_trait, InteriorMut};
 use rustc_hir::def::{DefKind, Res};
@@ -406,7 +406,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &expr.kind {
             // Only lint if we use the const item inside a function.
-            if in_constant(cx, expr.hir_id) {
+            if is_in_const_context(cx) {
                 return;
             }
 

@@ -1,18 +1,15 @@
-use crate::os::windows::prelude::*;
-
 use crate::ffi::OsStr;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::mem;
+use crate::os::windows::prelude::*;
 use crate::path::Path;
-use crate::ptr;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::Relaxed;
-use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::hashmap_random_keys;
 use crate::sys::pal::windows::api::{self, WinError};
+use crate::sys::{c, hashmap_random_keys};
 use crate::sys_common::{FromInner, IntoInner};
+use crate::{mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -37,23 +34,6 @@ impl FromInner<Handle> for AnonPipe {
 pub struct Pipes {
     pub ours: AnonPipe,
     pub theirs: AnonPipe,
-}
-
-/// Create true unnamed anonymous pipe.
-pub fn unnamed_anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
-    let mut read_pipe = c::INVALID_HANDLE_VALUE;
-    let mut write_pipe = c::INVALID_HANDLE_VALUE;
-
-    let ret = unsafe { c::CreatePipe(&mut read_pipe, &mut write_pipe, ptr::null_mut(), 0) };
-
-    if ret == 0 {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok((
-            AnonPipe::from_inner(unsafe { Handle::from_raw_handle(read_pipe) }),
-            AnonPipe::from_inner(unsafe { Handle::from_raw_handle(write_pipe) }),
-        ))
-    }
 }
 
 /// Although this looks similar to `anon_pipe` in the Unix module it's actually

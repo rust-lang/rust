@@ -1,5 +1,4 @@
-use crate::io as std_io;
-use crate::mem;
+use crate::{io as std_io, mem};
 
 #[inline]
 pub fn is_interrupted(errno: i32) -> bool {

@@ -1,9 +1,13 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use crate::errors;
-use crate::locator::{CrateError, CrateLocator, CratePaths};
-use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
+use std::error::Error;
+use std::ops::Fn;
+use std::path::Path;
+use std::str::FromStr;
+use std::time::Duration;
+use std::{cmp, env, iter};
 
+use proc_macro::bridge::client::ProcMacro;
 use rustc_ast::expand::allocator::{alloc_error_handler_name, global_fn_name, AllocatorKind};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
@@ -29,13 +33,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, Target, TargetTriple};
 use tracing::{debug, info, trace};
 
-use proc_macro::bridge::client::ProcMacro;
-use std::error::Error;
-use std::ops::Fn;
-use std::path::Path;
-use std::str::FromStr;
-use std::time::Duration;
-use std::{cmp, env, iter};
+use crate::errors;
+use crate::locator::{CrateError, CrateLocator, CratePaths};
+use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
@@ -949,7 +949,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
         let span = krate.spans.inner_span.shrink_to_lo();

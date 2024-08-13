@@ -54,7 +54,7 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// [`Self::with_exposed_provenance`] and returns the "address" portion.
     fn expose_provenance(self) -> Self::Usize;
 
-    /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
+    /// Converts an address back to a pointer, picking up a previously "exposed" provenance.
     ///
     /// Equivalent to calling [`core::ptr::with_exposed_provenance`] on each element.
     fn with_exposed_provenance(addr: Self::Usize) -> Self;

@@ -1,14 +1,11 @@
-use crate::code_stats::CodeStats;
-pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
-use crate::config::{
-    self, CoverageLevel, CrateType, FunctionReturn, InstrumentCoverage, OptLevel, OutFileName,
-    OutputType, RemapPathScopeComponents, SwitchWithOptPath,
-};
-use crate::config::{ErrorOutputType, Input};
-use crate::errors;
-use crate::parse::{add_feature_diagnostics, ParseSess};
-use crate::search_paths::{PathKind, SearchPath};
-use crate::{filesearch, lint};
+use std::any::Any;
+use std::ops::{Div, Mul};
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::SeqCst;
+use std::sync::Arc;
+use std::{env, fmt, io};
 
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -18,33 +15,34 @@ use rustc_data_structures::sync::{
     AtomicU64, DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
+use rustc_errors::codes::*;
 use rustc_errors::emitter::{stderr_destination, DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic,
+    fallback_fluent_bundle, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic,
     ErrorGuaranteed, FatalAbort, FluentBundle, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileNameDisplayPreference, RealFileName};
-use rustc_span::{Span, Symbol};
+use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
-use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
 use rustc_target::spec::{
-    DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo,
+    StackProtector, Target, TargetTriple, TlsModel,
 };
 
-use std::any::Any;
-use std::env;
-use std::fmt;
-use std::io;
-use std::ops::{Div, Mul};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::sync::{atomic::AtomicBool, atomic::Ordering::SeqCst, Arc};
+use crate::code_stats::CodeStats;
+pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
+use crate::config::{
+    self, CoverageLevel, CrateType, ErrorOutputType, FunctionReturn, Input, InstrumentCoverage,
+    OptLevel, OutFileName, OutputType, RemapPathScopeComponents, SwitchWithOptPath,
+};
+use crate::parse::{add_feature_diagnostics, ParseSess};
+use crate::search_paths::{PathKind, SearchPath};
+use crate::{errors, filesearch, lint};
 
 struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -952,10 +950,10 @@ fn default_emitter(
         t => t,
     };
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+            let short = kind.short();
 
-            if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
+            if let HumanReadableErrorType::AnnotateSnippet = kind {
                 let emitter = AnnotateSnippetEmitter::new(
                     Some(source_map),
                     bundle,
@@ -980,13 +978,14 @@ fn default_emitter(
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(
+        config::ErrorOutputType::Json { pretty, json_rendered, color_config } => Box::new(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
                 source_map,
                 fallback_bundle,
                 pretty,
                 json_rendered,
+                color_config,
             )
             .registry(Some(registry))
             .fluent_bundle(bundle)
@@ -1427,20 +1426,23 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let fallback_bundle =
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
+        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+            let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .short_message(short),
             )
         }
-        config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::new(
-            Box::new(io::BufWriter::new(io::stderr())),
-            Lrc::new(SourceMap::new(FilePathMapping::empty())),
-            fallback_bundle,
-            pretty,
-            json_rendered,
-        )),
+        config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
+            Box::new(JsonEmitter::new(
+                Box::new(io::BufWriter::new(io::stderr())),
+                Lrc::new(SourceMap::new(FilePathMapping::empty())),
+                fallback_bundle,
+                pretty,
+                json_rendered,
+                color_config,
+            ))
+        }
     };
     emitter
 }

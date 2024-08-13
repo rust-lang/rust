@@ -1,7 +1,8 @@
 // Test that rustdoc will properly load in a theme file and display it in the theme selector.
 
-use run_make_support::{htmldocck, rfs, rustdoc, source_root};
 use std::path::Path;
+
+use run_make_support::{htmldocck, rfs, rustdoc, source_root};
 
 fn main() {
     let out_dir = Path::new("rustdoc-themes");

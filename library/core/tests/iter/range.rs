@@ -1,6 +1,7 @@
-use super::*;
 use core::ascii::Char as AsciiChar;
 use core::num::NonZero;
+
+use super::*;
 
 #[test]
 fn test_range() {

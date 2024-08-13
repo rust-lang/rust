@@ -246,15 +246,14 @@ use self::Ordering::*;
 )]
 #[rustc_diagnostic_item = "PartialEq"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
-    /// This method tests for `self` and `other` values to be equal, and is used
-    /// by `==`.
+    /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "cmp_partialeq_eq"]
     fn eq(&self, other: &Rhs) -> bool;
 
-    /// This method tests for `!=`. The default implementation is almost always
-    /// sufficient, and should not be overridden without very good reason.
+    /// Tests for `!=`. The default implementation is almost always sufficient,
+    /// and should not be overridden without very good reason.
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1163,7 +1162,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[rustc_diagnostic_item = "cmp_partialord_cmp"]
     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
-    /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
+    /// Tests less than (for `self` and `other`) and is used by the `<` operator.
     ///
     /// # Examples
     ///
@@ -1180,8 +1179,8 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
         matches!(self.partial_cmp(other), Some(Less))
     }
 
-    /// This method tests less than or equal to (for `self` and `other`) and is used by the `<=`
-    /// operator.
+    /// Tests less than or equal to (for `self` and `other`) and is used by the
+    /// `<=` operator.
     ///
     /// # Examples
     ///
@@ -1198,7 +1197,8 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
         matches!(self.partial_cmp(other), Some(Less | Equal))
     }
 
-    /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
+    /// Tests greater than (for `self` and `other`) and is used by the `>`
+    /// operator.
     ///
     /// # Examples
     ///
@@ -1215,8 +1215,8 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
         matches!(self.partial_cmp(other), Some(Greater))
     }
 
-    /// This method tests greater than or equal to (for `self` and `other`) and is used by the `>=`
-    /// operator.
+    /// Tests greater than or equal to (for `self` and `other`) and is used by
+    /// the `>=` operator.
     ///
     /// # Examples
     ///

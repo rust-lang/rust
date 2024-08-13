@@ -167,6 +167,34 @@ impl<T> OnceLock<T> {
         }
     }
 
+    /// Blocks the current thread until the cell is initialized.
+    ///
+    /// # Example
+    ///
+    /// Waiting for a computation on another thread to finish:
+    /// ```rust
+    /// #![feature(once_wait)]
+    ///
+    /// use std::thread;
+    /// use std::sync::OnceLock;
+    ///
+    /// let value = OnceLock::new();
+    ///
+    /// thread::scope(|s| {
+    ///     s.spawn(|| value.set(1 + 1));
+    ///
+    ///     let result = value.wait();
+    ///     assert_eq!(result, &2);
+    /// })
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_wait", issue = "127527")]
+    pub fn wait(&self) -> &T {
+        self.once.wait_force();
+
+        unsafe { self.get_unchecked() }
+    }
+
     /// Sets the contents of this cell to `value`.
     ///
     /// May block if another thread is currently attempting to initialize the cell. The cell is
@@ -281,9 +309,7 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it with `f` if the cell was empty.
     ///
-    /// Many threads may call `get_mut_or_init` concurrently with different
-    /// initializing functions, but it is guaranteed that only one function
-    /// will be executed.
+    /// This method never blocks.
     ///
     /// # Panics
     ///
@@ -372,6 +398,8 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it with `f` if the cell was empty. If the cell was empty and `f` failed,
     /// an error is returned.
+    ///
+    /// This method never blocks.
     ///
     /// # Panics
     ///
@@ -578,7 +606,7 @@ impl<T: Clone> Clone for OnceLock<T> {
 
 #[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> From<T> for OnceLock<T> {
-    /// Create a new cell with its contents set to `value`.
+    /// Creates a new cell with its contents set to `value`.
     ///
     /// # Example
     ///

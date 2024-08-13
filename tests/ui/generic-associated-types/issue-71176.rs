@@ -16,6 +16,6 @@ struct Holder<B> {
 
 fn main() {
     Holder {
-        inner: Box::new(()),
+        inner: Box::new(()), //~ ERROR: the trait `Provider` cannot be made into an object
     };
 }

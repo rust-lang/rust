@@ -3,12 +3,9 @@
 use super::hermit_abi;
 use crate::cmp;
 use crate::io::{self, IoSlice, IoSliceMut, Read};
-use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd};
-use crate::sys::cvt;
-use crate::sys::unsupported;
+use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd, *};
+use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-
-use crate::os::hermit::io::*;
 
 const fn max_iov() -> usize {
     hermit_abi::IOV_MAX
@@ -114,7 +111,8 @@ impl FromInner<OwnedFd> for FileDesc {
 
 impl FromRawFd for FileDesc {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self { fd: FromRawFd::from_raw_fd(raw_fd) }
+        let fd = unsafe { OwnedFd::from_raw_fd(raw_fd) };
+        Self { fd }
     }
 }
 

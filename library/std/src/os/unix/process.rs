@@ -4,15 +4,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::ffi::OsStr;
-use crate::io;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::process;
-use crate::sealed::Sealed;
-use crate::sys;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-
 use cfg_if::cfg_if;
+
+use crate::ffi::OsStr;
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::sealed::Sealed;
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{io, process, sys};
 
 cfg_if! {
     if #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
@@ -444,7 +442,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
     }
 }
 
-/// Create a `ChildStdin` from the provided `OwnedFd`.
+/// Creates a `ChildStdin` from the provided `OwnedFd`.
 ///
 /// The provided file descriptor must point to a pipe
 /// with the `CLOEXEC` flag set.
@@ -475,7 +473,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
     }
 }
 
-/// Create a `ChildStdout` from the provided `OwnedFd`.
+/// Creates a `ChildStdout` from the provided `OwnedFd`.
 ///
 /// The provided file descriptor must point to a pipe
 /// with the `CLOEXEC` flag set.
@@ -506,7 +504,7 @@ impl From<crate::process::ChildStderr> for OwnedFd {
     }
 }
 
-/// Create a `ChildStderr` from the provided `OwnedFd`.
+/// Creates a `ChildStderr` from the provided `OwnedFd`.
 ///
 /// The provided file descriptor must point to a pipe
 /// with the `CLOEXEC` flag set.

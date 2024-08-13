@@ -81,7 +81,7 @@ error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro.rs:48:5
    |
 LL |     dbg!();
-   |     ^^^^^^^
+   |     ^^^^^^
    |
 help: remove the invocation before committing it to a version control system
    |
@@ -136,7 +136,7 @@ error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro.rs:43:13
    |
 LL |             dbg!();
-   |             ^^^^^^^
+   |             ^^^^^^
 ...
 LL |     expand_to_dbg!();
    |     ---------------- in this macro invocation
