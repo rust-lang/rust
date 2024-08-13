@@ -96,7 +96,6 @@ pub struct GlobalStateInner {
     /// Next unused call ID (for protectors).
     next_call_id: CallId,
     /// All currently protected tags.
-    /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
     /// We add tags to this when they are created with a protector in `reborrow`, and
     /// we remove tags from this when the call which is protecting them returns, in
     /// `GlobalStateInner::end_call`. See `Stack::item_invalidated` for more details.
