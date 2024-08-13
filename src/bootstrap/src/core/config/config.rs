@@ -117,7 +117,7 @@ impl Display for DebuginfoLevel {
 /// 2) MSVC
 /// - Self-contained: `-Clinker=<path to rust-lld>`
 /// - External: `-Clinker=lld`
-#[derive(Default, Copy, Clone)]
+#[derive(Copy, Clone, Default, PartialEq)]
 pub enum LldMode {
     /// Do not use LLD
     #[default]
@@ -1581,24 +1581,6 @@ impl Config {
         let mut is_user_configured_rust_channel = false;
 
         if let Some(rust) = toml.rust {
-            if let Some(commit) = config.download_ci_rustc_commit(rust.download_rustc.clone()) {
-                // Primarily used by CI runners to avoid handling download-rustc incompatible
-                // options one by one on shell scripts.
-                let disable_ci_rustc_if_incompatible =
-                    env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
-                        .is_some_and(|s| s == "1" || s == "true");
-
-                if let Err(e) = check_incompatible_options_for_ci_rustc(&rust) {
-                    if disable_ci_rustc_if_incompatible {
-                        config.download_rustc_commit = None;
-                    } else {
-                        panic!("{}", e);
-                    }
-                } else {
-                    config.download_rustc_commit = Some(commit);
-                }
-            }
-
             let Rust {
                 optimize: optimize_toml,
                 debug: debug_toml,
@@ -1646,7 +1628,7 @@ impl Config {
                 new_symbol_mangling,
                 profile_generate,
                 profile_use,
-                download_rustc: _,
+                download_rustc,
                 lto,
                 validate_mir_opts,
                 frame_pointers,
@@ -1657,6 +1639,8 @@ impl Config {
 
             is_user_configured_rust_channel = channel.is_some();
             set(&mut config.channel, channel.clone());
+
+            config.download_rustc_commit = config.download_ci_rustc_commit(download_rustc);
 
             debug = debug_toml;
             debug_assertions = debug_assertions_toml;
@@ -2335,6 +2319,29 @@ impl Config {
                 None => None,
                 Some(commit) => {
                     self.download_ci_rustc(commit);
+
+                    let builder_config_path =
+                        self.out.join(self.build.triple).join("ci-rustc/builder-config");
+                    let ci_config_toml = Self::get_toml(&builder_config_path);
+                    let current_config_toml = Self::get_toml(self.config.as_ref().unwrap());
+
+                    // Check the config compatibility
+                    let res = check_incompatible_options_for_ci_rustc(
+                        current_config_toml,
+                        ci_config_toml,
+                    );
+
+                    let disable_ci_rustc_if_incompatible =
+                        env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                            .is_some_and(|s| s == "1" || s == "true");
+
+                    if disable_ci_rustc_if_incompatible && res.is_err() {
+                        println!("WARNING: download-rustc is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
+                        return None;
+                    }
+
+                    res.unwrap();
+
                     Some(commit.clone())
                 }
             })
@@ -2652,30 +2659,43 @@ impl Config {
     }
 }
 
-/// Checks the CI rustc incompatible options by destructuring the `Rust` instance
-/// and makes sure that no rust options from config.toml are missed.
-fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
+/// Compares the current Rust options against those in the CI rustc builder and detects any incompatible options.
+/// It does this by destructuring the `Rust` instance to make sure every `Rust` field is covered and not missing.
+fn check_incompatible_options_for_ci_rustc(
+    current_config_toml: TomlConfig,
+    ci_config_toml: TomlConfig,
+) -> Result<(), String> {
     macro_rules! err {
-        ($name:expr) => {
-            if $name.is_some() {
+        ($current:expr, $expected:expr) => {
+            if let Some(current) = $current {
+                if Some(current) != $expected {
                     return Err(format!(
                         "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
-                    stringify!($name).replace("_", "-")
+                        stringify!($expected).replace("_", "-")
                     ));
-            }
+                };
+            };
         };
     }
 
     macro_rules! warn {
-        ($name:expr) => {
-            if $name.is_some() {
+        ($current:expr, $expected:expr) => {
+            if let Some(current) = $current {
+                if Some(current) != $expected {
                     println!(
                         "WARNING: `rust.{}` has no effect with `rust.download-rustc`.",
-                    stringify!($name).replace("_", "-")
+                        stringify!($expected).replace("_", "-")
                     );
-            }
+                };
+            };
         };
     }
+
+    let (Some(current_rust_config), Some(ci_rust_config)) =
+        (current_config_toml.rust, ci_config_toml.rust)
+    else {
+        return Ok(());
+    };
 
     let Rust {
         // Following options are the CI rustc incompatible ones.
@@ -2734,7 +2754,7 @@ fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
         download_rustc: _,
         validate_mir_opts: _,
         frame_pointers: _,
-    } = rust;
+    } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
     //    1. Checking an option that may change the compiler behaviour/output.
@@ -2742,22 +2762,23 @@ fn check_incompatible_options_for_ci_rustc(rust: &Rust) -> Result<(), String> {
     //
     // If the option belongs to the first category, we call `err` macro for a hard error;
     // otherwise, we just print a warning with `warn` macro.
-    err!(optimize);
-    err!(debug_logging);
-    err!(debuginfo_level_rustc);
-    err!(default_linker);
-    err!(rpath);
-    err!(strip);
-    err!(stack_protector);
-    err!(lld_mode);
-    err!(llvm_tools);
-    err!(llvm_bitcode_linker);
-    err!(jemalloc);
-    err!(lto);
 
-    warn!(channel);
-    warn!(description);
-    warn!(incremental);
+    err!(current_rust_config.optimize, optimize);
+    err!(current_rust_config.debug_logging, debug_logging);
+    err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc);
+    err!(current_rust_config.rpath, rpath);
+    err!(current_rust_config.strip, strip);
+    err!(current_rust_config.lld_mode, lld_mode);
+    err!(current_rust_config.llvm_tools, llvm_tools);
+    err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker);
+    err!(current_rust_config.jemalloc, jemalloc);
+    err!(current_rust_config.default_linker, default_linker);
+    err!(current_rust_config.stack_protector, stack_protector);
+    err!(current_rust_config.lto, lto);
+
+    warn!(current_rust_config.channel, channel);
+    warn!(current_rust_config.description, description);
+    warn!(current_rust_config.incremental, incremental);
 
     Ok(())
 }
