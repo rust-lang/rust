@@ -141,7 +141,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
         let compare_exchange =
-            self.context.get_builtin_function(&format!("__atomic_compare_exchange_{}", size));
+            self.context.get_builtin_function(format!("__atomic_compare_exchange_{}", size));
         let order = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
         let failure_order = self.context.new_rvalue_from_int(self.i32_type, failure_order.to_gcc());
         let weak = self.context.new_rvalue_from_int(self.bool_type, weak as i32);
@@ -328,7 +328,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let result = current_func.new_local(
                 self.location,
                 return_type,
-                &format!("returnValue{}", self.next_value_counter()),
+                format!("returnValue{}", self.next_value_counter()),
             );
             self.block.add_assignment(
                 self.location,
@@ -396,7 +396,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let result = current_func.new_local(
                 self.location,
                 return_value.get_type(),
-                &format!("ptrReturnValue{}", self.next_value_counter()),
+                format!("ptrReturnValue{}", self.next_value_counter()),
             );
             self.block.add_assignment(self.location, result, return_value);
             result.to_rvalue()
@@ -438,7 +438,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let result = current_func.new_local(
             self.location,
             return_type,
-            &format!("overflowReturnValue{}", self.next_value_counter()),
+            format!("overflowReturnValue{}", self.next_value_counter()),
         );
         self.block.add_assignment(
             self.location,
@@ -923,7 +923,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.current_func()
-            .new_local(self.location, ty, &format!("stack_var_{}", self.next_value_counter()))
+            .new_local(self.location, ty, format!("stack_var_{}", self.next_value_counter()))
             .get_address(self.location)
     }
 
@@ -949,7 +949,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let loaded_value = function.new_local(
             self.location,
             aligned_type,
-            &format!("loadedValue{}", self.next_value_counter()),
+            format!("loadedValue{}", self.next_value_counter()),
         );
         block.add_assignment(self.location, loaded_value, deref);
         loaded_value.to_rvalue()
@@ -970,7 +970,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): use ty.
         // TODO(antoyo): handle alignment.
         let atomic_load =
-            self.context.get_builtin_function(&format!("__atomic_load_{}", size.bytes()));
+            self.context.get_builtin_function(format!("__atomic_load_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
 
         let volatile_const_void_ptr_type =
@@ -1126,7 +1126,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         // TODO(antoyo): handle alignment.
         let atomic_store =
-            self.context.get_builtin_function(&format!("__atomic_store_{}", size.bytes()));
+            self.context.get_builtin_function(format!("__atomic_store_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
         let volatile_const_void_ptr_type =
             self.context.new_type::<()>().make_volatile().make_pointer();
