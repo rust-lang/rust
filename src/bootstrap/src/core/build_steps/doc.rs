@@ -699,13 +699,12 @@ fn doc_std(
     let compiler = builder.compiler(stage, builder.config.build);
 
     let target_doc_dir_name = if format == DocumentationFormat::Json { "json-doc" } else { "doc" };
-    let target_dir =
-        builder.stage_out(compiler, Mode::Std).join(target.triple).join(target_doc_dir_name);
+    let target_dir = builder.stage_out(compiler, Mode::Std).join(target).join(target_doc_dir_name);
 
     // This is directory where the compiler will place the output of the command.
     // We will then copy the files from this directory into the final `out` directory, the specified
     // as a function parameter.
-    let out_dir = target_dir.join(target.triple).join("doc");
+    let out_dir = target_dir.join(target).join("doc");
 
     let mut cargo =
         builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, Kind::Doc);
@@ -846,7 +845,7 @@ impl Step for Rustc {
 
         let mut to_open = None;
 
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
@@ -992,7 +991,7 @@ macro_rules! tool_doc {
                 // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
                 // cargo.rustdocflag("--generate-link-to-definition");
 
-                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
+                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
                 $(for krate in $crates {
                     let dir_name = krate.replace("-", "_");
                     t!(fs::create_dir_all(out_dir.join(&*dir_name)));
