@@ -25,7 +25,7 @@ Otherwise, have a great day =^.^=
     <link id="styleAyu" rel="stylesheet" href="https://rust-lang.github.io/mdBook/ayu-highlight.css" disabled="true">
     <link rel="stylesheet" href="style.css">
 </head>
-<body ng-app="clippy" ng-controller="lintList">
+<body>
     <div id="settings-dropdown">
         <div class="settings-icon" tabindex="-1"></div>
         <div class="settings-menu" tabindex="-1">
@@ -59,121 +59,90 @@ Otherwise, have a great day =^.^=
             <div class="panel panel-default">
                 <div class="panel-body row">
                     <div id="upper-filters" class="col-12 col-md-5">
-                        <div class="btn-group" filter-dropdown>
+                        <div class="btn-group">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Lint levels <span class="badge">{{selectedValuesCount(levels)}}</span> <span class="caret"></span>
+                                Lint levels <span class="badge" id="selected-levels">4</span> <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu" id="lint-levels">
                                 <li class="checkbox">
-                                    <label ng-click="toggleLevels(true)">
+                                    <label onclick="toggleLevels(true)">
                                         <input type="checkbox" class="invisible" />
                                         All
                                     </label>
                                 </li>
                                 <li class="checkbox">
-                                    <label ng-click="toggleLevels(false)">
+                                    <label onclick="toggleLevels(false)">
                                         <input type="checkbox" class="invisible" />
                                         None
                                     </label>
                                 </li>
                                 <li role="separator" class="divider"></li>
-                                <li class="checkbox" ng-repeat="(level, enabled) in levels">
-                                    <label class="text-capitalize">
-                                        <input type="checkbox" ng-model="levels[level]" />
-                                        {{level}}
-                                    </label>
-                                </li>
                             </ul>
                         </div>
-                        <div class="btn-group" filter-dropdown>
+                        <div class="btn-group">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Lint groups <span class="badge">{{selectedValuesCount(groups)}}</span> <span class="caret"></span>
+                                Lint groups <span class="badge" id="selected-groups"></span> <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu" id="lint-groups">
                                 <li class="checkbox">
-                                    <label ng-click="toggleGroups(true)">
+                                    <label onclick="toggleGroups(true)">
                                         <input type="checkbox" class="invisible" />
                                         All
                                     </label>
                                 </li>
                                 <li class="checkbox">
-                                    <label ng-click="resetGroupsToDefault()">
+                                    <label onclick="resetGroupsToDefault()">
                                         <input type="checkbox" class="invisible" />
                                         Default
                                     </label>
                                 </li>
                                 <li class="checkbox">
-                                    <label ng-click="toggleGroups(false)">
+                                    <label onclick="toggleGroups(false)">
                                         <input type="checkbox" class="invisible" />
                                         None
                                     </label>
                                 </li>
                                 <li role="separator" class="divider"></li>
-                                <li class="checkbox" ng-repeat="(group, enabled) in groups">
-                                    <label class="text-capitalize">
-                                        <input type="checkbox" ng-model="groups[group]" />
-                                        {{group}}
-                                    </label>
-                                </li>
                             </ul>
                         </div>
                         <div id="version-filter">
-                            <div class="btn-group" filter-dropdown>
+                            <div class="btn-group">
                                 <button type="button" class="btn btn-default dropdown-toggle">
                                     Version
-                                    <span id="version-filter-count" class="badge">
-                                        {{versionFilterCount(versionFilters)}}
-                                    </span>
+                                    <span id="version-filter-count" class="badge">0</span>
                                     <span class="caret"></span>
                                 </button>
                                 <ul id="version-filter-selector" class="dropdown-menu">
                                     <li class="checkbox">
-                                        <label ng-click="clearVersionFilters()">
+                                        <label onclick="clearVersionFilters()">
                                             <input type="checkbox" class="invisible" />
                                             Clear filters
                                         </label>
                                     </li>
                                     <li role="separator" class="divider"></li>
-                                    <li class="checkbox" ng-repeat="(filter, vars) in versionFilters">
-                                        <label ng-attr-for="filter-{filter}">{{filter}}</label>
-                                        <span>1.</span>
-                                        <input type="number"
-                                                min="29"
-                                                ng-attr-id="filter-{filter}"
-                                                class="version-filter-input form-control filter-input"
-                                                maxlength="2"
-                                                ng-model="versionFilters[filter].minorVersion"
-                                                ng-model-options="{debounce: 50}"
-                                                ng-change="updateVersionFilters()" />
-                                        <span>.0</span>
-                                    </li>
                                 </ul>
                             </div>
                         </div>
-                        <div class="btn-group" filter-dropdown>
+                        <div class="btn-group">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Applicability <span class="badge">{{selectedValuesCount(applicabilities)}}</span> <span class="caret"></span>
+                                Applicability
+                                <span class="badge"></span>
+                                <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu">
+                            <ul class="dropdown-menu" id="lint-applicabilities">
                                 <li class="checkbox">
-                                    <label ng-click="toggleApplicabilities(true)">
+                                    <label onclick="toggleApplicabilities(true)">
                                         <input type="checkbox" class="invisible" />
                                         All
                                     </label>
                                 </li>
                                 <li class="checkbox">
-                                    <label ng-click="toggleApplicabilities(false)">
+                                    <label onclick="toggleApplicabilities(false)">
                                         <input type="checkbox" class="invisible" />
                                         None
                                     </label>
                                 </li>
                                 <li role="separator" class="divider"></li>
-                                <li class="checkbox" ng-repeat="(applicability, enabled) in applicabilities">
-                                    <label class="text-capitalize">
-                                        <input type="checkbox" ng-model="applicabilities[applicability]" />
-                                        {{applicability}}
-                                    </label>
-                                </li>
                             </ul>
                         </div>
                     </div>
@@ -189,10 +158,10 @@ Otherwise, have a great day =^.^=
                         </div>
                     </div>
                     <div class="col-12 col-md-2 btn-group expansion-group">
-                        <button title="Collapse All" class="btn btn-default expansion-control" type="button" ng-click="toggleExpansion(data, false)">
+                        <button title="Collapse All" class="btn btn-default expansion-control" type="button" onclick="toggleExpansion(false)">
                             <span class="glyphicon glyphicon-collapse-up"></span>
                         </button>
-                        <button title="Expand All" class="btn btn-default expansion-control" type="button" ng-click="toggleExpansion(data, true)">
+                        <button title="Expand All" class="btn btn-default expansion-control" type="button" onclick="toggleExpansion(true)">
                             <span class="glyphicon glyphicon-collapse-down"></span>
                         </button>
                     </div>
@@ -315,7 +284,6 @@ Otherwise, have a great day =^.^=
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/languages/rust.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
