@@ -156,7 +156,7 @@ pub fn declare_clippy_lint(input: TokenStream) -> TokenStream {
     let category_variant = format_ident!("{category}");
 
     let name_span = name.span().unwrap();
-    let location = format!("{}#{}", name_span.source_file().path().display(), name_span.line());
+    let location = format!("{}#L{}", name_span.source_file().path().display(), name_span.line());
 
     let version = match version {
         Some(version) => quote!(Some(#version)),
