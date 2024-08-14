@@ -1436,7 +1436,8 @@ impl<'a> InferenceContext<'a> {
         let remaining = unresolved.map(|it| path.segments()[it..].len()).filter(|it| it > &0);
         let ty = match ty.kind(Interner) {
             TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                self.db.normalize_projection(proj_ty.clone(), self.table.trait_env.clone())
+                let ty = self.table.normalize_projection_ty(proj_ty.clone());
+                self.table.resolve_ty_shallow(&ty)
             }
             _ => ty,
         };

@@ -2141,3 +2141,24 @@ fn test() {
 }"#,
     );
 }
+
+#[test]
+fn issue_17866() {
+    check_infer(
+        r#"
+trait T {
+    type A;
+}
+
+type Foo = <S as T>::A;
+
+fn main() {
+    Foo {};
+}
+"#,
+        expect![[r#"
+            60..75 '{     Foo {}; }': ()
+            66..72 'Foo {}': {unknown}
+        "#]],
+    );
+}
