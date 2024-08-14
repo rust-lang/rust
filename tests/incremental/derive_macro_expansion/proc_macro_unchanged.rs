@@ -4,7 +4,7 @@
 // The proc-macro (for `Nothing`) prints a message to stderr when invoked,
 // and this message should only be present during the second invocation
 // (which has `cfail2` set via cfg).
-// TODO(pr-time): Properly have the test check this, but how? UI-test that tests for `.stderr`?
+// FIXME(pr-time): Properly have the test check this, but how? UI-test that tests for `.stderr`?
 
 //@ aux-build:derive_nothing.rs
 //@ revisions:cfail1 cfail2

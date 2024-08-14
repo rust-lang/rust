@@ -28,7 +28,7 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
         let strategy = crate::proc_macro::exec_strategy(ecx);
         let server = crate::proc_macro_server::Rustc::new(ecx);
         let res = match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
-            // TODO(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
+            // FIXME(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
             Ok(stream) => Ok(tcx.arena.alloc(stream.flattened()) as &TokenStream),
             Err(e) => {
                 ecx.dcx().emit_err({
@@ -102,11 +102,11 @@ where
     } else {
         // We could get an `CONTEXT` pointer from another thread.
         // Ensure that `CONTEXT` is `DynSync`.
-        // TODO(pr-time): we should not be able to?
+        // FIXME(pr-time): we should not be able to?
         // sync::assert_dyn_sync::<CONTEXT<'_>>();
 
         // prevent double entering, as that would allow creating two `&mut ExtCtxt`s
-        // TODO(pr-time): probably use a RefCell instead (which checks this properly)?
+        // FIXME(pr-time): probably use a RefCell instead (which checks this properly)?
         enter_context_erased((ptr::null_mut(), None), || unsafe {
             let ectx = downcast(ectx);
             f(Some(&mut (ectx, client_opt.unwrap())))

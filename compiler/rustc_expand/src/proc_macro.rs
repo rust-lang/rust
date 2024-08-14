@@ -133,11 +133,11 @@ impl MultiItemModifier for DeriveProcMacro {
         crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
         let input = item.to_tokens();
         let res = ty::tls::with(|tcx| {
-            // TODO(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
+            // FIXME(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
             let input = tcx.arena.alloc(input.flattened()) as &TokenStream;
             let invoc_id = ecx.current_expansion.id;
 
-            // TODO(pr-time): Just using the crate hash to notice when the proc-macro code has
+            // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
             // changed. How to *correctly* depend on exactly the macro definition?
             // I.e., depending on the crate hash is just a HACK (and leaves garbage in the
             // incremental compilation dir).
