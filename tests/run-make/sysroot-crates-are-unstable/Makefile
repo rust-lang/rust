@@ -1,2 +1,0 @@
-all:
-	'$(PYTHON)' test.py
