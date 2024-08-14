@@ -4,6 +4,8 @@ use std::io;
 use std::io::{Error, ErrorKind, Read};
 use std::rc::{Rc, Weak};
 
+use crate::shims::unix::fd::{FdId, WeakFileDescriptionRef};
+use crate::shims::unix::linux::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::{concurrency::VClock, *};
 
@@ -19,6 +21,11 @@ struct SocketPair {
     // gone, and trigger EPIPE as appropriate.
     writebuf: Weak<RefCell<Buffer>>,
     readbuf: Rc<RefCell<Buffer>>,
+    /// When a socketpair instance is created, two socketpair file descriptions are generated.
+    /// The peer_fd field holds a weak reference to the file description of peer socketpair.
+    // TODO: It might be possible to retrieve writebuf from peer_fd and remove the writebuf
+    // field above.
+    peer_fd: WeakFileDescriptionRef,
     is_nonblock: bool,
 }
 
@@ -37,21 +44,62 @@ impl FileDescription for SocketPair {
         "socketpair"
     }
 
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        // We only check the status of EPOLLIN, EPOLLOUT and EPOLLRDHUP flags. If other event flags
+        // need to be supported in the future, the check should be added here.
+
+        let mut epoll_ready_events = EpollReadyEvents::new();
+        let readbuf = self.readbuf.borrow();
+
+        // Check if it is readable.
+        if !readbuf.buf.is_empty() {
+            epoll_ready_events.epollin = true;
+        }
+
+        // Check if is writable.
+        if let Some(writebuf) = self.writebuf.upgrade() {
+            let writebuf = writebuf.borrow();
+            let data_size = writebuf.buf.len();
+            let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
+            if available_space != 0 {
+                epoll_ready_events.epollout = true;
+            }
+        }
+
+        // Check if the peer_fd closed
+        if self.peer_fd.upgrade().is_none() {
+            epoll_ready_events.epollrdhup = true;
+            // This is an edge case. Whenever epollrdhup is triggered, epollin will be added
+            // even though there is no data in the buffer.
+            epoll_ready_events.epollin = true;
+        }
+        Ok(epoll_ready_events)
+    }
+
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         // This is used to signal socketfd of other side that there is no writer to its readbuf.
         // If the upgrade fails, there is no need to update as all read ends have been dropped.
         if let Some(writebuf) = self.writebuf.upgrade() {
             writebuf.borrow_mut().buf_has_writer = false;
         };
+
+        // Notify peer fd that closed has happened.
+        if let Some(peer_fd) = self.peer_fd.upgrade() {
+            // When any of the event happened, we check and update the status of all supported events
+            // types of peer fd.
+            peer_fd.check_and_update_readiness(ecx)?;
+        }
         Ok(Ok(()))
     }
 
     fn read<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &mut [u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -88,15 +136,33 @@ impl FileDescription for SocketPair {
         // FIXME: this over-synchronizes; a more precise approach would be to
         // only sync with the writes whose data we will read.
         ecx.acquire_clock(&readbuf.clock);
+
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
         let actual_read_size = readbuf.buf.read(bytes).unwrap();
+
+        // The readbuf needs to be explicitly dropped because it will cause panic when
+        // check_and_update_readiness borrows it again.
+        drop(readbuf);
+
+        // A notification should be provided for the peer file description even when it can
+        // only write 1 byte. This implementation is not compliant with the actual Linux kernel
+        // implementation. For optimization reasons, the kernel will only mark the file description
+        // as "writable" when it can write more than a certain number of bytes. Since we
+        // don't know what that *certain number* is, we will provide a notification every time
+        // a read is successful. This might result in our epoll emulation providing more
+        // notifications than the real system.
+        if let Some(peer_fd) = self.peer_fd.upgrade() {
+            peer_fd.check_and_update_readiness(ecx)?;
+        }
+
         return Ok(Ok(actual_read_size));
     }
 
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &[u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -131,6 +197,14 @@ impl FileDescription for SocketPair {
         // Do full write / partial write based on the space available.
         let actual_write_size = write_size.min(available_space);
         writebuf.buf.extend(&bytes[..actual_write_size]);
+
+        // The writebuf needs to be explicitly dropped because it will cause panic when
+        // check_and_update_readiness borrows it again.
+        drop(writebuf);
+        // Notification should be provided for peer fd as it became readable.
+        if let Some(peer_fd) = self.peer_fd.upgrade() {
+            peer_fd.check_and_update_readiness(ecx)?;
+        }
         return Ok(Ok(actual_write_size));
     }
 }
@@ -209,18 +283,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let socketpair_0 = SocketPair {
             writebuf: Rc::downgrade(&buffer1),
             readbuf: Rc::clone(&buffer2),
+            peer_fd: WeakFileDescriptionRef::default(),
             is_nonblock: is_sock_nonblock,
         };
-
         let socketpair_1 = SocketPair {
             writebuf: Rc::downgrade(&buffer2),
             readbuf: Rc::clone(&buffer1),
+            peer_fd: WeakFileDescriptionRef::default(),
             is_nonblock: is_sock_nonblock,
         };
 
+        // Insert the file description to the fd table.
         let fds = &mut this.machine.fds;
         let sv0 = fds.insert_new(socketpair_0);
         let sv1 = fds.insert_new(socketpair_1);
+
+        // Get weak file descriptor and file description id value.
+        let fd_ref0 = fds.get_ref(sv0).unwrap();
+        let fd_ref1 = fds.get_ref(sv1).unwrap();
+        let weak_fd_ref0 = fd_ref0.downgrade();
+        let weak_fd_ref1 = fd_ref1.downgrade();
+
+        // Update peer_fd and id field.
+        fd_ref1.borrow_mut().downcast_mut::<SocketPair>().unwrap().peer_fd = weak_fd_ref0;
+
+        fd_ref0.borrow_mut().downcast_mut::<SocketPair>().unwrap().peer_fd = weak_fd_ref1;
+
+        // Return socketpair file description value to the caller.
         let sv0 = Scalar::from_int(sv0, sv.layout.size);
         let sv1 = Scalar::from_int(sv1, sv.layout.size);
 

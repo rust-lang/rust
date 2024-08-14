@@ -3,8 +3,10 @@ use std::io;
 use std::io::{Error, ErrorKind};
 use std::mem;
 
+use fd::FdId;
 use rustc_target::abi::Endian;
 
+use crate::shims::unix::linux::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::{concurrency::VClock, *};
 
@@ -35,9 +37,21 @@ impl FileDescription for Event {
         "event"
     }
 
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        // We only check the status of EPOLLIN and EPOLLOUT flags for eventfd. If other event flags
+        // need to be supported in the future, the check should be added here.
+
+        Ok(EpollReadyEvents {
+            epollin: self.counter != 0,
+            epollout: self.counter != MAX_COUNTER,
+            ..EpollReadyEvents::new()
+        })
+    }
+
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         Ok(Ok(()))
     }
@@ -46,6 +60,7 @@ impl FileDescription for Event {
     fn read<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        fd_id: FdId,
         bytes: &mut [u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -70,6 +85,18 @@ impl FileDescription for Event {
                 Endian::Big => self.counter.to_be_bytes(),
             };
             self.counter = 0;
+            // When any of the event happened, we check and update the status of all supported event
+            // types for current file description.
+
+            // We have to use our own FdID in contrast to every other file descriptor out there, because
+            // we are updating ourselves when writing and reading. Technically `Event` is like socketpair, but
+            // it does not create two separate file descriptors. Thus we can't re-borrow ourselves via
+            // `FileDescriptionRef::check_and_update_readiness` while already being mutably borrowed for read/write.
+            crate::shims::unix::linux::epoll::EvalContextExt::check_and_update_readiness(
+                ecx,
+                fd_id,
+                || self.get_epoll_ready_events(),
+            )?;
             return Ok(Ok(U64_ARRAY_SIZE));
         }
     }
@@ -89,6 +116,7 @@ impl FileDescription for Event {
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        fd_id: FdId,
         bytes: &[u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -124,6 +152,17 @@ impl FileDescription for Event {
                 }
             }
         };
+        // When any of the event happened, we check and update the status of all supported event
+        // types for current file description.
+
+        // Just like read() above, we use this internal method to not get the second borrow of the
+        // RefCell of this FileDescription. This is a special case, we should only use
+        // FileDescriptionRef::check_and_update_readiness in normal case.
+        crate::shims::unix::linux::epoll::EvalContextExt::check_and_update_readiness(
+            ecx,
+            fd_id,
+            || self.get_epoll_ready_events(),
+        )?;
         Ok(Ok(U64_ARRAY_SIZE))
     }
 }
@@ -178,11 +217,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("eventfd: encountered unknown unsupported flags {:#x}", flags);
         }
 
-        let fd = this.machine.fds.insert_new(Event {
-            counter: val.into(),
-            is_nonblock,
-            clock: VClock::default(),
-        });
-        Ok(Scalar::from_i32(fd))
+        let fds = &mut this.machine.fds;
+
+        let fd_value =
+            fds.insert_new(Event { counter: val.into(), is_nonblock, clock: VClock::default() });
+
+        Ok(Scalar::from_i32(fd_value))
     }
 }

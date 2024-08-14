@@ -1,4 +1,4 @@
-error: unsupported operation: returning ready events from epoll_wait is not yet implemented
+error: unsupported operation: epoll_wait: timeout value can only be 0
   --> CARGO_REGISTRY/.../epoll.rs:LL:CC
    |
 LL | /         syscall!(epoll_wait(
@@ -7,7 +7,7 @@ LL | |             events.as_mut_ptr(),
 LL | |             events.capacity() as i32,
 LL | |             timeout,
 LL | |         ))
-   | |__________^ returning ready events from epoll_wait is not yet implemented
+   | |__________^ epoll_wait: timeout value can only be 0
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
 

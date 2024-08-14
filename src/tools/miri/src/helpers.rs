@@ -371,6 +371,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         path_ty_layout(this, &["std", "sys", "pal", "windows", "c", name])
     }
 
+    /// Helper function to get `TyAndLayout` of an array that consists of `libc` type.
+    fn libc_array_ty_layout(&self, name: &str, size: u64) -> TyAndLayout<'tcx> {
+        let this = self.eval_context_ref();
+        let elem_ty_layout = this.libc_ty_layout(name);
+        let array_ty = Ty::new_array(*this.tcx, elem_ty_layout.ty, size);
+        this.layout_of(array_ty).unwrap()
+    }
+
     /// Project to the given *named* field (which must be a struct or union type).
     fn project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
