@@ -191,10 +191,6 @@ macro_rules! mutability_dependent {
             walk_flat_map_expr_field(self, f)
         }
 
-        fn visit_where_clause(&mut self, where_clause: &mut WhereClause) {
-            walk_where_clause(self, where_clause);
-        }
-
         fn visit_id(&mut self, _id: &mut NodeId) {
             // Do nothing.
         }
@@ -421,6 +417,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_mt(&mut self, mt: ref_t!(MutTy)) -> result!() {
                 walk_mt(self, mt)
+            }
+
+            fn visit_where_clause(&mut self, where_clause: ref_t!(WhereClause)) -> result!() {
+                walk_where_clause(self, where_clause)
             }
 
             // FIXME: remove _ on ident if mut
@@ -1088,9 +1088,8 @@ pub mod visit {
 
     pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) -> V::Result {
         let Generics { params, where_clause, span: _ } = generics;
-        let WhereClause { has_where_token: _, predicates, span: _ } = where_clause;
         walk_list!(visitor, visit_generic_param, params);
-        walk_list!(visitor, visit_where_predicate, predicates);
+        try_visit!(visitor.visit_where_clause(where_clause));
         V::Result::output()
     }
 
@@ -1605,6 +1604,13 @@ pub mod visit {
         try_visit!(vis.visit_ty(ty));
         V::Result::output()
     }
+
+    fn walk_where_clause<'a, V: Visitor<'a>>(vis: &mut V, wc: &'a WhereClause) -> V::Result {
+        let WhereClause { has_where_token: _, predicates, span: _ } = wc;
+        walk_list!(vis, visit_where_predicate, predicates);
+        V::Result::output()
+    }
+
 }
 
 pub mod mut_visit {
