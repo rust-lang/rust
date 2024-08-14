@@ -801,7 +801,7 @@ where
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
@@ -986,9 +986,11 @@ where
                     safe: None,
                 })
             }
-            ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(Ty::new_fn_ptr(tcx, fn_sig))).ok().map(|layout| {
-                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
+            ty::FnPtr(..) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(this.ty)).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {

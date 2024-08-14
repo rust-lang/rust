@@ -184,7 +184,7 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(Float(Float::from_float_ty(fty))),
-        ty::FnPtr(_) => {
+        ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
             tcx.mk_layout(LayoutS::scalar(cx, ptr))

@@ -86,6 +86,7 @@ macro_rules! impl_binder_encode_decode {
 #[cfg(feature = "nightly")]
 impl_binder_encode_decode! {
     ty::FnSig<I>,
+    ty::FnSigTys<I>,
     ty::TraitPredicate<I>,
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
@@ -246,21 +247,6 @@ impl<I: Interner, T> Binder<I, T> {
     {
         // `self.value` is equivalent to `self.skip_binder()`
         if self.value.has_escaping_bound_vars() { None } else { Some(self.skip_binder()) }
-    }
-
-    /// Splits the contents into two things that share the same binder
-    /// level as the original, returning two distinct binders.
-    ///
-    /// `f` should consider bound regions at depth 1 to be free, and
-    /// anything it produces with bound regions at depth 1 will be
-    /// bound in the resulting return values.
-    pub fn split<U, V, F>(self, f: F) -> (Binder<I, U>, Binder<I, V>)
-    where
-        F: FnOnce(T) -> (U, V),
-    {
-        let Binder { value, bound_vars } = self;
-        let (u, v) = f(value);
-        (Binder { value: u, bound_vars }, Binder { value: v, bound_vars })
     }
 }
 

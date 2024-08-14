@@ -158,7 +158,7 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
 
                     cx.tcx.fn_sig(def).skip_binder().skip_binder()
                 },
-                ty::FnPtr(sig) => sig.skip_binder(),
+                ty::FnPtr(sig_tys, hdr) => sig_tys.with(*hdr).skip_binder(),
                 ty::Closure(_, subs) => cx
                     .tcx
                     .signature_unclosure(subs.as_closure().sig(), Safety::Safe)

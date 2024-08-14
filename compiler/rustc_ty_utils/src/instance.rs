@@ -248,7 +248,7 @@ fn resolve_associated_item<'tcx>(
                 if name == sym::clone {
                     let self_ty = trait_ref.self_ty();
                     match self_ty.kind() {
-                        ty::FnDef(..) | ty::FnPtr(_) => (),
+                        ty::FnDef(..) | ty::FnPtr(..) => (),
                         ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Closure(..)

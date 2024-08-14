@@ -483,7 +483,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | ty::Bool
                 | ty::Float(_)
                 | ty::FnDef(..)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::RawPtr(..)
                 | ty::Char
                 | ty::Ref(..)

@@ -97,7 +97,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
                 let src = self.read_immediate(src)?;
                 match cast_ty.kind() {
-                    ty::FnPtr(_) => {
+                    ty::FnPtr(..) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;
                     }
@@ -230,7 +230,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         src: &ImmTy<'tcx, M::Provenance>,
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_, _) | ty::FnPtr(_));
+        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_, _) | ty::FnPtr(..));
         assert!(cast_to.ty.is_integral());
 
         let scalar = src.to_scalar();

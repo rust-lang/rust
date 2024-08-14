@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         _ => { /* continue to checks */ },
     }
 
-    if let ty::FnDef(..) | ty::FnPtr(_) = cast_from.kind() {
+    if let ty::FnDef(..) | ty::FnPtr(..) = cast_from.kind() {
         let mut applicability = Applicability::MaybeIncorrect;
         let from_snippet = snippet_with_applicability(cx, cast_expr.span, "..", &mut applicability);
 

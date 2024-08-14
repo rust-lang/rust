@@ -331,7 +331,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(')');
             }
         }
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             // We've encountered a weird 'recursive type'
             // Currently, the only way to generate such a type
             // is by using 'impl trait':

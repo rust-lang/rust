@@ -317,8 +317,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraint(current, data.index, variance);
             }
 
-            ty::FnPtr(sig) => {
-                self.add_constraints_from_sig(current, sig, variance);
+            ty::FnPtr(sig_tys, hdr) => {
+                self.add_constraints_from_sig(current, sig_tys.with(hdr), variance);
             }
 
             ty::Error(_) => {

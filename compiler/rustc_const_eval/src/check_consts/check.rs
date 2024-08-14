@@ -171,7 +171,7 @@ struct LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
 impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            ty::FnPtr(_) => {}
+            ty::FnPtr(..) => {}
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 self.checker.check_op(ops::mut_ref::MutRef(self.kind));
                 t.super_visit_with(self)
@@ -726,7 +726,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let (mut callee, mut fn_args) = match *fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args),
 
-                    ty::FnPtr(_) => {
+                    ty::FnPtr(..) => {
                         self.check_op(ops::FnCallIndirect);
                         return;
                     }
