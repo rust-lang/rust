@@ -27,7 +27,7 @@ Otherwise, have a great day =^.^=
 </head>
 <body>
     <div id="settings-dropdown">
-        <div class="settings-icon" tabindex="-1"></div>
+        <button class="settings-icon" tabindex="-1"></button>
         <div class="settings-menu" tabindex="-1">
             <div class="setting-radio-name">Theme</div>
             <select id="theme-choice" onchange="setTheme(this.value, true)">
@@ -59,88 +59,62 @@ Otherwise, have a great day =^.^=
             <div class="panel panel-default">
                 <div class="panel-body row">
                     <div id="upper-filters" class="col-12 col-md-5">
-                        <div class="btn-group">
+                        <div class="btn-group" id="lint-levels" tabindex="-1">
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint levels <span class="badge" id="selected-levels">4</span> <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu" id="lint-levels">
+                            <ul class="dropdown-menu" id="lint-levels-selector">
                                 <li class="checkbox">
-                                    <label onclick="toggleLevels(true)">
-                                        <input type="checkbox" class="invisible" />
-                                        All
-                                    </label>
+                                    <button onclick="toggleElements(this, true)">All</button>
                                 </li>
                                 <li class="checkbox">
-                                    <label onclick="toggleLevels(false)">
-                                        <input type="checkbox" class="invisible" />
-                                        None
-                                    </label>
+                                    <button onclick="toggleElements(this, false)">None</button>
                                 </li>
                                 <li role="separator" class="divider"></li>
                             </ul>
                         </div>
-                        <div class="btn-group">
+                        <div class="btn-group" id="lint-groups" tabindex="-1">
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint groups <span class="badge" id="selected-groups"></span> <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu" id="lint-groups">
+                            <ul class="dropdown-menu" id="lint-groups-selector">
                                 <li class="checkbox">
-                                    <label onclick="toggleGroups(true)">
-                                        <input type="checkbox" class="invisible" />
-                                        All
-                                    </label>
+                                    <button onclick="toggleElements(this, true)">All</button>
                                 </li>
                                 <li class="checkbox">
-                                    <label onclick="resetGroupsToDefault()">
-                                        <input type="checkbox" class="invisible" />
-                                        Default
-                                    </label>
+                                    <button onclick="resetGroupsToDefault()">Default</button>
                                 </li>
                                 <li class="checkbox">
-                                    <label onclick="toggleGroups(false)">
-                                        <input type="checkbox" class="invisible" />
-                                        None
-                                    </label>
+                                    <button onclick="toggleElements(this, false)">None</button>
                                 </li>
                                 <li role="separator" class="divider"></li>
                             </ul>
                         </div>
-                        <div id="version-filter">
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-default dropdown-toggle">
-                                    Version
-                                    <span id="version-filter-count" class="badge">0</span>
-                                    <span class="caret"></span>
-                                </button>
-                                <ul id="version-filter-selector" class="dropdown-menu">
-                                    <li class="checkbox">
-                                        <label onclick="clearVersionFilters()">
-                                            <input type="checkbox" class="invisible" />
-                                            Clear filters
-                                        </label>
-                                    </li>
-                                    <li role="separator" class="divider"></li>
-                                </ul>
-                            </div>
+                        <div class="btn-group" id="version-filter" tabindex="-1">
+                            <button type="button" class="btn btn-default dropdown-toggle">
+                                Version
+                                <span id="version-filter-count" class="badge">0</span>
+                                <span class="caret"></span>
+                            </button>
+                            <ul id="version-filter-selector" class="dropdown-menu">
+                                <li class="checkbox">
+                                    <button onclick="clearVersionFilters()">Clear filters</button>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                            </ul>
                         </div>
-                        <div class="btn-group">
+                        <div class="btn-group", id="lint-applicabilities" tabindex="-1">
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Applicability
                                 <span class="badge"></span>
                                 <span class="caret"></span>
                             </button>
-                            <ul class="dropdown-menu" id="lint-applicabilities">
+                            <ul class="dropdown-menu" id="lint-applicabilities-selector">
                                 <li class="checkbox">
-                                    <label onclick="toggleApplicabilities(true)">
-                                        <input type="checkbox" class="invisible" />
-                                        All
-                                    </label>
+                                    <button onclick="toggleElements(this, true)">All</button>
                                 </li>
                                 <li class="checkbox">
-                                    <label onclick="toggleApplicabilities(false)">
-                                        <input type="checkbox" class="invisible" />
-                                        None
-                                    </label>
+                                    <button onclick="toggleElements(this, false)">None</button>
                                 </li>
                                 <li role="separator" class="divider"></li>
                             </ul>

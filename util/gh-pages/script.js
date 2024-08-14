@@ -151,6 +151,14 @@ function handleShortcut(ev) {
 document.addEventListener("keypress", handleShortcut);
 document.addEventListener("keydown", handleShortcut);
 
+function toggleElements(element, value) {
+    // `element` is always a button in a `li` in a `ul`. We want the `input` in the `ul`.
+    onEachLazy(
+        element.parentElement.parentElement.getElementsByTagName("input"),
+        el => el.checked = value,
+    );
+}
+
 function changeSetting(elem) {
     if (elem.id === "disable-shortcuts") {
         disableShortcuts = elem.checked;
@@ -211,8 +219,8 @@ function copyToClipboard(event) {
     resetClipboardTimeout = setTimeout(resetClipboard, 1000);
 }
 
-function handleBlur(event) {
-    const parent = document.getElementById("settings-dropdown");
+function handleBlur(event, elementId) {
+    const parent = document.getElementById(elementId);
     if (!parent.contains(document.activeElement) &&
         !parent.contains(event.relatedTarget)
     ) {
@@ -227,6 +235,30 @@ function toggleExpansion(expand) {
     );
 }
 
+function clearVersionFilters() {
+    onEachLazy(document.querySelectorAll("#version-filter-count input"), el => el.value = "");
+}
+
+const GROUPS_FILTER_DEFAULT = {
+    cargo: true,
+    complexity: true,
+    correctness: true,
+    deprecated: false,
+    nursery: true,
+    pedantic: true,
+    perf: true,
+    restriction: true,
+    style: true,
+    suspicious: true,
+};
+
+function resetGroupsToDefault() {
+    onEachLazy(document.querySelectorAll("#lint-groups-selector input"), el => {
+        const key = el.getAttribute("data-value");
+        el.checked = GROUPS_FILTER_DEFAULT[key];
+    });
+}
+
 function generateListOfOptions(list, elementId) {
     let html = '';
     let nbEnabled = 0;
@@ -235,7 +267,7 @@ function generateListOfOptions(list, elementId) {
         html += `\
 <li class="checkbox">\
     <label class="text-capitalize">\
-        <input type="checkbox"${attr}/>${key}\
+        <input type="checkbox" data-value="${key}"${attr}/>${key}\
     </label>\
 </li>`;
         if (value) {
@@ -243,39 +275,33 @@ function generateListOfOptions(list, elementId) {
         }
     }
 
-    const elem = document.getElementById(elementId);
+    const elem = document.getElementById(`${elementId}-selector`);
     elem.previousElementSibling.querySelector(".badge").innerText = `${nbEnabled}`;
     elem.innerHTML += html;
+
+    setupDropdown(elementId);
+}
+
+function setupDropdown(elementId) {
+    const elem = document.getElementById(elementId);
+    const button = document.querySelector(`#${elementId} > button`);
+    button.onclick = () => elem.classList.toggle("open");
+
+    const setBlur = child => {
+        child.onblur = event => handleBlur(event, elementId);
+    };
+    onEachLazy(elem.children, setBlur);
+    onEachLazy(elem.querySelectorAll("input"), setBlur);
+    onEachLazy(elem.querySelectorAll("ul button"), setBlur);
 }
 
 function generateSettings() {
-    const settings = document.getElementById("settings-dropdown");
-    const settingsButton = settings.querySelector(".settings-icon")
-    settingsButton.onclick = () => settings.classList.toggle("open");
-    settingsButton.onblur = handleBlur;
-    const settingsMenu = settings.querySelector(".settings-menu");
-    settingsMenu.onblur = handleBlur;
-    onEachLazy(
-        settingsMenu.querySelectorAll("input"),
-        el => el.onblur = handleBlur,
-    );
+    setupDropdown("settings-dropdown");
 
     const LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
     generateListOfOptions(LEVEL_FILTERS_DEFAULT, "lint-levels");
 
     // Generate lint groups.
-    const GROUPS_FILTER_DEFAULT = {
-        cargo: true,
-        complexity: true,
-        correctness: true,
-        deprecated: false,
-        nursery: true,
-        pedantic: true,
-        perf: true,
-        restriction: true,
-        style: true,
-        suspicious: true,
-    };
     generateListOfOptions(GROUPS_FILTER_DEFAULT, "lint-groups");
 
     const APPLICABILITIES_FILTER_DEFAULT = {
@@ -286,12 +312,6 @@ function generateSettings() {
         HasPlaceholders: true
     };
     generateListOfOptions(APPLICABILITIES_FILTER_DEFAULT, "lint-applicabilities");
-
-    const VERSIONS_FILTERS = {
-        "≥": {enabled: false, minorVersion: null },
-        "≤": {enabled: false, minorVersion: null },
-        "=": {enabled: false, minorVersion: null },
-    };
 
     let html = '';
     for (const kind of ["≥", "≤", "="]) {
@@ -309,6 +329,7 @@ function generateSettings() {
 </li>`;
     }
     document.getElementById("version-filter-selector").innerHTML += html;
+    setupDropdown("version-filter");
 }
 
 function generateSearch() {
