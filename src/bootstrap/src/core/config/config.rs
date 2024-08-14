@@ -2320,27 +2320,29 @@ impl Config {
                 Some(commit) => {
                     self.download_ci_rustc(commit);
 
-                    let builder_config_path =
-                        self.out.join(self.build.triple).join("ci-rustc/builder-config");
-                    let ci_config_toml = Self::get_toml(&builder_config_path);
-                    let current_config_toml = Self::get_toml(self.config.as_ref().unwrap());
+                    if let Some(config_path) = &self.config {
+                        let builder_config_path =
+                            self.out.join(self.build.triple).join("ci-rustc/builder-config");
+                        let ci_config_toml = Self::get_toml(&builder_config_path);
+                        let current_config_toml = Self::get_toml(config_path);
 
-                    // Check the config compatibility
-                    let res = check_incompatible_options_for_ci_rustc(
-                        current_config_toml,
-                        ci_config_toml,
-                    );
+                        // Check the config compatibility
+                        let res = check_incompatible_options_for_ci_rustc(
+                            current_config_toml,
+                            ci_config_toml,
+                        );
 
-                    let disable_ci_rustc_if_incompatible =
-                        env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
+                        let disable_ci_rustc_if_incompatible =
+                            env::var_os("DISABLE_CI_RUSTC_IF_INCOMPATIBLE")
                             .is_some_and(|s| s == "1" || s == "true");
 
-                    if disable_ci_rustc_if_incompatible && res.is_err() {
-                        println!("WARNING: download-rustc is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
-                        return None;
-                    }
+                        if disable_ci_rustc_if_incompatible && res.is_err() {
+                            println!("WARNING: download-rustc is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
+                            return None;
+                        }
 
-                    res.unwrap();
+                        res.unwrap();
+                    }
 
                     Some(commit.clone())
                 }
