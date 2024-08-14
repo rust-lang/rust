@@ -1759,13 +1759,14 @@ impl InferenceContext<'_> {
         skip_indices: &[u32],
         is_varargs: bool,
     ) {
-        if args.len() != param_tys.len() + skip_indices.len() && !is_varargs {
+        let arg_count_mismatch = args.len() != param_tys.len() + skip_indices.len() && !is_varargs;
+        if arg_count_mismatch {
             self.push_diagnostic(InferenceDiagnostic::MismatchedArgCount {
                 call_expr: expr,
                 expected: param_tys.len() + skip_indices.len(),
                 found: args.len(),
             });
-        }
+        };
 
         // Quoting https://github.com/rust-lang/rust/blob/6ef275e6c3cb1384ec78128eceeb4963ff788dca/src/librustc_typeck/check/mod.rs#L3325 --
         // We do this in a pretty awful way: first we type-check any arguments
@@ -1819,7 +1820,7 @@ impl InferenceContext<'_> {
                 // The function signature may contain some unknown types, so we need to insert
                 // type vars here to avoid type mismatch false positive.
                 let coercion_target = self.insert_type_vars(coercion_target);
-                if self.coerce(Some(arg), &ty, &coercion_target).is_err() {
+                if self.coerce(Some(arg), &ty, &coercion_target).is_err() && !arg_count_mismatch {
                     self.result.type_mismatches.insert(
                         arg.into(),
                         TypeMismatch { expected: coercion_target, actual: ty.clone() },

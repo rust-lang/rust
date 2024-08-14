@@ -1,7 +1,8 @@
 [package]
 name = "profile"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A collection of tools for profiling rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

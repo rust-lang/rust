@@ -1,5 +1,5 @@
-//! Utilities for running a cargo command like `cargo check` or `cargo test` in a separate thread and
-//! parse its stdout/stderr.
+//! Utilities for running a cargo command like `cargo check` or `cargo test` in a separate thread
+//! and parse its stdout/stderr.
 
 use std::{
     ffi::OsString,

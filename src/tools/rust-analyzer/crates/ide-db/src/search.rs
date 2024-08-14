@@ -6,7 +6,7 @@
 
 use std::mem;
 
-use base_db::{salsa::Database, SourceDatabase, SourceDatabaseExt};
+use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
 use hir::{
     sym, AsAssocItem, DefWithBody, DescendPreference, FileRange, HasAttrs, HasSource, HirFileIdExt,
     InFile, InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
@@ -663,9 +663,16 @@ impl<'a> FindUsages<'a> {
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
+        // See https://github.com/rust-lang/rust-analyzer/pull/15864/files/e0276dc5ddc38c65240edb408522bb869f15afb4#r1389848845
+        let ty_eq = |ty: hir::Type| match (ty.as_adt(), self_ty.as_adt()) {
+            (Some(ty), Some(self_ty)) => ty == self_ty,
+            (None, None) => ty == *self_ty,
+            _ => false,
+        };
+
         match NameRefClass::classify(self.sema, name_ref) {
             Some(NameRefClass::Definition(Definition::SelfType(impl_)))
-                if impl_.self_ty(self.sema.db).as_adt() == self_ty.as_adt() =>
+                if ty_eq(impl_.self_ty(self.sema.db)) =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {

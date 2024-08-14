@@ -4,10 +4,11 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.78"
+rust-version = "1.80"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
+repository = "https://github.com/rust-lang/rust-analyzer"
 
 [profile.dev]
 debug = 1
@@ -51,7 +52,6 @@ debug = 2
 # local crates
 base-db = { path = "./crates/base-db", version = "0.0.0" }
 cfg = { path = "./crates/cfg", version = "0.0.0", features = ["tt"] }
-flycheck = { path = "./crates/flycheck", version = "0.0.0" }
 hir = { path = "./crates/hir", version = "0.0.0" }
 hir-def = { path = "./crates/hir-def", version = "0.0.0" }
 hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }
@@ -77,17 +77,18 @@ salsa = { path = "./crates/salsa", version = "0.0.0" }
 span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
+syntax-bridge = { path = "./crates/syntax-bridge", version = "0.0.0" }
 text-edit = { path = "./crates/text-edit", version = "0.0.0" }
 toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.53.0", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.53.0", default-features = false }
-ra-ap-rustc_index = { version = "0.53.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.53.0", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.53.0", default-features = false }
+ra-ap-rustc_lexer = { version = "0.63.0", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.63.0", default-features = false }
+ra-ap-rustc_index = { version = "0.63.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.63.0", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.63.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 test-fixture = { path = "./crates/test-fixture" }
@@ -124,11 +125,11 @@ memmap2 = "0.5.4"
 nohash-hasher = "0.2.0"
 oorandom = "11.1.3"
 object = { version = "0.33.0", default-features = false, features = [
-    "std",
-    "read_core",
-    "elf",
-    "macho",
-    "pe",
+  "std",
+  "read_core",
+  "elf",
+  "macho",
+  "pe",
 ] }
 process-wrap = { version = "8.0.2", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
@@ -156,7 +157,6 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
 url = "2.3.1"
 xshell = "0.2.5"
-
 
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable

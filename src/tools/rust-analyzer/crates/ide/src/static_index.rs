@@ -3,9 +3,12 @@
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
-    base_db::SourceDatabaseExt, defs::Definition, documentation::Documentation,
-    famous_defs::FamousDefs, helpers::get_definition, FileId, FileRange, FxHashMap, FxHashSet,
-    RootDatabase,
+    base_db::{SourceRootDatabase, VfsPath},
+    defs::Definition,
+    documentation::Documentation,
+    famous_defs::FamousDefs,
+    helpers::get_definition,
+    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
 };
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
@@ -227,13 +230,16 @@ impl StaticIndex<'_> {
         self.files.push(result);
     }
 
-    pub fn compute(analysis: &Analysis) -> StaticIndex<'_> {
+    pub fn compute<'a>(analysis: &'a Analysis, workspace_root: &VfsPath) -> StaticIndex<'a> {
         let db = &*analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
             let source_root = db.file_source_root(file_id.into());
             let source_root = db.source_root(source_root);
-            !source_root.is_library
+            let is_vendored = source_root
+                .path_for_file(&file_id.into())
+                .is_some_and(|module_path| module_path.starts_with(workspace_root));
+            !source_root.is_library || is_vendored
         });
         let mut this = StaticIndex {
             files: vec![],
@@ -259,12 +265,13 @@ impl StaticIndex<'_> {
 #[cfg(test)]
 mod tests {
     use crate::{fixture, StaticIndex};
-    use ide_db::{FileRange, FxHashSet};
+    use ide_db::{base_db::VfsPath, FileRange, FxHashSet};
     use syntax::TextSize;
 
     fn check_all_ranges(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&analysis);
+        let s =
+            StaticIndex::compute(&analysis, &VfsPath::new_virtual_path("/workspace".to_owned()));
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
@@ -283,7 +290,8 @@ mod tests {
     #[track_caller]
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
-        let s = StaticIndex::compute(&analysis);
+        let s =
+            StaticIndex::compute(&analysis, &VfsPath::new_virtual_path("/workspace".to_owned()));
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for (_, t) in s.tokens.iter() {
             if let Some(t) = t.definition {
@@ -326,7 +334,7 @@ enum E { X(Foo) }
     fn multi_crate() {
         check_definitions(
             r#"
-//- /main.rs crate:main deps:foo
+//- /workspace/main.rs crate:main deps:foo
 
 
 use foo::func;
@@ -335,11 +343,29 @@ fn main() {
  //^^^^
     func();
 }
-//- /foo/lib.rs crate:foo
+//- /workspace/foo/lib.rs crate:foo
 
 pub func() {
 
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn vendored_crate() {
+        check_all_ranges(
+            r#"
+//- /workspace/main.rs crate:main deps:external,vendored
+struct Main(i32);
+     //^^^^ ^^^
+
+//- /external/lib.rs new_source_root:library crate:external@0.1.0,https://a.b/foo.git library
+struct ExternalLibrary(i32);
+
+//- /workspace/vendored/lib.rs new_source_root:library crate:vendored@0.1.0,https://a.b/bar.git library
+struct VendoredLibrary(i32);
+     //^^^^^^^^^^^^^^^ ^^^
 "#,
         );
     }

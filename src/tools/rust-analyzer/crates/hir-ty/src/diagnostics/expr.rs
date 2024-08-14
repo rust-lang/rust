@@ -4,20 +4,25 @@
 
 use std::fmt;
 
+use chalk_solve::rust_ir::AdtKind;
 use either::Either;
-use hir_def::lang_item::LangItem;
-use hir_def::{resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
-use hir_def::{ItemContainerId, Lookup};
+use hir_def::{
+    lang_item::LangItem,
+    resolver::{HasResolver, ValueNs},
+    AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
+};
 use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
-use syntax::{ast, AstNode};
+use syntax::{
+    ast::{self, UnaryOp},
+    AstNode,
+};
 use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
-use crate::Interner;
 use crate::{
     db::HirDatabase,
     diagnostics::match_check::{
@@ -25,7 +30,7 @@ use crate::{
         pat_analysis::{self, DeconstructedPat, MatchCheckCtx, WitnessPat},
     },
     display::HirDisplay,
-    InferenceResult, Ty, TyExt,
+    Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
 
 pub(crate) use hir_def::{
@@ -117,7 +122,7 @@ impl ExprValidator {
                 Expr::If { .. } => {
                     self.check_for_unnecessary_else(id, expr, db);
                 }
-                Expr::Block { .. } => {
+                Expr::Block { .. } | Expr::Async { .. } | Expr::Unsafe { .. } => {
                     self.validate_block(db, expr);
                 }
                 _ => {}
@@ -236,7 +241,12 @@ impl ExprValidator {
             return;
         }
 
-        let report = match cx.compute_match_usefulness(m_arms.as_slice(), scrut_ty.clone()) {
+        let known_valid_scrutinee = Some(self.is_known_valid_scrutinee(scrutinee_expr, db));
+        let report = match cx.compute_match_usefulness(
+            m_arms.as_slice(),
+            scrut_ty.clone(),
+            known_valid_scrutinee,
+        ) {
             Ok(report) => report,
             Err(()) => return,
         };
@@ -253,8 +263,52 @@ impl ExprValidator {
         }
     }
 
+    // [rustc's `is_known_valid_scrutinee`](https://github.com/rust-lang/rust/blob/c9bd03cb724e13cca96ad320733046cbdb16fbbe/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L288)
+    //
+    // While the above function in rustc uses thir exprs, r-a doesn't have them.
+    // So, the logic here is getting same result as "hir lowering + match with lowered thir"
+    // with "hir only"
+    fn is_known_valid_scrutinee(&self, scrutinee_expr: ExprId, db: &dyn HirDatabase) -> bool {
+        if self
+            .infer
+            .expr_adjustments
+            .get(&scrutinee_expr)
+            .is_some_and(|adjusts| adjusts.iter().any(|a| matches!(a.kind, Adjust::Deref(..))))
+        {
+            return false;
+        }
+
+        match &self.body[scrutinee_expr] {
+            Expr::UnaryOp { op: UnaryOp::Deref, .. } => false,
+            Expr::Path(path) => {
+                let value_or_partial = self
+                    .owner
+                    .resolver(db.upcast())
+                    .resolve_path_in_value_ns_fully(db.upcast(), path);
+                value_or_partial.map_or(true, |v| !matches!(v, ValueNs::StaticId(_)))
+            }
+            Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
+                TyKind::Adt(adt, ..)
+                    if db.adt_datum(self.owner.krate(db.upcast()), *adt).kind == AdtKind::Union =>
+                {
+                    false
+                }
+                _ => self.is_known_valid_scrutinee(*expr, db),
+            },
+            Expr::Index { base, .. } => self.is_known_valid_scrutinee(*base, db),
+            Expr::Cast { expr, .. } => self.is_known_valid_scrutinee(*expr, db),
+            Expr::Missing => false,
+            _ => true,
+        }
+    }
+
     fn validate_block(&mut self, db: &dyn HirDatabase, expr: &Expr) {
-        let Expr::Block { statements, .. } = expr else { return };
+        let (Expr::Block { statements, .. }
+        | Expr::Async { statements, .. }
+        | Expr::Unsafe { statements, .. }) = expr
+        else {
+            return;
+        };
         let pattern_arena = Arena::new();
         let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
         for stmt in &**statements {
@@ -280,7 +334,7 @@ impl ExprValidator {
                 has_guard: false,
                 arm_data: (),
             };
-            let report = match cx.compute_match_usefulness(&[match_arm], ty.clone()) {
+            let report = match cx.compute_match_usefulness(&[match_arm], ty.clone(), None) {
                 Ok(v) => v,
                 Err(e) => {
                     debug!(?e, "match usefulness error");

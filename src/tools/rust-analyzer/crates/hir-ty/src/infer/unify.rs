@@ -224,7 +224,7 @@ type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
-    pub(crate) atpit_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
+    pub(crate) tait_coercion_table: Option<FxHashMap<OpaqueTyId, Ty>>,
     var_unification_table: ChalkInferenceTable,
     type_variable_table: SmallVec<[TypeVariableFlags; 16]>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
@@ -244,7 +244,7 @@ impl<'a> InferenceTable<'a> {
         InferenceTable {
             db,
             trait_env,
-            atpit_coercion_table: None,
+            tait_coercion_table: None,
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: SmallVec::new(),
             pending_obligations: Vec::new(),

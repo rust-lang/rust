@@ -2122,3 +2122,22 @@ fn test() {
 "#,
     )
 }
+
+#[test]
+fn issue_17191() {
+    check_types(
+        r#"
+trait A {
+    type Item;
+}
+
+trait B<T> {}
+
+fn foo<T: B<impl A>>() {}
+
+fn test() {
+    let f = foo;
+      //^ fn foo<{unknown}>()
+}"#,
+    );
+}

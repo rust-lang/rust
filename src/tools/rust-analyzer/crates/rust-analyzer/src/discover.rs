@@ -1,4 +1,5 @@
-//! A `cargo-metadata`-equivalent for non-Cargo build systems.
+//! Infrastructure for lazy project discovery. Currently only support rust-project.json discovery
+//! via a custom discover command.
 use std::{io, process::Command};
 
 use crossbeam_channel::Sender;
@@ -9,19 +10,19 @@ use serde_json::Value;
 
 use crate::command::{CommandHandle, ParseFromLine};
 
-pub const ARG_PLACEHOLDER: &str = "{arg}";
+pub(crate) const ARG_PLACEHOLDER: &str = "{arg}";
 
 /// A command wrapper for getting a `rust-project.json`.
 ///
-/// This is analogous to `cargo-metadata`, but for non-Cargo build systems.
-pub struct Discover {
+/// This is analogous to discovering a cargo project + running `cargo-metadata` on it, but for non-Cargo build systems.
+pub(crate) struct DiscoverCommand {
     command: Vec<String>,
     sender: Sender<DiscoverProjectMessage>,
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum DiscoverArgument {
+pub(crate) enum DiscoverArgument {
     Path(#[serde(serialize_with = "serialize_abs_pathbuf")] AbsPathBuf),
     Buildfile(#[serde(serialize_with = "serialize_abs_pathbuf")] AbsPathBuf),
 }
@@ -34,14 +35,14 @@ where
     se.serialize_str(path.as_str())
 }
 
-impl Discover {
-    /// Create a new [Discover].
-    pub fn new(sender: Sender<DiscoverProjectMessage>, command: Vec<String>) -> Self {
+impl DiscoverCommand {
+    /// Create a new [DiscoverCommand].
+    pub(crate) fn new(sender: Sender<DiscoverProjectMessage>, command: Vec<String>) -> Self {
         Self { sender, command }
     }
 
     /// Spawn the command inside [Discover] and report progress, if any.
-    pub fn spawn(&self, discover_arg: DiscoverArgument) -> io::Result<DiscoverHandle> {
+    pub(crate) fn spawn(&self, discover_arg: DiscoverArgument) -> io::Result<DiscoverHandle> {
         let command = &self.command[0];
         let args = &self.command[1..];
 
@@ -65,7 +66,7 @@ impl Discover {
 
 /// A handle to a spawned [Discover].
 #[derive(Debug)]
-pub struct DiscoverHandle {
+pub(crate) struct DiscoverHandle {
     _handle: CommandHandle<DiscoverProjectMessage>,
 }
 
@@ -81,7 +82,7 @@ enum DiscoverProjectData {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum DiscoverProjectMessage {
+pub(crate) enum DiscoverProjectMessage {
     Finished { project: ProjectJsonData, buildfile: AbsPathBuf },
     Error { error: String, source: Option<String> },
     Progress { message: String },
