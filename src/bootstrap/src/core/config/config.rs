@@ -2681,10 +2681,11 @@ fn check_incompatible_options_for_ci_rustc(
                 if Some(current) != $expected.as_ref() {
                     return Err(format!(
                         "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`. \
-                        Current value: {:?}, Expected value(s): None/{:?}",
+                        Current value: {:?}, Expected value(s): {}{:?}",
                         stringify!($expected).replace("_", "-"),
                         $current,
-                        $expected
+                        if $expected.is_some() { "None/" } else { "" },
+                        $expected,
                     ));
                 };
             };
@@ -2693,11 +2694,15 @@ fn check_incompatible_options_for_ci_rustc(
 
     macro_rules! warn {
         ($current:expr, $expected:expr) => {
-            if let Some(current) = $current {
-                if Some(current) != $expected {
+            if let Some(current) = &$current {
+                if Some(current) != $expected.as_ref() {
                     println!(
-                        "WARNING: `rust.{}` has no effect with `rust.download-rustc`.",
-                        stringify!($expected).replace("_", "-")
+                        "WARNING: `rust.{}` has no effect with `rust.download-rustc`. \
+                        Current value: {:?}, Expected value(s): {}{:?}",
+                        stringify!($expected).replace("_", "-"),
+                        $current,
+                        if $expected.is_some() { "None/" } else { "" },
+                        $expected,
                     );
                 };
             };
