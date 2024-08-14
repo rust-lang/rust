@@ -34,8 +34,15 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// use std::io;
     /// fn foo<W: io::Write>(w: &mut W) -> io::Result<()> {
-    ///     // must be `w.write_all(b"foo")?;`
     ///     w.write(b"foo")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// use std::io;
+    /// fn foo<W: io::Write>(w: &mut W) -> io::Result<()> {
+    ///     w.write_all(b"foo")?;
     ///     Ok(())
     /// }
     /// ```
