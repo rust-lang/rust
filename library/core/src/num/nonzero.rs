@@ -426,7 +426,7 @@ where
     #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
     #[inline]
     pub const fn get(self) -> T {
-        self.0
+        self.0.0
     }
 }
 
