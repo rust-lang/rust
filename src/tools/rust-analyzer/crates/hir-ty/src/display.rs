@@ -1019,26 +1019,25 @@ impl HirDisplay for Ty {
                     let (parent_len, self_param, type_, const_, impl_, lifetime) =
                         generics.provenance_split();
                     let parameters = parameters.as_slice(Interner);
+                    debug_assert_eq!(
+                        parameters.len(),
+                        parent_len + self_param as usize + type_ + const_ + impl_ + lifetime
+                    );
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if parameters.len() - impl_ > 0 {
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
+                        let parameters =
+                            generic_args_sans_defaults(f, Some(generic_def_id), parameters);
                         let without_impl = self_param as usize + type_ + const_ + lifetime;
                         // parent's params (those from enclosing impl or trait, if any).
                         let (fn_params, parent_params) = parameters.split_at(without_impl + impl_);
-                        debug_assert_eq!(parent_params.len(), parent_len);
-
-                        let parent_params =
-                            generic_args_sans_defaults(f, Some(generic_def_id), parent_params);
-                        let fn_params =
-                            &generic_args_sans_defaults(f, Some(generic_def_id), fn_params)
-                                [0..without_impl];
 
                         write!(f, "<")?;
                         hir_fmt_generic_arguments(f, parent_params, None)?;
                         if !parent_params.is_empty() && !fn_params.is_empty() {
                             write!(f, ", ")?;
                         }
-                        hir_fmt_generic_arguments(f, fn_params, None)?;
+                        hir_fmt_generic_arguments(f, &fn_params[0..without_impl], None)?;
                         write!(f, ">")?;
                     }
                 }

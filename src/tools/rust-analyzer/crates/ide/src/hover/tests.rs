@@ -8602,3 +8602,31 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn issue_17871() {
+    check(
+        r#"
+trait T {
+    fn f<A>();
+}
+
+struct S {}
+impl T for S {
+    fn f<A>() {}
+}
+
+fn main() {
+    let x$0 = S::f::<i32>;
+}
+"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            // size = 0, align = 1
+            let x: fn f<S, i32>()
+            ```
+        "#]],
+    );
+}
