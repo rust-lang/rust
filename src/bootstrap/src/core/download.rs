@@ -519,7 +519,7 @@ impl Config {
         extra_components: &[&str],
         download_component: fn(&Config, String, &str, &str),
     ) {
-        let host = self.build;
+        let host = self.build.triple;
         let bin_root = self.out.join(host).join(sysroot);
         let rustc_stamp = bin_root.join(".rustc-stamp");
 

@@ -733,9 +733,11 @@ impl Options {
         let html_no_source = matches.opt_present("html-no-source");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
-            dcx.fatal(
-                "--generate-link-to-definition option can only be used with HTML output format",
-            );
+            dcx.struct_warn(
+                "`--generate-link-to-definition` option can only be used with HTML output format",
+            )
+            .with_note("`--generate-link-to-definition` option will be ignored")
+            .emit();
         }
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
