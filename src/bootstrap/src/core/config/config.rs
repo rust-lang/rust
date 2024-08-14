@@ -1200,19 +1200,19 @@ impl Config {
     }
 
     #[cfg(test)]
-    fn get_toml(_: &Path) -> TomlConfig {
-        TomlConfig::default()
+    fn get_toml(_: &Path) -> Result<TomlConfig, toml::de::Error> {
+        Ok(TomlConfig::default())
     }
 
     #[cfg(not(test))]
-    fn get_toml(file: &Path) -> TomlConfig {
+    fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
             t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
         // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
         // TomlConfig and sub types to be monomorphized 5x by toml.
         toml::from_str(&contents)
             .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            .unwrap_or_else(|err| {
+            .inspect_err(|_| {
                 if let Ok(Some(changes)) = toml::from_str(&contents)
                     .and_then(|table: toml::Value| ChangeIdWrapper::deserialize(table))
                     .map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
@@ -1224,9 +1224,6 @@ impl Config {
                         );
                     }
                 }
-
-                eprintln!("failed to parse TOML configuration '{}': {err}", file.display());
-                exit!(2);
             })
     }
 
@@ -1234,7 +1231,10 @@ impl Config {
         Self::parse_inner(flags, Self::get_toml)
     }
 
-    pub(crate) fn parse_inner(mut flags: Flags, get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
+    pub(crate) fn parse_inner(
+        mut flags: Flags,
+        get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
+    ) -> Config {
         let mut config = Config::default_opts();
 
         // Set flags.
@@ -1342,7 +1342,10 @@ impl Config {
             } else {
                 toml_path.clone()
             });
-            get_toml(&toml_path)
+            get_toml(&toml_path).unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to parse '{}': {e}", toml_path.display());
+                exit!(2);
+            })
         } else {
             config.config = None;
             TomlConfig::default()
@@ -1373,7 +1376,13 @@ impl Config {
             include_path.push("bootstrap");
             include_path.push("defaults");
             include_path.push(format!("config.{include}.toml"));
-            let included_toml = get_toml(&include_path);
+            let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
+                eprintln!(
+                    "ERROR: Failed to parse default config profile at '{}': {e}",
+                    include_path.display()
+                );
+                exit!(2);
+            });
             toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
         }
 
@@ -2331,8 +2340,21 @@ impl Config {
                     if let Some(config_path) = &self.config {
                         let builder_config_path =
                             self.out.join(self.build.triple).join("ci-rustc").join(BUILDER_CONFIG_FILENAME);
-                        let ci_config_toml = Self::get_toml(&builder_config_path);
-                        let current_config_toml = Self::get_toml(config_path);
+
+                        let ci_config_toml = match Self::get_toml(&builder_config_path) {
+                            Ok(ci_config_toml) => ci_config_toml,
+                            Err(e) if e.to_string().contains("unknown field") => {
+                                println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
+                                println!("HELP: Consider rebasing to a newer commit if available.");
+                                return None;
+                            },
+                            Err(e) => {
+                                eprintln!("ERROR: Failed to parse CI rustc config at '{}': {e}", builder_config_path.display());
+                                exit!(2);
+                            },
+                        };
+
+                        let current_config_toml = Self::get_toml(config_path).unwrap();
 
                         // Check the config compatibility
                         // FIXME: this doesn't cover `--set` flags yet.
