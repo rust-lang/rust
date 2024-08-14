@@ -764,18 +764,22 @@ impl GlobalState {
             FlycheckConfig::CargoCommand { .. } => {
                 crate::flycheck::InvocationStrategy::PerWorkspace
             }
-            FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
+            FlycheckConfig::CustomCommand { ref invocation_strategy, .. } => {
+                invocation_strategy.clone()
+            }
         };
 
         self.flycheck = match invocation_strategy {
-            crate::flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
-                0,
-                sender,
-                config,
-                None,
-                self.config.root_path().clone(),
-                None,
-            )],
+            crate::flycheck::InvocationStrategy::Once => {
+                vec![FlycheckHandle::spawn(
+                    0,
+                    sender,
+                    config,
+                    None,
+                    self.config.root_path().clone(),
+                    None,
+                )]
+            }
             crate::flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()

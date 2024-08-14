@@ -15,18 +15,11 @@ use toolchain::Tool;
 
 use crate::command::{CommandHandle, ParseFromLine};
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum InvocationStrategy {
     Once,
     #[default]
     PerWorkspace,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) enum InvocationLocation {
-    Root(AbsPathBuf),
-    #[default]
-    Workspace,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,7 +72,6 @@ pub(crate) enum FlycheckConfig {
         args: Vec<String>,
         extra_env: FxHashMap<String, String>,
         invocation_strategy: InvocationStrategy,
-        invocation_location: InvocationLocation,
     },
 }
 
@@ -424,30 +416,17 @@ impl FlycheckActor {
                 cmd.args(&options.extra_args);
                 Some(cmd)
             }
-            FlycheckConfig::CustomCommand {
-                command,
-                args,
-                extra_env,
-                invocation_strategy,
-                invocation_location,
-            } => {
+            FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
                 let mut cmd = Command::new(command);
                 cmd.envs(extra_env);
 
-                match invocation_location {
-                    InvocationLocation::Workspace => {
-                        match invocation_strategy {
-                            InvocationStrategy::Once => {
-                                cmd.current_dir(&self.root);
-                            }
-                            InvocationStrategy::PerWorkspace => {
-                                // FIXME: cmd.current_dir(&affected_workspace);
-                                cmd.current_dir(&self.root);
-                            }
-                        }
+                match invocation_strategy {
+                    InvocationStrategy::Once => {
+                        cmd.current_dir(&self.root);
                     }
-                    InvocationLocation::Root(root) => {
-                        cmd.current_dir(root);
+                    InvocationStrategy::PerWorkspace => {
+                        // FIXME: cmd.current_dir(&affected_workspace);
+                        cmd.current_dir(&self.root);
                     }
                 }
 
