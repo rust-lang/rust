@@ -793,11 +793,12 @@ impl InferenceContext<'_> {
                         .trait_data(index_trait)
                         .method_by_name(&Name::new_symbol_root(sym::index.clone()))
                     {
-                        let substs = TyBuilder::subst_for_def(self.db, index_trait, None)
-                            .push(self_ty.clone())
-                            .push(index_ty.clone())
-                            .build();
-                        self.write_method_resolution(tgt_expr, func, substs);
+                        let subst = TyBuilder::subst_for_def(self.db, index_trait, None);
+                        if subst.remaining() != 2 {
+                            return self.err_ty();
+                        }
+                        let subst = subst.push(self_ty.clone()).push(index_ty.clone()).build();
+                        self.write_method_resolution(tgt_expr, func, subst);
                     }
                     let assoc = self.resolve_ops_index_output();
                     let res = self.resolve_associated_type_with_params(
@@ -1295,10 +1296,12 @@ impl InferenceContext<'_> {
 
         // HACK: We can use this substitution for the function because the function itself doesn't
         // have its own generic parameters.
-        let subst = TyBuilder::subst_for_def(self.db, trait_, None)
-            .push(lhs_ty.clone())
-            .push(rhs_ty.clone())
-            .build();
+        let subst = TyBuilder::subst_for_def(self.db, trait_, None);
+        if subst.remaining() != 2 {
+            return Ty::new(Interner, TyKind::Error);
+        }
+        let subst = subst.push(lhs_ty.clone()).push(rhs_ty.clone()).build();
+
         self.write_method_resolution(tgt_expr, func, subst.clone());
 
         let method_ty = self.db.value_ty(func.into()).unwrap().substitute(Interner, &subst);
