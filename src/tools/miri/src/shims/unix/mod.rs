@@ -17,6 +17,7 @@ mod solarish;
 pub use env::UnixEnvVars;
 pub use fd::{FdTable, FileDescription};
 pub use fs::DirTable;
+pub use linux::epoll::EpollInterestTable;
 // All the Unix-specific extension traits
 pub use env::EvalContextExt as _;
 pub use fd::EvalContextExt as _;

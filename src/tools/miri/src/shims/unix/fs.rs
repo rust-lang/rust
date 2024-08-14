@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::Size;
 
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::unix::fd::FdId;
 use crate::shims::unix::*;
 use crate::*;
 use shims::time::system_time_to_duration;
@@ -32,6 +33,7 @@ impl FileDescription for FileHandle {
     fn read<'tcx>(
         &mut self,
         communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -42,6 +44,7 @@ impl FileDescription for FileHandle {
     fn write<'tcx>(
         &mut self,
         communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -109,6 +112,7 @@ impl FileDescription for FileHandle {
     fn close<'tcx>(
         self: Box<Self>,
         communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         // We sync the file if it was opened in a mode different than read-only.

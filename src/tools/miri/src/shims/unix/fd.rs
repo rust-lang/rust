@@ -6,9 +6,11 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
 use std::rc::Rc;
+use std::rc::Weak;
 
 use rustc_target::abi::Size;
 
+use crate::shims::unix::linux::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -27,6 +29,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     fn read<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         _bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -37,6 +40,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         _bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -80,6 +84,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         throw_unsup_format!("cannot close {}", self.name());
     }
@@ -96,6 +101,11 @@ pub trait FileDescription: std::fmt::Debug + Any {
         // Most FDs are not tty's and the consequence of a wrong `false` are minor,
         // so we use a default impl here.
         false
+    }
+
+    /// Check the readiness of file description.
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        throw_unsup_format!("{}: epoll does not support this file description", self.name());
     }
 }
 
@@ -119,6 +129,7 @@ impl FileDescription for io::Stdin {
     fn read<'tcx>(
         &mut self,
         communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -142,6 +153,7 @@ impl FileDescription for io::Stdout {
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -170,6 +182,7 @@ impl FileDescription for io::Stderr {
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -195,6 +208,7 @@ impl FileDescription for NullOutput {
     fn write<'tcx>(
         &mut self,
         _communicate_allowed: bool,
+        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -203,36 +217,98 @@ impl FileDescription for NullOutput {
     }
 }
 
+/// Structure contains both the file description and its unique identifier.
 #[derive(Clone, Debug)]
-pub struct FileDescriptionRef(Rc<RefCell<Box<dyn FileDescription>>>);
+pub struct FileDescWithId<T: FileDescription + ?Sized> {
+    id: FdId,
+    file_description: RefCell<Box<T>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct FileDescriptionRef(Rc<FileDescWithId<dyn FileDescription>>);
 
 impl FileDescriptionRef {
-    fn new(fd: impl FileDescription) -> Self {
-        FileDescriptionRef(Rc::new(RefCell::new(Box::new(fd))))
+    fn new(fd: impl FileDescription, id: FdId) -> Self {
+        FileDescriptionRef(Rc::new(FileDescWithId {
+            id,
+            file_description: RefCell::new(Box::new(fd)),
+        }))
     }
 
     pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
-        Ref::map(self.0.borrow(), |fd| fd.as_ref())
+        Ref::map(self.0.file_description.borrow(), |fd| fd.as_ref())
     }
 
     pub fn borrow_mut(&self) -> RefMut<'_, dyn FileDescription> {
-        RefMut::map(self.0.borrow_mut(), |fd| fd.as_mut())
+        RefMut::map(self.0.file_description.borrow_mut(), |fd| fd.as_mut())
     }
 
-    pub fn close<'ctx>(self, communicate_allowed: bool) -> InterpResult<'ctx, io::Result<()>> {
+    pub fn close<'tcx>(
+        self,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
         // Destroy this `Rc` using `into_inner` so we can call `close` instead of
         // implicitly running the destructor of the file description.
+        let id = self.get_id();
         match Rc::into_inner(self.0) {
-            Some(fd) => RefCell::into_inner(fd).close(communicate_allowed),
+            Some(fd) => {
+                // Remove entry from the global epoll_event_interest table.
+                ecx.machine.epoll_interests.remove(id);
+
+                RefCell::into_inner(fd.file_description).close(communicate_allowed, ecx)
+            }
             None => Ok(Ok(())),
         }
     }
+
+    pub fn downgrade(&self) -> WeakFileDescriptionRef {
+        WeakFileDescriptionRef { weak_ref: Rc::downgrade(&self.0) }
+    }
+
+    pub fn get_id(&self) -> FdId {
+        self.0.id
+    }
+
+    /// Function used to retrieve the readiness events of a file description and insert
+    /// an `EpollEventInstance` into the ready list if the file description is ready.
+    pub(crate) fn check_and_update_readiness<'tcx>(
+        &self,
+        ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
+    ) -> InterpResult<'tcx, ()> {
+        use crate::shims::unix::linux::epoll::EvalContextExt;
+        ecx.check_and_update_readiness(self.get_id(), || self.borrow_mut().get_epoll_ready_events())
+    }
 }
+
+/// Holds a weak reference to the actual file description.
+#[derive(Clone, Debug, Default)]
+pub struct WeakFileDescriptionRef {
+    weak_ref: Weak<FileDescWithId<dyn FileDescription>>,
+}
+
+impl WeakFileDescriptionRef {
+    pub fn upgrade(&self) -> Option<FileDescriptionRef> {
+        if let Some(file_desc_with_id) = self.weak_ref.upgrade() {
+            return Some(FileDescriptionRef(file_desc_with_id));
+        }
+        None
+    }
+}
+
+/// A unique id for file descriptions. While we could use the address, considering that
+/// is definitely unique, the address would expose interpreter internal state when used
+/// for sorting things. So instead we generate a unique id per file description that stays
+/// the same even if a file descriptor is duplicated and gets a new integer file descriptor.
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FdId(usize);
 
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    fds: BTreeMap<i32, FileDescriptionRef>,
+    pub fds: BTreeMap<i32, FileDescriptionRef>,
+    /// Unique identifier for file description, used to differentiate between various file description.
+    next_file_description_id: FdId,
 }
 
 impl VisitProvenance for FdTable {
@@ -243,7 +319,7 @@ impl VisitProvenance for FdTable {
 
 impl FdTable {
     fn new() -> Self {
-        FdTable { fds: BTreeMap::new() }
+        FdTable { fds: BTreeMap::new(), next_file_description_id: FdId(0) }
     }
     pub(crate) fn init(mute_stdout_stderr: bool) -> FdTable {
         let mut fds = FdTable::new();
@@ -260,7 +336,8 @@ impl FdTable {
 
     /// Insert a new file description to the FdTable.
     pub fn insert_new(&mut self, fd: impl FileDescription) -> i32 {
-        let file_handle = FileDescriptionRef::new(fd);
+        let file_handle = FileDescriptionRef::new(fd, self.next_file_description_id);
+        self.next_file_description_id = FdId(self.next_file_description_id.0.strict_add(1));
         self.insert_ref_with_min_fd(file_handle, 0)
     }
 
@@ -337,7 +414,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
             if let Some(file_description) = this.machine.fds.fds.insert(new_fd, dup_fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                file_description.close(this.machine.communicate())?.ok();
+                file_description.close(this.machine.communicate(), this)?.ok();
             }
         }
         Ok(Scalar::from_i32(new_fd))
@@ -442,7 +519,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(file_description) = this.machine.fds.remove(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let result = file_description.close(this.machine.communicate())?;
+        let result = file_description.close(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -499,7 +576,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `usize::MAX` because it is bounded by the host's `isize`.
         let mut bytes = vec![0; usize::try_from(count).unwrap()];
         let result = match offset {
-            None => fd.borrow_mut().read(communicate, &mut bytes, this),
+            None => fd.borrow_mut().read(communicate, fd.get_id(), &mut bytes, this),
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
@@ -509,7 +586,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 fd.borrow_mut().pread(communicate, &mut bytes, offset, this)
             }
         };
-        drop(fd);
 
         // `File::read` never returns a value larger than `count`, so this cannot fail.
         match result?.map(|c| i64::try_from(c).unwrap()) {
@@ -558,7 +634,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let result = match offset {
-            None => fd.borrow_mut().write(communicate, &bytes, this),
+            None => fd.borrow_mut().write(communicate, fd.get_id(), &bytes, this),
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
@@ -568,7 +644,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 fd.borrow_mut().pwrite(communicate, &bytes, offset, this)
             }
         };
-        drop(fd);
 
         let result = result?.map(|c| i64::try_from(c).unwrap());
         Ok(Scalar::from_target_isize(this.try_unwrap_io_result(result)?, this))
