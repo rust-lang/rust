@@ -262,10 +262,6 @@ function toggleExpansion(expand) {
     );
 }
 
-function clearVersionFilters() {
-    onEachLazy(document.querySelectorAll("#version-filter-count input"), el => el.value = "");
-}
-
 const GROUPS_FILTER_DEFAULT = {
     cargo: true,
     complexity: true,
@@ -307,11 +303,16 @@ window.filters = {
             filters.allLints = Array.prototype.slice.call(
                 document.getElementsByTagName("article"),
             ).map(elem => {
+                let version = elem.querySelector(".label-version").innerText;
+                // Strip the "pre " prefix for pre 1.29.0 lints
+                if (version.startsWith("pre ")) {
+                    version = version.slice(4);
+                }
                 return {
                     elem: elem,
                     group: elem.querySelector(".label-lint-group").innerText,
                     level: elem.querySelector(".label-lint-level").innerText,
-                    version: elem.querySelector(".label-version").innerText,
+                    version: parseInt(version.split(".")[1]),
                     applicability: elem.querySelector(".label-applicability").innerText,
                     filteredOut: false,
                     searchFilteredOut: false,
@@ -324,7 +325,11 @@ window.filters = {
         for (const lint of filters.getAllLints()) {
             lint.filteredOut = (!filters.groups_filter[lint.group]
                 || !filters.levels_filter[lint.level]
-                || !filters.applicabilities_filter[lint.applicability]);
+                || !filters.applicabilities_filter[lint.applicability]
+                || !(filters.version_filter["="] === null || lint.version === filters.version_filter["="])
+                || !(filters.version_filter["≥"] === null || lint.version > filters.version_filter["≥"])
+                || !(filters.version_filter["≤"] === null || lint.version < filters.version_filter["≤"])
+            );
             if (lint.filteredOut || lint.searchFilteredOut) {
                 lint.elem.style.display = "none";
             } else {
@@ -340,6 +345,38 @@ function updateFilter(elem, filter) {
         filters[filter][value] = elem.checked;
         const counter = document.querySelector(`#${filters[filter].id} .badge`);
         counter.innerText = parseInt(counter.innerText) + (elem.checked ? 1 : -1);
+        filters.filterLints();
+    }
+}
+
+function updateVersionFilters(elem, comparisonKind) {
+    let value = elem.value.trim();
+    if (value.length === 0) {
+        value = null;
+    } else if (/^\d+$/.test(value)) {
+        value = parseInt(value);
+    } else {
+        console.error(`Failed to get version number from "${value}"`);
+        return;
+    }
+    if (filters.version_filter[comparisonKind] !== value) {
+        filters.version_filter[comparisonKind] = value;
+        filters.filterLints();
+    }
+}
+
+function clearVersionFilters() {
+    let needsUpdate = false;
+
+    onEachLazy(document.querySelectorAll("#version-filter input"), el => {
+        el.value = "";
+        const comparisonKind = el.getAttribute("data-value");
+        if (filters.version_filter[comparisonKind] !== null) {
+            needsUpdate = true;
+            filters.version_filter[comparisonKind] = null;
+        }
+    });
+    if (needsUpdate) {
         filters.filterLints();
     }
 }
@@ -414,10 +451,15 @@ function generateSettings() {
     <span>1.</span> \
     <input type="number" \
            min="29" \
-           id="filter-${kind}" \
            class="version-filter-input form-control filter-input" \
            maxlength="2" \
-           onchange="updateVersionFilters()" />\
+           data-value="${kind}" \
+           onchange="updateVersionFilters(this, '${kind}')" \
+           oninput="updateVersionFilters(this, '${kind}')" \
+           onkeydown="updateVersionFilters(this, '${kind}')" \
+           onkeyup="updateVersionFilters(this, '${kind}')" \
+           onpaste="updateVersionFilters(this, '${kind}')" \
+    />
     <span>.0</span>\
 </li>`;
     }
