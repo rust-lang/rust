@@ -291,7 +291,7 @@ impl Config {
             let mut short_path = t!(original_path.strip_prefix(directory_prefix));
             let is_builder_config = short_path.to_str() == Some(BUILDER_CONFIG_FILENAME);
 
-            if !short_path.starts_with(pattern) && (is_ci_rustc && !is_builder_config) {
+            if !(short_path.starts_with(pattern) || (is_ci_rustc && is_builder_config)) {
                 continue;
             }
             short_path = short_path.strip_prefix(pattern).unwrap_or(short_path);
