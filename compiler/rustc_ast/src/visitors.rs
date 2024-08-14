@@ -27,9 +27,6 @@ macro_rules! mutability_dependent {
         fn visit_field_def(&mut self, s: &'ast FieldDef) -> Self::Result {
             walk_field_def(self, s)
         }
-        fn visit_enum_def(&mut self, enum_definition: &'ast EnumDef) -> Self::Result {
-            walk_enum_def(self, enum_definition)
-        }
         fn visit_variant(&mut self, v: &'ast Variant) -> Self::Result {
             walk_variant(self, v)
         }
@@ -421,6 +418,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_where_clause(&mut self, where_clause: ref_t!(WhereClause)) -> result!() {
                 walk_where_clause(self, where_clause)
+            }
+
+            fn visit_enum_def(&mut self, enum_definition: ref_t!(EnumDef)) -> result!() {
+                walk_enum_def(self, enum_definition)
             }
 
             // FIXME: remove _ on ident if mut
@@ -2490,9 +2491,9 @@ pub mod mut_visit {
                     visit_opt(ty, |ty| vis.visit_ty(ty));
                     walk_ty_alias_where_clauses(vis, where_clauses);
                 }
-                ItemKind::Enum(EnumDef { variants }, generics) => {
+                ItemKind::Enum(enum_def, generics) => {
                     vis.visit_generics(generics);
-                    variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
+                    vis.visit_enum_def(enum_def);
                 }
                 ItemKind::Struct(variant_data, generics)
                 | ItemKind::Union(variant_data, generics) => {
@@ -3071,6 +3072,11 @@ pub mod mut_visit {
             }
         }
     }
+
+    pub fn walk_enum_def<T: MutVisitor>(vis: &mut T, EnumDef { variants }: &mut EnumDef) {
+        variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
+    }
+
 
     /// Some value for the AST node that is valid but possibly meaningless. Similar
     /// to `Default` but not intended for wide use. The value will never be used
