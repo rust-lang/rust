@@ -54,3 +54,4 @@
 [submodule "src/gcc"]
 	path = src/gcc
 	url = https://github.com/rust-lang/gcc.git
+	shallow = true
