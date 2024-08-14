@@ -76,6 +76,29 @@ window.searchState = {
         setTimeout(searchState.filterLints, 50);
     },
     filterLints: () => {
+        function matchesSearch(lint, terms, searchStr) {
+            // Search by id
+            if (lint.elem.id.indexOf(searchStr) !== -1) {
+                return true;
+            }
+            // Search the description
+            // The use of `for`-loops instead of `foreach` enables us to return early
+            const docsLowerCase = lint.elem.textContent.toLowerCase();
+            for (const term of terms) {
+                // This is more likely and will therefore be checked first
+                if (docsLowerCase.indexOf(term) !== -1) {
+                    return true;
+                }
+
+                if (lint.elem.id.indexOf(term) !== -1) {
+                    return true;
+                }
+
+                return false;
+            }
+            return true;
+        }
+
         searchState.clearInputTimeout();
 
         let searchStr = searchState.inputElem.value.trim().toLowerCase();
@@ -87,29 +110,19 @@ window.searchState = {
         }
         searchState.lastSearch = searchStr;
         const terms = searchStr.split(" ");
+        const cleanedSearchStr = searchStr.replaceAll("-", "_");
 
-        onEachLazy(document.querySelectorAll("article"), lint => {
-            // Search by id
-            if (lint.id.indexOf(searchStr.replaceAll("-", "_")) !== -1) {
-                lint.style.display = "";
-                return;
+        for (const lint of filters.getAllLints()) {
+            lint.searchFilteredOut = !matchesSearch(lint, terms, cleanedSearchStr);
+            if (lint.filteredOut) {
+                continue;
             }
-            // Search the description
-            // The use of `for`-loops instead of `foreach` enables us to return early
-            const docsLowerCase = lint.textContent.toLowerCase();
-            for (index = 0; index < terms.length; index++) {
-                // This is more likely and will therefore be checked first
-                if (docsLowerCase.indexOf(terms[index]) !== -1) {
-                    return;
-                }
-
-                if (lint.id.indexOf(terms[index]) !== -1) {
-                    return;
-                }
-
-                lint.style.display = "none";
+            if (lint.searchFilteredOut) {
+                lint.elem.style.display = "none";
+            } else {
+                lint.elem.style.display = "";
             }
-        });
+        }
         if (searchStr.length > 0) {
             window.location.hash = `/${searchStr}`;
         } else {
@@ -151,12 +164,26 @@ function handleShortcut(ev) {
 document.addEventListener("keypress", handleShortcut);
 document.addEventListener("keydown", handleShortcut);
 
-function toggleElements(element, value) {
-    // `element` is always a button in a `li` in a `ul`. We want the `input` in the `ul`.
+function toggleElements(filter, value) {
+    let needsUpdate = false;
+    let count = 0;
+
+    const element = document.getElementById(filters[filter].id);
     onEachLazy(
-        element.parentElement.parentElement.getElementsByTagName("input"),
-        el => el.checked = value,
+        element.querySelectorAll("ul input"),
+        el => {
+            if (el.checked !== value) {
+                el.checked = value;
+                filters[filter][el.getAttribute("data-value")] = value;
+                needsUpdate = true;
+            }
+            count += 1;
+        }
     );
+    element.querySelector(".badge").innerText = value ? count : 0;
+    if (needsUpdate) {
+        filters.filterLints();
+    }
 }
 
 function changeSetting(elem) {
@@ -251,15 +278,90 @@ const GROUPS_FILTER_DEFAULT = {
     style: true,
     suspicious: true,
 };
+const LEVEL_FILTERS_DEFAULT = {
+    allow: true,
+    warn: true,
+    deny: true,
+    none: true,
+};
+const APPLICABILITIES_FILTER_DEFAULT = {
+    Unspecified: true,
+    Unresolved: true,
+    MachineApplicable: true,
+    MaybeIncorrect: true,
+    HasPlaceholders: true,
+};
 
-function resetGroupsToDefault() {
-    onEachLazy(document.querySelectorAll("#lint-groups-selector input"), el => {
-        const key = el.getAttribute("data-value");
-        el.checked = GROUPS_FILTER_DEFAULT[key];
-    });
+window.filters = {
+    groups_filter: { id: "lint-groups", ...GROUPS_FILTER_DEFAULT },
+    levels_filter: { id: "lint-levels", ...LEVEL_FILTERS_DEFAULT },
+    applicabilities_filter: { id: "lint-applicabilities", ...APPLICABILITIES_FILTER_DEFAULT },
+    version_filter: {
+        "≥": null,
+        "≤": null,
+        "=": null,
+    },
+    allLints: null,
+    getAllLints: () => {
+        if (filters.allLints === null) {
+            filters.allLints = Array.prototype.slice.call(
+                document.getElementsByTagName("article"),
+            ).map(elem => {
+                return {
+                    elem: elem,
+                    group: elem.querySelector(".label-lint-group").innerText,
+                    level: elem.querySelector(".label-lint-level").innerText,
+                    version: elem.querySelector(".label-version").innerText,
+                    applicability: elem.querySelector(".label-applicability").innerText,
+                    filteredOut: false,
+                    searchFilteredOut: false,
+                };
+            });
+        }
+        return filters.allLints;
+    },
+    filterLints: () => {
+        for (const lint of filters.getAllLints()) {
+            lint.filteredOut = (!filters.groups_filter[lint.group]
+                || !filters.levels_filter[lint.level]
+                || !filters.applicabilities_filter[lint.applicability]);
+            if (lint.filteredOut || lint.searchFilteredOut) {
+                lint.elem.style.display = "none";
+            } else {
+                lint.elem.style.display = "";
+            }
+        }
+    },
+};
+
+function updateFilter(elem, filter) {
+    const value = elem.getAttribute("data-value");
+    if (filters[filter][value] !== elem.checked) {
+        filters[filter][value] = elem.checked;
+        const counter = document.querySelector(`#${filters[filter].id} .badge`);
+        counter.innerText = parseInt(counter.innerText) + (elem.checked ? 1 : -1);
+        filters.filterLints();
+    }
 }
 
-function generateListOfOptions(list, elementId) {
+function resetGroupsToDefault() {
+    let needsUpdate = false;
+
+    onEachLazy(document.querySelectorAll("#lint-groups-selector input"), el => {
+        const key = el.getAttribute("data-value");
+        const value = GROUPS_FILTER_DEFAULT[key];
+        if (filters.groups_filter[key] !== value) {
+            filters.groups_filter[key] = value;
+            el.checked = value;
+            needsUpdate = true;
+        }
+    });
+    if (needsUpdate) {
+        filters.filterLints();
+    }
+}
+
+function generateListOfOptions(list, elementId, filter) {
     let html = '';
     let nbEnabled = 0;
     for (const [key, value] of Object.entries(list)) {
@@ -267,7 +369,8 @@ function generateListOfOptions(list, elementId) {
         html += `\
 <li class="checkbox">\
     <label class="text-capitalize">\
-        <input type="checkbox" data-value="${key}"${attr}/>${key}\
+        <input type="checkbox" data-value="${key}" \
+               onchange="updateFilter(this, '${filter}')"${attr}/>${key}\
     </label>\
 </li>`;
         if (value) {
@@ -298,20 +401,10 @@ function setupDropdown(elementId) {
 function generateSettings() {
     setupDropdown("settings-dropdown");
 
-    const LEVEL_FILTERS_DEFAULT = {allow: true, warn: true, deny: true, none: true};
-    generateListOfOptions(LEVEL_FILTERS_DEFAULT, "lint-levels");
-
-    // Generate lint groups.
-    generateListOfOptions(GROUPS_FILTER_DEFAULT, "lint-groups");
-
-    const APPLICABILITIES_FILTER_DEFAULT = {
-        Unspecified: true,
-        Unresolved: true,
-        MachineApplicable: true,
-        MaybeIncorrect: true,
-        HasPlaceholders: true
-    };
-    generateListOfOptions(APPLICABILITIES_FILTER_DEFAULT, "lint-applicabilities");
+    generateListOfOptions(LEVEL_FILTERS_DEFAULT, "lint-levels", "levels_filter");
+    generateListOfOptions(GROUPS_FILTER_DEFAULT, "lint-groups", "groups_filter");
+    generateListOfOptions(
+        APPLICABILITIES_FILTER_DEFAULT, "lint-applicabilities", "applicabilities_filter");
 
     let html = '';
     for (const kind of ["≥", "≤", "="]) {
@@ -361,5 +454,5 @@ function scrollToLintByURL() {
 }
 
 scrollToLintByURL();
-
+filters.filterLints();
 onEachLazy(document.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));

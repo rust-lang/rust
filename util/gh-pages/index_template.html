@@ -61,31 +61,31 @@ Otherwise, have a great day =^.^=
                     <div id="upper-filters" class="col-12 col-md-5">
                         <div class="btn-group" id="lint-levels" tabindex="-1">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Lint levels <span class="badge" id="selected-levels">4</span> <span class="caret"></span>
+                                Lint levels <span class="badge">4</span> <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu" id="lint-levels-selector">
                                 <li class="checkbox">
-                                    <button onclick="toggleElements(this, true)">All</button>
+                                    <button onclick="toggleElements('levels_filter', true)">All</button>
                                 </li>
                                 <li class="checkbox">
-                                    <button onclick="toggleElements(this, false)">None</button>
+                                    <button onclick="toggleElements('levels_filter', false)">None</button>
                                 </li>
                                 <li role="separator" class="divider"></li>
                             </ul>
                         </div>
                         <div class="btn-group" id="lint-groups" tabindex="-1">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Lint groups <span class="badge" id="selected-groups"></span> <span class="caret"></span>
+                                Lint groups <span class="badge"></span> <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu" id="lint-groups-selector">
                                 <li class="checkbox">
-                                    <button onclick="toggleElements(this, true)">All</button>
+                                    <button onclick="toggleElements('groups_filter', true)">All</button>
                                 </li>
                                 <li class="checkbox">
                                     <button onclick="resetGroupsToDefault()">Default</button>
                                 </li>
                                 <li class="checkbox">
-                                    <button onclick="toggleElements(this, false)">None</button>
+                                    <button onclick="toggleElements('groups_filter', false)">None</button>
                                 </li>
                                 <li role="separator" class="divider"></li>
                             </ul>
@@ -111,10 +111,10 @@ Otherwise, have a great day =^.^=
                             </button>
                             <ul class="dropdown-menu" id="lint-applicabilities-selector">
                                 <li class="checkbox">
-                                    <button onclick="toggleElements(this, true)">All</button>
+                                    <button onclick="toggleElements('applicabilities_filter', true)">All</button>
                                 </li>
                                 <li class="checkbox">
-                                    <button onclick="toggleElements(this, false)">None</button>
+                                    <button onclick="toggleElements('applicabilities_filter', false)">None</button>
                                 </li>
                                 <li role="separator" class="divider"></li>
                             </ul>
@@ -157,7 +157,6 @@ Otherwise, have a great day =^.^=
                                 <span class="label label-lint-group label-default label-group-{(lint.group)}">{(lint.group)}</span>
 
                                 <span class="label label-lint-level label-lint-level-{(lint.level)}">{(lint.level)}</span>
-
 
                                 <span class="label label-doc-folding">&plus;</span>
                             </div>
