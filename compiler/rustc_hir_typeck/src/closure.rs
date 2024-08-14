@@ -14,7 +14,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
@@ -539,6 +539,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// we identify the `FnOnce<Args, Output = ?Fut>` bound, and if the output type is
     /// an inference variable `?Fut`, we check if that is bounded by a `Future<Output = Ty>`
     /// projection.
+    ///
+    /// This function is actually best-effort with the return type; if we don't find a
+    /// `Future` projection, we still will return arguments that we extracted from the `FnOnce`
+    /// projection, and the output will be an unconstrained type variable instead.
     fn extract_sig_from_projection_and_future_bound(
         &self,
         cause_span: Option<Span>,
@@ -564,24 +568,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // FIXME: We may want to elaborate here, though I assume this will be exceedingly rare.
+        let mut return_ty = None;
         for bound in self.obligations_for_self_ty(return_vid) {
             if let Some(ret_projection) = bound.predicate.as_projection_clause()
                 && let Some(ret_projection) = ret_projection.no_bound_vars()
                 && self.tcx.is_lang_item(ret_projection.def_id(), LangItem::FutureOutput)
             {
-                let sig = projection.rebind(self.tcx.mk_fn_sig(
-                    input_tys,
-                    ret_projection.term.expect_type(),
-                    false,
-                    hir::Safety::Safe,
-                    Abi::Rust,
-                ));
-
-                return Some(ExpectedSig { cause_span, sig });
+                return_ty = Some(ret_projection.term.expect_type());
+                break;
             }
         }
 
-        None
+        // SUBTLE: If we didn't find a `Future<Output = ...>` bound for the return
+        // vid, we still want to attempt to provide inference guidance for the async
+        // closure's arguments. Instantiate a new vid to plug into the output type.
+        //
+        // You may be wondering, what if it's higher-ranked? Well, given that we
+        // found a type variable for the `FnOnce::Output` projection above, we know
+        // that the output can't mention any of the vars.
+        //
+        // Also note that we use a fresh var here for the signature since the signature
+        // records the output of the *future*, and `return_vid` above is the type
+        // variable of the future, not its output.
+        //
+        // FIXME: We probably should store this signature inference output in a way
+        // that does not misuse a `FnSig` type, but that can be done separately.
+        let return_ty =
+            return_ty.unwrap_or_else(|| self.next_ty_var(cause_span.unwrap_or(DUMMY_SP)));
+
+        let sig = projection.rebind(self.tcx.mk_fn_sig(
+            input_tys,
+            return_ty,
+            false,
+            hir::Safety::Safe,
+            Abi::Rust,
+        ));
+
+        return Some(ExpectedSig { cause_span, sig });
     }
 
     fn sig_of_closure(
