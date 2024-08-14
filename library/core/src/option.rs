@@ -656,8 +656,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(is_none_or)]
-    ///
     /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_none_or(|x| x > 1), true);
     ///
@@ -669,7 +667,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_none_or", issue = "126383")]
+    #[stable(feature = "is_none_or", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
         match self {
             None => true,
