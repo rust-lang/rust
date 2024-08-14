@@ -17,7 +17,8 @@ RUN dpkg --add-architecture i386 && \
   openjdk-8-jre-headless \
   tzdata \
   wget \
-  python3
+  python3 \
+  gdb
 
 COPY scripts/android-sdk.sh /scripts/
 COPY scripts/android-sdk-manager.py /scripts/
