@@ -2335,6 +2335,7 @@ impl Config {
                         let current_config_toml = Self::get_toml(config_path);
 
                         // Check the config compatibility
+                        // FIXME: this doesn't cover `--set` flags yet.
                         let res = check_incompatible_options_for_ci_rustc(
                             current_config_toml,
                             ci_config_toml,
