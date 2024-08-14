@@ -1588,7 +1588,10 @@ pub mod visit {
         V::Result::output()
     }
 
-    fn walk_parenthesized_parameter_data<'a, V: Visitor<'a>>(vis: &mut V, data: &'a ParenthesizedArgs) -> V::Result {
+    fn walk_parenthesized_parameter_data<'a, V: Visitor<'a>>(
+        vis: &mut V,
+        data: &'a ParenthesizedArgs,
+    ) -> V::Result {
         let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
         walk_list!(vis, visit_ty, inputs);
         try_visit!(vis.visit_fn_ret_ty(output));
@@ -1611,7 +1614,6 @@ pub mod visit {
         walk_list!(vis, visit_where_predicate, predicates);
         V::Result::output()
     }
-
 }
 
 pub mod mut_visit {
@@ -3076,7 +3078,6 @@ pub mod mut_visit {
     pub fn walk_enum_def<T: MutVisitor>(vis: &mut T, EnumDef { variants }: &mut EnumDef) {
         variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
     }
-
 
     /// Some value for the AST node that is valid but possibly meaningless. Similar
     /// to `Default` but not intended for wide use. The value will never be used
