@@ -262,6 +262,11 @@ function toggleExpansion(expand) {
     );
 }
 
+// Returns the current URL without any query parameter or hash.
+function getNakedUrl() {
+    return window.location.href.split("?")[0].split("#")[0];
+}
+
 const GROUPS_FILTER_DEFAULT = {
     cargo: true,
     complexity: true,
@@ -286,6 +291,17 @@ const APPLICABILITIES_FILTER_DEFAULT = {
     MachineApplicable: true,
     MaybeIncorrect: true,
     HasPlaceholders: true,
+};
+const URL_PARAMS_CORRESPONDANCE = {
+    "groups_filter": "groups",
+    "levels_filter": "levels",
+    "applicabilities_filter": "applicabilities",
+    "version_filter": "versions",
+};
+const VERSIONS_CORRESPONDANCE = {
+    "lte": "≤",
+    "gte": "≥",
+    "eq": "=",
 };
 
 window.filters = {
@@ -321,7 +337,65 @@ window.filters = {
         }
         return filters.allLints;
     },
+    regenerateURLparams: () => {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        function compareObjects(obj1, obj2) {
+            return (JSON.stringify(obj1) === JSON.stringify({ id: obj1.id, ...obj2 }));
+        }
+        function updateIfNeeded(filterName, obj2) {
+            const obj1 = filters[filterName];
+            const name = URL_PARAMS_CORRESPONDANCE[filterName];
+            if (!compareObjects(obj1, obj2)) {
+                urlParams.set(
+                    name,
+                    Object.entries(obj1).filter(
+                        ([key, value]) => value && key !== "id"
+                    ).map(
+                        ([key, _]) => key
+                    ).join(","),
+                );
+            } else {
+                urlParams.delete(name);
+            }
+        }
+
+        updateIfNeeded("groups_filter", GROUPS_FILTER_DEFAULT);
+        updateIfNeeded("levels_filter", LEVEL_FILTERS_DEFAULT);
+        updateIfNeeded(
+            "applicabilities_filter", APPLICABILITIES_FILTER_DEFAULT);
+
+        const versions = [];
+        if (filters.version_filter["="] !== null) {
+            versions.push(`eq:${filters.version_filter["="]}`);
+        }
+        if (filters.version_filter["≥"] !== null) {
+            versions.push(`gte:${filters.version_filter["≥"]}`);
+        }
+        if (filters.version_filter["≤"] !== null) {
+            versions.push(`lte:${filters.version_filter["≤"]}`);
+        }
+        if (versions.length !== 0) {
+            urlParams.set(URL_PARAMS_CORRESPONDANCE["version_filter"], versions.join(","));
+        } else {
+            urlParams.delete(URL_PARAMS_CORRESPONDANCE["version_filter"]);
+        }
+
+        let params = urlParams.toString();
+        if (params.length !== 0) {
+            params = `?${params}`;
+        }
+
+        const url = getNakedUrl() + params + window.location.hash
+        if (!history.state) {
+            history.pushState(null, "", url);
+        } else {
+            history.replaceState(null, "", url);
+        }
+    },
     filterLints: () => {
+        // First we regenerate the URL parameters.
+        filters.regenerateURLparams();
         for (const lint of filters.getAllLints()) {
             lint.filteredOut = (!filters.groups_filter[lint.group]
                 || !filters.levels_filter[lint.level]
@@ -339,17 +413,19 @@ window.filters = {
     },
 };
 
-function updateFilter(elem, filter) {
+function updateFilter(elem, filter, skipLintsFiltering) {
     const value = elem.getAttribute("data-value");
     if (filters[filter][value] !== elem.checked) {
         filters[filter][value] = elem.checked;
         const counter = document.querySelector(`#${filters[filter].id} .badge`);
         counter.innerText = parseInt(counter.innerText) + (elem.checked ? 1 : -1);
-        filters.filterLints();
+        if (!skipLintsFiltering) {
+            filters.filterLints();
+        }
     }
 }
 
-function updateVersionFilters(elem, comparisonKind) {
+function updateVersionFilters(elem, skipLintsFiltering) {
     let value = elem.value.trim();
     if (value.length === 0) {
         value = null;
@@ -359,9 +435,12 @@ function updateVersionFilters(elem, comparisonKind) {
         console.error(`Failed to get version number from "${value}"`);
         return;
     }
+    const comparisonKind = elem.getAttribute("data-value");
     if (filters.version_filter[comparisonKind] !== value) {
         filters.version_filter[comparisonKind] = value;
-        filters.filterLints();
+        if (!skipLintsFiltering) {
+            filters.filterLints();
+        }
     }
 }
 
@@ -454,11 +533,11 @@ function generateSettings() {
            class="version-filter-input form-control filter-input" \
            maxlength="2" \
            data-value="${kind}" \
-           onchange="updateVersionFilters(this, '${kind}')" \
-           oninput="updateVersionFilters(this, '${kind}')" \
-           onkeydown="updateVersionFilters(this, '${kind}')" \
-           onkeyup="updateVersionFilters(this, '${kind}')" \
-           onpaste="updateVersionFilters(this, '${kind}')" \
+           onchange="updateVersionFilters(this)" \
+           oninput="updateVersionFilters(this)" \
+           onkeydown="updateVersionFilters(this)" \
+           onkeyup="updateVersionFilters(this)" \
+           onpaste="updateVersionFilters(this)" \
     />
     <span>.0</span>\
 </li>`;
@@ -495,6 +574,33 @@ function scrollToLintByURL() {
     }
 }
 
+function parseURLFilters() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    for (const [key, value] of urlParams.entries()) {
+        for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDANCE)) {
+            if (corres_value === key) {
+                if (key !== "versions") {
+                    const settings  = new Set(value.split(","));
+                    onEachLazy(document.querySelectorAll(`#lint-${key} ul input`), elem => {
+                        elem.checked = settings.has(elem.getAttribute("data-value"));
+                        updateFilter(elem, corres_key, true);
+                    });
+                } else {
+                    const settings = value.split(",").map(elem => elem.split(":"));
+
+                    for (const [kind, value] of settings) {
+                        const elem = document.querySelector(
+                            `#version-filter input[data-value="${VERSIONS_CORRESPONDANCE[kind]}"]`);
+                        updateVersionFilters(elem, true);
+                    }
+                }
+            }
+        }
+    }
+}
+
+parseURLFilters();
 scrollToLintByURL();
 filters.filterLints();
 onEachLazy(document.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));
