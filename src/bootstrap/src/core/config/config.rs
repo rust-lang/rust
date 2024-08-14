@@ -36,6 +36,14 @@ macro_rules! check_ci_llvm {
     };
 }
 
+/// This file is embedded in the overlay directory of the tarball sources. It is
+/// useful in scenarios where developers want to see how the tarball sources were
+/// generated.
+///
+/// We also use this file to compare the host's config.toml against the CI rustc builder
+/// configuration to detect any incompatible options.
+pub(crate) const BUILDER_CONFIG_FILENAME: &str = "builder-config";
+
 #[derive(Clone, Default)]
 pub enum DryRun {
     /// This isn't a dry run.
@@ -2322,7 +2330,7 @@ impl Config {
 
                     if let Some(config_path) = &self.config {
                         let builder_config_path =
-                            self.out.join(self.build.triple).join("ci-rustc/builder-config");
+                            self.out.join(self.build.triple).join("ci-rustc").join(BUILDER_CONFIG_FILENAME);
                         let ci_config_toml = Self::get_toml(&builder_config_path);
                         let current_config_toml = Self::get_toml(config_path);
 
