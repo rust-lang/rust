@@ -47,7 +47,7 @@ pub enum DryRun {
     UserSelected,
 }
 
-#[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum DebuginfoLevel {
     #[default]
     None,
@@ -117,7 +117,7 @@ impl Display for DebuginfoLevel {
 /// 2) MSVC
 /// - Self-contained: `-Clinker=<path to rust-lld>`
 /// - External: `-Clinker=lld`
-#[derive(Copy, Clone, Default, PartialEq)]
+#[derive(Copy, Clone, Default, Debug, PartialEq)]
 pub enum LldMode {
     /// Do not use LLD
     #[default]
@@ -2667,11 +2667,14 @@ fn check_incompatible_options_for_ci_rustc(
 ) -> Result<(), String> {
     macro_rules! err {
         ($current:expr, $expected:expr) => {
-            if let Some(current) = $current {
-                if Some(current) != $expected {
+            if let Some(current) = &$current {
+                if Some(current) != $expected.as_ref() {
                     return Err(format!(
-                        "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`.",
-                        stringify!($expected).replace("_", "-")
+                        "ERROR: Setting `rust.{}` is incompatible with `rust.download-rustc`. \
+                        Current value: {:?}, Expected value(s): None/{:?}",
+                        stringify!($expected).replace("_", "-"),
+                        $current,
+                        $expected
                     ));
                 };
             };
