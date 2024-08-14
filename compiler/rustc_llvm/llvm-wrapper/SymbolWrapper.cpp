@@ -80,6 +80,9 @@ LLVMRustGetSymbols(char *BufPtr, size_t BufLen, void *State,
     return ErrorCallback(toString(ObjOrErr.takeError()).c_str());
   }
   std::unique_ptr<object::SymbolicFile> Obj = std::move(*ObjOrErr);
+  if (Obj == nullptr) {
+    return 0;
+  }
 
   for (const object::BasicSymbolRef &S : Obj->symbols()) {
     if (!isArchiveSymbol(S))
