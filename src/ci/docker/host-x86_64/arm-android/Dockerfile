@@ -18,7 +18,7 @@ RUN dpkg --add-architecture i386 && \
   tzdata \
   wget \
   python3 \
-  gdb
+  gdb-multiarch
 
 COPY scripts/android-sdk.sh /scripts/
 COPY scripts/android-sdk-manager.py /scripts/
