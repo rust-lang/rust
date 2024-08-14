@@ -1,5 +1,5 @@
 use hir::{Expr, Pat};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty;
@@ -126,7 +126,10 @@ fn extract_iterator_next_call<'tcx>(
 ) -> Option<&'tcx Expr<'tcx>> {
     // This won't work for `Iterator::next(iter)`, is this an issue?
     if let hir::ExprKind::MethodCall(_, recv, _, _) = expr.kind
-        && cx.typeck_results().type_dependent_def_id(expr.hir_id) == cx.tcx.lang_items().next_fn()
+        && cx
+            .typeck_results()
+            .type_dependent_def_id(expr.hir_id)
+            .is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::IteratorNext))
     {
         Some(recv)
     } else {

@@ -838,7 +838,7 @@ impl<'tcx> Instance<'tcx> {
             return None;
         };
 
-        if tcx.lang_items().get(coroutine_callable_item) == Some(trait_item_id) {
+        if tcx.is_lang_item(trait_item_id, coroutine_callable_item) {
             let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
             else {
                 bug!()
