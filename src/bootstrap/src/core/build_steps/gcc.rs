@@ -85,7 +85,7 @@ impl Step for Gcc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/gcc")
+        run.path("src/gcc").alias("gcc")
     }
 
     fn make_run(run: RunConfig<'_>) {
