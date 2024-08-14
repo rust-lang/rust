@@ -951,7 +951,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
             } else {
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
-                    ty::FnPtr(_) => tcx.dcx().struct_span_err(
+                    ty::FnPtr(..) => tcx.dcx().struct_span_err(
                         hir_ty.span,
                         "using function pointers as const generic parameters is forbidden",
                     ),

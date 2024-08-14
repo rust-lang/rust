@@ -468,7 +468,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 if let ty::RawPtr(_, _) | ty::FnPtr(..) = lhs_ty.kind() {
                     // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
-                    assert!(matches!(
+                    assert_matches!(
                         op,
                         BinOp::Eq
                             | BinOp::Ne
@@ -477,7 +477,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             | BinOp::Ge
                             | BinOp::Gt
                             | BinOp::Offset
-                    ));
+                    );
                     return Err(Unpromotable);
                 }
 

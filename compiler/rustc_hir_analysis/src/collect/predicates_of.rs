@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -601,7 +603,7 @@ pub(super) fn implied_predicates_with_filter(
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
-        assert!(matches!(filter, PredicateFilter::SelfThatDefines(_)));
+        assert_matches!(filter, PredicateFilter::SelfThatDefines(_));
         return tcx.explicit_super_predicates_of(trait_def_id);
     };
 

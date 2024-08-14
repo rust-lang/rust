@@ -2,6 +2,8 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
+use std::assert_matches::assert_matches;
+
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
@@ -79,7 +81,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -510,7 +512,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         dest: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         assert_eq!(a.layout.ty, b.layout.ty);
-        assert!(matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
+        assert_matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
 
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
@@ -536,8 +538,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         r: &ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert_eq!(l.layout.ty, r.layout.ty);
-        assert!(matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
-        assert!(matches!(mir_op, BinOp::Add | BinOp::Sub));
+        assert_matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
+        assert_matches!(mir_op, BinOp::Add | BinOp::Sub);
 
         let (val, overflowed) =
             self.binary_op(mir_op.wrapping_to_overflowing().unwrap(), l, r)?.to_scalar_pair();

@@ -23,10 +23,10 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
+use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
-    base_db::FileLoader,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     FilePosition, RootDatabase, SnippetCap,
 };

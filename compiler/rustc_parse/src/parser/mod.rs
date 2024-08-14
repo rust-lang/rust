@@ -10,6 +10,7 @@ mod path;
 mod stmt;
 mod ty;
 
+use std::assert_matches::debug_assert_matches;
 use std::ops::Range;
 use std::{fmt, mem, slice};
 
@@ -1166,10 +1167,12 @@ impl<'a> Parser<'a> {
             match self.token_cursor.tree_cursor.look_ahead(0) {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
-                    return match tree {
-                        TokenTree::Token(token, _) => looker(token),
-                        TokenTree::Delimited(dspan, _, delim, _) => {
-                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                    match tree {
+                        TokenTree::Token(token, _) => return looker(token),
+                        &TokenTree::Delimited(dspan, _, delim, _) => {
+                            if delim != Delimiter::Invisible {
+                                return looker(&Token::new(token::OpenDelim(delim), dspan.open));
+                            }
                         }
                     };
                 }
@@ -1385,7 +1388,7 @@ impl<'a> Parser<'a> {
                     // can capture these tokens if necessary.
                     self.bump();
                     if self.token_cursor.stack.len() == target_depth {
-                        debug_assert!(matches!(self.token.kind, token::CloseDelim(_)));
+                        debug_assert_matches!(self.token.kind, token::CloseDelim(_));
                         break;
                     }
                 }

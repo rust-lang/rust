@@ -94,8 +94,9 @@ use hir_def::{
     },
     hir::{BindingId, LabelId},
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId,
-    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId,
-    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
+    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, Lookup, MacroId,
+    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId,
+    VariantId,
 };
 use hir_expand::{
     attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, MacroCallId,
@@ -131,11 +132,30 @@ impl SourceToDefCtx<'_, '_> {
             for &crate_id in self.db.relevant_crates(file).iter() {
                 // Note: `mod` declarations in block modules cannot be supported here
                 let crate_def_map = self.db.crate_def_map(crate_id);
-                mods.extend(
+                let n_mods = mods.len();
+                let modules = |file| {
                     crate_def_map
                         .modules_for_file(file)
-                        .map(|local_id| crate_def_map.module_id(local_id)),
-                )
+                        .map(|local_id| crate_def_map.module_id(local_id))
+                };
+                mods.extend(modules(file));
+                if mods.len() == n_mods {
+                    mods.extend(
+                        self.db
+                            .include_macro_invoc(crate_id)
+                            .iter()
+                            .filter(|&&(_, file_id)| file_id == file)
+                            .flat_map(|(call, _)| {
+                                modules(
+                                    call.lookup(self.db.upcast())
+                                        .kind
+                                        .file_id()
+                                        .original_file(self.db.upcast())
+                                        .file_id(),
+                                )
+                            }),
+                    );
+                }
             }
             if mods.is_empty() {
                 // FIXME: detached file

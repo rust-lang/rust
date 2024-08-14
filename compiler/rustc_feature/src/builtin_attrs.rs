@@ -643,8 +643,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         through unstable paths"
     ),
     rustc_attr!(
-        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes,
+        rustc_deprecated_safe_2024, Normal, template!(List: r#"audit_that = "...""#),
+        ErrorFollowing, EncodeCrossCrate::Yes,
         "rustc_deprecated_safe_2024 is supposed to be used in libstd only",
     ),
 

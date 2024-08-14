@@ -1077,10 +1077,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some((def_id_or_name, output, inputs)) =
             (self.autoderef_steps)(found).into_iter().find_map(|(found, _)| {
                 match *found.kind() {
-                    ty::FnPtr(fn_sig) => Some((
+                    ty::FnPtr(sig_tys, _) => Some((
                         DefIdOrName::Name("function pointer"),
-                        fn_sig.output(),
-                        fn_sig.inputs(),
+                        sig_tys.output(),
+                        sig_tys.inputs(),
                     )),
                     ty::FnDef(def_id, _) => {
                         let fn_sig = found.fn_sig(self.tcx);
@@ -1977,20 +1977,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = cause else {
             return;
         };
-        let ty::FnPtr(expected) = expected.kind() else {
+        let ty::FnPtr(sig_tys, hdr) = expected.kind() else {
             return;
         };
-        let ty::FnPtr(found) = found.kind() else {
+        let expected = sig_tys.with(*hdr);
+        let ty::FnPtr(sig_tys, hdr) = found.kind() else {
             return;
         };
+        let found = sig_tys.with(*hdr);
         let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id) else {
             return;
         };
         let hir::ExprKind::Path(path) = arg.kind else {
             return;
         };
-        let expected_inputs = self.tcx.instantiate_bound_regions_with_erased(*expected).inputs();
-        let found_inputs = self.tcx.instantiate_bound_regions_with_erased(*found).inputs();
+        let expected_inputs = self.tcx.instantiate_bound_regions_with_erased(expected).inputs();
+        let found_inputs = self.tcx.instantiate_bound_regions_with_erased(found).inputs();
         let both_tys = expected_inputs.iter().copied().zip(found_inputs.iter().copied());
 
         let arg_expr = |infcx: &InferCtxt<'tcx>, name, expected: Ty<'tcx>, found: Ty<'tcx>| {
@@ -2829,7 +2831,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     // Do not suggest relaxing if there is an explicit `Sized` obligation.
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
-                                        .any(|tr| tr.trait_def_id() == tcx.lang_items().sized_trait())
+                                        .any(|tr| tr.trait_def_id().is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized)))
                                 {
                                     let (span, separator) = if let [.., last] = bounds {
                                         (last.span().shrink_to_hi(), " +")
@@ -4790,13 +4792,13 @@ fn hint_missing_borrow<'tcx>(
     }
 
     let found_args = match found.kind() {
-        ty::FnPtr(f) => infcx.enter_forall(*f, |f| f.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(f) => infcx.enter_forall(*f, |f| f.inputs().iter()),
+        ty::FnPtr(sig_tys, _) => infcx.enter_forall(*sig_tys, |sig_tys| sig_tys.inputs().iter()),
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }

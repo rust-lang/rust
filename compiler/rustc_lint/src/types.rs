@@ -1022,7 +1022,7 @@ fn ty_is_known_nonnull<'tcx>(
     let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
 
     match ty.kind() {
-        ty::FnPtr(_) => true,
+        ty::FnPtr(..) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
         ty::Adt(def, args) if def.repr().transparent() && !def.is_union() => {
@@ -1473,7 +1473,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 if self.is_internal_abi(sig.abi()) {
                     return FfiUnsafe {
                         ty,
@@ -1709,8 +1710,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             type Result = ControlFlow<Ty<'tcx>>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-                if let ty::FnPtr(sig) = ty.kind()
-                    && !self.visitor.is_internal_abi(sig.abi())
+                if let ty::FnPtr(_, hdr) = ty.kind()
+                    && !self.visitor.is_internal_abi(hdr.abi)
                 {
                     self.tys.push(ty);
                 }

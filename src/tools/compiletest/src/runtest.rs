@@ -3027,11 +3027,17 @@ impl<'test> TestCx<'test> {
         const PREFIX: &str = "MONO_ITEM ";
         const CGU_MARKER: &str = "@@";
 
+        // Some MonoItems can contain {closure@/path/to/checkout/tests/codgen-units/test.rs}
+        // To prevent the current dir from leaking, we just replace the entire path to the test
+        // file with TEST_PATH.
         let actual: Vec<MonoItem> = proc_res
             .stdout
             .lines()
             .filter(|line| line.starts_with(PREFIX))
-            .map(|line| str_to_mono_item(line, true))
+            .map(|line| {
+                line.replace(&self.testpaths.file.display().to_string(), "TEST_PATH").to_string()
+            })
+            .map(|line| str_to_mono_item(&line, true))
             .collect();
 
         let expected: Vec<MonoItem> = errors::load_errors(&self.testpaths.file, None)
@@ -3729,15 +3735,14 @@ impl<'test> TestCx<'test> {
         }
 
         if self.config.bless {
-            cmd.env("RUSTC_BLESS_TEST", "--bless");
-            // Assume this option is active if the environment variable is "defined", with _any_ value.
-            // As an example, a `Makefile` can use this option by:
+            // If we're running in `--bless` mode, set an environment variable to tell
+            // `run_make_support` to bless snapshot files instead of checking them.
             //
-            //   ifdef RUSTC_BLESS_TEST
-            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
-            //   else
-            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
-            //   endif
+            // The value is this test's source directory, because the support code
+            // will need that path in order to bless the _original_ snapshot files,
+            // not the copies in `rmake_out`.
+            // (See <https://github.com/rust-lang/rust/issues/129038>.)
+            cmd.env("RUSTC_BLESS_TEST", &self.testpaths.file);
         }
 
         if self.config.target.contains("msvc") && !self.config.cc.is_empty() {

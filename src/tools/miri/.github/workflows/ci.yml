@@ -123,6 +123,8 @@ jobs:
         run: |
           git config --global user.name 'The Miri Cronjob Bot'
           git config --global user.email 'miri@cron.bot'
+      - name: Install nightly toolchain
+        run: rustup toolchain install nightly --profile minimal
       - name: get changes from rustc
         run: ./miri rustc-pull
       - name: Install rustup-toolchain-install-master

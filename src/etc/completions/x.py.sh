@@ -1300,17 +1300,13 @@ _x.py() {
             return 0
             ;;
         x.py__miri)
-            opts="-v -i -j -h --no-fail-fast --test-args --rustc-args --no-doc --doc --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --bypass-bootstrap-lock --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --no-fail-fast --test-args --no-doc --doc --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --bypass-bootstrap-lock --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --test-args)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --rustc-args)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -1862,7 +1858,7 @@ _x.py() {
             return 0
             ;;
         x.py__test)
-            opts="-v -i -j -h --no-fail-fast --test-args --rustc-args --no-doc --doc --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --bypass-bootstrap-lock --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --no-fail-fast --test-args --compiletest-rustc-args --no-doc --doc --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --bypass-bootstrap-lock --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1872,7 +1868,7 @@ _x.py() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
-                --rustc-args)
+                --compiletest-rustc-args)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;

@@ -246,7 +246,7 @@ impl Step for Std {
                 .rustc_snapshot_sysroot()
                 .join("lib")
                 .join("rustlib")
-                .join(compiler.host.triple)
+                .join(compiler.host)
                 .join("bin");
             if src_sysroot_bin.exists() {
                 let target_sysroot_bin =
@@ -432,7 +432,7 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
-    } else if target.ends_with("windows-gnu") {
+    } else if target.is_windows_gnu() {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, &builder.cc(target), target, CLang::C, obj);
             let target = libdir_self_contained.join(obj);
@@ -651,8 +651,8 @@ impl Step for StdLink {
                 compiler: self.compiler,
                 force_recompile: self.force_recompile,
             });
-            let libdir = sysroot.join(lib).join("rustlib").join(target.triple).join("lib");
-            let hostdir = sysroot.join(lib).join("rustlib").join(compiler.host.triple).join("lib");
+            let libdir = sysroot.join(lib).join("rustlib").join(target).join("lib");
+            let hostdir = sysroot.join(lib).join("rustlib").join(compiler.host).join("lib");
             (libdir, hostdir)
         } else {
             let libdir = builder.sysroot_libdir(target_compiler, target);
@@ -670,12 +670,12 @@ impl Step for StdLink {
                 .build
                 .config
                 .initial_rustc
-                .starts_with(builder.out.join(compiler.host.triple).join("stage0/bin"))
+                .starts_with(builder.out.join(compiler.host).join("stage0/bin"))
         {
             // Copy bin files from stage0/bin to stage0-sysroot/bin
-            let sysroot = builder.out.join(compiler.host.triple).join("stage0-sysroot");
+            let sysroot = builder.out.join(compiler.host).join("stage0-sysroot");
 
-            let host = compiler.host.triple;
+            let host = compiler.host;
             let stage0_bin_dir = builder.out.join(host).join("stage0/bin");
             let sysroot_bin_dir = sysroot.join("bin");
             t!(fs::create_dir_all(&sysroot_bin_dir));
@@ -793,7 +793,7 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
-        if !target.ends_with("windows-gnu") {
+        if !target.is_windows_gnu() {
             return vec![];
         }
 
@@ -1554,7 +1554,7 @@ impl Step for Sysroot {
     /// For all other stages, it's the same stage directory that the compiler lives in.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
-        let host_dir = builder.out.join(compiler.host.triple);
+        let host_dir = builder.out.join(compiler.host);
 
         let sysroot_dir = |stage| {
             if stage == 0 {

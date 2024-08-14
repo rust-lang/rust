@@ -338,7 +338,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         }
         'x.py;test' {
             [CompletionResult]::new('--test-args', 'test-args', [CompletionResultType]::ParameterName, 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)')
-            [CompletionResult]::new('--rustc-args', 'rustc-args', [CompletionResultType]::ParameterName, 'extra options to pass the compiler when running tests')
+            [CompletionResult]::new('--compiletest-rustc-args', 'compiletest-rustc-args', [CompletionResultType]::ParameterName, 'extra options to pass the compiler when running compiletest tests')
             [CompletionResult]::new('--extra-checks', 'extra-checks', [CompletionResultType]::ParameterName, 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell)')
             [CompletionResult]::new('--compare-mode', 'compare-mode', [CompletionResultType]::ParameterName, 'mode describing what file the actual ui output will be compared to')
             [CompletionResult]::new('--pass', 'pass', [CompletionResultType]::ParameterName, 'force {check,build,run}-pass tests to this mode')
@@ -392,7 +392,6 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
         }
         'x.py;miri' {
             [CompletionResult]::new('--test-args', 'test-args', [CompletionResultType]::ParameterName, 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)')
-            [CompletionResult]::new('--rustc-args', 'rustc-args', [CompletionResultType]::ParameterName, 'extra options to pass the compiler when running tests')
             [CompletionResult]::new('--config', 'config', [CompletionResultType]::ParameterName, 'TOML configuration file for build')
             [CompletionResult]::new('--build-dir', 'build-dir', [CompletionResultType]::ParameterName, 'Build directory, overrides `build.build-dir` in `config.toml`')
             [CompletionResult]::new('--build', 'build', [CompletionResultType]::ParameterName, 'build target of the stage0 compiler')

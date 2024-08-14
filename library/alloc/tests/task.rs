@@ -4,7 +4,7 @@ use alloc::task::{LocalWake, Wake};
 use core::task::{LocalWaker, Waker};
 
 #[test]
-#[cfg_attr(miri, should_panic)] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it fails
+#[cfg_attr(miri, ignore)] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it can fail
 fn test_waker_will_wake_clone() {
     struct NoopWaker;
 
@@ -20,7 +20,7 @@ fn test_waker_will_wake_clone() {
 }
 
 #[test]
-#[cfg_attr(miri, should_panic)] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it fails
+#[cfg_attr(miri, ignore)] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it can fail
 fn test_local_waker_will_wake_clone() {
     struct NoopWaker;
 

@@ -2069,7 +2069,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 Some(ContainerTy::Ref(r)),
             )),
         },
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             // FIXME: should we merge the outer and inner binders somehow?
             let sig = bound_ty.skip_binder().fn_sig(cx.tcx);
             let decl = clean_poly_fn_sig(cx, None, sig);

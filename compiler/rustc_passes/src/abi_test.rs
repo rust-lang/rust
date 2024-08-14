@@ -127,14 +127,17 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
     for meta_item in meta_items {
         match meta_item.name_or_empty() {
             sym::debug => {
-                let ty::FnPtr(sig) = ty.kind() else {
+                let ty::FnPtr(sig_tys, hdr) = ty.kind() else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(debug)]` on a type alias requires function pointer type"
                     );
                 };
                 let abi = unwrap_fn_abi(
-                    tcx.fn_abi_of_fn_ptr(param_env.and((*sig, /* extra_args */ ty::List::empty()))),
+                    tcx.fn_abi_of_fn_ptr(
+                        param_env
+                            .and((sig_tys.with(*hdr), /* extra_args */ ty::List::empty())),
+                    ),
                     tcx,
                     item_def_id,
                 );
@@ -155,7 +158,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair type"
                     );
                 };
-                let ty::FnPtr(sig1) = field1.kind() else {
+                let ty::FnPtr(sig_tys1, hdr1) = field1.kind() else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
@@ -163,12 +166,13 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 };
                 let abi1 = unwrap_fn_abi(
                     tcx.fn_abi_of_fn_ptr(
-                        param_env.and((*sig1, /* extra_args */ ty::List::empty())),
+                        param_env
+                            .and((sig_tys1.with(*hdr1), /* extra_args */ ty::List::empty())),
                     ),
                     tcx,
                     item_def_id,
                 );
-                let ty::FnPtr(sig2) = field2.kind() else {
+                let ty::FnPtr(sig_tys2, hdr2) = field2.kind() else {
                     span_bug!(
                         meta_item.span(),
                         "`#[rustc_abi(assert_eq)]` on a type alias requires pair of function pointer types"
@@ -176,7 +180,8 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                 };
                 let abi2 = unwrap_fn_abi(
                     tcx.fn_abi_of_fn_ptr(
-                        param_env.and((*sig2, /* extra_args */ ty::List::empty())),
+                        param_env
+                            .and((sig_tys2.with(*hdr2), /* extra_args */ ty::List::empty())),
                     ),
                     tcx,
                     item_def_id,

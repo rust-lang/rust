@@ -65,9 +65,14 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareBaseEnv(base?: Record<string, string>): Record<string, string> {
+export function prepareBaseEnv(
+    inheritEnv: boolean,
+    base?: Record<string, string>,
+): Record<string, string> {
     const env: Record<string, string> = { RUST_BACKTRACE: "short" };
-    Object.assign(env, process.env);
+    if (inheritEnv) {
+        Object.assign(env, process.env);
+    }
     if (base) {
         Object.assign(env, base);
     }
@@ -75,11 +80,12 @@ export function prepareBaseEnv(base?: Record<string, string>): Record<string, st
 }
 
 export function prepareEnv(
+    inheritEnv: boolean,
     label: string,
     runnableArgs: ra.CargoRunnableArgs,
     runnableEnvCfg?: RunnableEnvCfg,
 ): Record<string, string> {
-    const env = prepareBaseEnv(runnableArgs.environment);
+    const env = prepareBaseEnv(inheritEnv, runnableArgs.environment);
     const platform = process.platform;
 
     const checkPlatform = (it: RunnableEnvCfgItem) => {
@@ -134,7 +140,7 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.workspaceRoot || ".",
-            env: prepareEnv(runnable.label, runnableArgs, config.runnablesExtraEnv),
+            env: prepareEnv(true, runnable.label, runnableArgs, config.runnablesExtraEnv),
         };
     } else {
         const runnableArgs = runnable.args;
@@ -145,7 +151,7 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.cwd,
-            env: prepareBaseEnv(),
+            env: prepareBaseEnv(true),
         };
     }
 

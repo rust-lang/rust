@@ -1032,6 +1032,44 @@ fn f() {
         check_diagnostics_no_bails(&code);
     }
 
+    #[test]
+    fn min_exhaustive() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, !>) {
+    match x {
+        Ok(_y) => {}
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(ptr: *const Result<i32, !>) {
+    unsafe {
+        match *ptr {
+            //^^^^ error: missing match arm: `Err(!)` not covered
+            Ok(_x) => {}
+        }
+    }
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+//- minicore: result
+fn test(x: Result<i32, &'static !>) {
+    match x {
+        //^ error: missing match arm: `Err(_)` not covered
+        Ok(_y) => {}
+    }
+}
+"#,
+        );
+    }
+
     mod rust_unstable {
         use super::*;
 

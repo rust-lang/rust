@@ -184,7 +184,7 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(Float(Float::from_float_ty(fty))),
-        ty::FnPtr(_) => {
+        ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
             tcx.mk_layout(LayoutS::scalar(cx, ptr))
@@ -219,9 +219,13 @@ fn layout_of_uncached<'tcx>(
                             // its struct tail cannot be normalized either, so try to get a
                             // more descriptive layout error here, which will lead to less confusing
                             // diagnostics.
+                            //
+                            // We use the raw struct tail function here to get the first tail
+                            // that is an alias, which is likely the cause of the normalization
+                            // error.
                             match tcx.try_normalize_erasing_regions(
                                 param_env,
-                                tcx.struct_tail_without_normalization(pointee),
+                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
                             ) {
                                 Ok(_) => {}
                                 Err(better_err) => {

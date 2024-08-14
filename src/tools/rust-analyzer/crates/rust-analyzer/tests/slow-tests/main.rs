@@ -750,7 +750,7 @@ fn test_missing_module_code_action_in_json_project() {
 
     let code = format!(
         r#"
-//- /rust-project.json
+//- /.rust-project.json
 {project}
 
 //- /src/lib.rs
@@ -909,7 +909,7 @@ version = \"0.0.0\"
 
 fn out_dirs_check_impl(root_contains_symlink: bool) {
     if skip_slow_tests() {
-        // return;
+        return;
     }
 
     let mut server = Project::with_fixture(
@@ -1084,7 +1084,6 @@ fn resolve_proc_macro() {
     let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
-        false,
     );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
@@ -1125,7 +1124,6 @@ edition = "2021"
 proc-macro = true
 
 //- /bar/src/lib.rs
-extern crate proc_macro;
 use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 macro_rules! t {
     ($n:literal) => {

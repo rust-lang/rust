@@ -176,7 +176,12 @@ impl ExpandErrorKind {
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros().get_error_for_crate(def_crate) {
                     Some((e, hard_err)) => (e.to_owned(), hard_err),
-                    None => ("missing expander".to_owned(), true),
+                    None => (
+                        format!(
+                            "internal error: proc-macro map is missing error entry for crate {def_crate:?}"
+                        ),
+                        true,
+                    ),
                 }
             }
             ExpandErrorKind::MacroDefinition => {

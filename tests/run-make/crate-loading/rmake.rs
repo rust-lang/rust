@@ -2,14 +2,13 @@
 //@ ignore-wasm32
 //@ ignore-wasm64
 
-use run_make_support::rfs::copy;
-use run_make_support::{assert_contains, rust_lib_name, rustc};
+use run_make_support::{rust_lib_name, rustc};
 
 fn main() {
     rustc().input("multiple-dep-versions-1.rs").run();
     rustc().input("multiple-dep-versions-2.rs").extra_filename("2").metadata("2").run();
 
-    let out = rustc()
+    rustc()
         .input("multiple-dep-versions.rs")
         .extern_("dependency", rust_lib_name("dependency"))
         .extern_("dep_2_reexport", rust_lib_name("dependency2"))

@@ -7,7 +7,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, make, AstNode, HasGenericArgs},
-    ted, SyntaxNode,
+    ted, NodeOrToken, SyntaxNode,
 };
 
 #[derive(Default)]
@@ -328,10 +328,26 @@ impl Ctx<'_> {
                         let qualified = make::path_from_segments(std::iter::once(segment), false);
                         ted::replace(path.syntax(), qualified.clone_for_update().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
-                        ted::replace(
-                            path_ty.syntax(),
-                            subst.clone_subtree().clone_for_update().syntax(),
-                        );
+                        let old = path_ty.syntax();
+
+                        if old.parent().is_some() {
+                            ted::replace(old, subst.clone_subtree().clone_for_update().syntax());
+                        } else {
+                            // Some `path_ty` has no parent, especially ones made for default value
+                            // of type parameters.
+                            // In this case, `ted` cannot replace `path_ty` with `subst` directly.
+                            // So, just replace its children as long as the `subst` is the same type.
+                            let new = subst.clone_subtree().clone_for_update();
+                            if !matches!(new, ast::Type::PathType(..)) {
+                                return None;
+                            }
+                            let start = path_ty.syntax().first_child().map(NodeOrToken::Node)?;
+                            let end = path_ty.syntax().last_child().map(NodeOrToken::Node)?;
+                            ted::replace_all(
+                                start..=end,
+                                new.syntax().children().map(NodeOrToken::Node).collect::<Vec<_>>(),
+                            );
+                        }
                     } else {
                         ted::replace(
                             path.syntax(),

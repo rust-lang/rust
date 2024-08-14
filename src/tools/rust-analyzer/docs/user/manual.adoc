@@ -203,6 +203,12 @@ The `rust-analyzer` binary can be installed via https://brew.sh/[Homebrew].
 $ brew install rust-analyzer
 ----
 
+==== Windows
+
+It is recommended to install the latest Microsoft Visual C++ Redistributable prior to installation.
+Download links can be found
+https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist[here].
+
 === VS Code or VSCodium in Flatpak
 
 Setting up `rust-analyzer` with a Flatpak version of Code is not trivial because of the Flatpak sandbox.

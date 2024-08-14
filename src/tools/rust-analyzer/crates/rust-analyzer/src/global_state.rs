@@ -6,10 +6,9 @@
 use std::{ops::Not as _, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use flycheck::{project_json, FlycheckHandle};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabaseExt};
+use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase, SourceRootDatabase};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -28,15 +27,18 @@ use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 use crate::{
     config::{Config, ConfigChange, ConfigErrors, RatomlFileKind},
     diagnostics::{CheckFixes, DiagnosticCollection},
+    discover,
+    flycheck::{FlycheckHandle, FlycheckMessage},
     line_index::{LineEndings, LineIndex},
     lsp::{from_proto, to_proto::url_from_abs_path},
     lsp_ext,
     main_loop::Task,
     mem_docs::MemDocs,
-    op_queue::OpQueue,
+    op_queue::{Cause, OpQueue},
     reload,
     target_spec::{CargoTargetSpec, ProjectJsonTargetSpec, TargetSpec},
     task_pool::{TaskPool, TaskQueue},
+    test_runner::{CargoTestHandle, CargoTestMessage},
 };
 
 pub(crate) struct FetchWorkspaceRequest {
@@ -88,28 +90,28 @@ pub(crate) struct GlobalState {
 
     // Flycheck
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
-    pub(crate) flycheck_sender: Sender<flycheck::Message>,
-    pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
+    pub(crate) flycheck_sender: Sender<FlycheckMessage>,
+    pub(crate) flycheck_receiver: Receiver<FlycheckMessage>,
     pub(crate) last_flycheck_error: Option<String>,
 
     // Test explorer
-    pub(crate) test_run_session: Option<Vec<flycheck::CargoTestHandle>>,
-    pub(crate) test_run_sender: Sender<flycheck::CargoTestMessage>,
-    pub(crate) test_run_receiver: Receiver<flycheck::CargoTestMessage>,
+    pub(crate) test_run_session: Option<Vec<CargoTestHandle>>,
+    pub(crate) test_run_sender: Sender<CargoTestMessage>,
+    pub(crate) test_run_receiver: Receiver<CargoTestMessage>,
     pub(crate) test_run_remaining_jobs: usize,
 
     // Project loading
-    pub(crate) discover_handle: Option<project_json::DiscoverHandle>,
-    pub(crate) discover_sender: Sender<project_json::DiscoverProjectMessage>,
-    pub(crate) discover_receiver: Receiver<project_json::DiscoverProjectMessage>,
+    pub(crate) discover_handle: Option<discover::DiscoverHandle>,
+    pub(crate) discover_sender: Sender<discover::DiscoverProjectMessage>,
+    pub(crate) discover_receiver: Receiver<discover::DiscoverProjectMessage>,
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
-    pub(crate) vfs_progress_n_total: usize,
-    pub(crate) vfs_progress_n_done: usize,
+    pub(crate) vfs_done: bool,
+    pub(crate) wants_to_switch: Option<Cause>,
 
     /// `workspaces` field stores the data we actually use, while the `OpQueue`
     /// stores the result of the last fetch.
@@ -183,8 +185,7 @@ impl GlobalState {
     pub(crate) fn new(sender: Sender<lsp_server::Message>, config: Config) -> GlobalState {
         let loader = {
             let (sender, receiver) = unbounded::<vfs::loader::Message>();
-            let handle: vfs_notify::NotifyHandle =
-                vfs::loader::Handle::spawn(Box::new(move |msg| sender.send(msg).unwrap()));
+            let handle: vfs_notify::NotifyHandle = vfs::loader::Handle::spawn(sender);
             let handle = Box::new(handle) as Box<dyn vfs::loader::Handle>;
             Handle { handle, receiver }
         };
@@ -252,8 +253,8 @@ impl GlobalState {
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
-            vfs_progress_n_total: 0,
-            vfs_progress_n_done: 0,
+            vfs_done: true,
+            wants_to_switch: None,
 
             workspaces: Arc::from(Vec::new()),
             crate_graph_file_dependencies: FxHashSet::default(),
@@ -458,6 +459,11 @@ impl GlobalState {
             }
         }
 
+        // FIXME: `workspace_structure_change` is computed from `should_refresh_for_change` which is
+        // path syntax based. That is not sufficient for all cases so we should lift that check out
+        // into a `QueuedTask`, see `handle_did_save_text_document`.
+        // Or maybe instead of replacing that check, kick off a semantic one if the syntactic one
+        // didn't find anything (to make up for the lack of precision).
         {
             if !matches!(&workspace_structure_change, Some((.., true))) {
                 _ = self
@@ -557,8 +563,52 @@ impl GlobalState {
         self.req_queue.incoming.is_completed(&request.id)
     }
 
+    #[track_caller]
     fn send(&self, message: lsp_server::Message) {
-        self.sender.send(message).unwrap()
+        self.sender.send(message).unwrap();
+    }
+
+    pub(crate) fn publish_diagnostics(
+        &mut self,
+        uri: Url,
+        version: Option<i32>,
+        mut diagnostics: Vec<lsp_types::Diagnostic>,
+    ) {
+        // We put this on a separate thread to avoid blocking the main thread with serialization work
+        self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
+            let sender = self.sender.clone();
+            move |_| {
+                // VSCode assumes diagnostic messages to be non-empty strings, so we need to patch
+                // empty diagnostics. Neither the docs of VSCode nor the LSP spec say whether
+                // diagnostic messages are actually allowed to be empty or not and patching this
+                // in the VSCode client does not work as the assertion happens in the protocol
+                // conversion. So this hack is here to stay, and will be considered a hack
+                // until the LSP decides to state that empty messages are allowed.
+
+                // See https://github.com/rust-lang/rust-analyzer/issues/11404
+                // See https://github.com/rust-lang/rust-analyzer/issues/13130
+                let patch_empty = |message: &mut String| {
+                    if message.is_empty() {
+                        " ".clone_into(message);
+                    }
+                };
+
+                for d in &mut diagnostics {
+                    patch_empty(&mut d.message);
+                    if let Some(dri) = &mut d.related_information {
+                        for dri in dri {
+                            patch_empty(&mut dri.message);
+                        }
+                    }
+                }
+
+                let not = lsp_server::Notification::new(
+                    <lsp_types::notification::PublishDiagnostics as lsp_types::notification::Notification>::METHOD.to_owned(),
+                    lsp_types::PublishDiagnosticsParams { uri, diagnostics, version },
+                );
+                _ = sender.send(not.into());
+            }
+        });
     }
 }
 

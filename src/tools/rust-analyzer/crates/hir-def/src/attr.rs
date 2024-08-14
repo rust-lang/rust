@@ -657,9 +657,9 @@ mod tests {
     use triomphe::Arc;
 
     use hir_expand::span_map::{RealSpanMap, SpanMap};
-    use mbe::{syntax_node_to_token_tree, DocCommentDesugarMode};
     use span::FileId;
     use syntax::{ast, AstNode, TextRange};
+    use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
 
     use crate::attr::{DocAtom, DocExpr};
 

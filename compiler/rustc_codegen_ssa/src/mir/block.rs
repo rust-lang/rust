@@ -846,7 +846,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ),
                 None,
             ),
-            ty::FnPtr(_) => (None, Some(callee.immediate())),
+            ty::FnPtr(..) => (None, Some(callee.immediate())),
             _ => bug!("{} is not callable", callee.layout.ty),
         };
 
@@ -923,8 +923,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // third argument must be constant. This is
                         // checked by the type-checker.
                         if i == 2 && intrinsic.name == sym::simd_shuffle {
+                            // FIXME: the simd_shuffle argument is actually an array,
+                            // not a vector, so we need this special hack to make sure
+                            // it is passed as an immediate. We should pass the
+                            // shuffle indices as a vector instead to avoid this hack.
                             if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.simd_shuffle_indices(bx, constant);
+                                let (llval, ty) = self.immediate_const_vector(bx, constant);
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),

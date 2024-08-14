@@ -23,7 +23,7 @@ use ide::{
 use ide_db::{
     base_db::{
         salsa::{self, debug::DebugQueryTable, ParallelDatabase},
-        SourceDatabase, SourceDatabaseExt,
+        SourceDatabase, SourceRootDatabase,
     },
     EditionedFileId, LineIndexDatabase, SnippetCap,
 };
@@ -64,7 +64,6 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
-            sysroot_query_metadata: self.query_sysroot_metadata,
             ..Default::default()
         };
         let no_progress = &|_| ();
@@ -977,7 +976,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
 
         for &file_id in &file_ids {
-            _ = analysis.diagnostics(
+            _ = analysis.full_diagnostics(
                 &DiagnosticsConfig {
                     enabled: true,
                     proc_macros_enabled: true,

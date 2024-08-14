@@ -143,7 +143,12 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr(ty::Binder<I, FnSig<I>>),
+    ///
+    /// These two fields are equivalent to a `ty::Binder<I, FnSig<I>>`. But by
+    /// splitting that into two pieces, we get a more compact data layout that
+    /// reduces the size of `TyKind` by 8 bytes. It is a very hot type, so it's
+    /// worth the mild inconvenience.
+    FnPtr(ty::Binder<I, FnSigTys<I>>, FnHeader<I>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(I::BoundExistentialPredicates, I::Region, DynKind),
@@ -288,7 +293,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             RawPtr(ty, mutbl) => write!(f, "*{} {:?}", mutbl.ptr_str(), ty),
             Ref(r, t, m) => write!(f, "&{:?} {}{:?}", r, m.prefix_str(), t),
             FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&s).finish(),
-            FnPtr(s) => write!(f, "{s:?}"),
+            FnPtr(sig_tys, hdr) => write!(f, "{:?}", sig_tys.with(*hdr)),
             Dynamic(p, r, repr) => match repr {
                 DynKind::Dyn => write!(f, "dyn {p:?} + {r:?}"),
                 DynKind::DynStar => write!(f, "dyn* {p:?} + {r:?}"),
@@ -868,16 +873,12 @@ pub struct FnSig<I: Interner> {
 }
 
 impl<I: Interner> FnSig<I> {
-    pub fn split_inputs_and_output(self) -> (I::FnInputTys, I::Ty) {
-        self.inputs_and_output.split_inputs_and_output()
-    }
-
     pub fn inputs(self) -> I::FnInputTys {
-        self.split_inputs_and_output().0
+        self.inputs_and_output.inputs()
     }
 
     pub fn output(self) -> I::Ty {
-        self.split_inputs_and_output().1
+        self.inputs_and_output.output()
     }
 
     pub fn is_fn_trait_compatible(self) -> bool {
@@ -922,6 +923,13 @@ impl<I: Interner> ty::Binder<I, FnSig<I>> {
     pub fn is_fn_trait_compatible(&self) -> bool {
         self.skip_binder().is_fn_trait_compatible()
     }
+
+    // Used to split a single value into the two fields in `TyKind::FnPtr`.
+    pub fn split(self) -> (ty::Binder<I, FnSigTys<I>>, FnHeader<I>) {
+        let hdr =
+            FnHeader { c_variadic: self.c_variadic(), safety: self.safety(), abi: self.abi() };
+        (self.map_bound(|sig| FnSigTys { inputs_and_output: sig.inputs_and_output }), hdr)
+    }
 }
 
 impl<I: Interner> fmt::Debug for FnSig<I> {
@@ -935,7 +943,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         }
 
         write!(f, "fn(")?;
-        let (inputs, output) = sig.split_inputs_and_output();
+        let inputs = sig.inputs();
         for (i, ty) in inputs.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
@@ -951,9 +959,69 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
         }
         write!(f, ")")?;
 
+        let output = sig.output();
         match output.kind() {
             Tuple(list) if list.is_empty() => Ok(()),
             _ => write!(f, " -> {:?}", sig.output()),
         }
     }
+}
+
+// This is just a `FnSig` without the `FnHeader` fields.
+#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct FnSigTys<I: Interner> {
+    pub inputs_and_output: I::Tys,
+}
+
+impl<I: Interner> FnSigTys<I> {
+    pub fn inputs(self) -> I::FnInputTys {
+        self.inputs_and_output.inputs()
+    }
+
+    pub fn output(self) -> I::Ty {
+        self.inputs_and_output.output()
+    }
+}
+
+impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
+    // Used to combine the two fields in `TyKind::FnPtr` into a single value.
+    pub fn with(self, hdr: FnHeader<I>) -> ty::Binder<I, FnSig<I>> {
+        self.map_bound(|sig_tys| FnSig {
+            inputs_and_output: sig_tys.inputs_and_output,
+            c_variadic: hdr.c_variadic,
+            safety: hdr.safety,
+            abi: hdr.abi,
+        })
+    }
+
+    #[inline]
+    pub fn inputs(self) -> ty::Binder<I, I::FnInputTys> {
+        self.map_bound(|sig_tys| sig_tys.inputs())
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn input(self, index: usize) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|sig_tys| sig_tys.inputs().get(index).unwrap())
+    }
+
+    pub fn inputs_and_output(self) -> ty::Binder<I, I::Tys> {
+        self.map_bound(|sig_tys| sig_tys.inputs_and_output)
+    }
+
+    #[inline]
+    pub fn output(self) -> ty::Binder<I, I::Ty> {
+        self.map_bound(|sig_tys| sig_tys.output())
+    }
+}
+
+#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
+pub struct FnHeader<I: Interner> {
+    pub c_variadic: bool,
+    pub safety: I::Safety,
+    pub abi: I::Abi,
 }

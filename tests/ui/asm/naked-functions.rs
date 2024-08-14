@@ -3,7 +3,7 @@
 //@ ignore-spirv
 
 #![feature(naked_functions)]
-#![feature(asm_const, asm_unwind, linkage)]
+#![feature(asm_unwind, linkage)]
 #![crate_type = "lib"]
 
 use std::arch::asm;

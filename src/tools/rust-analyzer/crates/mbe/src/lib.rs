@@ -8,13 +8,12 @@
 
 mod expander;
 mod parser;
-mod syntax_bridge;
-mod to_parser_input;
 
 #[cfg(test)]
 mod benchmark;
 
 use span::{Edition, Span, SyntaxContextId};
+use syntax_bridge::to_parser_input;
 use tt::iter::TtIter;
 use tt::DelimSpan;
 
@@ -23,17 +22,7 @@ use std::sync::Arc;
 
 use crate::parser::{MetaTemplate, MetaVarKind, Op};
 
-// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
-pub use ::parser::TopEntryPoint;
 pub use tt::{Delimiter, DelimiterKind, Punct};
-
-pub use crate::syntax_bridge::{
-    desugar_doc_comment_text, parse_exprs_with_sep, parse_to_token_tree,
-    parse_to_token_tree_static_span, syntax_node_to_token_tree, syntax_node_to_token_tree_modified,
-    token_tree_to_syntax_node, DocCommentDesugarMode, SpanMapper,
-};
-
-pub use crate::syntax_bridge::dummy_test_span_utils::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParseError {
@@ -361,7 +350,7 @@ impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
     }
 }
 
-fn expect_fragment(
+pub fn expect_fragment(
     tt_iter: &mut TtIter<'_, Span>,
     entry_point: ::parser::PrefixEntryPoint,
     edition: ::parser::Edition,
@@ -369,7 +358,7 @@ fn expect_fragment(
 ) -> ExpandResult<Option<tt::TokenTree<Span>>> {
     use ::parser;
     let buffer = tt::buffer::TokenBuffer::from_tokens(tt_iter.as_slice());
-    let parser_input = to_parser_input::to_parser_input(edition, &buffer);
+    let parser_input = to_parser_input(edition, &buffer);
     let tree_traversal = entry_point.parse(&parser_input, edition);
     let mut cursor = buffer.begin();
     let mut error = false;

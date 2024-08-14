@@ -1,4 +1,4 @@
-use base_db::SourceDatabaseExt2 as _;
+use base_db::SourceDatabaseFileInputExt as _;
 use test_fixture::WithFixture;
 
 use crate::{db::HirDatabase, test_db::TestDB};

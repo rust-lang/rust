@@ -702,10 +702,12 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             && adt.is_enum()
             && let Constructor::Variant(variant_index) = witness_1.ctor()
         {
-            let variant = adt.variant(*variant_index);
-            let inhabited = variant.inhabited_predicate(self.tcx, *adt).instantiate(self.tcx, args);
-            assert!(inhabited.apply(self.tcx, cx.param_env, cx.module));
-            !inhabited.apply_ignore_module(self.tcx, cx.param_env)
+            let variant_inhabited = adt
+                .variant(*variant_index)
+                .inhabited_predicate(self.tcx, *adt)
+                .instantiate(self.tcx, args);
+            variant_inhabited.apply(self.tcx, cx.param_env, cx.module)
+                && !variant_inhabited.apply_ignore_module(self.tcx, cx.param_env)
         } else {
             false
         };

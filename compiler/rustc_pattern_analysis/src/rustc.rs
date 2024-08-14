@@ -413,7 +413,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::Foreign(_)
             | ty::RawPtr(_, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Pat(_, _)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)

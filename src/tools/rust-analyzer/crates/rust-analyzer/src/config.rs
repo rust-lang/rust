@@ -7,7 +7,6 @@ use std::{fmt, iter, ops::Not, sync::OnceLock};
 
 use cfg::{CfgAtom, CfgDiff};
 use dirs::config_dir;
-use flycheck::{CargoOptions, FlycheckConfig};
 use hir::Symbol;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
@@ -35,8 +34,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, VfsPath};
 
 use crate::{
-    capabilities::ClientCapabilities,
     diagnostics::DiagnosticsMapConfig,
+    flycheck::{CargoOptions, FlycheckConfig},
+    lsp::capabilities::ClientCapabilities,
     lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
@@ -143,13 +143,6 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = Some("discover".to_owned()),
-        /// Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
-        /// third-party dependencies of the standard libraries.
-        ///
-        /// This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
-        /// will attempt to clean up afterwards, but nevertheless requires the location to be
-        /// writable to.
-        cargo_sysrootQueryMetadata: bool     = false,
         /// Relative path to the sysroot library sources. If left unset, this will default to
         /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
         ///
@@ -1839,7 +1832,6 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(None).as_ref().map(|sysroot| self.root_path.join(sysroot));
-        let sysroot_query_metadata = self.cargo_sysrootQueryMetadata(None);
 
         CargoConfig {
             all_targets: *self.cargo_allTargets(None),
@@ -1852,7 +1844,6 @@ impl Config {
             },
             target: self.cargo_target(None).clone(),
             sysroot,
-            sysroot_query_metadata: *sysroot_query_metadata,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
@@ -1908,7 +1899,7 @@ impl Config {
         *self.check_workspace(None)
     }
 
-    pub fn cargo_test_options(&self) -> CargoOptions {
+    pub(crate) fn cargo_test_options(&self) -> CargoOptions {
         CargoOptions {
             target_triples: self.cargo_target(None).clone().into_iter().collect(),
             all_targets: false,
@@ -1924,7 +1915,7 @@ impl Config {
         }
     }
 
-    pub fn flycheck(&self) -> FlycheckConfig {
+    pub(crate) fn flycheck(&self) -> FlycheckConfig {
         match &self.check_overrideCommand(None) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1934,16 +1925,18 @@ impl Config {
                     args,
                     extra_env: self.check_extra_env(),
                     invocation_strategy: match self.check_invocationStrategy(None) {
-                        InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
+                        InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
-                            flycheck::InvocationStrategy::PerWorkspace
+                            crate::flycheck::InvocationStrategy::PerWorkspace
                         }
                     },
                     invocation_location: match self.check_invocationLocation(None) {
                         InvocationLocation::Root => {
-                            flycheck::InvocationLocation::Root(self.root_path.clone())
+                            crate::flycheck::InvocationLocation::Root(self.root_path.clone())
                         }
-                        InvocationLocation::Workspace => flycheck::InvocationLocation::Workspace,
+                        InvocationLocation::Workspace => {
+                            crate::flycheck::InvocationLocation::Workspace
+                        }
                     },
                 }
             }
@@ -3450,7 +3443,7 @@ mod tests {
         let s = remove_ws(&schema);
         if !p.contains(&s) {
             package_json.replace_range(start..end, &schema);
-            ensure_file_contents(&package_json_path, &package_json)
+            ensure_file_contents(package_json_path.as_std_path(), &package_json)
         }
     }
 
@@ -3458,7 +3451,7 @@ mod tests {
     fn generate_config_documentation() {
         let docs_path = project_root().join("docs/user/generated_config.adoc");
         let expected = FullConfigInput::manual();
-        ensure_file_contents(&docs_path, &expected);
+        ensure_file_contents(docs_path.as_std_path(), &expected);
     }
 
     fn remove_ws(text: &str) -> String {
@@ -3467,13 +3460,8 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_null() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3487,32 +3475,22 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_abs() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
         "procMacro" : {
-            "server": project_root().display().to_string(),
+            "server": project_root().to_string(),
         }}));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::try_from(project_root()).unwrap()));
+        assert_eq!(config.proc_macro_srv(), Some(AbsPathBuf::assert(project_root())));
     }
 
     #[test]
     fn proc_macro_srv_rel() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
 
@@ -3531,13 +3509,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_unset() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
 
@@ -3554,13 +3527,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_subdir() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3577,13 +3545,8 @@ mod tests {
 
     #[test]
     fn cargo_target_dir_relative_dir() {
-        let mut config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3603,13 +3566,8 @@ mod tests {
 
     #[test]
     fn toml_unknown_key() {
-        let config = Config::new(
-            AbsPathBuf::try_from(project_root()).unwrap(),
-            Default::default(),
-            vec![],
-            None,
-            None,
-        );
+        let config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
 
         let mut change = ConfigChange::default();
 

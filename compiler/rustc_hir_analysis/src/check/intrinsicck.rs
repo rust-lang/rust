@@ -1,3 +1,5 @@
+use std::assert_matches::debug_assert_matches;
+
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::{self as hir, LangItem};
@@ -66,7 +68,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
             ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
             ty::Float(FloatTy::F128) => Some(InlineAsmType::F128),
-            ty::FnPtr(_) => Some(asm_ty_isize),
+            ty::FnPtr(..) => Some(asm_ty_isize),
             ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Some(asm_ty_isize),
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
@@ -457,17 +459,17 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 }
                 // Typeck has checked that Const operands are integers.
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    debug_assert!(matches!(
+                    debug_assert_matches!(
                         self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
                         ty::Error(_) | ty::Int(_) | ty::Uint(_)
-                    ));
+                    );
                 }
                 // Typeck has checked that SymFn refers to a function.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
-                    debug_assert!(matches!(
+                    debug_assert_matches!(
                         self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
                         ty::Error(_) | ty::FnDef(..)
-                    ));
+                    );
                 }
                 // AST lowering guarantees that SymStatic points to a static.
                 hir::InlineAsmOperand::SymStatic { .. } => {}

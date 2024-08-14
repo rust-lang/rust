@@ -236,7 +236,7 @@ fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'
     // We can't use `Ty::fn_sig` because it automatically performs args, this may result in FNs.
     match node_ty.kind() {
         ty::FnDef(def_id, _) => Some(cx.tcx.fn_sig(*def_id).instantiate_identity()),
-        ty::FnPtr(fn_sig) => Some(*fn_sig),
+        ty::FnPtr(sig_tys, hdr) => Some(sig_tys.with(*hdr)),
         _ => None,
     }
 }

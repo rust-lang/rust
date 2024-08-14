@@ -1,5 +1,5 @@
 //! See [`import_on_the_fly`].
-use hir::{ImportPathConfig, ItemInNs, ModuleDef};
+use hir::{ItemInNs, ModuleDef};
 use ide_db::imports::{
     import_assets::{ImportAssets, LocatedImport},
     insert_use::ImportScope,
@@ -256,11 +256,7 @@ fn import_on_the_fly(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let import_cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let import_cfg = ctx.config.import_path_config();
 
     import_assets
         .search_for_imports(&ctx.sema, import_cfg, ctx.config.insert_use.prefix_kind)
@@ -306,12 +302,7 @@ fn import_on_the_fly_pat_(
         ItemInNs::Values(def) => matches!(def, hir::ModuleDef::Const(_)),
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
-
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
@@ -353,11 +344,7 @@ fn import_on_the_fly_method(
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
