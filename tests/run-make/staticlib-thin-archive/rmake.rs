@@ -3,21 +3,16 @@
 // archive support rustc would add emit object files to the staticlib and after
 // the object crate added thin archive support it would previously crash the
 // compiler due to a missing special case for thin archive members.
-use std::path::Path;
-
-use run_make_support::{llvm_ar, rust_lib_name, rustc, static_lib_name};
+use run_make_support::{llvm_ar, path, rfs, rust_lib_name, rustc, static_lib_name};
 
 fn main() {
-    std::fs::create_dir("archive").unwrap();
+    rfs::create_dir("archive");
 
     // Build a thin archive
     rustc().input("simple_obj.rs").emit("obj").output("archive/simple_obj.o").run();
     llvm_ar()
         .obj_to_thin_ar()
-        .output_input(
-            Path::new("archive").join(static_lib_name("thin_archive")),
-            "archive/simple_obj.o",
-        )
+        .output_input(path("archive").join(static_lib_name("thin_archive")), "archive/simple_obj.o")
         .run();
 
     // Build an rlib which includes the members of this thin archive
