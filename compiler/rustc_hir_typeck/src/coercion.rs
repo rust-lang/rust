@@ -137,7 +137,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
-                    .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
+                    .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 
             // In the new solver, lazy norm may allow us to shallowly equate
@@ -225,10 +225,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // items to drop the unsafe qualifier.
                 self.coerce_from_fn_item(a, b)
             }
-            ty::FnPtr(a_f) => {
+            ty::FnPtr(a_sig_tys, a_hdr) => {
                 // We permit coercion of fn pointers to drop the
                 // unsafe qualifier.
-                self.coerce_from_fn_pointer(a, a_f, b)
+                self.coerce_from_fn_pointer(a, a_sig_tys.with(a_hdr), b)
             }
             ty::Closure(closure_def_id_a, args_a) => {
                 // Non-capturing closures are coercible to
@@ -788,9 +788,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.commit_if_ok(|snapshot| {
             let outer_universe = self.infcx.universe();
 
-            let result = if let ty::FnPtr(fn_ty_b) = b.kind()
-                && let (hir::Safety::Safe, hir::Safety::Unsafe) =
-                    (fn_ty_a.safety(), fn_ty_b.safety())
+            let result = if let ty::FnPtr(_, hdr_b) = b.kind()
+                && let (hir::Safety::Safe, hir::Safety::Unsafe) = (fn_ty_a.safety(), hdr_b.safety)
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
                 self.unify_and(unsafe_a, b, to_unsafe)
@@ -842,7 +841,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
-            ty::FnPtr(b_sig) => {
+            ty::FnPtr(_, b_hdr) => {
                 let a_sig = a.fn_sig(self.tcx);
                 if let ty::FnDef(def_id, _) = *a.kind() {
                     // Intrinsics are not coercible to function pointers
@@ -852,7 +851,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                     // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
 
-                    if b_sig.safety() == hir::Safety::Safe
+                    if b_hdr.safety == hir::Safety::Safe
                         && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
@@ -910,7 +909,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             //
             // All we care here is if any variable is being captured and not the exact paths,
             // so we check `upvars_mentioned` for root variables being captured.
-            ty::FnPtr(fn_ty)
+            ty::FnPtr(_, hdr)
                 if self
                     .tcx
                     .upvars_mentioned(closure_def_id_a.expect_local())
@@ -923,7 +922,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // or
                 //     `unsafe fn(arg0,arg1,...) -> _`
                 let closure_sig = args_a.as_closure().sig();
-                let safety = fn_ty.safety();
+                let safety = hdr.safety;
                 let pointer_ty =
                     Ty::new_fn_ptr(self.tcx, self.tcx.signature_unclosure(closure_sig, safety));
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);

@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use base_db::SourceDatabaseExt;
+use base_db::SourceRootDatabase;
 use hir::{Crate, DescendPreference, ItemInNs, ModuleDef, Name, Semantics};
 use span::FileId;
 use syntax::{

@@ -1,6 +1,5 @@
 //@ build-fail
 //@ needs-asm-support
-#![feature(asm_const)]
 
 use std::arch::global_asm;
 

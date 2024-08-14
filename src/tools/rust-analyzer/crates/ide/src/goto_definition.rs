@@ -10,7 +10,7 @@ use hir::{
     Semantics,
 };
 use ide_db::{
-    base_db::{AnchoredPath, FileLoader},
+    base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     RootDatabase, SymbolKind,

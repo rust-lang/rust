@@ -297,14 +297,16 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
+            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
             Some(format!(
                 "<a class=\"test-arrow\" \
                     target=\"_blank\" \
-                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\">Run</a>",
+                    title=\"Run code\" \
+                    href=\"{url}?code={test_escaped}{channel}&amp;edition={edition}\"></a>",
             ))
         });
 
@@ -736,7 +738,7 @@ impl MdRelLine {
     }
 }
 
-pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
+pub(crate) fn find_testable_code<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -746,7 +748,7 @@ pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
     find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
 }
 
-pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
+pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -867,6 +869,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
+    pub(crate) standalone: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
@@ -1189,6 +1192,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
+            standalone: false,
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
@@ -1257,6 +1261,10 @@ impl LangString {
                         data.compile_fail = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
+                    }
+                    LangStringToken::LangToken("standalone") => {
+                        data.standalone = true;
+                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
                     LangStringToken::LangToken(x) if x.starts_with("edition") => {
                         data.edition = x[7..].parse::<Edition>().ok();

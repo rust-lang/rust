@@ -353,7 +353,7 @@ details:not(.toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, a.test-arrow, .code-header {
+code, pre, .code-header {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -946,8 +946,8 @@ because of the `[-]` element which would overlap with it. */
 .main-heading a:hover,
 .example-wrap .rust a:hover,
 .all-items a:hover,
-.docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
-.docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
+.docblock a:not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
+.docblock-short a:not(.scrape-help):not(.tooltip):hover,
 .item-info a {
 	text-decoration: underline;
 }
@@ -1461,22 +1461,17 @@ documentation. */
 	z-index: 1;
 }
 a.test-arrow {
-	padding: 5px 7px;
-	border-radius: var(--button-border-radius);
-	font-size: 1rem;
-	color: var(--test-arrow-color);
-	background-color: var(--test-arrow-background-color);
+	height: var(--copy-path-height);
+	padding: 6px 4px 0 11px;
 }
-a.test-arrow:hover {
-	color: var(--test-arrow-hover-color);
-	background-color: var(--test-arrow-hover-background-color);
+a.test-arrow::before {
+	content: url('data:image/svg+xml,<svg viewBox="0 0 20 20" width="18" height="20" \
+		xmlns="http://www.w3.org/2000/svg"><path d="M0 0l18 10-18 10z"/></svg>');
 }
 .example-wrap .button-holder {
 	display: flex;
 }
-.example-wrap:hover > .test-arrow {
-	padding: 2px 7px;
-}
+
 /*
 On iPad, the ":hover" state sticks around, making things work not greatly. Do work around
 it, we move it into this media query. More information can be found at:
@@ -1486,29 +1481,34 @@ However, using `@media (hover: hover)` makes this rule never to be applied in GU
 instead, we check that it's not a "finger" cursor.
 */
 @media not (pointer: coarse) {
-	.example-wrap:hover > .test-arrow, .example-wrap:hover > .button-holder {
+	.example-wrap:hover > a.test-arrow, .example-wrap:hover > .button-holder {
 		visibility: visible;
 	}
 }
 .example-wrap .button-holder.keep-visible {
 	visibility: visible;
 }
-.example-wrap .button-holder .copy-button {
-	color: var(--copy-path-button-color);
+.example-wrap .button-holder .copy-button, .example-wrap .test-arrow {
 	background: var(--main-background-color);
+	cursor: pointer;
+	border-radius: var(--button-border-radius);
 	height: var(--copy-path-height);
 	width: var(--copy-path-width);
+}
+.example-wrap .button-holder .copy-button {
 	margin-left: var(--button-left-margin);
 	padding: 2px 0 0 4px;
 	border: 0;
-	cursor: pointer;
-	border-radius: var(--button-border-radius);
+}
+.example-wrap .button-holder .copy-button::before,
+.example-wrap .test-arrow::before {
+	filter: var(--copy-path-img-filter);
 }
 .example-wrap .button-holder .copy-button::before {
-	filter: var(--copy-path-img-filter);
 	content: var(--clipboard-image);
 }
-.example-wrap .button-holder .copy-button:hover::before {
+.example-wrap .button-holder .copy-button:hover::before,
+.example-wrap .test-arrow:hover::before {
 	filter: var(--copy-path-img-hover-filter);
 }
 .example-wrap .button-holder .copy-button.clicked::before {
@@ -2552,10 +2552,6 @@ by default.
 	--code-highlight-doc-comment-color: #4d4d4c;
 	--src-line-numbers-span-color: #c67e2d;
 	--src-line-number-highlighted-background-color: #fdffd3;
-	--test-arrow-color: #f5f5f5;
-	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
-	--test-arrow-hover-color: #f5f5f5;
-	--test-arrow-hover-background-color: rgb(78, 139, 202);
 	--target-background-color: #fdffd3;
 	--target-border-color: #ad7c37;
 	--kbd-color: #000;
@@ -2658,10 +2654,6 @@ by default.
 	--code-highlight-doc-comment-color: #8ca375;
 	--src-line-numbers-span-color: #3b91e2;
 	--src-line-number-highlighted-background-color: #0a042f;
-	--test-arrow-color: #dedede;
-	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
-	--test-arrow-hover-color: #dedede;
-	--test-arrow-hover-background-color: #4e8bca;
 	--target-background-color: #494a3d;
 	--target-border-color: #bb7410;
 	--kbd-color: #000;
@@ -2771,10 +2763,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-highlight-doc-comment-color: #a1ac88;
 	--src-line-numbers-span-color: #5c6773;
 	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
-	--test-arrow-color: #788797;
-	--test-arrow-background-color: rgba(57, 175, 215, 0.09);
-	--test-arrow-hover-color: #c5c5c5;
-	--test-arrow-hover-background-color: rgba(57, 175, 215, 0.368);
 	--target-background-color: rgba(255, 236, 164, 0.06);
 	--target-border-color: rgba(255, 180, 76, 0.85);
 	--kbd-color: #c5c5c5;

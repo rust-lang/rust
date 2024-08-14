@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
-use ide_db::{base_db::SourceDatabaseExt, LineIndexDatabase};
+use ide_db::{base_db::SourceRootDatabase, LineIndexDatabase};
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
 use crate::cli::flags;
@@ -63,7 +63,7 @@ impl flags::Diagnostics {
                     _vfs.file_path(file_id.into())
                 );
                 for diagnostic in analysis
-                    .diagnostics(
+                    .full_diagnostics(
                         &DiagnosticsConfig::test_sample(),
                         AssistResolveStrategy::None,
                         file_id.into(),

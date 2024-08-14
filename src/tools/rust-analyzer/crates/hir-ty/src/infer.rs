@@ -36,15 +36,14 @@ use hir_def::{
     body::Body,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
-    hir::LabelId,
-    hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, PatId},
+    hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
     path::{ModPath, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::{LifetimeRef, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, ItemContainerId, Lookup, TraitId,
-    TupleFieldId, TupleId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, ImplId, ItemContainerId, Lookup,
+    TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
 };
 use hir_expand::name::Name;
 use indexmap::IndexSet;
@@ -785,14 +784,19 @@ impl<'a> InferenceContext<'a> {
     fn collect_const(&mut self, data: &ConstData) {
         let return_ty = self.make_ty(&data.type_ref);
 
-        // Constants might be associated items that define ATPITs.
-        self.insert_atpit_coercion_table(iter::once(&return_ty));
+        // Constants might be defining usage sites of TAITs.
+        self.make_tait_coercion_table(iter::once(&return_ty));
 
         self.return_ty = return_ty;
     }
 
     fn collect_static(&mut self, data: &StaticData) {
-        self.return_ty = self.make_ty(&data.type_ref);
+        let return_ty = self.make_ty(&data.type_ref);
+
+        // Statics might be defining usage sites of TAITs.
+        self.make_tait_coercion_table(iter::once(&return_ty));
+
+        self.return_ty = return_ty;
     }
 
     fn collect_fn(&mut self, func: FunctionId) {
@@ -857,11 +861,11 @@ impl<'a> InferenceContext<'a> {
         self.return_ty = self.normalize_associated_types_in(return_ty);
         self.return_coercion = Some(CoerceMany::new(self.return_ty.clone()));
 
-        // Functions might be associated items that define ATPITs.
-        // To define an ATPITs, that ATPIT must appear in the function's signatures.
+        // Functions might be defining usage sites of TAITs.
+        // To define an TAITs, that TAIT must appear in the function's signatures.
         // So, it suffices to check for params and return types.
         params_and_ret_tys.push(self.return_ty.clone());
-        self.insert_atpit_coercion_table(params_and_ret_tys.iter());
+        self.make_tait_coercion_table(params_and_ret_tys.iter());
     }
 
     fn insert_inference_vars_for_impl_trait<T>(&mut self, t: T, placeholders: Substitution) -> T
@@ -880,7 +884,7 @@ impl<'a> InferenceContext<'a> {
                         ImplTraitId::ReturnTypeImplTrait(def, idx) => {
                             (self.db.return_type_impl_traits(def), idx)
                         }
-                        ImplTraitId::AssociatedTypeImplTrait(def, idx) => {
+                        ImplTraitId::TypeAliasImplTrait(def, idx) => {
                             (self.db.type_alias_impl_traits(def), idx)
                         }
                         _ => unreachable!(),
@@ -909,23 +913,25 @@ impl<'a> InferenceContext<'a> {
     }
 
     /// The coercion of a non-inference var into an opaque type should fail,
-    /// but not in the defining sites of the ATPITs.
-    /// In such cases, we insert an proxy inference var for each ATPIT,
-    /// and coerce into it instead of ATPIT itself.
+    /// but not in the defining sites of the TAITs.
+    /// In such cases, we insert an proxy inference var for each TAIT,
+    /// and coerce into it instead of TAIT itself.
     ///
     /// The inference var stretagy is effective because;
     ///
-    /// - It can still unify types that coerced into ATPIT
+    /// - It can still unify types that coerced into TAITs
     /// - We are pushing `impl Trait` bounds into it
     ///
     /// This function inserts a map that maps the opaque type to that proxy inference var.
-    fn insert_atpit_coercion_table<'b>(&mut self, tys: impl Iterator<Item = &'b Ty>) {
-        struct OpaqueTyCollector<'a, 'b> {
+    fn make_tait_coercion_table<'b>(&mut self, tait_candidates: impl Iterator<Item = &'b Ty>) {
+        struct TypeAliasImplTraitCollector<'a, 'b> {
+            db: &'b dyn HirDatabase,
             table: &'b mut InferenceTable<'a>,
-            opaque_tys: FxHashMap<OpaqueTyId, Ty>,
+            assocs: FxHashMap<OpaqueTyId, (ImplId, Ty)>,
+            non_assocs: FxHashMap<OpaqueTyId, Ty>,
         }
 
-        impl<'a, 'b> TypeVisitor<Interner> for OpaqueTyCollector<'a, 'b> {
+        impl<'a, 'b> TypeVisitor<Interner> for TypeAliasImplTraitCollector<'a, 'b> {
             type BreakTy = ();
 
             fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
@@ -944,59 +950,105 @@ impl<'a> InferenceContext<'a> {
                 let ty = self.table.resolve_ty_shallow(ty);
 
                 if let TyKind::OpaqueType(id, _) = ty.kind(Interner) {
-                    self.opaque_tys.insert(*id, ty.clone());
+                    if let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
+                        self.db.lookup_intern_impl_trait_id((*id).into())
+                    {
+                        let loc = self.db.lookup_intern_type_alias(alias_id);
+                        match loc.container {
+                            ItemContainerId::ImplId(impl_id) => {
+                                self.assocs.insert(*id, (impl_id, ty.clone()));
+                            }
+                            ItemContainerId::ModuleId(..) | ItemContainerId::ExternBlockId(..) => {
+                                self.non_assocs.insert(*id, ty.clone());
+                            }
+                            _ => {}
+                        }
+                    }
                 }
 
                 ty.super_visit_with(self, outer_binder)
             }
         }
 
-        // Early return if this is not happening inside the impl block
-        let impl_id = if let Some(impl_id) = self.resolver.impl_def() {
-            impl_id
-        } else {
-            return;
+        let mut collector = TypeAliasImplTraitCollector {
+            db: self.db,
+            table: &mut self.table,
+            assocs: FxHashMap::default(),
+            non_assocs: FxHashMap::default(),
         };
-
-        let assoc_tys: FxHashSet<_> = self
-            .db
-            .impl_data(impl_id)
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                AssocItemId::TypeAliasId(alias) => Some(*alias),
-                _ => None,
-            })
-            .collect();
-        if assoc_tys.is_empty() {
-            return;
-        }
-
-        let mut collector =
-            OpaqueTyCollector { table: &mut self.table, opaque_tys: FxHashMap::default() };
-        for ty in tys {
+        for ty in tait_candidates {
             ty.visit_with(collector.as_dyn(), DebruijnIndex::INNERMOST);
         }
-        let atpit_coercion_table: FxHashMap<_, _> = collector
-            .opaque_tys
-            .into_iter()
-            .filter_map(|(opaque_ty_id, ty)| {
-                if let ImplTraitId::AssociatedTypeImplTrait(alias_id, _) =
-                    self.db.lookup_intern_impl_trait_id(opaque_ty_id.into())
-                {
-                    if assoc_tys.contains(&alias_id) {
-                        let alias_placeholders = TyBuilder::placeholder_subst(self.db, alias_id);
-                        let ty = self.insert_inference_vars_for_impl_trait(ty, alias_placeholders);
-                        return Some((opaque_ty_id, ty));
-                    }
-                }
 
-                None
+        // Non-assoc TAITs can be define-used everywhere as long as they are
+        // in function signatures or const types, etc
+        let mut taits = collector.non_assocs;
+
+        // assoc TAITs(ATPITs) can be only define-used inside their impl block.
+        // They cannot be define-used in inner items like in the following;
+        //
+        // ```
+        // impl Trait for Struct {
+        //     type Assoc = impl Default;
+        //
+        //     fn assoc_fn() -> Self::Assoc {
+        //         let foo: Self::Assoc = true; // Allowed here
+        //
+        //         fn inner() -> Self::Assoc {
+        //              false                   // Not allowed here
+        //         }
+        //
+        //         foo
+        //     }
+        // }
+        // ```
+        let impl_id = match self.owner {
+            DefWithBodyId::FunctionId(it) => {
+                let loc = self.db.lookup_intern_function(it);
+                if let ItemContainerId::ImplId(impl_id) = loc.container {
+                    Some(impl_id)
+                } else {
+                    None
+                }
+            }
+            DefWithBodyId::ConstId(it) => {
+                let loc = self.db.lookup_intern_const(it);
+                if let ItemContainerId::ImplId(impl_id) = loc.container {
+                    Some(impl_id)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+
+        if let Some(impl_id) = impl_id {
+            taits.extend(collector.assocs.into_iter().filter_map(|(id, (impl_, ty))| {
+                if impl_ == impl_id {
+                    Some((id, ty))
+                } else {
+                    None
+                }
+            }));
+        }
+
+        let tait_coercion_table: FxHashMap<_, _> = taits
+            .into_iter()
+            .filter_map(|(id, ty)| {
+                if let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
+                    self.db.lookup_intern_impl_trait_id(id.into())
+                {
+                    let subst = TyBuilder::placeholder_subst(self.db, alias_id);
+                    let ty = self.insert_inference_vars_for_impl_trait(ty, subst);
+                    Some((id, ty))
+                } else {
+                    None
+                }
             })
             .collect();
 
-        if !atpit_coercion_table.is_empty() {
-            self.table.atpit_coercion_table = Some(atpit_coercion_table);
+        if !tait_coercion_table.is_empty() {
+            self.table.tait_coercion_table = Some(tait_coercion_table);
         }
     }
 

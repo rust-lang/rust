@@ -15,7 +15,6 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem};
 
-use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
 use ide_db::{
     base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
@@ -32,6 +31,7 @@ use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
+    flycheck::{FlycheckConfig, FlycheckHandle},
     global_state::{FetchWorkspaceRequest, GlobalState},
     lsp_ext,
     main_loop::{DiscoverProjectParam, Task},
@@ -62,13 +62,13 @@ pub(crate) enum ProcMacroProgress {
 
 impl GlobalState {
     pub(crate) fn is_quiescent(&self) -> bool {
-        !(self.last_reported_status.is_none()
-            || self.fetch_workspaces_queue.op_in_progress()
-            || self.fetch_build_data_queue.op_in_progress()
-            || self.fetch_proc_macros_queue.op_in_progress()
-            || self.discover_workspace_queue.op_in_progress()
-            || self.vfs_progress_config_version < self.vfs_config_version
-            || self.vfs_progress_n_done < self.vfs_progress_n_total)
+        self.vfs_done
+            && self.last_reported_status.is_some()
+            && !self.fetch_workspaces_queue.op_in_progress()
+            && !self.fetch_build_data_queue.op_in_progress()
+            && !self.fetch_proc_macros_queue.op_in_progress()
+            && !self.discover_workspace_queue.op_in_progress()
+            && self.vfs_progress_config_version >= self.vfs_config_version
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
@@ -102,15 +102,13 @@ impl GlobalState {
     }
 
     pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
-        let mut status = lsp_ext::ServerStatusParams {
-            health: lsp_ext::Health::Ok,
-            quiescent: self.is_quiescent(),
-            message: None,
-        };
+        let quiescent = self.is_quiescent();
+        let mut status =
+            lsp_ext::ServerStatusParams { health: lsp_ext::Health::Ok, quiescent, message: None };
         let mut message = String::new();
 
         if !self.config.cargo_autoreload(None)
-            && self.is_quiescent()
+            && quiescent
             && self.fetch_workspaces_queue.op_requested()
             && self.config.discover_workspace_config().is_none()
         {
@@ -242,7 +240,7 @@ impl GlobalState {
             let discover_command = self.config.discover_workspace_config().cloned();
             let is_quiescent = !(self.discover_workspace_queue.op_in_progress()
                 || self.vfs_progress_config_version < self.vfs_config_version
-                || self.vfs_progress_n_done < self.vfs_progress_n_total);
+                || !self.vfs_done);
 
             move |sender| {
                 let progress = {
@@ -751,20 +749,22 @@ impl GlobalState {
         let config = self.config.flycheck();
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {
-            FlycheckConfig::CargoCommand { .. } => flycheck::InvocationStrategy::PerWorkspace,
+            FlycheckConfig::CargoCommand { .. } => {
+                crate::flycheck::InvocationStrategy::PerWorkspace
+            }
             FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
         };
 
         self.flycheck = match invocation_strategy {
-            flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
+            crate::flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
                 0,
-                Box::new(move |msg| sender.send(msg).unwrap()),
+                sender,
                 config,
                 None,
                 self.config.root_path().clone(),
                 None,
             )],
-            flycheck::InvocationStrategy::PerWorkspace => {
+            crate::flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()
                     .enumerate()
@@ -793,10 +793,9 @@ impl GlobalState {
                         ))
                     })
                     .map(|(id, (root, manifest_path), sysroot_root)| {
-                        let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
-                            Box::new(move |msg| sender.send(msg).unwrap()),
+                            sender.clone(),
                             config.clone(),
                             sysroot_root,
                             root.to_path_buf(),

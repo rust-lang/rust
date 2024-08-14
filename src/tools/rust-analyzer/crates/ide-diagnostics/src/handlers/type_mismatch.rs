@@ -2,8 +2,12 @@ use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
-    ast::{self, BlockExpr, ExprStmt},
-    AstNode, AstPtr,
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        BlockExpr, Expr, ExprStmt,
+    },
+    AstNode, AstPtr, TextSize,
 };
 use text_edit::TextEdit;
 
@@ -117,6 +121,38 @@ fn add_missing_ok_or_some(
 
     if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
         return None;
+    }
+
+    if d.actual.is_unit() {
+        if let Expr::BlockExpr(block) = &expr {
+            if block.tail_expr().is_none() {
+                let mut builder = TextEdit::builder();
+                let block_indent = block.indent_level();
+
+                if block.statements().count() == 0 {
+                    // Empty block
+                    let indent = block_indent + 1;
+                    builder.insert(
+                        block.syntax().text_range().start() + TextSize::from(1),
+                        format!("\n{indent}{variant_name}(())\n{block_indent}"),
+                    );
+                } else {
+                    let indent = IndentLevel::from(1);
+                    builder.insert(
+                        block.syntax().text_range().end() - TextSize::from(1),
+                        format!("{indent}{variant_name}(())\n{block_indent}"),
+                    );
+                }
+
+                let source_change = SourceChange::from_text_edit(
+                    expr_ptr.file_id.original_file(ctx.sema.db),
+                    builder.finish(),
+                );
+                let name = format!("Insert {variant_name}(()) as the tail of this block");
+                acc.push(fix("insert_wrapped_unit", &name, source_change, expr_range));
+            }
+            return Some(());
+        }
     }
 
     let mut builder = TextEdit::builder();
@@ -530,6 +566,36 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     Ok(x / y)
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn test_wrapped_unit_as_block_tail_expr() {
+        check_fix(
+            r#"
+//- minicore: result
+fn foo() -> Result<(), ()> {
+    foo();
+}$0
+            "#,
+            r#"
+fn foo() -> Result<(), ()> {
+    foo();
+    Ok(())
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+//- minicore: result
+fn foo() -> Result<(), ()> {}$0
+            "#,
+            r#"
+fn foo() -> Result<(), ()> {
+    Ok(())
+}
+            "#,
         );
     }
 

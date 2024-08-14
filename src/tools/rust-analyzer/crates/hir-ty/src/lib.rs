@@ -595,7 +595,7 @@ impl TypeFoldable<Interner> for CallableSig {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
-    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 impl InternValueTrivial for ImplTraitId {}

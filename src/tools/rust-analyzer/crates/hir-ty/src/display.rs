@@ -1022,16 +1022,16 @@ impl HirDisplay for Ty {
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if parameters.len() - impl_ > 0 {
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
+                        let without_impl = self_param as usize + type_ + const_ + lifetime;
                         // parent's params (those from enclosing impl or trait, if any).
-                        let (fn_params, other) =
-                            parameters.split_at(self_param as usize + type_ + const_ + lifetime);
-                        let (_impl, parent_params) = other.split_at(impl_);
+                        let (fn_params, parent_params) = parameters.split_at(without_impl + impl_);
                         debug_assert_eq!(parent_params.len(), parent_len);
 
                         let parent_params =
                             generic_args_sans_defaults(f, Some(generic_def_id), parent_params);
                         let fn_params =
-                            generic_args_sans_defaults(f, Some(generic_def_id), fn_params);
+                            &generic_args_sans_defaults(f, Some(generic_def_id), fn_params)
+                                [0..without_impl];
 
                         write!(f, "<")?;
                         hir_fmt_generic_arguments(f, parent_params, None)?;
@@ -1069,6 +1069,7 @@ impl HirDisplay for Ty {
                             module_id,
                             PrefixKind::Plain,
                             false,
+                            // FIXME: no_std Cfg?
                             ImportPathConfig {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
@@ -1151,11 +1152,10 @@ impl HirDisplay for Ty {
                         )?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
-                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         let datas =
                             db.type_alias_impl_traits(alias).expect("impl trait id without data");
-                        let data =
-                            (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
+                        let data = (*datas).as_ref().map(|it| it.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &parameters);
                         let krate = alias.krate(db.upcast());
                         write_bounds_like_dyn_trait_with_prefix(
@@ -1338,7 +1338,7 @@ impl HirDisplay for Ty {
                             SizedByDefault::Sized { anchor: krate },
                         )?;
                     }
-                    ImplTraitId::AssociatedTypeImplTrait(alias, idx) => {
+                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
                         let datas =
                             db.type_alias_impl_traits(alias).expect("impl trait id without data");
                         let data =

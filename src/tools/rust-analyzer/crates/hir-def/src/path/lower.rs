@@ -194,6 +194,11 @@ pub(super) fn lower_generic_args(
         match generic_arg {
             ast::GenericArg::TypeArg(type_arg) => {
                 let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
+                type_ref.walk(&mut |tr| {
+                    if let TypeRef::ImplTrait(bounds) = tr {
+                        lower_ctx.update_impl_traits_bounds(bounds.clone());
+                    }
+                });
                 args.push(GenericArg::Type(type_ref));
             }
             ast::GenericArg::AssocTypeArg(assoc_type_arg) => {

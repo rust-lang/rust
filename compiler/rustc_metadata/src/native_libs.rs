@@ -17,7 +17,7 @@ use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
-use crate::errors;
+use crate::{errors, fluent_generated};
 
 pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
     let formats = if verbatim {
@@ -87,7 +87,6 @@ struct Collector<'tcx> {
 }
 
 impl<'tcx> Collector<'tcx> {
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     fn process_module(&mut self, module: &ForeignModule) {
         let ForeignModule { def_id, abi, ref foreign_items } = *module;
         let def_id = def_id.expect_local();
@@ -161,7 +160,7 @@ impl<'tcx> Collector<'tcx> {
                                         sess,
                                         sym::link_arg_attribute,
                                         span,
-                                        "link kind `link-arg` is unstable",
+                                        fluent_generated::metadata_link_arg_unstable,
                                     )
                                     .emit();
                                 }
@@ -201,8 +200,13 @@ impl<'tcx> Collector<'tcx> {
                             continue;
                         };
                         if !features.link_cfg {
-                            feature_err(sess, sym::link_cfg, item.span(), "link cfg is unstable")
-                                .emit();
+                            feature_err(
+                                sess,
+                                sym::link_cfg,
+                                item.span(),
+                                fluent_generated::metadata_link_cfg_unstable,
+                            )
+                            .emit();
                         }
                         cfg = Some(link_cfg.clone());
                     }
@@ -266,6 +270,8 @@ impl<'tcx> Collector<'tcx> {
 
                     macro report_unstable_modifier($feature: ident) {
                         if !features.$feature {
+                            // FIXME: make this translatable
+                            #[expect(rustc::untranslatable_diagnostic)]
                             feature_err(
                                 sess,
                                 sym::$feature,

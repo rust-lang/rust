@@ -10,6 +10,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
@@ -28,6 +29,7 @@
 
 extern crate self as rustc_errors;
 
+use std::assert_matches::assert_matches;
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -1490,7 +1492,7 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
             // stashed below, so they'll trigger the must_produce_diag check.
-            assert!(matches!(diagnostic.level, Error | Warning | Allow | Expect(_)));
+            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect(_));
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
@@ -1835,23 +1837,23 @@ impl DelayedDiagInner {
     }
 }
 
-/// Level              is_error  EmissionGuarantee         Top-level  Sub   Used in lints?
-/// -----              --------  -----------------         ---------  ---   --------------
-/// Bug                yes       BugAbort                  yes        -     -
-/// Fatal              yes       FatalAbort/FatalError(*)  yes        -     -
-/// Error              yes       ErrorGuaranteed           yes        -     yes
-/// DelayedBug         yes       ErrorGuaranteed           yes        -     -
-/// ForceWarning       -         ()                        yes        -     lint-only
-/// Warning            -         ()                        yes        yes   yes
-/// Note               -         ()                        rare       yes   -
-/// OnceNote           -         ()                        -          yes   lint-only
-/// Help               -         ()                        rare       yes   -
-/// OnceHelp           -         ()                        -          yes   lint-only
-/// FailureNote        -         ()                        rare       -     -
-/// Allow              -         ()                        yes        -     lint-only
-/// Expect             -         ()                        yes        -     lint-only
+/// | Level        | is_error | EmissionGuarantee            | Top-level | Sub | Used in lints?
+/// | -----        | -------- | -----------------            | --------- | --- | --------------
+/// | Bug          | yes      | BugAbort                     | yes       | -   | -
+/// | Fatal        | yes      | FatalAbort/FatalError[^star] | yes       | -   | -
+/// | Error        | yes      | ErrorGuaranteed              | yes       | -   | yes
+/// | DelayedBug   | yes      | ErrorGuaranteed              | yes       | -   | -
+/// | ForceWarning | -        | ()                           | yes       | -   | lint-only
+/// | Warning      | -        | ()                           | yes       | yes | yes
+/// | Note         | -        | ()                           | rare      | yes | -
+/// | OnceNote     | -        | ()                           | -         | yes | lint-only
+/// | Help         | -        | ()                           | rare      | yes | -
+/// | OnceHelp     | -        | ()                           | -         | yes | lint-only
+/// | FailureNote  | -        | ()                           | rare      | -   | -
+/// | Allow        | -        | ()                           | yes       | -   | lint-only
+/// | Expect       | -        | ()                           | yes       | -   | lint-only
 ///
-/// (*) `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
+/// [^star]: `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
 ///     occasionally used.
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]

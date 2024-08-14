@@ -362,7 +362,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
                 let non_zero = !ty.is_unsafe_ptr();
 
-                let tail = tcx.struct_tail_with_normalize(
+                let tail = tcx.struct_tail_raw(
                     pointee,
                     |ty| match tcx.try_normalize_erasing_regions(param_env, ty) {
                         Ok(ty) => ty,
@@ -801,7 +801,7 @@ where
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
@@ -986,9 +986,11 @@ where
                     safe: None,
                 })
             }
-            ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(Ty::new_fn_ptr(tcx, fn_sig))).ok().map(|layout| {
-                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
+            ty::FnPtr(..) if offset.bytes() == 0 => {
+                tcx.layout_of(param_env.and(this.ty)).ok().map(|layout| PointeeInfo {
+                    size: layout.size,
+                    align: layout.align.abi,
+                    safe: None,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {

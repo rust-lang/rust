@@ -90,10 +90,13 @@ fn parse_output_cargo_config_env(stdout: String) -> FxHashMap<String, String> {
     stdout
         .lines()
         .filter_map(|l| l.strip_prefix("env."))
-        .filter_map(|l| {
-            l.split_once(" = ")
-                // cargo used to report it with this, keep it for a couple releases around
-                .or_else(|| l.split_once(".value = "))
+        .filter_map(|l| l.split_once(" = "))
+        .filter_map(|(k, v)| {
+            if k.contains('.') {
+                k.strip_suffix(".value").zip(Some(v))
+            } else {
+                Some((k, v))
+            }
         })
         .map(|(key, value)| (key.to_owned(), value.trim_matches('"').to_owned()))
         .collect()

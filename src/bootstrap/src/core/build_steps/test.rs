@@ -149,7 +149,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
         let _time = helpers::timeit(builder);
-        linkchecker.delay_failure().arg(builder.out.join(host.triple).join("doc")).run(builder);
+        linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -434,8 +434,8 @@ impl Miri {
         builder: &Builder<'_>,
         compiler: Compiler,
         target: TargetSelection,
-    ) -> String {
-        let miri_sysroot = builder.out.join(compiler.host.triple).join("miri-sysroot");
+    ) -> PathBuf {
+        let miri_sysroot = builder.out.join(compiler.host).join("miri-sysroot");
         let mut cargo = builder::Cargo::new(
             builder,
             compiler,
@@ -467,7 +467,7 @@ impl Miri {
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
         builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
-        sysroot.to_owned()
+        PathBuf::from(sysroot)
     }
 }
 
@@ -520,12 +520,14 @@ impl Step for Miri {
         builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
 
-        // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared
-        // properly when rustc changes. Similar to `Builder::cargo`, we skip this in dry runs to
-        // make sure the relevant compiler has been set up properly.
+        // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
+        // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
         if !builder.config.dry_run() {
             let ui_test_dep_dir = builder.stage_out(host_compiler, Mode::ToolStd).join("miri_ui");
-            builder.clear_if_dirty(&ui_test_dep_dir, &builder.rustc(host_compiler));
+            // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
+            // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
+            // We can hence use that directly as a signal to clear the ui test dir.
+            builder.clear_if_dirty(&ui_test_dep_dir, &miri_sysroot);
         }
 
         // Run `cargo test`.
@@ -1113,7 +1115,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
 }
 
 fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
-    builder.out.join(host.triple).join("test")
+    builder.out.join(host).join("test")
 }
 
 macro_rules! default_test {
@@ -1815,7 +1817,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
-        flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
+        flags.extend(builder.config.cmd.compiletest_rustc_args().iter().map(|s| s.to_string()));
 
         if suite != "mir-opt" {
             if let Some(linker) = builder.linker(target) {
@@ -2683,7 +2685,7 @@ impl Step for Crate {
                     if builder.download_rustc() && compiler.stage > 0 {
                         let sysroot = builder
                             .out
-                            .join(compiler.host.triple)
+                            .join(compiler.host)
                             .join(format!("stage{}-test-sysroot", compiler.stage));
                         cargo.env("RUSTC_SYSROOT", sysroot);
                     }

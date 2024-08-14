@@ -1008,7 +1008,8 @@ where
         // Use cache for immutable strings.
         let ptr = if mutbl.is_not() {
             // Use dedup'd allocation function.
-            let id = tcx.allocate_bytes_dedup(str.as_bytes());
+            let salt = M::get_global_alloc_salt(self, None);
+            let id = tcx.allocate_bytes_dedup(str.as_bytes(), salt);
 
             // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
             M::adjust_alloc_root_pointer(&self, Pointer::from(id), Some(kind))?

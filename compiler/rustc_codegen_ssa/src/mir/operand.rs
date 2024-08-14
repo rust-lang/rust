@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::fmt;
 
 use arrayvec::ArrayVec;
@@ -389,7 +390,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
             (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
-                assert!(matches!(self.layout.abi, Abi::Vector { .. }));
+                assert_matches!(self.layout.abi, Abi::Vector { .. });
 
                 let llfield_ty = bx.cx().backend_type(field);
 
@@ -635,7 +636,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_consume(bx, place.as_ref())
             }
 
-            mir::Operand::Constant(ref constant) => self.eval_mir_constant_to_operand(bx, constant),
+            mir::Operand::Constant(ref constant) => {
+                let constant_ty = self.monomorphize(constant.ty());
+                // Most SIMD vector constants should be passed as immediates.
+                // (In particular, some intrinsics really rely on this.)
+                if constant_ty.is_simd() {
+                    // However, some SIMD types do not actually use the vector ABI
+                    // (in particular, packed SIMD types do not). Ensure we exclude those.
+                    let layout = bx.layout_of(constant_ty);
+                    if let Abi::Vector { .. } = layout.abi {
+                        let (llval, ty) = self.immediate_const_vector(bx, constant);
+                        return OperandRef {
+                            val: OperandValue::Immediate(llval),
+                            layout: bx.layout_of(ty),
+                        };
+                    }
+                }
+                self.eval_mir_constant_to_operand(bx, constant)
+            }
         }
     }
 }

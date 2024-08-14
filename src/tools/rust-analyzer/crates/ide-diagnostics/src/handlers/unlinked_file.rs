@@ -4,7 +4,7 @@ use std::iter;
 
 use hir::{db::DefDatabase, DefMap, InFile, ModuleSource};
 use ide_db::{
-    base_db::{FileLoader, SourceDatabaseExt},
+    base_db::{FileLoader, SourceDatabase, SourceRootDatabase},
     source_change::SourceChange,
     FileId, FileRange, LineIndexDatabase,
 };
@@ -47,7 +47,7 @@ pub(crate) fn unlinked_file(
         //
         // Only show this diagnostic on the first three characters of
         // the file, to avoid overwhelming the user during startup.
-        range = FileLoader::file_text(ctx.sema.db, file_id)
+        range = SourceDatabase::file_text(ctx.sema.db, file_id)
             .char_indices()
             .take(3)
             .last()
@@ -499,6 +499,18 @@ $0
 mod bar {
     mod foo;
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn include_macro_works() {
+        check_diagnostics(
+            r#"
+//- minicore: include
+//- /main.rs
+include!("bar/foo/mod.rs");
+//- /bar/foo/mod.rs
 "#,
         );
     }

@@ -696,7 +696,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     p!(print(sig), " {{", print_value_path(def_id, args), "}}");
                 }
             }
-            ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
+            ty::FnPtr(ref sig_tys, hdr) => p!(print(sig_tys.with(hdr))),
             ty::Infer(infer_ty) => {
                 if self.should_print_verbose() {
                     p!(write("{:?}", ty.kind()));
@@ -1145,7 +1145,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         let term = if let Some(ty) = term.skip_binder().as_type()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()
                             && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
-                            && assoc.trait_container(tcx) == tcx.lang_items().coroutine_trait()
+                            && assoc
+                                .trait_container(tcx)
+                                .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Coroutine))
                             && assoc.name == rustc_span::sym::Return
                         {
                             if let ty::Coroutine(_, args) = args.type_at(0).kind() {
@@ -1678,7 +1680,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                 }
             }
-            ty::FnPtr(_) => {
+            ty::FnPtr(..) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
                 if let Some(GlobalAlloc::Function { instance, .. }) =
@@ -1741,7 +1743,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Pointer types
-            ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(_) => {
+            ty::Ref(..) | ty::RawPtr(_, _) | ty::FnPtr(..) => {
                 let data = int.to_bits(self.tcx().data_layout.pointer_size);
                 self.typed_value(
                     |this| {

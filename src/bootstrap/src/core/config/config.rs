@@ -514,6 +514,10 @@ impl TargetSelection {
         self.contains("windows")
     }
 
+    pub fn is_windows_gnu(&self) -> bool {
+        self.ends_with("windows-gnu")
+    }
+
     /// Path to the file defining the custom target, if any.
     pub fn filepath(&self) -> Option<&Path> {
         self.file.as_ref().map(Path::new)
@@ -539,6 +543,14 @@ impl fmt::Debug for TargetSelection {
 impl PartialEq<&str> for TargetSelection {
     fn eq(&self, other: &&str) -> bool {
         self.triple == *other
+    }
+}
+
+// Targets are often used as directory names throughout bootstrap.
+// This impl makes it more ergonomics to use them as such.
+impl AsRef<Path> for TargetSelection {
+    fn as_ref(&self) -> &Path {
+        self.triple.as_ref()
     }
 }
 
@@ -1191,7 +1203,7 @@ impl Config {
         }
     }
 
-    pub fn parse(args: &[String]) -> Config {
+    pub fn parse(flags: Flags) -> Config {
         #[cfg(test)]
         fn get_toml(_: &Path) -> TomlConfig {
             TomlConfig::default()
@@ -1221,11 +1233,10 @@ impl Config {
                     exit!(2);
                 })
         }
-        Self::parse_inner(args, get_toml)
+        Self::parse_inner(flags, get_toml)
     }
 
-    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
-        let mut flags = Flags::parse(args);
+    pub(crate) fn parse_inner(mut flags: Flags, get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut config = Config::default_opts();
 
         // Set flags.
@@ -1470,7 +1481,7 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build.triple)
+                .join(config.build)
                 .join("stage0")
                 .join("bin")
                 .join(exe("rustc", config.build))
@@ -1485,7 +1496,7 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build.triple)
+                .join(config.build)
                 .join("stage0")
                 .join("bin")
                 .join(exe("cargo", config.build))
@@ -2278,13 +2289,13 @@ impl Config {
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         assert!(self.llvm_from_ci);
-        self.out.join(&*self.build.triple).join("ci-llvm")
+        self.out.join(self.build).join("ci-llvm")
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
-        self.out.join(self.build.triple).join("ci-rustc")
+        self.out.join(self.build).join("ci-rustc")
     }
 
     /// Determine whether llvm should be linked dynamically.

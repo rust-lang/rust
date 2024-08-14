@@ -105,7 +105,7 @@ use crate::{
 
 type FxIndexMap<K, V> =
     indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
-/// A wrapper around two booleans, [`ImportPathConfig::prefer_no_std`] and [`ImportPathConfig::prefer_prelude`].
+/// A wrapper around three booleans
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct ImportPathConfig {
     /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate

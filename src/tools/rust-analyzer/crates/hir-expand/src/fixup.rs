@@ -2,7 +2,6 @@
 //! fix up syntax errors in the code we're passing to them.
 
 use intern::sym;
-use mbe::DocCommentDesugarMode;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use span::{
@@ -14,6 +13,7 @@ use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
+use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 use tt::Spacing;
 
@@ -76,7 +76,8 @@ pub(crate) fn fixup_syntax(
         if can_handle_error(&node) && has_error_to_handle(&node) {
             remove.insert(node.clone().into());
             // the node contains an error node, we have to completely replace it by something valid
-            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site, mode);
+            let original_tree =
+                syntax_bridge::syntax_node_to_token_tree(&node, span_map, call_site, mode);
             let idx = original.len() as u32;
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
@@ -434,9 +435,9 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use mbe::DocCommentDesugarMode;
     use span::{Edition, EditionedFileId, FileId};
     use syntax::TextRange;
+    use syntax_bridge::DocCommentDesugarMode;
     use triomphe::Arc;
 
     use crate::{
@@ -483,7 +484,7 @@ mod tests {
             span_map.span_for_range(TextRange::empty(0.into())),
             DocCommentDesugarMode::Mbe,
         );
-        let mut tt = mbe::syntax_node_to_token_tree_modified(
+        let mut tt = syntax_bridge::syntax_node_to_token_tree_modified(
             &parsed.syntax_node(),
             span_map.as_ref(),
             fixups.append,
@@ -498,9 +499,9 @@ mod tests {
         expect.assert_eq(&actual);
 
         // the fixed-up tree should be syntactically valid
-        let (parse, _) = mbe::token_tree_to_syntax_node(
+        let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             &tt,
-            ::mbe::TopEntryPoint::MacroItems,
+            syntax_bridge::TopEntryPoint::MacroItems,
             parser::Edition::CURRENT,
         );
         assert!(
@@ -513,7 +514,7 @@ mod tests {
 
         // the fixed-up + reversed version should be equivalent to the original input
         // modulo token IDs and `Punct`s' spacing.
-        let original_as_tt = mbe::syntax_node_to_token_tree(
+        let original_as_tt = syntax_bridge::syntax_node_to_token_tree(
             &parsed.syntax_node(),
             span_map.as_ref(),
             span_map.span_for_range(TextRange::empty(0.into())),

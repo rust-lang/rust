@@ -24,11 +24,11 @@ define-function: (
 )
 
 call-function: ("check-copy-button", {})
-// Checking that the run button and the copy button have the same height.
+// Checking that the run button and the copy button have the same height and same width.
 compare-elements-size: (
     ".example-wrap:nth-of-type(1) .test-arrow",
     ".example-wrap:nth-of-type(1) .copy-button",
-    ["height"],
+    ["height", "width"],
 )
 // ... and the same y position.
 compare-elements-position: (

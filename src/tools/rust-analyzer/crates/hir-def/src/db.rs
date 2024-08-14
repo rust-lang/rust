@@ -160,7 +160,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
 
     #[salsa::invoke(StaticData::static_data_query)]
-    fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
+    fn static_data(&self, statik: StaticId) -> Arc<StaticData>;
 
     #[salsa::invoke(Macro2Data::macro2_data_query)]
     fn macro2_data(&self, makro: Macro2Id) -> Arc<Macro2Data>;
@@ -240,14 +240,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 
-    fn include_macro_invoc(&self, crate_id: CrateId) -> Vec<(MacroCallId, EditionedFileId)>;
+    fn include_macro_invoc(&self, crate_id: CrateId) -> Arc<[(MacroCallId, EditionedFileId)]>;
 }
 
 // return: macro call id and include file id
 fn include_macro_invoc(
     db: &dyn DefDatabase,
     krate: CrateId,
-) -> Vec<(MacroCallId, EditionedFileId)> {
+) -> Arc<[(MacroCallId, EditionedFileId)]> {
     db.crate_def_map(krate)
         .modules
         .values()

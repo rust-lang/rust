@@ -69,7 +69,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert_utf8(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), false)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir))
 }
 
 #[test]

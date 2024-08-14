@@ -1530,7 +1530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
-                    ty::FnDef(..) | ty::FnPtr(_) => Some(tcx.types.usize),
+                    ty::FnDef(..) | ty::FnPtr(..) => Some(tcx.types.usize),
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())

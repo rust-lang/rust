@@ -56,7 +56,6 @@ use crate::{
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
-static EXPANSION_DEPTH_LIMIT: Limit = Limit::new(128);
 static FIXED_POINT_LIMIT: Limit = Limit::new(8192);
 
 pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeId) -> DefMap {
@@ -1440,7 +1439,14 @@ impl DefCollector<'_> {
         depth: usize,
         container: ItemContainerId,
     ) {
-        if EXPANSION_DEPTH_LIMIT.check(depth).is_err() {
+        let recursion_limit = self.def_map.recursion_limit() as usize;
+        let recursion_limit = Limit::new(if cfg!(test) {
+            // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
+            std::cmp::min(32, recursion_limit)
+        } else {
+            recursion_limit
+        });
+        if recursion_limit.check(depth).is_err() {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
             return;
@@ -2003,7 +2009,7 @@ impl ModCollector<'_, '_> {
                             Err(cfg) => {
                                 self.emit_unconfigured_diagnostic(
                                     self.tree_id,
-                                    AttrOwner::TopLevel,
+                                    AttrOwner::ModItem(module_id.into()),
                                     &cfg,
                                 );
                             }

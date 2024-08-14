@@ -85,8 +85,6 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
-    /// Whether to invoke `cargo metadata` on the sysroot crate.
-    pub sysroot_query_metadata: bool,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,
@@ -259,6 +257,7 @@ impl CargoWorkspace {
         current_dir: &AbsPath,
         config: &CargoConfig,
         sysroot: &Sysroot,
+        locked: bool,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<cargo_metadata::Metadata> {
         let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
@@ -311,6 +310,9 @@ impl CargoWorkspace {
             // Deliberately don't set up RUSTC_BOOTSTRAP or a nightly override here, the user should
             // opt into it themselves.
             other_options.push("-Zscript".to_owned());
+        }
+        if locked {
+            other_options.push("--locked".to_owned());
         }
         meta.other_options(other_options);
 

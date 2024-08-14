@@ -9,7 +9,8 @@ use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
 
 fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
     crate::server_impl::TokenStream::with_subtree(
-        mbe::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src).unwrap(),
+        syntax_bridge::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src)
+            .unwrap(),
     )
 }
 
@@ -19,7 +20,7 @@ fn parse_string_spanned(
     src: &str,
 ) -> crate::server_impl::TokenStream<Span> {
     crate::server_impl::TokenStream::with_subtree(
-        mbe::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src).unwrap(),
+        syntax_bridge::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src).unwrap(),
     )
 }
 
@@ -69,7 +70,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
-            ast_id: ErasedFileAstId::from_raw(From::from(1)),
+            ast_id: ErasedFileAstId::from_raw(1),
         },
         ctx: SyntaxContextId::ROOT,
     };
@@ -77,7 +78,7 @@ fn assert_expand_impl(
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
-            ast_id: ErasedFileAstId::from_raw(From::from(2)),
+            ast_id: ErasedFileAstId::from_raw(2),
         },
         ctx: SyntaxContextId::ROOT,
     };

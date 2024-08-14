@@ -19,10 +19,12 @@ use super::errors::{
     InvalidRegisterClass, RegisterClassOnlyClobber, RegisterConflict,
 };
 use super::LoweringContext;
-use crate::{ImplTraitContext, ImplTraitPosition, ParamMode, ResolverAstLoweringExt};
+use crate::{
+    fluent_generated as fluent, ImplTraitContext, ImplTraitPosition, ParamMode,
+    ResolverAstLoweringExt,
+};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
     pub(crate) fn lower_inline_asm(
         &mut self,
         sp: Span,
@@ -52,7 +54,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &self.tcx.sess,
                     sym::asm_experimental_arch,
                     sp,
-                    "inline assembly is not stable yet on this architecture",
+                    fluent::ast_lowering_unstable_inline_assembly,
                 )
                 .emit();
             }
@@ -64,8 +66,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.dcx().emit_err(AttSyntaxOnlyX86 { span: sp });
         }
         if asm.options.contains(InlineAsmOptions::MAY_UNWIND) && !self.tcx.features().asm_unwind {
-            feature_err(&self.tcx.sess, sym::asm_unwind, sp, "the `may_unwind` option is unstable")
-                .emit();
+            feature_err(
+                &self.tcx.sess,
+                sym::asm_unwind,
+                sp,
+                fluent::ast_lowering_unstable_may_unwind,
+            )
+            .emit();
         }
 
         let mut clobber_abis = FxIndexMap::default();
@@ -176,20 +183,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
                         }
                     }
-                    InlineAsmOperand::Const { anon_const } => {
-                        if !self.tcx.features().asm_const {
-                            feature_err(
-                                sess,
-                                sym::asm_const,
-                                *op_sp,
-                                "const operands for inline assembly are unstable",
-                            )
-                            .emit();
-                        }
-                        hir::InlineAsmOperand::Const {
-                            anon_const: self.lower_anon_const_to_anon_const(anon_const),
-                        }
-                    }
+                    InlineAsmOperand::Const { anon_const } => hir::InlineAsmOperand::Const {
+                        anon_const: self.lower_anon_const_to_anon_const(anon_const),
+                    },
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
                             .resolver
@@ -246,7 +242,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 sess,
                                 sym::asm_goto,
                                 *op_sp,
-                                "label operands for inline assembly are unstable",
+                                fluent::ast_lowering_unstable_inline_assembly_label_operands,
                             )
                             .emit();
                         }

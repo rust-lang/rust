@@ -11,7 +11,7 @@ use hir::db::DefDatabase;
 use crate::{
     base_db::{
         salsa::{Database, ParallelDatabase, Snapshot},
-        Cancelled, CrateId, SourceDatabase, SourceDatabaseExt,
+        Cancelled, CrateId, SourceDatabase, SourceRootDatabase,
     },
     FxIndexMap, RootDatabase,
 };
