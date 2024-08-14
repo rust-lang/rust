@@ -1989,9 +1989,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = Ty::new_fn_ptr(tcx, fn_sig);
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2014,9 +2014,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_fn_ptr_from =
                             Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *safety));
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
