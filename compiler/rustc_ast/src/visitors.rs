@@ -179,10 +179,6 @@ macro_rules! mutability_dependent {
             walk_qself(self, qs);
         }
 
-        fn visit_angle_bracketed_parameter_data(&mut self, p: &mut AngleBracketedArgs) {
-            walk_angle_bracketed_parameter_data(self, p);
-        }
-
         fn visit_parenthesized_parameter_data(&mut self, p: &mut ParenthesizedArgs) {
             walk_parenthesized_parameter_data(self, p);
         }
@@ -422,6 +418,11 @@ macro_rules! make_ast_visitor {
             fn visit_fn_ret_ty(&mut self, ret_ty: ref_t!(FnRetTy)) -> result!() {
                 walk_fn_ret_ty(self, ret_ty)
             }
+
+            fn visit_angle_bracketed_parameter_data(&mut self, p: ref_t!(AngleBracketedArgs)) -> result!() {
+                walk_angle_bracketed_parameter_data(self, p)
+            }
+
 
             // FIXME: remove _ on ident if mut
             // FIXME: for some reason the immutable version doesn't receive a reference
@@ -916,15 +917,8 @@ pub mod visit {
         V: Visitor<'a>,
     {
         match generic_args {
-            GenericArgs::AngleBracketed(AngleBracketedArgs { span: _, args }) => {
-                for arg in args {
-                    match arg {
-                        AngleBracketedArg::Arg(a) => try_visit!(visitor.visit_generic_arg(a)),
-                        AngleBracketedArg::Constraint(c) => {
-                            try_visit!(visitor.visit_assoc_item_constraint(c))
-                        }
-                    }
-                }
+            GenericArgs::AngleBracketed(data) => {
+                try_visit!(visitor.visit_angle_bracketed_parameter_data(data));
             }
             GenericArgs::Parenthesized(data) => {
                 let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
@@ -1576,6 +1570,22 @@ pub mod visit {
             AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => try_visit!(visitor.visit_expr(expr)),
             AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
                 unreachable!("in literal form when walking mac args eq: {:?}", lit)
+            }
+        }
+        V::Result::output()
+    }
+
+    fn walk_angle_bracketed_parameter_data<'a, V: Visitor<'a>>(
+        visitor: &mut V,
+        data: &'a AngleBracketedArgs,
+    ) -> V::Result {
+        let AngleBracketedArgs { args, span: _ } = data;
+        for arg in args {
+            match arg {
+                AngleBracketedArg::Arg(a) => try_visit!(visitor.visit_generic_arg(a)),
+                AngleBracketedArg::Constraint(c) => {
+                    try_visit!(visitor.visit_assoc_item_constraint(c))
+                }
             }
         }
         V::Result::output()
