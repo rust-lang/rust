@@ -3686,3 +3686,36 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn infer_bad_lang_item() {
+    check_infer(
+        r#"
+#[lang="eq"]
+pub trait Eq {
+    fn eq(&self, ) -> bool;
+
+}
+
+#[lang="shr"]
+pub trait Shr<RHS,Result> {
+    fn shr(&self, rhs: &RHS) -> Result;
+}
+
+fn test() -> bool {
+    1 >> 1;
+    1 == 1;
+}
+"#,
+        expect![[r#"
+            39..43 'self': &'? Self
+            114..118 'self': &'? Self
+            120..123 'rhs': &'? RHS
+            163..190 '{     ...= 1; }': bool
+            169..170 '1': i32
+            169..175 '1 >> 1': {unknown}
+            181..182 '1': i32
+            181..187 '1 == 1': {unknown}
+        "#]],
+    );
+}
