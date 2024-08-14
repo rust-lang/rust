@@ -137,7 +137,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 at.lub(DefineOpaqueTypes::Yes, b, a)
             } else {
                 at.sup(DefineOpaqueTypes::Yes, b, a)
-                    .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
+                    .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 
             // In the new solver, lazy norm may allow us to shallowly equate
