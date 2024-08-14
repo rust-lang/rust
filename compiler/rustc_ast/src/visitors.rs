@@ -179,10 +179,6 @@ macro_rules! mutability_dependent {
             walk_qself(self, qs);
         }
 
-        fn visit_parenthesized_parameter_data(&mut self, p: &mut ParenthesizedArgs) {
-            walk_parenthesized_parameter_data(self, p);
-        }
-
         fn visit_macro_def(&mut self, def: &mut MacroDef) {
             walk_macro_def(self, def);
         }
@@ -421,6 +417,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_angle_bracketed_parameter_data(&mut self, p: ref_t!(AngleBracketedArgs)) -> result!() {
                 walk_angle_bracketed_parameter_data(self, p)
+            }
+
+            fn visit_parenthesized_parameter_data(&mut self, p: ref_t!(ParenthesizedArgs)) -> result!() {
+                walk_parenthesized_parameter_data(self, p)
             }
 
 
@@ -921,9 +921,7 @@ pub mod visit {
                 try_visit!(visitor.visit_angle_bracketed_parameter_data(data));
             }
             GenericArgs::Parenthesized(data) => {
-                let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
-                walk_list!(visitor, visit_ty, inputs);
-                try_visit!(visitor.visit_fn_ret_ty(output));
+                try_visit!(visitor.visit_parenthesized_parameter_data(data));
             }
             GenericArgs::ParenthesizedElided(_span) => {}
         }
@@ -1588,6 +1586,13 @@ pub mod visit {
                 }
             }
         }
+        V::Result::output()
+    }
+
+    fn walk_parenthesized_parameter_data<'a, V: Visitor<'a>>(vis: &mut V, data: &'a ParenthesizedArgs) -> V::Result {
+        let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
+        walk_list!(vis, visit_ty, inputs);
+        try_visit!(vis.visit_fn_ret_ty(output));
         V::Result::output()
     }
 }
