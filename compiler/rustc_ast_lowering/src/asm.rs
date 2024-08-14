@@ -183,20 +183,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
                         }
                     }
-                    InlineAsmOperand::Const { anon_const } => {
-                        if !self.tcx.features().asm_const {
-                            feature_err(
-                                sess,
-                                sym::asm_const,
-                                *op_sp,
-                                fluent::ast_lowering_unstable_inline_assembly_const_operands,
-                            )
-                            .emit();
-                        }
-                        hir::InlineAsmOperand::Const {
-                            anon_const: self.lower_anon_const_to_anon_const(anon_const),
-                        }
-                    }
+                    InlineAsmOperand::Const { anon_const } => hir::InlineAsmOperand::Const {
+                        anon_const: self.lower_anon_const_to_anon_const(anon_const),
+                    },
                     InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
                             .resolver

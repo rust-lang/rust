@@ -1,7 +1,5 @@
 //@ needs-asm-support
 
-#![feature(asm_const)]
-
 use std::arch::{asm, global_asm};
 
 fn main() {
