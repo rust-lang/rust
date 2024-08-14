@@ -134,7 +134,6 @@ macro_rules! create_config {
                     "fn_args_layout" => self.0.set_fn_args_layout(),
                     "hide_parse_errors" => self.0.set_hide_parse_errors(),
                     "version" => self.0.set_version(),
-                    "edition" => self.0.set_edition(),
                     &_ => (),
                 }
             }
@@ -165,7 +164,6 @@ macro_rules! create_config {
                     "fn_args_layout" => self.0.set_fn_args_layout(),
                     "hide_parse_errors" => self.0.set_hide_parse_errors(),
                     "version" => self.0.set_version(),
-                    "edition" => self.0.set_edition(),
                     &_ => (),
                 }
             }
@@ -264,7 +262,6 @@ macro_rules! create_config {
                 self.set_fn_args_layout();
                 self.set_hide_parse_errors();
                 self.set_version();
-                self.set_edition();
                 self
             }
 
@@ -367,7 +364,6 @@ macro_rules! create_config {
                     "fn_args_layout" => self.set_fn_args_layout(),
                     "hide_parse_errors" => self.set_hide_parse_errors(),
                     "version" => self.set_version(),
-                    "edition" => self.set_edition(),
                     &_ => (),
                 }
             }
@@ -585,29 +581,8 @@ macro_rules! create_config {
                         option which takes precedence. \
                         The value of the `version` option will be ignored."
                     );
-                } else if matches!(self.version(), Version::Two) {
-                    self.style_edition.2 = StyleEdition::Edition2024;
-                } else {
-                    self.style_edition.2 = StyleEdition::Edition2015;
                 }
             }
-
-            fn set_edition(&mut self) {
-                let style_edition_set = self.was_set().style_edition()
-                    || self.was_set_cli().style_edition();
-
-                if style_edition_set || self.was_set().version() {
-                    return;
-                }
-
-                // User has explicitly specified an Edition value without
-                // explicitly specifying a Style Edition value, so the Style Edition
-                // must default to whatever value was provided for Edition
-                // as per: https://rust-lang.github.io/rfcs/3338-style-evolution.html#explanation
-                self.style_edition.2 = self.edition().into();
-            }
-
-
 
             #[allow(unreachable_pub)]
             /// Returns `true` if the config key was explicitly set and is the default value.

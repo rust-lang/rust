@@ -15,7 +15,7 @@ use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChu
 use crate::source_file;
 use crate::{
     is_nightly_channel, Edition, FormatReport, FormatReportFormatterBuilder, Input, Session,
-    StyleEdition,
+    StyleEdition, Version,
 };
 
 use rustfmt_config_proc_macro::nightly_only_test;
@@ -713,7 +713,7 @@ fn print_mismatches<T: Fn(u32) -> String>(
 
 fn read_config(filename: &Path) -> Config {
     let sig_comments = read_significant_comments(filename);
-    let (edition, style_edition) = get_editions_from_comments(&sig_comments);
+    let (edition, style_edition, version) = get_editions_from_comments(&sig_comments);
     // Look for a config file. If there is a 'config' property in the significant comments, use
     // that. Otherwise, if there are no significant comments at all, look for a config file with
     // the same name as the test file.
@@ -722,12 +722,14 @@ fn read_config(filename: &Path) -> Config {
             sig_comments.get("config").map(Path::new),
             edition,
             style_edition,
+            version,
         )
     } else {
         get_config(
             filename.with_extension("toml").file_name().map(Path::new),
             edition,
             style_edition,
+            version,
         )
     };
 
@@ -761,7 +763,7 @@ enum IdempotentCheckError {
 
 fn get_editions_from_comments(
     comments: &HashMap<String, String>,
-) -> (Option<Edition>, Option<StyleEdition>) {
+) -> (Option<Edition>, Option<StyleEdition>, Option<Version>) {
     (
         comments
             .get("edition")
@@ -769,6 +771,9 @@ fn get_editions_from_comments(
         comments.get("style_edition").map(|se| {
             StyleEdition::from_str(se).expect(&format!("invalid style_edition value: '{}'", se))
         }),
+        comments
+            .get("version")
+            .map(|v| Version::from_str(v).expect(&format!("invalid version value: '{}'", v))),
     )
 }
 
@@ -778,8 +783,8 @@ fn idempotent_check(
 ) -> Result<FormatReport, IdempotentCheckError> {
     let sig_comments = read_significant_comments(filename);
     let config = if let Some(ref config_file_path) = opt_config {
-        let (edition, style_edition) = get_editions_from_comments(&sig_comments);
-        Config::from_toml_path(config_file_path, edition, style_edition)
+        let (edition, style_edition, version) = get_editions_from_comments(&sig_comments);
+        Config::from_toml_path(config_file_path, edition, style_edition, version)
             .expect("`rustfmt.toml` not found")
     } else {
         read_config(filename)
@@ -808,14 +813,15 @@ fn get_config(
     config_file: Option<&Path>,
     edition: Option<Edition>,
     style_edition: Option<StyleEdition>,
+    version: Option<Version>,
 ) -> Config {
     let config_file_name = match config_file {
-        None => return Config::default_for_possible_style_edition(style_edition, edition),
+        None => return Config::default_for_possible_style_edition(style_edition, edition, version),
         Some(file_name) => {
             let mut full_path = PathBuf::from("tests/config/");
             full_path.push(file_name);
             if !full_path.exists() {
-                return Config::default_for_possible_style_edition(style_edition, edition);
+                return Config::default_for_possible_style_edition(style_edition, edition, version);
             };
             full_path
         }
@@ -832,6 +838,7 @@ fn get_config(
         Path::new("tests/config/"),
         edition,
         style_edition,
+        version,
     )
     .expect("invalid TOML")
 }

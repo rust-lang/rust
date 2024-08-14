@@ -421,6 +421,7 @@ pub trait CliOptions {
     fn config_path(&self) -> Option<&Path>;
     fn edition(&self) -> Option<Edition>;
     fn style_edition(&self) -> Option<StyleEdition>;
+    fn version(&self) -> Option<Version>;
 }
 
 /// The edition of the syntax and semantics of code (RFC 2052).

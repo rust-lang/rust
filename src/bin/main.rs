@@ -19,7 +19,7 @@ use getopts::{Matches, Options};
 
 use crate::rustfmt::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName,
-    FormatReportFormatterBuilder, Input, Session, StyleEdition, Verbosity,
+    FormatReportFormatterBuilder, Input, Session, StyleEdition, Verbosity, Version,
 };
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rustfmt/issues/new?labels=bug";
@@ -746,6 +746,13 @@ impl CliOptions for GetOptsOptions {
             .get("style_edition")
             .map_or(self.style_edition, |se| StyleEdition::from_str(se).ok())
     }
+
+    fn version(&self) -> Option<Version> {
+        self.inline_config
+            .get("version")
+            .map(|version| Version::from_str(version).ok())
+            .flatten()
+    }
 }
 
 fn edition_from_edition_str(edition_str: &str) -> Result<Edition> {
@@ -814,6 +821,17 @@ mod test {
         options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        assert_eq!(config.overflow_delimited_expr(), true);
+    }
+
+    #[nightly_only_test]
+    #[test]
+    fn version_config_file_sets_style_edition_override_correctly() {
+        let options = GetOptsOptions::default();
+        let config_file = Some(Path::new("tests/config/style-edition/just-version"));
+        let config = get_config(config_file, Some(options));
+        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -858,6 +876,7 @@ mod test {
         ]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]

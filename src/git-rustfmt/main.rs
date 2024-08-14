@@ -15,7 +15,9 @@ use getopts::{Matches, Options};
 use rustfmt_nightly as rustfmt;
 use tracing_subscriber::EnvFilter;
 
-use crate::rustfmt::{load_config, CliOptions, FormatReportFormatterBuilder, Input, Session};
+use crate::rustfmt::{
+    load_config, CliOptions, FormatReportFormatterBuilder, Input, Session, Version,
+};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
@@ -93,6 +95,9 @@ impl CliOptions for NullOptions {
         unreachable!();
     }
     fn style_edition(&self) -> Option<rustfmt_nightly::StyleEdition> {
+        unreachable!();
+    }
+    fn version(&self) -> Option<Version> {
         unreachable!();
     }
 }
