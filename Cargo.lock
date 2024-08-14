@@ -1699,19 +1699,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "icu_provider_adapters"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6324dfd08348a8e0374a447ebd334044d766b1839bb8d5ccf2482a99a77c0bc"
-dependencies = [
- "icu_locid",
- "icu_locid_transform",
- "icu_provider",
- "tinystr",
- "zerovec",
-]
-
-[[package]]
 name = "icu_provider_macros"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3360,17 +3347,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_baked_icu_data"
-version = "0.0.0"
-dependencies = [
- "icu_list",
- "icu_locid",
- "icu_locid_transform",
- "icu_provider",
- "zerovec",
-]
-
-[[package]]
 name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
@@ -3634,9 +3610,8 @@ dependencies = [
  "fluent-syntax",
  "icu_list",
  "icu_locid",
- "icu_provider_adapters",
+ "icu_provider",
  "intl-memoizer",
- "rustc_baked_icu_data",
  "rustc_data_structures",
  "rustc_macros",
  "rustc_serialize",

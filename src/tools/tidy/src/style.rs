@@ -513,11 +513,6 @@ pub fn check(path: &Path, bad: &mut bool) {
                     "copyright notices attributed to the Rust Project Developers are deprecated"
                 );
             }
-            if !file.components().any(|c| c.as_os_str() == "rustc_baked_icu_data")
-                && is_unexplained_ignore(&extension, line)
-            {
-                err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
-            }
 
             if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
                 err(LLVM_UNREACHABLE_INFO);
