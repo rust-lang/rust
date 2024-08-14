@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::{new_reject_ctxt, DeepRejectCtxt, TreatParams};
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
 use serde::ser::SerializeSeq;
@@ -507,11 +507,8 @@ else if (window.initSearch) window.initSearch(searchIndex);
                 // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might regress.
                 let Some(impl_did) = impl_item_id.as_def_id() else { continue };
                 let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
-                let reject_cx = DeepRejectCtxt::new(
-                    self.cx.tcx(),
-                    TreatParams::InstantiateWithInfer,
-                    TreatParams::InstantiateWithInfer,
-                );
+                let reject_cx =
+                    new_reject_ctxt!(self.cx.tcx(), InstantiateWithInfer, InstantiateWithInfer);
                 if !reject_cx.types_may_unify(aliased_ty, for_ty) {
                     continue;
                 }

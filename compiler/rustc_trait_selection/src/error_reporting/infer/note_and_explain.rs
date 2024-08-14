@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::{new_reject_ctxt, DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::def_id::DefId;
@@ -316,12 +316,8 @@ impl<T> Trait<T> for X {
                     {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::new(
-                                tcx,
-                                TreatParams::AsRigid,
-                                TreatParams::InstantiateWithInfer,
-                            )
-                            .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            if new_reject_ctxt!(tcx, AsRigid, InstantiateWithInfer)
+                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
                             {
                                 has_matching_impl = true;
                             }
@@ -341,12 +337,8 @@ impl<T> Trait<T> for X {
                     {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.expected, |did| {
-                            if DeepRejectCtxt::new(
-                                tcx,
-                                TreatParams::AsRigid,
-                                TreatParams::InstantiateWithInfer,
-                            )
-                            .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
+                            if new_reject_ctxt!(tcx, AsRigid, InstantiateWithInfer)
+                                .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
                             {
                                 has_matching_impl = true;
                             }
@@ -365,12 +357,8 @@ impl<T> Trait<T> for X {
                     {
                         let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            if DeepRejectCtxt::new(
-                                tcx,
-                                TreatParams::AsRigid,
-                                TreatParams::InstantiateWithInfer,
-                            )
-                            .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            if new_reject_ctxt!(tcx, AsRigid, InstantiateWithInfer)
+                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
                             {
                                 has_matching_impl = true;
                             }

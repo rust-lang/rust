@@ -6,7 +6,9 @@ use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, elaborate, Interner, TraitPredicate, Upcast as _};
+use rustc_type_ir::{
+    self as ty, elaborate, new_reject_ctxt, Interner, TraitPredicate, Upcast as _,
+};
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -47,7 +49,7 @@ where
         let cx = ecx.cx();
 
         let impl_trait_ref = cx.impl_trait_ref(impl_def_id);
-        if !DeepRejectCtxt::new(ecx.cx(), TreatParams::AsRigid, TreatParams::InstantiateWithInfer)
+        if !new_reject_ctxt!(ecx.cx(), AsRigid, InstantiateWithInfer)
             .args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args)
         {
             return Err(NoSolution);

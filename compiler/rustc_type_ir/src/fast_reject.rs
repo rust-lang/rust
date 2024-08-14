@@ -173,7 +173,7 @@ impl<DefId> SimplifiedType<DefId> {
 
 /// Given generic arguments, could they be unified after
 /// replacing parameters with inference variables or placeholders.
-/// This behavior is toggled using the `TreatParams` fields.
+/// This behavior is toggled using the const generics.
 ///
 /// We use this to quickly reject impl/wc candidates without needing
 /// to instantiate generic arguments/having to enter a probe.
@@ -182,15 +182,31 @@ impl<DefId> SimplifiedType<DefId> {
 /// impls only have to overlap for some value, so we treat parameters
 /// on both sides like inference variables.
 #[derive(Debug, Clone, Copy)]
-pub struct DeepRejectCtxt<I: Interner> {
-    treat_lhs_params: TreatParams,
-    treat_rhs_params: TreatParams,
+pub struct DeepRejectCtxt<I: Interner, const TREAT_LHS_PARAMS: bool, const TREAT_RHS_PARAMS: bool> {
     _interner: PhantomData<I>,
 }
 
-impl<I: Interner> DeepRejectCtxt<I> {
-    pub fn new(_interner: I, treat_lhs_params: TreatParams, treat_rhs_params: TreatParams) -> Self {
-        DeepRejectCtxt { treat_lhs_params, treat_rhs_params, _interner: PhantomData }
+impl TreatParams {
+    pub const fn into_bool(&self) -> bool {
+        match *self {
+            TreatParams::InstantiateWithInfer => true,
+            TreatParams::AsRigid => false,
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! new_reject_ctxt {
+    ($interner:expr, $lhs:ident, $rhs:ident) => {
+        DeepRejectCtxt::<_, {TreatParams::$lhs.into_bool()}, {TreatParams::$rhs.into_bool()}>::new($interner)
+    }
+}
+
+impl<I: Interner, const TREAT_LHS_PARAMS: bool, const TREAT_RHS_PARAMS: bool>
+    DeepRejectCtxt<I, TREAT_LHS_PARAMS, TREAT_RHS_PARAMS>
+{
+    pub fn new(_interner: I) -> Self {
+        DeepRejectCtxt { _interner: PhantomData }
     }
 
     pub fn args_may_unify(
@@ -215,45 +231,6 @@ impl<I: Interner> DeepRejectCtxt<I> {
 
     pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
         match (lhs.kind(), rhs.kind()) {
-            (ty::Error(_), _) | (_, ty::Error(_)) => true,
-
-            // As we're walking the whole type, it may encounter projections
-            // inside of binders and what not, so we're just going to assume that
-            // projections can unify with other stuff.
-            //
-            // Looking forward to lazy normalization this is the safer strategy anyways.
-            (ty::Alias(..), _) | (_, ty::Alias(..)) => true,
-
-            // Bound type variables may unify with rigid types e.g. when using
-            // non-lifetime binders.
-            (ty::Bound(..), _) | (_, ty::Bound(..)) => true,
-
-            (ty::Infer(var), _) => self.var_and_ty_may_unify(var, rhs),
-            (_, ty::Infer(var)) => self.var_and_ty_may_unify(var, lhs),
-
-            (ty::Param(lhs), ty::Param(rhs)) => {
-                match (self.treat_lhs_params, self.treat_rhs_params) {
-                    (TreatParams::AsRigid, TreatParams::AsRigid) => lhs == rhs,
-                    (TreatParams::InstantiateWithInfer, _)
-                    | (_, TreatParams::InstantiateWithInfer) => true,
-                }
-            }
-            (ty::Param(_), _) => self.treat_lhs_params == TreatParams::InstantiateWithInfer,
-            (_, ty::Param(_)) => self.treat_rhs_params == TreatParams::InstantiateWithInfer,
-
-            // Placeholder types don't unify with anything on their own.
-            (ty::Placeholder(lhs), ty::Placeholder(rhs)) => lhs == rhs,
-
-            // Purely rigid types, use structural equivalence.
-            (ty::Bool, ty::Bool)
-            | (ty::Char, ty::Char)
-            | (ty::Int(_), ty::Int(_))
-            | (ty::Uint(_), ty::Uint(_))
-            | (ty::Float(_), ty::Float(_))
-            | (ty::Str, ty::Str)
-            | (ty::Never, ty::Never)
-            | (ty::Foreign(_), ty::Foreign(_)) => lhs == rhs,
-
             (ty::Ref(_, lhs_ty, lhs_mutbl), ty::Ref(_, rhs_ty, rhs_mutbl)) => {
                 lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
             }
@@ -262,16 +239,27 @@ impl<I: Interner> DeepRejectCtxt<I> {
                 lhs_def == rhs_def && self.args_may_unify(lhs_args, rhs_args)
             }
 
-            (ty::Pat(lhs_ty, _), ty::Pat(rhs_ty, _)) => {
-                // FIXME(pattern_types): take pattern into account
-                self.types_may_unify(lhs_ty, rhs_ty)
-            }
+            (ty::Infer(var), _) => self.var_and_ty_may_unify(var, rhs),
+            (_, ty::Infer(var)) => self.var_and_ty_may_unify(var, lhs),
 
-            (ty::Slice(lhs_ty), ty::Slice(rhs_ty)) => self.types_may_unify(lhs_ty, rhs_ty),
+            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => lhs == rhs,
 
-            (ty::Array(lhs_ty, lhs_len), ty::Array(rhs_ty, rhs_len)) => {
-                self.types_may_unify(lhs_ty, rhs_ty) && self.consts_may_unify(lhs_len, rhs_len)
-            }
+            (ty::Param(lhs), ty::Param(rhs)) => match (TREAT_LHS_PARAMS, TREAT_RHS_PARAMS) {
+                (false, false) => lhs == rhs,
+                (true, _) | (_, true) => true,
+            },
+
+            // As we're walking the whole type, it may encounter projections
+            // inside of binders and what not, so we're just going to assume that
+            // projections can unify with other stuff.
+            //
+            // Looking forward to lazy normalization this is the safer strategy anyways.
+            (ty::Alias(..), _) | (_, ty::Alias(..)) => true,
+
+            (ty::Bound(..), _) | (_, ty::Bound(..)) => true,
+
+            (ty::Param(_), _) => TREAT_LHS_PARAMS,
+            (_, ty::Param(_)) => TREAT_RHS_PARAMS,
 
             (ty::Tuple(lhs), ty::Tuple(rhs)) => {
                 lhs.len() == rhs.len()
@@ -279,9 +267,22 @@ impl<I: Interner> DeepRejectCtxt<I> {
                         .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
             }
 
+            (ty::Array(lhs_ty, lhs_len), ty::Array(rhs_ty, rhs_len)) => {
+                self.types_may_unify(lhs_ty, rhs_ty) && self.consts_may_unify(lhs_len, rhs_len)
+            }
+
             (ty::RawPtr(lhs_ty, lhs_mutbl), ty::RawPtr(rhs_ty, rhs_mutbl)) => {
                 lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
             }
+
+            (ty::Slice(lhs_ty), ty::Slice(rhs_ty)) => self.types_may_unify(lhs_ty, rhs_ty),
+
+            (ty::Float(_), ty::Float(_))
+            | (ty::Str, ty::Str)
+            | (ty::Bool, ty::Bool)
+            | (ty::Char, ty::Char)
+            | (ty::Never, ty::Never)
+            | (ty::Foreign(_), ty::Foreign(_)) => lhs == rhs,
 
             (ty::Dynamic(lhs_preds, ..), ty::Dynamic(rhs_preds, ..)) => {
                 // Ideally we would walk the existential predicates here or at least
@@ -290,9 +291,11 @@ impl<I: Interner> DeepRejectCtxt<I> {
                 lhs_preds.principal_def_id() == rhs_preds.principal_def_id()
             }
 
+            // Placeholder types don't unify with anything on their own.
+            (ty::Placeholder(lhs), ty::Placeholder(rhs)) => lhs == rhs,
+
             (ty::FnPtr(lhs_sig_tys, lhs_hdr), ty::FnPtr(rhs_sig_tys, rhs_hdr)) => {
                 let lhs_sig_tys = lhs_sig_tys.skip_binder().inputs_and_output;
-
                 let rhs_sig_tys = rhs_sig_tys.skip_binder().inputs_and_output;
 
                 lhs_hdr == rhs_hdr
@@ -313,7 +316,14 @@ impl<I: Interner> DeepRejectCtxt<I> {
                 ty::CoroutineWitness(rhs_def_id, rhs_args),
             ) => lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args),
 
-            (ty::Placeholder(_), _)
+            (ty::Pat(lhs_ty, _), ty::Pat(rhs_ty, _)) => {
+                // FIXME(pattern_types): take pattern into account
+                self.types_may_unify(lhs_ty, rhs_ty)
+            }
+
+            (ty::Error(..), _)
+            | (_, ty::Error(..))
+            | (ty::Placeholder(_), _)
             | (_, ty::Placeholder(_))
             | (ty::Bool, _)
             | (_, ty::Bool)
@@ -371,12 +381,8 @@ impl<I: Interner> DeepRejectCtxt<I> {
             (ty::ConstKind::Value(..), ty::ConstKind::Placeholder(_))
             | (ty::ConstKind::Placeholder(_), ty::ConstKind::Value(..)) => false,
 
-            (ty::ConstKind::Param(_), ty::ConstKind::Value(..)) => {
-                self.treat_lhs_params == TreatParams::InstantiateWithInfer
-            }
-            (ty::ConstKind::Value(..), ty::ConstKind::Param(_)) => {
-                self.treat_rhs_params == TreatParams::InstantiateWithInfer
-            }
+            (ty::ConstKind::Param(_), ty::ConstKind::Value(..)) => TREAT_LHS_PARAMS,
+            (ty::ConstKind::Value(..), ty::ConstKind::Param(_)) => TREAT_RHS_PARAMS,
 
             _ => true,
         }
