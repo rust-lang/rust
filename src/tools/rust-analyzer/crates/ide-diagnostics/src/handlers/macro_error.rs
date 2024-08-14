@@ -273,11 +273,7 @@ fn f() {
 
     #[test]
     fn include_does_not_break_diagnostics() {
-        let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("inactive-code".to_owned());
-        config.disabled.insert("unlinked-file".to_owned());
-        check_diagnostics_with_config(
-            config,
+        check_diagnostics(
             r#"
 //- minicore: include
 //- /lib.rs crate:lib

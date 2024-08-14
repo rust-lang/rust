@@ -1,7 +1,8 @@
 [package]
 name = "project-model"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A representation for a Cargo project for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true

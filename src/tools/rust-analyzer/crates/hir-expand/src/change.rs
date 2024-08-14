@@ -1,7 +1,7 @@
 //! Defines a unit of change that can applied to the database to get the next
 //! state. Changes are transactional.
 use base_db::{
-    salsa::Durability, CrateGraph, CrateId, FileChange, SourceDatabaseExt, SourceRoot,
+    salsa::Durability, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootDatabase,
     TargetLayoutLoadResult, Version,
 };
 use la_arena::RawIdx;
@@ -23,7 +23,7 @@ impl ChangeWithProcMacros {
         Self::default()
     }
 
-    pub fn apply(self, db: &mut (impl ExpandDatabase + SourceDatabaseExt)) {
+    pub fn apply(self, db: &mut (impl ExpandDatabase + SourceRootDatabase)) {
         self.source_change.apply(db);
         if let Some(proc_macros) = self.proc_macros {
             db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH);

@@ -341,7 +341,7 @@ impl<'a> TyLoweringContext<'a> {
 
                         let impl_trait_id = origin.either(
                             |f| ImplTraitId::ReturnTypeImplTrait(f, idx),
-                            |a| ImplTraitId::AssociatedTypeImplTrait(a, idx),
+                            |a| ImplTraitId::TypeAliasImplTrait(a, idx),
                         );
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics =
@@ -1857,7 +1857,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
         params,
         ret,
         data.is_varargs(),
-        if data.has_unsafe_kw() { Safety::Unsafe } else { Safety::Safe },
+        if data.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
         data.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
     );
     make_binders(db, &generics, sig)
@@ -2131,7 +2131,6 @@ pub(crate) fn type_alias_impl_traits(
     if let Some(type_ref) = &data.type_ref {
         let _ty = ctx.lower_ty(type_ref);
     }
-    let generics = generics(db.upcast(), def.into());
     let type_alias_impl_traits = ImplTraits {
         impl_traits: match ctx.impl_trait_mode {
             ImplTraitLoweringState::Opaque(x) => x.into_inner(),
@@ -2141,6 +2140,7 @@ pub(crate) fn type_alias_impl_traits(
     if type_alias_impl_traits.impl_traits.is_empty() {
         None
     } else {
+        let generics = generics(db.upcast(), def.into());
         Some(Arc::new(make_binders(db, &generics, type_alias_impl_traits)))
     }
 }

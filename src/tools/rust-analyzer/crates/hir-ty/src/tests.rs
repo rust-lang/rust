@@ -9,10 +9,11 @@ mod patterns;
 mod regression;
 mod simple;
 mod traits;
+mod type_alias_impl_traits;
 
 use std::env;
 
-use base_db::SourceDatabaseExt2 as _;
+use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},

@@ -36,7 +36,6 @@ use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
-    diff::diff,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     hack_recover_crate_name,
     line_index::LineEndings,
@@ -51,6 +50,7 @@ use crate::{
         FetchDependencyListResult, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams,
     },
     target_spec::{CargoTargetSpec, TargetSpec},
+    test_runner::{CargoTestHandle, TestTarget},
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
@@ -246,15 +246,15 @@ pub(crate) fn handle_run_test(
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
             let test_target = if let Some(namespace_root) = namespace_root {
                 if let Some(package_name) = find_package_name(namespace_root, cargo) {
-                    flycheck::TestTarget::Package(package_name)
+                    TestTarget::Package(package_name)
                 } else {
-                    flycheck::TestTarget::Workspace
+                    TestTarget::Workspace
                 }
             } else {
-                flycheck::TestTarget::Workspace
+                TestTarget::Workspace
             };
 
-            let handle = flycheck::CargoTestHandle::new(
+            let handle = CargoTestHandle::new(
                 test_path,
                 state.config.cargo_test_options(),
                 cargo.workspace_root(),
@@ -781,9 +781,12 @@ pub(crate) fn handle_parent_module(
     if let Ok(file_path) = &params.text_document.uri.to_file_path() {
         if file_path.file_name().unwrap_or_default() == "Cargo.toml" {
             // search workspaces for parent packages or fallback to workspace root
-            let abs_path_buf = match AbsPathBuf::try_from(file_path.to_path_buf()).ok() {
-                Some(abs_path_buf) => abs_path_buf,
-                None => return Ok(None),
+            let abs_path_buf = match Utf8PathBuf::from_path_buf(file_path.to_path_buf())
+                .ok()
+                .map(AbsPathBuf::try_from)
+            {
+                Some(Ok(abs_path_buf)) => abs_path_buf,
+                _ => return Ok(None),
             };
 
             let manifest_path = match ManifestPath::try_from(abs_path_buf).ok() {
@@ -2365,4 +2368,48 @@ fn resolve_resource_op(op: &ResourceOp) -> ResourceOperationKind {
         ResourceOp::Rename(_) => ResourceOperationKind::Rename,
         ResourceOp::Delete(_) => ResourceOperationKind::Delete,
     }
+}
+
+pub(crate) fn diff(left: &str, right: &str) -> TextEdit {
+    use dissimilar::Chunk;
+
+    let chunks = dissimilar::diff(left, right);
+
+    let mut builder = TextEdit::builder();
+    let mut pos = TextSize::default();
+
+    let mut chunks = chunks.into_iter().peekable();
+    while let Some(chunk) = chunks.next() {
+        if let (Chunk::Delete(deleted), Some(&Chunk::Insert(inserted))) = (chunk, chunks.peek()) {
+            chunks.next().unwrap();
+            let deleted_len = TextSize::of(deleted);
+            builder.replace(TextRange::at(pos, deleted_len), inserted.into());
+            pos += deleted_len;
+            continue;
+        }
+
+        match chunk {
+            Chunk::Equal(text) => {
+                pos += TextSize::of(text);
+            }
+            Chunk::Delete(deleted) => {
+                let deleted_len = TextSize::of(deleted);
+                builder.delete(TextRange::at(pos, deleted_len));
+                pos += deleted_len;
+            }
+            Chunk::Insert(inserted) => {
+                builder.insert(pos, inserted.into());
+            }
+        }
+    }
+    builder.finish()
+}
+
+#[test]
+fn diff_smoke_test() {
+    let mut original = String::from("fn foo(a:u32){\n}");
+    let result = "fn foo(a: u32) {}";
+    let edit = diff(&original, result);
+    edit.apply(&mut original);
+    assert_eq!(original, result);
 }

@@ -3,7 +3,7 @@ use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env, FileChange,
-    FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version, VfsPath,
+    FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -26,7 +26,7 @@ use tt::{Leaf, Subtree, TokenTree};
 
 pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
-pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
+pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     #[track_caller]
     fn with_single_file(ra_fixture: &str) -> (Self, EditionedFileId) {
         let fixture = ChangeFixture::parse(ra_fixture);
@@ -101,7 +101,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
     }
 }
 
-impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for DB {}
+impl<DB: ExpandDatabase + SourceRootDatabase + Default + 'static> WithFixture for DB {}
 
 pub struct ChangeFixture {
     pub file_position: Option<(EditionedFileId, RangeOrOffset)>,

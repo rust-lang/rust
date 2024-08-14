@@ -1,59 +1,48 @@
-//! Flycheck provides the functionality needed to run `cargo check` or
-//! another compatible command (f.x. clippy) in a background thread and provide
+//! Flycheck provides the functionality needed to run `cargo check` to provide
 //! LSP diagnostics based on the output of the command.
-
-// FIXME: This crate now handles running `cargo test` needed in the test explorer in
-// addition to `cargo check`. Either split it into 3 crates (one for test, one for check
-// and one common utilities) or change its name and docs to reflect the current state.
 
 use std::{fmt, io, process::Command, time::Duration};
 
-use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
 
-pub use cargo_metadata::diagnostic::{
+pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
-    DiagnosticSpanMacroExpansion,
 };
 use toolchain::Tool;
 
-mod command;
-pub mod project_json;
-mod test_runner;
-
-use command::{CommandHandle, ParseFromLine};
-pub use test_runner::{CargoTestHandle, CargoTestMessage, TestState, TestTarget};
+use crate::command::{CommandHandle, ParseFromLine};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum InvocationStrategy {
+pub(crate) enum InvocationStrategy {
     Once,
     #[default]
     PerWorkspace,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub enum InvocationLocation {
+pub(crate) enum InvocationLocation {
     Root(AbsPathBuf),
     #[default]
     Workspace,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CargoOptions {
-    pub target_triples: Vec<String>,
-    pub all_targets: bool,
-    pub no_default_features: bool,
-    pub all_features: bool,
-    pub features: Vec<String>,
-    pub extra_args: Vec<String>,
-    pub extra_env: FxHashMap<String, String>,
-    pub target_dir: Option<Utf8PathBuf>,
+pub(crate) struct CargoOptions {
+    pub(crate) target_triples: Vec<String>,
+    pub(crate) all_targets: bool,
+    pub(crate) no_default_features: bool,
+    pub(crate) all_features: bool,
+    pub(crate) features: Vec<String>,
+    pub(crate) extra_args: Vec<String>,
+    pub(crate) extra_env: FxHashMap<String, String>,
+    pub(crate) target_dir: Option<Utf8PathBuf>,
 }
 
 impl CargoOptions {
-    fn apply_on_command(&self, cmd: &mut Command) {
+    pub(crate) fn apply_on_command(&self, cmd: &mut Command) {
         for target in &self.target_triples {
             cmd.args(["--target", target.as_str()]);
         }
@@ -79,7 +68,7 @@ impl CargoOptions {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FlycheckConfig {
+pub(crate) enum FlycheckConfig {
     CargoCommand {
         command: String,
         options: CargoOptions,
@@ -110,7 +99,7 @@ impl fmt::Display for FlycheckConfig {
 /// diagnostics based on the output.
 /// The spawned thread is shut down when this struct is dropped.
 #[derive(Debug)]
-pub struct FlycheckHandle {
+pub(crate) struct FlycheckHandle {
     // XXX: drop order is significant
     sender: Sender<StateChange>,
     _thread: stdx::thread::JoinHandle,
@@ -118,9 +107,9 @@ pub struct FlycheckHandle {
 }
 
 impl FlycheckHandle {
-    pub fn spawn(
+    pub(crate) fn spawn(
         id: usize,
-        sender: Box<dyn Fn(Message) + Send>,
+        sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
@@ -137,28 +126,28 @@ impl FlycheckHandle {
     }
 
     /// Schedule a re-start of the cargo check worker to do a workspace wide check.
-    pub fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
+    pub(crate) fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
         self.sender.send(StateChange::Restart { package: None, saved_file }).unwrap();
     }
 
     /// Schedule a re-start of the cargo check worker to do a package wide check.
-    pub fn restart_for_package(&self, package: String) {
+    pub(crate) fn restart_for_package(&self, package: String) {
         self.sender
             .send(StateChange::Restart { package: Some(package), saved_file: None })
             .unwrap();
     }
 
     /// Stop this cargo check worker.
-    pub fn cancel(&self) {
+    pub(crate) fn cancel(&self) {
         self.sender.send(StateChange::Cancel).unwrap();
     }
 
-    pub fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.id
     }
 }
 
-pub enum Message {
+pub(crate) enum FlycheckMessage {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic { id: usize, workspace_root: AbsPathBuf, diagnostic: Diagnostic },
 
@@ -173,19 +162,19 @@ pub enum Message {
     },
 }
 
-impl fmt::Debug for Message {
+impl fmt::Debug for FlycheckMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Message::AddDiagnostic { id, workspace_root, diagnostic } => f
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => f
                 .debug_struct("AddDiagnostic")
                 .field("id", id)
                 .field("workspace_root", workspace_root)
                 .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
                 .finish(),
-            Message::ClearDiagnostics { id } => {
+            FlycheckMessage::ClearDiagnostics { id } => {
                 f.debug_struct("ClearDiagnostics").field("id", id).finish()
             }
-            Message::Progress { id, progress } => {
+            FlycheckMessage::Progress { id, progress } => {
                 f.debug_struct("Progress").field("id", id).field("progress", progress).finish()
             }
         }
@@ -193,7 +182,7 @@ impl fmt::Debug for Message {
 }
 
 #[derive(Debug)]
-pub enum Progress {
+pub(crate) enum Progress {
     DidStart,
     DidCheckCrate(String),
     DidFinish(io::Result<()>),
@@ -210,7 +199,7 @@ enum StateChange {
 struct FlycheckActor {
     /// The workspace id of this flycheck instance.
     id: usize,
-    sender: Box<dyn Fn(Message) + Send>,
+    sender: Sender<FlycheckMessage>,
     config: FlycheckConfig,
     manifest_path: Option<AbsPathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
@@ -241,12 +230,12 @@ enum FlycheckStatus {
     Finished,
 }
 
-pub const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
+pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
 
 impl FlycheckActor {
     fn new(
         id: usize,
-        sender: Box<dyn Fn(Message) + Send>,
+        sender: Sender<FlycheckMessage>,
         config: FlycheckConfig,
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
@@ -267,17 +256,18 @@ impl FlycheckActor {
     }
 
     fn report_progress(&self, progress: Progress) {
-        self.send(Message::Progress { id: self.id, progress });
+        self.send(FlycheckMessage::Progress { id: self.id, progress });
     }
 
     fn next_event(&self, inbox: &Receiver<StateChange>) -> Option<Event> {
-        if let Ok(msg) = inbox.try_recv() {
-            // give restarts a preference so check outputs don't block a restart or stop
-            return Some(Event::RequestStateChange(msg));
-        }
-        select! {
+        let Some(command_receiver) = &self.command_receiver else {
+            return inbox.recv().ok().map(Event::RequestStateChange);
+        };
+
+        // Biased to give restarts a preference so check outputs don't block a restart or stop
+        select_biased! {
             recv(inbox) -> msg => msg.ok().map(Event::RequestStateChange),
-            recv(self.command_receiver.as_ref().unwrap_or(&never())) -> msg => Some(Event::CheckEvent(msg.ok())),
+            recv(command_receiver) -> msg => Some(Event::CheckEvent(msg.ok())),
         }
     }
 
@@ -340,7 +330,7 @@ impl FlycheckActor {
                         );
                     }
                     if self.status == FlycheckStatus::Started {
-                        self.send(Message::ClearDiagnostics { id: self.id });
+                        self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
                     }
                     self.report_progress(Progress::DidFinish(res));
                     self.status = FlycheckStatus::Finished;
@@ -362,9 +352,9 @@ impl FlycheckActor {
                             "diagnostic received"
                         );
                         if self.status == FlycheckStatus::Started {
-                            self.send(Message::ClearDiagnostics { id: self.id });
+                            self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
                         }
-                        self.send(Message::AddDiagnostic {
+                        self.send(FlycheckMessage::AddDiagnostic {
                             id: self.id,
                             workspace_root: self.root.clone(),
                             diagnostic: msg,
@@ -399,7 +389,7 @@ impl FlycheckActor {
         package: Option<&str>,
         saved_file: Option<&AbsPath>,
     ) -> Option<Command> {
-        let (mut cmd, args) = match &self.config {
+        match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd = Command::new(Tool::Cargo.path());
                 if let Some(sysroot_root) = &self.sysroot_root {
@@ -430,7 +420,8 @@ impl FlycheckActor {
                 cmd.arg("--keep-going");
 
                 options.apply_on_command(&mut cmd);
-                (cmd, options.extra_args.clone())
+                cmd.args(&options.extra_args);
+                Some(cmd)
             }
             FlycheckConfig::CustomCommand {
                 command,
@@ -459,38 +450,36 @@ impl FlycheckActor {
                     }
                 }
 
-                if args.contains(&SAVED_FILE_PLACEHOLDER.to_owned()) {
-                    // If the custom command has a $saved_file placeholder, and
-                    // we're saving a file, replace the placeholder in the arguments.
-                    if let Some(saved_file) = saved_file {
-                        let args = args
-                            .iter()
-                            .map(|arg| {
-                                if arg == SAVED_FILE_PLACEHOLDER {
-                                    saved_file.to_string()
-                                } else {
-                                    arg.clone()
-                                }
-                            })
-                            .collect();
-                        (cmd, args)
-                    } else {
-                        // The custom command has a $saved_file placeholder,
-                        // but we had an IDE event that wasn't a file save. Do nothing.
-                        return None;
+                // If the custom command has a $saved_file placeholder, and
+                // we're saving a file, replace the placeholder in the arguments.
+                if let Some(saved_file) = saved_file {
+                    for arg in args {
+                        if arg == SAVED_FILE_PLACEHOLDER {
+                            cmd.arg(saved_file);
+                        } else {
+                            cmd.arg(arg);
+                        }
                     }
                 } else {
-                    (cmd, args.clone())
-                }
-            }
-        };
+                    for arg in args {
+                        if arg == SAVED_FILE_PLACEHOLDER {
+                            // The custom command has a $saved_file placeholder,
+                            // but we had an IDE event that wasn't a file save. Do nothing.
+                            return None;
+                        }
 
-        cmd.args(args);
-        Some(cmd)
+                        cmd.arg(arg);
+                    }
+                }
+
+                Some(cmd)
+            }
+        }
     }
 
-    fn send(&self, check_task: Message) {
-        (self.sender)(check_task);
+    #[track_caller]
+    fn send(&self, check_task: FlycheckMessage) {
+        self.sender.send(check_task).unwrap();
     }
 }
 

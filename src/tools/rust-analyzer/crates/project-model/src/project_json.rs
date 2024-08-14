@@ -50,12 +50,13 @@
 //! rust-project.json over time via configuration request!)
 
 use base_db::{CrateDisplayName, CrateName};
+use cfg::CfgAtom;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
-use crate::{cfg::CfgFlag, ManifestPath, TargetKind};
+use crate::{ManifestPath, TargetKind};
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,106 +72,6 @@ pub struct ProjectJson {
     ///
     /// Examples include a check build or a test run.
     runnables: Vec<Runnable>,
-}
-
-/// A crate points to the root module of a crate and lists the dependencies of the crate. This is
-/// useful in creating the crate graph.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Crate {
-    pub(crate) display_name: Option<CrateDisplayName>,
-    pub root_module: AbsPathBuf,
-    pub(crate) edition: Edition,
-    pub(crate) version: Option<String>,
-    pub(crate) deps: Vec<Dep>,
-    pub(crate) cfg: Vec<CfgFlag>,
-    pub(crate) target: Option<String>,
-    pub(crate) env: FxHashMap<String, String>,
-    pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
-    pub(crate) is_workspace_member: bool,
-    pub(crate) include: Vec<AbsPathBuf>,
-    pub(crate) exclude: Vec<AbsPathBuf>,
-    pub(crate) is_proc_macro: bool,
-    pub(crate) repository: Option<String>,
-    pub build: Option<Build>,
-}
-
-/// Additional, build-specific data about a crate.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Build {
-    /// The name associated with this crate.
-    ///
-    /// This is determined by the build system that produced
-    /// the `rust-project.json` in question. For instance, if buck were used,
-    /// the label might be something like `//ide/rust/rust-analyzer:rust-analyzer`.
-    ///
-    /// Do not attempt to parse the contents of this string; it is a build system-specific
-    /// identifier similar to [`Crate::display_name`].
-    pub label: String,
-    /// Path corresponding to the build system-specific file defining the crate.
-    ///
-    /// It is roughly analogous to [`ManifestPath`], but it should *not* be used with
-    /// [`crate::ProjectManifest::from_manifest_file`], as the build file may not be
-    /// be in the `rust-project.json`.
-    pub build_file: Utf8PathBuf,
-    /// The kind of target.
-    ///
-    /// Examples (non-exhaustively) include [`TargetKind::Bin`], [`TargetKind::Lib`],
-    /// and [`TargetKind::Test`]. This information is used to determine what sort
-    /// of runnable codelens to provide, if any.
-    pub target_kind: TargetKind,
-}
-
-/// A template-like structure for describing runnables.
-///
-/// These are used for running and debugging binaries and tests without encoding
-/// build system-specific knowledge into rust-analyzer.
-///
-/// # Example
-///
-/// Below is an example of a test runnable. `{label}` and `{test_id}`
-/// are explained in [`Runnable::args`]'s documentation.
-///
-/// ```json
-/// {
-///     "program": "buck",
-///     "args": [
-///         "test",
-///          "{label}",
-///          "--",
-///          "{test_id}",
-///          "--print-passing-details"
-///     ],
-///     "cwd": "/home/user/repo-root/",
-///     "kind": "testOne"
-/// }
-/// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Runnable {
-    /// The program invoked by the runnable.
-    ///
-    /// For example, this might be `cargo`, `buck`, or `bazel`.
-    pub program: String,
-    /// The arguments passed to [`Runnable::program`].
-    ///
-    /// The args can contain two template strings: `{label}` and `{test_id}`.
-    /// rust-analyzer will find and replace `{label}` with [`Build::label`] and
-    /// `{test_id}` with the test name.
-    pub args: Vec<String>,
-    /// The current working directory of the runnable.
-    pub cwd: Utf8PathBuf,
-    pub kind: RunnableKind,
-}
-
-/// The kind of runnable.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RunnableKind {
-    Check,
-
-    /// Can run a binary.
-    Run,
-
-    /// Run a single test.
-    TestOne,
 }
 
 impl ProjectJson {
@@ -301,6 +202,106 @@ impl ProjectJson {
     }
 }
 
+/// A crate points to the root module of a crate and lists the dependencies of the crate. This is
+/// useful in creating the crate graph.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Crate {
+    pub(crate) display_name: Option<CrateDisplayName>,
+    pub root_module: AbsPathBuf,
+    pub(crate) edition: Edition,
+    pub(crate) version: Option<String>,
+    pub(crate) deps: Vec<Dep>,
+    pub(crate) cfg: Vec<CfgAtom>,
+    pub(crate) target: Option<String>,
+    pub(crate) env: FxHashMap<String, String>,
+    pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
+    pub(crate) is_workspace_member: bool,
+    pub(crate) include: Vec<AbsPathBuf>,
+    pub(crate) exclude: Vec<AbsPathBuf>,
+    pub(crate) is_proc_macro: bool,
+    pub(crate) repository: Option<String>,
+    pub build: Option<Build>,
+}
+
+/// Additional, build-specific data about a crate.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Build {
+    /// The name associated with this crate.
+    ///
+    /// This is determined by the build system that produced
+    /// the `rust-project.json` in question. For instance, if buck were used,
+    /// the label might be something like `//ide/rust/rust-analyzer:rust-analyzer`.
+    ///
+    /// Do not attempt to parse the contents of this string; it is a build system-specific
+    /// identifier similar to [`Crate::display_name`].
+    pub label: String,
+    /// Path corresponding to the build system-specific file defining the crate.
+    ///
+    /// It is roughly analogous to [`ManifestPath`], but it should *not* be used with
+    /// [`crate::ProjectManifest::from_manifest_file`], as the build file may not be
+    /// be in the `rust-project.json`.
+    pub build_file: Utf8PathBuf,
+    /// The kind of target.
+    ///
+    /// Examples (non-exhaustively) include [`TargetKind::Bin`], [`TargetKind::Lib`],
+    /// and [`TargetKind::Test`]. This information is used to determine what sort
+    /// of runnable codelens to provide, if any.
+    pub target_kind: TargetKind,
+}
+
+/// A template-like structure for describing runnables.
+///
+/// These are used for running and debugging binaries and tests without encoding
+/// build system-specific knowledge into rust-analyzer.
+///
+/// # Example
+///
+/// Below is an example of a test runnable. `{label}` and `{test_id}`
+/// are explained in [`Runnable::args`]'s documentation.
+///
+/// ```json
+/// {
+///     "program": "buck",
+///     "args": [
+///         "test",
+///          "{label}",
+///          "--",
+///          "{test_id}",
+///          "--print-passing-details"
+///     ],
+///     "cwd": "/home/user/repo-root/",
+///     "kind": "testOne"
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Runnable {
+    /// The program invoked by the runnable.
+    ///
+    /// For example, this might be `cargo`, `buck`, or `bazel`.
+    pub program: String,
+    /// The arguments passed to [`Runnable::program`].
+    ///
+    /// The args can contain two template strings: `{label}` and `{test_id}`.
+    /// rust-analyzer will find and replace `{label}` with [`Build::label`] and
+    /// `{test_id}` with the test name.
+    pub args: Vec<String>,
+    /// The current working directory of the runnable.
+    pub cwd: Utf8PathBuf,
+    pub kind: RunnableKind,
+}
+
+/// The kind of runnable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RunnableKind {
+    Check,
+
+    /// Can run a binary.
+    Run,
+
+    /// Run a single test.
+    TestOne,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct ProjectJsonData {
     sysroot: Option<Utf8PathBuf>,
@@ -319,7 +320,8 @@ struct CrateData {
     version: Option<semver::Version>,
     deps: Vec<Dep>,
     #[serde(default)]
-    cfg: Vec<CfgFlag>,
+    #[serde(with = "cfg_")]
+    cfg: Vec<CfgAtom>,
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
@@ -332,6 +334,33 @@ struct CrateData {
     repository: Option<String>,
     #[serde(default)]
     build: Option<BuildData>,
+}
+
+mod cfg_ {
+    use cfg::CfgAtom;
+    use serde::{Deserialize, Serialize};
+
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<CfgAtom>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let cfg: Vec<String> = Vec::deserialize(deserializer)?;
+        cfg.into_iter().map(|it| crate::parse_cfg(&it).map_err(serde::de::Error::custom)).collect()
+    }
+    pub(super) fn serialize<S>(cfg: &[CfgAtom], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        cfg.iter()
+            .map(|cfg| match cfg {
+                CfgAtom::Flag(flag) => flag.as_str().to_owned(),
+                CfgAtom::KeyValue { key, value } => {
+                    format!("{}=\"{}\"", key.as_str(), value.as_str())
+                }
+            })
+            .collect::<Vec<String>>()
+            .serialize(serializer)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
@@ -378,6 +407,29 @@ pub enum TargetKindData {
     Lib,
     Test,
 }
+/// Identifies a crate by position in the crates array.
+///
+/// This will differ from `CrateId` when multiple `ProjectJson`
+/// workspaces are loaded.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[serde(transparent)]
+pub struct CrateArrayIdx(pub usize);
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub(crate) struct Dep {
+    /// Identifies a crate by position in the crates array.
+    #[serde(rename = "crate")]
+    pub(crate) krate: CrateArrayIdx,
+    #[serde(serialize_with = "serialize_crate_name")]
+    #[serde(deserialize_with = "deserialize_crate_name")]
+    pub(crate) name: CrateName,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+struct CrateSource {
+    include_dirs: Vec<Utf8PathBuf>,
+    exclude_dirs: Vec<Utf8PathBuf>,
+}
 
 impl From<TargetKindData> for TargetKind {
     fn from(data: TargetKindData) -> Self {
@@ -414,30 +466,6 @@ impl From<RunnableKindData> for RunnableKind {
             RunnableKindData::TestOne => RunnableKind::TestOne,
         }
     }
-}
-
-/// Identifies a crate by position in the crates array.
-///
-/// This will differ from `CrateId` when multiple `ProjectJson`
-/// workspaces are loaded.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
-#[serde(transparent)]
-pub struct CrateArrayIdx(pub usize);
-
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
-pub(crate) struct Dep {
-    /// Identifies a crate by position in the crates array.
-    #[serde(rename = "crate")]
-    pub(crate) krate: CrateArrayIdx,
-    #[serde(serialize_with = "serialize_crate_name")]
-    #[serde(deserialize_with = "deserialize_crate_name")]
-    pub(crate) name: CrateName,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-struct CrateSource {
-    include_dirs: Vec<Utf8PathBuf>,
-    exclude_dirs: Vec<Utf8PathBuf>,
 }
 
 fn deserialize_crate_name<'de, D>(de: D) -> std::result::Result<CrateName, D::Error>

@@ -10,7 +10,6 @@ mod snippet;
 #[cfg(test)]
 mod tests;
 
-use hir::ImportPathConfig;
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
@@ -249,11 +248,7 @@ pub fn resolve_completion_edits(
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: config.prefer_no_std,
-        prefer_prelude: config.prefer_prelude,
-        prefer_absolute: config.prefer_absolute,
-    };
+    let cfg = config.import_path_config();
 
     imports.into_iter().for_each(|(full_import_path, imported_name)| {
         let items_with_name = items_locator::items_with_name(

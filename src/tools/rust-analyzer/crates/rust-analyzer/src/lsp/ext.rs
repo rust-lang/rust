@@ -61,7 +61,7 @@ impl Request for FetchDependencyList {
 #[serde(rename_all = "camelCase")]
 pub struct FetchDependencyListParams {}
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FetchDependencyListResult {
     pub crates: Vec<CrateInfoResult>,
@@ -194,7 +194,7 @@ pub struct TestItem {
     pub runnable: Option<Runnable>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DiscoverTestResults {
     pub tests: Vec<TestItem>,
@@ -688,6 +688,12 @@ impl Request for ExternalDocs {
 pub enum ExternalDocsResponse {
     Simple(Option<lsp_types::Url>),
     WithLocal(ExternalDocsPair),
+}
+
+impl Default for ExternalDocsResponse {
+    fn default() -> Self {
+        ExternalDocsResponse::Simple(None)
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]

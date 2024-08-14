@@ -84,7 +84,7 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
-use ide_db::{EditionedFileId, FileId, FxHashMap, RootDatabase};
+use ide_db::{base_db::SourceDatabase, EditionedFileId, FileId, FxHashMap, RootDatabase};
 use resolving::ResolvedRule;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
 use text_edit::TextEdit;
@@ -141,7 +141,7 @@ impl<'db> MatchFinder<'db> {
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
     pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
-        use ide_db::base_db::SourceDatabaseExt;
+        use ide_db::base_db::SourceRootDatabase;
         use ide_db::symbol_index::SymbolsDatabase;
         if let Some(first_file_id) =
             db.local_roots().iter().next().and_then(|root| db.source_root(*root).iter().next())
@@ -172,7 +172,6 @@ impl<'db> MatchFinder<'db> {
 
     /// Finds matches for all added rules and returns edits for all found matches.
     pub fn edits(&self) -> FxHashMap<FileId, TextEdit> {
-        use ide_db::base_db::SourceDatabaseExt;
         let mut matches_by_file = FxHashMap::default();
         for m in self.matches().matches {
             matches_by_file
@@ -228,7 +227,6 @@ impl<'db> MatchFinder<'db> {
         file_id: EditionedFileId,
         snippet: &str,
     ) -> Vec<MatchDebugInfo> {
-        use ide_db::base_db::SourceDatabaseExt;
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
         let file_text = self.sema.db.file_text(file_id.into());

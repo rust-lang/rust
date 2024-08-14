@@ -18,6 +18,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use paths::Utf8PathBuf;
 use profile::StopWatch;
 use stdx::is_ci;
 use text_size::{TextRange, TextSize};
@@ -402,9 +403,10 @@ pub fn skip_slow_tests() -> bool {
 }
 
 /// Returns the path to the root directory of `rust-analyzer` project.
-pub fn project_root() -> PathBuf {
+pub fn project_root() -> Utf8PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
+    Utf8PathBuf::from_path_buf(PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned())
+        .unwrap()
 }
 
 pub fn format_diff(chunks: Vec<dissimilar::Chunk<'_>>) -> String {

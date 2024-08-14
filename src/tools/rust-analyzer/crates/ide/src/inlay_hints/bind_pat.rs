@@ -1147,4 +1147,19 @@ async fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn works_in_included_file() {
+        check_types(
+            r#"
+//- minicore: include
+//- /main.rs
+include!("foo.rs");
+//- /foo.rs
+fn main() {
+    let _x = 42;
+      //^^ i32
+}"#,
+        );
+    }
 }

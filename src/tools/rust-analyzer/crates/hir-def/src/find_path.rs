@@ -50,13 +50,13 @@ pub fn find_path(
             prefix: prefix_kind,
             cfg,
             ignore_local_imports,
+            is_std_item: db.crate_graph()[item_module.krate()].origin.is_lang(),
             from,
             from_def_map: &from.def_map(db),
             fuel: Cell::new(FIND_PATH_FUEL),
         },
         item,
         MAX_PATH_LEN,
-        db.crate_graph()[item_module.krate()].origin.is_lang(),
     )
 }
 
@@ -98,20 +98,16 @@ struct FindPathCtx<'db> {
     prefix: PrefixKind,
     cfg: ImportPathConfig,
     ignore_local_imports: bool,
+    is_std_item: bool,
     from: ModuleId,
     from_def_map: &'db DefMap,
     fuel: Cell<usize>,
 }
 
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
-fn find_path_inner(
-    ctx: &FindPathCtx<'_>,
-    item: ItemInNs,
-    max_len: usize,
-    is_std_item: bool,
-) -> Option<ModPath> {
+fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Option<ModPath> {
     // - if the item is a module, jump straight to module search
-    if !is_std_item {
+    if !ctx.is_std_item {
         if let ItemInNs::Types(ModuleDefId::ModuleId(module_id)) = item {
             return find_path_for_module(ctx, &mut FxHashSet::default(), module_id, true, max_len)
                 .map(|choice| choice.path);
@@ -138,28 +134,15 @@ fn find_path_inner(
 
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
         // - if the item is an enum variant, refer to it via the enum
-        if let Some(mut path) = find_path_inner(
-            ctx,
-            ItemInNs::Types(variant.lookup(ctx.db).parent.into()),
-            max_len,
-            is_std_item,
-        ) {
+        if let Some(mut path) =
+            find_path_inner(ctx, ItemInNs::Types(variant.lookup(ctx.db).parent.into()), max_len)
+        {
             path.push_segment(ctx.db.enum_variant_data(variant).name.clone());
             return Some(path);
         }
         // If this doesn't work, it seems we have no way of referring to the
         // enum; that's very weird, but there might still be a reexport of the
         // variant somewhere
-    }
-
-    if is_std_item {
-        // The item we are searching for comes from the sysroot libraries, so skip prefer looking in
-        // the sysroot libraries directly.
-        // We do need to fallback as the item in question could be re-exported by another crate
-        // while not being a transitive dependency of the current crate.
-        if let Some(choice) = find_in_sysroot(ctx, &mut FxHashSet::default(), item, max_len) {
-            return Some(choice.path);
-        }
     }
 
     let mut best_choice = None;
@@ -366,6 +349,12 @@ fn calculate_best_path(
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
         calculate_best_path_local(ctx, visited_modules, item, max_len, best_choice)
+    } else if ctx.is_std_item {
+        // The item we are searching for comes from the sysroot libraries, so skip prefer looking in
+        // the sysroot libraries directly.
+        // We do need to fallback as the item in question could be re-exported by another crate
+        // while not being a transitive dependency of the current crate.
+        find_in_sysroot(ctx, visited_modules, item, max_len, best_choice)
     } else {
         // Item was defined in some upstream crate. This means that it must be exported from one,
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
@@ -382,10 +371,10 @@ fn find_in_sysroot(
     visited_modules: &mut FxHashSet<(ItemInNs, ModuleId)>,
     item: ItemInNs,
     max_len: usize,
-) -> Option<Choice> {
+    best_choice: &mut Option<Choice>,
+) {
     let crate_graph = ctx.db.crate_graph();
     let dependencies = &crate_graph[ctx.from.krate].dependencies;
-    let mut best_choice = None;
     let mut search = |lang, best_choice: &mut _| {
         if let Some(dep) = dependencies.iter().filter(|it| it.is_sysroot()).find(|dep| {
             match crate_graph[dep.crate_id].origin {
@@ -397,29 +386,31 @@ fn find_in_sysroot(
         }
     };
     if ctx.cfg.prefer_no_std {
-        search(LangCrateOrigin::Core, &mut best_choice);
+        search(LangCrateOrigin::Core, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
-            return best_choice;
+            return;
         }
-        search(LangCrateOrigin::Std, &mut best_choice);
+        search(LangCrateOrigin::Std, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
-            return best_choice;
+            return;
         }
     } else {
-        search(LangCrateOrigin::Std, &mut best_choice);
+        search(LangCrateOrigin::Std, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
-            return best_choice;
+            return;
         }
-        search(LangCrateOrigin::Core, &mut best_choice);
+        search(LangCrateOrigin::Core, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
-            return best_choice;
+            return;
         }
     }
-    let mut best_choice = None;
-    dependencies.iter().filter(|it| it.is_sysroot()).for_each(|dep| {
-        find_in_dep(ctx, visited_modules, item, max_len, &mut best_choice, dep.crate_id);
-    });
-    best_choice
+    dependencies
+        .iter()
+        .filter(|it| it.is_sysroot())
+        .chain(dependencies.iter().filter(|it| !it.is_sysroot()))
+        .for_each(|dep| {
+            find_in_dep(ctx, visited_modules, item, max_len, best_choice, dep.crate_id);
+        });
 }
 
 fn find_in_dep(
@@ -491,6 +482,7 @@ fn calculate_best_path_local(
     );
 }
 
+#[derive(Debug)]
 struct Choice {
     path: ModPath,
     /// The length in characters of the path
@@ -676,6 +668,7 @@ mod tests {
         path: &str,
         prefer_prelude: bool,
         prefer_absolute: bool,
+        prefer_no_std: bool,
         expect: Expect,
     ) {
         let (db, pos) = TestDB::with_position(ra_fixture);
@@ -717,7 +710,7 @@ mod tests {
                 module,
                 prefix,
                 ignore_local_imports,
-                ImportPathConfig { prefer_no_std: false, prefer_prelude, prefer_absolute },
+                ImportPathConfig { prefer_no_std, prefer_prelude, prefer_absolute },
             );
             format_to!(
                 res,
@@ -732,15 +725,19 @@ mod tests {
     }
 
     fn check_found_path(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, false, false, expect);
+        check_found_path_(ra_fixture, path, false, false, false, expect);
     }
 
     fn check_found_path_prelude(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, true, false, expect);
+        check_found_path_(ra_fixture, path, true, false, false, expect);
     }
 
     fn check_found_path_absolute(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, false, true, expect);
+        check_found_path_(ra_fixture, path, false, true, false, expect);
+    }
+
+    fn check_found_path_prefer_no_std(ra_fixture: &str, path: &str, expect: Expect) {
+        check_found_path_(ra_fixture, path, false, false, true, expect);
     }
 
     #[test]
@@ -1361,9 +1358,66 @@ pub mod sync {
             "#]],
         );
     }
+    #[test]
+    fn prefer_core_paths_over_std_for_mod_reexport() {
+        check_found_path_prefer_no_std(
+            r#"
+//- /main.rs crate:main deps:core,std
+
+$0
+
+//- /stdlib.rs crate:std deps:core
+
+pub use core::pin;
+
+//- /corelib.rs crate:core
+
+pub mod pin {
+    pub struct Pin;
+}
+            "#,
+            "std::pin::Pin",
+            expect![[r#"
+                Plain  (imports ✔): core::pin::Pin
+                Plain  (imports ✖): core::pin::Pin
+                ByCrate(imports ✔): core::pin::Pin
+                ByCrate(imports ✖): core::pin::Pin
+                BySelf (imports ✔): core::pin::Pin
+                BySelf (imports ✖): core::pin::Pin
+            "#]],
+        );
+    }
 
     #[test]
     fn prefer_core_paths_over_std() {
+        check_found_path_prefer_no_std(
+            r#"
+//- /main.rs crate:main deps:core,std
+
+$0
+
+//- /std.rs crate:std deps:core
+
+pub mod fmt {
+    pub use core::fmt::Error;
+}
+
+//- /zzz.rs crate:core
+
+pub mod fmt {
+    pub struct Error;
+}
+        "#,
+            "core::fmt::Error",
+            expect![[r#"
+                Plain  (imports ✔): core::fmt::Error
+                Plain  (imports ✖): core::fmt::Error
+                ByCrate(imports ✔): core::fmt::Error
+                ByCrate(imports ✖): core::fmt::Error
+                BySelf (imports ✔): core::fmt::Error
+                BySelf (imports ✖): core::fmt::Error
+            "#]],
+        );
         check_found_path(
             r#"
 //- /main.rs crate:main deps:core,std
@@ -1878,10 +1932,9 @@ pub mod ops {
 
     #[test]
     fn respect_unstable_modules() {
-        check_found_path(
+        check_found_path_prefer_no_std(
             r#"
 //- /main.rs crate:main deps:std,core
-#![no_std]
 extern crate std;
 $0
 //- /longer.rs crate:std deps:core

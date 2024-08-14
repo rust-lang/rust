@@ -10,12 +10,12 @@ use toolchain::Tool;
 
 use crate::{
     command::{CommandHandle, ParseFromLine},
-    CargoOptions,
+    flycheck::CargoOptions,
 };
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "event", rename_all = "camelCase")]
-pub enum TestState {
+pub(crate) enum TestState {
     Started,
     Ok,
     Ignored,
@@ -24,7 +24,7 @@ pub enum TestState {
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
-pub enum CargoTestMessage {
+pub(crate) enum CargoTestMessage {
     Test {
         name: String,
         #[serde(flatten)]
@@ -54,7 +54,7 @@ impl ParseFromLine for CargoTestMessage {
 }
 
 #[derive(Debug)]
-pub struct CargoTestHandle {
+pub(crate) struct CargoTestHandle {
     _handle: CommandHandle<CargoTestMessage>,
 }
 
@@ -64,13 +64,13 @@ pub struct CargoTestHandle {
 // cargo test --package my-package --no-fail-fast -- module::func -Z unstable-options --format=json
 
 #[derive(Debug)]
-pub enum TestTarget {
+pub(crate) enum TestTarget {
     Workspace,
     Package(String),
 }
 
 impl CargoTestHandle {
-    pub fn new(
+    pub(crate) fn new(
         path: Option<&str>,
         options: CargoOptions,
         root: &AbsPath,

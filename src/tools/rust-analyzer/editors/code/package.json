@@ -71,7 +71,9 @@
         "workspaceContains:Cargo.toml",
         "workspaceContains:*/Cargo.toml",
         "workspaceContains:rust-project.json",
-        "workspaceContains:*/rust-project.json"
+        "workspaceContains:*/rust-project.json",
+        "workspaceContains:.rust-project.json",
+        "workspaceContains:*/.rust-project.json"
     ],
     "main": "./out/main",
     "contributes": {
@@ -823,16 +825,6 @@
                             "null",
                             "string"
                         ]
-                    }
-                }
-            },
-            {
-                "title": "cargo",
-                "properties": {
-                    "rust-analyzer.cargo.sysrootQueryMetadata": {
-                        "markdownDescription": "Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze\nthird-party dependencies of the standard libraries.\n\nThis will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer\nwill attempt to clean up afterwards, but nevertheless requires the location to be\nwritable to.",
-                        "default": false,
-                        "type": "boolean"
                     }
                 }
             },
@@ -3220,6 +3212,10 @@
         "jsonValidation": [
             {
                 "fileMatch": "rust-project.json",
+                "url": "https://json.schemastore.org/rust-project.json"
+            },
+            {
+                "fileMatch": ".rust-project.json",
                 "url": "https://json.schemastore.org/rust-project.json"
             }
         ],

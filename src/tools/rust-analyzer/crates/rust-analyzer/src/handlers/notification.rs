@@ -9,6 +9,7 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, WorkDoneProgressCancelParams,
 };
+use paths::Utf8PathBuf;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
@@ -157,6 +158,8 @@ pub(crate) fn handle_did_save_text_document(
                 .map(|cfg| cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>())
                 .unwrap_or_default();
 
+            // FIXME: We should move this check into a QueuedTask and do semantic resolution of
+            // the files. There is only so much we can tell syntactically from the path.
             if reload::should_refresh_for_change(path, ChangeKind::Modify, additional_files) {
                 state.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change saved {path}"),
@@ -240,6 +243,7 @@ pub(crate) fn handle_did_change_workspace_folders(
 
     for workspace in params.event.removed {
         let Ok(path) = workspace.uri.to_file_path() else { continue };
+        let Ok(path) = Utf8PathBuf::from_path_buf(path) else { continue };
         let Ok(path) = AbsPathBuf::try_from(path) else { continue };
         config.remove_workspace(&path);
     }
@@ -249,6 +253,7 @@ pub(crate) fn handle_did_change_workspace_folders(
         .added
         .into_iter()
         .filter_map(|it| it.uri.to_file_path().ok())
+        .filter_map(|it| Utf8PathBuf::from_path_buf(it).ok())
         .filter_map(|it| AbsPathBuf::try_from(it).ok());
     config.add_workspaces(added);
 

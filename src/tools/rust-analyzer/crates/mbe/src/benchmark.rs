@@ -7,11 +7,15 @@ use syntax::{
     ast::{self, HasName},
     AstNode,
 };
+use syntax_bridge::{
+    dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
+    syntax_node_to_token_tree, DocCommentDesugarMode,
+};
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro, DocCommentDesugarMode, DummyTestSpanMap, DUMMY,
+    DeclarativeMacro,
 };
 
 #[test]
