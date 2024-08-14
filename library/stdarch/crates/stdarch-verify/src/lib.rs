@@ -97,11 +97,11 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 arguments.push(to_type(ty));
             }
             for generic in f.sig.generics.params.iter() {
-                let ty = match *generic {
-                    syn::GenericParam::Const(ref c) => &c.ty,
+                match *generic {
+                    syn::GenericParam::Const(ref c) => const_arguments.push(to_type(&c.ty)),
+                    syn::GenericParam::Type(ref _t) => (),
                     _ => panic!("invalid generic argument on {name}"),
                 };
-                const_arguments.push(to_type(ty));
             }
             let ret = match f.sig.output {
                 syn::ReturnType::Default => quote! { None },
@@ -344,6 +344,10 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "v8f16" => quote! { &v8f16 },
             "v4f32" => quote! { &v4f32 },
             "v2f64" => quote! { &v2f64 },
+
+            // Generic types
+            "T" => quote! { &GENERICT },
+            "U" => quote! { &GENERICU },
 
             s => panic!("unsupported type: \"{s}\""),
         },

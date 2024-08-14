@@ -130,42 +130,42 @@ mod test {
     #[cfg_attr(test, assert_instr(irg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
-    pub unsafe fn __test_create_random_tag(src: *const (), mask: u64) -> *const () {
+    unsafe fn test_arm_mte_create_random_tag(src: *const (), mask: u64) -> *const () {
         __arm_mte_create_random_tag(src, mask)
     }
 
     #[cfg_attr(test, assert_instr(addg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
-    pub unsafe fn __test_increment_tag(src: *const ()) -> *const () {
+    unsafe fn test_arm_mte_increment_tag(src: *const ()) -> *const () {
         __arm_mte_increment_tag::<1, _>(src)
     }
 
     #[cfg_attr(test, assert_instr(gmi))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
-    pub unsafe fn __test_exclude_tag(src: *const (), excluded: u64) -> u64 {
+    unsafe fn test_arm_mte_exclude_tag(src: *const (), excluded: u64) -> u64 {
         __arm_mte_exclude_tag(src, excluded)
     }
 
     #[cfg_attr(test, assert_instr(stg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
-    pub unsafe fn __test_set_tag(src: *const ()) {
+    unsafe fn test_arm_mte_set_tag(src: *const ()) {
         __arm_mte_set_tag(src)
     }
 
     #[cfg_attr(test, assert_instr(ldg))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
-    pub unsafe fn __test_get_tag(src: *const ()) -> *const () {
+    unsafe fn test_arm_mte_get_tag(src: *const ()) -> *const () {
         __arm_mte_get_tag(src)
     }
 
     #[cfg_attr(test, assert_instr(subp))]
     #[allow(dead_code)]
     #[target_feature(enable = "mte")]
-    pub unsafe fn __test_ptrdiff(a: *const (), b: *const ()) -> i64 {
+    unsafe fn test_arm_mte_ptrdiff(a: *const (), b: *const ()) -> i64 {
         __arm_mte_ptrdiff(a, b)
     }
 }
