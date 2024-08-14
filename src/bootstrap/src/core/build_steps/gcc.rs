@@ -41,7 +41,7 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
     // FIXME (GuillaumeGomez): To be done once gccjit has been built in the CI.
     // builder.config.maybe_download_ci_gcc();
 
-    let root = "src/gcc";
+    let root = builder.src.join("src/gcc");
     let out_dir = builder.gcc_out(target).join("build");
     let install_dir = builder.gcc_out(target).join("install");
 
@@ -71,7 +71,7 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
         return GccBuildStatus::AlreadyBuilt;
     }
 
-    GccBuildStatus::ShouldBuild(Meta { stamp, out_dir, install_dir, root: root.into() })
+    GccBuildStatus::ShouldBuild(Meta { stamp, out_dir, install_dir, root })
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
