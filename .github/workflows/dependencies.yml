@@ -67,7 +67,7 @@ jobs:
       - name: cargo update rustbook
         run: |
           echo -e "\nrustbook dependencies:" >> cargo_update.log
-          cargo update --manifest-path src/tools/rustbook 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
+          cargo update --manifest-path src/tools/rustbook/Cargo.toml 2>&1 | sed '/crates.io index/d' | tee -a cargo_update.log
       - name: upload Cargo.lock artifact for use in PR
         uses: actions/upload-artifact@v4
         with:
