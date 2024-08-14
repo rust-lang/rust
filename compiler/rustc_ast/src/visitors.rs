@@ -60,9 +60,6 @@ macro_rules! mutability_dependent {
         fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
             walk_fn(self, fk)
         }
-        fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) -> Self::Result {
-            walk_fn_ret_ty(self, ret_ty)
-        }
         fn visit_expr_field(&mut self, f: &'ast ExprField) -> Self::Result {
             walk_expr_field(self, f)
         }
@@ -420,6 +417,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_vis(&mut self, vis: ref_t!(Visibility)) -> result!() {
                 walk_vis(self, vis)
+            }
+
+            fn visit_fn_ret_ty(&mut self, ret_ty: ref_t!(FnRetTy)) -> result!() {
+                walk_fn_ret_ty(self, ret_ty)
             }
 
             // FIXME: remove _ on ident if mut
@@ -1918,7 +1919,7 @@ pub mod mut_visit {
     fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
         let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
         visit_thin_vec(inputs, |input| vis.visit_ty(input));
-        walk_fn_ret_ty(vis, output);
+        vis.visit_fn_ret_ty(output);
         vis.visit_span(span);
         vis.visit_span(inputs_span);
     }
@@ -2223,7 +2224,7 @@ pub mod mut_visit {
     fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
         let FnDecl { inputs, output } = decl.deref_mut();
         inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-        walk_fn_ret_ty(vis, output);
+        vis.visit_fn_ret_ty(output);
     }
 
     fn walk_fn_ret_ty<T: MutVisitor>(vis: &mut T, fn_ret_ty: &mut FnRetTy) {
