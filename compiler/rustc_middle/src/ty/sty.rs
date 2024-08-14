@@ -1916,7 +1916,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn is_c_void(self, tcx: TyCtxt<'_>) -> bool {
         match self.kind() {
-            ty::Adt(adt, _) => tcx.lang_items().get(LangItem::CVoid) == Some(adt.did()),
+            ty::Adt(adt, _) => tcx.is_lang_item(adt.did(), LangItem::CVoid),
             _ => false,
         }
     }

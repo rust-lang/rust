@@ -17,7 +17,7 @@
 #[derive(Copy, Clone)]
 enum Void {}
 
-/// A bunch of never situations that can't be normally constructed.
+/// A bunch of never situations that can't be normally constructed so we take them as argument.
 #[derive(Copy, Clone)]
 struct NeverBundle {
     never: !,
@@ -272,6 +272,8 @@ fn nested_validity_tracking(bundle: NeverBundle) {
     let ref_never: &! = &never;
     let tuple_never: (!, !) = bundle.tuple_never;
     let result_never: Result<!, !> = bundle.result_never;
+    let result_never_err: Result<u8, !> = Ok(0);
+    let ptr_result_never_err: *const Result<u8, !> = &result_never_err as *const _;
     let union_never = Uninit::<!>::new();
 
     // These should be considered known_valid and warn unreachable.
@@ -287,6 +289,13 @@ fn nested_validity_tracking(bundle: NeverBundle) {
     }
 
     // These should be considered !known_valid and not warn unreachable.
+    unsafe {
+        match *ptr_result_never_err {
+            Ok(_) => {}
+            Err(_) => {}
+        }
+        let Ok(_) = *ptr_result_never_err; //[normal,never_pats]~ ERROR refutable pattern
+    }
     match ref_never {
         &_ => {}
     }
