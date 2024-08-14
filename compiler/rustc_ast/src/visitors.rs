@@ -187,10 +187,6 @@ macro_rules! mutability_dependent {
             walk_flat_map_generic_param(self, param)
         }
 
-        fn visit_mt(&mut self, mt: &mut MutTy) {
-            walk_mt(self, mt);
-        }
-
         fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
             walk_flat_map_expr_field(self, f)
         }
@@ -421,6 +417,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_foreign_mod(&mut self, nm: ref_t!(ForeignMod)) -> result!() {
                 walk_foreign_mod(self, nm)
+            }
+
+            fn visit_mt(&mut self, mt: ref_t!(MutTy)) -> result!() {
+                walk_mt(self, mt)
             }
 
             // FIXME: remove _ on ident if mut
@@ -821,10 +821,10 @@ pub mod visit {
         let Ty { id, kind, span: _, tokens: _ } = typ;
         match kind {
             TyKind::Slice(ty) | TyKind::Paren(ty) => try_visit!(visitor.visit_ty(ty)),
-            TyKind::Ptr(MutTy { ty, mutbl: _ }) => try_visit!(visitor.visit_ty(ty)),
-            TyKind::Ref(opt_lifetime, MutTy { ty, mutbl: _ }) => {
+            TyKind::Ptr(mt) => try_visit!(visitor.visit_mt(mt)),
+            TyKind::Ref(opt_lifetime, mt) => {
                 visit_opt!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
-                try_visit!(visitor.visit_ty(ty));
+                try_visit!(visitor.visit_mt(mt));
             }
             TyKind::Tup(tuple_element_types) => {
                 walk_list!(visitor, visit_ty, tuple_element_types);
@@ -1601,6 +1601,10 @@ pub mod visit {
         V::Result::output()
     }
 
+    fn walk_mt<'a, V: Visitor<'a>>(vis: &mut V, MutTy { ty, mutbl: _ }: &'a MutTy) -> V::Result {
+        try_visit!(vis.visit_ty(ty));
+        V::Result::output()
+    }
 }
 
 pub mod mut_visit {
