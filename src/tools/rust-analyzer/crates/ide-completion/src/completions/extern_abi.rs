@@ -32,6 +32,7 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
     "riscv-interrupt-m",
     "riscv-interrupt-s",
     "C-cmse-nonsecure-call",
+    "C-cmse-nonsecure-entry",
     "wasm",
     "system",
     "system-unwind",

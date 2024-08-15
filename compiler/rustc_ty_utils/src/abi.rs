@@ -312,6 +312,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
         SysV64 { .. } => Conv::X86_64SysV,
         Aapcs { .. } => Conv::ArmAapcs,
         CCmseNonSecureCall => Conv::CCmseNonSecureCall,
+        CCmseNonSecureEntry => Conv::CCmseNonSecureEntry,
         PtxKernel => Conv::PtxKernel,
         Msp430Interrupt => Conv::Msp430Intr,
         X86Interrupt => Conv::X86Intr,

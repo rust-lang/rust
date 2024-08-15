@@ -2725,6 +2725,7 @@ impl Target {
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
             CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
+            CCmseNonSecureEntry => ["arm", "aarch64"].contains(&&self.arch[..]),
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",
