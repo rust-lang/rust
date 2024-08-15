@@ -42,9 +42,9 @@ use crate::errors::{
 use crate::imports::Import;
 use crate::Namespace::*;
 use crate::{
-    BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, MacroData, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
-    Resolver, ScopeSet, Segment, ToNameBinding, Used,
+    BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
+    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    ResolutionError, Resolver, ScopeSet, Segment, ToNameBinding, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -183,7 +183,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId {
-        self.invocation_parents[&id].0
+        self.invocation_parents[&id].parent_def
     }
 
     fn resolve_dollar_crates(&mut self) {
@@ -303,12 +303,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .invocation_parents
             .get(&invoc_id)
             .or_else(|| self.invocation_parents.get(&eager_expansion_root))
-            .filter(|&&(mod_def_id, _, in_attr)| {
+            .filter(|&&InvocationParent { parent_def: mod_def_id, in_attr, .. }| {
                 in_attr
                     && invoc.fragment_kind == AstFragmentKind::Expr
                     && self.tcx.def_kind(mod_def_id) == DefKind::Mod
             })
-            .map(|&(mod_def_id, ..)| mod_def_id);
+            .map(|&InvocationParent { parent_def: mod_def_id, .. }| mod_def_id);
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
@@ -951,7 +951,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let node_id = self
                             .invocation_parents
                             .get(&parent_scope.expansion)
-                            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[id.0]);
+                            .map_or(ast::CRATE_NODE_ID, |parent| {
+                                self.def_id_to_node_id[parent.parent_def]
+                            });
                         self.lint_buffer.buffer_lint(
                             LEGACY_DERIVE_HELPERS,
                             node_id,

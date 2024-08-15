@@ -172,6 +172,29 @@ impl<'ra> ParentScope<'ra> {
 }
 
 #[derive(Copy, Debug, Clone)]
+struct InvocationParent {
+    parent_def: LocalDefId,
+    pending_anon_const_info: Option<PendingAnonConstInfo>,
+    impl_trait_context: ImplTraitContext,
+    in_attr: bool,
+}
+
+impl InvocationParent {
+    const ROOT: Self = Self {
+        parent_def: CRATE_DEF_ID,
+        pending_anon_const_info: None,
+        impl_trait_context: ImplTraitContext::Existential,
+        in_attr: false,
+    };
+}
+
+#[derive(Copy, Debug, Clone)]
+struct PendingAnonConstInfo {
+    id: NodeId,
+    span: Span,
+}
+
+#[derive(Copy, Debug, Clone)]
 enum ImplTraitContext {
     Existential,
     Universal,
@@ -1144,7 +1167,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
     /// we know what parent node that fragment should be attached to thanks to this table,
     /// and how the `impl Trait` fragments were introduced.
-    invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext, bool /*in_attr*/)>,
+    invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
 
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
@@ -1382,8 +1405,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         node_id_to_def_id.insert(CRATE_NODE_ID, crate_feed);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents
-            .insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential, false));
+        invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
             .sess

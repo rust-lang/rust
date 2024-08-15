@@ -1188,14 +1188,7 @@ impl Expr {
     ///
     /// Does not ensure that the path resolves to a const param, the caller should check this.
     pub fn is_potential_trivial_const_arg(&self) -> bool {
-        let this = if let ExprKind::Block(block, None) = &self.kind
-            && let [stmt] = block.stmts.as_slice()
-            && let StmtKind::Expr(expr) = &stmt.kind
-        {
-            expr
-        } else {
-            self
-        };
+        let this = self.maybe_unwrap_block();
 
         if let ExprKind::Path(None, path) = &this.kind
             && path.is_potential_trivial_const_arg()
@@ -1203,6 +1196,17 @@ impl Expr {
             true
         } else {
             false
+        }
+    }
+
+    pub fn maybe_unwrap_block(&self) -> &Expr {
+        if let ExprKind::Block(block, None) = &self.kind
+            && let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
+        {
+            expr
+        } else {
+            self
         }
     }
 
