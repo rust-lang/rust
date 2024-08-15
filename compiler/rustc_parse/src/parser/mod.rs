@@ -527,7 +527,7 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token.kind) {
             // leave it in the input
             Ok(Recovered::No)
-        } else if self.token.kind != token::Eof
+        } else if self.token != token::Eof
             && self.last_unexpected_token_span == Some(self.token.span)
         {
             FatalError.raise();
@@ -756,7 +756,7 @@ impl<'a> Parser<'a> {
     /// compound tokens like multi-character operators in process.
     /// Returns `true` if the token was eaten.
     fn break_and_eat(&mut self, expected: TokenKind) -> bool {
-        if self.token.kind == expected {
+        if self.token == expected {
             self.bump();
             return true;
         }
@@ -882,7 +882,7 @@ impl<'a> Parser<'a> {
                             let token_str = pprust::token_kind_to_string(t);
 
                             match self.current_closure.take() {
-                                Some(closure_spans) if self.token.kind == TokenKind::Semi => {
+                                Some(closure_spans) if self.token == TokenKind::Semi => {
                                     // Finding a semicolon instead of a comma
                                     // after a closure body indicates that the
                                     // closure body may be a block but the user
@@ -910,7 +910,7 @@ impl<'a> Parser<'a> {
                             // If this was a missing `@` in a binding pattern
                             // bail with a suggestion
                             // https://github.com/rust-lang/rust/issues/72373
-                            if self.prev_token.is_ident() && self.token.kind == token::DotDot {
+                            if self.prev_token.is_ident() && self.token == token::DotDot {
                                 let msg = format!(
                                     "if you meant to bind the contents of the rest of the array \
                                      pattern into `{}`, use `@`",

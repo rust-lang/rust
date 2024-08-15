@@ -68,7 +68,7 @@ impl<'a> Parser<'a> {
             self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
                 this.expect_keyword(kw::Let)?;
                 let local = this.parse_local(attrs)?;
-                let trailing = capture_semi && this.token.kind == token::Semi;
+                let trailing = capture_semi && this.token == token::Semi;
                 Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Let(local)), trailing))
             })?
         } else if self.is_kw_followed_by_ident(kw::Mut) && self.may_recover() {
@@ -760,7 +760,7 @@ impl<'a> Parser<'a> {
                                     )
                                 ),
                             );
-                            let suggest_eq = if self.token.kind == token::Dot
+                            let suggest_eq = if self.token == token::Dot
                                 && let _ = self.bump()
                                 && let mut snapshot = self.create_snapshot_for_diagnostic()
                                 && let Ok(_) = snapshot

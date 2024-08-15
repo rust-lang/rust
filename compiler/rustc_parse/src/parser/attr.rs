@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
         }
         loop {
             // skip any other attributes, we want the item
-            if snapshot.token.kind == token::Pound {
+            if snapshot.token == token::Pound {
                 if let Err(err) = snapshot.parse_attribute(InnerAttrPolicy::Permitted) {
                     err.cancel();
                     return Some(replacement_span);
@@ -343,7 +343,7 @@ impl<'a> Parser<'a> {
 
         // Presumably, the majority of the time there will only be one attr.
         let mut expanded_attrs = Vec::with_capacity(1);
-        while self.token.kind != token::Eof {
+        while self.token != token::Eof {
             let lo = self.token.span;
             let item = self.parse_attr_item(ForceCollect::Yes)?;
             expanded_attrs.push((item, lo.to(self.prev_token.span)));
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::NestedMetaItem>> {
         // Presumably, the majority of the time there will only be one attr.
         let mut nmis = ThinVec::with_capacity(1);
-        while self.token.kind != token::Eof {
+        while self.token != token::Eof {
             nmis.push(self.parse_meta_item_inner()?);
             if !self.eat(&token::Comma) {
                 break;

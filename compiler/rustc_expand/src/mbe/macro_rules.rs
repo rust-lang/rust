@@ -1154,7 +1154,7 @@ fn check_matcher_core<'tt>(
                         && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
                         && matches!(
                             next_token,
-                            TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or)
+                            TokenTree::Token(token) if *token == BinOp(token::BinOpToken::Or)
                         )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
