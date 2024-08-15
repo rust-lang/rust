@@ -2612,6 +2612,10 @@ pub struct ElidedLifetimesInPaths {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_elided_lifetime_static)]
+pub struct ElidedIsStatic {}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]
 pub struct UnknownCrateTypes {
     #[subdiagnostic]

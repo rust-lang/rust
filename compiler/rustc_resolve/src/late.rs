@@ -2041,7 +2041,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
         match candidate {
             LifetimeElisionCandidate::Missing(missing) => match res {
-                LifetimeRes::Static => tracing::warn!(?missing, "static"),
+                LifetimeRes::Static => {
+                    self.r.lint_buffer.buffer_lint(
+                        lint::builtin::ELIDED_NAMED_LIFETIMES,
+                        missing.id,
+                        missing.span,
+                        BuiltinLintDiag::ElidedIsStatic {},
+                    );
+                    tracing::warn!(?missing, "static")
+                }
                 LifetimeRes::Param { param, binder } => {
                     tracing::warn!(?missing, ?param, ?binder, "named")
                 }

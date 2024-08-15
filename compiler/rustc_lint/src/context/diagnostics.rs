@@ -441,5 +441,6 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
+        BuiltinLintDiag::ElidedIsStatic => lints::ElidedIsStatic {}.decorate_lint(diag),
     }
 }

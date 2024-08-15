@@ -42,6 +42,7 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
+        ELIDED_NAMED_LIFETIMES,
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
@@ -1860,6 +1861,13 @@ declare_lint! {
     pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
     "hidden lifetime parameters in types are deprecated"
+}
+
+declare_lint! {
+    /// TODO
+    pub ELIDED_NAMED_LIFETIMES,
+    Allow,
+    "TODO"
 }
 
 declare_lint! {
