@@ -1,4 +1,5 @@
 //! Utilities for formatting macro expanded nodes until we get a proper formatter.
+use span::Edition;
 use syntax::{
     ast::make,
     ted::{self, Position},
@@ -131,5 +132,6 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
 }
 
 fn is_text(k: SyntaxKind) -> bool {
-    k.is_keyword() || k.is_literal() || k == IDENT || k == UNDERSCORE
+    // FIXME: Edition
+    k.is_keyword(Edition::CURRENT) || k.is_literal() || k == IDENT || k == UNDERSCORE
 }

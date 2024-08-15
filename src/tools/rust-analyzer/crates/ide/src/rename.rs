@@ -6,6 +6,7 @@
 
 use hir::{AsAssocItem, HirFileIdExt, InFile, Semantics};
 use ide_db::{
+    base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
     rename::{bail, format_err, source_edit_from_references, IdentifierKind},
     source_change::SourceChangeBuilder,
@@ -162,11 +163,12 @@ pub(crate) fn will_rename_file(
     let sema = Semantics::new(db);
     let module = sema.file_to_module_def(file_id)?;
     let def = Definition::Module(module);
-    let mut change = if is_raw_identifier(new_name_stem) {
-        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
-    } else {
-        def.rename(&sema, new_name_stem).ok()?
-    };
+    let mut change =
+        if is_raw_identifier(new_name_stem, db.crate_graph()[module.krate().into()].edition) {
+            def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
+        } else {
+            def.rename(&sema, new_name_stem).ok()?
+        };
     change.file_system_edits.clear();
     Some(change)
 }

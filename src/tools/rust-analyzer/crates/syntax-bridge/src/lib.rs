@@ -307,7 +307,8 @@ where
                             tt::Ident::new(&text, conv.span_for(abs_range)).into()
                         }
                         UNDERSCORE => make_ident!(),
-                        k if k.is_keyword() => make_ident!(),
+                        // FIXME: Edition
+                        k if k.is_keyword(Edition::CURRENT) => make_ident!(),
                         k if k.is_literal() => {
                             let text = token.to_text(conv);
                             let span = conv.span_for(abs_range);

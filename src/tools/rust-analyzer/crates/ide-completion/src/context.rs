@@ -15,7 +15,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, SmolStr,
+    AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -468,7 +468,8 @@ impl CompletionContext<'_> {
                 TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
             }
             IDENT | LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
-            _ if kind.is_keyword() => self.original_token.text_range(),
+            // FIXME: Edition
+            _ if kind.is_keyword(Edition::CURRENT) => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
     }

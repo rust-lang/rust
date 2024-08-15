@@ -1,6 +1,7 @@
 //! Various helper functions to work with SyntaxNodes.
 use itertools::Itertools;
 use parser::T;
+use span::Edition;
 use syntax::{
     ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
     AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
@@ -461,7 +462,8 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
     let tokens =
         input.syntax().children_with_tokens().skip(1).map_while(|it| match it.into_token() {
             // seeing a keyword means the attribute is unclosed so stop parsing here
-            Some(tok) if tok.kind().is_keyword() => None,
+            // FIXME: Edition
+            Some(tok) if tok.kind().is_keyword(Edition::CURRENT) => None,
             // don't include the right token tree parenthesis if it exists
             tok @ Some(_) if tok == r_paren => None,
             // only nodes that we can find are other TokenTrees, those are unexpected in this parse though

@@ -17,7 +17,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 
-use span::FileId;
+use span::{Edition, FileId};
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode, AstToken,
@@ -55,7 +55,7 @@ pub(crate) fn goto_definition(
         | COMMENT => 4,
         // index and prefix ops
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
-        kind if kind.is_keyword() => 2,
+        kind if kind.is_keyword(Edition::CURRENT) => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
