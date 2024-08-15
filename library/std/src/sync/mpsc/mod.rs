@@ -549,6 +549,9 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// [`send`]: SyncSender::send
 /// [`recv`]: Receiver::recv
 ///
+/// # Panics
+/// Panics if `bound` exceeds [`isize::MAX`] *bytes*.
+///
 /// # Examples
 ///
 /// ```

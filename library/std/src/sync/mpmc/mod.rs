@@ -62,6 +62,9 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 ///
 /// A special case is zero-capacity channel, which cannot hold any messages. Instead, send and
 /// receive operations must appear at the same time in order to pair up and pass the message over.
+///
+/// # Panics
+/// Panics if `cap` exceeds [`iszie::MAX`] *bytes*.
 pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
     if cap == 0 {
         let (s, r) = counter::new(zero::Channel::new());
