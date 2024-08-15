@@ -20,6 +20,7 @@ use rustc_apfloat::{
     ieee::{Half as f16, Quad as f128},
     Float,
 };
+use span::Edition;
 use stdx::format_to;
 use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T};
 
@@ -251,7 +252,7 @@ pub(super) fn keyword(
     config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<HoverResult> {
-    if !token.kind().is_keyword() || !config.documentation || !config.keywords {
+    if !token.kind().is_keyword(Edition::CURRENT) || !config.documentation || !config.keywords {
         return None;
     }
     let parent = token.parent()?;

@@ -104,14 +104,17 @@ impl Name {
 
     /// Resolve a name from the text of token.
     fn resolve(raw_text: &str) -> Name {
+        // FIXME: Edition
         match raw_text.strip_prefix("r#") {
             // When `raw_text` starts with "r#" but the name does not coincide with any
             // keyword, we never need the prefix so we strip it.
-            Some(text) if !is_raw_identifier(text) => Name::new_ref(text),
+            Some(text) if !is_raw_identifier(text, span::Edition::CURRENT) => Name::new_ref(text),
             // Keywords (in the current edition) *can* be used as a name in earlier editions of
             // Rust, e.g. "try" in Rust 2015. Even in such cases, we keep track of them in their
             // escaped form.
-            None if is_raw_identifier(raw_text) => Name::new_text(&format!("r#{}", raw_text)),
+            None if is_raw_identifier(raw_text, span::Edition::CURRENT) => {
+                Name::new_text(&format!("r#{}", raw_text))
+            }
             _ => Name::new_text(raw_text),
         }
     }

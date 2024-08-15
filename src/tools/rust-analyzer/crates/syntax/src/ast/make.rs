@@ -117,7 +117,7 @@ pub fn name_ref(name_ref: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {raw_escape}{name_ref}; }}"))
 }
 fn raw_ident_esc(ident: &str) -> &'static str {
-    if is_raw_identifier(ident) {
+    if is_raw_identifier(ident, Edition::CURRENT) {
         "r#"
     } else {
         ""

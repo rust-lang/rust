@@ -14,6 +14,7 @@ use ide_db::{
     FileRange, FxIndexSet, RootDatabase,
 };
 use itertools::{multizip, Itertools};
+use span::Edition;
 use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
 
 use crate::{
@@ -140,7 +141,7 @@ fn hover_simple(
         | T![_] => 4,
         // index and prefix ops and closure pipe
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] | T![|] => 3,
-        kind if kind.is_keyword() => 2,
+        kind if kind.is_keyword(Edition::CURRENT) => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,

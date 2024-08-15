@@ -1,4 +1,5 @@
 //! Syntax highlighting for macro_rules!.
+use span::Edition;
 use syntax::{SyntaxKind, SyntaxToken, TextRange, T};
 
 use crate::{HlRange, HlTag};
@@ -117,7 +118,7 @@ fn update_macro_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
 
 fn is_metavariable(token: &SyntaxToken) -> Option<TextRange> {
     match token.kind() {
-        kind if kind == SyntaxKind::IDENT || kind.is_keyword() => {
+        kind if kind == SyntaxKind::IDENT || kind.is_keyword(Edition::CURRENT) => {
             if let Some(_dollar) = token.prev_token().filter(|t| t.kind() == T![$]) {
                 return Some(token.text_range());
             }

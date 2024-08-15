@@ -6,6 +6,7 @@ use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     FxHashMap, RootDatabase, SymbolKind,
 };
+use span::Edition;
 use stdx::hash_once;
 use syntax::{
     ast, match_ast, AstNode, AstToken, NodeOrToken,
@@ -41,7 +42,7 @@ pub(super) fn token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> O
             HlTag::None.into()
         }
         p if p.is_punct() => punctuation(sema, token, p),
-        k if k.is_keyword() => keyword(sema, token, k)?,
+        k if k.is_keyword(Edition::CURRENT) => keyword(sema, token, k)?,
         _ => return None,
     };
     Some(highlight)
