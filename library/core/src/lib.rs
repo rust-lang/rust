@@ -393,6 +393,8 @@ pub mod panicking;
 #[unstable(feature = "core_pattern_types", issue = "123646")]
 pub mod pat;
 pub mod pin;
+#[unstable(feature = "random", issue = "none")]
+pub mod random;
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub mod range;
 pub mod result;
