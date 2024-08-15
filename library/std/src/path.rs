@@ -2585,7 +2585,7 @@ impl Path {
     ///
     /// [`Path::file_stem`]: Path::file_stem
     ///
-    #[stable(feature = "path_file_prefix", since = "1.80.1")]
+    #[stable(feature = "path_file_prefix", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
