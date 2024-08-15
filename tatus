@@ -1,0 +1,871 @@
+[33m0f147d8fba9e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge branch 'rust-lang:master' into master
+[33m3139ff09e9d0[m[33m ([m[1;31mupstream/master[m[33m)[m Auto merge of #128861 - khuey:mir-inlining-parameters-debuginfo, r=wesleywiser
+[33m026e9ed3f0c5[m Auto merge of #128037 - beetrees:repr128-c-style-use-natvis, r=michaelwoerister
+[33mc416a6fc7365[m Auto merge of #129066 - weihanglo:update-cargo, r=weihanglo
+[33m0ba9db87e61a[m Auto merge of #129108 - matthiaskrgr:rollup-t4rjwgp, r=matthiaskrgr
+[33me14f171e96f3[m Rollup merge of #129100 - ehuss:fix-dependencies-update, r=Kobzol
+[33mc582c0c13701[m Rollup merge of #129067 - cuviper:append, r=wesleywiser
+[33md14fa852c7f4[m Rollup merge of #129015 - rustbot:docs-update, r=ehuss
+[33m6c242a0da442[m Rollup merge of #128963 - GuillaumeGomez:output-to-stdout, r=aDotInTheVoid
+[33mcd1b42c3e9a2[m Rollup merge of #128946 - orlp:faster-ip-hash, r=joboet
+[33m9938349c7167[m Rollup merge of #128925 - dingxiangfei2009:smart-ptr-helper-attr, r=compiler-errors
+[33m442ba180d656[m Rollup merge of #127905 - BKPepe:powerpc-muslspe, r=wesleywiser
+[33m0bed4d1f1c87[m Rollup merge of #125970 - RalfJung:before_exec, r=m-ou-se
+[33m13a52890dde8[m Auto merge of #128407 - Oneirical:feline-dotestication, r=jieyouxu
+[33m4a2d0d9233b8[m Fix dependencies cron job
+[33me29360ce4d42[m Update Cargo.lock
+[33mb85bedcb24e3[m rewrite no-alloc-shim to rmake
+[33m5e04cefb0115[m rewrite min-global-align to rmake
+[33m355a307a8740[m Auto merge of #129092 - jieyouxu:rollup-z2522nm, r=jieyouxu
+[33m4d8c0b3b5dc6[m Rollup merge of #129088 - Jaic1:fix-doc, r=GuillaumeGomez
+[33m7472d1bbaf1a[m Rollup merge of #129071 - Zalathar:sysroot-unstable, r=jieyouxu
+[33m220091065939[m Rollup merge of #129059 - compiler-errors:subtyping-correct-type, r=lcnr
+[33m049b3e549ebb[m Rollup merge of #128954 - zachs18:fromresidual-no-default, r=scottmcm
+[33m59ad2aec492d[m Rollup merge of #128828 - lcnr:search-graph-11, r=compiler-errors
+[33m196d256b2022[m Rollup merge of #128570 - folkertdev:stabilize-asm-const, r=Amanieu
+[33m5ae03863ded6[m CommandExt::before_exec: deprecate safety in edition 2024
+[33m0f442e265c16[m Auto merge of #129054 - lnicola:sync-from-ra, r=lnicola
+[33mfbce03b195c0[m Auto merge of #129060 - matthiaskrgr:rollup-s72gpif, r=matthiaskrgr
+[33m8557b56ec7ed[m Add `|` to make the html doc of `Level` rendered correctly
+[33m9859bf27fd98[m Auto merge of #129076 - matthiaskrgr:rollup-rg8mi2x, r=matthiaskrgr
+[33me01d6141a403[m Rollup merge of #129062 - Nadrieril:fix-129009, r=compiler-errors
+[33mcd6852b9ea77[m Rollup merge of #129061 - compiler-errors:lang-item, r=Urgau
+[33ma4261a0bc055[m Rollup merge of #129001 - cblh:fix/128713, r=Noratrieb
+[33mf4c860a99641[m Rollup merge of #128873 - ChrisDenton:windows-targets, r=Mark-Simulacrum
+[33m85180cd365f2[m Rollup merge of #128759 - notriddle:notriddle/spec-to-string, r=workingjubilee,compiler-errors
+[33m2cb59087dbbb[m Rollup merge of #128410 - Oneirical:dwarf-fortestress, r=jieyouxu
+[33me9c965df7b75[m Auto merge of #128812 - nnethercote:shrink-TyKind-FnPtr, r=compiler-errors
+[33m342b37404303[m Port `run-make/sysroot-crates-are-unstable` to rmake
+[33mce67e68cce3f[m Update `indexmap` and use `IndexMap::append`
+[33m822961f2920b[m Update cargo
+[33me5b3e68abf17[m Auto merge of #126245 - GuillaumeGomez:doctest-improvement-v2, r=t-rustdoc
+[33m8419c0956e1c[m stabilize `asm_const`
+[33m249a588cadc3[m Remove a no-longer-true `assert`
+[33mbac19686a5f7[m Use is_lang_item more
+[33m0a34ce49ceab[m Add and use `IndexVec::append`
+[33m5df13af56fb1[m Use the right type when coercing fn items to pointers
+[33m850bcbdc2e18[m Test showing previous behavior
+[33m24a46c57aebd[m Rollup merge of #129058 - michaelwoerister:mwback082024, r=jackh726
+[33mc013e2c3df97[m Rollup merge of #129056 - Kobzol:fix-target-triple, r=onur-ozkan
+[33m5ef33d4c6168[m Rollup merge of #129050 - GuillaumeGomez:generate-link-to-definition-warning, r=notriddle
+[33m65054ed35ede[m Rollup merge of #129049 - Zalathar:json-like, r=jieyouxu
+[33md4f5a89f6e9f[m Rollup merge of #129034 - henryksloan:coroutine-must-use, r=joboet
+[33mf68a28d95c47[m Rollup merge of #127857 - tbu-:pr_deprecated_safe_todo, r=petrochenkov
+[33mbc9c31df69f0[m Rollup merge of #122884 - mzabaluev:pow-remove-exit-branch, r=Amanieu
+[33mfe4fa2f1dad8[m Use the `enum2$` Natvis visualiser for repr128 C-style enums
+[33m5082e2526306[m Add mw back to review rotation
+[33m05fb8ff4f560[m Fix intra-doc link
+[33m1d75f78ea26f[m Ignore cross compile check for `tests/run-make/doctests-keep-binaries-2024` test
+[33m488614d2dd0f[m Update `tests/run-make/doctests-keep-binaries-2024/rmake.rs` test to new run-make API
+[33mf1c1c4921637[m Run fmt
+[33ma708d0bc779a[m Fix commands syntax in rustdoc-ui tests
+[33m903d2db4d22e[m Only keep "useful" code in `tests/rustdoc-ui/2024-doctests-checks.rs`
+[33m7dcb841de040[m Add doctest to ensure that doctests with crate-level attributes are not part of merged doctest
+[33mcbf6fe05e78c[m Add more merged doctests tests
+[33mc9f730e2236a[m Improve documentation for internal doctest API
+[33mbaf8ce83b82d[m Move `is_multiple_tests` argument into `RunnableDocTest`
+[33mab3d90e037a3[m Unify naming of `DocTest`
+[33m4b1db071d13a[m Don't special-case if there is only one merged doctest
+[33m72aeffa78ccc[m Remove need for `unsafe` code in merged doctests
+[33ma3bc2c747866[m Improve code readability
+[33m0fbc32ce42ac[m If there are crate attributes, we prevent doctest to be merged with others
+[33mffc18c5cfb4d[m Rename `DocTest` into `DocTestBuilder`
+[33m1e1743a37988[m Reduce merged doctest source code size
+[33md512438435aa[m Run mergeable doctest as part of standalone doctests if there is only one
+[33mbfabf1db4463[m Add documentation on `DocTest` and `RunnableDoctest` structs
+[33m6d552ba44698[m Improve code by removing unneeded function arguments
+[33m84d9b67dabd1[m Add 2024 edition doctests to cover corner cases
+[33m14f80f9e69be[m Correctly handle macros using `$crate` in merged doctests
+[33m112e44740e83[m Disable merged doctests by default
+[33m0bd2c99ce8a3[m Only show rustdoc doctest compilation output if `nocapture` is used
+[33mc5ae545fbd28[m If no argument is provided to merged doctests binary, they will be run in the same process (needed for miri)
+[33mec4d9101907b[m Correctly handle `internal_features` attribute
+[33m475824d8110f[m Mark location doctest as standalone since file information will not work in merged doctest file
+[33m995858eed36f[m Don't change indent in merged doctests
+[33m0f0681e941f7[m Make merged doctests run in their own process
+[33mdcc77b4cbcaf[m Fix weird memory allocation failure in merged doctests by storing doctest list into a const
+[33mb6831bbdda3a[m Don't merge doctests with `#[global_allocator]`
+[33m6eabffbaec94[m Greatly improve handling of doctests attributes, making it possible to merge doctests more efficiently
+[33m03118fa80a95[m Simplify `has_main_fn` to be a boolean instead of a `Option<Span>`
+[33m010731d5b6d3[m Add new `run-make` tests for doctests
+[33m2fd8d1c1cee3[m Add/update `rustdoc-ui` tests to check new merged doctests
+[33m7ec3cabe1776[m Correctly handle doctests with invalid AST
+[33m59a9e0986d06[m Correctly handle the case where there is no doctests to run
+[33ma0ae8ac861d5[m If there is any AST error with a doctest, we make it a standalone test
+[33mb7079c5c8341[m Prevent merged doctests to break stdin if the generated file is too big
+[33m23badff4fef4[m Add documentation for the doctest `standalone` attribute
+[33m3147520d3475[m Add new doc codeblock `standalone` attribute
+[33m58cd70e06256[m Only merge doctests starting 2024 edition
+[33m6ae35248358f[m Split doctests into two categories: mergeable ones and standalone ones
+[33m96051f20e212[m Split standalone and mergeable doctests
+[33m39f029a85241[m Split doctests between standalone and mergeable ones
+[33m7d724824315c[m Simplify doctest tests
+[33m5e244370fe1a[m Add `DocTest` type
+[33m05fbfde17d34[m Clean up rustdoc make_test function code
+[33mc6fb0f344e0c[m diagnostics: use `DeepRejectCtxt` for check
+[33m87a4c325d276[m Fix target triple in bootstrap
+[33m0aa17a4c4de2[m implement a performant and fuzzed solver cache
+[33mf96e296927cc[m Auto merge of #17880 - lnicola:sync-from-rust, r=lnicola
+[33m28af7e09581c[m Merge from rust-lang/rust
+[33mddb8551e03a1[m Preparing for merge from rust-lang/rust
+[33m00423bb1d85f[m Auto merge of #17853 - ShoyuVanilla:min-exhaustive-pat, r=ShoyuVanilla
+[33m4ea0db907cf3[m Bump `rustc_pattern_analysis`
+[33m6911d9f0664a[m Temporarily remove non-working test case
+[33m20971602d538[m feat: `min-exhaustive-patterns
+[33mafbab80681de[m Update rustdoc-ui test for `--generate-link-to-definition` option
+[33md2177d90b04e[m Emit a warning instead of an error if `--generate-link-to-definition` is used with other output formats than HTML
+[33m53e87d211ca3[m Remove duplicated rustdoc ui test
+[33m80eb5a8e910e[m Auto merge of #129046 - matthiaskrgr:rollup-9x4xgak, r=matthiaskrgr
+[33m355f264d32cf[m Remove a confusing comment
+[33m2a000c8d7073[m Don't panic on unknown JSON-like output lines
+[33m42f70c240a4d[m Rollup merge of #129040 - Zalathar:bless-rmake, r=jieyouxu
+[33m41aa9631ef43[m Rollup merge of #129026 - rcvalle:rust-cfi-move-cfi-ui-tests-to-cfi-directory, r=compiler-errors
+[33m9d9c9acc6e6a[m Rollup merge of #128983 - Kobzol:bootstrap-target, r=onur-ozkan
+[33m0643c3b91099[m Rollup merge of #128841 - lqd:rustc-args, r=onur-ozkan
+[33m37b956787a52[m Rollup merge of #128745 - dtolnay:spawnunchecked, r=workingjubilee
+[33mc977deb24b11[m Rollup merge of #128655 - joboet:play_with_the_dice, r=ChrisDenton
+[33m00d040e50a8a[m Rollup merge of #128643 - beetrees:ppc64-abi-fix, r=bjorn3
+[33m811d7dd11302[m `#[deprecated_safe_2024]`: Also use the `// TODO:` hint in the compiler error
+[33m399ef23d2bf2[m Allow to customize `// TODO:` comment for deprecated safe autofix
+[33ma2e1d154d53d[m Auto merge of #128962 - devnexen:fs_get_mode_haiku, r=workingjubilee
+[33m1c0c2c3ad66f[m Implement `AsRef<Path>` for `TargetSelection`
+[33m0cfbfa953227[m Create a `TargetSelection` method for recognizing `*-windows-gnu` targets
+[33macc2c5d67ac4[m Auto merge of #17876 - Veykril:semantics-include-simplify, r=Veykril
+[33m705a89e72fcd[m Remove unreachable logic for include token mapping
+[33mcc58cf6443a1[m Fix blessing of rmake tests
+[33m6d91017b026a[m Extract a helper method for blessing in `Diff`
+[33m84ac708b4587[m Auto merge of #17867 - ShoyuVanilla:issue-17854, r=Veykril
+[33mac88b330b875[m Revert to original loop for const pow exponents
+[33m591ecb88dffd[m Auto merge of #128742 - RalfJung:miri-vtable-uniqueness, r=saethlin
+[33m1e445f48d4d0[m Add must_use attribute to Coroutine trait
+[33m1c5e3c90cf2d[m Rework MIR inlining debuginfo so function parameters show up in debuggers.
+[33me9e27ab0cf37[m Auto merge of #128868 - s7tya:port-rustc-perf-cmp-command, r=Kobzol
+[33mc4333026a008[m chore(lib): fmt core::fmt::Formatter's write_fmt method
+[33m70e0f6963259[m trying common codepath for every unixes
+[33ma7be5bf683be[m std::fs: get_mode implementation for haiku.
+[33mdb5704ffca0e[m Auto merge of #129024 - matthiaskrgr:rollup-uj1pd0x, r=matthiaskrgr
+[33m66c93ac8bad2[m CFI: Move CFI ui tests to cfi directory
+[33m522d43673a69[m Rollup merge of #129017 - its-the-shrimp:core_fmt_from_fn, r=Noratrieb
+[33m0dfb5b9cb84c[m Rollup merge of #129013 - Kobzol:remove-unused-git-clone-sha-file, r=jieyouxu
+[33m301a4cab68e0[m Rollup merge of #129000 - RalfJung:miri-bootstrap-clear, r=onur-ozkan
+[33m85eb465a1058[m Rollup merge of #128912 - compiler-errors:do-not-recommend-impl, r=lcnr
+[33m4c494184725f[m Rollup merge of #128712 - compiler-errors:normalize-borrowck, r=lcnr
+[33m5534cb0a4a39[m derive(SmartPointer): register helper attributes
+[33m1b6df71192db[m Explicitly specify type parameter on FromResidual impls in stdlib.
+[33m027b19fa9b85[m std::fmt::FormatterFn -> std::fmt::FromFn
+[33ma719514777e9[m Update books
+[33m6863db521926[m Remove unused script from run-make tests
+[33m91376f416222[m Auto merge of #129008 - GuillaumeGomez:rollup-6citttb, r=GuillaumeGomez
+[33m2abfa35acd11[m add change tracker notice
+[33mee5d15ce43ac[m regenerate `./x` completions
+[33m5e872568a8a2[m rename `./x test`'s `--rustc-args` to `--compiletest-rustc-args`
+[33m0ad798aec713[m remove unexpected `--rustc-args` from `./x miri`
+[33mbc9ca2902ea3[m clarify that `--rustc-args` is for compiletest tests
+[33m754f565fe298[m don't use `--rustc-args` to test the stdlib's size optimizations feature
+[33m83727eca2114[m  don't use rustflags for `--rustc-args`
+[33m99a785d62d84[m Rollup merge of #128994 - nnethercote:fix-Parser-look_ahead-more, r=compiler-errors
+[33m7c6dca90509f[m Rollup merge of #128978 - compiler-errors:assert-matches, r=jieyouxu
+[33mbb35b888b5f9[m Rollup merge of #128937 - lqd:clean-rmake-tests, r=jieyouxu
+[33m5b6379a86def[m Rollup merge of #128929 - saethlin:enable-codegen-units-tests, r=compiler-errors
+[33mea74eff55ca0[m Rollup merge of #128886 - GrigorenkoPV:untranslatable-diagnostic, r=nnethercote
+[33m355a23292a1c[m Rollup merge of #128878 - Kobzol:refactor-flags, r=onur-ozkan
+[33maa6f240972f5[m Rollup merge of #128632 - joboet:dont_overwrite_style, r=Amanieu
+[33maea508796429[m Rollup merge of #128537 - Jamesbarford:118980-const-vector, r=RalfJung,nikic
+[33mc6e3385d95ec[m Rollup merge of #128394 - GuillaumeGomez:run-button, r=t-rustdoc
+[33m095ca33bb6da[m Rollup merge of #128149 - RalfJung:nontemporal_store, r=jieyouxu,Amanieu,Jubilee
+[33m81561ff168e7[m fix: Trailing excess comma in "Convert to named struct" assist
+[33m0a336b393491[m Auto merge of #17865 - ShoyuVanilla:exhaust-block, r=Veykril
+[33mfe52572a4aa5[m rewrite remap-path-prefix-dwarf to rmake
+[33m3bb7f35ec4ec[m fix: Missing non-exhaustive let diagnostics inside async or unsafe block
+[33m63ab7b59573a[m Add documentation for `-o -`
+[33m7882575a8cfa[m Add `run-make` test for `-` for `-o` option
+[33me66f3db9fa89[m Auto merge of #17864 - Veykril:lsif, r=Veykril
+[33m1b983e33c694[m Build and run build scripts in lsif command
+[33me2fd0c0f9aff[m Add `read_dir_entries_recursive` in `run_make_support`
+[33m18d62008d419[m Add possibility to generate rustdoc JSON output to stdout
+[33mff63552892f8[m Auto merge of #17863 - Veykril:include-diags, r=Veykril
+[33m1ebd72725533[m Resolve included files to their calling modules in IDE layer
+[33mbdc0b7859fd8[m Auto merge of #17861 - Veykril:bump-lock, r=Veykril
+[33m9431039e8ae7[m Allow new license combination
+[33ma2b10a39bcce[m Auto merge of #17862 - lnicola:publish-libs-members, r=lnicola
+[33m696ecea57532[m Only keep lib/ in publish-libs
+[33m5e753ffe2575[m Auto merge of #17850 - Veykril:rust-analyzer-crate, r=Veykril
+[33me08b80c0fb76[m Auto merge of #128371 - andjo403:rangeAttribute, r=nikic
+[33m6839a8f6d55e[m bootstrap: clear miri ui-test deps when miri sysroot gets rebuilt
+[33m563dc1cd3353[m Auto merge of #17860 - Veykril:publish-libs, r=Veykril
+[33m234d383f5fea[m internal: Reply to requests with defaults when vfs is still loading
+[33m407944764ae9[m fix: Fix publish libs workflow
+[33m69f613892ad9[m minor: Bump lockfile
+[33m75743dc5a057[m make the codegen test also cover an ill-behaved arch, and add links
+[33m72ef357ea31e[m chore(lib): Enhance documentation for core::fmt::Formatter's write_fmt method
+[33m7c53ff2da4d3[m Auto merge of #17843 - mo8it:flycheck, r=Veykril
+[33mc2d15557885a[m Auto merge of #17842 - mo8it:crossbeam-channel, r=Veykril
+[33m757b0a5ace88[m Auto merge of #17859 - Veykril:rustc_deprecated_safe_2024, r=Veykril
+[33m3355c788f18d[m fix: Correctly support `#[rustc_deprecated_safe_2024]`
+[33mf7c4716dbfd7[m Use the send method
+[33m285285d3fd9c[m Add more track_caller
+[33m7586ba6bfb0e[m Add track_caller
+[33m94bd4da3f107[m Revert "Remove unneeded `send` method"
+[33m4763d1220756[m ignore some vtable/fn ptr equality tests in Miri, their result is not fully predictable
+[33mf860873983d1[m split provisional cache and stack lookup
+[33m0c75c080a7d0[m merge impl blocks
+[33me83eacdfaa90[m move behavior out of shared fn
+[33m9308401df573[m tracing: debug to trace
+[33me87157ba2a63[m simplify match + move `debug!` call
+[33m51338ca0eb9a[m expand fuzzing support
+[33m7b86c98068f0[m do not use the global solver cache for proof trees
+[33m99c0d768b039[m std: use `/scheme/rand` on Redox
+[33m12a3d0112c03[m Auto merge of #17833 - edevil:fix_expansion_limit, r=Veykril
+[33m8542cd67f058[m std: do not overwrite style in `get_backtrace_style`
+[33m3ef56c2bb861[m Auto merge of #17845 - ShoyuVanilla:tait, r=Veykril
+[33mbbd1c3ab73a9[m Streamline some inputs/output traversals.
+[33mb9f3db6adb77[m Give the field in `FnSigTys` a name.
+[33mf4a3ed02439a[m Avoid a `FnPtr` deconstruct-and-recreate.
+[33m1d8f135b20fa[m Auto merge of #128862 - cblh:fix/128855, r=scottmcm
+[33m9e95a2b9a5c4[m Remove some unnecessary `skip_binder` calls.
+[33m46b4c5adc569[m Fix bug in `Parser::look_ahead`.
+[33m13f8a57cfb57[m Auto merge of #126793 - saethlin:mono-rawvec, r=scottmcm
+[33mf15997ffeca4[m Remove struct_tail_no_normalization
+[33mb5d2079fb9c9[m Rename normalization functions to raw
+[33mc5205e9d56d3[m Normalize struct tail properly in borrowck and hir typeck
+[33m28a8301de98f[m Fix debuginfo providers/tests
+[33m41dd149fd6a6[m Auto merge of #128677 - nikic:llvm19rc2, r=cuviper
+[33mcfadfabfcd96[m Add range attribute to scalar function results and arguments
+[33mc361c924a08c[m Use assert_matches around the compiler
+[33m9cb1998ea15e[m Auto merge of #122362 - Zoxc:rustc_driver_static_std, r=oli-obk,lqd,bjorn3,Kobzol
+[33m715728f546ec[m Refactor `powerpc64` call ABI handling
+[33m97a6fc65f17f[m Fix deadlock
+[33mfce1decc3c65[m Do not use unnecessary endian conversion.
+[33m5e5ec8af1b34[m Auto merge of #128916 - jieyouxu:dump-ice-dump-ice, r=compiler-errors
+[33m6dc300ba4531[m tests: ignore `dump-ice-to-disk` on windows
+[33mdcd6170c89ae[m use `rfs` in rustdoc io rmake test
+[33mc9bd03cb724e[m Auto merge of #128959 - matthiaskrgr:rollup-6jdqi3l, r=matthiaskrgr
+[33m2c88eb9805c1[m Rollup merge of #128882 - RalfJung:local-waker-will-wake, r=cuviper
+[33meff9120b7c50[m Rollup merge of #128875 - bvanjoi:cleanup-import-used, r=petrochenkov
+[33m32e0fe129d49[m Rollup merge of #128762 - fmease:use-more-slice-pats, r=compiler-errors
+[33mbd7075c69e74[m Rollup merge of #128592 - evelynharthbrooke:master, r=Mark-Simulacrum
+[33m853255e28d63[m Rollup merge of #128536 - Zalathar:print-cleanup, r=Nadrieril
+[33me8f6819db7ea[m Rollup merge of #120314 - mina86:i, r=Mark-Simulacrum
+[33mb22253c45489[m Keep rustc's std copy
+[33m960e7b55e1b7[m tests: tidy up `dump-ice-to-disk` and make assertion failures extremely verbose
+[33mdd3f7578ee52[m Exclude just `std` from rustc deps
+[33m56beb1d744cf[m Update the unstable book
+[33m486864f23593[m Don't statically link `std` into `rustc_driver` for `windows-gnu`
+[33m736a249954ae[m Ask the user to use `feature(rustc_private)` when linking to `rustc_driver`
+[33m3ee43259ac9d[m Link `std` statically in `rustc_driver`
+[33ma04a1e464f6c[m Fix stability annotation and expand comment
+[33mba620344301a[m Hash Ipv*Addr as an integer
+[33m730d5d4095a2[m Auto merge of #128572 - compiler-errors:fix-elaborate-box-derefs-on-debug, r=saethlin
+[33m04dff01740de[m Auto merge of #128400 - petrochenkov:nowhole3, r=bjorn3
+[33mf4cb0de44eb2[m remove other warnings from rmake tests
+[33m141d9dc3a57e[m remove unused imports from rmake tests
+[33m03b6c2f2d4ac[m Fix and enable disabled codegen-units tests
+[33mec0306832095[m Auto merge of #17844 - Veykril:find-path-std-fix, r=Veykril
+[33m04ba50e82330[m Auto merge of #128927 - GuillaumeGomez:rollup-ei2lr0f, r=GuillaumeGomez
+[33m2e0f5f6336cf[m Auto merge of #17849 - Veykril:rust-analyzer-crate, r=Veykril
+[33m01262d972a03[m Add comments regarding workspace structure change querying
+[33me219ac64c06f[m Move some stuff
+[33m893b9f3a5ad6[m Rollup merge of #128923 - GuillaumeGomez:negative-impls-items, r=fmease
+[33m50e9fd1a1d0c[m Rollup merge of #128910 - estebank:assoc-fn, r=compiler-errors
+[33m48fd9fdd4294[m Rollup merge of #128909 - saethlin:run-make-ice-yes, r=jieyouxu
+[33m0d0265c1f0f6[m Rollup merge of #128908 - notriddle:notriddle/self-inferred-lifetime-bounds, r=compiler-errors
+[33mac27536258c1[m Rollup merge of #128905 - mrkajetanp:gitignore-editors, r=jieyouxu
+[33m6d3f764332c5[m Rollup merge of #128903 - kraktus:patch-3, r=aDotInTheVoid
+[33ma7e188a8f65c[m Rollup merge of #128807 - ChrisDenton:bloat, r=jieyouxu
+[33m65875b2f5a48[m Rollup merge of #128273 - Voultapher:improve-ord-violation-help, r=workingjubilee
+[33m5baf7c21cfb8[m Add regression tests for negative impls not showing their items
+[33m6a90be31b137[m Stop showing impl items for negative impls
+[33m8291d68d926c[m Auto merge of #122792 - Nadrieril:stabilize-min-exh-pats2, r=fee1-dead
+[33m217ee32ac7f9[m rm `import.used`
+[33mf09a2b047d9a[m rustc_passes: make some messages in check_attr translatable
+[33mfcdb37435af3[m rustc_passes: remove a redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33m007cc2c23a05[m rustc_metadata: make "link {arg,cfg} is unstable" translatable
+[33md5486360ae21[m rustc_metadata: remove a redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33m2babab6e4382[m rustc_lint: remove some redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33mcbae581bb0c9[m rustc_interface: remove a redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33m137307477f99[m rustc_expand: make a message translatable
+[33mfbc245901561[m rustc_expand: remove some redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33mf43cdcea221c[m rustc_borrowck: fmt
+[33m1481ab3f7557[m rustc_borrowck: make "implicit static" suff translatable
+[33m1b6cc24c2055[m rustc_borrowck: make some suggestion about static lifetimes translatable
+[33m446e03e3c92d[m rustc_borrowck: make suggestion to move closure translatable
+[33m48413cf0783e[m rustc_borrowck: make dereference suggestion translatable
+[33m67602980de67[m rustc_ast_lowering: make asm-related unstability messages translatable
+[33m290df4fa5613[m rustc_ast_lowering: make "yield syntax is experimental" translatable
+[33m334a097137eb[m rustc_ast_lowering: make "using `_` for array lengths is unstable" translatable
+[33mc36b21a4c8d9[m rustc_attr: make "compact `cfg(target(..))` is unstable" translatable
+[33ma11922d56886[m rustc_const_eval: make LazyLock suggestion translatable
+[33m3a18c6b55fa5[m rustc_const_eval: make message about "const stable" translatable
+[33m43f3a218eaa3[m rustc_const_eval: remove redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33mf83b085a0c62[m rustc_attr: remove redundant `#[allow(rustc::untranslatable_diagnostic)]`
+[33m48090b11b52b[m Auto merge of #128746 - compiler-errors:cache-super-outlives, r=lcnr
+[33me77612d3e4ff[m Fixes in various places
+[33m8615a6b006c4[m Test that 0/unknown-length arrays are nonempty
+[33mc256de225331[m Update std and compiler
+[33m99468bb7609a[m Update tests
+[33mcd40769c02e3[m Stabilize `min_exhaustive_patterns`
+[33mcbd00f1dda7f[m fix: Fix find_path not respecting non-std preference config correctly
+[33m7347f8e4e007[m Auto merge of #128740 - compiler-errors:generic-preds, r=estebank
+[33m18b9458d64d0[m feat: Implement TAIT
+[33m19469cb536af[m Auto merge of #128714 - camelid:wf-struct-exprs, r=BoxyUwU
+[33m3dc083dfd80d[m test(std): Add codegen test for array::from_fn optimization
+[33m20a16bb3c54e[m Add test
+[33med7bdbb17b9c[m Store do_not_recommend-ness in impl header
+[33m69b380dc1c61[m Auto merge of #128584 - DianQK:tests-for-llvm-19, r=nikic
+[33m860c8cdeafb6[m Differentiate between methods and associated functions
+[33m204fb5bd4d85[m Avoid the overhead of select! when possible
+[33mda15248d2607[m Add an optimizer hint for the capacity that with_capacity_in returns
+[33mb44b367232ee[m Add a FIXME to the changed Miri test
+[33m4e98bc673013[m Hoist IS_ZST check out of RawVecInner::from_*_in
+[33md5b55436e964[m Bless Miri
+[33mbd8e29c45c35[m Paper over the clippy ICE
+[33md6c0ebef5089[m Polymorphize RawVec
+[33m35903a22aab2[m Use select_biased
+[33mf595539b8101[m Fix dump-ice-to-disk for RUSTC_ICE=0 users
+[33m4dc13c54714e[m diagnostics: do not warn when a lifetime bound infers itself
+[33m1c02e2b5f17f[m fix incorrect value
+[33m68d2e8a66e00[m Auto merge of #125642 - khuey:zstd, r=Kobzol
+[33mdd90d4e122fd[m Simplify `check_command` while avoiding allocations
+[33m7341b88e6f1f[m Remove unneeded `send` method
+[33m58c614f5b489[m Use crossbeam-channel from the workspace
+[33mf4b1b4bb829d[m Use Sender instead of boxed closure in vfs
+[33m03a7abc48fb1[m Use Sender directly instead of a boxed closure
+[33mef90df69044d[m Update reason why fmt-write-bloat ignores windows
+[33m2cc029edf523[m Only link libc on *nix platforms
+[33m7d1de7f9942e[m core: optimise Debug impl for ascii::Char
+[33m6ef0ac2b5c3f[m gitignore: Add Zed and Helix editors
+[33mca5d25e2c41f[m Auto merge of #128896 - bjorn3:sync_cg_clif-2024-08-09, r=bjorn3
+[33mb735547025da[m rustdoc-json-types `Discriminant`: fix typo
+[33m19ebdcedf1f5[m Auto merge of #128883 - matthiaskrgr:rollup-mkzi7my, r=matthiaskrgr
+[33m57dd967e7122[m Update tidy for new cranelift-bitset crate
+[33m6e5873c08c13[m Use ar_archive_writer from sysroot for cg_clif
+[33maf7ea3135deb[m Merge commit '69b3f5a426a5c1c05236a45b36f6679d95fbe01b' into sync_cg_clif-2024-08-09
+[33m9a233bb9dd07[m interpret: make identity upcasts a NOP again to avoid them generating a new random vtable
+[33mcea3b42f5848[m Rollup merge of #128874 - Kobzol:cmd-verbose-logging, r=onur-ozkan
+[33m665a1a4b5556[m Rollup merge of #128865 - jieyouxu:unicurd, r=Urgau
+[33m9eb77ac3e06d[m Rollup merge of #128864 - jieyouxu:funnicode, r=Urgau
+[33m2e0c5adf04fd[m Rollup merge of #128859 - MinxuanZ:mips-sig, r=Amanieu
+[33m2066002b8606[m Rollup merge of #128852 - folkertdev:multipart-suggestion-stable-sort, r=compiler-errors
+[33m9f11eb13b803[m Rollup merge of #128838 - notriddle:notriddle/invalid-tag-is-not-rust, r=GuillaumeGomez
+[33m5f1e25e65db7[m Rollup merge of #128822 - onur-ozkan:add-build-config-in-tarballs, r=Kobzol
+[33m53729366a969[m Rollup merge of #128817 - biabbas:vxworks_update, r=tgross35
+[33m55329cce76bf[m Rollup merge of #128815 - Nadrieril:is_stolen, r=jieyouxu,lcnr
+[33m69b3f5a426a5[m Couple of minor cleanups
+[33mae09340350fd[m make LocalWaker::will_wake consistent with Waker::will_wake
+[33m0e20a762f12f[m Stop using a custom Cargo.toml and Cargo.lock for the standard library
+[33md515e881a7b7[m Disable f16 and f128 in compiler-builtins when running rustc tests
+[33md61b0e782f1a[m Rustup to rustc 1.82.0-nightly (3e9bd8b56 2024-08-08)
+[33m1d19c2c00952[m rustdoc: move invalid langstring test to UI
+[33m5431a93ddc1c[m Pass `Flags` to `Config::parse` explicitly
+[33m03ee7b59991a[m Move verbose help parsing to `main`
+[33m1be60b5d2b6a[m Fix linkchecker issue
+[33ma380d5e8f68d[m Do not print verbose error when a bootstrap command fails without verbose mode
+[33m8db318cc960d[m Install zstd in dist builder image.
+[33m7bb345e677c0[m Add zlib and zstd dev packages for building lld.
+[33m9f3376eaf2d2[m Test --compress-debug-sections with rust-lld.
+[33m6e9afb8dde7a[m Enable zstd for debug compression.
+[33m899eb03926be[m Auto merge of #128703 - compiler-errors:normalizing-tails, r=lcnr
+[33ma1b2b7ff78b9[m Exclude windows-targets from the workspace
+[33mce1d7d1bf2ff[m impl compare command and benchmark command to rustc-perf-wrapper
+[33macb024110f33[m Add windows-targets crate to std's sysroot
+[33mf72cb0415bdb[m Make `Build::run` comment more accurate
+[33mbee4926ae76a[m Auto merge of #17836 - winstxnhdw:sysroot, r=Veykril
+[33mdec5b463fbe5[m do not make function addresses unique with cross_crate_inline_threshold=always (even if that breaks backtraces)
+[33mff0d37cb0163[m use absolute path for `config.toml`
+[33ma7c415c67fcb[m add `builder-config` into tarball sources
+[33m38874a692738[m use stable sort to sort multipart diagnostics
+[33md65f1316bba2[m parser: ensure let stmt compound assignment removal suggestion respect codepoint boundaries
+[33m92520a9d4d74[m tests: add regression test for #128845
+[33m879bfd7ad0f5[m hir_typeck: use `end_point` over `BytePos` manipulations
+[33mb589f86a09c8[m tests: add regression test for incorrect `BytePos` manipulation triggering assertion
+[33mc4717cc9d15d[m Shrink `TyKind::FnPtr`.
+[33m8640998869b2[m Split `split_inputs_and_output` in two.
+[33m3fc5469a8d34[m Remove `Binder::split`.
+[33m97e72524a349[m Auto merge of #128863 - matthiaskrgr:rollup-wmp8znk, r=matthiaskrgr
+[33me88067927a55[m Rollup merge of #128824 - GuillaumeGomez:update-compiler-builtins, r=Amanieu
+[33m521e75412f6b[m Rollup merge of #128823 - ChrisDenton:staticlib, r=jieyouxu
+[33m408baccd0dbd[m Rollup merge of #128804 - ChrisDenton:redudant, r=jieyouxu
+[33m7485f8b9abc2[m Rollup merge of #128616 - compiler-errors:mir-inline-tainted, r=cjgillot
+[33mb20d9f0403f0[m VxWorks: Add safety comment for vxCpuEnabledGet
+[33mbca0c5f2a939[m fix: Ensure `Guard`'s `drop` method is removed at `opt-level=s` for `Copy` types
+[33m0106f5bcbab8[m delete space
+[33m625432c83787[m fix format
+[33ma3f8edff20a7[m [SPARC] fix the name of signal 19 in sparc arch
+[33m11b801bc4e41[m [MIPS] fix the name of signal 19 in mips
+[33m65b029b46803[m Don't inline tainted MIR bodies
+[33mfac77538022b[m Auto merge of #128853 - matthiaskrgr:rollup-pr222x1, r=matthiaskrgr
+[33m9243aeecdaa0[m Rollup merge of #128851 - compiler-errors:validate-mir-opt-mir, r=matthiaskrgr
+[33m58c6497e4cb5[m Rollup merge of #128837 - flip1995:clippy-subtree-update, r=Manishearth
+[33m8789b95b673f[m Rollup merge of #128836 - its-the-shrimp:add_test_for_107278, r=aDotInTheVoid
+[33m5e388ea48e17[m Rollup merge of #128834 - its-the-shrimp:fix_101105, r=aDotInTheVoid
+[33m5f0461707a10[m Rollup merge of #128818 - RalfJung:std-miri-floats, r=tgross35
+[33mf106496b8220[m Rollup merge of #128806 - estebank:color-config, r=jieyouxu
+[33mbcf6f9fa76e9[m Rollup merge of #128791 - compiler-errors:async-fn-unsafe, r=lcnr
+[33m95b40727bdaa[m Rollup merge of #128640 - RalfJung:rwlock-macos-miri, r=joboet
+[33m524e7689a9a9[m Add comment that bors did not see pushed before it merged
+[33mc7b0d4e81f56[m Auto merge of #128827 - weihanglo:update-cargo, r=weihanglo
+[33ma2f341392200[m Merge pull request #1524 from dpaoliello/rawdylib
+[33m2756bd6ff772[m Add support for raw-dylib
+[33m7c4150fce051[m rustdoc: do not run doctests with invalid langstrings
+[33mfdc6a5562b07[m Fix rustc test suite
+[33mc966370b1959[m Tweak wording
+[33m077403a0538e[m minor: log error when sysroot can't be discovered
+[33m60ffec8b4a1b[m Rustup to rustc 1.82.0-nightly (8b3870784 2024-08-07)
+[33m3e9bd8b566a4[m Auto merge of #128835 - matthiaskrgr:rollup-apzlbxy, r=matthiaskrgr
+[33mec1c424293c0[m Don't implement AsyncFn for FnDef/FnPtr that wouldnt implement Fn
+[33m8be2688e456f[m Update Cargo.lock
+[33mb7f07ce57af6[m Merge commit 'cb806113e0f83a8f9b47d35b453b676543bcc40e' into clippy-subtree-update
+[33mcb806113e0f8[m Auto merge of #13236 - flip1995:rustup, r=flip1995
+[33m70dccc2e9b27[m Rollup merge of #128826 - Alexendoo:lint-override-suggestions, r=compiler-errors
+[33mf6e00f012dfc[m Rollup merge of #128825 - bvanjoi:useless-resolver-field, r=petrochenkov
+[33m25fc71b7a108[m Rollup merge of #128795 - zachs18:e0517-update-for-rfc-2195, r=jieyouxu
+[33m127fbc8481a1[m Rollup merge of #128749 - tgross35:float-inline, r=scottmcm
+[33m53f2ac30e409[m Rollup merge of #128648 - tiif:issue-125873, r=lcnr
+[33m2d7075cf0018[m Rollup merge of #128612 - compiler-errors:validate-mir-opt-mir, r=davidtwco
+[33m3a9dd829d0b5[m Rollup merge of #128306 - WiktorPrzetacznik:WiktorPrzetacznik-nonnull-alignoffset-update, r=Amanieu
+[33m1bf30eb5aa62[m rustdoc-json: added a test for #107278
+[33me608b2fcf57b[m Bump nightly version -> 2024-08-08
+[33m7a73a101e998[m Merge remote-tracking branch 'upstream/master' into rustup
+[33m2048386fe289[m Auto merge of #128639 - folkertdev:rmake-thumb-none-qemu, r=jieyouxu
+[33m85ec34182415[m bump up rustc-perf's version
+[33mb9164319769c[m Rename struct_tail_erasing_lifetimes to struct_tail_for_codegen
+[33mc2a0d9ca6ecc[m rustdoc: fixed #101105 modules are now stripped based on the same logic that's used to strip other item kinds
+[33me6d426e723dc[m Reuse recursion limit as expansion limit
+[33mf81549c9ca46[m Normalize struct tail properly in disalignment check
+[33md9dd5509dcf5[m Normalize when computing offset_of for slice tail
+[33m85b5e42d5e5d[m Do normalize when computing struct tails in codegen
+[33m95c1c34fff66[m review comments
+[33m82605c4b5ce5[m Sync from rust 8b3870784f69d8ed2ae4246d1b56f150e3131499
+[33mb1e87922c18f[m Auto merge of #13200 - Jarcho:constant_no_typeck, r=Alexendoo
+[33mae696f847dee[m Split `ColorConfig` off of `HumanReadableErrorType`
+[33me4ad36d6a8c0[m Require `ConstEvalCtxt` to be constructed.
+[33md2cb227eb458[m Don't store `LateContext` in `ConstEvalLateContext`
+[33m3779062955fe[m Add `HasSession` trait
+[33m40a63d4f6e81[m Update cargo
+[33mffc391c76668[m Auto merge of #13231 - Jarcho:no_tree_walk_in_const, r=Alexendoo
+[33mb086040121e3[m Auto merge of #17832 - ShoyuVanilla:issue-17811, r=Veykril
+[33m9289f5691b29[m Only suggest `#[allow]` for `--warn` and `--deny` lint level flags
+[33mce846da6d6a1[m fix: Panic while rendering function with impl trait arg
+[33m6d69b2e40833[m Update compiler-builtins version to 0.1.118
+[33m9c29e0b818a1[m rm `declared_features` field in resolver
+[33m8725f7ee4c4a[m run-make: enable msvc for staticlib-dylib-linkage
+[33m8666a717db64[m Auto merge of #17831 - Veykril:flycheck-move-to-rust-analyzer, r=Veykril
+[33m8ff6b2f16091[m Split up flycheck module
+[33m1114de0c37b2[m Move flycheck crate into rust-analyzer main crate
+[33m5d968705b1a1[m std float tests: special-case Miri in feature detection
+[33m27ca35aa1b94[m const vector passed to codegen
+[33m09ae438eb095[m Add `Steal::is_stolen()`
+[33mb5c453d7a28a[m Add a set of tests for LLVM 19
+[33md3a393932eea[m Auto merge of #128465 - GrigorenkoPV:128200, r=estebank
+[33m2abcc6beeb6a[m Vxworks: Extern taskNameSet and fix build errors
+[33m1e3ea293e22f[m Update platform support docs for VxWorks target
+[33mfe4d83c462af[m Auto merge of #17827 - regexident:improve-crate-manifests-continuation, r=lnicola
+[33m5ccf5432ab98[m Auto merge of #11441 - Jarcho:issue_11365, r=xFrednet
+[33ma120fb7031c7[m rwlock: disable 'frob' test in Miri on macOS
+[33m3e5885f7d2ad[m changes after review
+[33mae68b2fc56dd[m migrate `thumb-none-qemu` to rmake
+[33mbfb10f431d29[m Auto merge of #13234 - Alexendoo:lintcheck-doc-links, r=xFrednet
+[33mfb1dac21ffde[m Fix VxWorks available parallelism: Move nonzero::uncheked into unsafe block
+[33m7869400e589c[m Update E0517 message to reflect RFC 2195.
+[33m9337f7afa6fd[m Auto merge of #128805 - tgross35:rollup-wajzi6w, r=tgross35
+[33m36b9aee9479a[m Rollup merge of #128800 - clarfonthey:core-pattern-type, r=compiler-errors
+[33mfbbabb9d1514[m Rollup merge of #128798 - futile:refactor/mbe-diagnostics, r=petrochenkov
+[33mf4fe5c835aaa[m Rollup merge of #128797 - Jeff-A-Martin:fuchsia-test-runner, r=tmandry
+[33mca5e8a7c4dd9[m Rollup merge of #128702 - yaahc:metrics-flag, r=estebank
+[33m1d820dc9a6f7[m Rollup merge of #128691 - tgross35:update-builtins, r=Amanieu
+[33m6c2e06746dc1[m Rollup merge of #128552 - s7tya:check-no-sanitize-attribute-pos, r=BoxyUwU
+[33m2a177c2047b8[m Rollup merge of #128520 - compiler-errors:more-precisely-force-move, r=BoxyUwU
+[33m0d65e5a1806d[m Auto merge of #128550 - compiler-errors:shadowed-params-perf, r=petrochenkov
+[33m599bcb5cf1ea[m run-make: enable msvc for redundant-libs
+[33m0257f42089c1[m Add tracking issue to core-pattern-type
+[33m17de8fbd068e[m lintcheck: disable doc links
+[33m86e7875c13f0[m Auto merge of #128793 - matthiaskrgr:rollup-ork16t0, r=matthiaskrgr
+[33m5db9d4320700[m Fuchsia Test Runner: enable ffx repository server
+[33m8b3870784f69[m Auto merge of #128796 - matthiaskrgr:rollup-r7l68ph, r=matthiaskrgr
+[33ma70c9e1f8617[m refactor(rustc_expand::mbe): Don't require full ExtCtxt when not necessary
+[33mf2deab375c9e[m Auto merge of #13232 - Alexendoo:path-prefix, r=flip1995
+[33maba506b12ae0[m Rollup merge of #128782 - RalfJung:raw-addr-of-parens, r=compiler-errors
+[33m04ab8e385c0b[m Rollup merge of #128772 - glaubitz:sparc-elf-fix, r=nagisa
+[33me5a3c32ffa5c[m Rollup merge of #128755 - yaahc:jj-crlf, r=estebank
+[33m8f5b50d4ba7c[m Rollup merge of #128732 - bvanjoi:immutable-import-vis, r=petrochenkov
+[33m8f39b86a6ab3[m Rollup merge of #128679 - RalfJung:codegen-fn-attrs, r=nikic
+[33me34229508a38[m Rollup merge of #128353 - ferrocene:jonathanpallant/add-dependencies-to-copyright-file, r=Kobzol
+[33m2ee967833817[m Rollup merge of #128261 - clarfonthey:iter-default, r=dtolnay
+[33m904f5795a0ff[m Rollup merge of #128221 - calebzulawski:implied-target-features, r=Amanieu
+[33m5212c759076c[m Add -Zerror-metrics=PATH to save diagnostic metadata to disk
+[33md8bb3c80f5e8[m Add missing `[package.description]` for 'syntax-bridge' crate
+[33m1555fd9a39c7[m Make 'syntax-bridge' crate inherit `[package.repository]` from workspace
+[33m273c67db83ca[m codegen: better centralize function attribute computation
+[33m26787a8c0d37[m Rollup merge of #128696 - Oneirical:second-linkage-rampage, r=jieyouxu
+[33m38dc3b2621aa[m Rollup merge of #128636 - folkertdev:rmake-thumb-none-cortex-m, r=jieyouxu
+[33mb8179000877d[m Rollup merge of #128384 - dheaton-arm:mte-test, r=jieyouxu
+[33ma36bf74d66d4[m Rollup merge of #128363 - Oneirical:not-to-be-undertestimated, r=jieyouxu
+[33mce20e15f01a9[m Auto merge of #126158 - Urgau:disallow-cfgs, r=petrochenkov
+[33m3312f5d65244[m alloc: make `to_string_str!` a bit less complex
+[33m7d1a97fae9fc[m rewrite pgo-indirect-call-promotion to rmake
+[33m7e5a2ea583f4[m rewrite pdb-buildinfo-cl-cmd to rmake
+[33m8eaef3eca047[m Add test
+[33m8225f2a79361[m Add path prefixes back when compiling `clippy_dev` and `lintcheck`
+[33m8bcecfff950d[m Handle or patterns in `single_match` and `single_match_else`
+[33m514824ff9d6b[m Refactor `single_match`
+[33m2a6655a9d7ac[m Auto merge of #17825 - Veykril:server-things, r=Veykril
+[33m7614de46aee4[m Auto merge of #17824 - ShoyuVanilla:fix-diags, r=Veykril
+[33m3e4632d99363[m Offload diagnostics serialization to the task pool
+[33me7086a35b56d[m Slightly quieter fatal panics
+[33md366706cc351[m Fix native diagnostics not working
+[33m8c06dc4dda85[m make `import.vis` is not mutable
+[33m8d0066922b14[m Auto merge of #128783 - GuillaumeGomez:rollup-2kvpg7s, r=GuillaumeGomez
+[33m920cb642a470[m Rollup merge of #128758 - devnexen:vxworks_release_min, r=tgross35
+[33mc0efd51396e8[m Rollup merge of #128757 - Oneirical:calm-before-the-sltorm, r=jieyouxu
+[33m888d157417c8[m Rollup merge of #128753 - compiler-errors:arbitrary-upper, r=spastorino
+[33mf739c00f4a99[m Rollup merge of #128700 - Oneirical:i-ffind-these-tests-quite-simdple, r=jieyouxu
+[33m37dfe41da0da[m Rollup merge of #128683 - RalfJung:miri-ui-test-deps, r=onur-ozkan
+[33ma05f187b156f[m Rollup merge of #128656 - ChrisDenton:rust-lld, r=lqd
+[33m493233ce290e[m Rollup merge of #128527 - estebank:ambiguity-suggestion, r=Nadrieril
+[33ma6caceee4d32[m Rollup merge of #128424 - fee1-dead-contrib:fx-clean, r=oli-obk
+[33m355eb9c79fed[m Rollup merge of #128206 - bjorn3:import_lib_writing_refactor, r=jieyouxu
+[33m16633a2d7b17[m Replace `in_constant` with `is_in_const_context`. Use only the state in `LateContext` to avoid walking the HIR tree.
+[33mc1897960c016[m unused_parens: do not lint against parens around &raw
+[33m6fc5d09ab280[m Auto merge of #17823 - Veykril:mod-unconfigured-diag, r=Veykril
+[33mc4809d0d6ec1[m Fix unconfigured diagnostic being attached to the wrong file for modules
+[33m359d5b92839c[m Auto merge of #17821 - Veykril:project-model-cleanup, r=Veykril
+[33m2b584dc777f7[m bootstrap: clear miri's ui test deps when rustc changes
+[33mf1f048c9c9c7[m Fix cargo config get env parsing
+[33mdbf2c126a305[m Remove unnecessary CfgFlag definition in project-model
+[33mc0c57b3e2953[m Disallow setting built-in cfgs via set the command-line
+[33meedb32dd122e[m Make `Span` optional in `BufferedEarlyLint`
+[33m482412c98ad7[m Use `TyCtxt::is_diagnostic_item`
+[33m29245ec75914[m Avoid using `ty::tls::with` in `write_struct_like`
+[33m582208b0f26d[m Simplify hoisting of ref patterns (`&` and `&mut`)
+[33ma245bfa61792[m Simplify hoisting of array/slice patterns
+[33mc4c518d2d496[m Use more slice patterns inside the compiler
+[33m34cde836d501[m Auto merge of #17809 - nicolas-guichard:index-vendored, r=Veykril
+[33m9bad7ba32409[m Auto merge of #128196 - Oneirical:poltergeist-manitestation, r=jieyouxu
+[33mc764bea0c3d8[m Simplify hoisting of struct-like patterns
+[33ma5ed6fb646f5[m Split out hoisting/printing of `box` patterns
+[33m7f48851416c0[m Split out a `hoist` helper in `hoist_witness_pat`
+[33me98e19e49108[m Replace an unnecessary slice pattern with `has_dot_dot: bool`
+[33m4cd800503f0c[m Remove an impossible case under `EnumInfo::NotEnum`
+[33m74f76ae5ea1a[m Unify `Variant` and `Leaf` into `print::PatKind::StructLike`
+[33mccfd94e33473[m Break up `print::Pat` printing into several helper functions
+[33mf58e737554be[m Update ar_archive_writer to 0.3.3
+[33m14d020f88d88[m Remove no longer used vendor intrinsic implementations
+[33m76f615ef1fbe[m Rustup to rustc 1.82.0-nightly (60d146580 2024-08-06)
+[33m6ef49b2ea3e8[m Run abi-cafe tests for pull requests too
+[33m6b3feb49c603[m Mark `{f32,f64}::{next_up,next_down,midpoint}` inline
+[33md1d21ede8261[m rustc_codegen_ssa: Set architecture for object crate for 32-bit SPARC
+[33m0713a4704508[m Auto merge of #17813 - roife:fix-issue-17803, r=Veykril
+[33mc8eacd617e4a[m Specify a minimum supported version for VxWorks
+[33m937ef11c55cb[m Auto merge of #17818 - alibektas:hidden_rust_project_json, r=Veykril
+[33m6a2cd0d50c9b[m Auto merge of #128768 - tgross35:rollup-aaq1ny7, r=tgross35
+[33m8818c9552821[m Disallow enabling features without their implied features
+[33m0b98a0c72769[m Fix typo
+[33m83276f568032[m Hide implicit target features from diagnostics when possible
+[33m6b96a60611c5[m Add implied features to non-target-feature functions
+[33m500671174444[m Remove redundant implied features
+[33ma25da077cf76[m Don't use LLVM to compute -Ctarget-feature
+[33m484aca885765[m Don't use LLVM's target features
+[33mfbd618d4aa8f[m Refactor and fill out target feature lists
+[33m3c48f6548bce[m Bless tests
+[33m34f29a24bbd4[m Add +sse4.2 due to #128426
+[33mc866e1f812b7[m Add missing features
+[33m520a5a535f4a[m Fix codegen tests
+[33m22c59529441d[m Add test to ensure implied target features work with asm, and fix failing tests
+[33m74653b61a67a[m Add implied target features to target_feature attribute
+[33m2f3dc46465c0[m Auto merge of #128763 - weihanglo:update-cargo, r=weihanglo
+[33m701bc03c52fd[m Rollup merge of #128766 - Monadic-Cat:patch-1, r=tgross35
+[33m6ccb3569f898[m Rollup merge of #128649 - ChrisDenton:param-passing, r=jieyouxu
+[33m0761d2af6162[m Rollup merge of #128647 - ChrisDenton:link-args-order, r=jieyouxu
+[33mcc42e3439186[m Rollup merge of #128638 - ChrisDenton:link-dedup, r=jieyouxu
+[33mb3bfd666273d[m Rollup merge of #128417 - tgross35:f16-f128-math, r=dtolnay
+[33m10a7f93f12fa[m Rollup merge of #128362 - folkertdev:naked-function-symbol-visibility, r=bjorn3
+[33m0aaffdb25fa8[m Rollup merge of #128107 - Oneirical:tomato-hartester, r=jieyouxu
+[33mf34ff1e05a21[m Trivial grammar fix in const keyword docs
+[33m51e68c3006f4[m Update `compiler-builtins` to 0.1.117
+[33me00e42567154[m Update cargo
+[33m7af01f7c90e6[m Allow rust-project.json to be hidden
+[33m20c833c632d7[m diagnostics: `Box<dyn Trait>` suggestion with multiple matching impl
+[33m6696447f784a[m Auto merge of #128761 - matthiaskrgr:rollup-5p1mlqq, r=matthiaskrgr
+[33m6ed9a33001ba[m Rollup merge of #128751 - devnexen:vxworks_set_thread_name, r=tgross35
+[33m3158a86b67ad[m Rollup merge of #128718 - jieyouxu:check-cfg_attr, r=nnethercote
+[33mf9325b72d9cb[m Rollup merge of #128710 - ChrisDenton:null, r=jieyouxu
+[33m03fabc033d92[m Rollup merge of #128692 - tgross35:update-triagebot, r=Mark-Simulacrum
+[33m52c365b73155[m Rollup merge of #128687 - RalfJung:interpret-call-refactor, r=WaffleLapkin
+[33mf00a55188fa7[m Rollup merge of #128539 - biabbas:deny_unsafe, r=workingjubilee
+[33m7e1360b1e133[m Rollup merge of #128406 - lolbinarycat:bufreader_peek, r=Mark-Simulacrum
+[33m16b251be1019[m Rollup merge of #125048 - dingxiangfei2009:stable-deref, r=amanieu
+[33m38e631ee04d3[m Rollup merge of #124944 - estebank:multiple-crate-versions, r=fee1-dead
+[33m0ddead30f02a[m Auto merge of #128748 - matthiaskrgr:rollup-dzvi5f7, r=matthiaskrgr
+[33m1b587a6e7620[m alloc: add ToString specialization for `&&str`
+[33m0149ba33bbfa[m rewrite pgo-gen-lto to rmake
+[33mb174cf827bc0[m Integrate crlf directly into related test file instead via of .gitattributes
+[33mb9e8e99198a7[m std::thread: set_name implementation proposal for vxWorks.
+[33m201ca3f65ce1[m changes after review
+[33mc656ce7aebe2[m Don't arbitrarily choose one upper bound for hidden captured region
+[33m034b73ba54f8[m fix test
+[33m5ead90f13ae3[m Auto merge of #12150 - ithinuel:add_misleading_use_of_ok, r=y21
+[33m47a2f14e49ad[m Rollup merge of #128736 - GuillaumeGomez:fix-remap-path-prefix, r=notriddle
+[33m8912318a4cdf[m Rollup merge of #128720 - y21:issue119620, r=compiler-errors
+[33m4b29f42ffc21[m Rollup merge of #128693 - notriddle:notriddle/impl-disambiguator-2024, r=GuillaumeGomez
+[33mfb54b45c3f2b[m Rollup merge of #128685 - bjorn3:rust_src_remove_leftover, r=onur-ozkan
+[33m5f9ebb5d2632[m Rollup merge of #128517 - clubby789:overflowing-lit-span, r=petrochenkov
+[33m333c63b9fcf4[m Rollup merge of #128377 - veera-sivarajan:fix-128249, r=davidtwco
+[33md3d9aae96076[m Rollup merge of #128369 - GrigorenkoPV:let-underscore-translatable, r=davidtwco
+[33m5e26c8d3c925[m Move test to be make instead of ui
+[33mf4bad4fa3990[m Change test to be only-linux and ignore-wasm32
+[33medd41623939c[m fix rebase
+[33md8b07718f4a3[m Add `help` about using `cargo tree`
+[33mba3267321584[m Add test for mixing types from two incompatible crate versions
+[33m4868680ee915[m On trait bound mismatch, detect multiple crate versions in dep tree
+[33mdb6c05f9b93f[m Maintain highlighting in `note` and `help` even when they have a span
+[33m79228526bfa3[m Cache supertrait outlives of impl header for soundness check
+[33mba3cb156cb5e[m Remove unused lifetime parameter from spawn_unchecked
+[33m5cab8ae4a4a0[m miri: make vtable addresses not globally unique
+[33mcc96efd7e30c[m Stop unnecessarily taking GenericPredicates by &self
+[33mfe4cd9aa8deb[m rewrite long-linker-command-lines-cmd-exe to rmake
+[33mfe6feb8c6e55[m rewrite long-linker-command-lines to rmake
+[33m342b807e1a34[m rewrite cross-lang-lto-upstream-rlibs to rmake
+[33m608b322f4918[m rewrite staticlib-dylib-linkage to rmake
+[33m9d9a0dcb6440[m Auto merge of #13225 - Jarcho:warnings, r=flip1995
+[33mf43e92b4dfe7[m Add regression test for #69264
+[33mfd89197d1bea[m Fix rustdoc missing handling of `remap-path-prefix` option
+[33m4e57b2c46f6f[m Use `-D warnings` instead of `deny-warnings` feature.
+[33m3a183256ad74[m rustdoc-search: account for numeric disambiguators on impls
+[33mac7c46651533[m fix: tyck for non-ADT types when searching refs for `Self` kw
+[33m6c1d83b725e1[m Include vendored crates in StaticIndex
+[33m1c2705c6229c[m various cleanups based on review
+[33m60d146580c10[m Auto merge of #128245 - Oneirical:total-linkage-ownage, r=jieyouxu
+[33m99579f3ec1ee[m Apparently library/std is now part of a workspace at library/
+[33m4e24e9b1adb8[m Update to rinja 0.3
+[33m5277b67b6977[m generate-copyright: gather files inside interesting folders
+[33m30ac7c9a8177[m generate-copyright: Render Node with rinja too.
+[33m37ab09010cb6[m REUSE.toml: Copyright text isn't parsed as Markdown.
+[33mf7e6bf61a9c3[m generate-copyright: use rinja to format the output
+[33mdbab595d78f1[m generate-copyright: use cargo-metadata
+[33m56f84796a4e8[m generate-copyright: Fix typo
+[33m204e3eadf132[m generate-copyright: Produce HTML, not Markdown
+[33mba0d6c973994[m Update generate-copyright
+[33ma411267453b7[m Auto merge of #13210 - Alexendoo:lintcheck-force-warn, r=xFrednet
+[33m5783e73f4662[m make some Frame fields more private
+[33m522af10cccd9[m interpret: refactor function call handling to be better-abstracted
+[33m93ea767e2928[m Auto merge of #126804 - estebank:short-error-primary-label, r=davidtwco
+[33me686ffe2de09[m Auto merge of #17745 - regexident:improve-crate-manifests, r=Veykril
+[33m15982b2fcae0[m rustc_errors: fix inaccurate comment
+[33mb0a89441208e[m rustc_errors: enforce OUTPUT_REPLACEMENTS is sorted with a compile-time assertion
+[33m54362cadba29[m Auto merge of #17805 - ShoyuVanilla:issue-17578, r=Veykril
+[33m97cbc2083fd2[m check_attr: treat cfg_attr like cfg
+[33mfdb64b94786a[m tests: add regression test to make sure `cfg_attr` isn't considered unhandled
+[33mcfb38819cca4[m Auto merge of #13145 - xFrednet:07797-restriction-and-then-why, r=Jarcho
+[33m1bbaf6eb2f08[m On short error format, append primary span label to message
+[33m8c7e0e160831[m Auto merge of #128200 - estebank:normalize-whitespace, r=pnkfelix
+[33mc9687a95a602[m Auto merge of #125558 - Amanieu:const-asm-type, r=lcnr
+[33m2f4603b71580[m Test more cases of WF-checking for fields
+[33m9479792cb4e6[m WF-check struct field types at construction site
+[33m18906754ccee[m Add test for WF check of implied unsizing in struct fields
+[33m4c6a3f4b6eb4[m pass the right `ParamEnv` to `might_permit_raw_init_strict`
+[33mfdf3b31165be[m pass the right `ParamEnv` to `might_permit_raw_init_strict`
+[33m3fd645e25456[m Check staticlib name falls back to `rust_out`
+[33mb586701f78a6[m Auto merge of #128707 - matthiaskrgr:rollup-63klywk, r=matthiaskrgr
+[33mc6d94821f063[m Don't ICE if getting the input's file_stem fails
+[33m584f9543ea97[m Replace `[package.repository] = "…"` of published crates with `[package.repository.workspace] = true`
+[33me15ffa5629a6[m Unify package descriptions by adding references to "rust-analyzer"
+[33m08d3d44c7d5f[m Apply Veykril's change suggestions
+[33mccc417791119[m Replace "`ra_ap_ide`" with "`ide` (aka `ra_ap_ide`)"
+[33m54e68e6adfb5[m Fix spelling of "data structure"
+[33mcc67602501c7[m Fix spelling of "object-oriented"
+[33ma22691afd9e4[m Fix obsolete repository URL in `[package.repository]` of `rust-analyzer` crate
+[33m163534182de2[m Add repository URL for published crates' missing `[package.repository]` fields
+[33m88ea306270e6[m Replace `"TBD"` with more helpful desciptions in published crates' `[package.description]` fields
+[33mc8d50ef2ee71[m Windows: Test if `\\.\NUL` works as an input file
+[33mc53698b39912[m Rollup merge of #128697 - RalfJung:nullary-op, r=compiler-errors
+[33m77f57cbcac3e[m Rollup merge of #128694 - compiler-errors:norm, r=WaffleLapkin
+[33m83155b39002b[m Rollup merge of #128688 - RalfJung:custom-mir-tail-calls, r=compiler-errors
+[33m9cb3688f1feb[m Rollup merge of #128580 - compiler-errors:cfi-param-env, r=lcnr
+[33m8cbf1c1b229e[m Rollup merge of #122049 - Amanieu:riscv64-musl-tier2, r=Mark-Simulacrum
+[33m46896d6f667b[m interpret: move nullary-op evaluation into operator.rs
+[33me57f3090aec3[m Auto merge of #128699 - RalfJung:miri-sync, r=RalfJung
+[33m4af77dfea529[m implement BufReader::peek
+[33m5f6d07b64ebf[m Auto merge of #13222 - dtolnay-contrib:deterministic, r=flip1995
+[33mad4e8155baa2[m fix: Panic in path transform with default type parameters
+[33m52f1ea49156b[m Don't skip running abi-cafe tests that give SIGILL on Windows
+[33m1054054a46b8[m rewrite simd-ffi to rmake
+[33mf6edc8a07c83[m update lockfile
+[33mc6f8672dd5e1[m Normalize when equating dyn tails in MIR borrowck
+[33m19679510c756[m add test for symbol visibility of `#[naked]` functions
+[33ma554f4d71597[m Auto merge of #3789 - RalfJung:deps, r=RalfJung
+[33mc369c2034f7b[m Add a triagebot mention for `library/Cargo.lock`
+[33m014fdb56b455[m bump dependencies
+[33md1ad05a43a48[m Auto merge of #3790 - RalfJung:ui-test-folder, r=RalfJung
+[33mb113bbec4f95[m use a Miri-specific folder for ui tests
+[33m747adbdbe8fe[m Merge pull request #1515 from lqd/abi-cafe
+[33mf7eefec4e03f[m Auto merge of #128689 - matthiaskrgr:rollup-ukyn8wq, r=matthiaskrgr
+[33m9213c6c93f43[m bump rustc-build-sysroot dependency
+[33m1f19cdf659f1[m mark busted tests for `aarch64-apple-darwin` and `aarch64-unknown-linux-gnu`
+[33m86798401df96[m Rollup merge of #128686 - onur-ozkan:unnecessary-type-cast, r=Kobzol
+[33m48e47a688984[m Rollup merge of #128664 - fuzzypixelz:add-codegen-ssa-debug-impls, r=lcnr
+[33m9d924d11c4ba[m Rollup merge of #128631 - onur-ozkan:hotfix, r=Mark-Simulacrum
+[33m63482af9821b[m Rollup merge of #128559 - compiler-errors:elaborate, r=lcnr
+[33m376a6f9f431c[m Rollup merge of #128385 - its-the-shrimp:fix_114039, r=aDotInTheVoid
+[33m212417b87f84[m custom MIR: add support for tail calls
+[33mb3df6dcb6069[m ensure the download folder exists when running `abi-cafe`
+[33m9f6536ce6f51[m Use a deterministic number of digits in rustc_tools_util commit hashes
+[33mab690d31ceef[m fix the invalid argument type in `helpers::get_closest_merge_base_commit`
+[33m34e087890c25[m Don't re-elaborated already elaborated caller bounds in method probe
+[33me4e1b9b80525[m Remove the root Cargo.lock from the rust-src component
+[33m2b78d920964e[m Auto merge of #124336 - compiler-errors:super-outlives, r=lcnr
+[33m20332dae2f33[m rewrite cdylib-dylib-linkage to rmake
+[33m37f75693a1eb[m Auto merge of #17802 - Veykril:arg-mismatch-no-ty-mismatch, r=Veykril
+[33m64cd3da35da3[m Auto merge of #17772 - Veykril:debug.ts, r=Veykril
+[33m3e23c4541b33[m Surpress type mismatches in calls with mismatched arg counts
+[33m011727f14ebf[m rewrite redundant-libs to rmake
+[33mf31f8c488aa2[m rewrite raw-dylib-c to rmake
+[33m131d453248b4[m rewrite raw-dylib-alt-calling-conventions to rmake
+[33m7dd258a36d4a[m Auto merge of #17771 - Veykril:parallel-vfs-config, r=Veykril
+[33md95a4b8d2bed[m Reorganize debug.ts
+[33mfa9ae7b9d3e7[m Elaborate supertraits in dyn candidates
+[33m314f30167f9b[m Slightly optimize watch list in vfs
+[33m6a891ec4fe0d[m Enforce supertrait outlives obligations hold when confirming impl
+[33m81cbc780965e[m Auto merge of #17791 - ShoyuVanilla:await-outside-of-async, r=Veykril
+[33m22f7c0802f4c[m Auto merge of #17775 - ShoyuVanilla:segregate-diags, r=Veykril
+[33mc082bc2cb853[m Auto merge of #13136 - xFrednet:07797-restriction-and-then, r=blyxyas
+[33me17d254e2bd3[m Auto merge of #13180 - Jarcho:deprecated_shrink, r=flip1995
+[33mc2186e14de00[m Make `cargo dev deprecate` require a reason
+[33m2c34d58159b6[m Store deprecated lints as an array of tuples. Remove legacy deprecations. Remove "View Source" link for deprecated lints.
+[33m80c8786408b0[m perf: Segregate syntax and semantic diagnostics
+[33m1672d5d4ed54[m Mark some lint deprecations as renames
+[33m56a79223777c[m Auto merge of #17801 - Veykril:unbrick-metrics, r=Veykril
+[33me611c8e1c4cc[m Auto merge of #13217 - dtolnay-contrib:toolsutil, r=flip1995
+[33m92a07b8b9c6b[m minor: Fix metrics not running
+[33m3e809f8f1f80[m feat: Implement diagnostic for `await` outside of `async`
+[33m9d99d39eaf58[m Auto merge of #17799 - Veykril:syntax-bridge, r=Veykril
+[33m56fe16602867[m Auto merge of #17793 - jjoeldaniel:msvc-docs, r=Veykril
+[33m83e9b93c90bc[m Auto merge of #127095 - Oneirical:testiary-education, r=jieyouxu
+[33m78dea2465c5b[m Auto merge of #17784 - Young-Flash:block_with_label, r=Veykril
+[33mf12aca95e4ba[m Simplify
+[33m68253247638c[m Auto merge of #17794 - Veykril:source-db-simplify, r=Veykril
+[33mcdee65f5ea9b[m Newtype ErasedFileAstId
+[33m90803b16c19d[m Split out syntax-bridge into a separate crate
+[33m2e7db9c69ffe[m Simplify FileDelegate
+[33md84b970e6046[m Auto merge of #17795 - Veykril:library-dep-loading, r=Veykril
+[33m7499e21a1ef9[m rustdoc-json: discard non-local inherent impls
+[33mef7d2c5d6534[m feat: Load sysroot library via cargo metadata
+[33m61ea488309ee[m Emit an error for invalid use of the `#[no_sanitize]` attribute
+[33m534971826741[m Update to LLVM 19 rc2
+[33m9179d9b334e3[m Auto merge of #117468 - daxpedda:wasm-relaxed-simd, r=alexcrichton
+[33m5e944bb19c65[m Auto merge of #3786 - RalfJung:rustup, r=RalfJung
+[33m61463fd04252[m fmt
+[33m34aa09aa53cb[m Merge from rustc
+[33m59cb15946df9[m Prevent clicking on a link or on a button to toggle the code example buttons visibility
+[33me2da2fb387c0[m Update rustdoc tests
+[33mbe71bd9cec14[m Update GUI tests for code example buttons
+[33ma282e520b253[m Unify run button display with "copy code" button and with mdbook buttons
+[33m697787a92d88[m RISC-V also has sane nontemporal stores
+[33m28e090711107[m nontemporal_store: make sure that the intrinsic is truly just a hint
+[33md28083728d49[m Preparing for merge from rustc
+[33m9411844aff6a[m `OperandRef` already had a `Debug` impl
+[33mb6b4e1a9c5bf[m add msvc note to manual
+[33m4d48a6be74d4[m Auto merge of #128673 - matthiaskrgr:rollup-gtvpkm7, r=matthiaskrgr
+[33m5fa740f613b9[m Rollup merge of #128660 - matthiaskrgr:niceice, r=compiler-errors
+[33m227944defdf4[m Rollup merge of #128630 - bvanjoi:resolve-comment, r=petrochenkov
+[33m74df517b90c3[m Rollup merge of #128619 - glandium:last_chunk, r=scottmcm
+[33mbaa00e5fb24e[m Rollup merge of #128611 - ChrisDenton:cygpath, r=jieyouxu
+[33m1e951b70c705[m Rollup merge of #128609 - swenson:smaller-faster-dragon, r=Amanieu
+[33mf23197394119[m Rollup merge of #128607 - ChrisDenton:visibility, r=jieyouxu
+[33m4adefa433472[m Rollup merge of #128471 - camelid:rustdoc-self, r=notriddle
+[33m02c3837d8b74[m Rollup merge of #128026 - devnexen:available_parallelism_vxworks, r=Mark-Simulacrum
+[33m1737845cb41c[m Enable msvc for run-make/rust-lld
+[33m29e924841f06[m Auto merge of #128672 - matthiaskrgr:rollup-txf7siy, r=matthiaskrgr
+[33m20480075bd17[m Rollup merge of #128623 - jieyouxu:check-attr-ice, r=nnethercote
+[33m3c8b25905ce6[m Rollup merge of #128500 - clubby789:122600-test, r=Mark-Simulacrum
+[33me4367cec5ec6[m Rollup merge of #128309 - kmicklas:btreeset-cursor, r=Amanieu
+[33mf6c8b7a60a00[m Rollup merge of #127974 - onur-ozkan:force-std-builds, r=Mark-Simulacrum
+[33md10f2b32f06c[m Rollup merge of #127907 - RalfJung:byte_slice_in_packed_struct_with_derive, r=nnethercote
+[33mcc61dc8b2d97[m Rollup merge of #127655 - RalfJung:invalid_type_param_default, r=compiler-errors
+[33m70ab51f988ae[m Correct the const stabilization of `<[T]>::last_chunk`
+[33m41ec376edde2[m Add `Debug` impls to API types in `rustc_codegen_ssa`
+[33mdac7f20e1308[m Add test for `Self` not being a generic in search index
+[33mb4f77df9f854[m rustdoc: Delete `ReceiverTy` (formerly known as `SelfTy`)
+[33me452e3def69d[m Use `match` instead of sequence of `if let`s
+[33m4e348fa80372[m rustdoc: Stop treating `Self` as a generic in search index
+[33m664b3ffbe932[m rustdoc: Create `SelfTy` to replace `Generic(kw::SelfUpper)`
+[33m249d686c7005[m rustdoc: Rename `SelfTy` to `ReceiverTy`
+[33m69de294c311c[m tests: more crashes
+[33m77fe1cb96c1c[m Auto merge of #17789 - ShoyuVanilla:issue-17191, r=Veykril
+[33m176e54520954[m Auto merge of #128534 - bjorn3:split_stdlib_workspace, r=Mark-Simulacrum
+[33m234ea1fcd91e[m Check exit status of subcommands spawned by rustc_tools_util
+[33m207ee73b7afa[m std: refactor UNIX random data generation
+[33m178886e92305[m Update incorrect comment
+[33m3268b2e18d33[m Enable msvc for link-args-order
+[33mfbe7233c0a17[m fix: Insert a generic arg for `impl Trait` when lowering generic args
+[33m7ac242c3d0d3[m Auto merge of #13213 - Alexendoo:multispan-sugg, r=y21
+[33mab1527f1d656[m Auto merge of #128544 - compiler-errors:perf-warn_if_unreachable, r=fmease
+[33m1ea7bddbdfc7[m Remove `multispan_sugg[_with_applicability]`
+[33mebd08d8ed5c8[m Auto merge of #128634 - matthiaskrgr:rollup-l5a2v5k, r=matthiaskrgr
+[33md8c2b767c6a1[m run-make: enable msvc for link-dedup
+[33ma95ff26fdcb0[m test: add test case for inlay hint support for expr with label
+[33mf71a627073ce[m migrate `thumb-none-cortex-m` to rmake
+[33mf1c4c0f548a2[m Rollup merge of #128620 - GuillaumeGomez:update-rinja, r=notriddle
+[33mbadf983c96e9[m Rollup merge of #128615 - notriddle:notriddle/anchor-a11y, r=GuillaumeGomez
+[33mad5b9c24c010[m Rollup merge of #128589 - onur-ozkan:llvm-configs, r=cuviper
+[33m8c826923aeac[m Rollup merge of #128578 - camelid:cache-index-cleanup, r=notriddle
+[33m19bceedd784f[m Rollup merge of #128531 - RalfJung:miri-recursive-validity, r=saethlin
+[33mc8a33f7e34ff[m Rollup merge of #128526 - tshepang:patch-1, r=Amanieu
+[33mb6b8330b9dbf[m Rollup merge of #128305 - folkertdev:asm-parser-unsupported-operand, r=Amanieu
+[33m58fb508fe328[m Auto merge of #127877 - Rejyr:migrate-print-rmake, r=jieyouxu
+[33m2ac09692e7a7[m handle crates when they are not specified for std docs
+[33m9ad44ba73714[m enable abi-cafe tests on aarch64-apple-darwin
+[33m249afea2ff4a[m docs(resolve): more explain about `target`
+[33m80b74d397fff[m Implement a implicit target feature mechanism
+[33m90521399b4bf[m Stabilize Wasm relaxed SIMD
+[33m007d9e1c26da[m rustdoc: Re-add missing `stripped_mod` check; explain orphan impls
+[33m2e5341aecd85[m Enable msvc for no-duplicate-libs
+[33mb46237bdd73a[m Enable msvc for zero-extend-abi-param-passing
+[33m36cf385e886d[m Ensure `Rustc::print` use in `rmake` tests
+[33m1ca959e3f00f[m Migrate `print-target-list` to `rmake`
+[33mb389b0ab72cb[m Auto merge of #128466 - sayantn:stdarch-update, r=tgross35
+[33m9d0eaa2ad78c[m check_attr: cover multi-segment attributes on specific check arms
+[33m9e5c9c14c7fb[m tests: add regression test for incorrect "builtin attribute is checked" assertion ICE
+[33mf9d7e4c0a96f[m Remove cygpath from run-make-support
+[33m3a41a11a8f8a[m Migrate `run-make/print-calling-conventions` to ui-test
+[33m8f63e9f8732d[m Auto merge of #128441 - Bryanskiy:delegation-perf, r=petrochenkov
+[33mcb7c596681c3[m Update rinja version to 0.3.0
+[33m9963a6c400f7[m Add platform support document for riscv64gc-unknown-linux-musl
+[33ma937a3b5a164[m Make riscv64gc-unknown-linux-musl dynamically linked by default
+[33mde26ad1a2a30[m Promote riscv64gc-unknown-linux-musl to tier 2
+[33m01bda01e3374[m Update stdarch
+[33mb94a9c1b1230[m Remove skipping symbols with the `__imp_` prefix
+[33m2cde11f2d145[m Chore: add `x86_amx_intrinsics` feature flag to `core/lib.rs` and remove `issue-120720-reduce-nan.rs`
+[33m64ebd39da5ec[m Auto merge of #128614 - matthiaskrgr:rollup-d2fextz, r=matthiaskrgr
+[33meb2de64aa1cb[m rustdoc: make the hover trail for doc anchors a bit bigger
+[33m470ada2de0ec[m Make validate_mir pull optimized/ctfe MIR for all bodies
+[33m0655ed234f94[m Rollup merge of #128603 - ChrisDenton:used, r=jieyouxu
+[33m3a9d4325896d[m Rollup merge of #128581 - jieyouxu:checked-attr, r=nnethercote
+[33me488ee7efd6c[m Rollup merge of #128573 - GuillaumeGomez:simplify-body, r=notriddle
+[33m06133811a638[m Rollup merge of #128551 - Konippi:refactor-backtrace-style-in-panic, r=tgross35
+[33m53a56190afed[m Rollup merge of #128530 - scottmcm:repeat-n-unchecked, r=joboet
+[33m0afbe482f06c[m Rollup merge of #128283 - lolbinarycat:bootstrap-custom-target, r=albertlarsan68
+[33m377d72ae8b74[m Auto merge of #13194 - sheshnath-at-knoldus:fix-typos, r=Jarcho
+[33m7d9ed2a864f5[m Rollup merge of #127921 - spastorino:stabilize-unsafe-extern-blocks, r=compiler-errors
+[33mbbf60c897e18[m Auto merge of #127324 - DianQK:match-br, r=cjgillot
+[33mb9716dd32a24[m fix-typos
+[33m8497800abde9[m Add test for updating enum discriminant through pointer
+[33mf28d1570912c[m Update rmake.rs
+[33m8dd459d4c750[m Auto merge of #13209 - Alexendoo:nonminimal-bool-limit-ops, r=y21
+[33m36a805939e6e[m Remove unnecessary constants from flt2dec dragon
+[33medc4dc337b28[m Auto merge of #128370 - petrochenkov:libsearch, r=bjorn3
+[33meb7b6769f1fe[m Auto merge of #13208 - alex-semenyuk:fix_doc_from_iter_instead_of_collect, r=llogiq
+[33mc2523c954360[m Use object in run-make/symbols-visibility
+[33m35dcc9bbfa32[m Add clarification for from_iter_instead_of_collect
+[33ma3a09b488fde[m Simplify `body` usage in rustdoc
+[33m613155c96ab3[m Apply review comments to PartialOrd section
+[33m1f47624f9aba[m Auto merge of #128404 - compiler-errors:revert-dead-code-changes, r=pnkfelix
+[33meb451464a755[m Remove BAR for run-make/used.rs
+[33mb564b70d1cb3[m Update run-make/used to use `any_symbol_contains`
+[33md18ce7cea04a[m lintcheck: force warn all lints
+[33mb2d063130081[m Limit number of nonminimal_bool ops
+[33m106cf7bec201[m Remove another false-negative hidden by dead code changes
+[33ma57b8b91dbcb[m Bless test fallout
+[33mcbd27db9a996[m Suppress new false-negatives that were masked by dead code analysis changes
+[33mac56007ea7ba[m Revert "Rollup merge of #125572 - mu001999-contrib:dead/enhance, r=pnkfelix"
+[33md29818c9f552[m Revert "Rollup merge of #126315 - mu001999-contrib:fix/126289, r=petrochenkov"
+[33m22da61624590[m Revert "Rollup merge of #126618 - mu001999-contrib:dead/enhance, r=pnkfelix"
