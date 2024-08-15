@@ -10,7 +10,7 @@ fn main() {
     // First we check that we generate the JSON in the stdout.
     rustdoc()
         .input("foo.rs")
-        .output("-")
+        .out_dir("-")
         .arg("-Zunstable-options")
         .output_format("json")
         .run()
