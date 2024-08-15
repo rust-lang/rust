@@ -1121,10 +1121,12 @@ impl<'a> Parser<'a> {
             match self.token_cursor.tree_cursor.look_ahead(0) {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
-                    return match tree {
-                        TokenTree::Token(token, _) => looker(token),
-                        TokenTree::Delimited(dspan, _, delim, _) => {
-                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                    match tree {
+                        TokenTree::Token(token, _) => return looker(token),
+                        &TokenTree::Delimited(dspan, _, delim, _) => {
+                            if delim != Delimiter::Invisible {
+                                return looker(&Token::new(token::OpenDelim(delim), dspan.open));
+                            }
                         }
                     };
                 }
