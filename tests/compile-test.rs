@@ -9,7 +9,8 @@ use clippy_lints::LintInfo;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
 use pulldown_cmark::{Options, Parser, html};
-use rinja::{Template, filters::Safe};
+use rinja::Template;
+use rinja::filters::Safe;
 use serde::Deserialize;
 use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
@@ -394,7 +395,7 @@ struct Renderer<'a> {
 }
 
 impl<'a> Renderer<'a> {
-    fn markdown(&self, input: &str) -> Safe<String> {
+    fn markdown(input: &str) -> Safe<String> {
         let parser = Parser::new_ext(input, Options::all());
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
@@ -465,7 +466,11 @@ impl DiagnosticCollector {
                 .collect();
             metadata.sort_unstable_by(|a, b| a.id.cmp(&b.id));
 
-            fs::write("util/gh-pages/index.html", Renderer { lints: &metadata }.render().unwrap()).unwrap();
+            fs::write(
+                "util/gh-pages/index.html",
+                Renderer { lints: &metadata }.render().unwrap(),
+            )
+            .unwrap();
         });
 
         (Self { sender }, handle)
