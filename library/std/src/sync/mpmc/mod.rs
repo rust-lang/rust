@@ -64,7 +64,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// receive operations must appear at the same time in order to pair up and pass the message over.
 ///
 /// # Panics
-/// Panics if `cap` exceeds [`iszie::MAX`] *bytes*.
+/// Panics if `cap` exceeds [`isize::MAX`] *bytes*.
 pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
     if cap == 0 {
         let (s, r) = counter::new(zero::Channel::new());
