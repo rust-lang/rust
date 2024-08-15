@@ -318,6 +318,7 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![feature(array_chunks)]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -348,6 +349,7 @@
 #![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
+#![feature(random)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
@@ -595,6 +597,8 @@ pub mod path;
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 pub mod pipe;
 pub mod process;
+#[unstable(feature = "random", issue = "none")]
+pub mod random;
 pub mod sync;
 pub mod time;
 
