@@ -1830,7 +1830,7 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
         let both = eq_first.bitand(eq_last);
         let mask = both.to_bitmask() as u16;
 
-         mask;
+        mask;
     };
 
     let mut i = 0;
