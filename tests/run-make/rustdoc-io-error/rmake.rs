@@ -25,7 +25,7 @@ fn main() {
     permissions.set_readonly(true);
     rfs::set_permissions(&out_dir, permissions);
 
-    let output = rustdoc().input("foo.rs").output(&out_dir).env("RUST_BACKTRACE", "1").run_fail();
+    let output = rustdoc().input("foo.rs").out_dir(&out_dir).env("RUST_BACKTRACE", "1").run_fail();
 
     rfs::set_permissions(&out_dir, original_permissions);
 
