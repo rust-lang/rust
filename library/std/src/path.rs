@@ -2573,7 +2573,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(path_file_prefix)]
     /// use std::path::Path;
     ///
     /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
@@ -2586,7 +2585,7 @@ impl Path {
     ///
     /// [`Path::file_stem`]: Path::file_stem
     ///
-    #[unstable(feature = "path_file_prefix", issue = "86319")]
+    #[stable(feature = "path_file_prefix", since = "1.80.1")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
