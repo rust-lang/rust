@@ -285,6 +285,12 @@ impl LlvmAr {
         self
     }
 
+    /// Like `obj_to_ar` except creating a thin archive.
+    pub fn obj_to_thin_ar(&mut self) -> &mut Self {
+        self.cmd.arg("rcus").arg("--thin");
+        self
+    }
+
     /// Extract archive members back to files.
     pub fn extract(&mut self) -> &mut Self {
         self.cmd.arg("x");
