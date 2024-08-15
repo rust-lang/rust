@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::hash::Hash;
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
@@ -30,7 +31,7 @@ pub trait BackendTypes {
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).
-    type DIScope: Copy;
+    type DIScope: Copy + Hash + PartialEq + Eq;
     type DILocation: Copy;
     type DIVariable: Copy;
 }
