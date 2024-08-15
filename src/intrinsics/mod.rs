@@ -725,7 +725,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             // Cranelift treats stores as volatile by default
             // FIXME correctly handle unaligned_volatile_store
-            // FIXME actually do nontemporal stores if requested
+            // FIXME actually do nontemporal stores if requested (but do not just emit MOVNT on x86;
+            // see the LLVM backend for details)
             let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         }

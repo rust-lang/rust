@@ -874,7 +874,7 @@ pub(crate) fn assert_assignable<'tcx>(
         (ty::Ref(_, a, _), ty::RawPtr(b, _)) | (ty::RawPtr(a, _), ty::Ref(_, b, _)) => {
             assert_assignable(fx, *a, *b, limit - 1);
         }
-        (ty::FnPtr(_), ty::FnPtr(_)) => {
+        (ty::FnPtr(..), ty::FnPtr(..)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                 ParamEnv::reveal_all(),
                 from_ty.fn_sig(fx.tcx),
