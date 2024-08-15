@@ -1,7 +1,7 @@
 //@ ignore-windows
 //@ ignore-android
 //@ ignore-aarch64
-//@ min-lldb-version: 310
+//@ min-lldb-version: 1800
 //@ min-gdb-version: 13.0
 
 //@ aux-build:macro-stepping.rs
@@ -12,6 +12,7 @@
 extern crate macro_stepping; // exports new_scope!()
 
 //@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
+// SingleUseConsts shouldn't need to be disabled, see #128945
 
 // === GDB TESTS ===================================================================================
 
