@@ -79,6 +79,8 @@ def get(base, url, path, checksums, verbose=False):
                 eprint("removing", temp_path)
             os.unlink(temp_path)
 
+def curl_version():
+    return float(re.match(bytes("^curl ([0-9]+\\.[0-9]+)", "utf8"), require(["curl", "-V"]))[1])
 
 def download(path, url, probably_big, verbose):
     for _ in range(4):
@@ -107,11 +109,15 @@ def _download(path, url, probably_big, verbose, exception):
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32())
-        run(["curl", option,
+        extra_flags = []
+        if curl_version() > 7.70:
+            extra_flags = [ "--retry-all-errors" ]
+        run(["curl", option] + extra_flags + [
             "-L", # Follow redirect.
             "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
             "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
             "-o", path,
+            "--continue-at", "-",
             "--retry", "3", "-SRf", url],
             verbose=verbose,
             exception=True, # Will raise RuntimeError on failure
