@@ -13,12 +13,15 @@ use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustdoc_json_types as types;
+// It's important to use the FxHashMap from rustdoc_json_types here, instead of
+// the one from rustc_data_structures, as they're different types due to sysroots.
+// See #110051 and #127456 for details
+use rustdoc_json_types::FxHashMap;
 
 use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::clean::ItemKind;
@@ -234,14 +237,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let index = (*self.index).clone().into_inner();
 
         debug!("Constructing Output");
-        // This needs to be the default HashMap for compatibility with the public interface for
-        // rustdoc-json-types
-        #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(format!("0:0:{}", e.name(self.tcx).as_u32())),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
-            index: index.into_iter().collect(),
+            index,
             paths: self
                 .cache
                 .paths
