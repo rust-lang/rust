@@ -18,6 +18,7 @@ pub mod args;
 pub mod env;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;
+pub mod helpers;
 #[path = "../unsupported/io.rs"]
 pub mod io;
 #[path = "../unsupported/net.rs"]
@@ -29,8 +30,6 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod time;
-
-mod helpers;
 
 #[cfg(test)]
 mod tests;
@@ -179,39 +178,6 @@ pub fn abort_internal() -> ! {
 #[no_mangle]
 pub extern "C" fn __rust_abort() {
     abort_internal();
-}
-
-#[inline]
-pub fn hashmap_random_keys() -> (u64, u64) {
-    get_random().unwrap()
-}
-
-fn get_random() -> Option<(u64, u64)> {
-    use r_efi::protocols::rng;
-
-    let mut buf = [0u8; 16];
-    let handles = helpers::locate_handles(rng::PROTOCOL_GUID).ok()?;
-    for handle in handles {
-        if let Ok(protocol) = helpers::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID) {
-            let r = unsafe {
-                ((*protocol.as_ptr()).get_rng)(
-                    protocol.as_ptr(),
-                    crate::ptr::null_mut(),
-                    buf.len(),
-                    buf.as_mut_ptr(),
-                )
-            };
-            if r.is_error() {
-                continue;
-            } else {
-                return Some((
-                    u64::from_le_bytes(buf[..8].try_into().ok()?),
-                    u64::from_le_bytes(buf[8..].try_into().ok()?),
-                ));
-            }
-        }
-    }
-    None
 }
 
 /// Disable access to BootServices if `EVT_SIGNAL_EXIT_BOOT_SERVICES` is signaled

@@ -6,8 +6,6 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-pub use self::rand::hashmap_random_keys;
-
 pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
@@ -24,7 +22,6 @@ pub mod os;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-mod rand;
 pub mod stdio;
 pub mod thread;
 #[allow(non_upper_case_globals)]

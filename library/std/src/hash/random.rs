@@ -10,7 +10,8 @@
 #[allow(deprecated)]
 use super::{BuildHasher, Hasher, SipHasher13};
 use crate::cell::Cell;
-use crate::{fmt, sys};
+use crate::fmt;
+use crate::sys::random::hashmap_random_keys;
 
 /// `RandomState` is the default state for [`HashMap`] types.
 ///
@@ -65,7 +66,7 @@ impl RandomState {
         // increment one of the seeds on every RandomState creation, giving
         // every corresponding HashMap a different iteration order.
         thread_local!(static KEYS: Cell<(u64, u64)> = {
-            Cell::new(sys::hashmap_random_keys())
+            Cell::new(hashmap_random_keys())
         });
 
         KEYS.with(|keys| {
