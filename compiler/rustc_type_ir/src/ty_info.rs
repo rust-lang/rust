@@ -5,7 +5,9 @@ use std::ops::Deref;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::fingerprint::Fingerprint;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{ExtendedHasher, GenericStableHasher, HashStable};
+use rustc_data_structures::stable_hasher::{
+    ExtendedHasher, GenericStableHasher, HashStable, StableHasher,
+};
 
 use crate::{DebruijnIndex, TypeFlags};
 
@@ -106,7 +108,10 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for WithCachedTypeInfo<T> {
             // We need to build the hash as if we cached it and then hash that hash, as
             // otherwise the hashes will differ between cached and non-cached mode.
             let stable_hash: Fingerprint = {
-                let mut hasher = GenericStableHasher::<H>::new();
+                // FIXME: Using the generic stable hasher creates a cache coherency issue
+                // so for now always use the `StableHasher` instead.
+                // let mut hasher = GenericStableHasher::<H>::new();
+                let mut hasher = StableHasher::new();
                 self.internee.hash_stable(hcx, &mut hasher);
                 hasher.finish()
             };
