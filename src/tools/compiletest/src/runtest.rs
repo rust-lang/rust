@@ -901,7 +901,7 @@ impl<'test> TestCx<'test> {
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
-            script_str.push_str("set architecture armv5\n");
+            script_str.push_str("set architecture armv6\n");
             script_str.push_str(&format!("set sysroot {}\n", tool_path));
             script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
             script_str.push_str("target remote :5039\n");
