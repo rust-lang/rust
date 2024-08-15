@@ -14,6 +14,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
+use span::Edition;
 use stdx::{never, panic_context};
 use triomphe::Arc;
 
@@ -114,7 +115,7 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let detail = match &goal.value.goal.data(Interner) {
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
-            db.trait_data(it.hir_trait_id()).name.display(db.upcast()).to_string()
+            db.trait_data(it.hir_trait_id()).name.display(db.upcast(), Edition::LATEST).to_string()
         }
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
         _ => "??".to_owned(),

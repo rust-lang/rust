@@ -51,6 +51,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
     let current_module = ctx.sema.scope(strukt.syntax())?.module();
+    let current_edition = current_module.krate().edition(ctx.db());
 
     let (field_name, field_ty, target) = match ctx.find_node_at_offset::<ast::RecordField>() {
         Some(field) => {
@@ -89,7 +90,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     methods.sort_by(|(a, _), (b, _)| a.cmp(b));
     for (name, method) in methods {
         let adt = ast::Adt::Struct(strukt.clone());
-        let name = name.display(ctx.db()).to_string();
+        let name = name.display(ctx.db(), current_edition).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
         let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
             continue;

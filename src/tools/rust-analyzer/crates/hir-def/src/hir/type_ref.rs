@@ -10,6 +10,7 @@ use hir_expand::{
     AstId,
 };
 use intern::{sym, Interned, Symbol};
+use span::Edition;
 use syntax::ast::{self, HasGenericArgs, HasName, IsString};
 
 use crate::{
@@ -419,18 +420,22 @@ impl ConstRef {
         param.default_val().map(|default| Self::from_const_arg(lower_ctx, Some(default)))
     }
 
-    pub fn display<'a>(&'a self, db: &'a dyn ExpandDatabase) -> impl fmt::Display + 'a {
-        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRef);
+    pub fn display<'a>(
+        &'a self,
+        db: &'a dyn ExpandDatabase,
+        edition: Edition,
+    ) -> impl fmt::Display + 'a {
+        struct Display<'a>(&'a dyn ExpandDatabase, &'a ConstRef, Edition);
         impl fmt::Display for Display<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self.1 {
                     ConstRef::Scalar(s) => s.fmt(f),
-                    ConstRef::Path(n) => n.display(self.0).fmt(f),
+                    ConstRef::Path(n) => n.display(self.0, self.2).fmt(f),
                     ConstRef::Complex(_) => f.write_str("{const}"),
                 }
             }
         }
-        Display(db, self)
+        Display(db, self, edition)
     }
 
     // We special case literals and single identifiers, to speed up things.

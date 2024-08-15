@@ -141,7 +141,8 @@ pub(crate) fn desugar_async_into_impl_future(
         ModuleDef::Trait(future_trait),
         ctx.config.import_path_config(),
     )?;
-    let trait_path = trait_path.display(ctx.db());
+    let edition = scope.krate().edition(ctx.db());
+    let trait_path = trait_path.display(ctx.db(), edition);
 
     acc.add(
         AssistId("desugar_async_into_impl_future", AssistKind::RefactorRewrite),

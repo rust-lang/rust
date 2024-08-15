@@ -411,7 +411,7 @@ fn compute_fuzzy_completion_order_key(
     cov_mark::hit!(certain_fuzzy_order_test);
     let import_name = match proposed_mod_path.segments().last() {
         // FIXME: nasty alloc, this is a hot path!
-        Some(name) => name.display_no_db().to_smolstr().to_ascii_lowercase(),
+        Some(name) => name.unescaped().display_no_db().to_smolstr().to_ascii_lowercase(),
         None => return usize::MAX,
     };
     match import_name.match_indices(user_input_lowercased).next() {

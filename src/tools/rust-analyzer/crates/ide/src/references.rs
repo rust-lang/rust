@@ -306,8 +306,9 @@ fn handle_control_flow_keywords(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = sema.parse_guess_edition(file_id);
-    let token =
-        file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword(Edition::CURRENT))?;
+    let edition =
+        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+    let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword(edition))?;
 
     let references = match token.kind() {
         T![fn] | T![return] | T![try] => highlight_related::highlight_exit_points(sema, token),

@@ -23,7 +23,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::FileId;
+use span::{Edition, FileId};
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -358,6 +358,7 @@ impl MirEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
+        edition: Edition,
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
@@ -370,7 +371,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast()),
+                            function_name.name.display(db.upcast(), edition),
                             func
                         )?;
                     }
@@ -415,7 +416,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db).with_closure_style(ClosureStyle::ClosureWithId)
+                    ty.display(db, edition).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -423,16 +424,17 @@ impl MirEvalError {
                 writeln!(
                     f,
                     "MIR lowering for function `{}` ({:?}) failed due:",
-                    function_name.name.display(db.upcast()),
+                    function_name.name.display(db.upcast(), edition),
                     func
                 )?;
-                err.pretty_print(f, db, span_formatter)?;
+                err.pretty_print(f, db, span_formatter, edition)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
                 MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
+                    edition,
                 )?;
             }
             MirEvalError::UndefinedBehavior(_)
@@ -2675,10 +2677,11 @@ impl Evaluator<'_> {
                 let db = self.db.upcast();
                 let loc = variant.lookup(db);
                 let enum_loc = loc.parent.lookup(db);
+                let edition = self.db.crate_graph()[self.crate_id].edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast()),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast()),
+                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),
+                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }

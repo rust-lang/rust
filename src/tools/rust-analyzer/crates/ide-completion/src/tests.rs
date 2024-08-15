@@ -17,6 +17,7 @@ mod item_list;
 mod pattern;
 mod predicate;
 mod proc_macros;
+mod raw_identifiers;
 mod record;
 mod special;
 mod type_pos;
@@ -105,22 +106,35 @@ pub(crate) fn completion_list_with_trigger_character(
     completion_list_with_config(TEST_CONFIG, ra_fixture, true, trigger_character)
 }
 
+fn completion_list_with_config_raw(
+    config: CompletionConfig,
+    ra_fixture: &str,
+    include_keywords: bool,
+    trigger_character: Option<char>,
+) -> Vec<CompletionItem> {
+    // filter out all but one built-in type completion for smaller test outputs
+    let items = get_all_items(config, ra_fixture, trigger_character);
+    items
+        .into_iter()
+        .filter(|it| it.kind != CompletionItemKind::BuiltinType || it.label == "u32")
+        .filter(|it| include_keywords || it.kind != CompletionItemKind::Keyword)
+        .filter(|it| include_keywords || it.kind != CompletionItemKind::Snippet)
+        .sorted_by_key(|it| (it.kind, it.label.clone(), it.detail.as_ref().map(ToOwned::to_owned)))
+        .collect()
+}
+
 fn completion_list_with_config(
     config: CompletionConfig,
     ra_fixture: &str,
     include_keywords: bool,
     trigger_character: Option<char>,
 ) -> String {
-    // filter out all but one built-in type completion for smaller test outputs
-    let items = get_all_items(config, ra_fixture, trigger_character);
-    let items = items
-        .into_iter()
-        .filter(|it| it.kind != CompletionItemKind::BuiltinType || it.label == "u32")
-        .filter(|it| include_keywords || it.kind != CompletionItemKind::Keyword)
-        .filter(|it| include_keywords || it.kind != CompletionItemKind::Snippet)
-        .sorted_by_key(|it| (it.kind, it.label.clone(), it.detail.as_ref().map(ToOwned::to_owned)))
-        .collect();
-    render_completion_list(items)
+    render_completion_list(completion_list_with_config_raw(
+        config,
+        ra_fixture,
+        include_keywords,
+        trigger_character,
+    ))
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.

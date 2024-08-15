@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 use base_db::SourceRootDatabase;
 use hir::{Crate, DescendPreference, ItemInNs, ModuleDef, Name, Semantics};
-use span::FileId;
+use span::{Edition, FileId};
 use syntax::{
     ast::{self, make},
     AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,
@@ -35,7 +35,7 @@ pub fn pick_token<T: AstToken>(mut tokens: TokenAtOffset<SyntaxToken>) -> Option
 }
 
 /// Converts the mod path struct into its ast representation.
-pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
+pub fn mod_path_to_ast(path: &hir::ModPath, edition: Edition) -> ast::Path {
     let _p = tracing::info_span!("mod_path_to_ast").entered();
 
     let mut segments = Vec::new();
@@ -50,11 +50,9 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
         hir::PathKind::Abs => is_abs = true,
     }
 
-    segments.extend(
-        path.segments().iter().map(|segment| {
-            make::path_segment(make::name_ref(&segment.display_no_db().to_smolstr()))
-        }),
-    );
+    segments.extend(path.segments().iter().map(|segment| {
+        make::path_segment(make::name_ref(&segment.display_no_db(edition).to_smolstr()))
+    }));
     make::path_from_segments(segments, is_abs)
 }
 

@@ -10,8 +10,8 @@ pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField)
         DiagnosticCode::RustcHardError("E0616"),
         format!(
             "field `{}` of `{}` is private",
-            d.field.name(ctx.sema.db).display(ctx.sema.db),
-            d.field.parent_def(ctx.sema.db).name(ctx.sema.db).display(ctx.sema.db)
+            d.field.name(ctx.sema.db).display(ctx.sema.db, ctx.edition),
+            d.field.parent_def(ctx.sema.db).name(ctx.sema.db).display(ctx.sema.db, ctx.edition)
         ),
         d.expr.map(|it| it.into()),
     )

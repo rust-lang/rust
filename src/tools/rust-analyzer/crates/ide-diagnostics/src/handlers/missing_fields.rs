@@ -11,7 +11,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, make},
-    AstNode, SyntaxNode, SyntaxNodePtr, ToSmolStr,
+    AstNode, Edition, SyntaxNode, SyntaxNodePtr, ToSmolStr,
 };
 use text_edit::TextEdit;
 
@@ -31,7 +31,7 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
     let mut message = String::from("missing structure fields:\n");
     for field in &d.missed_fields {
-        format_to!(message, "- {}\n", field.display(ctx.sema.db));
+        format_to!(message, "- {}\n", field.display(ctx.sema.db, ctx.edition));
     }
 
     let ptr = InFile::new(
@@ -134,8 +134,9 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
                         use_trivial_constructor(
                             ctx.sema.db,
-                            ide_db::helpers::mod_path_to_ast(&type_path),
+                            ide_db::helpers::mod_path_to_ast(&type_path, ctx.edition),
                             ty,
+                            ctx.edition,
                         )
                     })();
 
@@ -146,7 +147,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                     }
                 };
                 let field = make::record_expr_field(
-                    make::name_ref(&f.name(ctx.sema.db).display_no_db().to_smolstr()),
+                    make::name_ref(&f.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr()),
                     field_expr,
                 );
                 new_field_list.add_field(field.clone_for_update());
@@ -160,7 +161,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             let new_field_list = old_field_list.clone_for_update();
             for (f, _) in missing_fields.iter() {
                 let field = make::record_pat_field_shorthand(make::name_ref(
-                    &f.name(ctx.sema.db).display_no_db().to_smolstr(),
+                    &f.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr(),
                 ));
                 new_field_list.add_field(field.clone_for_update());
             }
@@ -169,9 +170,14 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     }
 }
 
-fn make_ty(ty: &hir::Type, db: &dyn HirDatabase, module: hir::Module) -> ast::Type {
+fn make_ty(
+    ty: &hir::Type,
+    db: &dyn HirDatabase,
+    module: hir::Module,
+    edition: Edition,
+) -> ast::Type {
     let ty_str = match ty.as_adt() {
-        Some(adt) => adt.name(db).display(db.upcast()).to_string(),
+        Some(adt) => adt.name(db).display(db.upcast(), edition).to_string(),
         None => {
             ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_owned())
         }
@@ -223,13 +229,13 @@ fn get_default_constructor(
 
     let famous_defs = FamousDefs(&ctx.sema, krate);
     if has_new_func {
-        Some(make::ext::expr_ty_new(&make_ty(ty, ctx.sema.db, module)))
+        Some(make::ext::expr_ty_new(&make_ty(ty, ctx.sema.db, module, ctx.edition)))
     } else if ty.as_adt() == famous_defs.core_option_Option()?.ty(ctx.sema.db).as_adt() {
         Some(make::ext::option_none())
     } else if !ty.is_array()
         && ty.impls_trait(ctx.sema.db, famous_defs.core_default_Default()?, &[])
     {
-        Some(make::ext::expr_ty_default(&make_ty(ty, ctx.sema.db, module)))
+        Some(make::ext::expr_ty_default(&make_ty(ty, ctx.sema.db, module, ctx.edition)))
     } else {
         None
     }

@@ -8630,3 +8630,75 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn raw_keyword_different_editions() {
+    check(
+        r#"
+//- /lib1.rs crate:with_edition_2015 edition:2015
+pub fn dyn() {}
+
+//- /lib2.rs crate:with_edition_2018 edition:2018 deps:with_edition_2015 new_source_root:local
+fn foo() {
+    with_edition_2015::r#dyn$0();
+}
+    "#,
+        expect![[r#"
+            *r#dyn*
+
+            ```rust
+            with_edition_2015
+            ```
+
+            ```rust
+            pub fn r#dyn()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /lib1.rs crate:with_edition_2018 edition:2018
+pub fn r#dyn() {}
+
+//- /lib2.rs crate:with_edition_2015 edition:2015 deps:with_edition_2018 new_source_root:local
+fn foo() {
+    with_edition_2018::dyn$0();
+}
+    "#,
+        expect![[r#"
+            *dyn*
+
+            ```rust
+            with_edition_2018
+            ```
+
+            ```rust
+            pub fn dyn()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+//- /lib1.rs crate:escaping_needlessly edition:2015
+pub fn r#dyn() {}
+
+//- /lib2.rs crate:dependent edition:2015 deps:escaping_needlessly new_source_root:local
+fn foo() {
+    escaping_needlessly::dyn$0();
+}
+    "#,
+        expect![[r#"
+            *dyn*
+
+            ```rust
+            escaping_needlessly
+            ```
+
+            ```rust
+            pub fn dyn()
+            ```
+        "#]],
+    );
+}

@@ -9,6 +9,7 @@ use la_arena::Idx;
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use span::Edition;
 use stdx::format_to;
 use syntax::ast;
 
@@ -706,7 +707,7 @@ impl ItemScope {
             format_to!(
                 buf,
                 "{}:",
-                name.map_or("_".to_owned(), |name| name.display(db).to_string())
+                name.map_or("_".to_owned(), |name| name.display(db, Edition::LATEST).to_string())
             );
 
             if let Some((.., i)) = def.types {

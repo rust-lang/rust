@@ -19,7 +19,8 @@ pub(crate) fn complete_extern_crate(acc: &mut Completions, ctx: &CompletionConte
         let mut item = CompletionItem::new(
             CompletionItemKind::SymbolKind(SymbolKind::Module),
             ctx.source_range(),
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         );
         item.set_documentation(module.docs(ctx.db));
 

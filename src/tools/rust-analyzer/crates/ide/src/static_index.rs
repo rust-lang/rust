@@ -10,6 +10,7 @@ use ide_db::{
     helpers::get_definition,
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
 };
+use span::Edition;
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
 use crate::inlay_hints::InlayFieldsToResolve;
@@ -116,7 +117,11 @@ fn documentation_for_definition(
         _ => None,
     };
 
-    def.docs(sema.db, famous_defs.as_ref())
+    def.docs(
+        sema.db,
+        famous_defs.as_ref(),
+        def.krate(sema.db).map(|it| it.edition(sema.db)).unwrap_or(Edition::CURRENT),
+    )
 }
 
 impl StaticIndex<'_> {
@@ -161,6 +166,8 @@ impl StaticIndex<'_> {
         // hovers
         let sema = hir::Semantics::new(self.db);
         let tokens_or_nodes = sema.parse_guess_edition(file_id).syntax().clone();
+        let edition =
+            sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
         let tokens = tokens_or_nodes.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),
@@ -201,17 +208,20 @@ impl StaticIndex<'_> {
                         &node,
                         None,
                         &hover_config,
+                        edition,
                     )),
                     definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),
                     references: vec![],
                     moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
-                    display_name: def.name(self.db).map(|name| name.display(self.db).to_string()),
+                    display_name: def
+                        .name(self.db)
+                        .map(|name| name.display(self.db, edition).to_string()),
                     enclosing_moniker: current_crate
                         .zip(def.enclosing_definition(self.db))
                         .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
-                    signature: Some(def.label(self.db)),
+                    signature: Some(def.label(self.db, edition)),
                     kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);

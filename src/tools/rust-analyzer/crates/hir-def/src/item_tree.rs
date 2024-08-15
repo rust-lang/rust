@@ -51,7 +51,7 @@ use la_arena::{Arena, Idx, RawIdx};
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{AstIdNode, FileAstId, SyntaxContextId};
+use span::{AstIdNode, Edition, FileAstId, SyntaxContextId};
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 use triomphe::Arc;
@@ -199,8 +199,8 @@ impl ItemTree {
         Attrs::filter(db, krate, self.raw_attrs(of).clone())
     }
 
-    pub fn pretty_print(&self, db: &dyn DefDatabase) -> String {
-        pretty::print_item_tree(db, self)
+    pub fn pretty_print(&self, db: &dyn DefDatabase, edition: Edition) -> String {
+        pretty::print_item_tree(db, self, edition)
     }
 
     fn data(&self) -> &ItemTreeData {
