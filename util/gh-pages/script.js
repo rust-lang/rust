@@ -435,6 +435,16 @@ function updateVersionFilters(elem, skipLintsFiltering) {
         console.error(`Failed to get version number from "${value}"`);
         return;
     }
+
+    const counter = document.querySelector("#version-filter .badge");
+    let count = 0;
+    onEachLazy(document.querySelectorAll("#version-filter input"), el => {
+        if (el.value.trim().length !== 0) {
+            count += 1;
+        }
+    });
+    counter.innerText = count;
+
     const comparisonKind = elem.getAttribute("data-value");
     if (filters.version_filter[comparisonKind] !== value) {
         filters.version_filter[comparisonKind] = value;
@@ -455,6 +465,7 @@ function clearVersionFilters() {
             filters.version_filter[comparisonKind] = null;
         }
     });
+    document.querySelector("#version-filter .badge").innerText = 0;
     if (needsUpdate) {
         filters.filterLints();
     }
@@ -462,6 +473,7 @@ function clearVersionFilters() {
 
 function resetGroupsToDefault() {
     let needsUpdate = false;
+    let count = 0;
 
     onEachLazy(document.querySelectorAll("#lint-groups-selector input"), el => {
         const key = el.getAttribute("data-value");
@@ -471,7 +483,11 @@ function resetGroupsToDefault() {
             el.checked = value;
             needsUpdate = true;
         }
+        if (value) {
+            count += 1;
+        }
     });
+    document.querySelector("#lint-groups .badge").innerText = count;
     if (needsUpdate) {
         filters.filterLints();
     }
@@ -592,6 +608,7 @@ function parseURLFilters() {
                     for (const [kind, value] of settings) {
                         const elem = document.querySelector(
                             `#version-filter input[data-value="${VERSIONS_CORRESPONDANCE[kind]}"]`);
+                        elem.value = value;
                         updateVersionFilters(elem, true);
                     }
                 }
