@@ -229,7 +229,7 @@ impl<'psess, 'src> TokenTreesReader<'psess, 'src> {
             } else {
                 let this_spacing = if next_tok.is_punct() {
                     Spacing::Joint
-                } else if next_tok.kind == token::Eof {
+                } else if next_tok == token::Eof {
                     Spacing::Alone
                 } else {
                     Spacing::JointHidden
