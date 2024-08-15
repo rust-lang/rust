@@ -168,10 +168,6 @@ macro_rules! mutability_dependent {
             walk_path(self, p);
         }
 
-        fn visit_qself(&mut self, qs: &mut Option<P<QSelf>>) {
-            walk_qself(self, qs);
-        }
-
         fn visit_macro_def(&mut self, def: &mut MacroDef) {
             walk_macro_def(self, def);
         }
@@ -422,6 +418,11 @@ macro_rules! make_ast_visitor {
 
             fn visit_enum_def(&mut self, enum_definition: ref_t!(EnumDef)) -> result!() {
                 walk_enum_def(self, enum_definition)
+            }
+
+            // TODO: Ask if this Option<> is intentional
+            fn visit_qself(&mut self, qs: ref_t!(Option<P<QSelf>>)) -> result!() {
+                walk_qself(self, qs)
             }
 
             // FIXME: remove _ on ident if mut
@@ -749,13 +750,13 @@ pub mod visit {
                     body,
                     from_glob: _,
                 }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(path, *id));
                     visit_opt!(visitor, visit_ident, *rename);
                     visit_opt!(visitor, visit_block, body);
                 }
                 ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(prefix, *id));
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
@@ -837,7 +838,7 @@ pub mod visit {
                 try_visit!(visitor.visit_fn_decl(decl));
             }
             TyKind::Path(maybe_qself, path) => {
-                try_visit!(walk_qself(visitor, maybe_qself));
+                try_visit!(visitor.visit_qself(maybe_qself));
                 try_visit!(visitor.visit_path(path, *id));
             }
             TyKind::Pat(ty, pat) => {
@@ -962,16 +963,16 @@ pub mod visit {
         let Pat { id, kind, span: _, tokens: _ } = pattern;
         match kind {
             PatKind::TupleStruct(opt_qself, path, elems) => {
-                try_visit!(walk_qself(visitor, opt_qself));
+                try_visit!(visitor.visit_qself(opt_qself));
                 try_visit!(visitor.visit_path(path, *id));
                 walk_list!(visitor, visit_pat, elems);
             }
             PatKind::Path(opt_qself, path) => {
-                try_visit!(walk_qself(visitor, opt_qself));
+                try_visit!(visitor.visit_qself(opt_qself));
                 try_visit!(visitor.visit_path(path, *id))
             }
             PatKind::Struct(opt_qself, path, fields, _rest) => {
-                try_visit!(walk_qself(visitor, opt_qself));
+                try_visit!(visitor.visit_qself(opt_qself));
                 try_visit!(visitor.visit_path(path, *id));
                 walk_list!(visitor, visit_pat_field, fields);
             }
@@ -1209,7 +1210,7 @@ pub mod visit {
                     body,
                     from_glob: _,
                 }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(path, *id));
                     visit_opt!(visitor, visit_ident, *rename);
                     visit_opt!(visitor, visit_block, body);
@@ -1220,7 +1221,7 @@ pub mod visit {
                     suffixes,
                     body,
                 }) => {
-                    try_visit!(walk_qself(visitor, qself));
+                    try_visit!(visitor.visit_qself(qself));
                     try_visit!(visitor.visit_path(prefix, id));
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
@@ -1338,7 +1339,7 @@ pub mod visit {
         visitor: &mut V,
         InlineAsmSym { id, qself, path }: &'a InlineAsmSym,
     ) -> V::Result {
-        try_visit!(walk_qself(visitor, qself));
+        try_visit!(visitor.visit_qself(qself));
         visitor.visit_path(path, *id)
     }
 
@@ -1370,7 +1371,7 @@ pub mod visit {
             }
             ExprKind::Struct(se) => {
                 let StructExpr { qself, path, fields, rest } = &**se;
-                try_visit!(walk_qself(visitor, qself));
+                try_visit!(visitor.visit_qself(qself));
                 try_visit!(visitor.visit_path(path, *id));
                 walk_list!(visitor, visit_expr_field, fields);
                 match rest {
@@ -1479,7 +1480,7 @@ pub mod visit {
             }
             ExprKind::Underscore => {}
             ExprKind::Path(maybe_qself, path) => {
-                try_visit!(walk_qself(visitor, maybe_qself));
+                try_visit!(visitor.visit_qself(maybe_qself));
                 try_visit!(visitor.visit_path(path, *id));
             }
             ExprKind::Break(opt_label, opt_expr) => {
