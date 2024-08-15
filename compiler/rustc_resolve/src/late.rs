@@ -2039,6 +2039,20 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
         }
+        match candidate {
+            LifetimeElisionCandidate::Missing(missing) => match res {
+                LifetimeRes::Static => tracing::warn!(?missing, "static"),
+                LifetimeRes::Param { param, binder } => {
+                    tracing::warn!(?missing, ?param, ?binder, "named")
+                }
+                LifetimeRes::Fresh { .. }
+                | LifetimeRes::Infer
+                | LifetimeRes::Error
+                | LifetimeRes::ElidedAnchor { .. } => {}
+            },
+            LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {}
+        }
+
         match res {
             LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
