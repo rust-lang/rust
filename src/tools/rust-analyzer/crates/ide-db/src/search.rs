@@ -503,6 +503,20 @@ impl<'a> FindUsages<'a> {
                 if !search_range.contains_inclusive(offset) {
                     return None;
                 }
+                // If this is not a word boundary, that means this is only part of an identifier,
+                // so it can't be what we're looking for.
+                // This speeds up short identifiers significantly.
+                if text[..idx]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|ch| matches!(ch, 'A'..='Z' | 'a'..='z' | '_'))
+                    || text[idx + finder.needle().len()..]
+                        .chars()
+                        .next()
+                        .is_some_and(|ch| matches!(ch, 'A'..='Z' | 'a'..='z' | '_' | '0'..='9'))
+                {
+                    return None;
+                }
                 Some(offset)
             })
         }
