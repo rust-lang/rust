@@ -465,6 +465,12 @@ impl Location {
     }
 }
 
+impl From<Span> for Location {
+    fn from(span: Span) -> Self {
+        Location(span)
+    }
+}
+
 /// Reference to a place used to represent a partial projection.
 pub struct PlaceRef<'a> {
     pub local: Local,
