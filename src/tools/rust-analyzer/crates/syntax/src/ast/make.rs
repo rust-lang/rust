@@ -1152,12 +1152,13 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
 }
 
 pub mod tokens {
-    use once_cell::sync::Lazy;
+    use std::sync::LazyLock;
+
     use parser::Edition;
 
     use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
 
-    pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
+    pub(super) static SOURCE_FILE: LazyLock<Parse<SourceFile>> = LazyLock::new(|| {
         SourceFile::parse(
             "const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, { let _ @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
         )

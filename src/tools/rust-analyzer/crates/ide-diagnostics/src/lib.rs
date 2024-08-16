@@ -75,6 +75,8 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
+use std::sync::LazyLock;
+
 use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
@@ -86,7 +88,6 @@ use ide_db::{
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
-use once_cell::sync::Lazy;
 use stdx::never;
 use syntax::{
     ast::{self, AstNode},
@@ -512,11 +513,11 @@ pub fn full_diagnostics(
 
 // `__RA_EVERY_LINT` is a fake lint group to allow every lint in proc macros
 
-static RUSTC_LINT_GROUPS_DICT: Lazy<FxHashMap<&str, Vec<&str>>> =
-    Lazy::new(|| build_group_dict(DEFAULT_LINT_GROUPS, &["warnings", "__RA_EVERY_LINT"], ""));
+static RUSTC_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
+    LazyLock::new(|| build_group_dict(DEFAULT_LINT_GROUPS, &["warnings", "__RA_EVERY_LINT"], ""));
 
-static CLIPPY_LINT_GROUPS_DICT: Lazy<FxHashMap<&str, Vec<&str>>> =
-    Lazy::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
+static CLIPPY_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
+    LazyLock::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
 
 fn build_group_dict(
     lint_group: &'static [LintGroup],

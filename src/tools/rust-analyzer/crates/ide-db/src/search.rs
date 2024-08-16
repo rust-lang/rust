@@ -4,6 +4,7 @@
 //! get a super-set of matches. Then, we confirm each match using precise
 //! name resolution.
 
+use std::cell::LazyCell;
 use std::mem;
 
 use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
@@ -12,7 +13,6 @@ use hir::{
     InFile, InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
-use once_cell::unsync::Lazy;
 use parser::SyntaxKind;
 use rustc_hash::FxHashMap;
 use span::EditionedFileId;
@@ -543,7 +543,7 @@ impl<'a> FindUsages<'a> {
 
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
             self.sema.db.unwind_if_cancelled();
-            let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+            let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
             for offset in match_indices(&text, finder, search_range) {
@@ -589,7 +589,7 @@ impl<'a> FindUsages<'a> {
 
             for (text, file_id, search_range) in scope_files(sema, &scope) {
                 self.sema.db.unwind_if_cancelled();
-                let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+                let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in match_indices(&text, finder, search_range) {
                     for name_ref in
@@ -641,7 +641,7 @@ impl<'a> FindUsages<'a> {
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
-                let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
+                let tree = LazyCell::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");
 
                 for offset in match_indices(&text, finder, search_range) {
