@@ -1,3 +1,8 @@
+// The unsupported target error (E0570) does not trigger on aarch64 or arm targets
+// -> so we skip this test for them
+//@ ignore-aarch64
+//@ ignore-arm
+
 // gate-test-abi_c_cmse_nonsecure_call
 fn main() {
     let non_secure_function = unsafe {
