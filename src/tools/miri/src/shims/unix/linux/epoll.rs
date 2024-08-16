@@ -12,7 +12,7 @@ use crate::*;
 struct Epoll {
     /// A map of EpollEventInterests registered under this epoll instance.
     /// Each entry is differentiated using FdId and file descriptor value.
-    interest_list: BTreeMap<(FdId, i32), Rc<RefCell<EpollEventInterest>>>,
+    interest_list: RefCell<BTreeMap<(FdId, i32), Rc<RefCell<EpollEventInterest>>>>,
     /// A map of EpollEventInstance that will be returned when `epoll_wait` is called.
     /// Similar to interest_list, the entry is also differentiated using FdId
     /// and file descriptor value.
@@ -226,18 +226,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Check if epfd is a valid epoll file descriptor.
-        let Some(epfd) = this.machine.fds.get_ref(epfd_value) else {
+        let Some(epfd) = this.machine.fds.get(epfd_value) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let mut binding = epfd.borrow_mut();
-        let epoll_file_description = &mut binding
-            .downcast_mut::<Epoll>()
+        let epoll_file_description = epfd
+            .downcast::<Epoll>()
             .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
-        let interest_list = &mut epoll_file_description.interest_list;
+        let mut interest_list = epoll_file_description.interest_list.borrow_mut();
         let ready_list = &epoll_file_description.ready_list;
 
-        let Some(file_descriptor) = this.machine.fds.get_ref(fd) else {
+        let Some(file_descriptor) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         let id = file_descriptor.get_id();
@@ -399,16 +398,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("epoll_wait: timeout value can only be 0");
         }
 
-        let Some(epfd) = this.machine.fds.get_ref(epfd) else {
+        let Some(epfd) = this.machine.fds.get(epfd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let mut binding = epfd.borrow_mut();
-        let epoll_file_description = &mut binding
-            .downcast_mut::<Epoll>()
+        let epoll_file_description = epfd
+            .downcast::<Epoll>()
             .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
-        let binding = epoll_file_description.get_ready_list();
-        let mut ready_list = binding.borrow_mut();
+        let ready_list = epoll_file_description.get_ready_list();
+        let mut ready_list = ready_list.borrow_mut();
         let mut num_of_events: i32 = 0;
         let mut array_iter = this.project_array_fields(&event)?;
 

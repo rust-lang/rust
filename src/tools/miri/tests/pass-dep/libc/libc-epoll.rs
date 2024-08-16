@@ -19,6 +19,7 @@ fn main() {
     test_socketpair_read();
 }
 
+#[track_caller]
 fn check_epoll_wait<const N: usize>(
     epfd: i32,
     mut expected_notifications: Vec<(u32, u64)>,
@@ -28,6 +29,9 @@ fn check_epoll_wait<const N: usize>(
     let maxsize = N;
     let array_ptr = array.as_mut_ptr();
     let res = unsafe { libc::epoll_wait(epfd, array_ptr, maxsize.try_into().unwrap(), 0) };
+    if res < 0 {
+        panic!("epoll_wait failed: {}", std::io::Error::last_os_error());
+    }
     assert_eq!(res, expected_notifications.len().try_into().unwrap());
     let slice = unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
     let mut return_events = slice.iter();
