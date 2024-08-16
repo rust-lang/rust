@@ -983,6 +983,7 @@ pub mod consts {
     /// * `"unix"`
     /// * `"windows"`
     /// * `"itron"`
+    /// * `"wasm"`
     /// * `""`
     ///
     /// </details>
@@ -1041,18 +1042,7 @@ pub mod consts {
     /// Specifies the filename suffix, if any, used for shared libraries on this platform.
     /// An example value may be: `".so"`, `".elf"`, or `".dll"`.
     ///
-    /// <details><summary>Full list of possible values</summary>
-    ///
-    /// * `".so"`
-    /// * `".dylib"`
-    /// * `".dll"`
-    /// * `".sgxs"`
-    /// * `".a"`
-    /// * `".elf"`
-    /// * `".wasm"`
-    /// * `""` (an empty string)
-    ///
-    /// </details>
+    /// The possible values are identical to those of [`DLL_EXTENSION`], but with the leading period included.
     #[stable(feature = "env", since = "1.0.0")]
     pub const DLL_SUFFIX: &str = os::DLL_SUFFIX;
 
@@ -1077,17 +1067,7 @@ pub mod consts {
     /// Specifies the filename suffix, if any, used for executable binaries on this platform.
     /// An example value may be: `".exe"`, or `".efi"`.
     ///
-    /// <details><summary>Full list of possible values</summary>
-    ///
-    /// * `".exe"`
-    /// * `".efi"`
-    /// * `".js"`
-    /// * `".sgxs"`
-    /// * `".elf"`
-    /// * `".wasm"`
-    /// * `""` (an empty string)
-    ///
-    /// </details>
+    /// The possible values are identical to those of [`EXE_EXTENSION`], but with the leading period included.
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_SUFFIX: &str = os::EXE_SUFFIX;
 
