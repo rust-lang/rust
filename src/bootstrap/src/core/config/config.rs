@@ -2736,11 +2736,10 @@ impl Config {
 
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_commit(
-            Some(&self.src),
-            &self.git_config(),
-            &[self.src.join("compiler"), self.src.join("library")],
-        )
+        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[
+            self.src.join("compiler"),
+            self.src.join("library"),
+        ])
         .unwrap();
         if commit.is_empty() {
             println!("ERROR: could not find commit hash for downloading rustc");

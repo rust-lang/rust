@@ -241,12 +241,12 @@ fn ci_rustc_if_unchanged_logic() {
     let compiler_path = build.src.join("compiler");
     let library_path = build.src.join("compiler");
 
-    let commit = get_closest_merge_commit(
-        Some(&builder.config.src),
-        &builder.config.git_config(),
-        &[compiler_path.clone(), library_path.clone()],
-    )
-    .unwrap();
+    let commit =
+        get_closest_merge_commit(Some(&builder.config.src), &builder.config.git_config(), &[
+            compiler_path.clone(),
+            library_path.clone(),
+        ])
+        .unwrap();
 
     let has_changes = !helpers::git(Some(&builder.src))
         .args(["diff-index", "--quiet", &commit])
