@@ -14,7 +14,7 @@ use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 fn parse(config: &str) -> Config {
     Config::parse_inner(
         Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
-        |&_| toml::from_str(&config).unwrap(),
+        |&_| toml::from_str(&config),
     )
 }
 
@@ -151,7 +151,6 @@ runner = "x86_64-runner"
 
                 "#,
             )
-            .unwrap()
         },
     );
     assert_eq!(config.change_id, Some(1), "setting top-level value");
@@ -208,13 +207,13 @@ fn override_toml_duplicate() {
             "--set=change-id=1".to_owned(),
             "--set=change-id=2".to_owned(),
         ]),
-        |&_| toml::from_str("change-id = 0").unwrap(),
+        |&_| toml::from_str("change-id = 0"),
     );
 }
 
 #[test]
 fn profile_user_dist() {
-    fn get_toml(file: &Path) -> TomlConfig {
+    fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
             if file.ends_with("config.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
                 "profile = \"user\"".to_owned()
@@ -223,9 +222,7 @@ fn profile_user_dist() {
                 std::fs::read_to_string(file).unwrap()
             };
 
-        toml::from_str(&contents)
-            .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            .unwrap()
+        toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
     }
     Config::parse_inner(Flags::parse(&["check".to_owned()]), get_toml);
 }
