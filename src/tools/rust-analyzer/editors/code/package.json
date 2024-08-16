@@ -330,14 +330,6 @@
                         "default": false,
                         "type": "boolean"
                     },
-                    "rust-analyzer.discoverProjectRunner": {
-                        "markdownDescription": "Sets the extension responsible for determining which extension the rust-analyzer extension uses to generate `rust-project.json` files. This should should only be used\n if a build system like Buck or Bazel is also in use.",
-                        "default": null,
-                        "type": [
-                            "null",
-                            "string"
-                        ]
-                    },
                     "rust-analyzer.showUnlinkedFileNotification": {
                         "markdownDescription": "Whether to show a notification for unlinked files asking the user to add the corresponding Cargo.toml to the linked projects setting.",
                         "default": true,
