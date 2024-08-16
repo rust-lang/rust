@@ -62,9 +62,10 @@ pub struct EpollEventInterest {
 
 /// EpollReadyEvents reflects the readiness of a file description.
 pub struct EpollReadyEvents {
-    /// The associated file is available for read(2) operations.
+    /// The associated file is available for read(2) operations, in the sense that a read will not block.
+    /// (I.e., returning EOF is considered "ready".)
     pub epollin: bool,
-    /// The associated file is available for write(2) operations.
+    /// The associated file is available for write(2) operations, in the sense that a write will not block.
     pub epollout: bool,
     /// Stream socket peer closed connection, or shut down writing
     /// half of connection.
