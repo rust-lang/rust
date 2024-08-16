@@ -2612,8 +2612,20 @@ pub struct ElidedLifetimesInPaths {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_elided_lifetime_static)]
-pub struct ElidedIsStatic {}
+pub enum ElidedNamedLifetime {
+    #[diag(lint_elided_named_lifetime)]
+    Static {
+        #[label(lint_label_static)]
+        elided: Span,
+    },
+    #[diag(lint_elided_named_lifetime)]
+    Param {
+        #[label(lint_label_this)]
+        elided: Span,
+        #[label(lint_label_that)]
+        param: Span,
+    },
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]

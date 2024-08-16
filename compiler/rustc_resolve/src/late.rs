@@ -2039,25 +2039,38 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if let Some(prev_res) = self.r.lifetimes_res_map.insert(id, res) {
             panic!("lifetime {id:?} resolved multiple times ({prev_res:?} before, {res:?} now)")
         }
+
         match candidate {
-            LifetimeElisionCandidate::Missing(missing) => match res {
-                LifetimeRes::Static => {
-                    self.r.lint_buffer.buffer_lint(
-                        lint::builtin::ELIDED_NAMED_LIFETIMES,
-                        missing.id,
-                        missing.span,
-                        BuiltinLintDiag::ElidedIsStatic {},
-                    );
-                    tracing::warn!(?missing, "static")
+            LifetimeElisionCandidate::Missing(missing) => {
+                // FIXME: ICEs otherwise
+                if missing.kind != MissingLifetimeKind::Ampersand {
+                    match res {
+                        LifetimeRes::Static => {
+                            self.r.lint_buffer.buffer_lint(
+                                lint::builtin::ELIDED_NAMED_LIFETIMES,
+                                missing.id,
+                                missing.span,
+                                BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
+                            );
+                        }
+                        LifetimeRes::Param { param, binder: _ } => {
+                            self.r.lint_buffer.buffer_lint(
+                                lint::builtin::ELIDED_NAMED_LIFETIMES,
+                                missing.id,
+                                missing.span,
+                                BuiltinLintDiag::ElidedIsParam {
+                                    elided: missing.span,
+                                    param: self.r.tcx().source_span(param),
+                                },
+                            );
+                        }
+                        LifetimeRes::Fresh { .. }
+                        | LifetimeRes::Infer
+                        | LifetimeRes::Error
+                        | LifetimeRes::ElidedAnchor { .. } => {}
+                    }
                 }
-                LifetimeRes::Param { param, binder } => {
-                    tracing::warn!(?missing, ?param, ?binder, "named")
-                }
-                LifetimeRes::Fresh { .. }
-                | LifetimeRes::Infer
-                | LifetimeRes::Error
-                | LifetimeRes::ElidedAnchor { .. } => {}
-            },
+            }
             LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {}
         }
 
