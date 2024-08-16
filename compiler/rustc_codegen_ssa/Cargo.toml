@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-ar_archive_writer = "0.4.0"
+ar_archive_writer = { git = 'https://github.com/ChrisDenton/ar_archive_writer.git', branch = "rename2" }
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
 cc = "1.0.90"
@@ -52,7 +52,17 @@ libc = "0.2.50"
 [dependencies.object]
 version = "0.36.2"
 default-features = false
-features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
+features = [
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
+    "xcoff",
+    "unaligned",
+    "archive",
+    "write",
+    "wasm",
+]
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.52.0"
