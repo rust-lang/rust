@@ -19,6 +19,12 @@ fn sysv(f: extern "sysv64" fn(usize, ...)) {
 fn win(f: extern "win64" fn(usize, ...)) {
     f(22, 44);
 }
+#[cfg(any(target_arch = "arm",
+            target_arch = "aarch64",
+            target_arch = "riscv32",
+            target_arch = "riscv64",
+            target_arch = "x86",
+            target_arch = "x86_64"))]
 fn efiapi(f: extern "efiapi" fn(usize, ...)) {
     f(22, 44);
 }
