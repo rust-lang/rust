@@ -2042,10 +2042,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
         match candidate {
             LifetimeElisionCandidate::Missing(missing) => {
-                // FIXME: ICEs otherwise
-                if missing.kind != MissingLifetimeKind::Ampersand {
-                    match res {
-                        LifetimeRes::Static => {
+                debug_assert_eq!(id, missing.id);
+                match res {
+                    LifetimeRes::Static => {
+                        // FIXME: ICEs otherwise
+                        if missing.kind != MissingLifetimeKind::Ampersand {
                             self.r.lint_buffer.buffer_lint(
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
                                 missing.id,
@@ -2053,22 +2054,25 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
                             );
                         }
-                        LifetimeRes::Param { param, binder: _ } => {
-                            self.r.lint_buffer.buffer_lint(
-                                lint::builtin::ELIDED_NAMED_LIFETIMES,
-                                missing.id,
-                                missing.span,
-                                BuiltinLintDiag::ElidedIsParam {
-                                    elided: missing.span,
-                                    param: self.r.tcx().source_span(param),
-                                },
-                            );
-                        }
-                        LifetimeRes::Fresh { .. }
-                        | LifetimeRes::Infer
-                        | LifetimeRes::Error
-                        | LifetimeRes::ElidedAnchor { .. } => {}
                     }
+                    LifetimeRes::Param { param, binder } => {
+                        self.r.lint_buffer.buffer_lint(
+                            lint::builtin::ELIDED_NAMED_LIFETIMES,
+                            // HACK: we can't use `missing.id` instead of `binder` here,
+                            //       because for `missing.kind == Ampersand` it is a "fake" node that gets overlooked and its lints do not end up emitted.
+                            //       Alternatively, it might be possible to convert `param` to `NodeId` and use that instead.
+                            binder,
+                            missing.span,
+                            BuiltinLintDiag::ElidedIsParam {
+                                elided: missing.span,
+                                param: self.r.tcx().source_span(param),
+                            },
+                        );
+                    }
+                    LifetimeRes::Fresh { .. }
+                    | LifetimeRes::Infer
+                    | LifetimeRes::Error
+                    | LifetimeRes::ElidedAnchor { .. } => {}
                 }
             }
             LifetimeElisionCandidate::Ignore | LifetimeElisionCandidate::Named => {}
