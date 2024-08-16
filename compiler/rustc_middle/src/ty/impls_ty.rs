@@ -35,7 +35,11 @@ where
                 return hash;
             }
 
-            let mut hasher = GenericStableHasher::<H>::new();
+            // FIXME: This caching doesn't work with a generic stable hasher.
+            // We therefor force the use of `StableHasher`. We should figure out
+            // a way to have to either cache for each hasher or only cache with
+            // the primary `StableHasher` hasher.
+            let mut hasher = StableHasher::new();
             self[..].hash_stable(hcx, &mut hasher);
 
             let hash: Fingerprint = hasher.finish();
