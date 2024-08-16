@@ -8,7 +8,6 @@ run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/macos-deployment-target/Makefile
-run-make/reproducible-build/Makefile
 run-make/split-debuginfo/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/translation/Makefile
