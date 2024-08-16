@@ -878,27 +878,6 @@ crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
 
 This option does not take effect until rust-analyzer is restarted.
 --
-[[rust-analyzer.rustfmt.extraArgs]]rust-analyzer.rustfmt.extraArgs (default: `[]`)::
-+
---
-Additional arguments to `rustfmt`.
---
-[[rust-analyzer.rustfmt.overrideCommand]]rust-analyzer.rustfmt.overrideCommand (default: `null`)::
-+
---
-Advanced option, fully override the command rust-analyzer uses for
-formatting. This should be the equivalent of `rustfmt` here, and
-not that of `cargo fmt`. The file contents will be passed on the
-standard input and the formatted result will be read from the
-standard output.
---
-[[rust-analyzer.rustfmt.rangeFormatting.enable]]rust-analyzer.rustfmt.rangeFormatting.enable (default: `false`)::
-+
---
-Enables the use of rustfmt's unstable range formatting command for the
-`textDocument/rangeFormatting` request. The rustfmt option is unstable and only
-available on a nightly build.
---
 [[rust-analyzer.semanticHighlighting.doc.comment.inject.enable]]rust-analyzer.semanticHighlighting.doc.comment.inject.enable (default: `true`)::
 +
 --

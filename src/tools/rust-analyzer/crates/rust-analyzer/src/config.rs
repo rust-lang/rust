@@ -294,18 +294,6 @@ config_data! {
         /// This option does not take effect until rust-analyzer is restarted.
         rustc_source: Option<String> = None,
 
-        /// Additional arguments to `rustfmt`.
-        rustfmt_extraArgs: Vec<String>               = vec![],
-        /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting. This should be the equivalent of `rustfmt` here, and
-        /// not that of `cargo fmt`. The file contents will be passed on the
-        /// standard input and the formatted result will be read from the
-        /// standard output.
-        rustfmt_overrideCommand: Option<Vec<String>> = None,
-        /// Enables the use of rustfmt's unstable range formatting command for the
-        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
-        /// available on a nightly build.
-        rustfmt_rangeFormatting_enable: bool = false,
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
         ///
@@ -439,6 +427,18 @@ config_data! {
 config_data! {
     workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
 
+        /// Additional arguments to `rustfmt`.
+        rustfmt_extraArgs: Vec<String>               = vec![],
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
+        rustfmt_overrideCommand: Option<Vec<String>> = None,
+        /// Enables the use of rustfmt's unstable range formatting command for the
+        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
+        /// available on a nightly build.
+        rustfmt_rangeFormatting_enable: bool = false,
 
     }
 }
@@ -775,7 +775,7 @@ pub struct Config {
     user_config_path: VfsPath,
 
     /// Config node whose values apply to **every** Rust project.
-    user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
+    user_config: Option<(GlobalWorkspaceLocalConfigInput, ConfigErrors)>,
 
     ratoml_file: FxHashMap<SourceRootId, (RatomlFile, ConfigErrors)>,
 
@@ -825,13 +825,13 @@ impl Config {
             if let Ok(table) = toml::from_str(&change) {
                 let mut toml_errors = vec![];
                 validate_toml_table(
-                    GlobalLocalConfigInput::FIELDS,
+                    GlobalWorkspaceLocalConfigInput::FIELDS,
                     &table,
                     &mut String::new(),
                     &mut toml_errors,
                 );
                 config.user_config = Some((
-                    GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
+                    GlobalWorkspaceLocalConfigInput::from_toml(table, &mut toml_errors),
                     ConfigErrors(
                         toml_errors
                             .into_iter()
@@ -960,7 +960,7 @@ impl Config {
                             match toml::from_str(&text) {
                                 Ok(table) => {
                                     validate_toml_table(
-                                        GlobalLocalConfigInput::FIELDS,
+                                        WorkspaceLocalConfigInput::FIELDS,
                                         &table,
                                         &mut String::new(),
                                         &mut toml_errors,
@@ -1863,16 +1863,16 @@ impl Config {
         }
     }
 
-    pub fn rustfmt(&self) -> RustfmtConfig {
-        match &self.rustfmt_overrideCommand() {
+    pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
+        match &self.rustfmt_overrideCommand(source_root_id) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
                 RustfmtConfig::CustomCommand { command, args }
             }
             Some(_) | None => RustfmtConfig::Rustfmt {
-                extra_args: self.rustfmt_extraArgs().clone(),
-                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(),
+                extra_args: self.rustfmt_extraArgs(source_root_id).clone(),
+                enable_range_formatting: *self.rustfmt_rangeFormatting_enable(source_root_id),
             },
         }
     }
@@ -2555,24 +2555,20 @@ macro_rules! _impl_for_config_data {
                 $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
                     let mut source_root = source_root.as_ref();
                     while let Some(sr) = source_root {
-                        if let Some((file, _)) = self.ratoml_file.get(&sr) {
-                            match file {
-                                RatomlFile::Workspace(config) => {
-                                    if let Some(v) = config.workspace.$field.as_ref() {
-                                        return &v;
-                                    }
-                                },
+                        if let Some((RatomlFile::Workspace(config), _)) = self.ratoml_file.get(&sr) {
+                            if let Some(v) = config.workspace.$field.as_ref() {
+                                return &v;
                             }
                         }
                         source_root = self.source_root_parent_map.get(&sr);
                     }
 
-                    if let Some(v) = self.client_config.0.local.$field.as_ref() {
+                    if let Some(v) = self.client_config.0.workspace.$field.as_ref() {
                         return &v;
                     }
 
                     if let Some((user_config, _)) = self.user_config.as_ref() {
-                        if let Some(v) = user_config.local.$field.as_ref() {
+                        if let Some(v) = user_config.workspace.$field.as_ref() {
                             return &v;
                         }
                     }
@@ -2591,7 +2587,6 @@ macro_rules! _impl_for_config_data {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
-                // TODO Remove source_root
                 $vis fn $field(&self) -> &$ty {
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
                         return &v;
@@ -2730,6 +2725,7 @@ use _config_data as config_data;
 #[derive(Default, Debug, Clone)]
 struct DefaultConfigData {
     global: GlobalDefaultConfigData,
+    workspace: WorkspaceDefaultConfigData,
     local: LocalDefaultConfigData,
     client: ClientDefaultConfigData,
 }
@@ -2740,6 +2736,7 @@ struct DefaultConfigData {
 #[derive(Debug, Clone, Default)]
 struct FullConfigInput {
     global: GlobalConfigInput,
+    workspace: WorkspaceConfigInput,
     local: LocalConfigInput,
     client: ClientConfigInput,
 }
@@ -2753,6 +2750,7 @@ impl FullConfigInput {
             global: GlobalConfigInput::from_json(&mut json, error_sink),
             local: LocalConfigInput::from_json(&mut json, error_sink),
             client: ClientConfigInput::from_json(&mut json, error_sink),
+            workspace: WorkspaceConfigInput::from_json(&mut json, error_sink),
         }
     }
 
@@ -2783,26 +2781,28 @@ impl FullConfigInput {
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
 #[derive(Debug, Clone, Default)]
-struct GlobalLocalConfigInput {
+struct GlobalWorkspaceLocalConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
+    workspace: WorkspaceConfigInput,
 }
 
-impl GlobalLocalConfigInput {
+impl GlobalWorkspaceLocalConfigInput {
     const FIELDS: &'static [&'static [&'static str]] =
         &[GlobalConfigInput::FIELDS, LocalConfigInput::FIELDS];
     fn from_toml(
         toml: toml::Table,
         error_sink: &mut Vec<(String, toml::de::Error)>,
-    ) -> GlobalLocalConfigInput {
-        GlobalLocalConfigInput {
+    ) -> GlobalWorkspaceLocalConfigInput {
+        GlobalWorkspaceLocalConfigInput {
             global: GlobalConfigInput::from_toml(&toml, error_sink),
             local: LocalConfigInput::from_toml(&toml, error_sink),
+            workspace: WorkspaceConfigInput::from_toml(&toml, error_sink),
         }
     }
 }
 
-/// All of the config levels, all fields `Option<T>`, to describe fields that are actually set by
+/// Workspace and local config levels, all fields `Option<T>`, to describe fields that are actually set by
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
 #[derive(Debug, Clone, Default)]

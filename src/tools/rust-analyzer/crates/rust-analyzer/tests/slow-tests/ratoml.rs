@@ -17,7 +17,7 @@ enum QueryType {
     /// A query whose config key is a part of the global configs, so that
     /// testing for changes to this config means testing if global changes
     /// take affect.
-    Global,
+    Workspace,
 }
 
 struct RatomlTest {
@@ -165,7 +165,7 @@ impl RatomlTest {
     fn query(&self, query: QueryType, source_file_idx: usize) -> bool {
         let config = match query {
             QueryType::Local => "local".to_owned(),
-            QueryType::Global => "global".to_owned(),
+            QueryType::Workspace => "workspace".to_owned(),
         };
         let res = self.server.send_request::<InternalTestingFetchConfig>(
             InternalTestingFetchConfigParams {
@@ -823,10 +823,8 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
 //         assert!(!server.query(QueryType::AssistEmitMustUse, 5));
 //     }
 
-/// Having a ratoml file at the root of a project enables
-/// configuring global level configurations as well.
 #[test]
-fn ratoml_in_root_is_global() {
+fn ratoml_in_root_is_workspace() {
     if skip_slow_tests() {
         return;
     }
@@ -854,7 +852,7 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Global, 2));
+    assert!(server.query(QueryType::Workspace, 2));
 }
 
 #[test]
@@ -886,9 +884,9 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Global, 2));
+    assert!(server.query(QueryType::Workspace, 2));
     server.edit(1, "rustfmt.rangeFormatting.enable = false".to_owned());
-    assert!(!server.query(QueryType::Global, 2));
+    assert!(!server.query(QueryType::Workspace, 2));
 }
 
 #[test]
@@ -920,7 +918,7 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Global, 2));
+    assert!(server.query(QueryType::Workspace, 2));
     server.delete(1);
-    assert!(!server.query(QueryType::Global, 2));
+    assert!(!server.query(QueryType::Workspace, 2));
 }
