@@ -200,6 +200,7 @@ impl FileDescription for SocketPair {
         drop(writebuf);
 
         // Notification should be provided for peer fd as it became readable.
+        // The kernel does this even if the fd was already readable before, so we follow suit.
         ecx.check_and_update_readiness(&peer_fd)?;
 
         return Ok(Ok(actual_write_size));

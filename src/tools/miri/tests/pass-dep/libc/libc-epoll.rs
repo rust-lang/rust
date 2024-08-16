@@ -83,6 +83,18 @@ fn test_epoll_socketpair() {
     let expected_value = u64::try_from(fds[1]).unwrap();
     assert!(check_epoll_wait::<8>(epfd, vec![(expected_event, expected_value)]));
 
+    // Check that this is indeed using "ET" (edge-trigger) semantics: a second epoll should return nothing.
+    assert!(check_epoll_wait::<8>(epfd, vec![]));
+
+    // Write some more to fd[0].
+    let data = "abcde".as_bytes().as_ptr();
+    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    assert_eq!(res, 5);
+
+    // This did not change the readiness of fd[1]. And yet, we're seeing the event reported
+    // again by the kernel, so Miri does the same.
+    assert!(check_epoll_wait::<8>(epfd, vec![(expected_event, expected_value)]));
+
     // Close the peer socketpair.
     let res = unsafe { libc::close(fds[0]) };
     assert_eq!(res, 0);
