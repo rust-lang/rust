@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `Box<_>`
-  --> $DIR/coherence-overlap-unnormalizable-projection-1.rs:26:1
+  --> $DIR/coherence-overlap-unnormalizable-projection-1.rs:23:1
    |
 LL | / impl<T> Trait for T
 LL | | where

@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait<_>`
-  --> $DIR/opaques.rs:27:1
+  --> $DIR/opaques.rs:28:1
    |
 LL | impl<T> Trait<T> for T {
    | ---------------------- first implementation here
