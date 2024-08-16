@@ -6,7 +6,7 @@
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
 use std::{
-    cell::{Cell, RefCell, RefMut},
+    cell::{Cell, OnceCell, RefCell, RefMut},
     iter,
     ops::{self, Not as _},
 };
@@ -43,7 +43,6 @@ use hir_def::{
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
 use la_arena::{Arena, ArenaMap};
-use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::Captures;
 use smallvec::SmallVec;

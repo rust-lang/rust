@@ -22,7 +22,7 @@ mod pat;
 mod path;
 pub(crate) mod unify;
 
-use std::{convert::identity, iter, ops::Index};
+use std::{cell::OnceCell, convert::identity, iter, ops::Index};
 
 use chalk_ir::{
     cast::Cast,
@@ -50,7 +50,6 @@ use hir_expand::name::Name;
 use indexmap::IndexSet;
 use intern::sym;
 use la_arena::{ArenaMap, Entry};
-use once_cell::unsync::OnceCell;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
 use triomphe::Arc;

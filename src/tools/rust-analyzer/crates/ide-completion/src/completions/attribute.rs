@@ -2,6 +2,8 @@
 //!
 //! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
+use std::sync::LazyLock;
+
 use ide_db::{
     generated::lints::{
         Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
@@ -10,7 +12,6 @@ use ide_db::{
     FxHashMap, SymbolKind,
 };
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use syntax::{
     ast::{self, AttrKind},
     AstNode, SyntaxKind, T,
@@ -215,7 +216,7 @@ macro_rules! attrs {
 }
 
 #[rustfmt::skip]
-static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
+static KIND_TO_ATTRIBUTES: LazyLock<FxHashMap<SyntaxKind, &[&str]>> = LazyLock::new(|| {
     use SyntaxKind::*;
     [
         (
