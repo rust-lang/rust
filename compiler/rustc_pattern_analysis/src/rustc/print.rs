@@ -11,75 +11,16 @@
 
 use std::fmt;
 
-use rustc_middle::thir::PatRange;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_middle::{bug, mir};
 use rustc_span::sym;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Clone, Debug)]
-pub(crate) struct FieldPat<'tcx> {
+pub(crate) struct FieldPat {
     pub(crate) field: FieldIdx,
-    pub(crate) pattern: Box<Pat<'tcx>>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct Pat<'tcx> {
-    pub(crate) ty: Ty<'tcx>,
-    pub(crate) kind: PatKind<'tcx>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum PatKind<'tcx> {
-    Wild,
-
-    StructLike {
-        enum_info: EnumInfo<'tcx>,
-        subpatterns: Vec<FieldPat<'tcx>>,
-    },
-
-    Box {
-        subpattern: Box<Pat<'tcx>>,
-    },
-
-    Deref {
-        subpattern: Box<Pat<'tcx>>,
-    },
-
-    Constant {
-        value: mir::Const<'tcx>,
-    },
-
-    Range(Box<PatRange<'tcx>>),
-
-    Slice {
-        prefix: Box<[Box<Pat<'tcx>>]>,
-        /// True if this slice-like pattern should include a `..` between the
-        /// prefix and suffix.
-        has_dot_dot: bool,
-        suffix: Box<[Box<Pat<'tcx>>]>,
-    },
-
-    Never,
-}
-
-impl<'tcx> fmt::Display for Pat<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            PatKind::Wild => write!(f, "_"),
-            PatKind::Never => write!(f, "!"),
-            PatKind::Box { ref subpattern } => write!(f, "box {subpattern}"),
-            PatKind::StructLike { ref enum_info, ref subpatterns } => {
-                ty::tls::with(|tcx| write_struct_like(f, tcx, self.ty, enum_info, subpatterns))
-            }
-            PatKind::Deref { ref subpattern } => write_ref_like(f, self.ty, subpattern),
-            PatKind::Constant { value } => write!(f, "{value}"),
-            PatKind::Range(ref range) => write!(f, "{range}"),
-            PatKind::Slice { ref prefix, has_dot_dot, ref suffix } => {
-                write_slice_like(f, prefix, has_dot_dot, suffix)
-            }
-        }
-    }
+    pub(crate) pattern: String,
+    pub(crate) is_wildcard: bool,
 }
 
 /// Returns a closure that will return `""` when called the first time,
@@ -103,12 +44,12 @@ pub(crate) enum EnumInfo<'tcx> {
     NotEnum,
 }
 
-fn write_struct_like<'tcx>(
+pub(crate) fn write_struct_like<'tcx>(
     f: &mut impl fmt::Write,
     tcx: TyCtxt<'_>,
     ty: Ty<'tcx>,
     enum_info: &EnumInfo<'tcx>,
-    subpatterns: &[FieldPat<'tcx>],
+    subpatterns: &[FieldPat],
 ) -> fmt::Result {
     let variant_and_name = match *enum_info {
         EnumInfo::Enum { adt_def, variant_index } => {
@@ -139,12 +80,12 @@ fn write_struct_like<'tcx>(
             write!(f, " {{ ")?;
 
             let mut printed = 0;
-            for p in subpatterns {
-                if let PatKind::Wild = p.pattern.kind {
+            for &FieldPat { field, ref pattern, is_wildcard } in subpatterns {
+                if is_wildcard {
                     continue;
                 }
-                let name = variant.fields[p.field].name;
-                write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
+                let field_name = variant.fields[field].name;
+                write!(f, "{}{field_name}: {pattern}", start_or_comma())?;
                 printed += 1;
             }
 
@@ -184,10 +125,10 @@ fn write_struct_like<'tcx>(
     Ok(())
 }
 
-fn write_ref_like<'tcx>(
+pub(crate) fn write_ref_like<'tcx>(
     f: &mut impl fmt::Write,
     ty: Ty<'tcx>,
-    subpattern: &Pat<'tcx>,
+    subpattern: &str,
 ) -> fmt::Result {
     match ty.kind() {
         ty::Ref(_, _, mutbl) => {
@@ -198,11 +139,11 @@ fn write_ref_like<'tcx>(
     write!(f, "{subpattern}")
 }
 
-fn write_slice_like<'tcx>(
+pub(crate) fn write_slice_like(
     f: &mut impl fmt::Write,
-    prefix: &[Box<Pat<'tcx>>],
+    prefix: &[String],
     has_dot_dot: bool,
-    suffix: &[Box<Pat<'tcx>>],
+    suffix: &[String],
 ) -> fmt::Result {
     let mut start_or_comma = start_or_comma();
     write!(f, "[")?;
