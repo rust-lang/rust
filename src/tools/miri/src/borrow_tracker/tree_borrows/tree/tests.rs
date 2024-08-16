@@ -14,6 +14,15 @@ impl Exhaustive for LocationState {
     }
 }
 
+impl LocationState {
+    /// Ensure that the current internal state can exist at the same time as a protector.
+    /// In practice this only eliminates `ReservedIM` that is never used in the presence
+    /// of a protector (we instead emit `ReservedFrz` on retag).
+    pub fn compatible_with_protector(&self) -> bool {
+        self.permission.compatible_with_protector()
+    }
+}
+
 #[test]
 #[rustfmt::skip]
 // Exhaustive check that for any starting configuration loc,
@@ -30,6 +39,9 @@ fn all_read_accesses_commute() {
         // so the two read accesses occur under the same protector.
         for protected in bool::exhaustive() {
             for loc in LocationState::exhaustive() {
+                if protected {
+                    precondition!(loc.compatible_with_protector());
+                }
                 // Apply 1 then 2. Failure here means that there is UB in the source
                 // and we skip the check in the target.
                 let mut loc12 = loc;
@@ -61,8 +73,8 @@ fn protected_enforces_noalias() {
         // We want to check pairs of accesses where one is foreign and one is not.
         precondition!(rel1.is_foreign() != rel2.is_foreign());
         for [kind1, kind2] in <[AccessKind; 2]>::exhaustive() {
-            for mut state in LocationState::exhaustive() {
-                let protected = true;
+            let protected = true;
+            for mut state in LocationState::exhaustive().filter(|s| s.compatible_with_protector()) {
                 precondition!(state.perform_access(kind1, rel1, protected).is_ok());
                 precondition!(state.perform_access(kind2, rel2, protected).is_ok());
                 // If these were both allowed, it must have been two reads.
@@ -387,6 +399,9 @@ mod spurious_read {
 
         fn retag_y(self, new_y: LocStateProt) -> Result<Self, ()> {
             assert!(new_y.is_initial());
+            if new_y.prot && !new_y.state.compatible_with_protector() {
+                return Err(());
+            }
             // `xy_rel` changes to "mutually foreign" now: `y` can no longer be a parent of `x`.
             Self { y: new_y, xy_rel: RelPosXY::MutuallyForeign, ..self }
                 .read_if_initialized(PtrSelector::Y)
@@ -511,7 +526,7 @@ mod spurious_read {
     }
 
     #[test]
-    // `Reserved(aliased=false)` and `Reserved(aliased=true)` are properly indistinguishable
+    // `Reserved { conflicted: false }` and `Reserved { conflicted: true }` are properly indistinguishable
     // under the conditions where we want to insert a spurious read.
     fn reserved_aliased_protected_indistinguishable() {
         let source = LocStateProtPair {
@@ -521,14 +536,16 @@ mod spurious_read {
                 prot: true,
             },
             y: LocStateProt {
-                state: LocationState::new_uninit(Permission::new_reserved(false)),
+                state: LocationState::new_uninit(Permission::new_reserved(
+                    /* freeze */ true, /* protected */ true,
+                )),
                 prot: true,
             },
         };
         let acc = TestAccess { ptr: PtrSelector::X, kind: AccessKind::Read };
         let target = source.clone().perform_test_access(&acc).unwrap();
-        assert!(source.y.state.permission.is_reserved_with_conflicted(false));
-        assert!(target.y.state.permission.is_reserved_with_conflicted(true));
+        assert!(source.y.state.permission.is_reserved_frz_with_conflicted(false));
+        assert!(target.y.state.permission.is_reserved_frz_with_conflicted(true));
         assert!(!source.distinguishable::<(), ()>(&target))
     }
 
@@ -563,7 +580,13 @@ mod spurious_read {
                     precondition!(x_retag_perm.initialized);
                     // And `x` just got retagged, so it must be initial.
                     precondition!(x_retag_perm.permission.is_initial());
+                    // As stated earlier, `x` is always protected in the patterns we consider here.
+                    precondition!(x_retag_perm.compatible_with_protector());
                     for y_protected in bool::exhaustive() {
+                        // Finally `y` that is optionally protected must have a compatible permission.
+                        if y_protected {
+                            precondition!(y_current_perm.compatible_with_protector());
+                        }
                         v.push(Pattern { xy_rel, x_retag_perm, y_current_perm, y_protected });
                     }
                 }
