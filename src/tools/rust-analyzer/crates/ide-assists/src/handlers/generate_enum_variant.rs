@@ -121,7 +121,7 @@ fn add_variant_to_accumulator(
         "Generate variant",
         target,
         |builder| {
-            builder.edit_file(file_id);
+            builder.edit_file(file_id.file_id());
             let node = builder.make_mut(enum_node);
             let variant = make_variant(ctx, name_ref, parent);
             if let Some(it) = node.variant_list() {

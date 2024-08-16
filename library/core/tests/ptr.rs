@@ -810,9 +810,12 @@ fn ptr_metadata() {
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
         assert_ne!(address_2, address_3);
-        // Same erased type and same trait => same vtable pointer
-        assert_eq!(address_3, address_4);
-        assert_eq!(address_3, address_5);
+        // Same erased type and same trait => same vtable pointer.
+        // This is *not guaranteed*, so we skip it in Miri.
+        if !cfg!(miri) {
+            assert_eq!(address_3, address_4);
+            assert_eq!(address_3, address_5);
+        }
     }
 }
 

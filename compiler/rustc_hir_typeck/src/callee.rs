@@ -137,7 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the callee is a bare function or a closure, then we're all set.
         match *adjusted_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(_) => {
+            ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
@@ -467,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (fn_sig, Some(def_id))
             }
             // FIXME(effects): these arms should error because we can't enforce them
-            ty::FnPtr(sig) => (sig, None),
+            ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
             _ => {
                 for arg in arg_exprs {
                     self.check_expr(arg);

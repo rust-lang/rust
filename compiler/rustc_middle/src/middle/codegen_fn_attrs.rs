@@ -28,7 +28,7 @@ pub struct CodegenFnAttrs {
     pub link_ordinal: Option<u16>,
     /// The `#[target_feature(enable = "...")]` attribute and the enabled
     /// features (only enabled features are supported right now).
-    pub target_features: Vec<Symbol>,
+    pub target_features: Vec<TargetFeature>,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
     /// The `#[linkage = "..."]` attribute on foreign items and the value we found.
@@ -49,6 +49,15 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+}
+
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct TargetFeature {
+    /// The name of the target feature (e.g. "avx")
+    pub name: Symbol,
+    /// The feature is implied by another feature, rather than explicitly added by the
+    /// `#[target_feature]` attribute
+    pub implied: bool,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]

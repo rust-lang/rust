@@ -94,7 +94,7 @@ fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> i
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
-            handle.into_raw_handle(); // Don't close the handle
+            let _ = handle.into_raw_handle(); // Don't close the handle
             return ret;
         }
     }
@@ -243,7 +243,7 @@ impl io::Read for Stdin {
             unsafe {
                 let handle = Handle::from_raw_handle(handle);
                 let ret = handle.read(buf);
-                handle.into_raw_handle(); // Don't close the handle
+                let _ = handle.into_raw_handle(); // Don't close the handle
                 return ret;
             }
         }

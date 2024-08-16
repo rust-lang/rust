@@ -2952,6 +2952,17 @@ pub struct FnDecl<'hir> {
     pub lifetime_elision_allowed: bool,
 }
 
+impl<'hir> FnDecl<'hir> {
+    pub fn opt_delegation_sig_id(&self) -> Option<DefId> {
+        if let FnRetTy::Return(ty) = self.output
+            && let TyKind::InferDelegation(sig_id, _) = ty.kind
+        {
+            return Some(sig_id);
+        }
+        None
+    }
+}
+
 /// Represents what type of implicit self a function has, if any.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum ImplicitSelfKind {
@@ -3687,6 +3698,11 @@ impl<'hir> OwnerNode<'hir> {
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
             OwnerNode::Synthetic => unreachable!(),
         }
+    }
+
+    /// Check if node is an impl block.
+    pub fn is_impl_block(&self) -> bool {
+        matches!(self, OwnerNode::Item(Item { kind: ItemKind::Impl(_), .. }))
     }
 
     expect_methods_self! {

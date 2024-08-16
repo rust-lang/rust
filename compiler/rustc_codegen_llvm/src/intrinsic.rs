@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
@@ -35,10 +36,10 @@ fn get_simple_intrinsic<'ll>(
         sym::sqrtf64 => "llvm.sqrt.f64",
         sym::sqrtf128 => "llvm.sqrt.f128",
 
-        sym::powif16 => "llvm.powi.f16",
-        sym::powif32 => "llvm.powi.f32",
-        sym::powif64 => "llvm.powi.f64",
-        sym::powif128 => "llvm.powi.f128",
+        sym::powif16 => "llvm.powi.f16.i32",
+        sym::powif32 => "llvm.powi.f32.i32",
+        sym::powif64 => "llvm.powi.f64.i32",
+        sym::powif128 => "llvm.powi.f128.i32",
 
         sym::sinf16 => "llvm.sin.f16",
         sym::sinf32 => "llvm.sin.f32",
@@ -1142,7 +1143,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if cfg!(debug_assertions) {
         for (ty, arg) in arg_tys.iter().zip(args) {
             if ty.is_simd() {
-                assert!(matches!(arg.val, OperandValue::Immediate(_)));
+                assert_matches!(arg.val, OperandValue::Immediate(_));
             }
         }
     }

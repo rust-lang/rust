@@ -24,8 +24,9 @@ use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
     self, compile_time_machine, err_ub, throw_exhaust, throw_inval, throw_ub_custom, throw_unsup,
-    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
+    throw_unsup_format, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
     GlobalAlloc, ImmTy, InterpCx, InterpResult, MPlaceTy, OpTy, Pointer, PointerArithmetic, Scalar,
+    StackPopCleanup,
 };
 
 /// When hitting this many interpreted terminators we emit a deny by default lint
@@ -295,7 +296,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             );
         }
 
-        match self.ptr_try_get_alloc_id(ptr) {
+        match self.ptr_try_get_alloc_id(ptr, 0) {
             Ok((alloc_id, offset, _extra)) => {
                 let (_size, alloc_align, _kind) = self.get_alloc_info(alloc_id);
 
@@ -306,17 +307,15 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
                     let align = ImmTy::from_uint(target_align, args[1].layout).into();
                     let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
-                    // We replace the entire function call with a "tail call".
-                    // Note that this happens before the frame of the original function
-                    // is pushed on the stack.
-                    self.eval_fn_call(
-                        FnVal::Instance(instance),
-                        (CallAbi::Rust, fn_abi),
+                    // Push the stack frame with our own adjusted arguments.
+                    self.init_stack_frame(
+                        instance,
+                        self.load_mir(instance.def, None)?,
+                        fn_abi,
                         &[FnArg::Copy(addr), FnArg::Copy(align)],
                         /* with_caller_location = */ false,
                         dest,
-                        ret,
-                        mir::UnwindAction::Unreachable,
+                        StackPopCleanup::Goto { ret, unwind: mir::UnwindAction::Unreachable },
                     )?;
                     Ok(ControlFlow::Break(()))
                 } else {
@@ -458,7 +457,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         // Shared intrinsics.
-        if ecx.emulate_intrinsic(instance, args, dest, target)? {
+        if ecx.eval_intrinsic(instance, args, dest, target)? {
             return Ok(None);
         }
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
@@ -510,7 +509,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
                 // If an allocation is created in an another const,
                 // we don't deallocate it.
-                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr)?;
+                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr, 0)?;
                 let is_allocated_in_another_const = matches!(
                     ecx.tcx.try_get_global_alloc(alloc_id),
                     Some(interpret::GlobalAlloc::Memory(_))

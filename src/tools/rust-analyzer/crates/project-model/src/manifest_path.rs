@@ -64,6 +64,18 @@ impl AsRef<AbsPath> for ManifestPath {
     }
 }
 
+impl AsRef<std::path::Path> for ManifestPath {
+    fn as_ref(&self) -> &std::path::Path {
+        self.file.as_ref()
+    }
+}
+
+impl AsRef<std::ffi::OsStr> for ManifestPath {
+    fn as_ref(&self) -> &std::ffi::OsStr {
+        self.file.as_ref()
+    }
+}
+
 impl Borrow<AbsPath> for ManifestPath {
     fn borrow(&self) -> &AbsPath {
         self.file.borrow()

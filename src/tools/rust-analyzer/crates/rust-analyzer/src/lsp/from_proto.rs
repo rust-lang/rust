@@ -1,10 +1,8 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use anyhow::format_err;
 use ide::{Annotation, AnnotationKind, AssistKind, LineCol};
-use ide_db::{
-    base_db::{FileId, FilePosition, FileRange},
-    line_index::WideLineCol,
-};
+use ide_db::{line_index::WideLineCol, FileId, FilePosition, FileRange};
+use paths::Utf8PathBuf;
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
@@ -16,7 +14,7 @@ use crate::{
 
 pub(crate) fn abs_path(url: &lsp_types::Url) -> anyhow::Result<AbsPathBuf> {
     let path = url.to_file_path().map_err(|()| anyhow::format_err!("url is not a file"))?;
-    Ok(AbsPathBuf::try_from(path).unwrap())
+    Ok(AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).unwrap()).unwrap())
 }
 
 pub(crate) fn vfs_path(url: &lsp_types::Url) -> anyhow::Result<vfs::VfsPath> {

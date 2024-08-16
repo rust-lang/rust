@@ -467,8 +467,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::FnDef(..) | ty::FnPtr(..) => {
-                candidates.vec.push(AsyncClosureCandidate);
+            // Provide an impl, but only for suitable `fn` pointers.
+            ty::FnPtr(sig_tys, hdr) => {
+                if sig_tys.with(hdr).is_fn_trait_compatible() {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
+            }
+            // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
+            ty::FnDef(def_id, _) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                {
+                    candidates.vec.push(AsyncClosureCandidate);
+                }
             }
             _ => {}
         }
@@ -523,8 +535,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true; // Could wind up being a fn() type.
             }
             // Provide an impl, but only for suitable `fn` pointers.
-            ty::FnPtr(sig) => {
-                if sig.is_fn_trait_compatible() {
+            ty::FnPtr(sig_tys, hdr) => {
+                if sig_tys.with(hdr).is_fn_trait_compatible() {
                     candidates
                         .vec
                         .push(FnPointerCandidate { fn_host_effect: self.tcx().consts.true_ });
@@ -807,7 +819,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::RawPtr(_, _)
                 | ty::Ref(..)
                 | ty::FnDef(..)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
@@ -1195,7 +1207,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Never
             | ty::Foreign(_)
             | ty::Array(..)
@@ -1278,7 +1290,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::Pat(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1327,7 +1339,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.resolve_vars_if_possible(obligation.self_ty());
 
         match self_ty.skip_binder().kind() {
-            ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
+            ty::FnPtr(..) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
             ty::Bool
             | ty::Char
             | ty::Int(_)

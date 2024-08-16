@@ -91,7 +91,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             return false;
         }
 
-        let tail = self.tcx().struct_tail_erasing_lifetimes(ty, param_env);
+        let tail = self.tcx().struct_tail_for_codegen(ty, param_env);
         match tail.kind() {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,

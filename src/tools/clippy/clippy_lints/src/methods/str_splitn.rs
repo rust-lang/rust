@@ -1,5 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
@@ -301,7 +301,7 @@ fn parse_iter_usage<'tcx>(
                     };
                 },
                 ("nth" | "skip", [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
-                    if let Some(Constant::Int(idx)) = constant(cx, cx.typeck_results(), idx_expr) {
+                    if let Some(Constant::Int(idx)) = ConstEvalCtxt::new(cx).eval(idx_expr) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
                         } else if let Some((_, Node::Expr(next_expr))) = iter.next()

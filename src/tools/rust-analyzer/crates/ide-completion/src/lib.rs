@@ -10,15 +10,13 @@ mod snippet;
 #[cfg(test)]
 mod tests;
 
-use hir::ImportPathConfig;
 use ide_db::{
-    base_db::FilePosition,
     helpers::mod_path_to_ast,
     imports::{
         import_assets::NameToImport,
         insert_use::{self, ImportScope},
     },
-    items_locator, RootDatabase,
+    items_locator, FilePosition, RootDatabase,
 };
 use syntax::algo;
 use text_edit::TextEdit;
@@ -239,7 +237,7 @@ pub fn resolve_completion_edits(
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
-    let original_file = sema.parse(file_id);
+    let original_file = sema.parse(sema.attach_first_edition(file_id)?);
     let original_token =
         syntax::AstNode::syntax(&original_file).token_at_offset(offset).left_biased()?;
     let position_for_import = &original_token.parent()?;
@@ -250,11 +248,7 @@ pub fn resolve_completion_edits(
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: config.prefer_no_std,
-        prefer_prelude: config.prefer_prelude,
-        prefer_absolute: config.prefer_absolute,
-    };
+    let cfg = config.import_path_config();
 
     imports.into_iter().for_each(|(full_import_path, imported_name)| {
         let items_with_name = items_locator::items_with_name(

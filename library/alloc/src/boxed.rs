@@ -200,7 +200,7 @@ use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
     DerefPure, DispatchFromDyn, Receiver,
 };
-use core::pin::Pin;
+use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, addr_of_mut, NonNull, Unique};
 use core::task::{Context, Poll};
 use core::{borrow, fmt, slice};
@@ -1173,6 +1173,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Self) -> *mut T {
@@ -1226,6 +1227,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
@@ -2724,3 +2726,6 @@ impl<T: core::error::Error> core::error::Error for Box<T> {
         core::error::Error::provide(&**self, request);
     }
 }
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Box<T, A> {}

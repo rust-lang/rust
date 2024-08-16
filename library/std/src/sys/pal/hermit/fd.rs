@@ -111,7 +111,8 @@ impl FromInner<OwnedFd> for FileDesc {
 
 impl FromRawFd for FileDesc {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self { fd: FromRawFd::from_raw_fd(raw_fd) }
+        let fd = unsafe { OwnedFd::from_raw_fd(raw_fd) };
+        Self { fd }
     }
 }
 

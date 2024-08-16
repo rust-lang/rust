@@ -1,7 +1,8 @@
 [package]
 name = "mbe"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Handling of `macro_rules` macros for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -24,12 +25,14 @@ parser.workspace = true
 tt.workspace = true
 stdx.workspace = true
 span.workspace = true
+intern.workspace = true
+syntax-bridge.workspace = true
 
 [dev-dependencies]
 test-utils.workspace = true
 
 [features]
-in-rust-tree = ["parser/in-rust-tree", "syntax/in-rust-tree"]
+in-rust-tree = ["parser/in-rust-tree", "tt/in-rust-tree", "syntax/in-rust-tree"]
 
 [lints]
 workspace = true

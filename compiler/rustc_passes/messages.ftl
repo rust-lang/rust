@@ -100,6 +100,10 @@ passes_continue_labeled_block =
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
 
+passes_coroutine_on_non_closure =
+    attribute should be applied to closures
+    .label = not a closure
+
 passes_coverage_not_fn_or_closure =
     attribute should be applied to a function definition or closure
     .label = not a function or closure
@@ -218,6 +222,9 @@ passes_doc_masked_only_extern_crate =
     .label = only applicable on `extern crate` items
     .not_an_extern_crate_label = not an `extern crate` item
     .note = read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
+
+passes_doc_rust_logo =
+    the `#[doc(rust_logo)]` attribute is used for Rust branding
 
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
@@ -542,6 +549,10 @@ passes_only_has_effect_on =
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
+passes_optimize_not_fn_or_closure =
+    attribute should be applied to function or closure
+    .label = not a function or closure
+
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
 
@@ -586,6 +597,9 @@ passes_remove_fields =
       [one] field
      *[other] fields
     }
+
+passes_repr_align_function =
+    `repr(align)` attributes on functions are unstable
 
 passes_repr_conflicting =
     conflicting representation hints

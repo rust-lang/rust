@@ -61,7 +61,7 @@ impl Request for FetchDependencyList {
 #[serde(rename_all = "camelCase")]
 pub struct FetchDependencyListParams {}
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FetchDependencyListResult {
     pub crates: Vec<CrateInfoResult>,
@@ -73,14 +73,6 @@ impl Request for MemoryUsage {
     type Params = ();
     type Result = String;
     const METHOD: &'static str = "rust-analyzer/memoryUsage";
-}
-
-pub enum ShuffleCrateGraph {}
-
-impl Request for ShuffleCrateGraph {
-    type Params = ();
-    type Result = ();
-    const METHOD: &'static str = "rust-analyzer/shuffleCrateGraph";
 }
 
 pub enum ReloadWorkspace {}
@@ -202,7 +194,7 @@ pub struct TestItem {
     pub runnable: Option<Runnable>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DiscoverTestResults {
     pub tests: Vec<TestItem>,
@@ -531,7 +523,7 @@ pub struct ServerStatusParams {
     pub message: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug)]
 #[serde(rename_all = "camelCase")]
 pub enum Health {
     Ok,
@@ -698,6 +690,12 @@ pub enum ExternalDocsResponse {
     WithLocal(ExternalDocsPair),
 }
 
+impl Default for ExternalDocsResponse {
+    fn default() -> Self {
+        ExternalDocsResponse::Simple(None)
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalDocsPair {
@@ -833,17 +831,4 @@ pub struct CompletionImport {
 #[derive(Debug, Deserialize, Default)]
 pub struct ClientCommandOptions {
     pub commands: Vec<String>,
-}
-
-pub enum UnindexedProject {}
-
-impl Notification for UnindexedProject {
-    type Params = UnindexedProjectParams;
-    const METHOD: &'static str = "rust-analyzer/unindexedProject";
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct UnindexedProjectParams {
-    pub text_documents: Vec<TextDocumentIdentifier>,
 }

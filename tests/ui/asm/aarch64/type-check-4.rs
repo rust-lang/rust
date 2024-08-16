@@ -1,7 +1,7 @@
 //@ only-aarch64
 //@ compile-flags: -C target-feature=+neon
 
-#![feature(repr_simd, asm_const)]
+#![feature(repr_simd)]
 
 use std::arch::aarch64::float64x2_t;
 use std::arch::{asm, global_asm};
@@ -10,8 +10,7 @@ use std::arch::{asm, global_asm};
 #[derive(Copy, Clone)]
 struct Simd256bit(f64, f64, f64, f64);
 
-fn main() {
-}
+fn main() {}
 
 // Constants must be... constant
 

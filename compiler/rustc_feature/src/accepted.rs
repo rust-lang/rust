@@ -60,6 +60,8 @@ declare_features! (
     (accepted, adx_target_feature, "1.61.0", Some(44839)),
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
+    /// Allows using `const` operands in inline assembly.
+    (accepted, asm_const, "CURRENT_RUSTC_VERSION", Some(93332)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
@@ -267,6 +269,8 @@ declare_features! (
     (accepted, min_const_generics, "1.51.0", Some(74878)),
     /// Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
     (accepted, min_const_unsafe_fn, "1.33.0", Some(55607)),
+    /// Allows exhaustive pattern matching on uninhabited types when matched by value.
+    (accepted, min_exhaustive_patterns, "CURRENT_RUSTC_VERSION", Some(119612)),
     /// Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     /// Allows using the MOVBE target feature.
@@ -390,6 +394,8 @@ declare_features! (
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208)),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668)),
+    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
+    (accepted, unsafe_extern_blocks, "CURRENT_RUSTC_VERSION", Some(123743)),
     /// Allows importing and reexporting macros with `use`,
     /// enables macro modularization in general.
     (accepted, use_extern_macros, "1.30.0", Some(35896)),

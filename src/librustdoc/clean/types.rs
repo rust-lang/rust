@@ -34,10 +34,9 @@ use thin_vec::ThinVec;
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::ItemKind::*;
-pub(crate) use self::SelfTy::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, Slice, Tuple,
+    RawPointer, SelfTy, Slice, Tuple,
 };
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
@@ -824,7 +823,6 @@ pub(crate) enum ItemKind {
     FunctionItem(Box<Function>),
     ModuleItem(Module),
     TypeAliasItem(Box<TypeAlias>),
-    OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
@@ -882,7 +880,6 @@ impl ItemKind {
             | ImportItem(_)
             | FunctionItem(_)
             | TypeAliasItem(_)
-            | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
             | TraitAliasItem(_)
@@ -916,7 +913,6 @@ impl ItemKind {
                 | ExternCrateItem { .. }
                 | FunctionItem(_)
                 | TypeAliasItem(_)
-                | OpaqueTyItem(_)
                 | StaticItem(_)
                 | ConstantItem(_)
                 | TraitAliasItem(_)
@@ -1387,8 +1383,8 @@ pub(crate) struct FnDecl {
 }
 
 impl FnDecl {
-    pub(crate) fn self_type(&self) -> Option<SelfTy> {
-        self.inputs.values.get(0).and_then(|v| v.to_self())
+    pub(crate) fn receiver_type(&self) -> Option<&Type> {
+        self.inputs.values.get(0).and_then(|v| v.to_receiver())
     }
 }
 
@@ -1406,27 +1402,9 @@ pub(crate) struct Argument {
     pub(crate) is_const: bool,
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub(crate) enum SelfTy {
-    SelfValue,
-    SelfBorrowed(Option<Lifetime>, Mutability),
-    SelfExplicit(Type),
-}
-
 impl Argument {
-    pub(crate) fn to_self(&self) -> Option<SelfTy> {
-        if self.name != kw::SelfLower {
-            return None;
-        }
-        if self.type_.is_self_type() {
-            return Some(SelfValue);
-        }
-        match self.type_ {
-            BorrowedRef { ref lifetime, mutability, ref type_ } if type_.is_self_type() => {
-                Some(SelfBorrowed(lifetime.clone(), mutability))
-            }
-            _ => Some(SelfExplicit(self.type_.clone())),
-        }
+    pub(crate) fn to_receiver(&self) -> Option<&Type> {
+        if self.name == kw::SelfLower { Some(&self.type_) } else { None }
     }
 }
 
@@ -1480,6 +1458,8 @@ pub(crate) enum Type {
     DynTrait(Vec<PolyTrait>, Option<Lifetime>),
     /// A type parameter.
     Generic(Symbol),
+    /// The `Self` type.
+    SelfTy,
     /// A primitive (aka, builtin) type.
     Primitive(PrimitiveType),
     /// A function pointer: `extern "ABI" fn(...) -> ...`
@@ -1574,6 +1554,8 @@ impl Type {
             // If both sides are generic, this returns true.
             (_, Type::Generic(_)) => true,
             (Type::Generic(_), _) => false,
+            // `Self` only matches itself.
+            (Type::SelfTy, Type::SelfTy) => true,
             // Paths account for both the path itself and its generics.
             (Type::Path { path: a }, Type::Path { path: b }) => {
                 a.def_id() == b.def_id()
@@ -1645,7 +1627,7 @@ impl Type {
 
     pub(crate) fn is_self_type(&self) -> bool {
         match *self {
-            Generic(name) => name == kw::SelfUpper,
+            SelfTy => true,
             _ => false,
         }
     }
@@ -1680,13 +1662,16 @@ impl Type {
         }
     }
 
-    fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
+    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
+    ///
+    /// [clean]: crate::clean
+    pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
         let t: PrimitiveType = match *self {
             Type::Path { ref path } => return Some(path.def_id()),
             DynTrait(ref bounds, _) => return bounds.get(0).map(|b| b.trait_.def_id()),
-            Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
+            Primitive(p) => return cache.primitive_locations.get(&p).cloned(),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
-            BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
+            BorrowedRef { ref type_, .. } => return type_.def_id(cache),
             Tuple(ref tys) => {
                 if tys.is_empty() {
                     PrimitiveType::Unit
@@ -1699,17 +1684,10 @@ impl Type {
             Array(..) => PrimitiveType::Array,
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
-            QPath(box QPathData { ref self_type, .. }) => return self_type.inner_def_id(cache),
-            Generic(_) | Infer | ImplTrait(_) => return None,
+            QPath(box QPathData { ref self_type, .. }) => return self_type.def_id(cache),
+            Generic(_) | SelfTy | Infer | ImplTrait(_) => return None,
         };
-        cache.and_then(|c| Primitive(t).def_id(c))
-    }
-
-    /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
-    ///
-    /// [clean]: crate::clean
-    pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
-        self.inner_def_id(Some(cache))
+        Primitive(t).def_id(cache)
     }
 }
 
@@ -2339,12 +2317,6 @@ pub(crate) struct TypeAlias {
     pub(crate) item_type: Option<Type>,
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct OpaqueTy {
-    pub(crate) bounds: Vec<GenericBound>,
-    pub(crate) generics: Generics,
-}
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct BareFunctionDecl {
     pub(crate) safety: hir::Safety,
@@ -2473,6 +2445,10 @@ impl Impl {
             .map(|t| t.def_id())
             .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name).collect())
             .unwrap_or_default()
+    }
+
+    pub(crate) fn is_negative_trait_impl(&self) -> bool {
+        matches!(self.polarity, ty::ImplPolarity::Negative)
     }
 }
 

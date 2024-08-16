@@ -367,3 +367,48 @@ use event::Event;
         "#]],
     );
 }
+
+#[test]
+fn glob_may_override_visibility() {
+    check(
+        r#"
+mod reexport {
+    use crate::defs::*;
+    mod inner {
+        pub use crate::defs::{Trait, function, makro};
+    }
+    pub use inner::*;
+}
+mod defs {
+    pub trait Trait {}
+    pub fn function() {}
+    pub macro makro($t:item) { $t }
+}
+use reexport::*;
+"#,
+        expect![[r#"
+            crate
+            Trait: t
+            defs: t
+            function: v
+            makro: m
+            reexport: t
+
+            crate::defs
+            Trait: t
+            function: v
+            makro: m
+
+            crate::reexport
+            Trait: t
+            function: v
+            inner: t
+            makro: m
+
+            crate::reexport::inner
+            Trait: ti
+            function: vi
+            makro: mi
+        "#]],
+    );
+}

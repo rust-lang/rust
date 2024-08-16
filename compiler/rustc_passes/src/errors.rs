@@ -68,6 +68,10 @@ pub struct CoverageNotFnOrClosure {
     pub defn_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(passes_optimize_not_fn_or_closure)]
+pub struct OptimizeNotFnOrClosure;
+
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn)]
 pub struct AttrShouldBeAppliedToFn {
@@ -630,6 +634,13 @@ pub struct LinkOrdinal {
 pub struct Confusables {
     #[primary_span]
     pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_coroutine_on_non_closure)]
+pub struct CoroutineOnNonClosure {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -4,7 +4,6 @@ extern crate run_make_support;
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::ops::Deref;
 
 use run_make_support::rustc;
 
@@ -87,7 +86,7 @@ fn main() {
 
 fn check(CheckCfg { args, contains }: CheckCfg) {
     let output =
-        rustc().input("lib.rs").arg("-Zunstable-options").arg("--print=check-cfg").args(args).run();
+        rustc().input("lib.rs").arg("-Zunstable-options").print("check-cfg").args(args).run();
 
     let stdout = output.stdout_utf8();
 

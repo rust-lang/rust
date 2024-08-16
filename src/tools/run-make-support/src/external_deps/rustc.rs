@@ -5,6 +5,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_rpath;
+use crate::{is_darwin, is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -312,6 +313,64 @@ impl Rustc {
     /// Specify the linker flavor
     pub fn linker_flavor(&mut self, linker_flavor: &str) -> &mut Self {
         self.cmd.arg(format!("-Clinker-flavor={linker_flavor}"));
+        self
+    }
+
+    /// `EXTRARSCXXFLAGS`
+    pub fn extra_rs_cxx_flags(&mut self) -> &mut Self {
+        // Adapted from tools.mk (trimmed):
+        //
+        // ```makefile
+        // ifdef IS_WINDOWS
+        //     ifdef IS_MSVC
+        //     else
+        //         EXTRARSCXXFLAGS := -lstatic:-bundle=stdc++
+        //     endif
+        // else
+        //     ifeq ($(UNAME),Darwin)
+        //         EXTRARSCXXFLAGS := -lc++
+        //     else
+        //         ifeq ($(UNAME),FreeBSD)
+        //         else
+        //             ifeq ($(UNAME),SunOS)
+        //             else
+        //                 ifeq ($(UNAME),OpenBSD)
+        //                 else
+        //                     EXTRARSCXXFLAGS := -lstdc++
+        //                 endif
+        //             endif
+        //         endif
+        //     endif
+        // endif
+        // ```
+        let flag = if is_windows() {
+            // So this is a bit hacky: we can't use the DLL version of libstdc++ because
+            // it pulls in the DLL version of libgcc, which means that we end up with 2
+            // instances of the DW2 unwinding implementation. This is a problem on
+            // i686-pc-windows-gnu because each module (DLL/EXE) needs to register its
+            // unwind information with the unwinding implementation, and libstdc++'s
+            // __cxa_throw won't see the unwinding info we registered with our statically
+            // linked libgcc.
+            //
+            // Now, simply statically linking libstdc++ would fix this problem, except
+            // that it is compiled with the expectation that pthreads is dynamically
+            // linked as a DLL and will fail to link with a statically linked libpthread.
+            //
+            // So we end up with the following hack: we link use static:-bundle to only
+            // link the parts of libstdc++ that we actually use, which doesn't include
+            // the dependency on the pthreads DLL.
+            if is_msvc() { None } else { Some("-lstatic:-bundle=stdc++") }
+        } else if is_darwin() {
+            Some("-lc++")
+        } else {
+            match &uname()[..] {
+                "FreeBSD" | "SunOS" | "OpenBSD" => None,
+                _ => Some("-lstdc++"),
+            }
+        };
+        if let Some(flag) = flag {
+            self.cmd.arg(flag);
+        }
         self
     }
 }

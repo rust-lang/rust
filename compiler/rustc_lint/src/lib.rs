@@ -543,7 +543,7 @@ fn register_builtins(store: &mut LintStore) {
     );
     store.register_removed(
         "suspicious_auto_trait_impls",
-        "no longer needed, see #93367 \
+        "no longer needed, see issue #93367 \
          <https://github.com/rust-lang/rust/issues/93367> for more information",
     );
     store.register_removed(
@@ -565,6 +565,11 @@ fn register_builtins(store: &mut LintStore) {
         "box_pointers",
         "it does not detect other kinds of allocations, and existed only for historical reasons",
     );
+    store.register_removed(
+        "byte_slice_in_packed_struct_with_derive",
+        "converted into hard error, see issue #107457 \
+         <https://github.com/rust-lang/rust/issues/107457> for more information",
+    )
 }
 
 fn register_internals(store: &mut LintStore) {

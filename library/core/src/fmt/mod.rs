@@ -34,7 +34,7 @@ pub enum Alignment {
 }
 
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub use self::builders::FormatterFn;
+pub use self::builders::{from_fn, FromFn};
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
@@ -1626,6 +1626,11 @@ impl<'a> Formatter<'a> {
         self.buf.write_str(data)
     }
 
+    /// Glue for usage of the [`write!`] macro with implementors of this trait.
+    ///
+    /// This method should generally not be invoked manually, but rather through
+    /// the [`write!`] macro itself.
+    ///
     /// Writes some formatted information into this instance.
     ///
     /// # Examples

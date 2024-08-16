@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::def_id::DefId;
@@ -313,11 +314,15 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::Dyn), _)
                         if let Some(def_id) = t.principal_def_id() =>
                     {
-                        let mut impl_def_ids = vec![];
+                        let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            impl_def_ids.push(did)
+                            if DeepRejectCtxt::new(tcx, TreatParams::ForLookup)
+                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            {
+                                has_matching_impl = true;
+                            }
                         });
-                        if let [_] = &impl_def_ids[..] {
+                        if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
                                 "`{}` implements `{trait_name}` so you could box the found value \
@@ -330,11 +335,15 @@ impl<T> Trait<T> for X {
                     (_, ty::Dynamic(t, _, ty::DynKind::Dyn))
                         if let Some(def_id) = t.principal_def_id() =>
                     {
-                        let mut impl_def_ids = vec![];
+                        let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.expected, |did| {
-                            impl_def_ids.push(did)
+                            if DeepRejectCtxt::new(tcx, TreatParams::ForLookup)
+                                .types_may_unify(values.expected, tcx.type_of(did).skip_binder())
+                            {
+                                has_matching_impl = true;
+                            }
                         });
-                        if let [_] = &impl_def_ids[..] {
+                        if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
                                 "`{}` implements `{trait_name}` so you could change the expected \
@@ -346,11 +355,15 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::DynStar), _)
                         if let Some(def_id) = t.principal_def_id() =>
                     {
-                        let mut impl_def_ids = vec![];
+                        let mut has_matching_impl = false;
                         tcx.for_each_relevant_impl(def_id, values.found, |did| {
-                            impl_def_ids.push(did)
+                            if DeepRejectCtxt::new(tcx, TreatParams::ForLookup)
+                                .types_may_unify(values.found, tcx.type_of(did).skip_binder())
+                            {
+                                has_matching_impl = true;
+                            }
                         });
-                        if let [_] = &impl_def_ids[..] {
+                        if has_matching_impl {
                             let trait_name = tcx.item_name(def_id);
                             diag.help(format!(
                                 "`{}` implements `{trait_name}`, `#[feature(dyn_star)]` is likely \
@@ -441,9 +454,9 @@ impl<T> Trait<T> for X {
                             }
                         }
                     }
-                    (ty::FnPtr(sig), ty::FnDef(def_id, _))
-                    | (ty::FnDef(def_id, _), ty::FnPtr(sig)) => {
-                        if tcx.fn_sig(def_id).skip_binder().safety() < sig.safety() {
+                    (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
+                    | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
+                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
                             diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
                             );

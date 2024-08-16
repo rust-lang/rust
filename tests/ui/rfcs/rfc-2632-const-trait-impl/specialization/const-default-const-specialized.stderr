@@ -1,4 +1,4 @@
-error[E0049]: method `value` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `value` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-default-const-specialized.rs:10:1
    |
 LL | #[const_trait]
@@ -7,7 +7,7 @@ LL | trait Value {
 LL |     fn value() -> u32;
    |             - expected 0 const parameters
 
-error[E0049]: method `value` has 1 const parameter but its trait declaration has 0 const parameters
+error[E0049]: associated function `value` has 1 const parameter but its trait declaration has 0 const parameters
   --> $DIR/const-default-const-specialized.rs:10:1
    |
 LL | #[const_trait]

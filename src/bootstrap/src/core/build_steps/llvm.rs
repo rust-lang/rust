@@ -194,6 +194,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     let supported_platforms = [
         // tier 1
         ("aarch64-unknown-linux-gnu", false),
+        ("aarch64-apple-darwin", false),
         ("i686-pc-windows-gnu", false),
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
@@ -202,7 +203,6 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         ("x86_64-pc-windows-gnu", true),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        ("aarch64-apple-darwin", false),
         ("aarch64-pc-windows-msvc", false),
         ("aarch64-unknown-linux-musl", false),
         ("arm-unknown-linux-gnueabi", false),
@@ -368,9 +368,7 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Disable zstd to avoid a dependency on libzstd.so.
-        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
-
+        // Libraries for ELF section compression.
         if !target.is_windows() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
@@ -822,6 +820,14 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
         if !target.contains("apple") {
             cfg.define("LLVM_ENABLE_LLD", "ON");
         }
+    }
+
+    // Libraries for ELF section compression.
+    if builder.config.llvm_libzstd {
+        cfg.define("LLVM_ENABLE_ZSTD", "FORCE_ON");
+        cfg.define("LLVM_USE_STATIC_ZSTD", "TRUE");
+    } else {
+        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
     }
 
     if let Some(ref linker) = builder.config.llvm_use_linker {

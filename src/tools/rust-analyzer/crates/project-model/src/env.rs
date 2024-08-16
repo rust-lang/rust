@@ -75,14 +75,29 @@ pub(crate) fn cargo_config_env(
     }
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
-    utf8_stdout(cargo_config).map(parse_output_cargo_config_env).unwrap_or_default()
+    utf8_stdout(cargo_config)
+        .map(parse_output_cargo_config_env)
+        .inspect(|env| {
+            tracing::debug!("Discovered cargo config env: {:?}", env);
+        })
+        .inspect_err(|err| {
+            tracing::debug!("Failed to discover cargo config env: {:?}", err);
+        })
+        .unwrap_or_default()
 }
 
 fn parse_output_cargo_config_env(stdout: String) -> FxHashMap<String, String> {
     stdout
         .lines()
         .filter_map(|l| l.strip_prefix("env."))
-        .filter_map(|l| l.split_once(".value = "))
+        .filter_map(|l| l.split_once(" = "))
+        .filter_map(|(k, v)| {
+            if k.contains('.') {
+                k.strip_suffix(".value").zip(Some(v))
+            } else {
+                Some((k, v))
+            }
+        })
         .map(|(key, value)| (key.to_owned(), value.trim_matches('"').to_owned()))
         .collect()
 }

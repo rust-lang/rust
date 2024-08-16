@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -115,13 +117,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         None => {}
     }
 
-    // For a delegation item inherit predicates from callee.
-    if let Some(sig_id) = tcx.hir().opt_delegation_sig_id(def_id)
-        && let Some(predicates) = inherit_predicates_for_delegation_item(tcx, def_id, sig_id)
-    {
-        return predicates;
-    }
-
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(hir_id);
 
@@ -150,6 +145,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
                 is_trait = Some(self_bounds);
+            }
+
+            ItemKind::Fn(sig, _, _) => {
+                // For a delegation item inherit predicates from callee.
+                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+                    && let Some(predicates) =
+                        inherit_predicates_for_delegation_item(tcx, def_id, sig_id)
+                {
+                    return predicates;
+                }
             }
             _ => {}
         }
@@ -598,7 +603,7 @@ pub(super) fn implied_predicates_with_filter(
     let Some(trait_def_id) = trait_def_id.as_local() else {
         // if `assoc_name` is None, then the query should've been redirected to an
         // external provider
-        assert!(matches!(filter, PredicateFilter::SelfThatDefines(_)));
+        assert_matches!(filter, PredicateFilter::SelfThatDefines(_));
         return tcx.explicit_super_predicates_of(trait_def_id);
     };
 

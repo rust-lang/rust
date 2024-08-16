@@ -1127,6 +1127,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().add_assignment(self.location, aligned_destination, val);
         // TODO(antoyo): handle align and flags.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
+        // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
+        // LLVM backend for details.
         self.cx.context.new_rvalue_zero(self.type_i32())
     }
 

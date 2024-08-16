@@ -333,7 +333,6 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         ForeignStaticItem(s, _) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
-        OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
         // FIXME(generic_const_items): Add support for generic free consts
         ConstantItem(ci) => {
             ItemEnum::Constant { type_: ci.type_.into_tcx(tcx), const_: ci.kind.into_tcx(tcx) }
@@ -579,7 +578,7 @@ impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple,
         };
 
         match ty {
@@ -589,6 +588,8 @@ impl FromWithTcx<clean::Type> for Type {
                 traits: bounds.into_tcx(tcx),
             }),
             Generic(s) => Type::Generic(s.to_string()),
+            // FIXME: add dedicated variant to json Type?
+            SelfTy => Type::Generic("Self".to_owned()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
@@ -830,12 +831,6 @@ impl FromWithTcx<Box<clean::TypeAlias>> for TypeAlias {
     }
 }
 
-impl FromWithTcx<clean::OpaqueTy> for OpaqueTy {
-    fn from_tcx(opaque: clean::OpaqueTy, tcx: TyCtxt<'_>) -> Self {
-        OpaqueTy { bounds: opaque.bounds.into_tcx(tcx), generics: opaque.generics.into_tcx(tcx) }
-    }
-}
-
 impl FromWithTcx<clean::Static> for Static {
     fn from_tcx(stat: clean::Static, tcx: TyCtxt<'_>) -> Self {
         Static {
@@ -867,7 +862,6 @@ impl FromWithTcx<ItemType> for ItemKind {
             Enum => ItemKind::Enum,
             Function | TyMethod | Method => ItemKind::Function,
             TypeAlias => ItemKind::TypeAlias,
-            OpaqueTy => ItemKind::OpaqueTy,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,
             Trait => ItemKind::Trait,

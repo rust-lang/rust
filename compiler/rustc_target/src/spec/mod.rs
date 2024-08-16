@@ -1561,6 +1561,7 @@ supported_targets! {
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc-unknown-linux-musl", powerpc_unknown_linux_musl),
+    ("powerpc-unknown-linux-muslspe", powerpc_unknown_linux_muslspe),
     ("powerpc64-ibm-aix", powerpc64_ibm_aix),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64-unknown-linux-musl", powerpc64_unknown_linux_musl),
@@ -3151,11 +3152,10 @@ impl Target {
                     if let Some(a) = o.as_array() {
                         for o in a {
                             if let Some(s) = o.as_str() {
-                                let p = s.split('=').collect::<Vec<_>>();
-                                if p.len() == 2 {
-                                    let k = p[0].to_string();
-                                    let v = p[1].to_string();
-                                    base.$key_name.to_mut().push((k.into(), v.into()));
+                                if let [k, v] = *s.split('=').collect::<Vec<_>>() {
+                                    base.$key_name
+                                        .to_mut()
+                                        .push((k.to_string().into(), v.to_string().into()))
                                 }
                             }
                         }

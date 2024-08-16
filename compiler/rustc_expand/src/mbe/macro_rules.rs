@@ -268,7 +268,10 @@ fn expand_macro<'cx>(
         }
         Err(CanRetry::Yes) => {
             // Retry and emit a better error.
-            diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
+            let (span, guar) =
+                diagnostics::failed_to_match_macro(cx.psess(), sp, def_span, name, arg, lhses);
+            cx.trace_macros_diag();
+            DummyResult::any(span, guar)
         }
     }
 }
@@ -1151,7 +1154,7 @@ fn check_matcher_core<'tt>(
                         && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
                         && matches!(
                             next_token,
-                            TokenTree::Token(token) if token.kind == BinOp(token::BinOpToken::Or)
+                            TokenTree::Token(token) if *token == BinOp(token::BinOpToken::Or)
                         )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.

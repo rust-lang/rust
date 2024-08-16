@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{ImportPathConfig, ModuleDef};
+use hir::ModuleDef;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -208,7 +208,7 @@ fn replace_usages(
     delayed_mutations: &mut Vec<(ImportScope, ast::Path)>,
 ) {
     for (file_id, references) in usages {
-        edit.edit_file(file_id);
+        edit.edit_file(file_id.file_id());
 
         let refs_with_imports = augment_references_with_imports(ctx, references, target_module);
 
@@ -337,11 +337,7 @@ fn augment_references_with_imports(
 ) -> Vec<FileReferenceWithImport> {
     let mut visited_modules = FxHashSet::default();
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     references
         .into_iter()
@@ -470,7 +466,7 @@ fn add_enum_def(
         .module()
         .scope(ctx.db(), Some(*target_module))
         .iter()
-        .any(|(name, _)| name.as_str() == Some("Bool"))
+        .any(|(name, _)| name.as_str() == "Bool")
     {
         return None;
     }

@@ -747,18 +747,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_delegation_sig_id(self, def_id: LocalDefId) -> Option<DefId> {
-        if let Some(ret) = self.get_fn_output(def_id)
-            && let FnRetTy::Return(ty) = ret
-            && let TyKind::InferDelegation(sig_id, _) = ty.kind
-        {
-            return Some(sig_id);
-        }
-        None
-    }
-
-    #[inline]
-    pub fn delegation_sig_id(self, def_id: LocalDefId) -> DefId {
-        self.opt_delegation_sig_id(def_id).unwrap()
+        self.tcx.opt_hir_owner_node(def_id)?.fn_decl()?.opt_delegation_sig_id()
     }
 
     #[inline]
@@ -1176,17 +1165,23 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Node::ImplItem(ii) => {
             let kind = match ii.kind {
-                ImplItemKind::Const(..) => "assoc const",
-                ImplItemKind::Fn(..) => "method",
-                ImplItemKind::Type(_) => "assoc type",
+                ImplItemKind::Const(..) => "associated constant",
+                ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplicitSelfKind::None => "associated function",
+                    _ => "method",
+                },
+                ImplItemKind::Type(_) => "associated type",
             };
             format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
         }
         Node::TraitItem(ti) => {
             let kind = match ti.kind {
-                TraitItemKind::Const(..) => "assoc constant",
-                TraitItemKind::Fn(..) => "trait method",
-                TraitItemKind::Type(..) => "assoc type",
+                TraitItemKind::Const(..) => "associated constant",
+                TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplicitSelfKind::None => "associated function",
+                    _ => "trait method",
+                },
+                TraitItemKind::Type(..) => "associated type",
             };
 
             format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))

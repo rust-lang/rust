@@ -63,7 +63,7 @@ LL |     let _val = None::<()>.expect("this always happens");
 help: remove the `None` and `expect()`
    |
 LL |     let _val = panic!("this always happens");
-   |                ~~~~~~~                     ~
+   |                ~~~~~~~
 
 error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:22:24
@@ -134,7 +134,7 @@ LL |     None::<()>.expect("this always happens");
 help: remove the `None` and `expect()`
    |
 LL |     panic!("this always happens");
-   |     ~~~~~~~                     ~
+   |     ~~~~~~~
 
 error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:30:5

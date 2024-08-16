@@ -3,7 +3,7 @@ use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
-#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
+#[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
@@ -212,17 +212,31 @@ impl Thread {
         }
     }
 
+    #[cfg(target_os = "vxworks")]
+    pub fn set_name(name: &CStr) {
+        // FIXME(libc): adding real STATUS, ERROR type eventually.
+        extern "C" {
+            fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
+        }
+
+        //  VX_TASK_NAME_LEN is 31 in VxWorks 7.
+        const VX_TASK_NAME_LEN: usize = 31;
+
+        let mut name = truncate_cstr::<{ VX_TASK_NAME_LEN }>(name);
+        let res = unsafe { taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
+        debug_assert_eq!(res, libc::OK);
+    }
+
     #[cfg(any(
         target_env = "newlib",
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "vxworks",
         target_os = "hurd",
         target_os = "aix",
     ))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Emscripten, and VxWorks have no way to set a thread name.
+        // Newlib and Emscripten have no way to set a thread name.
     }
 
     #[cfg(not(target_os = "espidf"))]
@@ -291,6 +305,7 @@ impl Drop for Thread {
     target_os = "nto",
     target_os = "solaris",
     target_os = "illumos",
+    target_os = "vxworks",
     target_vendor = "apple",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
@@ -455,8 +470,20 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
 
                 Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
+        } else if #[cfg(target_os = "vxworks")] {
+            // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
+            // expectations than the actual cores availability.
+            extern "C" {
+                fn vxCpuEnabledGet() -> libc::cpuset_t;
+            }
+
+            // SAFETY: `vxCpuEnabledGet` always fetches a mask with at least one bit set
+            unsafe{
+                let set = vxCpuEnabledGet();
+                Ok(NonZero::new_unchecked(set.count_ones() as usize))
+            }
         } else {
-            // FIXME: implement on vxWorks, Redox, l4re
+            // FIXME: implement on Redox, l4re
             Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
         }
     }

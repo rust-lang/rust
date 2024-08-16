@@ -483,9 +483,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         // Check if the match is exhaustive.
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            if source == hir::MatchSource::ForLoopDesugar && arms.len() == 2 {
+            if source == hir::MatchSource::ForLoopDesugar
+                && let [_, snd_arm] = *arms
+            {
                 // the for loop pattern is not irrefutable
-                let pat = &self.thir[arms[1]].pattern;
+                let pat = &self.thir[snd_arm].pattern;
                 // `pat` should be `Some(<pat_field>)` from a desugared for loop.
                 debug_assert_eq!(pat.span.desugaring_kind(), Some(DesugaringKind::ForLoop));
                 let PatKind::Variant { ref subpatterns, .. } = pat.kind else { bug!() };
@@ -695,17 +697,17 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
-        let witness_1_is_privately_uninhabited = if (self.tcx.features().exhaustive_patterns
-            || self.tcx.features().min_exhaustive_patterns)
-            && let Some(witness_1) = witnesses.get(0)
+        let witness_1_is_privately_uninhabited = if let Some(witness_1) = witnesses.get(0)
             && let ty::Adt(adt, args) = witness_1.ty().kind()
             && adt.is_enum()
             && let Constructor::Variant(variant_index) = witness_1.ctor()
         {
-            let variant = adt.variant(*variant_index);
-            let inhabited = variant.inhabited_predicate(self.tcx, *adt).instantiate(self.tcx, args);
-            assert!(inhabited.apply(self.tcx, cx.param_env, cx.module));
-            !inhabited.apply_ignore_module(self.tcx, cx.param_env)
+            let variant_inhabited = adt
+                .variant(*variant_index)
+                .inhabited_predicate(self.tcx, *adt)
+                .instantiate(self.tcx, args);
+            variant_inhabited.apply(self.tcx, cx.param_env, cx.module)
+                && !variant_inhabited.apply_ignore_module(self.tcx, cx.param_env)
         } else {
             false
         };
@@ -1059,7 +1061,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
             } else if cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
-            } else if cx.is_uninhabited(ty.inner()) && cx.tcx.features().min_exhaustive_patterns {
+            } else if cx.is_uninhabited(ty.inner()) {
                 // The type is uninhabited yet there is a witness: we must be in the `MaybeInvalid`
                 // case.
                 err.note(format!("`{ty}` is uninhabited but is not being matched by value, so a wildcard `_` is required"));

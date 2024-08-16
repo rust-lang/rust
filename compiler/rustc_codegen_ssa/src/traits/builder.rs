@@ -1,3 +1,5 @@
+use std::assert_matches::assert_matches;
+
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
@@ -23,7 +25,7 @@ use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::{PlaceRef, PlaceValue};
 use crate::MemFlags;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum OverflowOp {
     Add,
     Sub,
@@ -254,10 +256,10 @@ pub trait BuilderMethods<'a, 'tcx>:
         } else {
             (in_ty, dest_ty)
         };
-        assert!(matches!(
+        assert_matches!(
             self.cx().type_kind(float_ty),
             TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::FP128
-        ));
+        );
         assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
 
         if let Some(false) = self.cx().sess().opts.unstable_opts.saturating_float_casts {

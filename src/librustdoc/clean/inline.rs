@@ -12,7 +12,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 use thin_vec::{thin_vec, ThinVec};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -792,11 +792,7 @@ fn build_macro(
 fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean::Generics {
     for pred in &mut g.where_predicates {
         match *pred {
-            clean::WherePredicate::BoundPredicate {
-                ty: clean::Generic(ref s),
-                ref mut bounds,
-                ..
-            } if *s == kw::SelfUpper => {
+            clean::WherePredicate::BoundPredicate { ty: clean::SelfTy, ref mut bounds, .. } => {
                 bounds.retain(|bound| match bound {
                     clean::GenericBound::TraitBound(clean::PolyTrait { trait_, .. }, _) => {
                         trait_.def_id() != trait_did
@@ -812,13 +808,13 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
         clean::WherePredicate::BoundPredicate {
             ty:
                 clean::QPath(box clean::QPathData {
-                    self_type: clean::Generic(ref s),
+                    self_type: clean::Generic(_),
                     trait_: Some(trait_),
                     ..
                 }),
             bounds,
             ..
-        } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.def_id() == trait_did),
+        } => !bounds.is_empty() && trait_.def_id() != trait_did,
         _ => true,
     });
     g
@@ -832,9 +828,7 @@ fn separate_supertrait_bounds(
 ) -> (clean::Generics, Vec<clean::GenericBound>) {
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| match *pred {
-        clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref bounds, .. }
-            if *s == kw::SelfUpper =>
-        {
+        clean::WherePredicate::BoundPredicate { ty: clean::SelfTy, ref bounds, .. } => {
             ty_bounds.extend(bounds.iter().cloned());
             false
         }

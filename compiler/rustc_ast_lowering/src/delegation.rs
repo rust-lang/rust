@@ -275,8 +275,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // FIXME(fn_delegation): Alternatives for target expression lowering:
     // https://github.com/rust-lang/rfcs/pull/3530#issuecomment-2197170600.
     fn lower_target_expr(&mut self, block: &Block) -> hir::Expr<'hir> {
-        if block.stmts.len() == 1
-            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+        if let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
         {
             return self.lower_expr_mut(expr);
         }

@@ -4,12 +4,10 @@
 // It comes from #39987 which implements this RFC for the #[used] attribute:
 // https://rust-lang.github.io/rfcs/2386-used.html
 
-//@ ignore-msvc
-
-use run_make_support::{cmd, rustc};
+use run_make_support::rustc;
+use run_make_support::symbols::any_symbol_contains;
 
 fn main() {
     rustc().opt_level("3").emit("obj").input("used.rs").run();
-
-    cmd("nm").arg("used.o").run().assert_stdout_contains("FOO");
+    assert!(any_symbol_contains("used.o", &["FOO"]));
 }

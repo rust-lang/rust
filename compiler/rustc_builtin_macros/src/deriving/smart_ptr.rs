@@ -1,5 +1,3 @@
-use std::mem::swap;
-
 use ast::ptr::P;
 use ast::HasAttrs;
 use rustc_ast::mut_visit::MutVisitor;
@@ -154,13 +152,28 @@ pub fn expand_deriving_smart_ptr(
     {
         let pointee = &mut impl_generics.params[pointee_param_idx];
         self_bounds = pointee.bounds.clone();
+        if !contains_maybe_sized_bound(&self_bounds)
+            && !contains_maybe_sized_bound_on_pointee(
+                &generics.where_clause.predicates,
+                pointee_ty_ident.name,
+            )
+        {
+            cx.dcx()
+                .struct_span_err(
+                    pointee_ty_ident.span,
+                    format!(
+                        "`derive(SmartPointer)` requires {} to be marked `?Sized`",
+                        pointee_ty_ident.name
+                    ),
+                )
+                .emit();
+            return;
+        }
         let arg = GenericArg::Type(s_ty.clone());
         let unsize = cx.path_all(span, true, path!(span, core::marker::Unsize), vec![arg]);
         pointee.bounds.push(cx.trait_bound(unsize, false));
-        let mut attrs = thin_vec![];
-        swap(&mut pointee.attrs, &mut attrs);
         // Drop `#[pointee]` attribute since it should not be recognized outside `derive(SmartPointer)`
-        pointee.attrs = attrs.into_iter().filter(|attr| !attr.has_name(sym::pointee)).collect();
+        pointee.attrs.retain(|attr| !attr.has_name(sym::pointee));
     }
 
     // # Rewrite generic parameter bounds
@@ -169,14 +182,14 @@ pub fn expand_deriving_smart_ptr(
     // ```
     // struct<
     //     U: Trait<T>,
-    //     #[pointee] T: Trait<T>,
+    //     #[pointee] T: Trait<T> + ?Sized,
     //     V: Trait<T>> ...
     // ```
     // ... generates this `impl` generic parameters
     // ```
     // impl<
     //     U: Trait<T> + Trait<__S>,
-    //     T: Trait<T> + Unsize<__S>, // (**)
+    //     T: Trait<T> + ?Sized + Unsize<__S>, // (**)
     //     __S: Trait<__S> + ?Sized, // (*)
     //     V: Trait<T> + Trait<__S>> ...
     // ```
@@ -218,23 +231,6 @@ pub fn expand_deriving_smart_ptr(
     //
     // We now insert `__S` with the missing bounds marked with (*) above.
     // We should also write the bounds from `#[pointee]` to `__S` as required by `Unsize<__S>`.
-    let sized = cx.path_global(span, path!(span, core::marker::Sized));
-    // For some reason, we are not allowed to write `?Sized` bound twice like `__S: ?Sized + ?Sized`.
-    if !contains_maybe_sized_bound(&self_bounds)
-        && !contains_maybe_sized_bound_on_pointee(
-            &generics.where_clause.predicates,
-            pointee_ty_ident.name,
-        )
-    {
-        self_bounds.push(GenericBound::Trait(
-            cx.poly_trait_ref(span, sized),
-            TraitBoundModifiers {
-                polarity: ast::BoundPolarity::Maybe(span),
-                constness: ast::BoundConstness::Never,
-                asyncness: ast::BoundAsyncness::Normal,
-            },
-        ));
-    }
     {
         let mut substitution =
             TypeSubstitution { from_name: pointee_ty_ident.name, to_ty: &s_ty, rewritten: false };
@@ -252,7 +248,7 @@ pub fn expand_deriving_smart_ptr(
     // where
     //   U: Trait<V> + Trait<T>,
     //   Companion<T>: Trait<T>,
-    //   T: Trait<T>,
+    //   T: Trait<T> + ?Sized,
     // { .. }
     // ```
     // ... will have a impl prelude like so
@@ -263,8 +259,8 @@ pub fn expand_deriving_smart_ptr(
     //   U: Trait<__S>,
     //   Companion<T>: Trait<T>,
     //   Companion<__S>: Trait<__S>,
-    //   T: Trait<T>,
-    //   __S: Trait<__S>,
+    //   T: Trait<T> + ?Sized,
+    //   __S: Trait<__S> + ?Sized,
     // ```
     //
     // We should also write a few new `where` bounds from `#[pointee] T` to `__S`

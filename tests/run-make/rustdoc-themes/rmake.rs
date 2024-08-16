@@ -27,6 +27,6 @@ fn main() {
     rfs::create_dir_all(&out_dir);
     rfs::write(&test_css, test_content);
 
-    rustdoc().output(&out_dir).input("foo.rs").arg("--theme").arg(&test_css).run();
+    rustdoc().out_dir(&out_dir).input("foo.rs").arg("--theme").arg(&test_css).run();
     htmldocck().arg(out_dir).arg("foo.rs").run();
 }

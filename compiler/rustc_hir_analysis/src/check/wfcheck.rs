@@ -951,7 +951,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
             } else {
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
-                    ty::FnPtr(_) => tcx.dcx().struct_span_err(
+                    ty::FnPtr(..) => tcx.dcx().struct_span_err(
                         hir_ty.span,
                         "using function pointers as const generic parameters is forbidden",
                     ),
@@ -1276,7 +1276,7 @@ fn check_item_type(
             UnsizedHandling::Forbid => true,
             UnsizedHandling::Allow => false,
             UnsizedHandling::AllowIfForeignTail => {
-                let tail = tcx.struct_tail_erasing_lifetimes(item_ty, wfcx.param_env);
+                let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.param_env);
                 !matches!(tail.kind(), ty::Foreign(_))
             }
         };

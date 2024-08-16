@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 
 use clippy_utils::macros::span_is_local;
 use rustc_hir::{Expr, ExprKind, MatchSource};
@@ -39,13 +39,15 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMarkUsed {
                 return;
             }
 
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 QUESTION_MARK_USED,
                 expr.span,
                 "question mark operator was used",
-                None,
-                "consider using a custom macro or match expression",
+                |diag| {
+                    diag.help("consider using a custom macro or match expression");
+                },
             );
         }
     }

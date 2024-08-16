@@ -305,7 +305,7 @@ fn new_body<'tcx>(
     arg_count: usize,
     span: Span,
 ) -> Body<'tcx> {
-    Body::new(
+    let mut body = Body::new(
         source,
         basic_blocks,
         IndexVec::from_elem_n(
@@ -326,7 +326,10 @@ fn new_body<'tcx>(
         None,
         // FIXME(compiler-errors): is this correct?
         None,
-    )
+    );
+    // Shims do not directly mention any consts.
+    body.set_required_consts(Vec::new());
+    body
 }
 
 pub struct DropShimElaborator<'a, 'tcx> {
@@ -434,7 +437,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
 
     match self_ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => builder.copy_shim(),
+        ty::FnDef(..) | ty::FnPtr(..) => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::CoroutineClosure(_, args) => {
             builder.tuple_like_shim(dest, src, args.as_coroutine_closure().upvar_tys())
@@ -969,13 +972,16 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     };
 
     let source = MirSource::item(ctor_id);
-    let body = new_body(
+    let mut body = new_body(
         source,
         IndexVec::from_elem_n(start_block, 1),
         local_decls,
         sig.inputs().len(),
         span,
     );
+    // A constructor doesn't mention any other items (and we don't run the usual optimization passes
+    // so this would otherwise not get filled).
+    body.set_mentioned_items(Vec::new());
 
     crate::pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -990,7 +996,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 /// }
 /// ```
 fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
-    assert!(matches!(self_ty.kind(), ty::FnPtr(..)), "expected fn ptr, found {self_ty}");
+    assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
     let span = tcx.def_span(def_id);
     let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
         span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");

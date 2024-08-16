@@ -96,9 +96,7 @@ This modifier translates to `--whole-archive` for `ld`-like linkers,
 to `/WHOLEARCHIVE` for `link.exe`, and to `-force_load` for `ld64`.
 The modifier does nothing for linkers that don't support it.
 
-The default for this modifier is `-whole-archive`. \
-NOTE: The default may currently be different in some cases for backward compatibility,
-but it is not guaranteed. If you need whole archive semantics use `+whole-archive` explicitly.
+The default for this modifier is `-whole-archive`.
 
 ### Linking modifiers: `bundle`
 

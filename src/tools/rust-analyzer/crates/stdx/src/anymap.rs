@@ -271,12 +271,12 @@ macro_rules! implement {
 
             #[inline]
             unsafe fn downcast_ref_unchecked<T: 'static>(&self) -> &T {
-                &*(self as *const Self as *const T)
+                unsafe { &*(self as *const Self as *const T) }
             }
 
             #[inline]
             unsafe fn downcast_mut_unchecked<T: 'static>(&mut self) -> &mut T {
-                &mut *(self as *mut Self as *mut T)
+                unsafe { &mut *(self as *mut Self as *mut T) }
             }
         }
 

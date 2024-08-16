@@ -1,4 +1,4 @@
-use crate::{LexedStr, PrefixEntryPoint, Step};
+use crate::{Edition, LexedStr, PrefixEntryPoint, Step};
 
 #[test]
 fn vis() {
@@ -82,11 +82,11 @@ fn meta_item() {
 
 #[track_caller]
 fn check(entry: PrefixEntryPoint, input: &str, prefix: &str) {
-    let lexed = LexedStr::new(input);
-    let input = lexed.to_input();
+    let lexed = LexedStr::new(Edition::CURRENT, input);
+    let input = lexed.to_input(Edition::CURRENT);
 
     let mut n_tokens = 0;
-    for step in entry.parse(&input, crate::Edition::CURRENT).iter() {
+    for step in entry.parse(&input, Edition::CURRENT).iter() {
         match step {
             Step::Token { n_input_tokens, .. } => n_tokens += n_input_tokens as usize,
             Step::FloatSplit { .. } => n_tokens += 1,

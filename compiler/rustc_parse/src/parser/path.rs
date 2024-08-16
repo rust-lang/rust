@@ -358,9 +358,9 @@ impl<'a> Parser<'a> {
                     })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
-                } else if self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+                } else if self.token == token::OpenDelim(Delimiter::Parenthesis)
                     // FIXME(return_type_notation): Could also recover `...` here.
-                    && self.look_ahead(1, |tok| tok.kind == token::DotDot)
+                    && self.look_ahead(1, |t| *t == token::DotDot)
                 {
                     self.bump(); // (
                     self.bump(); // ..
@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
                     let token_before_parsing = self.token.clone();
                     let mut snapshot = None;
                     if self.may_recover()
-                        && prev_token_before_parsing.kind == token::PathSep
+                        && prev_token_before_parsing == token::PathSep
                         && (style == PathStyle::Expr && self.token.can_begin_expr()
                             || style == PathStyle::Pat && self.token.can_begin_pattern())
                     {
@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
 
                     let (inputs, _) = match self.parse_paren_comma_seq(|p| p.parse_ty()) {
                         Ok(output) => output,
-                        Err(mut error) if prev_token_before_parsing.kind == token::PathSep => {
+                        Err(mut error) if prev_token_before_parsing == token::PathSep => {
                             error.span_label(
                                 prev_token_before_parsing.span.to(token_before_parsing.span),
                                 "while parsing this parenthesized list of type arguments starting here",
@@ -826,7 +826,8 @@ impl<'a> Parser<'a> {
             // We can only resolve single-segment paths at the moment, because multi-segment paths
             // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
             ast::ExprKind::Path(None, path)
-                if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+                if let [segment] = path.segments.as_slice()
+                    && segment.args.is_none() =>
             {
                 true
             }

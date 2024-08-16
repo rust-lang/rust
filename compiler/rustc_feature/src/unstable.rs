@@ -348,8 +348,6 @@ declare_features! (
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
     /// Allows trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
-    /// Allows using `const` operands in inline assembly.
-    (unstable, asm_const, "1.58.0", Some(93332)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
@@ -431,8 +429,6 @@ declare_features! (
     (unstable, custom_test_frameworks, "1.30.0", Some(50297)),
     /// Allows declarative macros 2.0 (`macro`).
     (unstable, decl_macro, "1.17.0", Some(39412)),
-    /// Allows default type parameters to influence type inference.
-    (unstable, default_type_parameter_fallback, "1.3.0", Some(27336)),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
@@ -521,9 +517,6 @@ declare_features! (
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
-    /// Allows exhaustive pattern matching on types that contain uninhabited types in cases that are
-    /// unambiguously sound.
-    (unstable, min_exhaustive_patterns, "1.77.0", Some(119612)),
     /// A minimal, sound subset of specialization intended to be used by the
     /// standard library until the soundness issues with specialization
     /// are fixed.
@@ -591,6 +584,8 @@ declare_features! (
     (incomplete, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
+    /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
+    (unstable, sha512_sm_x86, "CURRENT_RUSTC_VERSION", Some(126624)),
     /// Shortern the tail expression lifetime
     (unstable, shorter_tail_lifetimes, "1.79.0", Some(123739)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
@@ -629,8 +624,6 @@ declare_features! (
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
     /// Allows unsafe attributes.
     (unstable, unsafe_attributes, "1.80.0", Some(123757)),
-    /// Allows unsafe on extern declarations and safety qualifiers over internal items.
-    (unstable, unsafe_extern_blocks, "1.80.0", Some(123743)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),

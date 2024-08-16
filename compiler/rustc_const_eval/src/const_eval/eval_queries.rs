@@ -73,7 +73,9 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
         cid.promoted.map_or_else(String::new, |p| format!("::{p:?}"))
     );
 
-    ecx.push_stack_frame(
+    // This can't use `init_stack_frame` since `body` is not a function,
+    // so computing its ABI would fail. It's also not worth it since there are no arguments to pass.
+    ecx.push_stack_frame_raw(
         cid.instance,
         body,
         &ret.clone().into(),
@@ -224,7 +226,7 @@ pub(super) fn op_to_const<'tcx>(
                 let pointee_ty = imm.layout.ty.builtin_deref(false).unwrap(); // `false` = no raw ptrs
                 debug_assert!(
                     matches!(
-                        ecx.tcx.struct_tail_without_normalization(pointee_ty).kind(),
+                        ecx.tcx.struct_tail_for_codegen(pointee_ty, ecx.param_env).kind(),
                         ty::Str | ty::Slice(..),
                     ),
                     "`ConstValue::Slice` is for slice-tailed types only, but got {}",
@@ -396,7 +398,7 @@ fn const_validate_mplace<'tcx>(
     let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
     let mut ref_tracking = RefTracking::new(mplace.clone());
     let mut inner = false;
-    while let Some((mplace, path)) = ref_tracking.todo.pop() {
+    while let Some((mplace, path)) = ref_tracking.next() {
         let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {
             _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`

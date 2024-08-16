@@ -9,6 +9,3 @@ pub mod llvm;
 pub mod python;
 pub mod rustc;
 pub mod rustdoc;
-
-// Library-internal external dependency.
-mod cygpath;

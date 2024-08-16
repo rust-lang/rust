@@ -19,8 +19,10 @@ pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
 pub const HAS_GLOBAL_SPANS: u32 = 3;
 pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
+/// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field
+pub const EXTENDED_LEAF_DATA: u32 = 5;
 
-pub const CURRENT_API_VERSION: u32 = RUST_ANALYZER_SPAN_SUPPORT;
+pub const CURRENT_API_VERSION: u32 = EXTENDED_LEAF_DATA;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
@@ -155,56 +157,60 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileId;
-    use la_arena::RawIdx;
-    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
-    use text_size::{TextRange, TextSize};
+    use intern::{sym, Symbol};
+    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TextSize};
     use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Subtree, TokenTree};
 
     use super::*;
 
     fn fixture_token_tree() -> Subtree<Span> {
         let anchor = SpanAnchor {
-            file_id: FileId::from_raw(0),
-            ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ErasedFileAstId::from_raw(0),
         };
 
         let token_trees = Box::new([
             TokenTree::Leaf(
                 Ident {
-                    text: "struct".into(),
+                    sym: Symbol::intern("struct"),
                     span: Span {
                         range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
+                    is_raw: tt::IdentIsRaw::No,
                 }
                 .into(),
             ),
             TokenTree::Leaf(
                 Ident {
-                    text: "Foo".into(),
+                    sym: Symbol::intern("Foo"),
                     span: Span {
-                        range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
+                        range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
+                    is_raw: tt::IdentIsRaw::Yes,
                 }
                 .into(),
             ),
             TokenTree::Leaf(Leaf::Literal(Literal {
-                text: "Foo".into(),
-
+                symbol: Symbol::intern("Foo"),
                 span: Span {
-                    range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
+                    range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
+                kind: tt::LitKind::Str,
+                suffix: None,
             })),
             TokenTree::Leaf(Leaf::Punct(Punct {
                 char: '@',
                 span: Span {
-                    range: TextRange::at(TextSize::new(11), TextSize::of('@')),
+                    range: TextRange::at(TextSize::new(13), TextSize::of('@')),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
@@ -213,18 +219,27 @@ mod tests {
             TokenTree::Subtree(Subtree {
                 delimiter: Delimiter {
                     open: Span {
-                        range: TextRange::at(TextSize::new(12), TextSize::of('{')),
+                        range: TextRange::at(TextSize::new(14), TextSize::of('{')),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
                     close: Span {
-                        range: TextRange::at(TextSize::new(13), TextSize::of('}')),
+                        range: TextRange::at(TextSize::new(19), TextSize::of('}')),
                         anchor,
                         ctx: SyntaxContextId::ROOT,
                     },
                     kind: DelimiterKind::Brace,
                 },
-                token_trees: Box::new([]),
+                token_trees: Box::new([TokenTree::Leaf(Leaf::Literal(Literal {
+                    symbol: sym::INTEGER_0.clone(),
+                    span: Span {
+                        range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
+                        anchor,
+                        ctx: SyntaxContextId::ROOT,
+                    },
+                    kind: tt::LitKind::Integer,
+                    suffix: Some(sym::u32.clone()),
+                }))]),
             }),
         ]);
 
@@ -236,7 +251,7 @@ mod tests {
                     ctx: SyntaxContextId::ROOT,
                 },
                 close: Span {
-                    range: TextRange::empty(TextSize::new(13)),
+                    range: TextRange::empty(TextSize::new(19)),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
@@ -249,32 +264,35 @@ mod tests {
     #[test]
     fn test_proc_macro_rpc_works() {
         let tt = fixture_token_tree();
-        let mut span_data_table = Default::default();
-        let task = ExpandMacro {
-            data: ExpandMacroData {
-                macro_body: FlatTree::new(&tt, CURRENT_API_VERSION, &mut span_data_table),
-                macro_name: Default::default(),
-                attributes: None,
-                has_global_spans: ExpnGlobals {
-                    serialize: true,
-                    def_site: 0,
-                    call_site: 0,
-                    mixed_site: 0,
+        for v in RUST_ANALYZER_SPAN_SUPPORT..=CURRENT_API_VERSION {
+            let mut span_data_table = Default::default();
+            let task = ExpandMacro {
+                data: ExpandMacroData {
+                    macro_body: FlatTree::new(&tt, v, &mut span_data_table),
+                    macro_name: Default::default(),
+                    attributes: None,
+                    has_global_spans: ExpnGlobals {
+                        serialize: true,
+                        def_site: 0,
+                        call_site: 0,
+                        mixed_site: 0,
+                    },
+                    span_data_table: Vec::new(),
                 },
-                span_data_table: Vec::new(),
-            },
-            lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
-            env: Default::default(),
-            current_dir: Default::default(),
-        };
+                lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
+                env: Default::default(),
+                current_dir: Default::default(),
+            };
 
-        let json = serde_json::to_string(&task).unwrap();
-        // println!("{}", json);
-        let back: ExpandMacro = serde_json::from_str(&json).unwrap();
+            let json = serde_json::to_string(&task).unwrap();
+            // println!("{}", json);
+            let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(
-            tt,
-            back.data.macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table)
-        );
+            assert_eq!(
+                tt,
+                back.data.macro_body.to_subtree_resolved(v, &span_data_table),
+                "version: {v}"
+            );
+        }
     }
 }

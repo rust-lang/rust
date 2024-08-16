@@ -337,7 +337,7 @@ _arguments "${_arguments_options[@]}" \
 (test)
 _arguments "${_arguments_options[@]}" \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS: ' \
-'*--rustc-args=[extra options to pass the compiler when running tests]:ARGS: ' \
+'*--compiletest-rustc-args=[extra options to pass the compiler when running compiletest tests]:ARGS: ' \
 '--extra-checks=[comma-separated list of other files types to check (accepts py, py\:lint, py\:fmt, shell)]:EXTRA_CHECKS: ' \
 '--compare-mode=[mode describing what file the actual ui output will be compared to]:COMPARE MODE: ' \
 '--pass=[force {check,build,run}-pass tests to this mode]:check | build | run: ' \
@@ -393,7 +393,6 @@ _arguments "${_arguments_options[@]}" \
 (miri)
 _arguments "${_arguments_options[@]}" \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS: ' \
-'*--rustc-args=[extra options to pass the compiler when running tests]:ARGS: ' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \

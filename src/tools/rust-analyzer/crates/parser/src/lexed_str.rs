@@ -13,6 +13,7 @@ use std::ops;
 use rustc_lexer::unescape::{EscapeError, Mode};
 
 use crate::{
+    Edition,
     SyntaxKind::{self, *},
     T,
 };
@@ -30,9 +31,9 @@ struct LexError {
 }
 
 impl<'a> LexedStr<'a> {
-    pub fn new(text: &'a str) -> LexedStr<'a> {
+    pub fn new(edition: Edition, text: &'a str) -> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
-        let mut conv = Converter::new(text);
+        let mut conv = Converter::new(edition, text);
         if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
             conv.res.push(SHEBANG, conv.offset);
             conv.offset = shebang_len;
@@ -47,7 +48,7 @@ impl<'a> LexedStr<'a> {
         conv.finalize_with_eof()
     }
 
-    pub fn single_token(text: &'a str) -> Option<(SyntaxKind, Option<String>)> {
+    pub fn single_token(edition: Edition, text: &'a str) -> Option<(SyntaxKind, Option<String>)> {
         if text.is_empty() {
             return None;
         }
@@ -57,7 +58,7 @@ impl<'a> LexedStr<'a> {
             return None;
         }
 
-        let mut conv = Converter::new(text);
+        let mut conv = Converter::new(edition, text);
         conv.extend_token(&token.kind, text);
         match &*conv.res.kind {
             [kind] => Some((*kind, conv.res.error.pop().map(|it| it.msg))),
@@ -129,13 +130,15 @@ impl<'a> LexedStr<'a> {
 struct Converter<'a> {
     res: LexedStr<'a>,
     offset: usize,
+    edition: Edition,
 }
 
 impl<'a> Converter<'a> {
-    fn new(text: &'a str) -> Self {
+    fn new(edition: Edition, text: &'a str) -> Self {
         Self {
             res: LexedStr { text, kind: Vec::new(), start: Vec::new(), error: Vec::new() },
             offset: 0,
+            edition,
         }
     }
 
@@ -175,6 +178,17 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Whitespace => WHITESPACE,
 
                 rustc_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
+                rustc_lexer::TokenKind::Ident
+                    if ["async", "await", "dyn", "try"].contains(&token_text)
+                        && !self.edition.at_least_2018() =>
+                {
+                    IDENT
+                }
+                rustc_lexer::TokenKind::Ident
+                    if token_text == "gen" && !self.edition.at_least_2024() =>
+                {
+                    IDENT
+                }
                 rustc_lexer::TokenKind::Ident => {
                     SyntaxKind::from_keyword(token_text).unwrap_or(IDENT)
                 }

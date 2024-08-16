@@ -32,6 +32,7 @@
 //! Because of that, we can assume that the only way to change the value behind a tracked place is
 //! by direct assignment.
 
+use std::assert_matches::assert_matches;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
@@ -54,7 +55,7 @@ use crate::{Analysis, AnalysisDomain, JoinSemiLattice, SwitchIntEdgeEffects};
 
 pub trait ValueAnalysis<'tcx> {
     /// For each place of interest, the analysis tracks a value of the given type.
-    type Value: Clone + JoinSemiLattice + HasBottom + HasTop;
+    type Value: Clone + JoinSemiLattice + HasBottom + HasTop + Debug;
 
     const NAME: &'static str;
 
@@ -344,7 +345,7 @@ impl<'tcx, T: ValueAnalysis<'tcx>> AnalysisDomain<'tcx> for ValueAnalysisWrapper
 
     fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
         // The initial state maps all tracked places of argument projections to ⊤ and the rest to ⊥.
-        assert!(matches!(state, State::Unreachable));
+        assert_matches!(state, State::Unreachable);
         *state = State::new_reachable();
         for arg in body.args_iter() {
             state.flood(PlaceRef { local: arg, projection: &[] }, self.0.map());

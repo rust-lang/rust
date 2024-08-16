@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context, wal
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{get_async_fn_body, is_async_fn, is_from_proc_macro};
 use core::ops::ControlFlow;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -45,8 +45,6 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 
 fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
-    let mut app = Applicability::MachineApplicable;
-    let snip = snippet_with_applicability(cx, span, "..", &mut app);
     span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
@@ -54,14 +52,20 @@ fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
         span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(span, "add `return` as shown", format!("return {snip}"), app);
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_applicability(cx, span, "..", &mut app);
+            diag.span_suggestion_with_style(
+                span,
+                "add `return` as shown",
+                format!("return {snip}"),
+                app,
+                SuggestionStyle::ShowAlways,
+            );
         },
     );
 }
 
 fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, expr_span: Span) {
-    let mut app = Applicability::MachineApplicable;
-    let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
     span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
@@ -69,11 +73,14 @@ fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, exp
         break_span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
+            diag.span_suggestion_with_style(
                 break_span,
                 "change `break` to `return` as shown",
                 format!("return {snip}"),
                 app,
+                SuggestionStyle::ShowAlways,
             );
         },
     );

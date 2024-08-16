@@ -7,7 +7,7 @@ fn main() {
     rustc().crate_type("lib").input("dummy_core.rs").target("target.json").run();
     rustdoc()
         .input("my_crate.rs")
-        .output(out_dir)
+        .out_dir(out_dir)
         .library_search_path(cwd())
         .target("target.json")
         .run();

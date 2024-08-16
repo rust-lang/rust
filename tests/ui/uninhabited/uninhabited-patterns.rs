@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(never_type)]
-#![feature(min_exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 
 mod foo {

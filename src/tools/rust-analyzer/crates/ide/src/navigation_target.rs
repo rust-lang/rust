@@ -9,15 +9,14 @@ use hir::{
     HirDisplay, HirFileId, InFile, LocalSource, ModuleSource,
 };
 use ide_db::{
-    base_db::{FileId, FileRange},
     defs::Definition,
     documentation::{Documentation, HasDocs},
-    RootDatabase, SymbolKind,
+    FileId, FileRange, RootDatabase, SymbolKind,
 };
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange,
+    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -98,7 +97,7 @@ impl NavigationTarget {
         db: &RootDatabase,
         module: hir::Module,
     ) -> UpmappingResult<NavigationTarget> {
-        let name = module.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
+        let name = module.name(db).map(|it| it.display_no_db().to_smolstr()).unwrap_or_default();
         match module.declaration_source(db) {
             Some(InFile { value, file_id }) => {
                 orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
@@ -153,7 +152,7 @@ impl NavigationTarget {
         )
     }
 
-    fn from_syntax(
+    pub(crate) fn from_syntax(
         file_id: FileId,
         name: SmolStr,
         focus_range: Option<TextRange>,
@@ -190,7 +189,7 @@ impl TryToNav for FileSymbol {
                         .is_alias
                         .then(|| self.def.name(db))
                         .flatten()
-                        .map_or_else(|| self.name.clone(), |it| it.to_smol_str()),
+                        .map_or_else(|| self.name.clone(), |it| it.display_no_db().to_smolstr()),
                     alias: self.is_alias.then(|| self.name.clone()),
                     kind: Some(hir::ModuleDefId::from(self.def).into()),
                     full_range,
@@ -274,9 +273,9 @@ pub(crate) trait ToNavFromAst: Sized {
 
 fn container_name(db: &RootDatabase, t: impl HasContainer) -> Option<SmolStr> {
     match t.container(db) {
-        hir::ItemContainer::Trait(it) => Some(it.name(db).to_smol_str()),
+        hir::ItemContainer::Trait(it) => Some(it.name(db).display_no_db().to_smolstr()),
         // FIXME: Handle owners of blocks correctly here
-        hir::ItemContainer::Module(it) => it.name(db).map(|name| name.to_smol_str()),
+        hir::ItemContainer::Module(it) => it.name(db).map(|name| name.display_no_db().to_smolstr()),
         _ => None,
     }
 }
@@ -367,7 +366,7 @@ impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
         let InFile { file_id, value } = self.definition_source(db);
 
-        let name = self.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
+        let name = self.name(db).map(|it| it.display_no_db().to_smolstr()).unwrap_or_default();
         let (syntax, focus) = match &value {
             ModuleSource::SourceFile(node) => (node.syntax(), None),
             ModuleSource::Module(node) => (node.syntax(), node.name()),
@@ -424,7 +423,10 @@ impl TryToNav for hir::ExternCrateDecl {
             |(FileRange { file_id, range: full_range }, focus_range)| {
                 let mut res = NavigationTarget::from_syntax(
                     file_id,
-                    self.alias_or_name(db).unwrap_or_else(|| self.name(db)).to_smol_str(),
+                    self.alias_or_name(db)
+                        .unwrap_or_else(|| self.name(db))
+                        .display_no_db()
+                        .to_smolstr(),
                     focus_range,
                     full_range,
                     SymbolKind::Module,
@@ -532,7 +534,7 @@ impl ToNav for LocalSource {
 
         orig_range_with_focus(db, file_id, node, name).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
-                let name = local.name(db).to_smol_str();
+                let name = local.name(db).display_no_db().to_smolstr();
                 let kind = if local.is_self(db) {
                     SymbolKind::SelfParam
                 } else if local.is_param(db) {
@@ -565,7 +567,7 @@ impl ToNav for hir::Local {
 impl TryToNav for hir::Label {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         Some(orig_range_with_focus(db, file_id, value.syntax(), value.lifetime()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
@@ -586,7 +588,7 @@ impl TryToNav for hir::Label {
 impl TryToNav for hir::TypeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.merge().source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         let value = match value {
             Either::Left(ast::TypeOrConstParam::Type(x)) => Either::Left(x),
@@ -628,7 +630,7 @@ impl TryToNav for hir::TypeOrConstParam {
 impl TryToNav for hir::LifetimeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         Some(orig_range(db, file_id, value.syntax()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
@@ -649,7 +651,7 @@ impl TryToNav for hir::LifetimeParam {
 impl TryToNav for hir::ConstParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
         let InFile { file_id, value } = self.merge().source(db)?;
-        let name = self.name(db).to_smol_str();
+        let name = self.name(db).display_no_db().to_smolstr();
 
         let value = match value {
             Either::Left(ast::TypeOrConstParam::Const(x)) => x,
@@ -708,7 +710,7 @@ impl<T> IntoIterator for UpmappingResult<T> {
 }
 
 impl<T> UpmappingResult<T> {
-    fn map<U>(self, f: impl Fn(T) -> U) -> UpmappingResult<U> {
+    pub(crate) fn map<U>(self, f: impl Fn(T) -> U) -> UpmappingResult<U> {
         UpmappingResult { call_site: f(self.call_site), def_site: self.def_site.map(f) }
     }
 }
@@ -730,13 +732,13 @@ fn orig_range_with_focus(
     )
 }
 
-fn orig_range_with_focus_r(
+pub(crate) fn orig_range_with_focus_r(
     db: &RootDatabase,
     hir_file: HirFileId,
     value: TextRange,
-    name: Option<TextRange>,
+    focus_range: Option<TextRange>,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
-    let Some(name) = name else { return orig_range_r(db, hir_file, value) };
+    let Some(name) = focus_range else { return orig_range_r(db, hir_file, value) };
 
     let call_kind =
         || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
@@ -821,8 +823,8 @@ fn orig_range_with_focus_r(
 
     UpmappingResult {
         call_site: (
-            call_site_range,
-            call_site_focus.and_then(|FileRange { file_id, range }| {
+            call_site_range.into(),
+            call_site_focus.and_then(|hir::FileRange { file_id, range }| {
                 if call_site_range.file_id == file_id && call_site_range.range.contains_range(range)
                 {
                     Some(range)
@@ -833,8 +835,8 @@ fn orig_range_with_focus_r(
         ),
         def_site: def_site.map(|(def_site_range, def_site_focus)| {
             (
-                def_site_range,
-                def_site_focus.and_then(|FileRange { file_id, range }| {
+                def_site_range.into(),
+                def_site_focus.and_then(|hir::FileRange { file_id, range }| {
                     if def_site_range.file_id == file_id
                         && def_site_range.range.contains_range(range)
                     {
@@ -854,7 +856,7 @@ fn orig_range(
     value: &SyntaxNode,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db), None),
+        call_site: (InFile::new(hir_file, value).original_file_range_rooted(db).into(), None),
         def_site: None,
     }
 }
@@ -865,7 +867,7 @@ fn orig_range_r(
     value: TextRange,
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     UpmappingResult {
-        call_site: (InFile::new(hir_file, value).original_node_file_range(db).0, None),
+        call_site: (InFile::new(hir_file, value).original_node_file_range(db).0.into(), None),
         def_site: None,
     }
 }

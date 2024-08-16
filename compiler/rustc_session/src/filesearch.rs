@@ -19,6 +19,11 @@ pub struct FileSearch<'a> {
 }
 
 impl<'a> FileSearch<'a> {
+    pub fn cli_search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
+        let kind = self.kind;
+        self.cli_search_paths.iter().filter(move |sp| sp.kind.matches(kind))
+    }
+
     pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
         let kind = self.kind;
         self.cli_search_paths

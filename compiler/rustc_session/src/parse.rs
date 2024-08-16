@@ -307,9 +307,19 @@ impl ParseSess {
         node_id: NodeId,
         diagnostic: BuiltinLintDiag,
     ) {
+        self.opt_span_buffer_lint(lint, Some(span.into()), node_id, diagnostic)
+    }
+
+    pub fn opt_span_buffer_lint(
+        &self,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        node_id: NodeId,
+        diagnostic: BuiltinLintDiag,
+    ) {
         self.buffered_lints.with_lock(|buffered_lints| {
             buffered_lints.push(BufferedEarlyLint {
-                span: span.into(),
+                span,
                 node_id,
                 lint_id: LintId::of(lint),
                 diagnostic,

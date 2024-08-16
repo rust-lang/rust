@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::ffi::CString;
 use std::path::Path;
 
@@ -70,28 +69,6 @@ pub(crate) struct InvalidMinimumAlignmentTooLarge {
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_error_writing_def_file)]
-pub(crate) struct ErrorWritingDEFFile {
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_error_calling_dlltool)]
-pub(crate) struct ErrorCallingDllTool<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_dlltool_fail_import_library)]
-pub(crate) struct DlltoolFailImportLibrary<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub dlltool_args: String,
-    pub stdout: Cow<'a, str>,
-    pub stderr: Cow<'a, str>,
-}
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_dynamic_linking_with_lto)]

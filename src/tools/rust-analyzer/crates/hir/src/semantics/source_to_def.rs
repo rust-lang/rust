@@ -85,7 +85,6 @@
 //! active crate for a given position, and then provide an API to resolve all
 //! syntax nodes against this specific crate.
 
-use base_db::FileId;
 use either::Either;
 use hir_def::{
     child_by_source::ChildBySource,
@@ -95,15 +94,16 @@ use hir_def::{
     },
     hir::{BindingId, LabelId},
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId,
-    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId,
-    StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
+    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, Lookup, MacroId,
+    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId,
+    VariantId,
 };
 use hir_expand::{
     attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, MacroCallId,
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::MacroFileId;
+use span::{FileId, MacroFileId};
 use stdx::impl_from;
 use syntax::{
     ast::{self, HasName},
@@ -132,11 +132,30 @@ impl SourceToDefCtx<'_, '_> {
             for &crate_id in self.db.relevant_crates(file).iter() {
                 // Note: `mod` declarations in block modules cannot be supported here
                 let crate_def_map = self.db.crate_def_map(crate_id);
-                mods.extend(
+                let n_mods = mods.len();
+                let modules = |file| {
                     crate_def_map
                         .modules_for_file(file)
-                        .map(|local_id| crate_def_map.module_id(local_id)),
-                )
+                        .map(|local_id| crate_def_map.module_id(local_id))
+                };
+                mods.extend(modules(file));
+                if mods.len() == n_mods {
+                    mods.extend(
+                        self.db
+                            .include_macro_invoc(crate_id)
+                            .iter()
+                            .filter(|&&(_, file_id)| file_id == file)
+                            .flat_map(|(call, _)| {
+                                modules(
+                                    call.lookup(self.db.upcast())
+                                        .kind
+                                        .file_id()
+                                        .original_file(self.db.upcast())
+                                        .file_id(),
+                                )
+                            }),
+                    );
+                }
             }
             if mods.is_empty() {
                 // FIXME: detached file
@@ -162,7 +181,7 @@ impl SourceToDefCtx<'_, '_> {
             }
             None => {
                 let file_id = src.file_id.original_file(self.db.upcast());
-                self.file_to_def(file_id).first().copied()
+                self.file_to_def(file_id.file_id()).first().copied()
             }
         }?;
 
@@ -175,7 +194,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn source_file_to_def(&mut self, src: InFile<&ast::SourceFile>) -> Option<ModuleId> {
         let _p = tracing::info_span!("source_file_to_def").entered();
         let file_id = src.file_id.original_file(self.db.upcast());
-        self.file_to_def(file_id).first().copied()
+        self.file_to_def(file_id.file_id()).first().copied()
     }
 
     pub(super) fn trait_to_def(&mut self, src: InFile<&ast::Trait>) -> Option<TraitId> {
@@ -412,7 +431,10 @@ impl SourceToDefCtx<'_, '_> {
             return Some(def);
         }
 
-        let def = self.file_to_def(src.file_id.original_file(self.db.upcast())).first().copied()?;
+        let def = self
+            .file_to_def(src.file_id.original_file(self.db.upcast()).file_id())
+            .first()
+            .copied()?;
         Some(def.into())
     }
 

@@ -1,4 +1,4 @@
-use hir::{HasVisibility, ImportPathConfig};
+use hir::{sym, HasVisibility};
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -7,7 +7,7 @@ use ide_db::{
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode};
+use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode, ToSmolStr};
 use text_edit::TextRange;
 
 use crate::{
@@ -87,18 +87,14 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
     let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     let module = ctx.sema.scope(ident_pat.syntax())?.module();
     let struct_def = hir::ModuleDef::from(struct_type);
     let kind = struct_type.kind(ctx.db());
     let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;
 
-    let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key("non_exhaustive").exists();
+    let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key(&sym::non_exhaustive).exists();
     let is_foreign_crate =
         struct_def.module(ctx.db()).map_or(false, |m| m.krate() != module.krate());
 
@@ -169,8 +165,8 @@ fn get_names_in_scope(
 
     let mut names = FxHashSet::default();
     scope.process_all_names(&mut |name, scope| {
-        if let (Some(name), hir::ScopeDef::Local(_)) = (name.as_text(), scope) {
-            names.insert(name);
+        if let hir::ScopeDef::Local(_) = scope {
+            names.insert(name.as_str().into());
         }
     });
     Some(names)
@@ -251,7 +247,7 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .visible_fields
             .iter()
             .map(|field| {
-                let field_name = field.name(ctx.db()).to_smol_str();
+                let field_name = field.name(ctx.db()).display_no_db().to_smolstr();
                 let new_name = new_field_name(field_name.clone(), &data.names_in_scope);
                 (field_name, new_name)
             })

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{implements_trait, is_manually_drop, peel_mid_ty_refs};
+use clippy_utils::ty::{implements_trait, is_manually_drop};
 use clippy_utils::{
     expr_use_ctxt, get_parent_expr, is_block_like, is_lint_allowed, path_to_local, peel_middle_ty_refs, DefinedTy,
     ExprUseNode,
@@ -872,7 +872,7 @@ impl TyCoercionStability {
                 | ty::Pat(..)
                 | ty::Float(_)
                 | ty::RawPtr(..)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Str
                 | ty::Slice(..)
                 | ty::Adt(..)
@@ -947,7 +947,7 @@ fn report<'tcx>(
             let (expr_str, _expr_is_macro_call) =
                 snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
             let ty = typeck.expr_ty(expr);
-            let (_, ref_count) = peel_mid_ty_refs(ty);
+            let (_, ref_count) = peel_middle_ty_refs(ty);
             let deref_str = if ty_changed_count >= ref_count && ref_count != 0 {
                 // a deref call changing &T -> &U requires two deref operators the first time
                 // this occurs. One to remove the reference, a second to call the deref impl.

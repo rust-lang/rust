@@ -440,13 +440,12 @@ impl BacktraceStyle {
     }
 
     fn from_u8(s: u8) -> Option<Self> {
-        Some(match s {
-            0 => return None,
-            1 => BacktraceStyle::Short,
-            2 => BacktraceStyle::Full,
-            3 => BacktraceStyle::Off,
-            _ => unreachable!(),
-        })
+        match s {
+            1 => Some(BacktraceStyle::Short),
+            2 => Some(BacktraceStyle::Full),
+            3 => Some(BacktraceStyle::Off),
+            _ => None,
+        }
     }
 }
 
@@ -463,11 +462,10 @@ static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 /// environment variable; see the details in [`get_backtrace_style`].
 #[unstable(feature = "panic_backtrace_config", issue = "93346")]
 pub fn set_backtrace_style(style: BacktraceStyle) {
-    if !cfg!(feature = "backtrace") {
-        // If the `backtrace` feature of this crate isn't enabled, skip setting.
-        return;
+    if cfg!(feature = "backtrace") {
+        // If the `backtrace` feature of this crate is enabled, set the backtrace style.
+        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Relaxed);
     }
-    SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
 }
 
 /// Checks whether the standard library's panic hook will capture and print a
@@ -499,27 +497,24 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         // to optimize away callers.
         return None;
     }
-    if let Some(style) = BacktraceStyle::from_u8(SHOULD_CAPTURE.load(Ordering::Acquire)) {
+
+    let current = SHOULD_CAPTURE.load(Ordering::Relaxed);
+    if let Some(style) = BacktraceStyle::from_u8(current) {
         return Some(style);
     }
 
-    let format = crate::env::var_os("RUST_BACKTRACE")
-        .map(|x| {
-            if &x == "0" {
-                BacktraceStyle::Off
-            } else if &x == "full" {
-                BacktraceStyle::Full
-            } else {
-                BacktraceStyle::Short
-            }
-        })
-        .unwrap_or(if crate::sys::FULL_BACKTRACE_DEFAULT {
-            BacktraceStyle::Full
-        } else {
-            BacktraceStyle::Off
-        });
-    set_backtrace_style(format);
-    Some(format)
+    let format = match crate::env::var_os("RUST_BACKTRACE") {
+        Some(x) if &x == "0" => BacktraceStyle::Off,
+        Some(x) if &x == "full" => BacktraceStyle::Full,
+        Some(_) => BacktraceStyle::Short,
+        None if crate::sys::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
+        None => BacktraceStyle::Off,
+    };
+
+    match SHOULD_CAPTURE.compare_exchange(0, format.as_u8(), Ordering::Relaxed, Ordering::Relaxed) {
+        Ok(_) => Some(format),
+        Err(new) => BacktraceStyle::from_u8(new),
+    }
 }
 
 #[cfg(test)]

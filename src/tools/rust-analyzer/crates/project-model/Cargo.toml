@@ -1,7 +1,8 @@
 [package]
 name = "project-model"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "A representation for a Cargo project for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -25,6 +26,7 @@ itertools.workspace = true
 
 # local deps
 base-db.workspace = true
+intern.workspace = true
 span.workspace = true
 cfg.workspace = true
 paths = { workspace = true, features = ["serde1"] }

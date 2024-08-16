@@ -211,15 +211,12 @@ fn lint_overflowing_range_endpoint<'tcx>(
     if !is_range_literal(struct_expr) {
         return false;
     };
-    let ExprKind::Struct(_, eps, _) = &struct_expr.kind else { return false };
-    if eps.len() != 2 {
-        return false;
-    }
+    let ExprKind::Struct(_, [start, end], _) = &struct_expr.kind else { return false };
 
     // We can suggest using an inclusive range
     // (`..=`) instead only if it is the `end` that is
     // overflowing and only by 1.
-    if !(eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max) {
+    if !(end.expr.hir_id == expr.hir_id && lit_val - 1 == max) {
         return false;
     };
 
@@ -232,7 +229,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     };
 
     let sub_sugg = if expr.span.lo() == lit_span.lo() {
-        let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) else { return false };
+        let Ok(start) = cx.sess().source_map().span_to_snippet(start.span) else { return false };
         UseInclusiveRange::WithoutParen {
             sugg: struct_expr.span.shrink_to_lo().to(lit_span.shrink_to_hi()),
             start,
@@ -309,11 +306,7 @@ fn report_bin_hex_error(
 ) {
     let (t, actually) = match ty {
         attr::IntType::SignedInt(t) => {
-            let actually = if negative {
-                -(size.sign_extend(val) as i128)
-            } else {
-                size.sign_extend(val) as i128
-            };
+            let actually = if negative { -(size.sign_extend(val)) } else { size.sign_extend(val) };
             (t.name_str(), actually.to_string())
         }
         attr::IntType::UnsignedInt(t) => {
@@ -462,8 +455,11 @@ fn lint_int_literal<'tcx>(
         }
 
         let span = if negative { type_limits.negated_expr_span.unwrap() } else { e.span };
-        let lit =
-            cx.sess().source_map().span_to_snippet(span).expect("must get snippet from literal");
+        let lit = cx
+            .sess()
+            .source_map()
+            .span_to_snippet(span)
+            .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
         let help = get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
@@ -489,6 +485,7 @@ fn lint_uint_literal<'tcx>(
         ast::LitKind::Int(v, _) => v.get(),
         _ => bug!(),
     };
+
     if lit_val < min || lit_val > max {
         if let Node::Expr(par_e) = cx.tcx.parent_hir_node(e.hir_id) {
             match par_e.kind {
@@ -530,7 +527,7 @@ fn lint_uint_literal<'tcx>(
                     .sess()
                     .source_map()
                     .span_to_snippet(lit.span)
-                    .expect("must get snippet from literal"),
+                    .unwrap_or_else(|_| lit_val.to_string()),
                 min,
                 max,
             },
@@ -555,14 +552,14 @@ fn lint_literal<'tcx>(
         }
         ty::Uint(t) => lint_uint_literal(cx, e, lit, t),
         ty::Float(t) => {
-            let is_infinite = match lit.node {
+            let (is_infinite, sym) = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
                     // FIXME(f16_f128): add this check once `is_infinite` is reliable (ABI
                     // issues resolved).
-                    ty::FloatTy::F16 => Ok(false),
-                    ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                    ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                    ty::FloatTy::F128 => Ok(false),
+                    ty::FloatTy::F16 => (Ok(false), v),
+                    ty::FloatTy::F32 => (v.as_str().parse().map(f32::is_infinite), v),
+                    ty::FloatTy::F64 => (v.as_str().parse().map(f64::is_infinite), v),
+                    ty::FloatTy::F128 => (Ok(false), v),
                 },
                 _ => bug!(),
             };
@@ -576,7 +573,7 @@ fn lint_literal<'tcx>(
                             .sess()
                             .source_map()
                             .span_to_snippet(lit.span)
-                            .expect("must get snippet from literal"),
+                            .unwrap_or_else(|_| sym.to_string()),
                     },
                 );
             }
@@ -1025,7 +1022,7 @@ fn ty_is_known_nonnull<'tcx>(
     let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
 
     match ty.kind() {
-        ty::FnPtr(_) => true,
+        ty::FnPtr(..) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
         ty::Adt(def, args) if def.repr().transparent() && !def.is_union() => {
@@ -1476,7 +1473,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 if self.is_internal_abi(sig.abi()) {
                     return FfiUnsafe {
                         ty,
@@ -1712,8 +1710,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             type Result = ControlFlow<Ty<'tcx>>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-                if let ty::FnPtr(sig) = ty.kind()
-                    && !self.visitor.is_internal_abi(sig.abi())
+                if let ty::FnPtr(_, hdr) = ty.kind()
+                    && !self.visitor.is_internal_abi(hdr.abi)
                 {
                     self.tys.push(ty);
                 }

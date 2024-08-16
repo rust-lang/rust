@@ -269,13 +269,10 @@
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
 #![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
-#![cfg_attr(
-    all(any(target_arch = "x86_64", target_arch = "x86"), target_os = "uefi"),
-    feature(stdarch_x86_has_cpuid)
-)]
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -302,7 +299,7 @@
 #![feature(let_chains)]
 #![feature(link_cfg)]
 #![feature(linkage)]
-#![feature(min_exhaustive_patterns)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
@@ -342,6 +339,7 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
+#![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
@@ -588,7 +586,7 @@ pub mod net;
 pub mod num;
 pub mod os;
 pub mod panic;
-#[unstable(feature = "core_pattern_types", issue = "none")]
+#[unstable(feature = "core_pattern_types", issue = "123646")]
 pub mod pat;
 pub mod path;
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
@@ -670,7 +668,6 @@ mod panicking;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
 mod backtrace_rs;
 
-// Re-export macros defined in core.
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use core::cfg_match;
 #[unstable(
@@ -689,6 +686,7 @@ pub use core::{
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
+// Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{

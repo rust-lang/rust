@@ -69,21 +69,20 @@ impl HirDisplay for Function {
 
         write_visibility(module_id, self.visibility(db), f)?;
 
-        if data.has_default_kw() {
+        if data.is_default() {
             f.write_str("default ")?;
         }
-        if data.has_const_kw() {
+        if data.is_const() {
             f.write_str("const ")?;
         }
-        if data.has_async_kw() {
+        if data.is_async() {
             f.write_str("async ")?;
         }
         if self.is_unsafe_to_call(db) {
             f.write_str("unsafe ")?;
         }
         if let Some(abi) = &data.abi {
-            // FIXME: String escape?
-            write!(f, "extern \"{}\" ", &**abi)?;
+            write!(f, "extern \"{}\" ", abi.as_str())?;
         }
         write!(f, "fn {}", data.name.display(f.db.upcast()))?;
 
@@ -115,7 +114,10 @@ impl HirDisplay for Function {
         }
 
         if data.is_varargs() {
-            f.write_str(", ...")?;
+            if !first {
+                f.write_str(", ")?;
+            }
+            f.write_str("...")?;
         }
 
         f.write_char(')')?;
@@ -123,7 +125,7 @@ impl HirDisplay for Function {
         // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
         // Use ugly pattern match to strip the Future trait.
         // Better way?
-        let ret_type = if !data.has_async_kw() {
+        let ret_type = if !data.is_async() {
             &data.ret_type
         } else {
             match &*data.ret_type {
@@ -135,9 +137,9 @@ impl HirDisplay for Function {
                         .as_ref()
                         .unwrap()
                     }
-                    _ => panic!("Async fn ret_type should be impl Future"),
+                    _ => &TypeRef::Error,
                 },
-                _ => panic!("Async fn ret_type should be impl Future"),
+                _ => &TypeRef::Error,
             }
         };
 

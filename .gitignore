@@ -19,6 +19,9 @@ Session.vim
 *.iml
 .vscode
 .project
+.vim/
+.helix/
+.zed/
 .favorites.json
 .settings/
 .vs/
@@ -48,6 +51,7 @@ build/
 /dist/
 /unicode-downloads
 /target
+/library/target
 /src/bootstrap/target
 /src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`

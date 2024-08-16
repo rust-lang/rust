@@ -1,10 +1,12 @@
 //! Runs `rustc --print cfg` to get built-in cfg flags.
 
 use anyhow::Context;
+use cfg::CfgAtom;
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{cfg::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
+use crate::{utf8_stdout, ManifestPath, Sysroot};
 
 /// Determines how `rustc --print cfg` is discovered and invoked.
 pub(crate) enum RustcCfgConfig<'a> {
@@ -20,15 +22,15 @@ pub(crate) fn get(
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
     config: RustcCfgConfig<'_>,
-) -> Vec<CfgFlag> {
+) -> Vec<CfgAtom> {
     let _p = tracing::info_span!("rustc_cfg::get").entered();
-    let mut res = Vec::with_capacity(6 * 2 + 1);
+    let mut res: Vec<_> = Vec::with_capacity(6 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib
-    res.push(CfgFlag::Atom("target_thread_local".into()));
+    res.push(CfgAtom::Flag(Symbol::intern("target_thread_local")));
     for ty in ["8", "16", "32", "64", "cas", "ptr"] {
         for key in ["target_has_atomic", "target_has_atomic_load_store"] {
-            res.push(CfgFlag::KeyValue { key: key.to_owned(), value: ty.into() });
+            res.push(CfgAtom::KeyValue { key: Symbol::intern(key), value: Symbol::intern(ty) });
         }
     }
 
@@ -42,8 +44,7 @@ pub(crate) fn get(
         }
     };
 
-    let rustc_cfgs =
-        rustc_cfgs.lines().map(|it| it.parse::<CfgFlag>()).collect::<Result<Vec<_>, _>>();
+    let rustc_cfgs = rustc_cfgs.lines().map(crate::parse_cfg).collect::<Result<Vec<_>, _>>();
 
     match rustc_cfgs {
         Ok(rustc_cfgs) => {

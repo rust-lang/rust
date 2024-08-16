@@ -4,19 +4,22 @@ use std::{borrow::Cow, fmt, ops};
 use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
-use intern::Interned;
-use mbe::{syntax_node_to_token_tree, DelimiterKind, DocCommentDesugarMode, Punct};
+use intern::{sym, Interned, Symbol};
+
+use mbe::{DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
 use span::{Span, SyntaxContextId};
 use syntax::unescape;
-use syntax::{ast, format_smolstr, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxNode};
+use syntax_bridge::{desugar_doc_comment_text, syntax_node_to_token_tree, DocCommentDesugarMode};
 use triomphe::ThinArc;
 
+use crate::name::Name;
 use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
     span_map::SpanMapRef,
-    tt::{self, Subtree},
+    tt::{self, token_to_literal, Subtree},
     InFile,
 };
 
@@ -52,13 +55,20 @@ impl RawAttrs {
                 }
                 Either::Right(comment) => comment.doc_comment().map(|doc| {
                     let span = span_map.span_for_range(comment.syntax().text_range());
+                    let (text, kind) =
+                        desugar_doc_comment_text(doc, DocCommentDesugarMode::ProcMacro);
                     Attr {
                         id,
                         input: Some(Box::new(AttrInput::Literal(tt::Literal {
-                            text: SmolStr::new(format_smolstr!("\"{}\"", Self::escape_chars(doc))),
+                            symbol: text,
                             span,
+                            kind,
+                            suffix: None,
                         }))),
-                        path: Interned::new(ModPath::from(crate::name!(doc))),
+                        path: Interned::new(ModPath::from(Name::new_symbol(
+                            sym::doc.clone(),
+                            span.ctx,
+                        ))),
                         ctxt: span.ctx,
                     }
                 }),
@@ -72,10 +82,6 @@ impl RawAttrs {
         };
 
         RawAttrs { entries }
-    }
-
-    fn escape_chars(s: &str) -> String {
-        s.replace('\\', r#"\\"#).replace('"', r#"\""#)
     }
 
     pub fn from_attrs_owner(
@@ -115,7 +121,7 @@ impl RawAttrs {
     pub fn filter(self, db: &dyn ExpandDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
-            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]));
+            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr.clone()));
         if !has_cfg_attrs {
             return self;
         }
@@ -125,7 +131,7 @@ impl RawAttrs {
             self.iter()
                 .flat_map(|attr| -> SmallVec<[_; 1]> {
                     let is_cfg_attr =
-                        attr.path.as_ident().map_or(false, |name| *name == crate::name![cfg_attr]);
+                        attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr.clone());
                     if !is_cfg_attr {
                         return smallvec![attr.clone()];
                     }
@@ -234,10 +240,8 @@ impl Attr {
         })?);
         let span = span_map.span_for_range(range);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
-            Some(Box::new(AttrInput::Literal(tt::Literal {
-                text: lit.token().text().into(),
-                span,
-            })))
+            let token = lit.token();
+            Some(Box::new(AttrInput::Literal(token_to_literal(token.text(), span))))
         } else if let Some(tt) = ast.token_tree() {
             let tree = syntax_node_to_token_tree(
                 tt.syntax(),
@@ -254,8 +258,8 @@ impl Attr {
 
     fn from_tt(db: &dyn ExpandDatabase, mut tt: &[tt::TokenTree], id: AttrId) -> Option<Attr> {
         if matches!(tt,
-            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { text, .. })), ..]
-            if text == "unsafe"
+            [tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { sym, .. })), ..]
+            if *sym == sym::unsafe_
         ) {
             match tt.get(1) {
                 Some(tt::TokenTree::Subtree(subtree)) => tt = &subtree.token_trees,
@@ -304,26 +308,38 @@ impl Attr {
 
 impl Attr {
     /// #[path = "string"]
-    pub fn string_value(&self) -> Option<&str> {
+    pub fn string_value(&self) -> Option<&Symbol> {
         match self.input.as_deref()? {
-            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
-                Some(it) => it.trim_matches('#'),
-                None => it.text.as_str(),
-            }
-            .strip_prefix('"')?
-            .strip_suffix('"'),
+            AttrInput::Literal(tt::Literal {
+                symbol: text,
+                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
+                ..
+            }) => Some(text),
+            _ => None,
+        }
+    }
+
+    /// #[path = "string"]
+    pub fn string_value_with_span(&self) -> Option<(&Symbol, span::Span)> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(tt::Literal {
+                symbol: text,
+                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
+                span,
+                suffix: _,
+            }) => Some((text, *span)),
             _ => None,
         }
     }
 
     pub fn string_value_unescape(&self) -> Option<Cow<'_, str>> {
         match self.input.as_deref()? {
-            AttrInput::Literal(it) => match it.text.strip_prefix('r') {
-                Some(it) => {
-                    it.trim_matches('#').strip_prefix('"')?.strip_suffix('"').map(Cow::Borrowed)
-                }
-                None => it.text.strip_prefix('"')?.strip_suffix('"').and_then(unescape),
-            },
+            AttrInput::Literal(tt::Literal {
+                symbol: text, kind: tt::LitKind::StrRaw(_), ..
+            }) => Some(Cow::Borrowed(text.as_str())),
+            AttrInput::Literal(tt::Literal { symbol: text, kind: tt::LitKind::Str, .. }) => {
+                unescape(text.as_str())
+            }
             _ => None,
         }
     }
@@ -369,7 +385,7 @@ impl Attr {
     }
 
     pub fn cfg(&self) -> Option<CfgExpr> {
-        if *self.path.as_ident()? == crate::name![cfg] {
+        if *self.path.as_ident()? == sym::cfg.clone() {
             self.token_tree_value().map(CfgExpr::parse)
         } else {
             None

@@ -17,7 +17,7 @@ pub fn target() -> Target {
         llvm_target: macos_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("ARM64 macOS (11.0+, Big Sur+)".into()),
-            tier: Some(2),
+            tier: Some(1),
             host_tools: Some(true),
             std: Some(true),
         },

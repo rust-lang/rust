@@ -115,9 +115,6 @@ builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept a
 builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept values
     .suggestion = remove the value
 
-builtin_macros_derive_unsafe_path = traits in `#[derive(...)]` don't accept `unsafe(...)`
-    .suggestion = remove the `unsafe(...)`
-
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .custom = use `std::env::var({$var_expr})` to read the variable at run time
@@ -198,6 +195,9 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
 
 builtin_macros_global_asm_clobber_abi = `clobber_abi` cannot be used with `global_asm!`
+
+builtin_macros_global_asm_unsupported_operand = the `{$symbol}` operand cannot be used with `global_asm!`
+    .label = the `{$symbol}` operand is not meaningful for global-scoped inline assembly, remove it
 
 builtin_macros_global_asm_unsupported_option = the `{$symbol}` option cannot be used with `global_asm!`
     .label = the `{$symbol}` option is not meaningful for global-scoped inline assembly

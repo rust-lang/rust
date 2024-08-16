@@ -599,6 +599,16 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let target = self.target;
+        let crates = if self.crates.is_empty() {
+            builder
+                .in_tree_crates("sysroot", Some(target))
+                .iter()
+                .map(|c| c.name.to_string())
+                .collect()
+        } else {
+            self.crates
+        };
+
         let out = match self.format {
             DocumentationFormat::Html => builder.doc_out(target),
             DocumentationFormat::Json => builder.json_doc_out(target),
@@ -627,7 +637,7 @@ impl Step for Std {
             extra_args.push("--disable-minification");
         }
 
-        doc_std(builder, self.format, stage, target, &out, &extra_args, &self.crates);
+        doc_std(builder, self.format, stage, target, &out, &extra_args, &crates);
 
         // Don't open if the format is json
         if let DocumentationFormat::Json = self.format {
@@ -639,7 +649,7 @@ impl Step for Std {
             let index = out.join("std").join("index.html");
             builder.open_in_browser(index);
         } else {
-            for requested_crate in &*self.crates {
+            for requested_crate in crates {
                 if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
                     let index = out.join(requested_crate).join("index.html");
                     builder.open_in_browser(index);
@@ -689,13 +699,12 @@ fn doc_std(
     let compiler = builder.compiler(stage, builder.config.build);
 
     let target_doc_dir_name = if format == DocumentationFormat::Json { "json-doc" } else { "doc" };
-    let target_dir =
-        builder.stage_out(compiler, Mode::Std).join(target.triple).join(target_doc_dir_name);
+    let target_dir = builder.stage_out(compiler, Mode::Std).join(target).join(target_doc_dir_name);
 
     // This is directory where the compiler will place the output of the command.
     // We will then copy the files from this directory into the final `out` directory, the specified
     // as a function parameter.
-    let out_dir = target_dir.join(target.triple).join("doc");
+    let out_dir = target_dir.join(target).join("doc");
 
     let mut cargo =
         builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, Kind::Doc);
@@ -836,7 +845,7 @@ impl Step for Rustc {
 
         let mut to_open = None;
 
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
@@ -982,7 +991,7 @@ macro_rules! tool_doc {
                 // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
                 // cargo.rustdocflag("--generate-link-to-definition");
 
-                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
+                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
                 $(for krate in $crates {
                     let dir_name = krate.replace("-", "_");
                     t!(fs::create_dir_all(out_dir.join(&*dir_name)));

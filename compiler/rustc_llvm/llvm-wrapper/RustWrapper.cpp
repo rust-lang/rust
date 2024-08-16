@@ -397,6 +397,18 @@ LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32_t ElementSizeArg) {
                                               std::nullopt));
 }
 
+extern "C" LLVMAttributeRef
+LLVMRustCreateRangeAttribute(LLVMContextRef C, unsigned NumBits,
+                             const uint64_t LowerWords[],
+                             const uint64_t UpperWords[]) {
+#if LLVM_VERSION_GE(19, 0)
+  return LLVMCreateConstantRangeAttribute(C, Attribute::Range, NumBits,
+                                          LowerWords, UpperWords);
+#else
+  report_fatal_error("LLVM 19.0 is required for Range Attribute");
+#endif
+}
+
 // These values **must** match ffi::AllocKindFlags.
 // It _happens_ to match the LLVM values of llvm::AllocFnKind,
 // but that's happenstance and we do explicit conversions before

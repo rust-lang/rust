@@ -40,6 +40,16 @@ fn main() {
         let _k = k;
     }
 
+    let m: HashMap<u64, u64> = HashMap::new();
+    let rm = &m;
+    'label: for (k, _value) in rm {
+        //~^ ERROR: you seem to want to iterate on a map's keys
+        let _k = k;
+        if *k == 0u64 {
+            break 'label;
+        }
+    }
+
     // The following should not produce warnings.
 
     let m: HashMap<u64, u64> = HashMap::new();

@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_lang_item;
@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx Expr<'_>,
     repeat_arg: &'tcx Expr<'_>,
 ) {
-    if constant(cx, cx.typeck_results(), repeat_arg) == Some(Constant::Int(1)) {
+    if ConstEvalCtxt::new(cx).eval(repeat_arg) == Some(Constant::Int(1)) {
         let ty = cx.typeck_results().expr_ty(recv).peel_refs();
         if ty.is_str() {
             span_lint_and_sugg(

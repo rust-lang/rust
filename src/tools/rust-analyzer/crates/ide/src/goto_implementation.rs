@@ -24,7 +24,7 @@ pub(crate) fn goto_implementation(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
-    let source_file = sema.parse(file_id);
+    let source_file = sema.parse_guess_edition(file_id);
     let syntax = source_file.syntax().clone();
 
     let original_token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
@@ -117,7 +117,7 @@ fn impls_for_trait_item(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use ide_db::FileRange;
     use itertools::Itertools;
 
     use crate::fixture;

@@ -1,16 +1,21 @@
 //! This module add real world mbe example for benchmark tests
 
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
 use syntax::{
     ast::{self, HasName},
-    AstNode, SmolStr,
+    AstNode,
+};
+use syntax_bridge::{
+    dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
+    syntax_node_to_token_tree, DocCommentDesugarMode,
 };
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro, DocCommentDesugarMode, DummyTestSpanMap, DUMMY,
+    DeclarativeMacro,
 };
 
 #[test]
@@ -24,9 +29,7 @@ fn benchmark_parse_macro_rules() {
         rules
             .values()
             .map(|it| {
-                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT, true)
-                    .rules
-                    .len()
+                DeclarativeMacro::parse_macro_rules(it, |_| span::Edition::CURRENT).rules.len()
             })
             .sum()
     };
@@ -46,7 +49,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(&tt, |_| (), true, DUMMY, Edition::CURRENT);
+                let res = rules[&id].expand(&tt, |_| (), DUMMY, Edition::CURRENT);
                 assert!(res.err.is_none());
                 res.value.0.token_trees.len()
             })
@@ -58,9 +61,7 @@ fn benchmark_expand_macro_rules() {
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| {
-            (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT, true))
-        })
+        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, |_| span::Edition::CURRENT)))
         .collect()
 }
 
@@ -121,7 +122,7 @@ fn invocation_fixtures(
                         },
                         token_trees: token_trees.into_boxed_slice(),
                     };
-                    if it.expand(&subtree, |_| (), true, DUMMY, Edition::CURRENT).err.is_none() {
+                    if it.expand(&subtree, |_| (), DUMMY, Edition::CURRENT).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }
@@ -226,13 +227,24 @@ fn invocation_fixtures(
             *seed
         }
         fn make_ident(ident: &str) -> tt::TokenTree<Span> {
-            tt::Leaf::Ident(tt::Ident { span: DUMMY, text: SmolStr::new(ident) }).into()
+            tt::Leaf::Ident(tt::Ident {
+                span: DUMMY,
+                sym: Symbol::intern(ident),
+                is_raw: tt::IdentIsRaw::No,
+            })
+            .into()
         }
         fn make_punct(char: char) -> tt::TokenTree<Span> {
             tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone }).into()
         }
         fn make_literal(lit: &str) -> tt::TokenTree<Span> {
-            tt::Leaf::Literal(tt::Literal { span: DUMMY, text: SmolStr::new(lit) }).into()
+            tt::Leaf::Literal(tt::Literal {
+                span: DUMMY,
+                symbol: Symbol::intern(lit),
+                kind: tt::LitKind::Str,
+                suffix: None,
+            })
+            .into()
         }
         fn make_subtree(
             kind: tt::DelimiterKind,

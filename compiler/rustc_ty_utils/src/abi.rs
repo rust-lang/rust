@@ -549,7 +549,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // With metadata. Must be unsized and not on the stack.
                 assert!(arg.layout.is_unsized() && !on_stack);
                 // Also, must not be `extern` type.
-                let tail = cx.tcx.struct_tail_with_normalize(arg.layout.ty, |ty| ty, || {});
+                let tail = cx.tcx.struct_tail_for_codegen(arg.layout.ty, cx.param_env());
                 if matches!(tail.kind(), ty::Foreign(..)) {
                     // These types do not have metadata, so having `meta_attrs` is bogus.
                     // Conceptually, unsized arguments must be copied around, which requires dynamically
@@ -621,7 +621,7 @@ fn fn_abi_new_uncached<'tcx>(
     let rust_abi = matches!(sig.abi, RustIntrinsic | Rust | RustCall);
 
     let is_drop_in_place =
-        fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
+        fn_def_id.is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::DropInPlace));
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");

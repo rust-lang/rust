@@ -900,7 +900,7 @@ impl String {
     /// let rebuilt = unsafe { String::from_raw_parts(ptr, len, cap) };
     /// assert_eq!(rebuilt, "hello");
     /// ```
-    #[must_use = "`self` will be dropped if the result is not used"]
+    #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
@@ -2643,14 +2643,54 @@ impl ToString for i8 {
     }
 }
 
-#[doc(hidden)]
+// Generic/generated code can sometimes have multiple, nested references
+// for strings, including `&&&str`s that would never be written
+// by hand. This macro generates twelve layers of nested `&`-impl
+// for primitive strings.
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "str_to_string_specialization", since = "1.9.0")]
-impl ToString for str {
-    #[inline]
-    fn to_string(&self) -> String {
-        String::from(self)
-    }
+macro_rules! to_string_str_wrap_in_ref {
+    {x $($x:ident)*} => {
+        &to_string_str_wrap_in_ref! { $($x)* }
+    };
+    {} => { str };
+}
+#[cfg(not(no_global_oom_handling))]
+macro_rules! to_string_expr_wrap_in_deref {
+    {$self:expr ; x $($x:ident)*} => {
+        *(to_string_expr_wrap_in_deref! { $self ; $($x)* })
+    };
+    {$self:expr ;} => { $self };
+}
+#[cfg(not(no_global_oom_handling))]
+macro_rules! to_string_str {
+    {$($($x:ident)*),+} => {
+        $(
+            #[doc(hidden)]
+            #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
+            impl ToString for to_string_str_wrap_in_ref!($($x)*) {
+                #[inline]
+                fn to_string(&self) -> String {
+                    String::from(to_string_expr_wrap_in_deref!(self ; $($x)*))
+                }
+            }
+        )+
+    };
+}
+
+#[cfg(not(no_global_oom_handling))]
+to_string_str! {
+    x x x x x x x x x x x x,
+    x x x x x x x x x x x,
+    x x x x x x x x x x,
+    x x x x x x x x x,
+    x x x x x x x x,
+    x x x x x x x,
+    x x x x x x,
+    x x x x x,
+    x x x x,
+    x x x,
+    x x,
+    x,
 }
 
 #[doc(hidden)]

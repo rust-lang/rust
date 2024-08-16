@@ -25,7 +25,7 @@ use crate::errors::{
     UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
-use crate::parser::expr::{could_be_unclosed_char_literal, LhsExpr};
+use crate::parser::expr::could_be_unclosed_char_literal;
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 #[derive(PartialEq, Copy, Clone)]
@@ -369,7 +369,7 @@ impl<'a> Parser<'a> {
                     .and_then(|(ident, _)| ident.name.as_str().chars().next())
                     .is_some_and(char::is_lowercase)
             })
-            && self.look_ahead(2, |tok| tok.kind == token::OpenDelim(Delimiter::Parenthesis));
+            && self.look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Parenthesis));
 
         // Check for operators.
         // `|` is excluded as it is used in pattern alternatives and lambdas,
@@ -377,9 +377,9 @@ impl<'a> Parser<'a> {
         // `[` is included for indexing operations,
         // `[]` is excluded as `a[]` isn't an expression and should be recovered as `a, []` (cf. `tests/ui/parser/pat-lt-bracket-7.rs`)
         let has_trailing_operator = matches!(self.token.kind, token::BinOp(op) if op != BinOpToken::Or)
-            || self.token.kind == token::Question
-            || (self.token.kind == token::OpenDelim(Delimiter::Bracket)
-                && self.look_ahead(1, |tok| tok.kind != token::CloseDelim(Delimiter::Bracket)));
+            || self.token == token::Question
+            || (self.token == token::OpenDelim(Delimiter::Bracket)
+                && self.look_ahead(1, |t| *t != token::CloseDelim(Delimiter::Bracket)));
 
         if !has_trailing_method && !has_trailing_operator {
             // Nothing to recover here.
@@ -403,8 +403,9 @@ impl<'a> Parser<'a> {
 
             // Parse an associative expression such as `+ expr`, `% expr`, ...
             // Assignements, ranges and `|` are disabled by [`Restrictions::IS_PAT`].
-            let lhs = LhsExpr::Parsed { expr, starts_statement: false };
-            if let Ok(expr) = snapshot.parse_expr_assoc_with(0, lhs).map_err(|err| err.cancel()) {
+            if let Ok(expr) =
+                snapshot.parse_expr_assoc_rest_with(0, false, expr).map_err(|err| err.cancel())
+            {
                 // We got a valid expression.
                 self.restore_snapshot(snapshot);
                 self.restrictions.remove(Restrictions::IS_PAT);
@@ -412,7 +413,7 @@ impl<'a> Parser<'a> {
                 let is_bound = is_end_bound
                     // is_start_bound: either `..` or `)..`
                     || self.token.is_range_separator()
-                    || self.token.kind == token::CloseDelim(Delimiter::Parenthesis)
+                    || self.token == token::CloseDelim(Delimiter::Parenthesis)
                         && self.look_ahead(1, Token::is_range_separator);
 
                 // Check that `parse_expr_assoc_with` didn't eat a rhs.
@@ -449,7 +450,7 @@ impl<'a> Parser<'a> {
             lo = self.token.span;
         }
 
-        let pat = if self.check(&token::BinOp(token::And)) || self.token.kind == token::AndAnd {
+        let pat = if self.check(&token::BinOp(token::And)) || self.token == token::AndAnd {
             self.parse_pat_deref(expected)?
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             self.parse_pat_tuple_or_parens()?
@@ -624,7 +625,7 @@ impl<'a> Parser<'a> {
     ///
     /// [and]: https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/pattern-matching
     fn recover_intersection_pat(&mut self, lhs: P<Pat>) -> PResult<'a, P<Pat>> {
-        if self.token.kind != token::At {
+        if self.token != token::At {
             // Next token is not `@` so it's not going to be an intersection pattern.
             return Ok(lhs);
         }
@@ -957,14 +958,14 @@ impl<'a> Parser<'a> {
         self.check_inline_const(dist)
             || self.look_ahead(dist, |t| {
                 t.is_path_start() // e.g. `MY_CONST`;
-                || t.kind == token::Dot // e.g. `.5` for recovery;
+                || *t == token::Dot // e.g. `.5` for recovery;
                 || matches!(t.kind, token::Literal(..) | token::BinOp(token::Minus))
                 || t.is_bool_lit()
                 || t.is_whole_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
                 || (self.may_recover() // recover leading `(`
-                    && t.kind == token::OpenDelim(Delimiter::Parenthesis)
-                    && self.look_ahead(dist + 1, |t| t.kind != token::OpenDelim(Delimiter::Parenthesis))
+                    && *t == token::OpenDelim(Delimiter::Parenthesis)
+                    && self.look_ahead(dist + 1, |t| *t != token::OpenDelim(Delimiter::Parenthesis))
                     && self.is_pat_range_end_start(dist + 1))
             })
     }

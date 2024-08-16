@@ -390,13 +390,18 @@ function preLoadCss(cssUrl) {
             if (splitAt !== -1) {
                 const implId = savedHash.slice(0, splitAt);
                 const assocId = savedHash.slice(splitAt + 1);
-                const implElem = document.getElementById(implId);
-                if (implElem && implElem.parentElement.tagName === "SUMMARY" &&
-                    implElem.parentElement.parentElement.tagName === "DETAILS") {
-                    onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
+                const implElems = document.querySelectorAll(
+                    `details > summary > section[id^="${implId}"]`,
+                );
+                onEachLazy(implElems, implElem => {
+                    const numbered = /^(.+?)-([0-9]+)$/.exec(implElem.id);
+                    if (implElem.id !== implId && (!numbered || numbered[1] !== implId)) {
+                        return false;
+                    }
+                    return onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
                         `[id^="${assocId}"]`),
                         item => {
-                            const numbered = /([^-]+)-([0-9]+)/.exec(item.id);
+                            const numbered = /^(.+?)-([0-9]+)$/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
                                 openParentDetails(item);
                                 item.scrollIntoView();
@@ -404,10 +409,11 @@ function preLoadCss(cssUrl) {
                                 setTimeout(() => {
                                     window.location.replace("#" + item.id);
                                 }, 0);
+                                return true;
                             }
                         },
                     );
-                }
+                });
             }
         }
     }
@@ -568,7 +574,6 @@ function preLoadCss(cssUrl) {
             //block("associatedconstant", "associated-consts", "Associated Constants");
             block("foreigntype", "foreign-types", "Foreign Types");
             block("keyword", "keywords", "Keywords");
-            block("opaque", "opaque-types", "Opaque Types");
             block("attr", "attributes", "Attribute Macros");
             block("derive", "derives", "Derive Macros");
             block("traitalias", "trait-aliases", "Trait Aliases");
@@ -1115,8 +1120,7 @@ function preLoadCss(cssUrl) {
         wrapper.style.left = 0;
         wrapper.style.right = "auto";
         wrapper.style.visibility = "hidden";
-        const body = document.getElementsByTagName("body")[0];
-        body.appendChild(wrapper);
+        document.body.appendChild(wrapper);
         const wrapperPos = wrapper.getBoundingClientRect();
         // offset so that the arrow points at the center of the "(i)"
         const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
@@ -1235,8 +1239,7 @@ function preLoadCss(cssUrl) {
                 }
                 window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
             }
-            const body = document.getElementsByTagName("body")[0];
-            body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
+            document.body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             window.CURRENT_TOOLTIP_ELEMENT = null;
         }
@@ -1832,10 +1835,14 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     function getExampleWrap(event) {
         let elem = event.target;
         while (!hasClass(elem, "example-wrap")) {
-            elem = elem.parentElement;
-            if (elem.tagName === "body" || hasClass(elem, "docblock")) {
+            if (elem === document.body ||
+                elem.tagName === "A" ||
+                elem.tagName === "BUTTON" ||
+                hasClass(elem, "docblock")
+            ) {
                 return null;
             }
+            elem = elem.parentElement;
         }
         return elem;
     }

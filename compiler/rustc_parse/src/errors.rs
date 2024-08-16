@@ -2725,15 +2725,24 @@ impl HelpUseLatestEdition {
 
 #[derive(Diagnostic)]
 #[diag(parse_box_syntax_removed)]
-pub struct BoxSyntaxRemoved<'a> {
+pub struct BoxSyntaxRemoved {
     #[primary_span]
-    #[suggestion(
-        code = "Box::new({code})",
-        applicability = "machine-applicable",
-        style = "verbose"
-    )]
     pub span: Span,
-    pub code: &'a str,
+    #[subdiagnostic]
+    pub sugg: AddBoxNew,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_box_syntax_removed_suggestion,
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub struct AddBoxNew {
+    #[suggestion_part(code = "Box::new(")]
+    pub box_kw_and_lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
 }
 
 #[derive(Diagnostic)]
@@ -3183,6 +3192,7 @@ pub(crate) struct DotDotRangeAttribute {
 #[note]
 pub struct InvalidAttrUnsafe {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub name: Path,
 }

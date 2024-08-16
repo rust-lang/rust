@@ -4,11 +4,10 @@
 use std::{fmt, hash::Hash};
 
 use stdx::{always, itertools::Itertools};
-use vfs::FileId;
 
 use crate::{
-    ErasedFileAstId, Span, SpanAnchor, SpanData, SyntaxContextId, TextRange, TextSize,
-    ROOT_ERASED_FILE_AST_ID,
+    EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SpanData, SyntaxContextId, TextRange,
+    TextSize, ROOT_ERASED_FILE_AST_ID,
 };
 
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
@@ -109,7 +108,7 @@ where
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct RealSpanMap {
-    file_id: FileId,
+    file_id: EditionedFileId,
     /// Invariant: Sorted vec over TextSize
     // FIXME: SortedVec<(TextSize, ErasedFileAstId)>?
     pairs: Box<[(TextSize, ErasedFileAstId)]>,
@@ -120,7 +119,7 @@ impl fmt::Display for RealSpanMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "RealSpanMap({:?}):", self.file_id)?;
         for span in self.pairs.iter() {
-            writeln!(f, "{}: {}", u32::from(span.0), span.1.into_raw().into_u32())?;
+            writeln!(f, "{}: {}", u32::from(span.0), span.1.into_raw())?;
         }
         Ok(())
     }
@@ -128,7 +127,7 @@ impl fmt::Display for RealSpanMap {
 
 impl RealSpanMap {
     /// Creates a real file span map that returns absolute ranges (relative ranges to the root ast id).
-    pub fn absolute(file_id: FileId) -> Self {
+    pub fn absolute(file_id: EditionedFileId) -> Self {
         RealSpanMap {
             file_id,
             pairs: Box::from([(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)]),
@@ -137,7 +136,7 @@ impl RealSpanMap {
     }
 
     pub fn from_file(
-        file_id: FileId,
+        file_id: EditionedFileId,
         pairs: Box<[(TextSize, ErasedFileAstId)]>,
         end: TextSize,
     ) -> Self {

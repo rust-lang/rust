@@ -18,6 +18,7 @@ use hir_def::{
     TypeOrConstParamId,
 };
 use hir_expand::name::Name;
+use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -252,12 +253,7 @@ impl<'a> ClosureSubst<'a> {
 
 pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
     let data = db.function_data(func);
-    if data.has_unsafe_kw() {
-        // Functions that are `#[rustc_deprecated_safe_2024]` are safe to call before 2024.
-        if db.attrs(func.into()).by_key("rustc_deprecated_safe_2024").exists() {
-            // FIXME: Properly check the caller span and mark it as unsafe after 2024.
-            return false;
-        }
+    if data.is_unsafe() {
         return true;
     }
 
@@ -268,11 +264,11 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
             let id = block.lookup(db.upcast()).id;
 
             let is_intrinsic =
-                id.item_tree(db.upcast())[id.value].abi.as_deref() == Some("rust-intrinsic");
+                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
 
             if is_intrinsic {
                 // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !data.attrs.by_key("rustc_safe_intrinsic").exists()
+                !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
             } else {
                 // Extern items are always unsafe
                 true

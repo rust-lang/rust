@@ -7,9 +7,7 @@
 // FIXME(jieyouxu): check cross-compile setup
 //@ ignore-cross-compile
 
-use std::path::PathBuf;
-
-use run_make_support::{cwd, env_var, llvm_readobj, rfs, run_in_tmpdir, rustc};
+use run_make_support::{cwd, env_var, llvm_readobj, rfs, rustc};
 
 fn main() {
     let target = env_var("TARGET");

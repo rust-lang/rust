@@ -8,7 +8,6 @@ use std::{
     ops::{self, ControlFlow, Not},
 };
 
-use base_db::{FileId, FileRange};
 use either::Either;
 use hir_def::{
     hir::Expr,
@@ -20,16 +19,16 @@ use hir_def::{
 };
 use hir_expand::{
     attrs::collect_attrs,
-    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
+    builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::InRealFile,
     name::AsName,
-    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{Span, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+use span::{EditionedFileId, FileId};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -225,12 +224,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
-    pub fn file_to_module_def(&self, file: FileId) -> Option<Module> {
-        self.imp.file_to_module_defs(file).next()
+    pub fn file_to_module_def(&self, file: impl Into<FileId>) -> Option<Module> {
+        self.imp.file_to_module_defs(file.into()).next()
     }
 
-    pub fn file_to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
-        self.imp.file_to_module_defs(file)
+    pub fn file_to_module_defs(&self, file: impl Into<FileId>) -> impl Iterator<Item = Module> {
+        self.imp.file_to_module_defs(file.into())
     }
 
     pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
@@ -300,7 +299,23 @@ impl<'db> SemanticsImpl<'db> {
         }
     }
 
-    pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
+    pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
+        let tree = self.db.parse(file_id).tree();
+        self.cache(tree.syntax().clone(), file_id.into());
+        tree
+    }
+
+    pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
+        Some(EditionedFileId::new(
+            file,
+            self.file_to_module_defs(file).next()?.krate().edition(self.db),
+        ))
+    }
+
+    pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
+        let file_id = self
+            .attach_first_edition(file_id)
+            .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
@@ -742,81 +757,9 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    // return:
-    // SourceAnalyzer(file_id that original call include!)
-    // macro file id
-    // token in include! macro mapped from token in params
-    // span for the mapped token
-    fn is_from_include_file(
-        &self,
-        token: SyntaxToken,
-    ) -> Option<(SourceAnalyzer, HirFileId, SyntaxToken, Span)> {
-        let parent = token.parent()?;
-        let file_id = self.find_file(&parent).file_id.file_id()?;
-
-        // iterate related crates and find all include! invocations that include_file_id matches
-        for (invoc, _) in self
-            .db
-            .relevant_crates(file_id)
-            .iter()
-            .flat_map(|krate| self.db.include_macro_invoc(*krate))
-            .filter(|&(_, include_file_id)| include_file_id == file_id)
-        {
-            let macro_file = invoc.as_macro_file();
-            let expansion_info = {
-                self.with_ctx(|ctx| {
-                    ctx.cache
-                        .expansion_info_cache
-                        .entry(macro_file)
-                        .or_insert_with(|| {
-                            let exp_info = macro_file.expansion_info(self.db.upcast());
-
-                            let InMacroFile { file_id, value } = exp_info.expanded();
-                            if let InFile { file_id, value: Some(value) } = exp_info.arg() {
-                                self.cache(value.ancestors().last().unwrap(), file_id);
-                            }
-                            self.cache(value, file_id.into());
-
-                            exp_info
-                        })
-                        .clone()
-                })
-            };
-
-            // FIXME: uncached parse
-            // Create the source analyzer for the macro call scope
-            let Some(sa) = expansion_info
-                .arg()
-                .value
-                .and_then(|it| self.analyze_no_infer(&it.ancestors().last().unwrap()))
-            else {
-                continue;
-            };
-
-            // get mapped token in the include! macro file
-            let span = span::Span {
-                range: token.text_range(),
-                anchor: span::SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-                ctx: SyntaxContextId::ROOT,
-            };
-            let Some(InMacroFile { file_id, value: mut mapped_tokens }) =
-                expansion_info.map_range_down_exact(span)
-            else {
-                continue;
-            };
-
-            // if we find one, then return
-            if let Some(t) = mapped_tokens.next() {
-                return Some((sa, file_id.into(), t, span));
-            }
-        }
-
-        None
-    }
-
     fn descend_into_macros_impl(
         &self,
-        mut token: SyntaxToken,
+        token: SyntaxToken,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
@@ -833,17 +776,7 @@ impl<'db> SemanticsImpl<'db> {
                         return;
                     }
                 },
-                None => {
-                    // if we cannot find a source analyzer for this token, then we try to find out
-                    // whether this file is an included file and treat that as the include input
-                    let Some((it, macro_file_id, mapped_token, s)) =
-                        self.is_from_include_file(token)
-                    else {
-                        return;
-                    };
-                    token = mapped_token;
-                    (it, s, macro_file_id)
-                }
+                None => return,
             };
 
         let mut m_cache = self.macro_call_cache.borrow_mut();
@@ -1089,6 +1022,7 @@ impl<'db> SemanticsImpl<'db> {
         node.original_file_range_opt(self.db.upcast())
             .filter(|(_, ctx)| ctx.is_root())
             .map(TupleExt::head)
+            .map(Into::into)
     }
 
     /// Attempts to map the node out of macro expanded files.

@@ -135,7 +135,9 @@ pub fn simplify_type<I: Interner>(
         ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),
-        ty::FnPtr(f) => Some(SimplifiedType::Function(f.skip_binder().inputs().len())),
+        ty::FnPtr(sig_tys, _hdr) => {
+            Some(SimplifiedType::Function(sig_tys.skip_binder().inputs().len()))
+        }
         ty::Placeholder(..) => Some(SimplifiedType::Placeholder),
         ty::Param(_) => match treat_params {
             TreatParams::ForLookup => Some(SimplifiedType::Placeholder),
@@ -307,17 +309,14 @@ impl<I: Interner> DeepRejectCtxt<I> {
                     obl_preds.principal_def_id() == impl_preds.principal_def_id()
                 )
             }
-            ty::FnPtr(obl_sig) => match k {
-                ty::FnPtr(impl_sig) => {
-                    let ty::FnSig { inputs_and_output, c_variadic, safety, abi } =
-                        obl_sig.skip_binder();
-                    let impl_sig = impl_sig.skip_binder();
+            ty::FnPtr(obl_sig_tys, obl_hdr) => match k {
+                ty::FnPtr(impl_sig_tys, impl_hdr) => {
+                    let obl_sig_tys = obl_sig_tys.skip_binder().inputs_and_output;
+                    let impl_sig_tys = impl_sig_tys.skip_binder().inputs_and_output;
 
-                    abi == impl_sig.abi
-                        && c_variadic == impl_sig.c_variadic
-                        && safety == impl_sig.safety
-                        && inputs_and_output.len() == impl_sig.inputs_and_output.len()
-                        && iter::zip(inputs_and_output.iter(), impl_sig.inputs_and_output.iter())
+                    obl_hdr == impl_hdr
+                        && obl_sig_tys.len() == impl_sig_tys.len()
+                        && iter::zip(obl_sig_tys.iter(), impl_sig_tys.iter())
                             .all(|(obl, imp)| self.types_may_unify(obl, imp))
                 }
                 _ => false,

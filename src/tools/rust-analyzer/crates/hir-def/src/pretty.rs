@@ -200,7 +200,7 @@ pub(crate) fn print_type_ref(
             }
             if let Some(abi) = abi {
                 buf.write_str("extern ")?;
-                buf.write_str(abi)?;
+                buf.write_str(abi.as_str())?;
                 buf.write_char(' ')?;
             }
             write!(buf, "fn(")?;

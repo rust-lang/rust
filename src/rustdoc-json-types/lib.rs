@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use rustc_hash::FxHashMap;
+pub use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 /// The version of JSON output that this crate represents.
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 32;
+pub const FORMAT_VERSION: u32 = 33;
 
 /// The root of the emitted JSON blob.
 ///
@@ -326,7 +326,6 @@ pub enum ItemKind {
     Function,
     /// A type alias declaration, e.g. `type Pig = std::borrow::Cow<'static, str>;`
     TypeAlias,
-    OpaqueTy,
     /// The declaration of a constant, e.g. `const GREETING: &str = "Hi :3";`
     Constant,
     /// A `trait` declaration.
@@ -414,7 +413,6 @@ pub enum ItemEnum {
 
     /// A type alias declaration, e.g. `type Pig = std::borrow::Cow<'static, str>;`
     TypeAlias(TypeAlias),
-    OpaqueTy(OpaqueTy),
     /// The declaration of a constant, e.g. `const GREETING: &str = "Hi :3";`
     Constant {
         /// The type of the constant.
@@ -636,7 +634,7 @@ pub struct Discriminant {
     /// hexadecimal, and underscores), making it unsuitable to be machine
     /// interpreted.
     ///
-    /// In some cases, when the value is to complex, this may be `"{ _ }"`.
+    /// In some cases, when the value is too complex, this may be `"{ _ }"`.
     /// When this occurs is unstable, and may change without notice.
     pub expr: String,
     /// The numerical value of the discriminant. Stored as a string due to
@@ -1197,12 +1195,6 @@ pub struct TypeAlias {
     #[serde(rename = "type")]
     pub type_: Type,
     /// Information about the type parameters and `where` clauses of the alias.
-    pub generics: Generics,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OpaqueTy {
-    pub bounds: Vec<GenericBound>,
     pub generics: Generics,
 }
 

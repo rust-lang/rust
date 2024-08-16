@@ -1,7 +1,8 @@
 [package]
 name = "cfg"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Conditional compiling options, `cfg` attribute parser and evaluator for rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -15,7 +16,8 @@ doctest = false
 rustc-hash.workspace = true
 
 # locals deps
-tt.workspace = true
+tt = { workspace = true, optional = true }
+intern.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.1"
@@ -27,7 +29,7 @@ arbitrary = "1.3.2"
 derive_arbitrary = "1.3.2"
 
 # local deps
-mbe.workspace = true
+syntax-bridge.workspace = true
 syntax.workspace = true
 
 [lints]

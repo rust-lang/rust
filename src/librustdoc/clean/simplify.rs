@@ -145,7 +145,6 @@ pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generi
     // should be handled when cleaning associated types.
     generics.where_predicates.retain(|pred| {
         if let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred
-            && *param != rustc_span::symbol::kw::SelfUpper
             && bounds.iter().any(|b| b.is_sized_bound(cx))
         {
             sized_params.insert(*param);

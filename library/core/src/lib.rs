@@ -170,6 +170,7 @@
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
+#![feature(is_val_statically_known)]
 #![feature(isqrt)]
 #![feature(link_cfg)]
 #![feature(offset_of_enum)]
@@ -192,11 +193,12 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(asm_const))]
+#![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
-#![feature(asm_const)]
 #![feature(auto_traits)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
@@ -225,7 +227,6 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(macro_metavar_expr)]
 #![feature(marker_trait_attr)]
-#![feature(min_exhaustive_patterns)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
 #![feature(must_not_suspend)]
@@ -260,9 +261,11 @@
 #![feature(powerpc_target_feature)]
 #![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
+#![feature(sha512_sm_x86)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
+#![feature(x86_amx_intrinsics)]
 // tidy-alphabetical-end
 
 // allow using `core::` in intra-doc links
@@ -389,7 +392,7 @@ pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;
-#[unstable(feature = "core_pattern_types", issue = "none")]
+#[unstable(feature = "core_pattern_types", issue = "123646")]
 pub mod pat;
 pub mod pin;
 #[unstable(feature = "new_range_api", issue = "125687")]

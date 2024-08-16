@@ -2280,4 +2280,29 @@ impl b::LocalTrait for B {
             "#,
         )
     }
+
+    #[test]
+    fn impl_with_type_param_with_former_param_as_default() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Test<'a, T, U = T> {
+    fn test(item: &'a T) -> U;
+}
+impl<'a> Test<'a, i32> for bool {
+    $0
+}
+"#,
+            r#"
+pub trait Test<'a, T, U = T> {
+    fn test(item: &'a T) -> U;
+}
+impl<'a> Test<'a, i32> for bool {
+    fn test(item: &'a i32) -> i32 {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
+    }
 }

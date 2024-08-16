@@ -477,14 +477,12 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             cx: self.cx,
         };
         if let Ok(expr) = h2q.run(e) {
-            if h2q.terminals.len() > 8 {
-                // QMC has exponentially slow behavior as the number of terminals increases
-                // 8 is reasonable, it takes approximately 0.2 seconds.
-                // See #825
+            let stats = terminal_stats(&expr);
+            if stats.ops > 7 {
+                // QMC has exponentially slow behavior as the number of ops increases.
+                // See #825, #13206
                 return;
             }
-
-            let stats = terminal_stats(&expr);
             let mut simplified = expr.simplify();
             for simple in Bool::Not(Box::new(expr)).simplify() {
                 match simple {

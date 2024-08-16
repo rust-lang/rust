@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use rustc_data_structures::fx::FxHashMap;
@@ -194,14 +194,9 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
             (SHADOW_UNRELATED, msg)
         },
     };
-    span_lint_and_note(
-        cx,
-        lint,
-        span,
-        msg,
-        Some(cx.tcx.hir().span(shadowed)),
-        "previous binding is here",
-    );
+    span_lint_and_then(cx, lint, span, msg, |diag| {
+        diag.span_note(cx.tcx.hir().span(shadowed), "previous binding is here");
+    });
 }
 
 /// Returns true if the expression is a simple transformation of a local binding such as `&x`

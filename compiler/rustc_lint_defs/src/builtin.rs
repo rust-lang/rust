@@ -26,7 +26,6 @@ declare_lint_pass! {
         BARE_TRAIT_OBJECTS,
         BINDINGS_WITH_VARIANT_NAME,
         BREAK_WITH_LABEL_AND_LOOP,
-        BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
         CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
@@ -43,6 +42,7 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
+        EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
         FORBIDDEN_LINT_GROUPS,
@@ -82,6 +82,7 @@ declare_lint_pass! {
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         PTR_CAST_ADD_AUTO_TO_OBJECT,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
@@ -424,6 +425,31 @@ declare_lint! {
     pub UNUSED_IMPORTS,
     Warn,
     "imports that are never used"
+}
+
+declare_lint! {
+    /// The `redundant_imports` lint detects imports that are redundant due to being
+    /// imported already; either through a previous import, or being present in
+    /// the prelude.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(redundant_imports)]
+    /// use std::option::Option::None;
+    /// fn foo() -> Option<i32> { None }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Redundant imports are unnecessary and can be removed to simplify code.
+    /// If you intended to re-export the item to make it available outside of the
+    /// module, add a visibility modifier like `pub`.
+    pub REDUNDANT_IMPORTS,
+    Allow,
+    "imports that are redundant due to being imported already"
 }
 
 declare_lint! {
@@ -1241,7 +1267,7 @@ declare_lint! {
     Deny,
     "type parameter default erroneously allowed in invalid location",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
     };
 }
@@ -3264,6 +3290,39 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `explicit_builtin_cfgs_in_flags` lint detects builtin cfgs set via the `--cfg` flag.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --cfg unix
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// fn main() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: unexpected `--cfg unix` flag
+    ///   |
+    ///   = note: config `unix` is only supposed to be controlled by `--target`
+    ///   = note: manually setting a built-in cfg can and does create incoherent behaviors
+    ///   = note: `#[deny(explicit_builtin_cfgs_in_flags)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Setting builtin cfgs can and does produce incoherent behavior, it's better to the use
+    /// the appropriate `rustc` flag that controls the config. For example setting the `windows`
+    /// cfg but on Linux based target.
+    pub EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
+    Deny,
+    "detects builtin cfgs set via the `--cfg`"
+}
+
+declare_lint! {
     /// The `repr_transparent_external_private_fields` lint
     /// detects types marked `#[repr(transparent)]` that (transitively)
     /// contain an external ZST type marked `#[non_exhaustive]` or containing
@@ -4290,39 +4349,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `byte_slice_in_packed_struct_with_derive` lint detects cases where a byte slice field
-    /// (`[u8]`) or string slice field (`str`) is used in a `packed` struct that derives one or
-    /// more built-in traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #[repr(packed)]
-    /// #[derive(Hash)]
-    /// struct FlexZeroSlice {
-    ///     width: u8,
-    ///     data: [u8],
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This was previously accepted but is being phased out, because fields in packed structs are
-    /// now required to implement `Copy` for `derive` to work. Byte slices and string slices are a
-    /// temporary exception because certain crates depended on them.
-    pub BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
-    Warn,
-    "`[u8]` or `str` used in a packed struct with `derive`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #107457 <https://github.com/rust-lang/rust/issues/107457>",
-    };
-    report_in_external_macro
-}
-
-declare_lint! {
     /// The `invalid_macro_export_arguments` lint detects cases where `#[macro_export]` is being used with invalid arguments.
     ///
     /// ### Example
@@ -4908,7 +4934,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(unsafe_extern_blocks)]
     /// #![warn(missing_unsafe_on_extern)]
     /// #![allow(dead_code)]
     ///

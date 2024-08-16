@@ -2,8 +2,6 @@
 resolver = "1"
 members = [
   "compiler/rustc",
-  "library/std",
-  "library/sysroot",
   "src/etc/test-float-parse",
   "src/rustdoc-json-types",
   "src/tools/build_helper",
@@ -61,22 +59,7 @@ exclude = [
   # not all `Cargo.toml` files are available, so we exclude the `x` binary,
   # so it can be invoked before the current checkout is set up.
   "src/tools/x",
-  # stdarch has its own Cargo workspace
-  "library/stdarch",
 ]
-
-[profile.release.package.compiler_builtins]
-# For compiler-builtins we always use a high number of codegen units.
-# The goal here is to place every single intrinsic into its own object
-# file to avoid symbol clashes with the system libgcc if possible. Note
-# that this number doesn't actually produce this many object files, we
-# just don't create more than this number of object files.
-#
-# It's a bit of a bummer that we have to pass this here, unfortunately.
-# Ideally this would be specified through an env var to Cargo so Cargo
-# knows how many CGUs are for this specific crate, but for now
-# per-crate configuration isn't specifiable in the environment.
-codegen-units = 10000
 
 [profile.release.package.rustc-rayon-core]
 # The rustc fork of Rayon has deadlock detection code which intermittently
@@ -84,19 +67,6 @@ codegen-units = 10000
 # so we turn overflow checks off for now.
 # FIXME: This workaround should be removed once #90227 is fixed.
 overflow-checks = false
-
-# These dependencies of the standard library implement symbolication for
-# backtraces on most platforms. Their debuginfo causes both linking to be slower
-# (more data to chew through) and binaries to be larger without really all that
-# much benefit. This section turns them all to down to have no debuginfo which
-# helps to improve link times a little bit.
-[profile.release.package]
-addr2line.debug = 0
-adler.debug = 0
-gimli.debug = 0
-miniz_oxide.debug = 0
-object.debug = 0
-rustc-demangle.debug = 0
 
 # These are very thin wrappers around executing lld with the right binary name.
 # Basically nothing within them can go wrong without having been explicitly logged anyway.
@@ -120,10 +90,3 @@ codegen-units = 1
 # FIXME: LTO cannot be enabled for binaries in a workspace
 # <https://github.com/rust-lang/cargo/issues/9330>
 # lto = true
-
-[patch.crates-io]
-# See comments in `library/rustc-std-workspace-core/README.md` for what's going on
-# here
-rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
-rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
-rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }

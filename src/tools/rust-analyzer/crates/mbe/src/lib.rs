@@ -8,31 +8,21 @@
 
 mod expander;
 mod parser;
-mod syntax_bridge;
-mod to_parser_input;
 
 #[cfg(test)]
 mod benchmark;
 
 use span::{Edition, Span, SyntaxContextId};
-use stdx::impl_from;
+use syntax_bridge::to_parser_input;
 use tt::iter::TtIter;
+use tt::DelimSpan;
 
 use std::fmt;
+use std::sync::Arc;
 
 use crate::parser::{MetaTemplate, MetaVarKind, Op};
 
-// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
-pub use ::parser::TopEntryPoint;
 pub use tt::{Delimiter, DelimiterKind, Punct};
-
-pub use crate::syntax_bridge::{
-    parse_exprs_with_sep, parse_to_token_tree, parse_to_token_tree_static_span,
-    syntax_node_to_token_tree, syntax_node_to_token_tree_modified, token_tree_to_syntax_node,
-    DocCommentDesugarMode, SpanMapper,
-};
-
-pub use crate::syntax_bridge::dummy_test_span_utils::*;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParseError {
@@ -64,39 +54,45 @@ impl fmt::Display for ParseError {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum ExpandError {
+pub struct ExpandError {
+    pub inner: Arc<(Span, ExpandErrorKind)>,
+}
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum ExpandErrorKind {
     BindingError(Box<Box<str>>),
     UnresolvedBinding(Box<Box<str>>),
     LeftoverTokens,
-    ConversionError,
     LimitExceeded,
     NoMatchingRule,
     UnexpectedToken,
-    CountError(CountError),
 }
 
-impl_from!(CountError for ExpandError);
-
 impl ExpandError {
-    fn binding_error(e: impl Into<Box<str>>) -> ExpandError {
-        ExpandError::BindingError(Box::new(e.into()))
+    fn new(span: Span, kind: ExpandErrorKind) -> ExpandError {
+        ExpandError { inner: Arc::new((span, kind)) }
+    }
+    fn binding_error(span: Span, e: impl Into<Box<str>>) -> ExpandError {
+        ExpandError { inner: Arc::new((span, ExpandErrorKind::BindingError(Box::new(e.into())))) }
+    }
+}
+impl fmt::Display for ExpandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.1.fmt(f)
     }
 }
 
-impl fmt::Display for ExpandError {
+impl fmt::Display for ExpandErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExpandError::NoMatchingRule => f.write_str("no rule matches input tokens"),
-            ExpandError::UnexpectedToken => f.write_str("unexpected token in input"),
-            ExpandError::BindingError(e) => f.write_str(e),
-            ExpandError::UnresolvedBinding(binding) => {
+            ExpandErrorKind::NoMatchingRule => f.write_str("no rule matches input tokens"),
+            ExpandErrorKind::UnexpectedToken => f.write_str("unexpected token in input"),
+            ExpandErrorKind::BindingError(e) => f.write_str(e),
+            ExpandErrorKind::UnresolvedBinding(binding) => {
                 f.write_str("could not find binding ")?;
                 f.write_str(binding)
             }
-            ExpandError::ConversionError => f.write_str("could not convert tokens"),
-            ExpandError::LimitExceeded => f.write_str("Expand exceed limit"),
-            ExpandError::LeftoverTokens => f.write_str("leftover tokens"),
-            ExpandError::CountError(e) => e.fmt(f),
+            ExpandErrorKind::LimitExceeded => f.write_str("Expand exceed limit"),
+            ExpandErrorKind::LeftoverTokens => f.write_str("leftover tokens"),
         }
     }
 }
@@ -144,9 +140,7 @@ impl DeclarativeMacro {
     /// The old, `macro_rules! m {}` flavor.
     pub fn parse_macro_rules(
         tt: &tt::Subtree<Span>,
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
-        // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
-        new_meta_vars: bool,
+        ctx_edition: impl Copy + Fn(SyntaxContextId) -> Edition,
     ) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
@@ -156,7 +150,7 @@ impl DeclarativeMacro {
         let mut err = None;
 
         while src.len() > 0 {
-            let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
+            let rule = match Rule::parse(ctx_edition, &mut src) {
                 Ok(it) => it,
                 Err(e) => {
                     err = Some(Box::new(e));
@@ -186,9 +180,7 @@ impl DeclarativeMacro {
     pub fn parse_macro2(
         args: Option<&tt::Subtree<Span>>,
         body: &tt::Subtree<Span>,
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
-        // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
-        new_meta_vars: bool,
+        ctx_edition: impl Copy + Fn(SyntaxContextId) -> Edition,
     ) -> DeclarativeMacro {
         let mut rules = Vec::new();
         let mut err = None;
@@ -197,8 +189,8 @@ impl DeclarativeMacro {
             cov_mark::hit!(parse_macro_def_simple);
 
             let rule = (|| {
-                let lhs = MetaTemplate::parse_pattern(edition, args)?;
-                let rhs = MetaTemplate::parse_template(edition, body, new_meta_vars)?;
+                let lhs = MetaTemplate::parse_pattern(ctx_edition, args)?;
+                let rhs = MetaTemplate::parse_template(ctx_edition, body)?;
 
                 Ok(crate::Rule { lhs, rhs })
             })();
@@ -211,7 +203,7 @@ impl DeclarativeMacro {
             cov_mark::hit!(parse_macro_def_rules);
             let mut src = TtIter::new(body);
             while src.len() > 0 {
-                let rule = match Rule::parse(edition, &mut src, new_meta_vars) {
+                let rule = match Rule::parse(ctx_edition, &mut src) {
                     Ok(it) => it,
                     Err(e) => {
                         err = Some(Box::new(e));
@@ -252,11 +244,10 @@ impl DeclarativeMacro {
         &self,
         tt: &tt::Subtree<Span>,
         marker: impl Fn(&mut Span) + Copy,
-        new_meta_vars: bool,
         call_site: Span,
         def_site_edition: Edition,
     ) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
-        expander::expand_rules(&self.rules, tt, marker, new_meta_vars, call_site, def_site_edition)
+        expander::expand_rules(&self.rules, tt, marker, call_site, def_site_edition)
     }
 }
 
@@ -264,7 +255,6 @@ impl Rule {
     fn parse(
         edition: impl Copy + Fn(SyntaxContextId) -> Edition,
         src: &mut TtIter<'_, Span>,
-        new_meta_vars: bool,
     ) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
@@ -272,7 +262,7 @@ impl Rule {
         let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
         let lhs = MetaTemplate::parse_pattern(edition, lhs)?;
-        let rhs = MetaTemplate::parse_template(edition, rhs, new_meta_vars)?;
+        let rhs = MetaTemplate::parse_template(edition, rhs)?;
 
         Ok(crate::Rule { lhs, rhs })
     }
@@ -360,14 +350,15 @@ impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
     }
 }
 
-fn expect_fragment<S: Copy + fmt::Debug>(
-    tt_iter: &mut TtIter<'_, S>,
+pub fn expect_fragment(
+    tt_iter: &mut TtIter<'_, Span>,
     entry_point: ::parser::PrefixEntryPoint,
     edition: ::parser::Edition,
-) -> ExpandResult<Option<tt::TokenTree<S>>> {
+    delim_span: DelimSpan<Span>,
+) -> ExpandResult<Option<tt::TokenTree<Span>>> {
     use ::parser;
     let buffer = tt::buffer::TokenBuffer::from_tokens(tt_iter.as_slice());
-    let parser_input = to_parser_input::to_parser_input(&buffer);
+    let parser_input = to_parser_input(edition, &buffer);
     let tree_traversal = entry_point.parse(&parser_input, edition);
     let mut cursor = buffer.begin();
     let mut error = false;
@@ -392,7 +383,10 @@ fn expect_fragment<S: Copy + fmt::Debug>(
     }
 
     let err = if error || !cursor.is_root() {
-        Some(ExpandError::binding_error(format!("expected {entry_point:?}")))
+        Some(ExpandError::binding_error(
+            buffer.begin().token_tree().map_or(delim_span.close, |tt| tt.span()),
+            format!("expected {entry_point:?}"),
+        ))
     } else {
         None
     };

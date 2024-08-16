@@ -371,7 +371,7 @@ fn merge_codegen_units<'tcx>(
         // Move the items from `cgu_src` to `cgu_dst`. Some of them may be
         // duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        cgu_dst.items_mut().extend(cgu_src.items_mut().drain(..));
+        cgu_dst.items_mut().append(cgu_src.items_mut());
         cgu_dst.compute_size_estimate();
 
         // Record that `cgu_dst` now contains all the stuff that was in
@@ -410,7 +410,7 @@ fn merge_codegen_units<'tcx>(
         // Move the items from `smallest` to `second_smallest`. Some of them
         // may be duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        second_smallest.items_mut().extend(smallest.items_mut().drain(..));
+        second_smallest.items_mut().append(smallest.items_mut());
         second_smallest.compute_size_estimate();
 
         // Don't update `cgu_contents`, that's only for incremental builds.
@@ -648,7 +648,9 @@ fn characteristic_def_id_of_mono_item<'tcx>(
 
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 if tcx.sess.opts.incremental.is_some()
-                    && tcx.trait_id_of_impl(impl_def_id) == tcx.lang_items().drop_trait()
+                    && tcx
+                        .trait_id_of_impl(impl_def_id)
+                        .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Drop))
                 {
                     // Put `Drop::drop` into the same cgu as `drop_in_place`
                     // since `drop_in_place` is the only thing that can

@@ -298,13 +298,6 @@ pub(crate) struct DerivePathArgsValue {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_derive_unsafe_path)]
-pub(crate) struct DeriveUnsafePath {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_no_default_variant)]
 #[help]
 pub(crate) struct NoDefaultVariant {
@@ -856,6 +849,15 @@ pub(crate) struct GlobalAsmUnsupportedOption {
     pub(crate) symbol: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub(crate) full_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_global_asm_unsupported_operand)]
+pub(crate) struct GlobalAsmUnsupportedOperand<'a> {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) symbol: &'a str,
 }
 
 #[derive(Diagnostic)]

@@ -107,8 +107,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_predefined_opaques_in_body(data)
     }
     type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
-    type CanonicalGoalEvaluationStepRef =
-        &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -277,13 +275,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.debug_assert_args_compatible(def_id, args);
     }
 
-    fn intern_canonical_goal_evaluation_step(
-        self,
-        step: solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>>,
-    ) -> &'tcx solve::inspect::CanonicalGoalEvaluationStep<TyCtxt<'tcx>> {
-        self.arena.alloc(step)
-    }
-
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -427,7 +418,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -1438,11 +1429,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
     /// Returns the same `AllocId` if called again with the same bytes.
-    pub fn allocate_bytes_dedup(self, bytes: &[u8]) -> interpret::AllocId {
+    pub fn allocate_bytes_dedup(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.mk_const_alloc(alloc);
-        self.reserve_and_set_memory_dedup(alloc)
+        self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
     /// Returns a range of the start/end indices specified with the
@@ -3175,6 +3166,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
+    }
+
+    /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
+    pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true })
+            && self.impl_trait_header(def_id).is_some_and(|header| header.do_not_recommend)
     }
 }
 

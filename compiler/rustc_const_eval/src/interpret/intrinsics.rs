@@ -2,6 +2,8 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
+use std::assert_matches::assert_matches;
+
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
@@ -79,7 +81,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -97,7 +99,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Returns `true` if emulation happened.
     /// Here we implement the intrinsics that are common to all Miri instances; individual machines can add their own
     /// intrinsic handling.
-    pub fn emulate_intrinsic(
+    pub fn eval_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::Provenance>],
@@ -206,7 +208,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 } else {
                     (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
                 };
-                let truncated_bits = self.truncate(result_bits, layout_val);
+                let truncated_bits = layout_val.size.truncate(result_bits);
                 let result = Scalar::from_uint(truncated_bits, layout_val.size);
                 self.write_scalar(result, dest)?;
             }
@@ -243,7 +245,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (a_offset, b_offset, is_addr) = if M::Provenance::OFFSET_IS_ADDR {
                     (a.addr().bytes(), b.addr().bytes(), /*is_addr*/ true)
                 } else {
-                    match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
+                    match (self.ptr_try_get_alloc_id(a, 0), self.ptr_try_get_alloc_id(b, 0)) {
                         (Err(a), Err(b)) => {
                             // Neither pointer points to an allocation, so they are both absolute.
                             (a, b, /*is_addr*/ true)
@@ -312,7 +314,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 };
 
                 // Check that the memory between them is dereferenceable at all, starting from the
-                // base pointer: `dist` is `a - b`, so it is based on `b`.
+                // origin pointer: `dist` is `a - b`, so it is based on `b`.
                 self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)?;
                 // Then check that this is also dereferenceable from `a`. This ensures that they are
                 // derived from the same allocation.
@@ -447,7 +449,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(true)
     }
 
-    pub(super) fn emulate_nondiverging_intrinsic(
+    pub(super) fn eval_nondiverging_intrinsic(
         &mut self,
         intrinsic: &NonDivergingIntrinsic<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -510,7 +512,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         dest: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         assert_eq!(a.layout.ty, b.layout.ty);
-        assert!(matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
+        assert_matches!(a.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
 
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
@@ -536,8 +538,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         r: &ImmTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert_eq!(l.layout.ty, r.layout.ty);
-        assert!(matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..)));
-        assert!(matches!(mir_op, BinOp::Add | BinOp::Sub));
+        assert_matches!(l.layout.ty.kind(), ty::Int(..) | ty::Uint(..));
+        assert_matches!(mir_op, BinOp::Add | BinOp::Sub);
 
         let (val, overflowed) =
             self.binary_op(mir_op.wrapping_to_overflowing().unwrap(), l, r)?.to_scalar_pair();
@@ -580,13 +582,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ptr: Pointer<Option<M::Provenance>>,
         offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // We first compute the pointer with overflow checks, to get a specific error for when it
-        // overflows (though technically this is redundant with the following inbounds check).
-        let result = ptr.signed_offset(offset_bytes, self)?;
         // The offset must be in bounds starting from `ptr`.
         self.check_ptr_access_signed(ptr, offset_bytes, CheckInAllocMsg::PointerArithmeticTest)?;
-        // Done.
-        Ok(result)
+        // This also implies that there is no overflow, so we are done.
+        Ok(ptr.wrapping_signed_offset(offset_bytes, self))
     }
 
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
@@ -693,9 +692,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // zero-sized access
                 return Ok(&[]);
             };
-            if alloc_ref.has_provenance() {
-                throw_ub_custom!(fluent::const_eval_raw_eq_with_provenance);
-            }
             alloc_ref.get_bytes_strip_provenance()
         };
 

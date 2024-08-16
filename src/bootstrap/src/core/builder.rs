@@ -1106,6 +1106,12 @@ impl<'a> Builder<'a> {
         StepDescription::run(v, self, paths);
     }
 
+    /// Returns if `std` should be statically linked into `rustc_driver`.
+    /// It's currently not done on `windows-gnu` due to linker bugs.
+    pub fn link_std_into_rustc_driver(&self, target: TargetSelection) -> bool {
+        !target.triple.ends_with("-windows-gnu")
+    }
+
     /// Obtain a compiler at a given stage and for a given host (i.e., this is the target that the
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
@@ -1165,7 +1171,7 @@ impl<'a> Builder<'a> {
                     .sysroot(self.compiler)
                     .join(lib)
                     .join("rustlib")
-                    .join(self.target.triple)
+                    .join(self.target)
                     .join("lib");
                 // Avoid deleting the rustlib/ directory we just copied
                 // (in `impl Step for Sysroot`).
@@ -1248,7 +1254,7 @@ impl<'a> Builder<'a> {
 
         // Ensure that the downloaded LLVM libraries can be found.
         if self.config.llvm_from_ci {
-            let ci_llvm_lib = self.out.join(&*compiler.host.triple).join("ci-llvm").join("lib");
+            let ci_llvm_lib = self.out.join(compiler.host).join("ci-llvm").join("lib");
             dylib_dirs.push(ci_llvm_lib);
         }
 
@@ -1498,9 +1504,9 @@ impl<'a> Builder<'a> {
                 Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
                 Mode::Std => {
                     if self.config.cmd.json() {
-                        out_dir.join(target.triple).join("json-doc")
+                        out_dir.join(target).join("json-doc")
                     } else {
-                        out_dir.join(target.triple).join("doc")
+                        out_dir.join(target).join("doc")
                     }
                 }
                 _ => panic!("doc mode {mode:?} not expected"),
@@ -2162,9 +2168,17 @@ impl<'a> Builder<'a> {
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        if matches!(mode, Mode::Std | Mode::Rustc) {
+        if matches!(mode, Mode::Std) {
             rustflags.arg("-Cprefer-dynamic");
         }
+        if matches!(mode, Mode::Rustc) && !self.link_std_into_rustc_driver(target) {
+            rustflags.arg("-Cprefer-dynamic");
+        }
+
+        cargo.env(
+            "RUSTC_LINK_STD_INTO_RUSTC_DRIVER",
+            if self.link_std_into_rustc_driver(target) { "1" } else { "0" },
+        );
 
         // When building incrementally we default to a lower ThinLTO import limit
         // (unless explicitly specified otherwise). This will produce a somewhat
@@ -2211,11 +2225,6 @@ impl<'a> Builder<'a> {
             rustflags.arg("--cfg=parallel_compiler");
             rustdocflags.arg("--cfg=parallel_compiler");
         }
-
-        // Pass the value of `--rustc-args` from test command. If it's not a test command, this won't set anything.
-        self.config.cmd.rustc_args().iter().for_each(|v| {
-            rustflags.arg(v);
-        });
 
         Cargo {
             command: cargo,

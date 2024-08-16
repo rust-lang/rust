@@ -4,6 +4,7 @@
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
 pub enum Edition {
     Edition2015,
     Edition2018,
@@ -12,8 +13,23 @@ pub enum Edition {
 }
 
 impl Edition {
-    pub const CURRENT: Edition = Edition::Edition2021;
     pub const DEFAULT: Edition = Edition::Edition2015;
+    pub const LATEST: Edition = Edition::Edition2024;
+    pub const CURRENT: Edition = Edition::Edition2021;
+    /// The current latest stable edition, note this is usually not the right choice in code.
+    pub const CURRENT_FIXME: Edition = Edition::Edition2021;
+
+    pub fn at_least_2024(self) -> bool {
+        self >= Edition::Edition2024
+    }
+
+    pub fn at_least_2021(self) -> bool {
+        self >= Edition::Edition2021
+    }
+
+    pub fn at_least_2018(self) -> bool {
+        self >= Edition::Edition2018
+    }
 }
 
 #[derive(Debug)]

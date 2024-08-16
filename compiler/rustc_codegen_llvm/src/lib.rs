@@ -8,6 +8,7 @@
 #![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(assert_matches)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(hash_raw_entry)]
@@ -269,7 +270,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn provide(&self, providers: &mut Providers) {
         providers.global_backend_features =
-            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
+            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true, false)
     }
 
     fn print(&self, req: &PrintRequest, out: &mut String, sess: &Session) {
@@ -434,7 +435,7 @@ impl ModuleLlvm {
             ModuleLlvm {
                 llmod_raw,
                 llcx,
-                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
+                tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess, false)),
             }
         }
     }

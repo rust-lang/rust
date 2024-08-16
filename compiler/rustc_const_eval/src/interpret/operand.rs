@@ -184,6 +184,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn from_scalar(val: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(layout.abi.is_scalar(), "`ImmTy::from_scalar` on non-scalar layout");
+        debug_assert_eq!(val.size(), layout.size);
         ImmTy { imm: val.into(), layout }
     }
 
@@ -341,7 +342,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             }
             // extract fields from types with `ScalarPair` ABI
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
-                assert!(matches!(layout.abi, Abi::Scalar(..)));
+                assert_matches!(layout.abi, Abi::Scalar(..));
                 Immediate::from(if offset.bytes() == 0 {
                     debug_assert_eq!(layout.size, a.size(cx));
                     a_val

@@ -2,7 +2,7 @@
 
 use hir::HirDisplay;
 use ide_db::{documentation::Documentation, SymbolKind};
-use syntax::{format_smolstr, SmolStr};
+use syntax::{format_smolstr, SmolStr, ToSmolStr};
 
 use crate::{
     context::{PathCompletionCtx, PathKind, PatternContext},
@@ -46,7 +46,8 @@ fn render(
         ctx.source_range()
     };
 
-    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
+    let (name, escaped_name) =
+        (name.unescaped().display(ctx.db()).to_smolstr(), name.display(ctx.db()).to_smolstr());
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);

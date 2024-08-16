@@ -1310,6 +1310,116 @@ pub mod ip_address {
 }
 
 #[test]
+fn include_with_submod_file() {
+    check(
+        r#"
+//- minicore: include
+//- /lib.rs
+include!("out_dir/includes.rs");
+
+//- /out_dir/includes.rs
+pub mod company_name {
+    pub mod network {
+        pub mod v1;
+    }
+}
+//- /out_dir/company_name/network/v1.rs
+pub struct IpAddress {
+    pub ip_type: &'static str,
+}
+/// Nested message and enum types in `IpAddress`.
+pub mod ip_address {
+    pub enum IpType {
+        IpV4(u32),
+    }
+}
+
+"#,
+        expect![[r#"
+            crate
+            company_name: t
+
+            crate::company_name
+            network: t
+
+            crate::company_name::network
+            v1: t
+
+            crate::company_name::network::v1
+            IpAddress: t
+            ip_address: t
+
+            crate::company_name::network::v1::ip_address
+            IpType: t
+        "#]],
+    );
+}
+
+#[test]
+fn include_many_mods() {
+    check(
+        r#"
+//- /lib.rs
+#[rustc_builtin_macro]
+macro_rules! include { () => {} }
+
+mod nested {
+    include!("out_dir/includes.rs");
+
+    mod different_company {
+        include!("out_dir/different_company/mod.rs");
+    }
+
+    mod util;
+}
+
+//- /nested/util.rs
+pub struct Helper {}
+//- /out_dir/includes.rs
+pub mod company_name {
+    pub mod network {
+        pub mod v1;
+    }
+}
+//- /out_dir/company_name/network/v1.rs
+pub struct IpAddress {}
+//- /out_dir/different_company/mod.rs
+pub mod network;
+//- /out_dir/different_company/network.rs
+pub struct Url {}
+
+"#,
+        expect![[r#"
+            crate
+            nested: t
+
+            crate::nested
+            company_name: t
+            different_company: t
+            util: t
+
+            crate::nested::company_name
+            network: t
+
+            crate::nested::company_name::network
+            v1: t
+
+            crate::nested::company_name::network::v1
+            IpAddress: t
+
+            crate::nested::different_company
+            network: t
+
+            crate::nested::different_company::network
+            Url: t
+
+            crate::nested::util
+            Helper: t
+        "#]],
+    );
+}
+
+#[test]
 fn macro_use_imports_all_macro_types() {
     let db = TestDB::with_files(
         r#"

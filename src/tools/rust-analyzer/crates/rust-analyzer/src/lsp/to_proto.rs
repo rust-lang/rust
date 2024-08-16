@@ -13,7 +13,7 @@ use ide::{
     NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
-use ide_db::{rust_doc::format_docs, FxHasher};
+use ide_db::{assists, rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
@@ -1336,9 +1336,14 @@ pub(crate) fn code_action(
         command: None,
     };
 
-    if assist.trigger_signature_help && snap.config.client_commands().trigger_parameter_hints {
-        res.command = Some(command::trigger_parameter_hints());
-    }
+    let commands = snap.config.client_commands();
+    res.command = match assist.command {
+        Some(assists::Command::TriggerParameterHints) if commands.trigger_parameter_hints => {
+            Some(command::trigger_parameter_hints())
+        }
+        Some(assists::Command::Rename) if commands.rename => Some(command::rename()),
+        _ => None,
+    };
 
     match (assist.source_change, resolve_data) {
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
@@ -1394,7 +1399,11 @@ pub(crate) fn runnable(
                     cargo_args,
                     cwd: cwd.into(),
                     executable_args,
-                    environment: Default::default(),
+                    environment: spec
+                        .sysroot_root
+                        .map(|root| ("RUSTC_TOOLCHAIN".to_owned(), root.to_string()))
+                        .into_iter()
+                        .collect(),
                 }),
             }))
         }
@@ -1712,6 +1721,14 @@ pub(crate) mod command {
         lsp_types::Command {
             title: "triggerParameterHints".into(),
             command: "rust-analyzer.triggerParameterHints".into(),
+            arguments: None,
+        }
+    }
+
+    pub(crate) fn rename() -> lsp_types::Command {
+        lsp_types::Command {
+            title: "rename".into(),
+            command: "rust-analyzer.rename".into(),
             arguments: None,
         }
     }

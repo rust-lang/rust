@@ -13,10 +13,9 @@ use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 use tracing::{instrument, trace};
 
 use super::{
-    alloc_range, mir_assign_valid_types, throw_ub, AllocRef, AllocRefMut, CheckAlignMsg,
-    CtfeProvenance, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment,
-    OffsetMode, OpTy, Operand, Pointer, PointerArithmetic, Projectable, Provenance, Readable,
-    Scalar,
+    alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance,
+    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
+    Operand, Pointer, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -85,9 +84,6 @@ impl<Prov: Provenance> MemPlace<Prov> {
             !meta.has_meta() || self.meta.has_meta(),
             "cannot use `offset_with_meta` to add metadata to a place"
         );
-        if offset > ecx.data_layout().max_size_of_val() {
-            throw_ub!(PointerArithOverflow);
-        }
         let ptr = match mode {
             OffsetMode::Inbounds => {
                 ecx.ptr_offset_inbounds(self.ptr, offset.bytes().try_into().unwrap())?
@@ -289,10 +285,8 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
                 // projections are type-checked and bounds-checked.
                 assert!(offset + layout.size <= self.layout.size);
 
-                let new_offset = Size::from_bytes(
-                    ecx.data_layout()
-                        .offset(old_offset.unwrap_or(Size::ZERO).bytes(), offset.bytes())?,
-                );
+                // Size `+`, ensures no overflow.
+                let new_offset = old_offset.unwrap_or(Size::ZERO) + offset;
 
                 PlaceTy {
                     place: Place::Local { local, offset: Some(new_offset), locals_addr },
@@ -578,7 +572,10 @@ where
 
         if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(&dest.to_op(self)?)?;
+            self.validate_operand(
+                &dest.to_op(self)?,
+                M::enforce_validity_recursively(self, dest.layout()),
+            )?;
         }
 
         Ok(())
@@ -817,7 +814,10 @@ where
         // Generally for transmutation, data must be valid both at the old and new type.
         // But if the types are the same, the 2nd validation below suffices.
         if src.layout().ty != dest.layout().ty && M::enforce_validity(self, src.layout()) {
-            self.validate_operand(&src.to_op(self)?)?;
+            self.validate_operand(
+                &src.to_op(self)?,
+                M::enforce_validity_recursively(self, src.layout()),
+            )?;
         }
 
         // Do the actual copy.
@@ -825,7 +825,10 @@ where
 
         if validate_dest && M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(&dest.to_op(self)?)?;
+            self.validate_operand(
+                &dest.to_op(self)?,
+                M::enforce_validity_recursively(self, dest.layout()),
+            )?;
         }
 
         Ok(())
@@ -1005,7 +1008,8 @@ where
         // Use cache for immutable strings.
         let ptr = if mutbl.is_not() {
             // Use dedup'd allocation function.
-            let id = tcx.allocate_bytes_dedup(str.as_bytes());
+            let salt = M::get_global_alloc_salt(self, None);
+            let id = tcx.allocate_bytes_dedup(str.as_bytes(), salt);
 
             // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
             M::adjust_alloc_root_pointer(&self, Pointer::from(id), Some(kind))?

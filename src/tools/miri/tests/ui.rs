@@ -73,7 +73,7 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         stdout_filters: stdout_filters().into(),
         mode,
         program,
-        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri_ui"),
         edition: Some("2021".into()), // keep in sync with `./miri run`
         threads: std::env::var("MIRI_TEST_THREADS")
             .ok()

@@ -12,7 +12,8 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     BlockId, TraitId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::Name;
+use intern::sym;
 use stdx::panic_context;
 use triomphe::Arc;
 
@@ -256,9 +257,9 @@ impl FnTrait {
 
     pub fn method_name(self) -> Name {
         match self {
-            FnTrait::FnOnce => name!(call_once),
-            FnTrait::FnMut => name!(call_mut),
-            FnTrait::Fn => name!(call),
+            FnTrait::FnOnce => Name::new_symbol_root(sym::call_once.clone()),
+            FnTrait::FnMut => Name::new_symbol_root(sym::call_mut.clone()),
+            FnTrait::Fn => Name::new_symbol_root(sym::call.clone()),
         }
     }
 

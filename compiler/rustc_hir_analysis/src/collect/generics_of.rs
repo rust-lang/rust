@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
@@ -52,13 +53,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             has_late_bound_regions: opaque_ty_generics.has_late_bound_regions,
             host_effect_index: parent_generics.host_effect_index,
         };
-    }
-
-    // For a delegation item inherit generics from callee.
-    if let Some(sig_id) = tcx.hir().opt_delegation_sig_id(def_id)
-        && let Some(generics) = inherit_generics_for_delegation_item(tcx, def_id, sig_id)
-    {
-        return generics;
     }
 
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -214,9 +208,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_trait {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
                 } else {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
                 }
                 Some(fn_def_id.to_def_id())
             }
@@ -225,14 +219,24 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_assoc_ty {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::AssocTy));
+                    assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
                 } else {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::TyAlias));
+                    assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
                 }
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
                 // Opaque types are always nested within another item, and
                 // inherit the generics of the item.
                 Some(parent.to_def_id())
+            }
+            ItemKind::Fn(sig, _, _) => {
+                // For a delegation item inherit generics from callee.
+                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+                    && let Some(generics) =
+                        inherit_generics_for_delegation_item(tcx, def_id, sig_id)
+                {
+                    return generics;
+                }
+                None
             }
             _ => None,
         },
@@ -335,8 +339,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             if default.is_some() {
                 match allow_defaults {
                     Defaults::Allowed => {}
-                    Defaults::FutureCompatDisallowed
-                        if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
                         tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,

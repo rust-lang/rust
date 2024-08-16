@@ -27,19 +27,19 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:39:14
    |
 LL |     unsafe { ptr_offset_from(ptr2, ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: expected a pointer to $BYTES bytes of memory, but got 0x8[noalloc] which is a dangling pointer (it has no provenance)
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from` origin: expected a pointer to $BYTES bytes of memory, but got 0x8[noalloc] which is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:48:14
    |
 LL |     unsafe { ptr_offset_from(end_ptr, start_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: expected a pointer to $BYTES bytes of memory, but got ALLOC0 and there are only 4 bytes starting at that pointer
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from` origin: expected a pointer to $BYTES bytes of memory, but got ALLOC0 which is only $BYTES bytes from the end of the allocation
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:57:14
    |
 LL |     unsafe { ptr_offset_from(start_ptr, end_ptr) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from`: expected a pointer to $BYTES bytes of memory, but got ALLOC1 and there are only 4 bytes starting at that pointer
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds `offset_from` origin: expected a pointer to the end of $BYTES bytes of memory, but got ALLOC1+0xa which does not have enough space to the beginning of the allocation
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:66:14
@@ -80,7 +80,7 @@ LL |     unsafe { ptr_offset_from_unsigned(ptr2, ptr1) }
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: out-of-bounds `offset_from`: expected a pointer to $BYTES bytes of memory, but got a null pointer
+   = note: out-of-bounds `offset_from` origin: expected a pointer to $BYTES bytes of memory, but got a null pointer
    |
 note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

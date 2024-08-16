@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_trait_method;
 use rustc_hir::{Expr, ExprKind};
@@ -106,15 +106,11 @@ fn fetch_const<'a, 'tcx>(
     if args.next().is_some() {
         return None;
     }
-    constant_simple(cx, cx.typeck_results(), first_arg).map_or_else(
-        || constant_simple(cx, cx.typeck_results(), second_arg).map(|c| (m, c, first_arg)),
-        |c| {
-            if constant_simple(cx, cx.typeck_results(), second_arg).is_none() {
-                // otherwise ignore
-                Some((m, c, second_arg))
-            } else {
-                None
-            }
-        },
-    )
+    let ecx = ConstEvalCtxt::new(cx);
+    match (ecx.eval_simple(first_arg), ecx.eval_simple(second_arg)) {
+        (Some(c), None) => Some((m, c, second_arg)),
+        (None, Some(c)) => Some((m, c, first_arg)),
+        // otherwise ignore
+        _ => None,
+    }
 }

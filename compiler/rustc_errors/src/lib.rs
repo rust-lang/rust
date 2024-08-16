@@ -10,6 +10,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
@@ -28,6 +29,7 @@
 
 extern crate self as rustc_errors;
 
+use std::assert_matches::assert_matches;
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -50,7 +52,7 @@ pub use diagnostic_impls::{
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
-use emitter::{is_case_difference, DynEmitter, Emitter};
+use emitter::{is_case_difference, is_different, DynEmitter, Emitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
@@ -357,10 +359,16 @@ impl CodeSuggestion {
                             _ => 1,
                         })
                         .sum();
-                    line_highlight.push(SubstitutionHighlight {
-                        start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len) as usize,
-                    });
+                    if !is_different(sm, &part.snippet, part.span) {
+                        // Account for cases where we are suggesting the same code that's already
+                        // there. This shouldn't happen often, but in some cases for multipart
+                        // suggestions it's much easier to handle it here than in the origin.
+                    } else {
+                        line_highlight.push(SubstitutionHighlight {
+                            start: (cur_lo.col.0 as isize + acc) as usize,
+                            end: (cur_lo.col.0 as isize + acc + len) as usize,
+                        });
+                    }
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
                     // Account for the difference between the width of the current code and the
@@ -392,7 +400,11 @@ impl CodeSuggestion {
                 while buf.ends_with('\n') {
                     buf.pop();
                 }
-                Some((buf, substitution.parts, highlights, only_capitalization))
+                if highlights.iter().all(|parts| parts.is_empty()) {
+                    None
+                } else {
+                    Some((buf, substitution.parts, highlights, only_capitalization))
+                }
             })
             .collect()
     }
@@ -1480,7 +1492,7 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're `Level::Allow` or
             // `Level::Expect`, but they still need to be constructed and
             // stashed below, so they'll trigger the must_produce_diag check.
-            assert!(matches!(diagnostic.level, Error | Warning | Allow | Expect(_)));
+            assert_matches!(diagnostic.level, Error | Warning | Allow | Expect(_));
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
@@ -1825,23 +1837,23 @@ impl DelayedDiagInner {
     }
 }
 
-/// Level              is_error  EmissionGuarantee         Top-level  Sub   Used in lints?
-/// -----              --------  -----------------         ---------  ---   --------------
-/// Bug                yes       BugAbort                  yes        -     -
-/// Fatal              yes       FatalAbort/FatalError(*)  yes        -     -
-/// Error              yes       ErrorGuaranteed           yes        -     yes
-/// DelayedBug         yes       ErrorGuaranteed           yes        -     -
-/// ForceWarning       -         ()                        yes        -     lint-only
-/// Warning            -         ()                        yes        yes   yes
-/// Note               -         ()                        rare       yes   -
-/// OnceNote           -         ()                        -          yes   lint-only
-/// Help               -         ()                        rare       yes   -
-/// OnceHelp           -         ()                        -          yes   lint-only
-/// FailureNote        -         ()                        rare       -     -
-/// Allow              -         ()                        yes        -     lint-only
-/// Expect             -         ()                        yes        -     lint-only
+/// | Level        | is_error | EmissionGuarantee            | Top-level | Sub | Used in lints?
+/// | -----        | -------- | -----------------            | --------- | --- | --------------
+/// | Bug          | yes      | BugAbort                     | yes       | -   | -
+/// | Fatal        | yes      | FatalAbort/FatalError[^star] | yes       | -   | -
+/// | Error        | yes      | ErrorGuaranteed              | yes       | -   | yes
+/// | DelayedBug   | yes      | ErrorGuaranteed              | yes       | -   | -
+/// | ForceWarning | -        | ()                           | yes       | -   | lint-only
+/// | Warning      | -        | ()                           | yes       | yes | yes
+/// | Note         | -        | ()                           | rare      | yes | -
+/// | OnceNote     | -        | ()                           | -         | yes | lint-only
+/// | Help         | -        | ()                           | rare      | yes | -
+/// | OnceHelp     | -        | ()                           | -         | yes | lint-only
+/// | FailureNote  | -        | ()                           | rare      | -   | -
+/// | Allow        | -        | ()                           | yes       | -   | lint-only
+/// | Expect       | -        | ()                           | yes       | -   | lint-only
 ///
-/// (*) `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
+/// [^star]: `FatalAbort` normally, `FatalError` in the non-aborting "almost fatal" case that is
 ///     occasionally used.
 ///
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
@@ -2014,11 +2026,11 @@ pub fn a_or_an(s: &str) -> &'static str {
 ///
 /// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
 pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v.len() {
-        0 => "".to_string(),
-        1 => v[0].to_string(),
-        2 => format!("{} and {}", v[0], v[1]),
-        _ => format!("{}, {}", v[0], display_list_with_comma_and(&v[1..])),
+    match v {
+        [] => "".to_string(),
+        [a] => a.to_string(),
+        [a, b] => format!("{a} and {b}"),
+        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

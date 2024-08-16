@@ -18,6 +18,7 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(assert_matches)]
 #![feature(auto_traits)]
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]

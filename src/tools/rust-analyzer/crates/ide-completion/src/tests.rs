@@ -23,12 +23,12 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
+use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
-    base_db::{FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
-    RootDatabase, SnippetCap,
+    FilePosition, RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
@@ -131,7 +131,7 @@ pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
-    (database, FilePosition { file_id, offset })
+    (database, FilePosition { file_id: file_id.file_id(), offset })
 }
 
 pub(crate) fn do_completion(code: &str, kind: CompletionItemKind) -> Vec<CompletionItem> {

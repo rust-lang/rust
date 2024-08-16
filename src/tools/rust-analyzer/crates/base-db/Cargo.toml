@@ -1,7 +1,8 @@
 [package]
 name = "base-db"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Basic database traits for rust-analyzer. The concrete DB is defined by `ide` (aka `ra_ap_ide`)."
 
 authors.workspace = true
 edition.workspace = true
@@ -27,6 +28,7 @@ stdx.workspace = true
 syntax.workspace = true
 vfs.workspace = true
 span.workspace = true
+intern.workspace = true
 
 [lints]
 workspace = true

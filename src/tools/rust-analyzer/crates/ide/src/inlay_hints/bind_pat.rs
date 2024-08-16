@@ -4,9 +4,10 @@
 //! let _x /* i32 */= f(4, 4);
 //! ```
 use hir::Semantics;
-use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
+use ide_db::{famous_defs::FamousDefs, RootDatabase};
 
 use itertools::Itertools;
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode, HasGenericArgs, HasName},
     match_ast,
@@ -21,7 +22,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: FileId,
+    _file_id: EditionedFileId,
     pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
@@ -1143,6 +1144,21 @@ async fn main() {
       //^^ impl Future<Output = i32>
         return 8_i32;
     };
+}"#,
+        );
+    }
+
+    #[test]
+    fn works_in_included_file() {
+        check_types(
+            r#"
+//- minicore: include
+//- /main.rs
+include!("foo.rs");
+//- /foo.rs
+fn main() {
+    let _x = 42;
+      //^^ i32
 }"#,
         );
     }

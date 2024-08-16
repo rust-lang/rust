@@ -5,11 +5,11 @@ use crate::{
     resolving::{ResolvedPath, ResolvedPattern, ResolvedRule},
     Match, MatchFinder,
 };
+use hir::FileRange;
 use ide_db::{
-    base_db::{FileId, FileRange},
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
-    FxHashSet,
+    EditionedFileId, FileId, FxHashSet,
 };
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
 
@@ -136,14 +136,18 @@ impl MatchFinder<'_> {
         // seems to get put into a single source root.
         let mut files = Vec::new();
         self.search_files_do(|file_id| {
-            files.push(file_id);
+            files.push(
+                self.sema
+                    .attach_first_edition(file_id)
+                    .unwrap_or_else(|| EditionedFileId::current_edition(file_id)),
+            );
         });
         SearchScope::files(&files)
     }
 
     fn slow_scan(&self, rule: &ResolvedRule, matches_out: &mut Vec<Match>) {
         self.search_files_do(|file_id| {
-            let file = self.sema.parse(file_id);
+            let file = self.sema.parse_guess_edition(file_id);
             let code = file.syntax();
             self.slow_scan_node(code, rule, &None, matches_out);
         })
@@ -152,7 +156,7 @@ impl MatchFinder<'_> {
     fn search_files_do(&self, mut callback: impl FnMut(FileId)) {
         if self.restrict_ranges.is_empty() {
             // Unrestricted search.
-            use ide_db::base_db::SourceDatabaseExt;
+            use ide_db::base_db::SourceRootDatabase;
             use ide_db::symbol_index::SymbolsDatabase;
             for &root in self.sema.db.local_roots().iter() {
                 let sr = self.sema.db.source_root(root);

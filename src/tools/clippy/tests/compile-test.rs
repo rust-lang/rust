@@ -1,4 +1,6 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+// We need this feature as it changes `dylib` linking behavior and allows us to link to
+// `rustc_driver`.
+#![feature(rustc_private)]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
@@ -208,7 +210,8 @@ fn run_ui_toml() {
     ui_test::run_tests_generic(
         vec![config],
         ui_test::default_file_filter,
-        |config, path, _file_contents| {
+        |config, file_contents| {
+            let path = file_contents.span().file;
             config
                 .program
                 .envs
@@ -260,7 +263,7 @@ fn run_ui_cargo() {
             path.ends_with("Cargo.toml")
                 .then(|| ui_test::default_any_file_filter(path, config) && !ignored_32bit(path))
         },
-        |_config, _path, _file_contents| {},
+        |_config, _file_contents| {},
         status_emitter::Text::from(args.format),
     )
     .unwrap();

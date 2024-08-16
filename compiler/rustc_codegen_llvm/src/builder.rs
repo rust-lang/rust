@@ -12,7 +12,8 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
+    TyAndLayout,
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_sanitizers::{cfi, kcfi};
@@ -531,7 +532,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn load_operand(&mut self, place: PlaceRef<'tcx, &'ll Value>) -> OperandRef<'tcx, &'ll Value> {
         if place.layout.is_unsized() {
-            let tail = self.tcx.struct_tail_with_normalize(place.layout.ty, |ty| ty, || {});
+            let tail = self.tcx.struct_tail_for_codegen(place.layout.ty, self.param_env());
             if matches!(tail.kind(), ty::Foreign(..)) {
                 // Unsized locals and, at least conceptually, even unsized arguments must be copied
                 // around, which requires dynamically determining their size. Therefore, we cannot
@@ -727,13 +728,32 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMSetVolatile(store, llvm::True);
             }
             if flags.contains(MemFlags::NONTEMPORAL) {
-                // According to LLVM [1] building a nontemporal store must
-                // *always* point to a metadata value of the integer 1.
-                //
-                // [1]: https://llvm.org/docs/LangRef.html#store-instruction
-                let one = self.cx.const_i32(1);
-                let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
-                llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+                // Make sure that the current target architectures supports "sane" non-temporal
+                // stores, i.e., non-temporal stores that are equivalent to regular stores except
+                // for performance. LLVM doesn't seem to care about this, and will happily treat
+                // `!nontemporal` stores as-if they were normal stores (for reordering optimizations
+                // etc) even on x86, despite later lowering them to MOVNT which do *not* behave like
+                // regular stores but require special fences.
+                // So we keep a list of architectures where `!nontemporal` is known to be truly just
+                // a hint, and use regular stores everywhere else.
+                // (In the future, we could alternatively ensure that an sfence gets emitted after a sequence of movnt
+                // before any kind of synchronizing operation. But it's not clear how to do that with LLVM.)
+                // For more context, see <https://github.com/rust-lang/rust/issues/114582> and
+                // <https://github.com/llvm/llvm-project/issues/64521>.
+                const WELL_BEHAVED_NONTEMPORAL_ARCHS: &[&str] =
+                    &["aarch64", "arm", "riscv32", "riscv64"];
+
+                let use_nontemporal =
+                    WELL_BEHAVED_NONTEMPORAL_ARCHS.contains(&&*self.cx.tcx.sess.target.arch);
+                if use_nontemporal {
+                    // According to LLVM [1] building a nontemporal store must
+                    // *always* point to a metadata value of the integer 1.
+                    //
+                    // [1]: https://llvm.org/docs/LangRef.html#store-instruction
+                    let one = self.cx.const_i32(1);
+                    let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
+                    llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+                }
             }
             store
         }

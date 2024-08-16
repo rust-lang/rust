@@ -218,6 +218,7 @@ pub struct Config {
     pub llvm_thin_lto: bool,
     pub llvm_release_debuginfo: bool,
     pub llvm_static_stdcpp: bool,
+    pub llvm_libzstd: bool,
     /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
     #[cfg(not(test))]
     llvm_link_shared: Cell<Option<bool>>,
@@ -512,6 +513,15 @@ impl TargetSelection {
     pub fn is_windows(&self) -> bool {
         self.contains("windows")
     }
+
+    pub fn is_windows_gnu(&self) -> bool {
+        self.ends_with("windows-gnu")
+    }
+
+    /// Path to the file defining the custom target, if any.
+    pub fn filepath(&self) -> Option<&Path> {
+        self.file.as_ref().map(Path::new)
+    }
 }
 
 impl fmt::Display for TargetSelection {
@@ -533,6 +543,14 @@ impl fmt::Debug for TargetSelection {
 impl PartialEq<&str> for TargetSelection {
     fn eq(&self, other: &&str) -> bool {
         self.triple == *other
+    }
+}
+
+// Targets are often used as directory names throughout bootstrap.
+// This impl makes it more ergonomics to use them as such.
+impl AsRef<Path> for TargetSelection {
+    fn as_ref(&self) -> &Path {
+        self.triple.as_ref()
     }
 }
 
@@ -873,6 +891,7 @@ define_config! {
         plugins: Option<bool> = "plugins",
         ccache: Option<StringOrBool> = "ccache",
         static_libstdcpp: Option<bool> = "static-libstdcpp",
+        libzstd: Option<bool> = "libzstd",
         ninja: Option<bool> = "ninja",
         targets: Option<String> = "targets",
         experimental_targets: Option<String> = "experimental-targets",
@@ -1148,6 +1167,7 @@ impl Config {
             llvm_optimize: true,
             ninja_in_file: true,
             llvm_static_stdcpp: false,
+            llvm_libzstd: false,
             backtrace: true,
             rust_optimize: RustOptimize::Bool(true),
             rust_optimize_tests: true,
@@ -1183,7 +1203,7 @@ impl Config {
         }
     }
 
-    pub fn parse(args: &[String]) -> Config {
+    pub fn parse(flags: Flags) -> Config {
         #[cfg(test)]
         fn get_toml(_: &Path) -> TomlConfig {
             TomlConfig::default()
@@ -1213,11 +1233,10 @@ impl Config {
                     exit!(2);
                 })
         }
-        Self::parse_inner(args, get_toml)
+        Self::parse_inner(flags, get_toml)
     }
 
-    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
-        let mut flags = Flags::parse(args);
+    pub(crate) fn parse_inner(mut flags: Flags, get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut config = Config::default_opts();
 
         // Set flags.
@@ -1320,7 +1339,11 @@ impl Config {
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
-            config.config = Some(toml_path.clone());
+            config.config = Some(if cfg!(not(feature = "bootstrap-self-test")) {
+                toml_path.canonicalize().unwrap()
+            } else {
+                toml_path.clone()
+            });
             get_toml(&toml_path)
         } else {
             config.config = None;
@@ -1458,7 +1481,7 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build.triple)
+                .join(config.build)
                 .join("stage0")
                 .join("bin")
                 .join(exe("rustc", config.build))
@@ -1473,7 +1496,7 @@ impl Config {
             config.download_beta_toolchain();
             config
                 .out
-                .join(config.build.triple)
+                .join(config.build)
                 .join("stage0")
                 .join("bin")
                 .join(exe("cargo", config.build))
@@ -1782,6 +1805,7 @@ impl Config {
                 plugins,
                 ccache,
                 static_libstdcpp,
+                libzstd,
                 ninja,
                 targets,
                 experimental_targets,
@@ -1816,6 +1840,7 @@ impl Config {
             set(&mut config.llvm_thin_lto, thin_lto);
             set(&mut config.llvm_release_debuginfo, release_debuginfo);
             set(&mut config.llvm_static_stdcpp, static_libstdcpp);
+            set(&mut config.llvm_libzstd, libzstd);
             if let Some(v) = link_shared {
                 config.llvm_link_shared.set(Some(v));
             }
@@ -1840,6 +1865,23 @@ impl Config {
             config.llvm_from_ci = config.parse_download_ci_llvm(download_ci_llvm, asserts);
 
             if config.llvm_from_ci {
+                let warn = |option: &str| {
+                    println!(
+                        "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
+                    );
+                    println!(
+                        "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
+                    );
+                };
+
+                if static_libstdcpp.is_some() {
+                    warn("static-libstdcpp");
+                }
+
+                if link_shared.is_some() {
+                    warn("link-shared");
+                }
+
                 // None of the LLVM options, except assertions, are supported
                 // when using downloaded LLVM. We could just ignore these but
                 // that's potentially confusing, so force them to not be
@@ -1849,9 +1891,7 @@ impl Config {
                 check_ci_llvm!(optimize_toml);
                 check_ci_llvm!(thin_lto);
                 check_ci_llvm!(release_debuginfo);
-                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
-                check_ci_llvm!(link_shared);
-                check_ci_llvm!(static_libstdcpp);
+                check_ci_llvm!(libzstd);
                 check_ci_llvm!(targets);
                 check_ci_llvm!(experimental_targets);
                 check_ci_llvm!(clang_cl);
@@ -2249,13 +2289,13 @@ impl Config {
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         assert!(self.llvm_from_ci);
-        self.out.join(&*self.build.triple).join("ci-llvm")
+        self.out.join(self.build).join("ci-llvm")
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
     pub(crate) fn ci_rustc_dir(&self) -> PathBuf {
         assert!(self.download_rustc());
-        self.out.join(self.build.triple).join("ci-rustc")
+        self.out.join(self.build).join("ci-rustc")
     }
 
     /// Determine whether llvm should be linked dynamically.

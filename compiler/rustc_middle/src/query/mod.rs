@@ -65,10 +65,9 @@ use crate::query::plumbing::{
 };
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, DropckConstraint,
-    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
-    OutlivesBound,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, DropckConstraint, DropckOutlivesResult,
+    MethodAutoderefStepsResult, NoSolution, NormalizationResult, OutlivesBound,
 };
 use crate::traits::{
     specialization_graph, CodegenObligationError, EvaluationResult, ImplSource,
@@ -405,6 +404,10 @@ rustc_queries! {
 
     query item_non_self_assumptions(key: DefId) -> ty::EarlyBinder<'tcx, ty::Clauses<'tcx>> {
         desc { |tcx| "elaborating item assumptions for `{}`", tcx.def_path_str(key) }
+    }
+
+    query impl_super_outlives(key: DefId) -> ty::EarlyBinder<'tcx, ty::Clauses<'tcx>> {
+        desc { |tcx| "elaborating supertrait outlives for trait of `{}`", tcx.def_path_str(key) }
     }
 
     /// Look up all native libraries this crate depends on.
@@ -2086,26 +2089,6 @@ rustc_queries! {
         desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal.value.value }
     }
 
-    /// Do not call this query directly: part of the `Eq` type-op
-    query type_op_eq(
-        goal: CanonicalTypeOpEqGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-        NoSolution,
-    > {
-        desc { "evaluating `type_op_eq` `{:?}`", goal.value.value }
-    }
-
-    /// Do not call this query directly: part of the `Subtype` type-op
-    query type_op_subtype(
-        goal: CanonicalTypeOpSubtypeGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-        NoSolution,
-    > {
-        desc { "evaluating `type_op_subtype` `{:?}`", goal.value.value }
-    }
-
     /// Do not call this query directly: part of the `ProvePredicate` type-op
     query type_op_prove_predicate(
         goal: CanonicalTypeOpProvePredicateGoal<'tcx>
@@ -2181,6 +2164,12 @@ rustc_queries! {
         arena_cache
         eval_always
         desc { "looking up supported target features" }
+    }
+
+    query implied_target_features(feature: Symbol) -> &'tcx Vec<Symbol> {
+        arena_cache
+        eval_always
+        desc { "looking up implied target features" }
     }
 
     query features_query(_: ()) -> &'tcx rustc_feature::Features {

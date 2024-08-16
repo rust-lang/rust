@@ -67,6 +67,7 @@ pub fn provide(providers: &mut Providers) {
         item_super_predicates: item_bounds::item_super_predicates,
         explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
         item_non_self_assumptions: item_bounds::item_non_self_assumptions,
+        impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
         predicates_defined_on,
@@ -1699,6 +1700,8 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
             trait_ref: ty::EarlyBinder::bind(trait_ref),
             safety: impl_.safety,
             polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+            do_not_recommend: tcx.features().do_not_recommend
+                && tcx.has_attrs_with_path(def_id, &[sym::diagnostic, sym::do_not_recommend]),
         }
     })
 }

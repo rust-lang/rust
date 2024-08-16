@@ -1,7 +1,8 @@
 [package]
 name = "load-cargo"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "Loads a Cargo project into a static instance of rust-analyzer for analysis."
 
 rust-version.workspace = true
 edition.workspace = true
@@ -27,6 +28,7 @@ span.workspace = true
 tt.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
+intern.workspace = true
 
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]

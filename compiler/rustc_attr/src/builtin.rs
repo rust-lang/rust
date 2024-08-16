@@ -20,6 +20,7 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
+use crate::fluent_generated;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
 /// The version placeholder that recently stabilized features contain inside the
@@ -521,7 +522,6 @@ pub struct Condition {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -593,7 +593,6 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn eval_condition(
     cfg: &ast::MetaItem,
     sess: &Session,
@@ -665,12 +664,12 @@ pub fn eval_condition(
                         res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
                     }),
                 sym::not => {
-                    if mis.len() != 1 {
+                    let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
-                    }
+                    };
 
-                    !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
+                    !eval_condition(mi.meta_item().unwrap(), sess, features, eval)
                 }
                 sym::target => {
                     if let Some(features) = features
@@ -680,7 +679,7 @@ pub fn eval_condition(
                             sess,
                             sym::cfg_target_compact,
                             cfg.span,
-                            "compact `cfg(target(..))` is experimental and subject to change",
+                            fluent_generated::attr_unstable_cfg_target_compact,
                         )
                         .emit();
                     }
@@ -1051,10 +1050,10 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     MetaItemKind::List(nested_items) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            if nested_items.len() == 1 {
+                            if let [nested_item] = nested_items.as_slice() {
                                 sess.dcx().emit_err(
                                     session_diagnostics::IncorrectReprFormatExpectInteger {
-                                        span: nested_items[0].span(),
+                                        span: nested_item.span(),
                                     },
                                 );
                             } else {
@@ -1066,10 +1065,10 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                             }
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            if nested_items.len() == 1 {
+                            if let [nested_item] = nested_items.as_slice() {
                                 sess.dcx().emit_err(
                                     session_diagnostics::IncorrectReprFormatPackedExpectInteger {
-                                        span: nested_items[0].span(),
+                                        span: nested_item.span(),
                                     },
                                 );
                             } else {

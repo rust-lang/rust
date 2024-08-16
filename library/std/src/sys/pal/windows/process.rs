@@ -564,7 +564,7 @@ impl Stdio {
             Ok(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
                 let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
-                io.into_raw_handle();
+                let _ = io.into_raw_handle(); // Don't close the handle
                 ret
             },
             // If no stdio handle is available, then propagate the null value.

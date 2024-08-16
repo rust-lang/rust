@@ -2,7 +2,7 @@
 
 mod format_like;
 
-use hir::{ImportPathConfig, ItemInNs};
+use hir::ItemInNs;
 use ide_db::{
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
@@ -60,11 +60,7 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
-    let cfg = ImportPathConfig {
-        prefer_no_std: ctx.config.prefer_no_std,
-        prefer_prelude: ctx.config.prefer_prelude,
-        prefer_absolute: ctx.config.prefer_absolute,
-    };
+    let cfg = ctx.config.import_path_config();
 
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {

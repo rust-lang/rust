@@ -585,7 +585,9 @@ impl Pat {
             }
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
-            PatKind::Slice(pats) if pats.len() == 1 => pats[0].to_ty().map(TyKind::Slice)?,
+            PatKind::Slice(pats) if let [pat] = pats.as_slice() => {
+                pat.to_ty().map(TyKind::Slice)?
+            }
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
             PatKind::Tuple(pats) => {
@@ -1187,8 +1189,8 @@ impl Expr {
     /// Does not ensure that the path resolves to a const param, the caller should check this.
     pub fn is_potential_trivial_const_arg(&self) -> bool {
         let this = if let ExprKind::Block(block, None) = &self.kind
-            && block.stmts.len() == 1
-            && let StmtKind::Expr(expr) = &block.stmts[0].kind
+            && let [stmt] = block.stmts.as_slice()
+            && let StmtKind::Expr(expr) = &stmt.kind
         {
             expr
         } else {
@@ -1248,7 +1250,9 @@ impl Expr {
                 expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?
             }
 
-            ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
+            ExprKind::Array(exprs) if let [expr] = exprs.as_slice() => {
+                expr.to_ty().map(TyKind::Slice)?
+            }
 
             ExprKind::Tup(exprs) => {
                 let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<ThinVec<_>>>()?;

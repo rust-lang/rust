@@ -957,6 +957,8 @@ pub struct BadOptAccessDiag<'a> {
 pub enum NonBindingLet {
     #[diag(lint_non_binding_let_on_sync_lock)]
     SyncLock {
+        #[label]
+        pat: Span,
         #[subdiagnostic]
         sub: NonBindingLetSub,
     },
@@ -2375,6 +2377,16 @@ pub mod unexpected_cfg_value {
         DefineFeatures,
         Other(#[subdiagnostic] super::UnexpectedCfgCargoHelp),
     }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unexpected_builtin_cfg)]
+#[note(lint_controlled_by)]
+#[note(lint_incoherent)]
+pub struct UnexpectedBuiltinCfg {
+    pub(crate) cfg: String,
+    pub(crate) cfg_name: Symbol,
+    pub(crate) controlled_by: &'static str,
 }
 
 #[derive(LintDiagnostic)]
