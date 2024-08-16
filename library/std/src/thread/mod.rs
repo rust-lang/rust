@@ -412,7 +412,6 @@ impl Builder {
     /// # Examples
     ///
     /// ```
-    /// #![feature(thread_spawn_unchecked)]
     /// use std::thread;
     ///
     /// let builder = thread::Builder::new();
@@ -433,7 +432,7 @@ impl Builder {
     /// ```
     ///
     /// [`io::Result`]: crate::io::Result
-    #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
+    #[stable(feature = "thread_spawn_unchecked", since = "CURRENT_RUSTC_VERSION")]
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,
