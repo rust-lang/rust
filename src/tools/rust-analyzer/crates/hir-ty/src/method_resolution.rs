@@ -542,7 +542,8 @@ impl ReceiverAdjustments {
             }
         }
         if let Some(m) = self.autoref {
-            let a = Adjustment::borrow(m, ty);
+            let lt = table.new_lifetime_var();
+            let a = Adjustment::borrow(m, ty, lt);
             ty = a.target.clone();
             adjust.push(a);
         }

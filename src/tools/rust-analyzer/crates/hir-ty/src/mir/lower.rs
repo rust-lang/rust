@@ -337,7 +337,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.push_assignment(current, place, Operand::Copy(p).into(), expr_id.into());
                     Ok(Some(current))
                 }
-                Adjust::Borrow(AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m)) => {
+                Adjust::Borrow(AutoBorrow::Ref(_, m) | AutoBorrow::RawPtr(m)) => {
                     let Some((p, current)) =
                         self.lower_expr_as_place_with_adjust(current, expr_id, true, rest)?
                     else {
