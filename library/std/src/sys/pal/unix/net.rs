@@ -563,6 +563,24 @@ impl Socket {
         setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int)
     }
 
+    #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
+    pub fn todevice(&self) -> io::Result<&CStr> {
+        let buf: [libc::c_char; libc::IFNAMSIZ] =
+            getsockopt(self, libc::SOL_SOCKET, libc::SO_BINDTODEVICE)?;
+        let s: &[u8] = unsafe { core::slice::from_raw_parts(buf.as_ptr() as *const u8, buf.len()) };
+        let ifrname = CStr::from_bytes_until_nul(s).unwrap();
+        Ok(ifrname)
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
+    pub fn set_todevice(&self, ifrname: &CStr) -> io::Result<()> {
+        let mut buf = [0; libc::IFNAMSIZ];
+        for (src, dst) in ifrname.to_bytes().iter().zip(&mut buf[..libc::IFNAMSIZ - 1]) {
+            *dst = *src as libc::c_char;
+        }
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_BINDTODEVICE, buf)
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         let raw: c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)?;
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
