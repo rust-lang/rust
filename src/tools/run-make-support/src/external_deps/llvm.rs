@@ -297,6 +297,12 @@ impl LlvmAr {
         self
     }
 
+    /// Print the table of contents.
+    pub fn table_of_contents(&mut self) -> &mut Self {
+        self.cmd.arg("t");
+        self
+    }
+
     /// Provide an output, then an input file. Bundled in one function, as llvm-ar has
     /// no "--output"-style flag.
     pub fn output_input(&mut self, out: impl AsRef<Path>, input: impl AsRef<Path>) -> &mut Self {
