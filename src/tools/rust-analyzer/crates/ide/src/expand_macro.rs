@@ -3,6 +3,7 @@ use ide_db::{
     helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into, FileId,
     RootDatabase,
 };
+use span::Edition;
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
 use crate::FilePosition;
@@ -83,7 +84,14 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
                 break (
-                    def.name(db).display(db).to_string(),
+                    def.name(db)
+                        .display(
+                            db,
+                            sema.attach_first_edition(position.file_id)
+                                .map(|it| it.edition())
+                                .unwrap_or(Edition::CURRENT),
+                        )
+                        .to_string(),
                     expand_macro_recur(&sema, &item)?,
                     SyntaxKind::MACRO_ITEMS,
                 );

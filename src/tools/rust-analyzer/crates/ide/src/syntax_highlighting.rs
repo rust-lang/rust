@@ -501,7 +501,9 @@ fn traverse(
                 config.syntactic_name_ref_highlighting,
                 name_like,
             ),
-            NodeOrToken::Token(token) => highlight::token(sema, token).zip(Some(None)),
+            NodeOrToken::Token(token) => {
+                highlight::token(sema, token, file_id.edition()).zip(Some(None))
+            }
         };
         if let Some((mut highlight, binding_hash)) = element {
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {

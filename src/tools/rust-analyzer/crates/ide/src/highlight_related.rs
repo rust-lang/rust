@@ -11,7 +11,7 @@ use ide_db::{
     },
     FxHashMap, FxHashSet, RootDatabase,
 };
-use span::{Edition, EditionedFileId};
+use span::EditionedFileId;
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode,
@@ -65,7 +65,7 @@ pub(crate) fn highlight_related(
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
         T![->] => 4,
-        kind if kind.is_keyword(Edition::CURRENT) => 3,
+        kind if kind.is_keyword(file_id.edition()) => 3,
         IDENT | INT_NUMBER => 2,
         T![|] => 1,
         _ => 0,

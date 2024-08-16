@@ -67,7 +67,11 @@ pub enum HoverAction {
 }
 
 impl HoverAction {
-    fn goto_type_from_targets(db: &RootDatabase, targets: Vec<hir::ModuleDef>) -> Option<Self> {
+    fn goto_type_from_targets(
+        db: &RootDatabase,
+        targets: Vec<hir::ModuleDef>,
+        edition: Edition,
+    ) -> Option<Self> {
         let targets = targets
             .into_iter()
             .filter_map(|it| {
@@ -75,7 +79,8 @@ impl HoverAction {
                     mod_path: render::path(
                         db,
                         it.module(db)?,
-                        it.name(db).map(|name| name.display(db).to_string()),
+                        it.name(db).map(|name| name.display(db, edition).to_string()),
+                        edition,
                     ),
                     nav: it.try_to_nav(db)?.call_site(),
                 })
@@ -111,10 +116,12 @@ pub(crate) fn hover(
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = &hir::Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
+    let edition =
+        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
     let mut res = if range.is_empty() {
-        hover_simple(sema, FilePosition { file_id, offset: range.start() }, file, config)
+        hover_simple(sema, FilePosition { file_id, offset: range.start() }, file, config, edition)
     } else {
-        hover_ranged(sema, frange, file, config)
+        hover_ranged(sema, frange, file, config, edition)
     }?;
 
     if let HoverDocFormat::PlainText = config.format {
@@ -129,6 +136,7 @@ fn hover_simple(
     FilePosition { file_id, offset }: FilePosition,
     file: SyntaxNode,
     config: &HoverConfig,
+    edition: Edition,
 ) -> Option<RangeInfo<HoverResult>> {
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
@@ -141,7 +149,7 @@ fn hover_simple(
         | T![_] => 4,
         // index and prefix ops and closure pipe
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] | T![|] => 3,
-        kind if kind.is_keyword(Edition::CURRENT) => 2,
+        kind if kind.is_keyword(edition) => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
@@ -150,7 +158,7 @@ fn hover_simple(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
-            let res = hover_for_definition(sema, file_id, def, &node, None, config);
+            let res = hover_for_definition(sema, file_id, def, &node, None, config, edition);
             Some(RangeInfo::new(range, res))
         });
     }
@@ -165,6 +173,7 @@ fn hover_simple(
             &original_token.parent()?,
             None,
             config,
+            edition,
         );
         return Some(RangeInfo::new(range, res));
     }
@@ -240,7 +249,7 @@ fn hover_simple(
                 .flatten()
                 .unique_by(|&(def, _, _)| def)
                 .map(|(def, macro_arm, node)| {
-                    hover_for_definition(sema, file_id, def, &node, macro_arm, config)
+                    hover_for_definition(sema, file_id, def, &node, macro_arm, config, edition)
                 })
                 .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
                     acc.actions.extend(actions);
@@ -249,9 +258,9 @@ fn hover_simple(
                 })
         })
         // try keywords
-        .or_else(|| descended().find_map(|token| render::keyword(sema, config, token)))
+        .or_else(|| descended().find_map(|token| render::keyword(sema, config, token, edition)))
         // try _ hovers
-        .or_else(|| descended().find_map(|token| render::underscore(sema, config, token)))
+        .or_else(|| descended().find_map(|token| render::underscore(sema, config, token, edition)))
         // try rest pattern hover
         .or_else(|| {
             descended().find_map(|token| {
@@ -266,7 +275,7 @@ fn hover_simple(
                 let record_pat =
                     record_pat_field_list.syntax().parent().and_then(ast::RecordPat::cast)?;
 
-                Some(render::struct_rest_pat(sema, config, &record_pat))
+                Some(render::struct_rest_pat(sema, config, &record_pat, edition))
             })
         })
         // try () call hovers
@@ -283,7 +292,7 @@ fn hover_simple(
                         _ => return None,
                     }
                 };
-                render::type_info_of(sema, config, &Either::Left(call_expr))
+                render::type_info_of(sema, config, &Either::Left(call_expr), edition)
             })
         })
         // try closure
@@ -293,12 +302,12 @@ fn hover_simple(
                     return None;
                 }
                 let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
-                render::closure_expr(sema, config, c)
+                render::closure_expr(sema, config, c, edition)
             })
         })
         // tokens
         .or_else(|| {
-            render::literal(sema, original_token.clone())
+            render::literal(sema, original_token.clone(), edition)
                 .map(|markup| HoverResult { markup, actions: vec![] })
         });
 
@@ -313,6 +322,7 @@ fn hover_ranged(
     FileRange { range, .. }: FileRange,
     file: SyntaxNode,
     config: &HoverConfig,
+    edition: Edition,
 ) -> Option<RangeInfo<HoverResult>> {
     // FIXME: make this work in attributes
     let expr_or_pat = file
@@ -321,15 +331,17 @@ fn hover_ranged(
         .take_while(|it| ast::MacroCall::can_cast(it.kind()) || !ast::Item::can_cast(it.kind()))
         .find_map(Either::<ast::Expr, ast::Pat>::cast)?;
     let res = match &expr_or_pat {
-        Either::Left(ast::Expr::TryExpr(try_expr)) => render::try_expr(sema, config, try_expr),
+        Either::Left(ast::Expr::TryExpr(try_expr)) => {
+            render::try_expr(sema, config, try_expr, edition)
+        }
         Either::Left(ast::Expr::PrefixExpr(prefix_expr))
             if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) =>
         {
-            render::deref_expr(sema, config, prefix_expr)
+            render::deref_expr(sema, config, prefix_expr, edition)
         }
         _ => None,
     };
-    let res = res.or_else(|| render::type_info_of(sema, config, &expr_or_pat));
+    let res = res.or_else(|| render::type_info_of(sema, config, &expr_or_pat, edition));
     res.map(|it| {
         let range = match expr_or_pat {
             Either::Left(it) => it.syntax().text_range(),
@@ -347,6 +359,7 @@ pub(crate) fn hover_for_definition(
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
     config: &HoverConfig,
+    edition: Edition,
 ) -> HoverResult {
     let famous_defs = match &def {
         Definition::BuiltinType(_) => sema.scope(scope_node).map(|it| FamousDefs(sema, it.krate())),
@@ -370,15 +383,22 @@ pub(crate) fn hover_for_definition(
     };
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
 
-    let markup =
-        render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, macro_arm, config);
+    let markup = render::definition(
+        sema.db,
+        def,
+        famous_defs.as_ref(),
+        &notable_traits,
+        macro_arm,
+        config,
+        edition,
+    );
     HoverResult {
         markup: render::process_markup(sema.db, def, &markup, config),
         actions: [
             show_fn_references_action(sema.db, def),
             show_implementations_action(sema.db, def),
             runnable_action(sema, def, file_id),
-            goto_type_action_for_def(sema.db, def, &notable_traits),
+            goto_type_action_for_def(sema.db, def, &notable_traits, edition),
         ]
         .into_iter()
         .flatten()
@@ -470,6 +490,7 @@ fn goto_type_action_for_def(
     db: &RootDatabase,
     def: Definition,
     notable_traits: &[(hir::Trait, Vec<(Option<hir::Type>, hir::Name)>)],
+    edition: Edition,
 ) -> Option<HoverAction> {
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
@@ -500,13 +521,13 @@ fn goto_type_action_for_def(
             Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
             Definition::Field(field) => field.ty(db),
             Definition::Function(function) => function.ret_type(db),
-            _ => return HoverAction::goto_type_from_targets(db, targets),
+            _ => return HoverAction::goto_type_from_targets(db, targets, edition),
         };
 
         walk_and_push_ty(db, &ty, &mut push_new_def);
     }
 
-    HoverAction::goto_type_from_targets(db, targets)
+    HoverAction::goto_type_from_targets(db, targets, edition)
 }
 
 fn walk_and_push_ty(

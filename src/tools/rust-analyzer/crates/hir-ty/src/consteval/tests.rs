@@ -1,3 +1,4 @@
+use base_db::SourceDatabase;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 use rustc_apfloat::{
@@ -94,9 +95,10 @@ fn check_answer(ra_fixture: &str, check: impl FnOnce(&[u8], &MemoryMap)) {
 fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
+    let edition = db.crate_graph()[db.test_crate()].edition;
     match e {
-        ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter),
-        ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter),
+        ConstEvalError::MirLowerError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
+        ConstEvalError::MirEvalError(e) => e.pretty_print(&mut err, &db, span_formatter, edition),
     }
     .unwrap();
     err
@@ -110,7 +112,9 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const, ConstEvalEr
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
-                if db.const_data(x).name.as_ref()?.display(db).to_string() == "GOAL" {
+                if db.const_data(x).name.as_ref()?.display(db, file_id.edition()).to_string()
+                    == "GOAL"
+                {
                     Some(x)
                 } else {
                     None

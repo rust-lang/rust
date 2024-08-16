@@ -49,11 +49,15 @@ pub(crate) fn complete_known_attribute_input(
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => {
-            lint::complete_lint(acc, ctx, colon_prefix, &parse_tt_as_comma_sep_paths(tt)?, FEATURES)
-        }
+        "feature" => lint::complete_lint(
+            acc,
+            ctx,
+            colon_prefix,
+            &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
+            FEATURES,
+        ),
         "allow" | "warn" | "deny" | "forbid" => {
-            let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
+            let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
 
             let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
                 .iter()
@@ -67,9 +71,12 @@ pub(crate) fn complete_known_attribute_input(
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
         "cfg" => cfg::complete_cfg(acc, ctx),
-        "macro_use" => {
-            macro_use::complete_macro_use(acc, ctx, extern_crate, &parse_tt_as_comma_sep_paths(tt)?)
-        }
+        "macro_use" => macro_use::complete_macro_use(
+            acc,
+            ctx,
+            extern_crate,
+            &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
+        ),
         _ => (),
     }
     Some(())
@@ -131,8 +138,12 @@ pub(crate) fn complete_attribute_path(
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        let mut item =
-            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), attr_completion.label);
+        let mut item = CompletionItem::new(
+            SymbolKind::Attribute,
+            ctx.source_range(),
+            attr_completion.label,
+            ctx.edition,
+        );
 
         if let Some(lookup) = attr_completion.lookup {
             item.lookup_by(lookup);
