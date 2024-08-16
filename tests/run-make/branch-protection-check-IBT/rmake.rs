@@ -4,17 +4,16 @@
 // python3 x.py test --target x86_64-unknown-linux-gnu  tests/run-make/branch-protection-check-IBT/
 
 //@ only-x86_64
+//@ only-stable
 
-//@ ignore-test
 // FIXME(jieyouxu): see the FIXME in the Makefile
 
-use run_make_support::{cwd, env_var, llvm_readobj, rustc};
+use run_make_support::{cwd, llvm_components_contain, llvm_readobj, rustc};
 
 fn main() {
-    let llvm_components = env_var("LLVM_COMPONENTS");
-    if !format!(" {llvm_components} ").contains(" x86 ") {
-        return;
-    }
+    // if !llvm_components_contain("x86") {
+    //     panic!();
+    // }
 
     rustc()
         .input("main.rs")
