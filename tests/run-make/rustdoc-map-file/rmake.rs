@@ -1,57 +1,54 @@
-use run_make_support::path_helpers::read_dir_entries_recursive;
+// This test ensures that all items from `foo` are correctly generated into the `redirect-map.json`
+// file with `--generate-redirect-map` rustdoc option.
+
+use std::path::Path;
+
 use run_make_support::rfs::read_to_string;
-use run_make_support::{jzon, rustdoc};
+use run_make_support::{path, rustdoc, serde_json};
 
 fn main() {
     let out_dir = "out";
+    let crate_name = "foo";
     rustdoc()
         .input("foo.rs")
+        .crate_name(crate_name)
         .arg("-Zunstable-options")
         .arg("--generate-redirect-map")
         .out_dir(&out_dir)
         .run();
 
-    let mut found_file = false;
-    read_dir_entries_recursive(&out_dir, |path| {
-        if !found_file
-            && path.is_file()
-            && path.file_name().map(|name| name == "redirect-map.json").unwrap_or(false)
-        {
-            found_file = true;
-            let generated = read_to_string(path);
-            let expected = read_to_string("expected.json");
-            let generated = jzon::parse(&generated).expect("failed to parse JSON");
-            let expected = jzon::parse(&expected).expect("failed to parse JSON");
+    let generated = read_to_string(path(out_dir).join(crate_name).join("redirect-map.json"));
+    let expected = read_to_string("expected.json");
+    let generated: serde_json::Value =
+        serde_json::from_str(&generated).expect("failed to parse JSON");
+    let expected: serde_json::Value =
+        serde_json::from_str(&expected).expect("failed to parse JSON");
+    let expected = expected.as_object().unwrap();
 
-            let mut differences = Vec::new();
-            for (key, expected_value) in expected.entries() {
-                match generated.get(key) {
-                    Some(value) => {
-                        if expected_value != value {
-                            differences.push(format!("values for key `{key}` don't match"));
-                        }
-                    }
-                    None => differences.push(format!("missing key `{key}`")),
+    let mut differences = Vec::new();
+    for (key, expected_value) in expected.iter() {
+        match generated.get(key) {
+            Some(value) => {
+                if expected_value != value {
+                    differences.push(format!(
+                        "values for key `{key}` don't match: `{expected_value:?}` != `{value:?}`"
+                    ));
                 }
             }
-            for (key, data) in generated.entries() {
-                if !expected.has_key(key) {
-                    differences
-                        .push(format!("Extra data not expected: key: `{key}`, data: `{data}`"));
-                }
-            }
-
-            if !differences.is_empty() {
-                eprintln!("Found differences in JSON files:");
-                for diff in differences {
-                    eprintln!("=> {diff}");
-                }
-                std::process::exit(1);
-            }
+            None => differences.push(format!("missing key `{key}`")),
         }
-    });
+    }
+    for (key, data) in generated.as_object().unwrap().iter() {
+        if !expected.contains_key(key) {
+            differences.push(format!("Extra data not expected: key: `{key}`, data: `{data}`"));
+        }
+    }
 
-    if !found_file {
-        panic!("`redirect-map.json` file was not found");
+    if !differences.is_empty() {
+        eprintln!("Found differences in JSON files:");
+        for diff in differences {
+            eprintln!("=> {diff}");
+        }
+        panic!("Found differences in JSON files");
     }
 }
