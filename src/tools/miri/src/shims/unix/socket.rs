@@ -29,15 +29,11 @@ struct SocketPair {
 struct Buffer {
     buf: VecDeque<u8>,
     clock: VClock,
-    /// Indicates if there is at least one active writer to this buffer.
-    /// If all writers of this buffer are dropped, buf_has_writer becomes false and we
-    /// indicate EOF instead of blocking.
-    buf_has_writer: bool,
 }
 
 impl Buffer {
     fn new() -> Self {
-        Buffer { buf: VecDeque::new(), clock: VClock::default(), buf_has_writer: true }
+        Buffer { buf: VecDeque::new(), clock: VClock::default() }
     }
 }
 
@@ -90,10 +86,6 @@ impl FileDescription for SocketPair {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         if let Some(peer_fd) = self.peer_fd().upgrade() {
-            // This is used to signal socketfd of other side that there is no writer to its readbuf.
-            // If the upgrade fails, there is no need to update as all read ends have been dropped.
-            peer_fd.downcast::<SocketPair>().unwrap().readbuf.borrow_mut().buf_has_writer = false;
-
             // Notify peer fd that closed has happened.
             // When any of the events happened, we check and update the status of all supported events
             // types of peer fd.
@@ -118,8 +110,8 @@ impl FileDescription for SocketPair {
 
         let mut readbuf = self.readbuf.borrow_mut();
         if readbuf.buf.is_empty() {
-            if !readbuf.buf_has_writer {
-                // Socketpair with no writer and empty buffer.
+            if self.peer_fd().upgrade().is_none() {
+                // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
                 return Ok(Ok(0));
             } else {
