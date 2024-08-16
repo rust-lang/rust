@@ -703,9 +703,7 @@ download-rustc = false
             let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
 
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            let llvm_config_file = t!(File::options().write(true).open(llvm_config));
-
-            t!(llvm_config_file.set_times(file_times));
+            t!(crate::utils::helpers::set_file_times(llvm_config, file_times));
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");
