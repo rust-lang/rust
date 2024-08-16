@@ -1,12 +1,13 @@
 //! Linux `eventfd` implementation.
+use std::cell::{Cell, RefCell};
 use std::io;
 use std::io::{Error, ErrorKind};
 use std::mem;
 
-use fd::FdId;
 use rustc_target::abi::Endian;
 
-use crate::shims::unix::linux::epoll::EpollReadyEvents;
+use crate::shims::unix::fd::FileDescriptionRef;
+use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
 use crate::{concurrency::VClock, *};
 
@@ -27,9 +28,9 @@ const MAX_COUNTER: u64 = u64::MAX - 1;
 struct Event {
     /// The object contains an unsigned 64-bit integer (uint64_t) counter that is maintained by the
     /// kernel. This counter is initialized with the value specified in the argument initval.
-    counter: u64,
+    counter: Cell<u64>,
     is_nonblock: bool,
-    clock: VClock,
+    clock: RefCell<VClock>,
 }
 
 impl FileDescription for Event {
@@ -42,8 +43,8 @@ impl FileDescription for Event {
         // need to be supported in the future, the check should be added here.
 
         Ok(EpollReadyEvents {
-            epollin: self.counter != 0,
-            epollout: self.counter != MAX_COUNTER,
+            epollin: self.counter.get() != 0,
+            epollout: self.counter.get() != MAX_COUNTER,
             ..EpollReadyEvents::new()
         })
     }
@@ -58,9 +59,9 @@ impl FileDescription for Event {
 
     /// Read the counter in the buffer and return the counter if succeeded.
     fn read<'tcx>(
-        &mut self,
+        &self,
+        self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        fd_id: FdId,
         bytes: &mut [u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -69,7 +70,8 @@ impl FileDescription for Event {
             return Ok(Err(Error::from(ErrorKind::InvalidInput)));
         };
         // Block when counter == 0.
-        if self.counter == 0 {
+        let counter = self.counter.get();
+        if counter == 0 {
             if self.is_nonblock {
                 return Ok(Err(Error::from(ErrorKind::WouldBlock)));
             } else {
@@ -78,25 +80,17 @@ impl FileDescription for Event {
             }
         } else {
             // Synchronize with all prior `write` calls to this FD.
-            ecx.acquire_clock(&self.clock);
+            ecx.acquire_clock(&self.clock.borrow());
             // Return the counter in the host endianness using the buffer provided by caller.
             *bytes = match ecx.tcx.sess.target.endian {
-                Endian::Little => self.counter.to_le_bytes(),
-                Endian::Big => self.counter.to_be_bytes(),
+                Endian::Little => counter.to_le_bytes(),
+                Endian::Big => counter.to_be_bytes(),
             };
-            self.counter = 0;
+            self.counter.set(0);
             // When any of the event happened, we check and update the status of all supported event
             // types for current file description.
+            ecx.check_and_update_readiness(self_ref)?;
 
-            // We have to use our own FdID in contrast to every other file descriptor out there, because
-            // we are updating ourselves when writing and reading. Technically `Event` is like socketpair, but
-            // it does not create two separate file descriptors. Thus we can't re-borrow ourselves via
-            // `FileDescriptionRef::check_and_update_readiness` while already being mutably borrowed for read/write.
-            crate::shims::unix::linux::epoll::EvalContextExt::check_and_update_readiness(
-                ecx,
-                fd_id,
-                || self.get_epoll_ready_events(),
-            )?;
             return Ok(Ok(U64_ARRAY_SIZE));
         }
     }
@@ -114,9 +108,9 @@ impl FileDescription for Event {
     /// supplied buffer is less than 8 bytes, or if an attempt is
     /// made to write the value 0xffffffffffffffff.
     fn write<'tcx>(
-        &mut self,
+        &self,
+        self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        fd_id: FdId,
         bytes: &[u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -135,13 +129,13 @@ impl FileDescription for Event {
         }
         // If the addition does not let the counter to exceed the maximum value, update the counter.
         // Else, block.
-        match self.counter.checked_add(num) {
+        match self.counter.get().checked_add(num) {
             Some(new_count @ 0..=MAX_COUNTER) => {
                 // Future `read` calls will synchronize with this write, so update the FD clock.
                 if let Some(clock) = &ecx.release_clock() {
-                    self.clock.join(clock);
+                    self.clock.borrow_mut().join(clock);
                 }
-                self.counter = new_count;
+                self.counter.set(new_count);
             }
             None | Some(u64::MAX) => {
                 if self.is_nonblock {
@@ -154,15 +148,8 @@ impl FileDescription for Event {
         };
         // When any of the event happened, we check and update the status of all supported event
         // types for current file description.
+        ecx.check_and_update_readiness(self_ref)?;
 
-        // Just like read() above, we use this internal method to not get the second borrow of the
-        // RefCell of this FileDescription. This is a special case, we should only use
-        // FileDescriptionRef::check_and_update_readiness in normal case.
-        crate::shims::unix::linux::epoll::EvalContextExt::check_and_update_readiness(
-            ecx,
-            fd_id,
-            || self.get_epoll_ready_events(),
-        )?;
         Ok(Ok(U64_ARRAY_SIZE))
     }
 }
@@ -219,8 +206,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fds = &mut this.machine.fds;
 
-        let fd_value =
-            fds.insert_new(Event { counter: val.into(), is_nonblock, clock: VClock::default() });
+        let fd_value = fds.insert_new(Event {
+            counter: Cell::new(val.into()),
+            is_nonblock,
+            clock: RefCell::new(VClock::default()),
+        });
 
         Ok(Scalar::from_i32(fd_value))
     }

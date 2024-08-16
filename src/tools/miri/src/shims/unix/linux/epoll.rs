@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::io;
 use std::rc::{Rc, Weak};
 
-use crate::shims::unix::fd::FdId;
+use crate::shims::unix::fd::{FdId, FileDescriptionRef};
 use crate::shims::unix::*;
 use crate::*;
 
@@ -12,7 +12,7 @@ use crate::*;
 struct Epoll {
     /// A map of EpollEventInterests registered under this epoll instance.
     /// Each entry is differentiated using FdId and file descriptor value.
-    interest_list: BTreeMap<(FdId, i32), Rc<RefCell<EpollEventInterest>>>,
+    interest_list: RefCell<BTreeMap<(FdId, i32), Rc<RefCell<EpollEventInterest>>>>,
     /// A map of EpollEventInstance that will be returned when `epoll_wait` is called.
     /// Similar to interest_list, the entry is also differentiated using FdId
     /// and file descriptor value.
@@ -35,6 +35,7 @@ impl EpollEventInstance {
         EpollEventInstance { events, data }
     }
 }
+
 /// EpollEventInterest registers the file description information to an epoll
 /// instance during a successful `epoll_ctl` call. It also stores additional
 /// information needed to check and update readiness state for `epoll_wait`.
@@ -226,18 +227,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Check if epfd is a valid epoll file descriptor.
-        let Some(epfd) = this.machine.fds.get_ref(epfd_value) else {
+        let Some(epfd) = this.machine.fds.get(epfd_value) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let mut binding = epfd.borrow_mut();
-        let epoll_file_description = &mut binding
-            .downcast_mut::<Epoll>()
+        let epoll_file_description = epfd
+            .downcast::<Epoll>()
             .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
-        let interest_list = &mut epoll_file_description.interest_list;
+        let mut interest_list = epoll_file_description.interest_list.borrow_mut();
         let ready_list = &epoll_file_description.ready_list;
 
-        let Some(file_descriptor) = this.machine.fds.get_ref(fd) else {
+        let Some(file_descriptor) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         let id = file_descriptor.get_id();
@@ -310,7 +310,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Readiness will be updated immediately when the epoll_event_interest is added or modified.
-            file_descriptor.check_and_update_readiness(this)?;
+            this.check_and_update_readiness(&file_descriptor)?;
 
             return Ok(Scalar::from_i32(0));
         } else if op == epoll_ctl_del {
@@ -399,16 +399,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("epoll_wait: timeout value can only be 0");
         }
 
-        let Some(epfd) = this.machine.fds.get_ref(epfd) else {
+        let Some(epfd) = this.machine.fds.get(epfd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let mut binding = epfd.borrow_mut();
-        let epoll_file_description = &mut binding
-            .downcast_mut::<Epoll>()
+        let epoll_file_description = epfd
+            .downcast::<Epoll>()
             .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
 
-        let binding = epoll_file_description.get_ready_list();
-        let mut ready_list = binding.borrow_mut();
+        let ready_list = epoll_file_description.get_ready_list();
+        let mut ready_list = ready_list.borrow_mut();
         let mut num_of_events: i32 = 0;
         let mut array_iter = this.project_array_fields(&event)?;
 
@@ -434,22 +433,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(num_of_events))
     }
 
-    /// For a specific unique file descriptor id, get its ready events and update
-    /// the corresponding ready list. This function is called whenever a file description
-    /// is registered with epoll, or when read, write, or close operations are performed,
-    /// regardless of any changes in readiness.
+    /// For a specific file description, get its ready events and update the corresponding ready
+    /// list. This function should be called whenever an event causes more bytes or an EOF to become
+    /// newly readable from an FD, and whenever more bytes can be written to an FD or no more future
+    /// writes are possible.
     ///
-    /// This is an internal helper function and is typically not meant to be used directly.
-    /// In most cases, `FileDescriptionRef::check_and_update_readiness` should be preferred.
-    fn check_and_update_readiness(
-        &self,
-        id: FdId,
-        get_ready_events: impl FnOnce() -> InterpResult<'tcx, EpollReadyEvents>,
-    ) -> InterpResult<'tcx, ()> {
+    /// This *will* report an event if anyone is subscribed to it, without any further filtering, so
+    /// do not call this function when an FD didn't have anything happen to it!
+    fn check_and_update_readiness(&self, fd_ref: &FileDescriptionRef) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_ref();
+        let id = fd_ref.get_id();
         // Get a list of EpollEventInterest that is associated to a specific file description.
         if let Some(epoll_interests) = this.machine.epoll_interests.get_epoll_interest(id) {
-            let epoll_ready_events = get_ready_events()?;
+            let epoll_ready_events = fd_ref.get_epoll_ready_events()?;
             // Get the bitmask of ready events.
             let ready_events = epoll_ready_events.get_event_bitmask(this);
 
