@@ -2113,9 +2113,8 @@ fn run_rustfmt(
     let edition = editions.iter().copied().max();
 
     let line_index = snap.file_line_index(file_id)?;
-    let sr = snap.analysis.source_root_id(file_id)?;
 
-    let mut command = match snap.config.rustfmt(Some(sr)) {
+    let mut command = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
@@ -2303,8 +2302,9 @@ pub(crate) fn internal_testing_fetch_config(
         .transpose()?;
     serde_json::to_value(match &*params.config {
         "local" => state.config.assist(source_root).assist_emit_must_use,
+        // TODO Most probably will fail because it was not renamed to workspace
         "global" => matches!(
-            state.config.rustfmt(source_root),
+            state.config.rustfmt(),
             RustfmtConfig::Rustfmt { enable_range_formatting: true, .. }
         ),
         _ => return Err(anyhow::anyhow!("Unknown test config key: {}", params.config)),
