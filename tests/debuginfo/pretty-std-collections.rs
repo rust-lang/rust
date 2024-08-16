@@ -1,5 +1,4 @@
 //@ ignore-windows failing on win32 bot
-//@ ignore-freebsd: gdb package too new
 //@ ignore-android: FIXME(#10381)
 //@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
