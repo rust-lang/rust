@@ -433,11 +433,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(num_of_events))
     }
 
-    /// For a specific file description, get its ready events and update
-    /// the corresponding ready list. This function is called whenever a file description
-    /// is registered with epoll, or the buffer it reads from / writes to changed.
-    /// This *will* report an event if anyone is subscribed to it, without any further
-    /// filtering, so do not call this function when an FD didn't have anything happen to it!
+    /// For a specific file description, get its ready events and update the corresponding ready
+    /// list. This function should be called whenever an event causes more bytes or an EOF to become
+    /// newly readable from an FD, and whenever more bytes can be written to an FD or no more future
+    /// writes are possible.
+    ///
+    /// This *will* report an event if anyone is subscribed to it, without any further filtering, so
+    /// do not call this function when an FD didn't have anything happen to it!
     fn check_and_update_readiness(&self, fd_ref: &FileDescriptionRef) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_ref();
         let id = fd_ref.get_id();

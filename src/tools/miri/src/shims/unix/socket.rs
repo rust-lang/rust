@@ -71,9 +71,9 @@ impl FileDescription for SocketPair {
         } else {
             // Peer FD has been closed.
             epoll_ready_events.epollrdhup = true;
-            // This is an edge case. Whenever epollrdhup is triggered, epollin and epollout will be
-            // added even though there is no data in the buffer.
-            // FIXME: Figure out why. This looks like a bug.
+            // Since the peer is closed, even if no data is available reads will return EOF and
+            // writes will return EPIPE. In other words, they won't block, so we mark this as ready
+            // for read and write.
             epoll_ready_events.epollin = true;
             epoll_ready_events.epollout = true;
         }
@@ -86,9 +86,7 @@ impl FileDescription for SocketPair {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         if let Some(peer_fd) = self.peer_fd().upgrade() {
-            // Notify peer fd that closed has happened.
-            // When any of the events happened, we check and update the status of all supported events
-            // types of peer fd.
+            // Notify peer fd that close has happened, since that can unblock reads and writes.
             ecx.check_and_update_readiness(&peer_fd)?;
         }
         Ok(Ok(()))
