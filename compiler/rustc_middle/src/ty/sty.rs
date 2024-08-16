@@ -970,6 +970,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
+    // It would be nicer if this returned the value instead of a reference,
+    // like how `Predicate::kind` and `Region::kind` do. (It would result in
+    // many fewer subsequent dereferences.) But that gives a small but
+    // noticeable performance hit. See #126069 for details.
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
         self.0.0

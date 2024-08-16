@@ -6,13 +6,9 @@ run-make/incr-add-rust-src-component/Makefile
 run-make/issue-84395-lto-embed-bitcode/Makefile
 run-make/jobserver-error/Makefile
 run-make/libs-through-symlinks/Makefile
-run-make/libtest-json/Makefile
-run-make/libtest-junit/Makefile
 run-make/libtest-thread-limit/Makefile
 run-make/macos-deployment-target/Makefile
-run-make/native-link-modifier-bundle/Makefile
 run-make/reproducible-build/Makefile
-run-make/rlib-format-packed-bundled-libs/Makefile
 run-make/split-debuginfo/Makefile
 run-make/symbol-mangling-hashed/Makefile
 run-make/translation/Makefile
