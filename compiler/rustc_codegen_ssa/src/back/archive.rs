@@ -108,7 +108,11 @@ pub trait ArchiveBuilderBuilder {
                 &exports,
                 machine,
                 !sess.target.is_like_msvc,
-                /*comdat=*/ true,
+                // Tell the import library writer to make `.idata$3` a COMDAT section.
+                // This prevents duplicate symbol errors when using /WHOLEARCHIVE
+                // to link a staticlib with the MSVC linker.
+                // See #129020
+                true,
             ) {
                 sess.dcx()
                     .emit_fatal(ErrorCreatingImportLibrary { lib_name, error: error.to_string() });
