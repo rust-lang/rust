@@ -470,6 +470,7 @@ impl Builder {
                 | PkgType::Rls
                 | PkgType::RustAnalyzer
                 | PkgType::Rustfmt
+                | PkgType::Enzyme
                 | PkgType::LlvmTools
                 | PkgType::RustAnalysis
                 | PkgType::JsonDocs

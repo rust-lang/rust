@@ -1,3 +1,4 @@
+use rustc_ast::expand::typetree::FncTree;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
@@ -278,6 +279,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
     fn memmove(
         &mut self,
@@ -287,6 +289,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         src_align: Align,
         size: Self::Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
     fn memset(
         &mut self,
@@ -295,6 +298,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Self::Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<FncTree>,
     );
 
     /// *Typed* copy for non-overlapping places.
@@ -334,7 +338,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             temp.val.store_with_flags(self, dst.with_type(layout), flags);
         } else if !layout.is_zst() {
             let bytes = self.const_usize(layout.size.bytes());
-            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags);
+            self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, None);
         }
     }
 

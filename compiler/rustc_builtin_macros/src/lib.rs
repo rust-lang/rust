@@ -15,6 +15,7 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -28,6 +29,7 @@ use crate::deriving::*;
 
 mod alloc_error_handler;
 mod assert;
+mod autodiff;
 mod cfg;
 mod cfg_accessible;
 mod cfg_eval;
@@ -104,6 +106,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
 
     register_attr! {
         alloc_error_handler: alloc_error_handler::expand,
+        autodiff: autodiff::expand,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,

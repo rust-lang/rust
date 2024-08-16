@@ -1539,6 +1539,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
+                    None,
                 );
                 // ...and then load it with the ABI type.
                 let cast_ty = bx.cast_backend_type(cast);

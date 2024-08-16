@@ -622,7 +622,12 @@ pub(crate) fn run_pass_manager(
         }
         let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
         let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage)?;
+
+        // We will run this again with different values in the context of automatic differentiation.
+        let first_run = true;
+        let noop = false;
+        debug!("running llvm pm opt pipeline");
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run, noop)?;
     }
     debug!("lto done");
     Ok(())
@@ -729,7 +734,12 @@ pub unsafe fn optimize_thin_module(
     let llcx = unsafe { llvm::LLVMRustContextCreate(cgcx.fewer_names) };
     let llmod_raw = parse_module(llcx, module_name, thin_module.data(), dcx)? as *const _;
     let mut module = ModuleCodegen {
-        module_llvm: ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) },
+        module_llvm: ModuleLlvm {
+            llmod_raw,
+            llcx,
+            tm: ManuallyDrop::new(tm),
+            typetrees: Default::default(),
+        },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };

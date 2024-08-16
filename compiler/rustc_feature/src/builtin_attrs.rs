@@ -750,6 +750,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_proc_macro_decls, Normal, template!(Word), WarnFollowing,
         EncodeCrossCrate::No, INTERNAL_UNSTABLE
     ),
+    // TODO, Manuel: What does cross crate actually mean here?
+    rustc_attr!(
+        rustc_autodiff, Normal,
+        template!(Word, List: r#""...""#), DuplicatesOk,
+        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
+    ),
     rustc_attr!(
         rustc_macro_transparency, Normal,
         template!(NameValueStr: "transparent|semitransparent|opaque"), ErrorFollowing,

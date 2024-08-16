@@ -672,6 +672,11 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             None
         }
     }
+
+    // TODO: Manuel: I think we can drop this and construct the empty vec on the fly?
+    fn create_autodiff(&self) -> Vec<Self::Function> {
+        return vec![];
+    }
 }
 
 impl<'ll> CodegenCx<'ll, '_> {

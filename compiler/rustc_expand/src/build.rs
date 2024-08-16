@@ -223,6 +223,10 @@ impl<'a> ExtCtxt<'a> {
         self.stmt_local(local, span)
     }
 
+    pub fn stmt_semi(&self, expr: P<ast::Expr>) -> ast::Stmt {
+        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Semi(expr) }
+    }
+
     pub fn stmt_local(&self, local: P<ast::Local>, span: Span) -> ast::Stmt {
         ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Let(local), span }
     }
@@ -293,6 +297,25 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Paren(e))
     }
 
+    pub fn expr_method_call(
+        &self,
+        span: Span,
+        expr: P<ast::Expr>,
+        ident: Ident,
+        args: ThinVec<P<ast::Expr>>,
+    ) -> P<ast::Expr> {
+        let seg = ast::PathSegment::from_ident(ident);
+        self.expr(
+            span,
+            ast::ExprKind::MethodCall(Box::new(ast::MethodCall {
+                seg,
+                receiver: expr,
+                args,
+                span,
+            })),
+        )
+    }
+
     pub fn expr_call(
         &self,
         span: Span,
@@ -300,6 +323,12 @@ impl<'a> ExtCtxt<'a> {
         args: ThinVec<P<ast::Expr>>,
     ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(expr, args))
+    }
+    pub fn expr_loop(&self, sp: Span, block: P<ast::Block>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::Loop(block, None, sp))
+    }
+    pub fn expr_asm(&self, sp: Span, expr: P<ast::InlineAsm>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::InlineAsm(expr))
     }
     pub fn expr_call_ident(
         &self,

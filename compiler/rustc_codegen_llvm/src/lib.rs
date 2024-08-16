@@ -24,22 +24,24 @@ use std::mem::ManuallyDrop;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
-use errors::ParseTargetMachineConfig;
+use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
+use llvm::TypeTree;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{Lto, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -66,6 +68,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
+mod typetree;
 
 // The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"]
@@ -161,6 +164,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type TargetMachineError = crate::errors::LlvmError<'static>;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
+    type TypeTree = DiffTypeTree;
     fn print_pass_timings(&self) {
         unsafe {
             let mut size = 0;
@@ -246,6 +250,26 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
+    }
+    /// Generate autodiff rules
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<AutoDiffItem>,
+        typetrees: FxHashMap<String, Self::TypeTree>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        if cgcx.lto != Lto::Fat {
+            let dcx = cgcx.create_dcx();
+            return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO {}));
+        }
+        unsafe { back::write::differentiate(module, cgcx, diff_fncs, typetrees, config) }
+    }
+
+    // The typetrees contain all information, their order therefore is irrelevant.
+    #[allow(rustc::potential_query_instability)]
+    fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree> {
+        module.typetrees.drain().collect()
     }
 }
 
@@ -402,6 +426,13 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct DiffTypeTree {
+    pub ret_tt: TypeTree,
+    pub input_tt: Vec<TypeTree>,
+}
+
+#[allow(dead_code)]
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
@@ -409,6 +440,7 @@ pub struct ModuleLlvm {
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
     tm: ManuallyDrop<OwnedTargetMachine>,
+    typetrees: FxHashMap<String, DiffTypeTree>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -423,6 +455,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx,
                 tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
+                typetrees: Default::default(),
             }
         }
     }
@@ -435,6 +468,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx,
                 tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess, false)),
+                typetrees: Default::default(),
             }
         }
     }
@@ -456,7 +490,12 @@ impl ModuleLlvm {
                 }
             };
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) })
+            Ok(ModuleLlvm {
+                llmod_raw,
+                llcx,
+                tm: ManuallyDrop::new(tm),
+                typetrees: Default::default(),
+            })
         }
     }
 

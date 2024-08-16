@@ -1539,6 +1539,20 @@ pub(crate) mod builtin {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
+    /// Attribute macro used to apply derive macros for implementing traits
+    /// in a const context. Autodiff
+    ///
+    /// See [the reference] for more info.
+    ///
+    /// [the reference]: ../../../reference/attributes/derive.html
+    #[unstable(feature = "autodiff", issue = "none")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro autodiff($item:item) {
+        /* compiler built-in */
+    }
+
     /// Asserts that a boolean expression is `true` at runtime.
     ///
     /// This will invoke the [`panic!`] macro if the provided expression cannot be

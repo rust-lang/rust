@@ -1522,6 +1522,7 @@ impl Step for Extended {
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { compiler, target });
         add_component!("miri" => Miri { compiler, target });
+        add_component!("enzyme" => Enzyme { compiler, target });
         add_component!("analysis" => Analysis { compiler, target });
         add_component!("rustc-codegen-cranelift" => CodegenBackend {
             compiler: builder.compiler(stage, target),
@@ -2397,6 +2398,45 @@ impl Step for BuildManifest {
         let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
         tarball.add_file(build_manifest, "bin", 0o755);
         tarball.generate()
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Enzyme {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for Enzyme {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("enzyme")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Enzyme {
+            compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.build,
+                run.target,
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let compiler = self.compiler;
+        let target = self.target;
+        let enzyme = builder.ensure(tool::Enzyme { compiler, target });
+        let mut tarball = Tarball::new(builder, "enzyme", &target.triple);
+        tarball.set_overlay(OverlayKind::Enzyme);
+        tarball.is_preview(true);
+        tarball.add_file(enzyme, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/enzyme");
+        Some(tarball.generate())
     }
 }
 

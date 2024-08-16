@@ -213,6 +213,7 @@ pub struct Config {
     // llvm codegen options
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
+    pub llvm_enzyme: bool,
     pub llvm_plugins: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -876,6 +877,7 @@ define_config! {
         release_debuginfo: Option<bool> = "release-debuginfo",
         assertions: Option<bool> = "assertions",
         tests: Option<bool> = "tests",
+        enzyme: Option<bool> = "enzyme",
         plugins: Option<bool> = "plugins",
         ccache: Option<StringOrBool> = "ccache",
         static_libstdcpp: Option<bool> = "static-libstdcpp",
@@ -1561,6 +1563,7 @@ impl Config {
         // we'll infer default values for them later
         let mut llvm_assertions = None;
         let mut llvm_tests = None;
+        let mut llvm_enzyme = None;
         let mut llvm_plugins = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -1707,6 +1710,8 @@ impl Config {
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
+            config.llvm_enzyme =
+                llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
             config.musl_root = musl_root.map(PathBuf::from);
             config.save_toolstates = save_toolstates.map(PathBuf::from);
@@ -1791,6 +1796,7 @@ impl Config {
                 release_debuginfo,
                 assertions,
                 tests,
+                enzyme,
                 plugins,
                 ccache,
                 static_libstdcpp,
@@ -1824,6 +1830,7 @@ impl Config {
             set(&mut config.ninja_in_file, ninja);
             llvm_assertions = assertions;
             llvm_tests = tests;
+            llvm_enzyme = enzyme;
             llvm_plugins = plugins;
             set(&mut config.llvm_optimize, optimize_toml);
             set(&mut config.llvm_thin_lto, thin_lto);
@@ -2025,6 +2032,7 @@ impl Config {
 
         config.llvm_assertions = llvm_assertions.unwrap_or(false);
         config.llvm_tests = llvm_tests.unwrap_or(false);
+        config.llvm_enzyme = llvm_enzyme.unwrap_or(false);
         config.llvm_plugins = llvm_plugins.unwrap_or(false);
         config.rust_optimize = optimize.unwrap_or(RustOptimize::Bool(true));
 

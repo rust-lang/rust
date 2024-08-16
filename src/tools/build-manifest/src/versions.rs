@@ -55,6 +55,7 @@ pkg_type! {
     RustAnalyzer = "rust-analyzer"; preview = true,
     Clippy = "clippy"; preview = true,
     Rustfmt = "rustfmt"; preview = true,
+    Enzyme = "enzyme"; preview = true,
     LlvmTools = "llvm-tools"; preview = true,
     Miri = "miri"; preview = true,
     JsonDocs = "rust-docs-json"; preview = true,
@@ -83,6 +84,8 @@ impl PkgType {
             PkgType::Rustfmt => false,
             PkgType::LlvmTools => false,
             PkgType::Miri => false,
+            // Not sure? Enzyme has the same version as llvm
+            PkgType::Enzyme => false,
             PkgType::RustcCodegenCranelift => false,
 
             PkgType::Rust => true,

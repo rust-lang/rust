@@ -1,10 +1,13 @@
 use std::ffi::CString;
 use std::sync::Arc;
 
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
 
 use super::write::CodegenContext;
+use crate::back::write::ModuleConfig;
 use crate::traits::*;
 use crate::ModuleCodegen;
 
@@ -74,6 +77,24 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
             }
             LtoModuleCodegen::Thin(thin) => unsafe { B::optimize_thin(cgcx, thin) },
         }
+    }
+
+    /// Run autodiff on Fat LTO module
+    pub unsafe fn autodiff(
+        self,
+        cgcx: &CodegenContext<B>,
+        diff_fncs: Vec<AutoDiffItem>,
+        typetrees: FxHashMap<String, B::TypeTree>,
+        config: &ModuleConfig,
+    ) -> Result<LtoModuleCodegen<B>, FatalError> {
+        match &self {
+            LtoModuleCodegen::Fat { ref module, .. } => {
+                B::autodiff(cgcx, &module, diff_fncs, typetrees, config)?;
+            }
+            _ => panic!("Unreachable? Autodiff called with non-fat LTO module"),
+        }
+
+        Ok(self)
     }
 
     /// A "gauge" of how costly it is to optimize this module, used to sort

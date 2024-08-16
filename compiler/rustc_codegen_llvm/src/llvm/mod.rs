@@ -20,7 +20,10 @@ pub use self::RealPredicate::*;
 
 pub mod archive_ro;
 pub mod diagnostic;
+pub mod enzyme_ffi;
 mod ffi;
+
+pub use self::enzyme_ffi::*;
 
 pub use self::ffi::*;
 

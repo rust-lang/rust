@@ -1,3 +1,7 @@
+middle_autodiff_unsafe_inner_const_ref = reading from a `Duplicated` const {$ty} is unsafe
+
+middle_unsupported_union = we don't support unions yet: '{$ty_name}'
+
 middle_adjust_for_foreign_abi_error =
     target architecture {$arch} does not support `extern {$abi}` ABI
 

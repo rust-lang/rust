@@ -1,4 +1,9 @@
-use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
+use std::str::FromStr;
+
+use rustc_ast::expand::autodiff_attrs::{
+    invalid_input_activities, valid_ret_activity, AutoDiffAttrs, DiffActivity, DiffMode,
+};
+use rustc_ast::{ast, attr, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_errors::codes::*;
 use rustc_errors::{struct_span_code_err, DiagMessage, SubdiagMessage};
@@ -758,6 +763,128 @@ fn check_link_name_xor_ordinal(
     }
 }
 
+/// We now check the #[rustc_autodiff] attributes which we generated from the #[autodiff(...)]
+/// macros. There are two forms. The pure one without args to mark primal functions (the functions
+/// being differentiated). The other form is #[rustc_autodiff(Mode, ActivityList)] on top of the
+/// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
+/// panic, unless we introduced a bug when parsing the autodiff macro.
+fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
+    let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
+
+    let attrs =
+        attrs.filter(|attr| attr.name_or_empty() == sym::rustc_autodiff).collect::<Vec<_>>();
+
+    // check for exactly one autodiff attribute on placeholder functions.
+    // There should only be one, since we generate a new placeholder per ad macro.
+    let msg_once = "cg_ssa: implementation bug. Autodiff attribute can only be applied once";
+    let attr = match attrs.len() {
+        0 => return AutoDiffAttrs::inactive(),
+        1 => attrs.get(0).unwrap(),
+        _ => {
+            tcx.dcx().struct_span_err(attrs[1].span, msg_once).with_note("more than one").emit();
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    let list = attr.meta_item_list().unwrap_or_default();
+
+    // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
+    if list.len() == 0 {
+        return AutoDiffAttrs::source();
+    }
+
+    let [mode, input_activities @ .., ret_activity] = &list[..] else {
+        tcx.dcx()
+            .struct_span_err(attr.span, msg_once)
+            .with_note("Implementation bug in autodiff_attrs. Please report this!")
+            .emit();
+        return AutoDiffAttrs::inactive();
+    };
+    let mode = if let NestedMetaItem::MetaItem(MetaItem { path: ref p1, .. }) = mode {
+        p1.segments.first().unwrap().ident
+    } else {
+        let msg = "autodiff attribute must contain autodiff mode";
+        tcx.dcx().struct_span_err(attr.span, msg).with_note("empty argument list").emit();
+        return AutoDiffAttrs::inactive();
+    };
+
+    // parse mode
+    let msg_mode = "mode should be either forward or reverse";
+    let mode = match mode.as_str() {
+        "Forward" => DiffMode::Forward,
+        "Reverse" => DiffMode::Reverse,
+        "ForwardFirst" => DiffMode::ForwardFirst,
+        "ReverseFirst" => DiffMode::ReverseFirst,
+        _ => {
+            tcx.dcx().struct_span_err(attr.span, msg_mode).with_note("invalid mode").emit();
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    // First read the ret symbol from the attribute
+    let ret_symbol = if let NestedMetaItem::MetaItem(MetaItem { path: ref p1, .. }) = ret_activity {
+        p1.segments.first().unwrap().ident
+    } else {
+        let msg = "autodiff attribute must contain the return activity";
+        tcx.dcx().struct_span_err(attr.span, msg).with_note("missing return activity").emit();
+        return AutoDiffAttrs::inactive();
+    };
+
+    // Then parse it into an actual DiffActivity
+    let msg_unknown_ret_activity = "unknown return activity";
+    let ret_activity = match DiffActivity::from_str(ret_symbol.as_str()) {
+        Ok(x) => x,
+        Err(_) => {
+            tcx.dcx()
+                .struct_span_err(attr.span, msg_unknown_ret_activity)
+                .with_note("invalid return activity")
+                .emit();
+            return AutoDiffAttrs::inactive();
+        }
+    };
+
+    // Now parse all the intermediate (input) activities
+    let msg_arg_activity = "autodiff attribute must contain the return activity";
+    let mut arg_activities: Vec<DiffActivity> = vec![];
+    for arg in input_activities {
+        let arg_symbol = if let NestedMetaItem::MetaItem(MetaItem { path: ref p2, .. }) = arg {
+            p2.segments.first().unwrap().ident
+        } else {
+            tcx.dcx()
+                .struct_span_err(attr.span, msg_arg_activity)
+                .with_note("Implementation bug, please report this!")
+                .emit();
+            return AutoDiffAttrs::inactive();
+        };
+
+        match DiffActivity::from_str(arg_symbol.as_str()) {
+            Ok(arg_activity) => arg_activities.push(arg_activity),
+            Err(_) => {
+                tcx.dcx()
+                    .struct_span_err(attr.span, msg_unknown_ret_activity)
+                    .with_note("invalid input activity")
+                    .emit();
+                return AutoDiffAttrs::inactive();
+            }
+        }
+    }
+
+    let mut msg = "".to_string();
+    if let Some(i) = invalid_input_activities(mode, &arg_activities) {
+        msg = format!("Invalid input activity {} for {} mode", arg_activities[i], mode);
+    }
+    if !valid_ret_activity(mode, ret_activity) {
+        msg = format!("Invalid return activity {} for {} mode", ret_activity, mode);
+    }
+    if msg != "".to_string() {
+        tcx.dcx().struct_span_err(attr.span, msg).with_note("invalid activity").emit();
+        return AutoDiffAttrs::inactive();
+    }
+
+    AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities }
+}
+
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    *providers =
+        Providers { codegen_fn_attrs, should_inherit_track_caller, autodiff_attrs, ..*providers };
 }

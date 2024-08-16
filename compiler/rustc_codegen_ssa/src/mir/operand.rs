@@ -540,7 +540,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         let neg_address = bx.neg(address);
         let offset = bx.and(neg_address, align_minus_1);
         let dst = bx.inbounds_ptradd(alloca, offset);
-        bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty());
+        bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty(), None);
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(dst, llextra);

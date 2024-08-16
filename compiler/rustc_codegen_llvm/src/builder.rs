@@ -3,6 +3,9 @@ use std::ops::Deref;
 use std::{iter, ptr};
 
 use libc::{c_char, c_uint};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+#[allow(unused_imports)]
+use rustc_ast::expand::typetree::{FncTree, TypeTree};
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -23,7 +26,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{self, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use crate::abi::FnAbiLlvmExt;
 use crate::common::Funclet;
@@ -31,8 +34,216 @@ use crate::context::CodegenCx;
 use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
+#[cfg(llvm_enzyme)]
+use crate::typetree::to_enzyme_typetree;
 use crate::value::Value;
 use crate::{attributes, llvm_util};
+
+#[cfg(not(llvm_enzyme))]
+pub fn add_tt2<'ll>(
+    _llmod: &'ll llvm::Module,
+    _llcx: &'ll llvm::Context,
+    _fn_def: &'ll Value,
+    _tt: FncTree,
+) {}
+#[cfg(llvm_enzyme)]
+pub fn add_tt2<'ll>(
+    llmod: &'ll llvm::Module,
+    llcx: &'ll llvm::Context,
+    fn_def: &'ll Value,
+    tt: FncTree,
+) {
+    let inputs = tt.args;
+    let ret_tt: TypeTree = tt.ret;
+    let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout =
+        std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
+            .expect("got a non-UTF8 data-layout from LLVM");
+    let attr_name = "enzyme_type";
+    let c_attr_name = std::ffi::CString::new(attr_name).unwrap();
+    for (i, &ref input) in inputs.iter().enumerate() {
+        let c_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
+        let c_str = unsafe { llvm::EnzymeTypeTreeToString(c_tt.inner) };
+        let c_str = unsafe { std::ffi::CStr::from_ptr(c_str) };
+        unsafe {
+            let attr = llvm::LLVMCreateStringAttribute(
+                llcx,
+                c_attr_name.as_ptr(),
+                c_attr_name.as_bytes().len() as c_uint,
+                c_str.as_ptr(),
+                c_str.to_bytes().len() as c_uint,
+            );
+            llvm::LLVMRustAddFncParamAttr(fn_def, i as u32, attr);
+        }
+        unsafe { llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr()) };
+    }
+    let ret_attr = unsafe {
+        let c_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
+        let c_str = llvm::EnzymeTypeTreeToString(c_tt.inner);
+        let c_str = std::ffi::CStr::from_ptr(c_str);
+        let attr = llvm::LLVMCreateStringAttribute(
+            llcx,
+            c_attr_name.as_ptr(),
+            c_attr_name.as_bytes().len() as c_uint,
+            c_str.as_ptr(),
+            c_str.to_bytes().len() as c_uint,
+        );
+        llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr());
+        attr
+    };
+    unsafe {
+        llvm::LLVMRustAddRetFncAttr(fn_def, ret_attr);
+    }
+}
+
+#[allow(unused)]
+pub fn add_opt_dbg_helper<'ll>(
+    llmod: &'ll llvm::Module,
+    llcx: &'ll llvm::Context,
+    val: &'ll Value,
+    attrs: AutoDiffAttrs,
+    i: usize,
+) {
+    let inputs = attrs.input_activity;
+    let outputs = attrs.ret_activity;
+    let ad_name = match attrs.mode {
+        DiffMode::Forward => "__enzyme_fwddiff",
+        DiffMode::Reverse => "__enzyme_autodiff",
+        DiffMode::ForwardFirst => "__enzyme_fwddiff",
+        DiffMode::ReverseFirst => "__enzyme_autodiff",
+        _ => panic!("Why are we here?"),
+    };
+
+    // Assuming that our val is the fnc square, want to generate the following llvm-ir:
+    // declare double @__enzyme_autodiff(...)
+    //
+    // define double @dsquare(double %x) {
+    // entry:
+    //   %0 = tail call double (...) @__enzyme_autodiff(double (double)* nonnull @square, double %x)
+    //   ret double %0
+    // }
+
+    let mut final_num_args;
+    unsafe {
+        let fn_ty = llvm::LLVMRustGetFunctionType(val);
+        let ret_ty = llvm::LLVMGetReturnType(fn_ty);
+
+        // First we add the declaration of the __enzyme function
+        let enzyme_ty = llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True);
+        let ad_fn = llvm::LLVMRustGetOrInsertFunction(
+            llmod,
+            ad_name.as_ptr() as *const c_char,
+            ad_name.len().try_into().unwrap(),
+            enzyme_ty,
+        );
+
+        let wrapper_name = String::from("enzyme_opt_helper_") + i.to_string().as_str();
+        let wrapper_fn = llvm::LLVMRustGetOrInsertFunction(
+            llmod,
+            wrapper_name.as_ptr() as *const c_char,
+            wrapper_name.len().try_into().unwrap(),
+            fn_ty,
+        );
+        let entry = llvm::LLVMAppendBasicBlockInContext(
+            llcx,
+            wrapper_fn,
+            "entry".as_ptr() as *const c_char,
+        );
+        let builder = llvm::LLVMCreateBuilderInContext(llcx);
+        llvm::LLVMPositionBuilderAtEnd(builder, entry);
+        let num_args = llvm::LLVMCountParams(wrapper_fn);
+        let mut args = Vec::with_capacity(num_args as usize + 1);
+        args.push(val);
+        let enzyme_const =
+            llvm::LLVMMDStringInContext(llcx, "enzyme_const".as_ptr() as *const c_char, 12);
+        let enzyme_out =
+            llvm::LLVMMDStringInContext(llcx, "enzyme_out".as_ptr() as *const c_char, 10);
+        let enzyme_dup =
+            llvm::LLVMMDStringInContext(llcx, "enzyme_dup".as_ptr() as *const c_char, 10);
+        let enzyme_dupnoneed =
+            llvm::LLVMMDStringInContext(llcx, "enzyme_dupnoneed".as_ptr() as *const c_char, 16);
+        final_num_args = num_args * 2 + 1;
+        for i in 0..num_args {
+            let arg = llvm::LLVMGetParam(wrapper_fn, i);
+            let activity = inputs[i as usize];
+            let (activity, duplicated): (&Value, bool) = match activity {
+                DiffActivity::None => panic!(),
+                DiffActivity::Const => (enzyme_const, false),
+                DiffActivity::Active => (enzyme_out, false),
+                DiffActivity::ActiveOnly => (enzyme_out, false),
+                DiffActivity::Dual => (enzyme_dup, true),
+                DiffActivity::DualOnly => (enzyme_dupnoneed, true),
+                DiffActivity::Duplicated => (enzyme_dup, true),
+                DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
+                DiffActivity::FakeActivitySize => (enzyme_const, false),
+            };
+            args.push(activity);
+            args.push(arg);
+            if duplicated {
+                final_num_args += 1;
+                args.push(arg);
+            }
+        }
+
+        // declare void @__enzyme_autodiff(...)
+
+        // define void @enzyme_opt_helper_0(ptr %0, ptr %1) {
+        //   call void (...) @__enzyme_autodiff(ptr @ffff, ptr %0, ptr %1)
+        //   ret void
+        // }
+
+        let call = llvm::LLVMBuildCall2(
+            builder,
+            enzyme_ty,
+            ad_fn,
+            args.as_mut_ptr(),
+            final_num_args as usize,
+            ad_name.as_ptr() as *const c_char,
+        );
+        let void_ty = llvm::LLVMVoidTypeInContext(llcx);
+        if llvm::LLVMTypeOf(call) != void_ty {
+            llvm::LLVMBuildRet(builder, call);
+        } else {
+            llvm::LLVMBuildRetVoid(builder);
+        }
+        llvm::LLVMDisposeBuilder(builder);
+
+        let _fnc_ok = llvm::LLVMVerifyFunction(
+            wrapper_fn,
+            llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction,
+        );
+    }
+}
+
+#[cfg(not(llvm_enzyme))]
+fn add_tt<'ll>(_llmod: &'ll llvm::Module, _llcx: &'ll llvm::Context, _val: &'ll Value, _tt: FncTree) {}
+#[cfg(llvm_enzyme)]
+fn add_tt<'ll>(llmod: &'ll llvm::Module, llcx: &'ll llvm::Context, val: &'ll Value, tt: FncTree) {
+    let inputs = tt.args;
+    let _ret: TypeTree = tt.ret;
+    let llvm_data_layout: *const c_char = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout =
+        std::str::from_utf8(unsafe { std::ffi::CStr::from_ptr(llvm_data_layout) }.to_bytes())
+            .expect("got a non-UTF8 data-layout from LLVM");
+    let attr_name = "enzyme_type";
+    let c_attr_name = std::ffi::CString::new(attr_name).unwrap();
+    for (i, &ref input) in inputs.iter().enumerate() {
+        let c_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
+        let c_str = unsafe { llvm::EnzymeTypeTreeToString(c_tt.inner) };
+        let c_str = unsafe { std::ffi::CStr::from_ptr(c_str) };
+        unsafe {
+            let attr = llvm::LLVMCreateStringAttribute(
+                llcx,
+                c_attr_name.as_ptr(),
+                c_attr_name.as_bytes().len() as c_uint,
+                c_str.as_ptr(),
+                c_str.to_bytes().len() as c_uint,
+            );
+            llvm::LLVMRustAddParamAttr(val, i as u32, attr);
+        }
+        unsafe { llvm::EnzymeTypeTreeToStringFree(c_str.as_ptr()) };
+    }
+}
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -930,11 +1141,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let val = unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
                 dst,
@@ -943,7 +1155,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+
+        if let Some(tt) = tt {
+            let llmod = self.cx.llmod;
+            let llcx = self.cx.llcx;
+            add_tt(llmod, llcx, val, tt);
+        } else {
+            trace!("builder: no tt");
         }
     }
 
@@ -955,11 +1175,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let val = unsafe {
             llvm::LLVMRustBuildMemMove(
                 self.llbuilder,
                 dst,
@@ -968,7 +1189,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+
+        if let Some(tt) = tt {
+            let llmod = self.cx.llmod;
+            let llcx = self.cx.llcx;
+            add_tt(llmod, llcx, val, tt);
         }
     }
 
@@ -979,10 +1206,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: &'ll Value,
         align: Align,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memset not supported");
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let val = unsafe {
             llvm::LLVMRustBuildMemSet(
                 self.llbuilder,
                 ptr,
@@ -990,7 +1218,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 fill_byte,
                 size,
                 is_volatile,
-            );
+            )
+        };
+
+        if let Some(tt) = tt {
+            let llmod = self.cx.llmod;
+            let llcx = self.cx.llcx;
+            add_tt(llmod, llcx, val, tt);
         }
     }
 

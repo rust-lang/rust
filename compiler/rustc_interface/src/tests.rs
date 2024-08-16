@@ -755,6 +755,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
     tracked!(assume_incomplete_release, true);
+    tracked!(autodiff, vec![String::from("ad_flags")]);
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(

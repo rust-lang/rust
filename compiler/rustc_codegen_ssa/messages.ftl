@@ -343,3 +343,6 @@ codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to sp
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
+
+codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
+

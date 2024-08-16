@@ -20,6 +20,7 @@ pub(crate) enum OverlayKind {
     Cargo,
     Clippy,
     Miri,
+    Enzyme,
     Rustfmt,
     Rls,
     RustAnalyzer,
@@ -61,6 +62,7 @@ impl OverlayKind {
                 "src/tools/rust-analyzer/LICENSE-APACHE",
                 "src/tools/rust-analyzer/LICENSE-MIT",
             ],
+            OverlayKind::Enzyme => &["src/tools/enzyme/README.md", "src/tools/enzyme/LICENSE"],
             OverlayKind::RustcCodegenCranelift => &[
                 "compiler/rustc_codegen_cranelift/Readme.md",
                 "compiler/rustc_codegen_cranelift/LICENSE-APACHE",
@@ -93,6 +95,9 @@ impl OverlayKind {
             OverlayKind::RustAnalyzer => builder
                 .rust_analyzer_info
                 .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),
+            OverlayKind::Enzyme => {
+                builder.enzyme_info.version(builder, &builder.release_num("enzyme"))
+            }
             OverlayKind::RustcCodegenCranelift => builder.rust_version(),
             OverlayKind::LlvmBitcodeLinker => builder.rust_version(),
         }
