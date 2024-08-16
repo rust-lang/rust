@@ -1,6 +1,5 @@
-//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-
-//@ min-lldb-version: 310
+//@ min-lldb-version: 1800
+//@ min-gdb-version: 13.0
 
 //@ compile-flags:-g
 
@@ -22,7 +21,7 @@
 
 // gdbg-command:print empty_gdb->discr
 // gdbr-command:print empty_gdb.discr
-// gdb-check:$4 = (isize *) 0x0
+// gdb-check:$4 = (*mut isize) 0x1
 
 // gdb-command:print droid
 // gdbg-check:$5 = {RUST$ENCODED$ENUM$2$Void = {id = 675675, range = 10000001, internals = 0x43218765}}
@@ -30,11 +29,11 @@
 
 // gdbg-command:print void_droid_gdb->internals
 // gdbr-command:print void_droid_gdb.internals
-// gdb-check:$6 = (isize *) 0x0
+// gdb-check:$6 = (*mut isize) 0x1
 
 // gdb-command:print nested_non_zero_yep
 // gdbg-check:$7 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = 10.5, __1 = {a = 10, b = 20, c = [...]}}}
-// gdbr-check:$7 = option_like_enum::NestedNonZero::Yep(10.5, option_like_enum::NestedNonZeroField {a: 10, b: 20, c: 0x[...] "x[...]"})
+// gdbr-check:$7 = option_like_enum::NestedNonZero::Yep(10.5, option_like_enum::NestedNonZeroField {a: 10, b: 20, c: 0x[...]})
 
 // gdb-command:print nested_non_zero_nope
 // gdbg-check:$8 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = [...], __1 = {a = [...], b = [...], c = 0x0}}}
