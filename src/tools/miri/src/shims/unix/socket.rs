@@ -3,8 +3,8 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
 
-use crate::shims::unix::fd::{FdId, WeakFileDescriptionRef};
-use crate::shims::unix::linux::epoll::EpollReadyEvents;
+use crate::shims::unix::fd::{FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
 use crate::{concurrency::VClock, *};
 
@@ -89,15 +89,15 @@ impl FileDescription for SocketPair {
             // Notify peer fd that closed has happened.
             // When any of the events happened, we check and update the status of all supported events
             // types of peer fd.
-            peer_fd.check_and_update_readiness(ecx)?;
+            ecx.check_and_update_readiness(&peer_fd)?;
         }
         Ok(Ok(()))
     }
 
     fn read<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         bytes: &mut [u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -150,7 +150,7 @@ impl FileDescription for SocketPair {
         // a read is successful. This might result in our epoll emulation providing more
         // notifications than the real system.
         if let Some(peer_fd) = self.peer_fd().upgrade() {
-            peer_fd.check_and_update_readiness(ecx)?;
+            ecx.check_and_update_readiness(&peer_fd)?;
         }
 
         return Ok(Ok(actual_read_size));
@@ -158,8 +158,8 @@ impl FileDescription for SocketPair {
 
     fn write<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         bytes: &[u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -200,7 +200,7 @@ impl FileDescription for SocketPair {
         drop(writebuf);
 
         // Notification should be provided for peer fd as it became readable.
-        peer_fd.check_and_update_readiness(ecx)?;
+        ecx.check_and_update_readiness(&peer_fd)?;
 
         return Ok(Ok(actual_write_size));
     }

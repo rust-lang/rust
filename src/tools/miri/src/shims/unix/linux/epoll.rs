@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::io;
 use std::rc::{Rc, Weak};
 
-use crate::shims::unix::fd::FdId;
+use crate::shims::unix::fd::{FdId, FileDescriptionRef};
 use crate::shims::unix::*;
 use crate::*;
 
@@ -309,7 +309,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Readiness will be updated immediately when the epoll_event_interest is added or modified.
-            file_descriptor.check_and_update_readiness(this)?;
+            this.check_and_update_readiness(&file_descriptor)?;
 
             return Ok(Scalar::from_i32(0));
         } else if op == epoll_ctl_del {
@@ -432,22 +432,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Ok(Scalar::from_i32(num_of_events))
     }
 
-    /// For a specific unique file descriptor id, get its ready events and update
+    /// For a specific file description, get its ready events and update
     /// the corresponding ready list. This function is called whenever a file description
-    /// is registered with epoll, or when read, write, or close operations are performed,
-    /// regardless of any changes in readiness.
-    ///
-    /// This is an internal helper function and is typically not meant to be used directly.
-    /// In most cases, `FileDescriptionRef::check_and_update_readiness` should be preferred.
-    fn check_and_update_readiness(
-        &self,
-        id: FdId,
-        get_ready_events: impl FnOnce() -> InterpResult<'tcx, EpollReadyEvents>,
-    ) -> InterpResult<'tcx, ()> {
+    /// is registered with epoll, or when its readiness *might* have changed.
+    fn check_and_update_readiness(&self, fd_ref: &FileDescriptionRef) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_ref();
+        let id = fd_ref.get_id();
         // Get a list of EpollEventInterest that is associated to a specific file description.
         if let Some(epoll_interests) = this.machine.epoll_interests.get_epoll_interest(id) {
-            let epoll_ready_events = get_ready_events()?;
+            let epoll_ready_events = fd_ref.get_epoll_ready_events()?;
             // Get the bitmask of ready events.
             let ready_events = epoll_ready_events.get_event_bitmask(this);
 

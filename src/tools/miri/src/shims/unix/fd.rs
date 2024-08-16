@@ -28,8 +28,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
     /// Reads as much as possible into the given buffer, and returns the number of bytes read.
     fn read<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         _bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -39,8 +39,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
     /// Writes as much as possible from the given buffer, and returns the number of bytes written.
     fn write<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         _bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -123,8 +123,8 @@ impl FileDescription for io::Stdin {
 
     fn read<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
-        _fd_id: FdId,
         bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -147,8 +147,8 @@ impl FileDescription for io::Stdout {
 
     fn write<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -176,8 +176,8 @@ impl FileDescription for io::Stderr {
 
     fn write<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -202,8 +202,8 @@ impl FileDescription for NullOutput {
 
     fn write<'tcx>(
         &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        _fd_id: FdId,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -260,16 +260,6 @@ impl FileDescriptionRef {
 
     pub fn get_id(&self) -> FdId {
         self.0.id
-    }
-
-    /// Function used to retrieve the readiness events of a file description and insert
-    /// an `EpollEventInstance` into the ready list if the file description is ready.
-    pub(crate) fn check_and_update_readiness<'tcx>(
-        &self,
-        ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
-    ) -> InterpResult<'tcx, ()> {
-        use crate::shims::unix::linux::epoll::EvalContextExt;
-        ecx.check_and_update_readiness(self.get_id(), || self.get_epoll_ready_events())
     }
 }
 
@@ -567,7 +557,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `usize::MAX` because it is bounded by the host's `isize`.
         let mut bytes = vec![0; usize::try_from(count).unwrap()];
         let result = match offset {
-            None => fd.read(communicate, fd.get_id(), &mut bytes, this),
+            None => fd.read(&fd, communicate, &mut bytes, this),
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
@@ -625,7 +615,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let result = match offset {
-            None => fd.write(communicate, fd.get_id(), &bytes, this),
+            None => fd.write(&fd, communicate, &bytes, this),
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");

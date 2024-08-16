@@ -4,10 +4,10 @@ use std::io;
 use std::io::{Error, ErrorKind};
 use std::mem;
 
-use fd::FdId;
 use rustc_target::abi::Endian;
 
-use crate::shims::unix::linux::epoll::EpollReadyEvents;
+use crate::shims::unix::fd::FileDescriptionRef;
+use crate::shims::unix::linux::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::shims::unix::*;
 use crate::{concurrency::VClock, *};
 
@@ -60,8 +60,8 @@ impl FileDescription for Event {
     /// Read the counter in the buffer and return the counter if succeeded.
     fn read<'tcx>(
         &self,
+        self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        fd_id: FdId,
         bytes: &mut [u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -89,16 +89,8 @@ impl FileDescription for Event {
             self.counter.set(0);
             // When any of the event happened, we check and update the status of all supported event
             // types for current file description.
+            ecx.check_and_update_readiness(self_ref)?;
 
-            // We have to use our own FdID in contrast to every other file descriptor out there, because
-            // we are updating ourselves when writing and reading. Technically `Event` is like socketpair, but
-            // it does not create two separate file descriptors. Thus we can't re-borrow ourselves via
-            // `FileDescriptionRef::check_and_update_readiness` while already being mutably borrowed for read/write.
-            crate::shims::unix::linux::epoll::EvalContextExt::check_and_update_readiness(
-                ecx,
-                fd_id,
-                || self.get_epoll_ready_events(),
-            )?;
             return Ok(Ok(U64_ARRAY_SIZE));
         }
     }
@@ -117,8 +109,8 @@ impl FileDescription for Event {
     /// made to write the value 0xffffffffffffffff.
     fn write<'tcx>(
         &self,
+        self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
-        fd_id: FdId,
         bytes: &[u8],
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -156,15 +148,8 @@ impl FileDescription for Event {
         };
         // When any of the event happened, we check and update the status of all supported event
         // types for current file description.
+        ecx.check_and_update_readiness(self_ref)?;
 
-        // Just like read() above, we use this internal method to not get the second borrow of the
-        // RefCell of this FileDescription. This is a special case, we should only use
-        // FileDescriptionRef::check_and_update_readiness in normal case.
-        crate::shims::unix::linux::epoll::EvalContextExt::check_and_update_readiness(
-            ecx,
-            fd_id,
-            || self.get_epoll_ready_events(),
-        )?;
         Ok(Ok(U64_ARRAY_SIZE))
     }
 }
