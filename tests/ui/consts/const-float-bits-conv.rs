@@ -23,6 +23,11 @@ macro_rules! const_assert {
     };
 }
 
+fn has_broken_floats() -> bool {
+    // i586 targets are broken due to <https://github.com/rust-lang/rust/issues/114479>.
+    std::env::var("TARGET").is_ok_and(|v| v.contains("i586"))
+}
+
 fn f32() {
     const_assert!((1f32).to_bits(), 0x3f800000);
     const_assert!(u32::from_be_bytes(1f32.to_be_bytes()), 0x3f800000);
@@ -41,14 +46,15 @@ fn f32() {
 
     // Check that NaNs roundtrip their bits regardless of signalingness
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
-    // ...actually, let's just check that these break. :D
     const MASKED_NAN1: u32 = f32::NAN.to_bits() ^ 0x002A_AAAA;
     const MASKED_NAN2: u32 = f32::NAN.to_bits() ^ 0x0055_5555;
 
     const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
-    const_assert!(f32::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f32::from_bits(MASKED_NAN2).is_nan());
     const_assert!(f32::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
-    const_assert!(f32::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
+    if !has_broken_floats() {
+        const_assert!(f32::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
+    }
 }
 
 fn f64() {
@@ -69,14 +75,15 @@ fn f64() {
 
     // Check that NaNs roundtrip their bits regardless of signalingness
     // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
-    // ...actually, let's just check that these break. :D
     const MASKED_NAN1: u64 = f64::NAN.to_bits() ^ 0x000A_AAAA_AAAA_AAAA;
     const MASKED_NAN2: u64 = f64::NAN.to_bits() ^ 0x0005_5555_5555_5555;
 
     const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
-    const_assert!(f64::from_bits(MASKED_NAN1).is_nan());
+    const_assert!(f64::from_bits(MASKED_NAN2).is_nan());
     const_assert!(f64::from_bits(MASKED_NAN1).to_bits(), MASKED_NAN1);
-    const_assert!(f64::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
+    if !has_broken_floats() {
+        const_assert!(f64::from_bits(MASKED_NAN2).to_bits(), MASKED_NAN2);
+    }
 }
 
 fn main() {
