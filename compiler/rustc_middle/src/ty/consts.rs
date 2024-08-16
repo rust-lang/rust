@@ -305,6 +305,10 @@ impl<'tcx> Const<'tcx> {
             // mir.
             match tcx.at(expr.span).lit_to_const(lit_input) {
                 Ok(c) => return Some(c),
+                Err(_) if lit_input.ty.has_aliases() => {
+                    // allow the `ty` to be an alias type, though we cannot handle it here
+                    return None;
+                }
                 Err(e) => {
                     tcx.dcx().span_delayed_bug(
                         expr.span,

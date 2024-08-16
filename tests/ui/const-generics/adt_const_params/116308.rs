@@ -1,5 +1,7 @@
-//@ known-bug: #116308
+//@ check-pass
 #![feature(adt_const_params)]
+
+// Regression test for #116308
 
 pub trait Identity {
     type Identity;
