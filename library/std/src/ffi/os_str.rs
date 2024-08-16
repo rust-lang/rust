@@ -3,10 +3,13 @@
 #[cfg(test)]
 mod tests;
 
+use core::clone::CloneToUninit;
+
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
+use crate::ptr::addr_of_mut;
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
@@ -1258,6 +1261,16 @@ impl Clone for Box<OsStr> {
     #[inline]
     fn clone(&self) -> Self {
         self.to_os_string().into_boxed_os_str()
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for OsStr {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: we're just a wrapper around a platform-specific Slice
+        unsafe { self.inner.clone_to_uninit(addr_of_mut!((*dst).inner)) }
     }
 }
 
