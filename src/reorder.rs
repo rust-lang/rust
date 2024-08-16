@@ -9,12 +9,12 @@
 use std::cmp::Ordering;
 
 use rustc_ast::{ast, attr};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{Span, symbol::sym};
 
 use crate::config::{Config, GroupImportsTactic};
-use crate::imports::{normalize_use_trees_with_granularity, UseSegmentKind, UseTree};
+use crate::imports::{UseSegmentKind, UseTree, normalize_use_trees_with_granularity};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
-use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
+use crate::lists::{ListFormatting, ListItem, itemize_list, write_list};
 use crate::rewrite::{RewriteContext, RewriteErrorExt};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;

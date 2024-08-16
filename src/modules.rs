@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
-use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{self, Symbol, sym};
 use thin_vec::ThinVec;
 use thiserror::Error;
 

@@ -47,8 +47,8 @@ use crate::shape::Indent;
 use crate::utils::indent_next_line;
 
 pub use crate::config::{
-    load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle,
-    Range, StyleEdition, Verbosity, Version,
+    CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle, Range,
+    StyleEdition, Verbosity, Version, load_config,
 };
 
 pub use crate::format_report_formatter::{FormatReportFormatter, FormatReportFormatterBuilder};

@@ -1,28 +1,27 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use std::borrow::Cow;
-use std::cmp::{max, min, Ordering};
+use std::cmp::{Ordering, max, min};
 
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{symbol, BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, Span, symbol};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
-    combine_strs_with_missing_comments, contains_comment, is_last_comment_block,
+    FindUncommented, combine_strs_with_missing_comments, contains_comment, is_last_comment_block,
     recover_comment_removed, recover_missing_comment_in_span, rewrite_missing_comment,
-    FindUncommented,
 };
 use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, IndentStyle, StyleEdition};
 use crate::expr::{
-    is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
-    rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments, rewrite_let_else_block,
-    RhsAssignKind, RhsTactics,
+    RhsAssignKind, RhsTactics, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
+    rewrite_assign_rhs_with, rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments,
+    rewrite_let_else_block,
 };
-use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
-use crate::macros::{rewrite_macro, MacroPosition};
+use crate::lists::{ListFormatting, Separator, definitive_tactic, itemize_list, write_list};
+use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::{Indent, Shape};

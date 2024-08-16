@@ -3,32 +3,32 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, Lit, LitKind};
-use rustc_ast::{ast, ptr, token, ForLoopKind, MatchKind};
+use rustc_ast::{ForLoopKind, MatchKind, ast, ptr, token};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
 use crate::closures;
 use crate::comment::{
-    combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
-    rewrite_missing_comment, CharClasses, FindUncommented,
+    CharClasses, FindUncommented, combine_strs_with_missing_comments, contains_comment,
+    recover_comment_removed, rewrite_comment, rewrite_missing_comment,
 };
 use crate::config::lists::*;
 use crate::config::{Config, ControlBraceStyle, HexLiteralCase, IndentStyle, StyleEdition};
 use crate::lists::{
-    definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
-    struct_lit_tactic, write_list, ListFormatting, Separator,
+    ListFormatting, Separator, definitive_tactic, itemize_list, shape_for_tactic,
+    struct_lit_formatting, struct_lit_shape, struct_lit_tactic, write_list,
 };
-use crate::macros::{rewrite_macro, MacroPosition};
+use crate::macros::{MacroPosition, rewrite_macro};
 use crate::matches::rewrite_match;
 use crate::overflow::{self, IntoOverflowableItem, OverflowableItem};
-use crate::pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
+use crate::pairs::{PairParts, rewrite_all_pairs, rewrite_pair};
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt;
-use crate::string::{rewrite_string, StringFormat};
-use crate::types::{rewrite_path, PathContext};
+use crate::string::{StringFormat, rewrite_string};
+use crate::types::{PathContext, rewrite_path};
 use crate::utils::{
     colon_spaces, contains_skip, count_newlines, filtered_str_fits, first_line_ends_with,
     inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,

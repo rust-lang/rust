@@ -1,9 +1,9 @@
 use rustc_span::{BytePos, Pos, Span};
 
-use crate::comment::{is_last_comment_block, rewrite_comment, CodeCharKind, CommentCodeSlices};
-use crate::config::file_lines::FileLines;
+use crate::comment::{CodeCharKind, CommentCodeSlices, is_last_comment_block, rewrite_comment};
 use crate::config::FileName;
 use crate::config::StyleEdition;
+use crate::config::file_lines::FileLines;
 use crate::coverage::transform_missing_snippet;
 use crate::shape::{Indent, Shape};
 use crate::source_map::LineRangeUtils;

@@ -10,27 +10,27 @@
 // and those with brackets will be formatted as array literals.
 
 use std::collections::HashMap;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_span::{
+    BytePos, DUMMY_SP, Span, Symbol,
     symbol::{self, kw},
-    BytePos, Span, Symbol, DUMMY_SP,
 };
 
 use crate::comment::{
-    contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
+    CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment,
 };
-use crate::config::lists::*;
 use crate::config::StyleEdition;
-use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
-use crate::lists::{itemize_list, write_list, ListFormatting};
+use crate::config::lists::*;
+use crate::expr::{RhsAssignKind, rewrite_array, rewrite_assign_rhs};
+use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::overflow;
 use crate::parse::macros::lazy_static::parse_lazy_static;
-use crate::parse::macros::{parse_expr, parse_macro_args, ParsedMacroArgs};
+use crate::parse::macros::{ParsedMacroArgs, parse_expr, parse_macro_args};
 use crate::rewrite::{
     MacroErrorKind, Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult,
 };
@@ -38,8 +38,8 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    filtered_str_fits, format_visibility, indent_next_line, is_empty_line, mk_sp,
-    remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout, NodeIdExt,
+    NodeIdExt, filtered_str_fits, format_visibility, indent_next_line, is_empty_line, mk_sp,
+    remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout,
 };
 use crate::visitor::FmtVisitor;
 

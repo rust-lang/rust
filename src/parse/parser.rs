@@ -1,4 +1,4 @@
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 
 use rustc_ast::token::TokenKind;
@@ -6,11 +6,11 @@ use rustc_ast::{ast, attr, ptr};
 use rustc_errors::Diag;
 use rustc_parse::parser::Parser as RawParser;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use thin_vec::ThinVec;
 
-use crate::parse::session::ParseSess;
 use crate::Input;
+use crate::parse::session::ParseSess;
 
 pub(crate) type DirectoryOwnership = rustc_expand::module::DirOwnership;
 pub(crate) type ModulePathSuccess = rustc_expand::module::ModulePathSuccess;

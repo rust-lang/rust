@@ -2,17 +2,17 @@
 
 use std::iter::repeat;
 
-use rustc_ast::{ast, ptr, MatchKind};
+use rustc_ast::{MatchKind, ast, ptr};
 use rustc_span::{BytePos, Span};
 
-use crate::comment::{combine_strs_with_missing_comments, rewrite_comment, FindUncommented};
+use crate::comment::{FindUncommented, combine_strs_with_missing_comments, rewrite_comment};
 use crate::config::lists::*;
 use crate::config::{Config, ControlBraceStyle, IndentStyle, MatchArmLeadingPipe, StyleEdition};
 use crate::expr::{
-    format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
-    ExprType, RhsTactics,
+    ExprType, RhsTactics, format_expr, is_empty_block, is_simple_block, is_unsafe_block,
+    prefer_next_line, rewrite_cond,
 };
-use crate::lists::{itemize_list, write_list, ListFormatting};
+use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;

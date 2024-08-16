@@ -11,11 +11,11 @@ use std::thread;
 
 use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle};
 use crate::formatting::{ReportedErrors, SourceFile};
-use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
+use crate::rustfmt_diff::{DiffLine, Mismatch, ModifiedChunk, OutputWriter, make_diff, print_diff};
 use crate::source_file;
 use crate::{
-    is_nightly_channel, Edition, FormatReport, FormatReportFormatterBuilder, Input, Session,
-    StyleEdition, Version,
+    Edition, FormatReport, FormatReportFormatterBuilder, Input, Session, StyleEdition, Version,
+    is_nightly_channel,
 };
 
 use rustfmt_config_proc_macro::nightly_only_test;

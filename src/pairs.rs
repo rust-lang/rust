@@ -1,8 +1,8 @@
 use rustc_ast::ast;
 use rustc_span::Span;
 
-use crate::config::lists::*;
 use crate::config::IndentStyle;
+use crate::config::lists::*;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::spanned::Spanned;

@@ -1,7 +1,7 @@
 use std::cmp::max;
 
 use rustc_ast::{ast, ptr};
-use rustc_span::{source_map, Span};
+use rustc_span::{Span, source_map};
 
 use crate::macros::MacroArg;
 use crate::patterns::RangeOperand;

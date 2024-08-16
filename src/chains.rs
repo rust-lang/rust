@@ -59,9 +59,9 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use rustc_ast::{ast, ptr};
-use rustc_span::{symbol, BytePos, Span};
+use rustc_span::{BytePos, Span, symbol};
 
-use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
+use crate::comment::{CharClasses, FullCodeCharKind, RichChar, rewrite_comment};
 use crate::config::{IndentStyle, StyleEdition};
 use crate::expr::rewrite_call;
 use crate::lists::extract_pre_comment;

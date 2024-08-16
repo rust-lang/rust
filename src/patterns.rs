@@ -2,22 +2,22 @@ use rustc_ast::ast::{self, BindingMode, ByRef, Pat, PatField, PatKind, RangeEnd,
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
-use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
-use crate::config::lists::*;
+use crate::comment::{FindUncommented, combine_strs_with_missing_comments};
 use crate::config::StyleEdition;
+use crate::config::lists::*;
 use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use crate::lists::{
-    definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
-    struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, shape_for_tactic,
+    struct_lit_formatting, struct_lit_shape, struct_lit_tactic, write_list,
 };
-use crate::macros::{rewrite_macro, MacroPosition};
+use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
-use crate::pairs::{rewrite_pair, PairParts};
+use crate::pairs::{PairParts, rewrite_pair};
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
-use crate::types::{rewrite_path, PathContext};
+use crate::types::{PathContext, rewrite_path};
 use crate::utils::{format_mutability, mk_sp, mk_sp_lo_plus_one, rewrite_ident};
 
 /// Returns `true` if the given pattern is "short".

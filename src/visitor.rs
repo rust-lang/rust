@@ -3,22 +3,22 @@ use std::rc::Rc;
 
 use rustc_ast::{ast, token::Delimiter, visit};
 use rustc_data_structures::sync::Lrc;
-use rustc_span::{symbol, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, symbol};
 
 use crate::attr::*;
-use crate::comment::{contains_comment, rewrite_comment, CodeCharKind, CommentCodeSlices};
+use crate::comment::{CodeCharKind, CommentCodeSlices, contains_comment, rewrite_comment};
 use crate::config::{BraceStyle, Config, MacroSelector, StyleEdition};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
-    format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
-    rewrite_type_alias, FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts,
+    FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts, format_impl, format_trait,
+    format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate, rewrite_type_alias,
 };
-use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
+use crate::macros::{MacroPosition, macro_style, rewrite_macro, rewrite_macro_def};
 use crate::modules::Module;
 use crate::parse::session::ParseSess;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
-use crate::skip::{is_skip_attr, SkipContext};
+use crate::skip::{SkipContext, is_skip_attr};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;

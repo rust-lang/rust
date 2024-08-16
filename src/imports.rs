@@ -8,16 +8,16 @@ use itertools::Itertools;
 
 use rustc_ast::ast::{self, UseTreeKind};
 use rustc_span::{
+    BytePos, DUMMY_SP, Span,
     symbol::{self, sym},
-    BytePos, Span, DUMMY_SP,
 };
 
 use crate::comment::combine_strs_with_missing_comments;
-use crate::config::lists::*;
 use crate::config::ImportGranularity;
+use crate::config::lists::*;
 use crate::config::{Edition, IndentStyle, StyleEdition};
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
 };
 use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;

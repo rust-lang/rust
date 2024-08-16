@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 
-use anyhow::{format_err, Result};
+use anyhow::{Result, format_err};
 
 use io::Error as IoError;
 use thiserror::Error;
@@ -11,15 +11,15 @@ use tracing_subscriber::EnvFilter;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
-use std::io::{self, stdout, Read, Write};
+use std::io::{self, Read, Write, stdout};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
 use crate::rustfmt::{
-    load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName,
-    FormatReportFormatterBuilder, Input, Session, StyleEdition, Verbosity, Version,
+    CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName,
+    FormatReportFormatterBuilder, Input, Session, StyleEdition, Verbosity, Version, load_config,
 };
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rustfmt/issues/new?labels=bug";

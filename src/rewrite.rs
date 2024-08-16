@@ -7,12 +7,12 @@ use rustc_ast::ptr;
 use rustc_span::Span;
 use thiserror::Error;
 
+use crate::FormatReport;
 use crate::config::{Config, IndentStyle};
 use crate::parse::session::ParseSess;
 use crate::shape::Shape;
 use crate::skip::SkipContext;
 use crate::visitor::SnippetProvider;
-use crate::FormatReport;
 
 pub(crate) type RewriteResult = Result<String, RewriteError>;
 pub(crate) trait Rewrite {

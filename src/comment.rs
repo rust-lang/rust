@@ -2,13 +2,13 @@
 
 use std::{borrow::Cow, iter};
 
-use itertools::{multipeek, MultiPeek};
+use itertools::{MultiPeek, multipeek};
 use rustc_span::Span;
 
 use crate::config::Config;
 use crate::rewrite::{RewriteContext, RewriteErrorExt, RewriteResult};
 use crate::shape::{Indent, Shape};
-use crate::string::{rewrite_string, StringFormat};
+use crate::string::{StringFormat, rewrite_string};
 use crate::utils::{
     count_newlines, first_line_width, last_line_width, trim_left_preserve_layout,
     trimmed_last_line_width, unicode_str_width,

@@ -9,21 +9,21 @@ use rustc_span::Span;
 
 use crate::closures;
 use crate::config::StyleEdition;
-use crate::config::{lists::*, Config};
+use crate::config::{Config, lists::*};
 use crate::expr::{
     can_be_overflowed_expr, is_every_expr_simple, is_method_call, is_nested_call, is_simple_expr,
     rewrite_cond,
 };
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
 };
 use crate::macros::MacroArg;
-use crate::patterns::{can_be_overflowed_pat, TuplePatField};
+use crate::patterns::{TuplePatField, can_be_overflowed_pat};
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
-use crate::types::{can_be_overflowed_type, SegmentParam};
+use crate::types::{SegmentParam, can_be_overflowed_type};
 use crate::utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
 /// A list of `format!`-like macros, that take a long format string and a list of arguments to

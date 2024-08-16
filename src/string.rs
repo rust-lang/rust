@@ -375,7 +375,7 @@ fn graphemes_width(graphemes: &[&str]) -> usize {
 
 #[cfg(test)]
 mod test {
-    use super::{break_string, detect_url, rewrite_string, SnippetState, StringFormat};
+    use super::{SnippetState, StringFormat, break_string, detect_url, rewrite_string};
     use crate::config::Config;
     use crate::shape::{Indent, Shape};
     use unicode_segmentation::UnicodeSegmentation;

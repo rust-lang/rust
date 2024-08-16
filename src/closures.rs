@@ -3,17 +3,17 @@ use rustc_span::Span;
 use thin_vec::thin_vec;
 
 use crate::attr::get_attrs_from_stmt;
-use crate::config::lists::*;
 use crate::config::StyleEdition;
+use crate::config::lists::*;
 use crate::expr::{block_contains_comment, is_simple_block, is_unsafe_block, rewrite_cond};
 use crate::items::{span_hi_for_param, span_lo_for_param};
-use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use crate::lists::{ListFormatting, Separator, definitive_tactic, itemize_list, write_list};
 use crate::overflow::OverflowableItem;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::types::rewrite_bound_params;
-use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
+use crate::utils::{NodeIdExt, last_line_width, left_most_sub_expr, stmt_expr};
 
 // This module is pretty messy because of the rules around closures and blocks:
 // FIXME - the below is probably no longer true in full.

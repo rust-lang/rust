@@ -1,20 +1,20 @@
 //! Format attributes and meta items.
 
-use rustc_ast::ast;
 use rustc_ast::HasAttrs;
-use rustc_span::{symbol::sym, Span};
+use rustc_ast::ast;
+use rustc_span::{Span, symbol::sym};
 
 use self::doc_comment::DocCommentFormatter;
-use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};
-use crate::config::lists::*;
+use crate::comment::{CommentStyle, contains_comment, rewrite_doc_comment};
 use crate::config::IndentStyle;
+use crate::config::lists::*;
 use crate::expr::rewrite_literal;
-use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use crate::lists::{ListFormatting, Separator, definitive_tactic, itemize_list, write_list};
 use crate::overflow;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
-use crate::types::{rewrite_path, PathContext};
+use crate::types::{PathContext, rewrite_path};
 use crate::utils::{count_newlines, mk_sp};
 
 mod doc_comment;

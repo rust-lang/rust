@@ -11,7 +11,7 @@ use crate::config::lists::*;
 use crate::expr::rewrite_field;
 use crate::items::{rewrite_struct_field, rewrite_struct_field_prefix};
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
 };
 use crate::rewrite::{Rewrite, RewriteContext, RewriteResult};
 use crate::shape::{Indent, Shape};

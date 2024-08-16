@@ -16,7 +16,7 @@ use rustfmt_nightly as rustfmt;
 use tracing_subscriber::EnvFilter;
 
 use crate::rustfmt::{
-    load_config, CliOptions, FormatReportFormatterBuilder, Input, Session, Version,
+    CliOptions, FormatReportFormatterBuilder, Input, Session, Version, load_config,
 };
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {

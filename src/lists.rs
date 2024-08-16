@@ -5,7 +5,7 @@ use std::iter::Peekable;
 
 use rustc_span::BytePos;
 
-use crate::comment::{find_comment_end, rewrite_comment, FindUncommented};
+use crate::comment::{FindUncommented, find_comment_end, rewrite_comment};
 use crate::config::lists::*;
 use crate::config::{Config, IndentStyle};
 use crate::rewrite::{RewriteContext, RewriteError, RewriteResult};

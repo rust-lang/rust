@@ -2,21 +2,21 @@ use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
 use rustc_ast::ptr;
-use rustc_span::{symbol::kw, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, symbol::kw};
 
 use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;
 use crate::config::{IndentStyle, StyleEdition, TypeDensity};
 use crate::expr::{
-    format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple, rewrite_unary_prefix, ExprType,
-    RhsAssignKind,
+    ExprType, RhsAssignKind, format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple,
+    rewrite_unary_prefix,
 };
 use crate::lists::{
-    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+    ListFormatting, ListItem, Separator, definitive_tactic, itemize_list, write_list,
 };
-use crate::macros::{rewrite_macro, MacroPosition};
+use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
-use crate::pairs::{rewrite_pair, PairParts};
+use crate::pairs::{PairParts, rewrite_pair};
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;

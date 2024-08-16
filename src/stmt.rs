@@ -3,7 +3,7 @@ use rustc_span::Span;
 
 use crate::comment::recover_comment_removed;
 use crate::config::StyleEdition;
-use crate::expr::{format_expr, is_simple_block, ExprType};
+use crate::expr::{ExprType, format_expr, is_simple_block};
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
