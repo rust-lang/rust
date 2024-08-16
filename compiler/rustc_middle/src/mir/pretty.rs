@@ -1418,21 +1418,19 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
-    fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
+    fn alloc_id_from_const_val(val: ConstValue<'_>) -> Option<AllocId> {
         match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
-                Either::Left(std::iter::once(ptr.provenance.alloc_id()))
-            }
-            ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
-            ConstValue::ZeroSized => Either::Right(std::iter::empty()),
+            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
+            ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
+            ConstValue::ZeroSized => None,
             ConstValue::Slice { .. } => {
                 // `u8`/`str` slices, shouldn't contain pointers that we want to print.
-                Either::Right(std::iter::empty())
+                None
             }
             ConstValue::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
                 // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
-                Either::Left(std::iter::once(alloc_id))
+                Some(alloc_id)
             }
         }
     }
@@ -1443,7 +1441,9 @@ pub fn write_allocations<'tcx>(
             match c.const_ {
                 Const::Ty(_, _) | Const::Unevaluated(..) => {}
                 Const::Val(val, _) => {
-                    self.0.extend(alloc_ids_from_const_val(val));
+                    if let Some(id) = alloc_id_from_const_val(val) {
+                        self.0.insert(id);
+                    }
                 }
             }
         }
