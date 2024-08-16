@@ -913,7 +913,7 @@ impl<'a> Parser<'a> {
             let snapshot = self.create_snapshot_for_diagnostic();
             let attrs = self.parse_outer_attributes()?;
             match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
-                Ok(expr) => {
+                Ok((expr, _)) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
                         expr.span,

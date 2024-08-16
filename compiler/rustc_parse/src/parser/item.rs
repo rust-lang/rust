@@ -20,7 +20,9 @@ use tracing::debug;
 
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing};
+use super::{
+    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Trailing, UsePreAttrPos,
+};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::{fluent_generated as fluent, maybe_whole};
 
@@ -127,7 +129,7 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
-        self.collect_tokens_trailing_token(attrs, force_collect, |this, mut attrs| {
+        self.collect_tokens(None, attrs, force_collect, |this, mut attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
             let mut def = this.parse_defaultness();
@@ -145,7 +147,7 @@ impl<'a> Parser<'a> {
                 let span = lo.to(this.prev_token.span);
                 let id = DUMMY_NODE_ID;
                 let item = Item { ident, attrs, id, kind, vis, span, tokens: None };
-                return Ok((Some(item), false));
+                return Ok((Some(item), Trailing::No, UsePreAttrPos::No));
             }
 
             // At this point, we have failed to parse an item.
@@ -160,7 +162,7 @@ impl<'a> Parser<'a> {
             if !attrs_allowed {
                 this.recover_attrs_no_item(&attrs)?;
             }
-            Ok((None, false))
+            Ok((None, Trailing::No, UsePreAttrPos::No))
         })
     }
 
@@ -1546,86 +1548,82 @@ impl<'a> Parser<'a> {
         self.recover_vcs_conflict_marker();
         let help = "enum variants can be `Variant`, `Variant = <integer>`, \
                     `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`";
-        self.collect_tokens_trailing_token(
-            variant_attrs,
-            ForceCollect::No,
-            |this, variant_attrs| {
-                let vlo = this.token.span;
+        self.collect_tokens(None, variant_attrs, ForceCollect::No, |this, variant_attrs| {
+            let vlo = this.token.span;
 
-                let vis = this.parse_visibility(FollowedByType::No)?;
-                if !this.recover_nested_adt_item(kw::Enum)? {
-                    return Ok((None, false));
-                }
-                let ident = this.parse_field_ident("enum", vlo)?;
+            let vis = this.parse_visibility(FollowedByType::No)?;
+            if !this.recover_nested_adt_item(kw::Enum)? {
+                return Ok((None, Trailing::No, UsePreAttrPos::No));
+            }
+            let ident = this.parse_field_ident("enum", vlo)?;
 
-                if this.token == token::Not {
-                    if let Err(err) = this.unexpected() {
-                        err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
-                    }
-
-                    this.bump();
-                    this.parse_delim_args()?;
-
-                    return Ok((None, this.token == token::Comma));
+            if this.token == token::Not {
+                if let Err(err) = this.unexpected() {
+                    err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
                 }
 
-                let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
-                    // Parse a struct variant.
-                    let (fields, recovered) =
-                        match this.parse_record_struct_body("struct", ident.span, false) {
-                            Ok((fields, recovered)) => (fields, recovered),
-                            Err(mut err) => {
-                                if this.token == token::Colon {
-                                    // We handle `enum` to `struct` suggestion in the caller.
-                                    return Err(err);
-                                }
-                                this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
-                                this.bump(); // }
-                                err.span_label(span, "while parsing this enum");
-                                err.help(help);
-                                let guar = err.emit();
-                                (thin_vec![], Recovered::Yes(guar))
-                            }
-                        };
-                    VariantData::Struct { fields, recovered: recovered.into() }
-                } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
-                    let body = match this.parse_tuple_struct_body() {
-                        Ok(body) => body,
+                this.bump();
+                this.parse_delim_args()?;
+
+                return Ok((None, Trailing::from(this.token == token::Comma), UsePreAttrPos::No));
+            }
+
+            let struct_def = if this.check(&token::OpenDelim(Delimiter::Brace)) {
+                // Parse a struct variant.
+                let (fields, recovered) =
+                    match this.parse_record_struct_body("struct", ident.span, false) {
+                        Ok((fields, recovered)) => (fields, recovered),
                         Err(mut err) => {
                             if this.token == token::Colon {
                                 // We handle `enum` to `struct` suggestion in the caller.
                                 return Err(err);
                             }
-                            this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
-                            this.bump(); // )
+                            this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
+                            this.bump(); // }
                             err.span_label(span, "while parsing this enum");
                             err.help(help);
-                            err.emit();
-                            thin_vec![]
+                            let guar = err.emit();
+                            (thin_vec![], Recovered::Yes(guar))
                         }
                     };
-                    VariantData::Tuple(body, DUMMY_NODE_ID)
-                } else {
-                    VariantData::Unit(DUMMY_NODE_ID)
+                VariantData::Struct { fields, recovered: recovered.into() }
+            } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
+                let body = match this.parse_tuple_struct_body() {
+                    Ok(body) => body,
+                    Err(mut err) => {
+                        if this.token == token::Colon {
+                            // We handle `enum` to `struct` suggestion in the caller.
+                            return Err(err);
+                        }
+                        this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
+                        this.bump(); // )
+                        err.span_label(span, "while parsing this enum");
+                        err.help(help);
+                        err.emit();
+                        thin_vec![]
+                    }
                 };
+                VariantData::Tuple(body, DUMMY_NODE_ID)
+            } else {
+                VariantData::Unit(DUMMY_NODE_ID)
+            };
 
-                let disr_expr =
-                    if this.eat(&token::Eq) { Some(this.parse_expr_anon_const()?) } else { None };
+            let disr_expr =
+                if this.eat(&token::Eq) { Some(this.parse_expr_anon_const()?) } else { None };
 
-                let vr = ast::Variant {
-                    ident,
-                    vis,
-                    id: DUMMY_NODE_ID,
-                    attrs: variant_attrs,
-                    data: struct_def,
-                    disr_expr,
-                    span: vlo.to(this.prev_token.span),
-                    is_placeholder: false,
-                };
+            let vr = ast::Variant {
+                ident,
+                vis,
+                id: DUMMY_NODE_ID,
+                attrs: variant_attrs,
+                data: struct_def,
+                disr_expr,
+                span: vlo.to(this.prev_token.span),
+                is_placeholder: false,
+            };
 
-                Ok((Some(vr), this.token == token::Comma))
-            },
-        )
+            Ok((Some(vr), Trailing::from(this.token == token::Comma), UsePreAttrPos::No))
+        })
         .map_err(|mut err| {
             err.help(help);
             err
@@ -1777,7 +1775,7 @@ impl<'a> Parser<'a> {
         // Unit like structs are handled in parse_item_struct function
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
-            p.collect_tokens_trailing_token(attrs, ForceCollect::No, |p, attrs| {
+            p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
                 let mut snapshot = None;
                 if p.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
                     // Account for `<<<<<<<` diff markers. We can't proactively error here because
@@ -1815,7 +1813,8 @@ impl<'a> Parser<'a> {
                         attrs,
                         is_placeholder: false,
                     },
-                    p.token == token::Comma,
+                    Trailing::from(p.token == token::Comma),
+                    UsePreAttrPos::No,
                 ))
             })
         })
@@ -1827,10 +1826,11 @@ impl<'a> Parser<'a> {
         self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
-        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+        self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            this.parse_single_struct_field(adt_ty, lo, vis, attrs).map(|field| (field, false))
+            this.parse_single_struct_field(adt_ty, lo, vis, attrs)
+                .map(|field| (field, Trailing::No, UsePreAttrPos::No))
         })
     }
 
@@ -2805,12 +2805,12 @@ impl<'a> Parser<'a> {
     fn parse_param_general(&mut self, req_name: ReqName, first_param: bool) -> PResult<'a, Param> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
-        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+        self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             // Possibly parse `self`. Recover if we parsed it and it wasn't allowed here.
             if let Some(mut param) = this.parse_self_param()? {
                 param.attrs = attrs;
                 let res = if first_param { Ok(param) } else { this.recover_bad_self_param(param) };
-                return Ok((res?, false));
+                return Ok((res?, Trailing::No, UsePreAttrPos::No));
             }
 
             let is_name_required = match this.token.kind {
@@ -2826,7 +2826,7 @@ impl<'a> Parser<'a> {
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
                         let guar = err.emit();
-                        Ok((dummy_arg(ident, guar), false))
+                        Ok((dummy_arg(ident, guar), Trailing::No, UsePreAttrPos::No))
                     } else {
                         Err(err)
                     };
@@ -2869,7 +2869,8 @@ impl<'a> Parser<'a> {
 
             Ok((
                 Param { attrs, id: ast::DUMMY_NODE_ID, is_placeholder: false, pat, span, ty },
-                false,
+                Trailing::No,
+                UsePreAttrPos::No,
             ))
         })
     }
