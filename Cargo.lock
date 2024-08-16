@@ -3149,6 +3149,7 @@ dependencies = [
  "gimli 0.31.0",
  "object 0.36.2",
  "regex",
+ "serde_json",
  "similar",
  "wasmparser 0.214.0",
 ]
