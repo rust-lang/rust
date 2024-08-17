@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 
 use crate::core::build_steps::dist::distdir;
 use crate::core::builder::{Builder, Kind};
+use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
 use crate::utils::{channel, helpers};
@@ -320,7 +321,7 @@ impl<'a> Tarball<'a> {
 
         // Add config file if present.
         if let Some(config) = &self.builder.config.config {
-            self.add_renamed_file(config, &self.overlay_dir, "builder-config");
+            self.add_renamed_file(config, &self.overlay_dir, BUILDER_CONFIG_FILENAME);
         }
 
         for file in self.overlay.legal_and_readme() {

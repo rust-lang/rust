@@ -1,10 +1,9 @@
 // ignore-tidy-linelength
-//@ ignore-freebsd: gdb package too new
-//@ only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
+//@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
 //@ min-gdb-version: 7.7
-//@ min-lldb-version: 310
+//@ min-lldb-version: 1800
 //@ min-cdb-version: 10.0.18317.1001
 
 // === GDB TESTS ===================================================================================
@@ -12,10 +11,10 @@
 // gdb-command: run
 
 // gdb-command: print slice
-// gdb-check:$1 = &[i32](len: 4) = {0, 1, 2, 3}
+// gdb-check:$1 = &[i32](size=4) = {0, 1, 2, 3}
 
 // gdb-command: print vec
-// gdb-check:$2 = Vec<u64, alloc::alloc::Global>(len: 4, cap: [...]) = {4, 5, 6, 7}
+// gdb-check:$2 = Vec(size=4) = {4, 5, 6, 7}
 
 // gdb-command: print str_slice
 // gdb-check:$3 = "IAMA string slice!"
@@ -24,37 +23,37 @@
 // gdb-check:$4 = "IAMA string!"
 
 // gdb-command: print some
-// gdb-check:$5 = Some = {8}
+// gdb-check:$5 = core::option::Option<i16>::Some(8)
 
 // gdb-command: print none
 // gdbg-check:$6 = None
-// gdbr-check:$6 = core::option::Option::None
+// gdbr-check:$6 = core::option::Option<i64>::None
 
 // gdb-command: print os_string
 // gdb-check:$7 = "IAMA OS string 😃"
 
 // gdb-command: print some_string
-// gdb-check:$8 = Some = {"IAMA optional string!"}
+// gdb-check:$8 = core::option::Option<alloc::string::String>::Some("IAMA optional string!")
 
-// gdb-command: set print length 5
+// gdb-command: set print elements 5
 // gdb-command: print some_string
-// gdb-check:$8 = Some = {"IAMA "...}
+// gdb-check:$9 = core::option::Option<alloc::string::String>::Some("IAMA "...)
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 
 // lldb-command:v slice
-// lldb-check:[...] slice = &[0, 1, 2, 3]
+// lldb-check:[...] slice = size=4 { [0] = 0 [1] = 1 [2] = 2 [3] = 3 }
 
 // lldb-command:v vec
-// lldb-check:[...] vec = vec![4, 5, 6, 7]
+// lldb-check:[...] vec = size=4 { [0] = 4 [1] = 5 [2] = 6 [3] = 7 }
 
 // lldb-command:v str_slice
-// lldb-check:[...] str_slice = "IAMA string slice!"
+// lldb-check:[...] str_slice = "IAMA string slice!" { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = ' ' [12] = 's' [13] = 'l' [14] = 'i' [15] = 'c' [16] = 'e' [17] = '!' }
 
 // lldb-command:v string
-// lldb-check:[...] string = "IAMA string!"
+// lldb-check:[...] string = "IAMA string!" { vec = size=12 { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 's' [6] = 't' [7] = 'r' [8] = 'i' [9] = 'n' [10] = 'g' [11] = '!' } }
 
 // lldb-command:v some
 // lldb-check:[...] some = Some(8)
@@ -63,7 +62,7 @@
 // lldb-check:[...] none = None
 
 // lldb-command:v os_string
-// lldb-check:[...] os_string = "IAMA OS string 😃"[...]
+// lldb-check:[...] os_string = "IAMA OS string 😃" { inner = { inner = size=19 { [0] = 'I' [1] = 'A' [2] = 'M' [3] = 'A' [4] = ' ' [5] = 'O' [6] = 'S' [7] = ' ' [8] = 's' [9] = 't' [10] = 'r' [11] = 'i' [12] = 'n' [13] = 'g' [14] = ' ' [15] = '\xf0' [16] = '\x9f' [17] = '\x98' [18] = '\x83' } } }
 
 // === CDB TESTS ==================================================================================
 

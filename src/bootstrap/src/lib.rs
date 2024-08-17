@@ -37,7 +37,9 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
 use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
+};
 
 mod core;
 mod utils;
@@ -1056,11 +1058,29 @@ Executed at: {executed_at}"#,
             }
         };
 
-        let fail = |message: &str| {
+        let fail = |message: &str, output: CommandOutput| -> ! {
             if self.is_verbose() {
                 println!("{message}");
             } else {
-                println!("Command has failed. Rerun with -v to see more details.");
+                let (stdout, stderr) = (output.stdout_if_present(), output.stderr_if_present());
+                // If the command captures output, the user would not see any indication that
+                // it has failed. In this case, print a more verbose error, since to provide more
+                // context.
+                if stdout.is_some() || stderr.is_some() {
+                    if let Some(stdout) =
+                        output.stdout_if_present().take_if(|s| !s.trim().is_empty())
+                    {
+                        println!("STDOUT:\n{stdout}\n");
+                    }
+                    if let Some(stderr) =
+                        output.stderr_if_present().take_if(|s| !s.trim().is_empty())
+                    {
+                        println!("STDERR:\n{stderr}\n");
+                    }
+                    println!("Command {command:?} has failed. Rerun with -v to see more details.");
+                } else {
+                    println!("Command has failed. Rerun with -v to see more details.");
+                }
             }
             exit!(1);
         };
@@ -1069,14 +1089,14 @@ Executed at: {executed_at}"#,
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
-                        fail(&message);
+                        fail(&message, output);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
                     failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
-                    fail(&message);
+                    fail(&message, output);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already
@@ -1774,21 +1794,20 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link
-            // (symlinks don't work on windows), but if that fails
-            // just fall back to a slow `copy` operation.
+            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
 
+            // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
+            // file access time to change.
             let file_times = fs::FileTimes::new()
                 .set_accessed(t!(metadata.accessed()))
                 .set_modified(t!(metadata.modified()));
-
-            let dst_file = t!(fs::File::open(dst));
-            t!(dst_file.set_times(file_times));
+            t!(set_file_times(dst, file_times));
         }
     }
 

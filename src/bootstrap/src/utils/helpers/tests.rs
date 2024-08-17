@@ -3,7 +3,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::utils::helpers::{
-    check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, symlink_dir,
+    check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, set_file_times,
+    symlink_dir,
 };
 use crate::{Config, Flags};
 
@@ -91,4 +92,26 @@ fn test_symlink_dir() {
     fs::remove_dir(link_path).unwrap();
     #[cfg(not(windows))]
     fs::remove_file(link_path).unwrap();
+}
+
+#[test]
+fn test_set_file_times_sanity_check() {
+    let config =
+        Config::parse(Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]));
+    let tempfile = config.tempdir().join(".tmp-file");
+
+    {
+        File::create(&tempfile).unwrap().write_all(b"dummy value").unwrap();
+        assert!(tempfile.exists());
+    }
+
+    // This might only fail on Windows (if file is default read-only then we try to modify file
+    // times).
+    let unix_epoch = std::time::SystemTime::UNIX_EPOCH;
+    let target_time = fs::FileTimes::new().set_accessed(unix_epoch).set_modified(unix_epoch);
+    set_file_times(&tempfile, target_time).unwrap();
+
+    let found_metadata = fs::metadata(tempfile).unwrap();
+    assert_eq!(found_metadata.accessed().unwrap(), unix_epoch);
+    assert_eq!(found_metadata.modified().unwrap(), unix_epoch)
 }

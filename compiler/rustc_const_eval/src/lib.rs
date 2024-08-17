@@ -6,7 +6,6 @@
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
-#![feature(is_none_or)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]

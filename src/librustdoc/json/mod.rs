@@ -9,16 +9,19 @@ mod import_finder;
 
 use std::cell::RefCell;
 use std::fs::{create_dir_all, File};
-use std::io::{BufWriter, Write};
+use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustdoc_json_types as types;
+// It's important to use the FxHashMap from rustdoc_json_types here, instead of
+// the one from rustc_data_structures, as they're different types due to sysroots.
+// See #110051 and #127456 for details
+use rustdoc_json_types::FxHashMap;
 
 use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::clean::ItemKind;
@@ -37,7 +40,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// level field of the JSON blob.
     index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
     /// The directory where the blob will be written to.
-    out_path: PathBuf,
+    out_path: Option<PathBuf>,
     cache: Rc<Cache>,
     imported_items: DefIdSet,
 }
@@ -97,6 +100,20 @@ impl<'tcx> JsonRenderer<'tcx> {
             })
             .unwrap_or_default()
     }
+
+    fn write<T: Write>(
+        &self,
+        output: types::Crate,
+        mut writer: BufWriter<T>,
+        path: &str,
+    ) -> Result<(), Error> {
+        self.tcx
+            .sess
+            .time("rustdoc_json_serialization", || serde_json::ser::to_writer(&mut writer, &output))
+            .unwrap();
+        try_err!(writer.flush(), path);
+        Ok(())
+    }
 }
 
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
@@ -120,7 +137,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             JsonRenderer {
                 tcx,
                 index: Rc::new(RefCell::new(FxHashMap::default())),
-                out_path: options.output,
+                out_path: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
             },
@@ -220,14 +237,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let index = (*self.index).clone().into_inner();
 
         debug!("Constructing Output");
-        // This needs to be the default HashMap for compatibility with the public interface for
-        // rustdoc-json-types
-        #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(format!("0:0:{}", e.name(self.tcx).as_u32())),
             crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
-            index: index.into_iter().collect(),
+            index,
             paths: self
                 .cache
                 .paths
@@ -264,20 +278,21 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .collect(),
             format_version: types::FORMAT_VERSION,
         };
-        let out_dir = self.out_path.clone();
-        try_err!(create_dir_all(&out_dir), out_dir);
+        if let Some(ref out_path) = self.out_path {
+            let out_dir = out_path.clone();
+            try_err!(create_dir_all(&out_dir), out_dir);
 
-        let mut p = out_dir;
-        p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
-        p.set_extension("json");
-        let mut file = BufWriter::new(try_err!(File::create(&p), p));
-        self.tcx
-            .sess
-            .time("rustdoc_json_serialization", || serde_json::ser::to_writer(&mut file, &output))
-            .unwrap();
-        try_err!(file.flush(), p);
-
-        Ok(())
+            let mut p = out_dir;
+            p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
+            p.set_extension("json");
+            self.write(
+                output,
+                BufWriter::new(try_err!(File::create(&p), p)),
+                &p.display().to_string(),
+            )
+        } else {
+            self.write(output, BufWriter::new(stdout()), "<stdout>")
+        }
     }
 
     fn cache(&self) -> &Cache {

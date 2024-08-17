@@ -106,9 +106,11 @@ pub struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
-        // FIXME use ArArchiveBuilder on most targets again once reading thin archives is
-        // implemented
-        if true {
+        // Keeping LlvmArchiveBuilder around in case of a regression caused by using
+        // ArArchiveBuilder.
+        // FIXME(#128955) remove a couple of months after #128936 gets merged in case
+        // no regression is found.
+        if false {
             Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
         } else {
             Box::new(ArArchiveBuilder::new(sess, &LLVM_OBJECT_READER))
@@ -198,25 +200,11 @@ static LLVM_OBJECT_READER: ObjectReader = ObjectReader {
     get_xcoff_member_alignment: DEFAULT_OBJECT_READER.get_xcoff_member_alignment,
 };
 
-fn should_use_llvm_reader(buf: &[u8]) -> bool {
-    let is_bitcode = unsafe { llvm::LLVMRustIsBitcode(buf.as_ptr(), buf.len()) };
-
-    // COFF bigobj file, msvc LTO file or import library. See
-    // https://github.com/llvm/llvm-project/blob/453f27bc9/llvm/lib/BinaryFormat/Magic.cpp#L38-L51
-    let is_unsupported_windows_obj_file = buf.get(0..4) == Some(b"\0\0\xFF\xFF");
-
-    is_bitcode || is_unsupported_windows_obj_file
-}
-
 #[deny(unsafe_op_in_unsafe_fn)]
 fn get_llvm_object_symbols(
     buf: &[u8],
     f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
 ) -> io::Result<bool> {
-    if !should_use_llvm_reader(buf) {
-        return (DEFAULT_OBJECT_READER.get_symbols)(buf, f);
-    }
-
     let mut state = Box::new(f);
 
     let err = unsafe {
@@ -253,18 +241,10 @@ fn get_llvm_object_symbols(
 }
 
 fn llvm_is_64_bit_object_file(buf: &[u8]) -> bool {
-    if !should_use_llvm_reader(buf) {
-        return (DEFAULT_OBJECT_READER.is_64_bit_object_file)(buf);
-    }
-
     unsafe { llvm::LLVMRustIs64BitSymbolicFile(buf.as_ptr(), buf.len()) }
 }
 
 fn llvm_is_ec_object_file(buf: &[u8]) -> bool {
-    if !should_use_llvm_reader(buf) {
-        return (DEFAULT_OBJECT_READER.is_ec_object_file)(buf);
-    }
-
     unsafe { llvm::LLVMRustIsECObject(buf.as_ptr(), buf.len()) }
 }
 
