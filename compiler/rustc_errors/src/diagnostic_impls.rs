@@ -230,6 +230,12 @@ impl IntoDiagArg for ast::token::TokenKind {
     }
 }
 
+impl IntoDiagArg for ast::tokenstream::TokenTree {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(pprust::tt_to_string(&self)))
+    }
+}
+
 impl IntoDiagArg for FloatTy {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.name_str()))
