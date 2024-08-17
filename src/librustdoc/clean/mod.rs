@@ -3094,16 +3094,10 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            hir::ForeignItemKind::Fn(decl, names, generics, safety) => {
-                let (generics, decl) = enter_impl_trait(cx, |cx| {
-                    // NOTE: generics must be cleaned before args
-                    let generics = clean_generics(generics, cx);
-                    let args = clean_args_from_types_and_names(cx, decl.inputs, names);
-                    let decl = clean_fn_decl_with_args(cx, decl, None, args);
-                    (generics, decl)
-                });
-                ForeignFunctionItem(Box::new(Function { decl, generics }), safety)
-            }
+            hir::ForeignItemKind::Fn(sig, names, generics) => ForeignFunctionItem(
+                clean_function(cx, &sig, generics, FunctionArgs::Names(names)),
+                sig.header.safety,
+            ),
             hir::ForeignItemKind::Static(ty, mutability, safety) => ForeignStaticItem(
                 Static { type_: Box::new(clean_ty(ty, cx)), mutability, expr: None },
                 safety,

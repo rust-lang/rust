@@ -350,8 +350,8 @@ fn check_foreign_item<'tcx>(
     );
 
     match item.kind {
-        hir::ForeignItemKind::Fn(decl, ..) => {
-            check_item_fn(tcx, def_id, item.ident, item.span, decl)
+        hir::ForeignItemKind::Fn(sig, ..) => {
+            check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
         }
         hir::ForeignItemKind::Static(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)

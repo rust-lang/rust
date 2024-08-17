@@ -816,6 +816,11 @@ impl<'hir> Map<'hir> {
             })
             | Node::ImplItem(ImplItem {
                 kind: ImplItemKind::Fn(sig, ..), span: outer_span, ..
+            })
+            | Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(sig, ..),
+                span: outer_span,
+                ..
             }) => {
                 // Ensure that the returned span has the item's SyntaxContext, and not the
                 // SyntaxContext of the visibility.
@@ -874,10 +879,7 @@ impl<'hir> Map<'hir> {
             },
             Node::Variant(variant) => named_span(variant.span, variant.ident, None),
             Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
-            Node::ForeignItem(item) => match item.kind {
-                ForeignItemKind::Fn(decl, _, _, _) => until_within(item.span, decl.output.span()),
-                _ => named_span(item.span, item.ident, None),
-            },
+            Node::ForeignItem(item) => named_span(item.span, item.ident, None),
             Node::Ctor(_) => return self.span(self.tcx.parent_hir_id(hir_id)),
             Node::Expr(Expr {
                 kind: ExprKind::Closure(Closure { fn_decl_span, .. }),

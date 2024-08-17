@@ -1734,13 +1734,16 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(decl, _, _, _) if !vis.is_internal_abi(abi) => {
-                vis.check_foreign_fn(it.owner_id.def_id, decl);
+            hir::ForeignItemKind::Fn(sig, _, _) => {
+                if vis.is_internal_abi(abi) {
+                    vis.check_fn(it.owner_id.def_id, sig.decl)
+                } else {
+                    vis.check_foreign_fn(it.owner_id.def_id, sig.decl);
+                }
             }
             hir::ForeignItemKind::Static(ty, _, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
-            hir::ForeignItemKind::Fn(decl, _, _, _) => vis.check_fn(it.owner_id.def_id, decl),
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
     }
