@@ -11,11 +11,11 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::Analysis;
@@ -372,47 +372,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
-
-        // Special-case reborrows to be more like a copy of a reference.
-        // FIXME: this does not actually handle all reborrows. It only detects cases where `*` is the outermost
-        // projection of the borrowed place, it skips deref'ing raw pointers and it skips `static`.
-        // All those cases are handled below with shared/mutable borrows.
-        // Once `const_mut_refs` is stable, we should be able to entirely remove this special case.
-        // (`const_refs_to_cell` is not needed, we already allow all borrows of indirect places anyway.)
-        match *rvalue {
-            Rvalue::Ref(_, kind, place) => {
-                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
-                    let ctx = match kind {
-                        BorrowKind::Shared => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-                        }
-                        BorrowKind::Fake(_) => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::FakeBorrow)
-                        }
-                        BorrowKind::Mut { .. } => {
-                            PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-                        }
-                    };
-                    self.visit_local(reborrowed_place_ref.local, ctx, location);
-                    self.visit_projection(reborrowed_place_ref, ctx, location);
-                    return;
-                }
-            }
-            Rvalue::RawPtr(mutbl, place) => {
-                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
-                    let ctx = match mutbl {
-                        Mutability::Not => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
-                        }
-                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::RawBorrow),
-                    };
-                    self.visit_local(reborrowed_place_ref.local, ctx, location);
-                    self.visit_projection(reborrowed_place_ref, ctx, location);
-                    return;
-                }
-            }
-            _ => {}
-        }
 
         self.super_rvalue(rvalue, location);
 
@@ -882,40 +841,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Unreachable => {}
         }
-    }
-}
-
-fn place_as_reborrow<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    place: Place<'tcx>,
-) -> Option<PlaceRef<'tcx>> {
-    match place.as_ref().last_projection() {
-        Some((place_base, ProjectionElem::Deref)) => {
-            // FIXME: why do statics and raw pointers get excluded here? This makes
-            // some code involving mutable pointers unstable, but it is unclear
-            // why that code is treated differently from mutable references.
-            // Once TransientMutBorrow and TransientCellBorrow are stable,
-            // this can probably be cleaned up without any behavioral changes.
-
-            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
-            // that points to the allocation for the static. Don't treat these as reborrows.
-            if body.local_decls[place_base.local].is_ref_to_static() {
-                None
-            } else {
-                // Ensure the type being derefed is a reference and not a raw pointer.
-                // This is sufficient to prevent an access to a `static mut` from being marked as a
-                // reborrow, even if the check above were to disappear.
-                let inner_ty = place_base.ty(body, tcx).ty;
-
-                if let ty::Ref(..) = inner_ty.kind() {
-                    return Some(place_base);
-                } else {
-                    return None;
-                }
-            }
-        }
-        _ => None,
     }
 }
 
