@@ -117,7 +117,7 @@ macro_rules! types {
 #[allow(unused)]
 macro_rules! simd_shuffle {
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
-        simd_shuffle::<_, [u32; _], _>($x, $y, const { $idx })
+        $crate::intrinsics::simd::simd_shuffle::<_, [u32; _], _>($x, $y, const { $idx })
     }};
 }
 

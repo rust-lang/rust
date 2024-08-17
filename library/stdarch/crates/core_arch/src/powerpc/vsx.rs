@@ -9,7 +9,6 @@
 #![allow(non_camel_case_types)]
 
 use crate::core_arch::powerpc::*;
-use crate::intrinsics::simd::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

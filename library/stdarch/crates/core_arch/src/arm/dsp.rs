@@ -23,7 +23,6 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-use crate::intrinsics::simd::simd_shuffle;
 use crate::mem::transmute;
 
 types! {

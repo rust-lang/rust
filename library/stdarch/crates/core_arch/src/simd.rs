@@ -2,8 +2,6 @@
 
 #![allow(non_camel_case_types)]
 
-use crate::intrinsics::simd::simd_shuffle;
-
 macro_rules! simd_ty {
     ($id:ident [$elem_type:ty ; $len:literal]: $($param_name:ident),*) => {
         #[repr(simd)]

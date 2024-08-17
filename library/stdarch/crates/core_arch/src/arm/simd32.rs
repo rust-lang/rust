@@ -65,7 +65,6 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-use crate::intrinsics::simd::simd_shuffle;
 use crate::{core_arch::arm::dsp::int16x2_t, mem::transmute};
 
 types! {

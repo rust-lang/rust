@@ -1,6 +1,5 @@
 //! `x86` and `x86_64` intrinsics.
 
-use crate::intrinsics::simd::simd_shuffle;
 #[allow(unused_imports)]
 use crate::marker::Sized;
 use crate::mem::transmute;
