@@ -218,6 +218,7 @@ struct FlycheckActor {
     status: FlycheckStatus,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum Event {
     RequestStateChange(StateChange),
     CheckEvent(Option<CargoCheckMessage>),
