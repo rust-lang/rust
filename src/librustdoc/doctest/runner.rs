@@ -75,7 +75,6 @@ impl DocTestRunner {
 #![allow(internal_features)]
 #![feature(test)]
 #![feature(rustc_attrs)]
-#![feature(coverage_attribute)]
 "
         .to_string();
 
@@ -135,7 +134,6 @@ mod __doctest_mod {{
 }}
 
 #[rustc_main]
-#[coverage(off)]
 fn main() -> std::process::ExitCode {{
 const TESTS: [test::TestDescAndFn; {nb_tests}] = [{ids}];
 let bin_marker = std::ffi::OsStr::new(__doctest_mod::BIN_OPTION);
@@ -235,11 +233,9 @@ fn main() {returns_result} {{
     writeln!(
         output,
         "
-#[rustc_test_marker = {test_name:?}]
 pub const TEST: test::TestDescAndFn = test::TestDescAndFn::new_doctest(
 {test_name:?}, {ignore}, {file:?}, {line}, {no_run}, {should_panic},
 test::StaticTestFn(
-    #[coverage(off)]
     || {{{runner}}},
 ));
 }}",
