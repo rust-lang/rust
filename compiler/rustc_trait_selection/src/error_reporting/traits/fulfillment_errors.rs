@@ -1668,7 +1668,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let name = self.tcx.crate_name(trait_def_id.krate);
             let spans: Vec<_> = [trait_def_id, found_type]
                 .into_iter()
-                .filter_map(|def_id| self.tcx.extern_crate(def_id))
+                .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {
                         "direct dependency of the current crate".to_string()
