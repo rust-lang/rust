@@ -17,13 +17,13 @@ use crate::{concurrency::VClock, *};
 /// be configured in the real system.
 const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 212992;
 
-/// Pair of connected sockets.
+/// One end of a pair of connected unnamed sockets.
 #[derive(Debug)]
-struct SocketPair {
+struct AnonSocket {
     /// The buffer we are reading from, or `None` if this is the writing end of a pipe.
     /// (In that case, the peer FD will be the reading end of that pipe.)
     readbuf: Option<RefCell<Buffer>>,
-    /// The `SocketPair` file descriptor that is our "peer", and that holds the buffer we are
+    /// The `AnonSocket` file descriptor that is our "peer", and that holds the buffer we are
     /// writing to. This is a weak reference because the other side may be closed before us; all
     /// future writes will then trigger EPIPE.
     peer_fd: OnceCell<WeakFileDescriptionRef>,
@@ -42,13 +42,13 @@ impl Buffer {
     }
 }
 
-impl SocketPair {
+impl AnonSocket {
     fn peer_fd(&self) -> &WeakFileDescriptionRef {
         self.peer_fd.get().unwrap()
     }
 }
 
-impl FileDescription for SocketPair {
+impl FileDescription for AnonSocket {
     fn name(&self) -> &'static str {
         "socketpair"
     }
@@ -71,7 +71,7 @@ impl FileDescription for SocketPair {
 
         // Check if is writable.
         if let Some(peer_fd) = self.peer_fd().upgrade() {
-            if let Some(writebuf) = &peer_fd.downcast::<SocketPair>().unwrap().readbuf {
+            if let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf {
                 let data_size = writebuf.borrow().buf.len();
                 let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
                 if available_space != 0 {
@@ -195,7 +195,7 @@ impl FileDescription for SocketPair {
             return Ok(Err(Error::from(ErrorKind::BrokenPipe)));
         };
 
-        let Some(writebuf) = &peer_fd.downcast::<SocketPair>().unwrap().readbuf else {
+        let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf else {
             // FIXME: This should return EBADF, but there's no nice way to do that as there's no
             // corresponding ErrorKind variant.
             throw_unsup_format!("writing to the reading end of a pipe");
@@ -287,20 +287,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Generate file descriptions.
         let fds = &mut this.machine.fds;
-        let fd0 = fds.new_ref(SocketPair {
+        let fd0 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             is_nonblock: is_sock_nonblock,
         });
-        let fd1 = fds.new_ref(SocketPair {
+        let fd1 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             is_nonblock: is_sock_nonblock,
         });
 
         // Make the file descriptions point to each other.
-        fd0.downcast::<SocketPair>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
-        fd1.downcast::<SocketPair>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
+        fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
+        fd1.downcast::<AnonSocket>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
         let sv0 = fds.insert(fd0);
@@ -337,17 +337,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Generate file descriptions.
         // pipefd[0] refers to the read end of the pipe.
         let fds = &mut this.machine.fds;
-        let fd0 = fds.new_ref(SocketPair {
+        let fd0 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             is_nonblock: false,
         });
         let fd1 =
-            fds.new_ref(SocketPair { readbuf: None, peer_fd: OnceCell::new(), is_nonblock: false });
+            fds.new_ref(AnonSocket { readbuf: None, peer_fd: OnceCell::new(), is_nonblock: false });
 
         // Make the file descriptions point to each other.
-        fd0.downcast::<SocketPair>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
-        fd1.downcast::<SocketPair>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
+        fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
+        fd1.downcast::<AnonSocket>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
         let pipefd0 = fds.insert(fd0);
