@@ -66,7 +66,11 @@
 )]
 #![cfg_attr(
     test,
-    feature(stdarch_arm_feature_detection, stdarch_powerpc_feature_detection)
+    feature(
+        stdarch_arm_feature_detection,
+        stdarch_powerpc_feature_detection,
+        stdarch_loongarch_feature_detection
+    )
 )]
 
 #[cfg(test)]
