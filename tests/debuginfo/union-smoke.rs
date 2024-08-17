@@ -1,7 +1,5 @@
 //@ min-lldb-version: 310
 
-//@ ignore-gdb-version: 7.11.90 - 7.12.9
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -19,8 +17,6 @@
 // lldbg-check:[...] { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
 // lldbr-check:(union_smoke::U) u = { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
 
-// Don't test this with rust-enabled lldb for now; see
-// https://github.com/rust-lang-nursery/lldb/issues/18
 // lldbg-command:print union_smoke::SU
 // lldbg-check:[...] { a = { 0 = '\x01' 1 = '\x01' } b = 257 }
 

@@ -1,7 +1,3 @@
-// Some versions of the non-rust-enabled LLDB print the wrong generic
-// parameter type names in this test.
-//@ needs-rust-lldb
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================

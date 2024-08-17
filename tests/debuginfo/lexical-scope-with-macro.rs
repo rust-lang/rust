@@ -1,5 +1,4 @@
 //@ min-lldb-version: 310
-//@ ignore-lldb FIXME #48807
 
 //@ compile-flags:-g
 
@@ -88,7 +87,6 @@
 // lldbr-check:(i32) b = 34
 // lldb-command:continue
 
-// Don't test this with rust-enabled lldb for now; see issue #48807
 // lldbg-command:print a
 // lldbg-check:[...] 110
 // lldbg-command:print b
@@ -108,7 +106,6 @@
 // lldbg-command:print c
 // lldbg-check:[...] 400
 // lldbg-command:continue
-
 
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
