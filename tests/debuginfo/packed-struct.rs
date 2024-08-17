@@ -1,5 +1,4 @@
 //@ min-lldb-version: 310
-//@ ignore-gdb-version: 7.11.90 - 7.12.9
 
 //@ compile-flags:-g
 

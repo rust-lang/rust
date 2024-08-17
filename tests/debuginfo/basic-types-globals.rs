@@ -1,8 +1,4 @@
-// Caveat - gdb doesn't know about UTF-32 character encoding and will print a
-// rust char as only its numerical value.
-
 //@ min-lldb-version: 310
-//@ min-gdb-version: 8.0
 
 //@ revisions: lto no-lto
 

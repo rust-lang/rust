@@ -1,9 +1,6 @@
 //@ ignore-lldb: FIXME(#27089)
 //@ min-lldb-version: 310
 
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================

@@ -1,8 +1,6 @@
 // This test makes sure that the LLDB pretty printer does not throw an exception
 // for nested closures and coroutines.
 
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
 //@ min-lldb-version: 1800
 //@ compile-flags:-g
 

@@ -1,5 +1,4 @@
 //@ compile-flags:-g
-//@ min-gdb-version: 8.1
 //@ ignore-lldb
 //@ ignore-windows-gnu: #128981
 

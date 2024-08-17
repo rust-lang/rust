@@ -2,7 +2,6 @@
 //@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
-//@ min-gdb-version: 7.7
 //@ min-lldb-version: 1800
 //@ min-cdb-version: 10.0.18317.1001
 
