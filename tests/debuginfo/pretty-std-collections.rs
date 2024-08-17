@@ -1,4 +1,3 @@
-//@ ignore-windows failing on win32 bot
 //@ ignore-android: FIXME(#10381)
 //@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
