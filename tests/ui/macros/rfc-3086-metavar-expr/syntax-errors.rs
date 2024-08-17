@@ -103,7 +103,7 @@ macro_rules! metavar_token_without_ident {
 
 macro_rules! metavar_with_literal_suffix {
     ( $( $i:ident ),* ) => { ${ index(1u32) } };
-    //~^ ERROR only unsuffixes integer literals are supported in meta-variable expressions
+    //~^ ERROR only unsuffixed integer literals are supported in meta-variable expressions
     //~| ERROR expected expression, found `$`
 }
 

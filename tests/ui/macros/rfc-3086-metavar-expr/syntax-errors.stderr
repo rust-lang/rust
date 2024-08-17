@@ -160,7 +160,7 @@ error: meta-variables within meta-variable expressions must be referenced using 
 LL |     ( $( $i:ident ),* ) => { ${ ignore() } };
    |                                 ^^^^^^
 
-error: only unsuffixes integer literals are supported in meta-variable expressions
+error: only unsuffixed integer literals are supported in meta-variable expressions
   --> $DIR/syntax-errors.rs:105:33
    |
 LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };

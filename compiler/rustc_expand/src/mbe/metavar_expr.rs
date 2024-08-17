@@ -192,7 +192,7 @@ fn parse_depth<'psess>(
     {
         Ok(n_usize)
     } else {
-        let msg = "only unsuffixes integer literals are supported in meta-variable expressions";
+        let msg = "only unsuffixed integer literals are supported in meta-variable expressions";
         Err(psess.dcx().struct_span_err(span, msg))
     }
 }
