@@ -58,5 +58,11 @@ error: function `bi_S_Cuit` should have a snake case name
 LL | pub fn bi_S_Cuit() {}
    |        ^^^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `bi_s_cuit`
 
-error: aborting due to 9 previous errors
+error: renamed function `FOO_RENAMED` should have a snake case name
+  --> $DIR/lint-non-snake-case-functions.rs:45:20
+   |
+LL | use foo_renamed as FOO_RENAMED;
+   |                    ^^^^^^^^^^^ help: convert the identifier to snake case: `foo_renamed`
+
+error: aborting due to 10 previous errors
 

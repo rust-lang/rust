@@ -201,6 +201,7 @@ late_lint_methods!(
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             UnitBindings: UnitBindings,
+            NonCamelCaseTypes: NonCamelCaseTypes,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
             NonShorthandFieldPatterns: NonShorthandFieldPatterns,
             UnusedAllocation: UnusedAllocation,

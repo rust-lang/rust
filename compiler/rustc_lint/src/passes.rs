@@ -73,8 +73,11 @@ impl LateLintPass<'_> for HardwiredLints {}
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
     ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$pass.$name $params;)*
-    })
+        $($crate::expand_combined_late_lint_pass_method!($pass, $self, $name, $params);)*
+    });
+    ($pass:ident, $self: ident, $name: ident, ($ctx:ident, $($param:expr),*)) => ({
+        $crate::LateLintPass::$name(&mut $self.$pass, $ctx, $($param),*);
+    });
 }
 
 #[macro_export]
@@ -183,8 +186,11 @@ early_lint_methods!(declare_early_lint_pass, []);
 #[macro_export]
 macro_rules! expand_combined_early_lint_pass_method {
     ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$pass.$name $params;)*
-    })
+        $($crate::expand_combined_early_lint_pass_method!($pass, $self, $name, $params);)*
+    });
+    ($pass:ident, $self: ident, $name: ident, ($($param:expr),*)) => ({
+        $crate::EarlyLintPass::$name(&mut $self.$pass, $($param),*);
+    });
 }
 
 #[macro_export]

@@ -16,11 +16,17 @@ error: constant in pattern `aha` should have an upper case name
 LL |         (0, aha) => 0,
    |             ^^^ help: convert the identifier to upper case: `AHA`
 
+error: renamed constant `not_okay` should have an upper case name
+  --> $DIR/lint-lowercase-static-const-pattern.rs:38:26
+   |
+LL |     use self::n::OKAY as not_okay;
+   |                          ^^^^^^^^ help: convert the identifier to upper case: `NOT_OKAY`
+
 error: constant in pattern `not_okay` should have an upper case name
-  --> $DIR/lint-lowercase-static-const-pattern.rs:40:13
+  --> $DIR/lint-lowercase-static-const-pattern.rs:41:13
    |
 LL |         (0, not_okay) => 0,
    |             ^^^^^^^^ help: convert the identifier to upper case: `NOT_OKAY`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

@@ -1,8 +1,8 @@
-error: module `FooBar` should have a snake case name
+error: module `FooBar1` should have a snake case name
   --> $DIR/lint-non-snake-case-modules.rs:4:5
    |
-LL | mod FooBar {
-   |     ^^^^^^ help: convert the identifier to snake case: `foo_bar`
+LL | mod FooBar1 {
+   |     ^^^^^^^ help: convert the identifier to snake case: `foo_bar1`
    |
 note: the lint level is defined here
   --> $DIR/lint-non-snake-case-modules.rs:1:9
@@ -10,5 +10,11 @@ note: the lint level is defined here
 LL | #![deny(non_snake_case)]
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: renamed module `FooBar2` should have a snake case name
+  --> $DIR/lint-non-snake-case-modules.rs:14:17
+   |
+LL | use foo_bar2 as FooBar2;
+   |                 ^^^^^^^ help: convert the identifier to snake case: `foo_bar2`
+
+error: aborting due to 2 previous errors
 

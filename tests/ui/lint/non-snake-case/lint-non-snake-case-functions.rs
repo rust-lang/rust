@@ -41,4 +41,8 @@ fn Cookie() {}
 pub fn bi_S_Cuit() {}
 //~^ ERROR function `bi_S_Cuit` should have a snake case name
 
-fn main() { }
+fn foo_renamed() {}
+use foo_renamed as FOO_RENAMED;
+//~^ ERROR renamed function `FOO_RENAMED` should have a snake case name
+
+fn main() {}

@@ -141,7 +141,7 @@ fn to_camel_case(s: &str) -> String {
 }
 
 impl NonCamelCaseTypes {
-    fn check_case(&self, cx: &EarlyContext<'_>, sort: &str, ident: &Ident) {
+    fn check_case(&self, cx: &impl LintContext, sort: &str, ident: &Ident) {
         let name = ident.name.as_str();
 
         if !is_camel_case(name) {
@@ -206,6 +206,37 @@ impl EarlyLintPass for NonCamelCaseTypes {
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
         if let ast::GenericParamKind::Type { .. } = param.kind {
             self.check_case(cx, "type parameter", &param.ident);
+        }
+    }
+}
+
+impl<'tcx> LateLintPass<'tcx> for NonCamelCaseTypes {
+    fn check_item(&mut self, cx: &LateContext<'_>, it: &rustc_hir::Item<'_>) {
+        //  Lint for renamed type, trait, or variant.
+        if let hir::ItemKind::Use(path, _) = it.kind {
+            if let Some(origin_segment) = path.segments.last() {
+                if origin_segment.ident == it.ident {
+                    return;
+                }
+
+                // Skip lint for multiple namespaces
+                // because they have different naming conventions.
+                if path.res.len() != 1 {
+                    return;
+                }
+
+                match path.res[0] {
+                    Res::Def(
+                        DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::TyAlias,
+                        ..,
+                    ) => self.check_case(cx, "renamed type", &it.ident),
+                    Res::Def(DefKind::Trait, ..) => self.check_case(cx, "renamed trait", &it.ident),
+                    Res::Def(DefKind::Variant, ..) => {
+                        self.check_case(cx, "renamed variant", &it.ident)
+                    }
+                    _ => (),
+                }
+            }
         }
     }
 }
@@ -416,6 +447,31 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
+        if let hir::ItemKind::Use(path, _) = it.kind {
+            //  Lint for renamed function and module.
+            if let Some(origin_segment) = path.segments.last() {
+                if origin_segment.ident == it.ident {
+                    return;
+                }
+
+                // Skip lint for multiple namespaces
+                // because they have different naming conventions.
+                if path.res.len() != 1 {
+                    return;
+                }
+
+                match path.res[0] {
+                    Res::Def(DefKind::Fn, ..) => {
+                        self.check_snake_case(cx, "renamed function", &it.ident);
+                    }
+                    Res::Def(DefKind::Mod, ..) => {
+                        self.check_snake_case(cx, "renamed module", &it.ident);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
         if let hir::ItemKind::Mod(_) = it.kind {
             self.check_snake_case(cx, "module", &it.ident);
         }
@@ -499,6 +555,40 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         match it.kind {
+            hir::ItemKind::Use(path, _) => {
+                // Lint for renamed static variables and constants.
+                if let Some(origin_segment) = path.segments.last() {
+                    if origin_segment.ident == it.ident {
+                        return;
+                    }
+
+                    // Skip lint for multiple namespaces
+                    // because they have different naming conventions.
+                    if path.res.len() != 1 {
+                        return;
+                    }
+
+                    match path.res[0] {
+                        Res::Def(DefKind::Static { .. }, ..)
+                            if !attr::contains_name(attrs, sym::no_mangle) =>
+                        {
+                            NonUpperCaseGlobals::check_upper_case(
+                                cx,
+                                "renamed static variable",
+                                &it.ident,
+                            );
+                        }
+                        Res::Def(DefKind::Const, ..) => {
+                            NonUpperCaseGlobals::check_upper_case(
+                                cx,
+                                "renamed constant",
+                                &it.ident,
+                            );
+                        }
+                        _ => (),
+                    }
+                }
+            }
             hir::ItemKind::Static(..) if !attr::contains_name(attrs, sym::no_mangle) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
             }

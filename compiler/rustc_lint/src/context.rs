@@ -217,8 +217,15 @@ impl LintStore {
             self.lints.push(lint);
 
             let id = LintId::of(lint);
-            if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
-                bug!("duplicate specification of lint {}", lint.name_lower())
+            if let Some(old_lint) = self.by_name.insert(lint.name_lower(), Id(id)) {
+                match old_lint {
+                    // Allow re-registering the same lint.
+                    // For example, `non_camel_case_types` is registered by both early and late passes.
+                    Id(old_id) if old_id == id => {
+                        continue;
+                    }
+                    _ => bug!("duplicate specification of lint {}", lint.name_lower()),
+                }
             }
 
             if let Some(FutureIncompatibleInfo { reason, .. }) = lint.future_incompatible {
