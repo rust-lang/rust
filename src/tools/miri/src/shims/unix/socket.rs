@@ -71,12 +71,12 @@ impl FileDescription for SocketPair {
         } else {
             // Peer FD has been closed.
             epoll_ready_events.epollrdhup = true;
+            epoll_ready_events.epollhup = true;
             // Since the peer is closed, even if no data is available reads will return EOF and
             // writes will return EPIPE. In other words, they won't block, so we mark this as ready
             // for read and write.
             epoll_ready_events.epollin = true;
             epoll_ready_events.epollout = true;
-            epoll_ready_events.epollhup = true;
         }
         Ok(epoll_ready_events)
     }
