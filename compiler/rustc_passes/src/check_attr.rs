@@ -243,6 +243,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::coroutine, ..] => {
                     self.check_coroutine(attr, target);
                 }
+                [sym::linkage, ..] => self.check_linkage(attr, span, target),
                 [
                     // ok
                     sym::allow
@@ -256,7 +257,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::cfi_encoding // FIXME(cfi_encoding)
                     | sym::may_dangle // FIXME(dropck_eyepatch)
                     | sym::pointee // FIXME(derive_smart_pointer)
-                    | sym::linkage // FIXME(linkage)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                     | sym::used // handled elsewhere to restrict to static items
                     | sym::repr // handled elsewhere to restrict to type decls items
@@ -2344,6 +2344,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Closure => return,
             _ => {
                 self.dcx().emit_err(errors::CoroutineOnNonClosure { span: attr.span });
+            }
+        }
+    }
+
+    fn check_linkage(&self, attr: &Attribute, span: Span, target: Target) {
+        match target {
+            Target::Fn
+            | Target::Method(..)
+            | Target::Static
+            | Target::ForeignStatic
+            | Target::ForeignFn => {}
+            _ => {
+                self.dcx().emit_err(errors::Linkage { attr_span: attr.span, span });
             }
         }
     }

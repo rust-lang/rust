@@ -430,6 +430,10 @@ passes_link_section =
     .warn = {-passes_previously_accepted}
     .label = not a function or static
 
+passes_linkage =
+    attribute should be applied to a function or static
+    .label = not a function definition or static
+
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
