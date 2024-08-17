@@ -1034,6 +1034,11 @@ impl WrappingRange {
         }
     }
 
+    #[inline(always)]
+    pub fn must_be_non_negative(&self, size: Size) -> bool {
+        self.start <= self.end && self.end <= size.signed_int_max() as u128
+    }
+
     /// Returns `self` with replaced `start`
     #[inline(always)]
     fn with_start(mut self, start: u128) -> Self {

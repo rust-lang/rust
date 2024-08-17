@@ -505,6 +505,14 @@ extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   }
 }
 
+extern "C" void LLVMRustSetNonNeg(LLVMValueRef V, bool b) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+#if LLVM_VERSION_GE(17, 0)
+    I->setNonNeg(b);
+#endif
+  }
+}
+
 // Enable fast-math flags which permit algebraic transformations that are not
 // allowed by IEEE floating point. For example: a + (b + c) = (a + b) + c and a
 // / b = a * (1 / b) Note that this does NOT enable any flags which can cause a

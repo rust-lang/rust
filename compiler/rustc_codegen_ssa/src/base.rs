@@ -488,7 +488,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         if cx.sess().target.os.contains("uefi") {
             bx.ret(result);
         } else {
-            let cast = bx.intcast(result, cx.type_int(), true);
+            let cast = bx.intcast(result, cx.type_int(), true, None);
             bx.ret(cast);
         }
 
@@ -517,7 +517,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // Params from native `main()` used as args for rust start function
         let param_argc = bx.get_param(0);
         let param_argv = bx.get_param(1);
-        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true);
+        let arg_argc = bx.intcast(param_argc, cx.type_isize(), true, None);
         let arg_argv = param_argv;
         (arg_argc, arg_argv)
     } else {

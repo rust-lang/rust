@@ -272,7 +272,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     Int(_, signed) => !tag_scalar.is_bool() && signed,
                     _ => false,
                 };
-                bx.intcast(tag_imm, cast_to, signed)
+                bx.intcast(tag_imm, cast_to, signed, Some(tag_scalar.valid_range(bx)))
             }
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 // Cast to an integer so we don't have to treat a pointer as a
@@ -322,7 +322,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     // The special cases don't apply, so we'll have to go with
                     // the general algorithm.
                     let relative_discr = bx.sub(tag, bx.cx().const_uint_big(tag_llty, niche_start));
-                    let cast_tag = bx.intcast(relative_discr, cast_to, false);
+                    let cast_tag = bx.intcast(relative_discr, cast_to, false, None);
                     let is_niche = bx.icmp(
                         IntPredicate::IntULE,
                         relative_discr,

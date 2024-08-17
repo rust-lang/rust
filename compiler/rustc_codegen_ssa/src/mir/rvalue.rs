@@ -301,7 +301,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-            (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
+            (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed, None),
             (Float(_), Float(_)) => {
                 let srcsz = bx.cx().float_width(from_backend_ty);
                 let dstsz = bx.cx().float_width(to_backend_ty);
@@ -322,7 +322,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
             (Int(_, is_signed), Pointer(..)) => {
-                let usize_imm = bx.intcast(imm, bx.cx().type_isize(), is_signed);
+                let usize_imm = bx.intcast(imm, bx.cx().type_isize(), is_signed, None);
                 bx.inttoptr(usize_imm, to_backend_ty)
             }
             (Float(_), Int(_, is_signed)) => bx.cast_float_to_int(is_signed, imm, to_backend_ty),

@@ -913,16 +913,34 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn intcast(&mut self, val: &'ll Value, dest_ty: &'ll Type, is_signed: bool) -> &'ll Value {
-        unsafe {
+    fn intcast(
+        &mut self,
+        val: &'ll Value,
+        dest_ty: &'ll Type,
+        val_is_signed: bool,
+        val_valid_range: Option<WrappingRange>,
+    ) -> &'ll Value {
+        let inst = unsafe {
             llvm::LLVMBuildIntCast2(
                 self.llbuilder,
                 val,
                 dest_ty,
-                if is_signed { True } else { False },
+                if val_is_signed { True } else { False },
                 UNNAMED,
             )
+        };
+        if self.cx.sess().opts.optimize != OptLevel::No && !val_is_signed && let Some(val_valid_range) = val_valid_range
+            && let val_int_width = self.int_width(self.val_ty(val))
+            // `zero i1 1` is a poison value in LLVM.
+            && val_int_width > 1
+            && val_valid_range.must_be_non_negative(Size::from_bits(val_int_width))
+            && self.int_width(dest_ty) > val_int_width
+        {
+            unsafe {
+                llvm::LLVMRustSetNonNeg(inst, true);
+            }
         }
+        inst
     }
 
     fn pointercast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -951,7 +969,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
-        let size = self.intcast(size, self.type_isize(), false);
+        let size = self.intcast(size, self.type_isize(), false, None);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
         unsafe {
             llvm::LLVMRustBuildMemCpy(
@@ -976,7 +994,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memmove not supported");
-        let size = self.intcast(size, self.type_isize(), false);
+        let size = self.intcast(size, self.type_isize(), false, None);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
         unsafe {
             llvm::LLVMRustBuildMemMove(

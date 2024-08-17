@@ -239,7 +239,13 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ptrtoint(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn inttoptr(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn bitcast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn intcast(&mut self, val: Self::Value, dest_ty: Self::Type, is_signed: bool) -> Self::Value;
+    fn intcast(
+        &mut self,
+        val: Self::Value,
+        dest_ty: Self::Type,
+        val_is_signed: bool,
+        val_valid_range: Option<WrappingRange>,
+    ) -> Self::Value;
     fn pointercast(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
     fn cast_float_to_int(

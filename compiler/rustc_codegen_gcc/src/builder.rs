@@ -1263,12 +1263,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn intcast(
         &mut self,
-        value: RValue<'gcc>,
-        dest_typ: Type<'gcc>,
-        _is_signed: bool,
+        val: RValue<'gcc>,
+        dest_ty: Type<'gcc>,
+        _val_is_signed: bool,
+        _val_valid_range: Option<WrappingRange>,
     ) -> RValue<'gcc> {
         // NOTE: is_signed is for value, not dest_typ.
-        self.gcc_int_cast(value, dest_typ)
+        self.gcc_int_cast(val, dest_ty)
     }
 
     fn pointercast(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {

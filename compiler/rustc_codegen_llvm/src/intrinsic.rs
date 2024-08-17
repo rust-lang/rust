@@ -356,26 +356,26 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 &[args[0].immediate(), y],
                             );
 
-                            self.intcast(ret, llret_ty, false)
+                            self.intcast(ret, llret_ty, false, None)
                         }
                         sym::ctlz_nonzero => {
                             let y = self.const_bool(true);
                             let llvm_name = &format!("llvm.ctlz.i{width}");
                             let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                            self.intcast(ret, llret_ty, false)
+                            self.intcast(ret, llret_ty, false, None)
                         }
                         sym::cttz_nonzero => {
                             let y = self.const_bool(true);
                             let llvm_name = &format!("llvm.cttz.i{width}");
                             let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                            self.intcast(ret, llret_ty, false)
+                            self.intcast(ret, llret_ty, false, None)
                         }
                         sym::ctpop => {
                             let ret = self.call_intrinsic(
                                 &format!("llvm.ctpop.i{width}"),
                                 &[args[0].immediate()],
                             );
-                            self.intcast(ret, llret_ty, false)
+                            self.intcast(ret, llret_ty, false, None)
                         }
                         sym::bswap => {
                             if width == 8 {
@@ -400,7 +400,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                 &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
 
                             // llvm expects shift to be the same type as the values, but rust always uses `u32`
-                            let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
+                            let raw_shift = self.intcast(raw_shift, self.val_ty(val), false, None);
 
                             self.call_intrinsic(llvm_name, &[val, val, raw_shift])
                         }
