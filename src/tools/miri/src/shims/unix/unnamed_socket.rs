@@ -1,3 +1,7 @@
+//! This implements "anonymous" sockets, that do not correspond to anything on the host system and
+//! are entirely implemented inside Miri.
+//! We also use the same infrastructure to implement unnamed pipes.
+
 use std::cell::{OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io;
@@ -13,12 +17,13 @@ use crate::{concurrency::VClock, *};
 /// be configured in the real system.
 const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 212992;
 
-/// Pair of connected sockets.
+/// One end of a pair of connected unnamed sockets.
 #[derive(Debug)]
-struct SocketPair {
-    /// The buffer we are reading from.
-    readbuf: RefCell<Buffer>,
-    /// The `SocketPair` file descriptor that is our "peer", and that holds the buffer we are
+struct AnonSocket {
+    /// The buffer we are reading from, or `None` if this is the writing end of a pipe.
+    /// (In that case, the peer FD will be the reading end of that pipe.)
+    readbuf: Option<RefCell<Buffer>>,
+    /// The `AnonSocket` file descriptor that is our "peer", and that holds the buffer we are
     /// writing to. This is a weak reference because the other side may be closed before us; all
     /// future writes will then trigger EPIPE.
     peer_fd: OnceCell<WeakFileDescriptionRef>,
@@ -37,13 +42,13 @@ impl Buffer {
     }
 }
 
-impl SocketPair {
+impl AnonSocket {
     fn peer_fd(&self) -> &WeakFileDescriptionRef {
         self.peer_fd.get().unwrap()
     }
 }
 
-impl FileDescription for SocketPair {
+impl FileDescription for AnonSocket {
     fn name(&self) -> &'static str {
         "socketpair"
     }
@@ -55,17 +60,25 @@ impl FileDescription for SocketPair {
         let mut epoll_ready_events = EpollReadyEvents::new();
 
         // Check if it is readable.
-        let readbuf = self.readbuf.borrow();
-        if !readbuf.buf.is_empty() {
+        if let Some(readbuf) = &self.readbuf {
+            if !readbuf.borrow().buf.is_empty() {
+                epoll_ready_events.epollin = true;
+            }
+        } else {
+            // Without a read buffer, reading never blocks, so we are always ready.
             epoll_ready_events.epollin = true;
         }
 
         // Check if is writable.
         if let Some(peer_fd) = self.peer_fd().upgrade() {
-            let writebuf = &peer_fd.downcast::<SocketPair>().unwrap().readbuf.borrow();
-            let data_size = writebuf.buf.len();
-            let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
-            if available_space != 0 {
+            if let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf {
+                let data_size = writebuf.borrow().buf.len();
+                let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
+                if available_space != 0 {
+                    epoll_ready_events.epollout = true;
+                }
+            } else {
+                // Without a write buffer, writing never blocks.
                 epoll_ready_events.epollout = true;
             }
         } else {
@@ -108,7 +121,12 @@ impl FileDescription for SocketPair {
             return Ok(Ok(0));
         }
 
-        let mut readbuf = self.readbuf.borrow_mut();
+        let Some(readbuf) = &self.readbuf else {
+            // FIXME: This should return EBADF, but there's no nice way to do that as there's no
+            // corresponding ErrorKind variant.
+            throw_unsup_format!("reading from the write end of a pipe");
+        };
+        let mut readbuf = readbuf.borrow_mut();
         if readbuf.buf.is_empty() {
             if self.peer_fd().upgrade().is_none() {
                 // Socketpair with no peer and empty buffer.
@@ -176,7 +194,13 @@ impl FileDescription for SocketPair {
             // closed.
             return Ok(Err(Error::from(ErrorKind::BrokenPipe)));
         };
-        let mut writebuf = peer_fd.downcast::<SocketPair>().unwrap().readbuf.borrow_mut();
+
+        let Some(writebuf) = &peer_fd.downcast::<AnonSocket>().unwrap().readbuf else {
+            // FIXME: This should return EBADF, but there's no nice way to do that as there's no
+            // corresponding ErrorKind variant.
+            throw_unsup_format!("writing to the reading end of a pipe");
+        };
+        let mut writebuf = writebuf.borrow_mut();
         let data_size = writebuf.buf.len();
         let available_space = MAX_SOCKETPAIR_BUFFER_CAPACITY.strict_sub(data_size);
         if available_space == 0 {
@@ -227,12 +251,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mut is_sock_nonblock = false;
 
-        // Parse and remove the type flags that we support. If type != 0 after removing,
-        // unsupported flags are used.
-        if type_ & this.eval_libc_i32("SOCK_STREAM") == this.eval_libc_i32("SOCK_STREAM") {
-            type_ &= !(this.eval_libc_i32("SOCK_STREAM"));
-        }
-
+        // Parse and remove the type flags that we support.
         // SOCK_NONBLOCK only exists on Linux.
         if this.tcx.sess.target.os == "linux" {
             if type_ & this.eval_libc_i32("SOCK_NONBLOCK") == this.eval_libc_i32("SOCK_NONBLOCK") {
@@ -253,7 +272,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                  and AF_LOCAL are allowed",
                 domain
             );
-        } else if type_ != 0 {
+        } else if type_ != this.eval_libc_i32("SOCK_STREAM") {
             throw_unsup_format!(
                 "socketpair: type {:#x} is unsupported, only SOCK_STREAM, \
                                  SOCK_CLOEXEC and SOCK_NONBLOCK are allowed",
@@ -268,20 +287,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Generate file descriptions.
         let fds = &mut this.machine.fds;
-        let fd0 = fds.new_ref(SocketPair {
-            readbuf: RefCell::new(Buffer::new()),
+        let fd0 = fds.new_ref(AnonSocket {
+            readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             is_nonblock: is_sock_nonblock,
         });
-        let fd1 = fds.new_ref(SocketPair {
-            readbuf: RefCell::new(Buffer::new()),
+        let fd1 = fds.new_ref(AnonSocket {
+            readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             is_nonblock: is_sock_nonblock,
         });
 
         // Make the file descriptions point to each other.
-        fd0.downcast::<SocketPair>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
-        fd1.downcast::<SocketPair>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
+        fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
+        fd1.downcast::<AnonSocket>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
         let sv0 = fds.insert(fd0);
@@ -292,6 +311,53 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sv1 = Scalar::from_int(sv1, sv.layout.size);
         this.write_scalar(sv0, &sv)?;
         this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
+
+        Ok(Scalar::from_i32(0))
+    }
+
+    fn pipe2(
+        &mut self,
+        pipefd: &OpTy<'tcx>,
+        flags: Option<&OpTy<'tcx>>,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let pipefd = this.deref_pointer(pipefd)?;
+        let flags = match flags {
+            Some(flags) => this.read_scalar(flags)?.to_i32()?,
+            None => 0,
+        };
+
+        // As usual we ignore CLOEXEC.
+        let cloexec = this.eval_libc_i32("O_CLOEXEC");
+        if flags != 0 && flags != cloexec {
+            throw_unsup_format!("unsupported flags in `pipe2`");
+        }
+
+        // Generate file descriptions.
+        // pipefd[0] refers to the read end of the pipe.
+        let fds = &mut this.machine.fds;
+        let fd0 = fds.new_ref(AnonSocket {
+            readbuf: Some(RefCell::new(Buffer::new())),
+            peer_fd: OnceCell::new(),
+            is_nonblock: false,
+        });
+        let fd1 =
+            fds.new_ref(AnonSocket { readbuf: None, peer_fd: OnceCell::new(), is_nonblock: false });
+
+        // Make the file descriptions point to each other.
+        fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
+        fd1.downcast::<AnonSocket>().unwrap().peer_fd.set(fd0.downgrade()).unwrap();
+
+        // Insert the file description to the fd table, generating the file descriptors.
+        let pipefd0 = fds.insert(fd0);
+        let pipefd1 = fds.insert(fd1);
+
+        // Return file descriptors to the caller.
+        let pipefd0 = Scalar::from_int(pipefd0, pipefd.layout.size);
+        let pipefd1 = Scalar::from_int(pipefd1, pipefd.layout.size);
+        this.write_scalar(pipefd0, &pipefd)?;
+        this.write_scalar(pipefd1, &pipefd.offset(pipefd.layout.size, pipefd.layout, this)?)?;
 
         Ok(Scalar::from_i32(0))
     }

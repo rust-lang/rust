@@ -288,12 +288,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
-            // Sockets
+            // Unnamed sockets and pipes
             "socketpair" => {
                 let [domain, type_, protocol, sv] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
                 let result = this.socketpair(domain, type_, protocol, sv)?;
+                this.write_scalar(result, dest)?;
+            }
+            "pipe" => {
+                let [pipefd] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.pipe2(pipefd, /*flags*/ None)?;
+                this.write_scalar(result, dest)?;
+            }
+            "pipe2" => {
+                let [pipefd, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.pipe2(pipefd, Some(flags))?;
                 this.write_scalar(result, dest)?;
             }
 
