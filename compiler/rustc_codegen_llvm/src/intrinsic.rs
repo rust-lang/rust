@@ -192,14 +192,22 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::is_val_statically_known => {
                 let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
-                match self.type_kind(intrinsic_type) {
-                    TypeKind::Pointer | TypeKind::Integer | TypeKind::Float | TypeKind::Double => {
-                        self.call_intrinsic(
-                            &format!("llvm.is.constant.{:?}", intrinsic_type),
-                            &[args[0].immediate()],
-                        )
+                let kind = self.type_kind(intrinsic_type);
+                let intrinsic_name = match kind {
+                    TypeKind::Pointer | TypeKind::Integer => {
+                        Some(format!("llvm.is.constant.{intrinsic_type:?}"))
                     }
-                    _ => self.const_bool(false),
+                    // LLVM float types' intrinsic names differ from their type names.
+                    TypeKind::Half => Some(format!("llvm.is.constant.f16")),
+                    TypeKind::Float => Some(format!("llvm.is.constant.f32")),
+                    TypeKind::Double => Some(format!("llvm.is.constant.f64")),
+                    TypeKind::FP128 => Some(format!("llvm.is.constant.f128")),
+                    _ => None,
+                };
+                if let Some(intrinsic_name) = intrinsic_name {
+                    self.call_intrinsic(&intrinsic_name, &[args[0].immediate()])
+                } else {
+                    self.const_bool(false)
                 }
             }
             sym::unlikely => self
