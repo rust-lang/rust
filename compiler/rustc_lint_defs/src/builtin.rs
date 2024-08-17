@@ -1866,7 +1866,7 @@ declare_lint! {
 declare_lint! {
     /// TODO
     pub ELIDED_NAMED_LIFETIMES,
-    Allow,
+    Warn,
     "TODO"
 }
 
