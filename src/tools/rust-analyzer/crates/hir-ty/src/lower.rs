@@ -377,26 +377,25 @@ impl<'a> TyLoweringContext<'a> {
                         // Count the number of `impl Trait` things that appear within our bounds.
                         // Since t hose have been emitted as implicit type args already.
                         counter.set(idx + count_impl_traits(type_ref) as u16);
-                        let (
-                            _parent_params,
-                            self_param,
-                            type_params,
-                            const_params,
-                            _impl_trait_params,
-                            lifetime_params,
-                        ) = self
+                        let kind = self
                             .generics()
                             .expect("variable impl trait lowering must be in a generic def")
-                            .provenance_split();
-                        TyKind::BoundVar(BoundVar::new(
-                            self.in_binders,
-                            idx as usize
-                                + self_param as usize
-                                + type_params
-                                + const_params
-                                + lifetime_params,
-                        ))
-                        .intern(Interner)
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, (id, data))| match (id, data) {
+                                (
+                                    GenericParamId::TypeParamId(_),
+                                    GenericParamDataRef::TypeParamData(data),
+                                ) if data.provenance == TypeParamProvenance::ArgumentImplTrait => {
+                                    Some(i)
+                                }
+                                _ => None,
+                            })
+                            .nth(idx as usize)
+                            .map_or(TyKind::Error, |id| {
+                                TyKind::BoundVar(BoundVar { debruijn: self.in_binders, index: id })
+                            });
+                        kind.intern(Interner)
                     }
                     ImplTraitLoweringState::Disallowed => {
                         // FIXME: report error
