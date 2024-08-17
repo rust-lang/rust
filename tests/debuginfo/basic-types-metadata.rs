@@ -1,6 +1,5 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
+
 // gdb-command:run
 // gdb-command:whatis unit
 // gdb-check:type = ()

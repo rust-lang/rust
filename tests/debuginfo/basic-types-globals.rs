@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ revisions: lto no-lto
 
 //@ compile-flags:-g

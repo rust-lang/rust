@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags: -g -Zmir-enable-passes=-CheckAlignment
 
 // === GDB TESTS ===================================================================================

@@ -2,8 +2,6 @@
 //@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
 
-//@ min-lldb-version: 310
-
 // === GDB TESTS ===================================================================================
 
 // gdb-command: run

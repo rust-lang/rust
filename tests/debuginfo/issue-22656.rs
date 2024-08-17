@@ -2,7 +2,6 @@
 // when trying to handle a Vec<> or anything else that contains zero-sized
 // fields.
 
-//@ min-lldb-version: 310
 //@ ignore-gdb
 
 //@ compile-flags:-g

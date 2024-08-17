@@ -1,6 +1,5 @@
 //@ ignore-gdb
 //@ compile-flags:-g
-//@ min-lldb-version: 310
 
 // Check that structs get placed in the correct namespace
 

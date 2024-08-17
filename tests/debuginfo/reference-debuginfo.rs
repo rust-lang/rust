@@ -3,7 +3,6 @@
 // and leaves codegen to create a ladder of allocations so as `*a == b`.
 //
 //@ compile-flags:-g -Zmir-enable-passes=+ReferencePropagation,-ConstDebugInfo
-//@ min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
 

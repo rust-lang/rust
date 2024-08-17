@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // This test checks whether debuginfo generation can handle multi-byte UTF-8

@@ -1,7 +1,6 @@
 //@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
-//@ min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
 

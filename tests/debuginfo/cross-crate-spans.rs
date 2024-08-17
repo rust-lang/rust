@@ -1,8 +1,6 @@
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
-//@ min-lldb-version: 310
-
 //@ aux-build:cross_crate_spans.rs
 extern crate cross_crate_spans;
 

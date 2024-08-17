@@ -1,5 +1,4 @@
 //@ ignore-lldb: FIXME(#27089)
-//@ min-lldb-version: 310
 
 //@ compile-flags:-g
 
