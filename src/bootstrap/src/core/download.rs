@@ -26,16 +26,8 @@ fn extract_curl_version(out: &[u8]) -> f32 {
     let Some(i) = out.iter().position(|&x| x == b' ') else { return 0.0 };
     let out = &out[..i];
     let Some(k) = out.iter().rev().position(|&x| x == b'.') else { return 0.0 };
-    let out = &out[..out.len()-k-1];
+    let out = &out[..out.len() - k - 1];
     std::str::from_utf8(out).unwrap().parse().unwrap_or(0.0)
-}
-
-#[test]
-fn test_extract_curl_version() {
-    assert_eq!(extract_curl_version(b"\
-        curl 8.4.0 (x86_64-pc-linux-gnu) libcurl/8.4.0 \
-        OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.4 \
-        libssh2/1.11.0 nghttp2/1.57.0"), 8.4);
 }
 
 fn curl_version() -> f32 {
