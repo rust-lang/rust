@@ -1689,11 +1689,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             err.highlighted_span_help(
                 span,
                 vec![
-                    StringPart::normal("you have ".to_string()),
+                    StringPart::normal("there are ".to_string()),
                     StringPart::highlighted("multiple different versions".to_string()),
                     StringPart::normal(" of crate `".to_string()),
                     StringPart::highlighted(format!("{name}")),
-                    StringPart::normal("` in your dependency graph".to_string()),
+                    StringPart::normal("` the your dependency graph".to_string()),
                 ],
             );
             let candidates = if impl_candidates.is_empty() {
