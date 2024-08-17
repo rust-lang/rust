@@ -407,13 +407,6 @@ pub struct ConstEvalError {
     pub frame_notes: Vec<FrameNote>,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(const_eval_write_through_immutable_pointer)]
-pub struct WriteThroughImmutablePointer {
-    #[subdiagnostic]
-    pub frames: Vec<FrameNote>,
-}
-
 #[derive(Diagnostic)]
 #[diag(const_eval_nullary_intrinsic_fail)]
 pub struct NullaryIntrinsicError {
