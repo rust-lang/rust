@@ -58,6 +58,26 @@ fn test_socketpair() {
     };
     assert_eq!(res, 3);
     assert_eq!(&buf4[0..3], "123".as_bytes());
+
+    // Test when happens when we close one end, with some data in the buffer.
+    res = unsafe { libc::write(fds[0], data as *const libc::c_void, 3).try_into().unwrap() };
+    assert_eq!(res, 3);
+    unsafe { libc::close(fds[0]) };
+    // Reading the other end should return that data, then EOF.
+    let mut buf: [u8; 5] = [0; 5];
+    res = unsafe {
+        libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t).try_into().unwrap()
+    };
+    assert_eq!(res, 3);
+    assert_eq!(&buf[0..3], "123".as_bytes());
+    res = unsafe {
+        libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t).try_into().unwrap()
+    };
+    assert_eq!(res, 0); // 0-sized read: EOF.
+    // Writing the other end should emit EPIPE.
+    res = unsafe { libc::write(fds[1], data as *const libc::c_void, 1).try_into().unwrap() };
+    assert_eq!(res, -1);
+    assert_eq!(std::io::Error::last_os_error().raw_os_error(), Some(libc::EPIPE));
 }
 
 fn test_socketpair_threaded() {
