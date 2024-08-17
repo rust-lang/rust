@@ -31,7 +31,6 @@
     rtm_target_feature,
     allow_internal_unstable,
     decl_macro,
-    asm_const,
     target_feature_11,
     generic_arg_infer,
     asm_experimental_arch,
