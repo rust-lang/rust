@@ -26,7 +26,6 @@
 // gdb-check:$5 = core::option::Option<i16>::Some(8)
 
 // gdb-command: print none
-// gdbg-check:$6 = None
 // gdbr-check:$6 = core::option::Option<i64>::None
 
 // gdb-command: print os_string

@@ -16,7 +16,6 @@
 // gdb-command:print i
 // gdb-check:$2 = -1
 // gdb-command:print c
-// gdbg-check:$3 = 97
 // gdbr-check:$3 = 97 'a'
 // gdb-command:print/d i8
 // gdb-check:$4 = 68
@@ -43,7 +42,6 @@
 // gdb-command:print f64
 // gdb-check:$15 = 3.5
 // gdb-command:print s
-// gdbg-check:$16 = {data_ptr = [...] "Hello, World!", length = 13}
 // gdbr-check:$16 = "Hello, World!"
 
 // === LLDB TESTS ==================================================================================

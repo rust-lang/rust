@@ -14,7 +14,6 @@
 // gdb-check:$3 = 97
 
 // gdb-command:print *i8_ref
-// gdbg-check:$4 = 68 'D'
 // gdbr-check:$4 = 68
 
 // gdb-command:print *i16_ref
@@ -30,7 +29,6 @@
 // gdb-check:$8 = 1
 
 // gdb-command:print *u8_ref
-// gdbg-check:$9 = 100 'd'
 // gdbr-check:$9 = 100
 
 // gdb-command:print *u16_ref

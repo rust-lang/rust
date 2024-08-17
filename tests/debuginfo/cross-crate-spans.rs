@@ -15,7 +15,6 @@ extern crate cross_crate_spans;
 // gdb-command:run
 
 // gdb-command:print result
-// gdbg-check:$1 = {__0 = 17, __1 = 17}
 // gdbr-check:$1 = (17, 17)
 // gdb-command:print a_variable
 // gdb-check:$2 = 123456789
@@ -24,7 +23,6 @@ extern crate cross_crate_spans;
 // gdb-command:continue
 
 // gdb-command:print result
-// gdbg-check:$4 = {__0 = 1212, __1 = 1212}
 // gdbr-check:$4 = (1212, 1212)
 // gdb-command:print a_variable
 // gdb-check:$5 = 123456789

@@ -21,13 +21,11 @@
 // gdb-command:print f
 // gdb-check:$6 = 5
 // gdb-command:print g
-// gdbg-check:$7 = {__0 = 6, __1 = 7}
 // gdbr-check:$7 = (6, 7)
 
 // gdb-command:print h
 // gdb-check:$8 = 8
 // gdb-command:print i
-// gdbg-check:$9 = {a = 9, b = 10}
 // gdbr-check:$9 = destructured_local::Struct {a: 9, b: 10}
 // gdb-command:print j
 // gdb-check:$10 = 11
@@ -50,7 +48,6 @@
 // gdb-command:print q
 // gdb-check:$17 = 20
 // gdb-command:print r
-// gdbg-check:$18 = {a = 21, b = 22}
 // gdbr-check:$18 = destructured_local::Struct {a: 21, b: 22}
 
 // gdb-command:print s
@@ -78,29 +75,24 @@
 // gdb-check:$29 = 33
 
 // gdb-command:print aa
-// gdbg-check:$30 = {__0 = 34, __1 = 35}
 // gdbr-check:$30 = (34, 35)
 
 // gdb-command:print bb
-// gdbg-check:$31 = {__0 = 36, __1 = 37}
 // gdbr-check:$31 = (36, 37)
 
 // gdb-command:print cc
 // gdb-check:$32 = 38
 
 // gdb-command:print dd
-// gdbg-check:$33 = {__0 = 40, __1 = 41, __2 = 42}
 // gdbr-check:$33 = (40, 41, 42)
 
 // gdb-command:print *ee
-// gdbg-check:$34 = {__0 = 43, __1 = 44, __2 = 45}
 // gdbr-check:$34 = (43, 44, 45)
 
 // gdb-command:print *ff
 // gdb-check:$35 = 46
 
 // gdb-command:print gg
-// gdbg-check:$36 = {__0 = 47, __1 = 48}
 // gdbr-check:$36 = (47, 48)
 
 // gdb-command:print *hh

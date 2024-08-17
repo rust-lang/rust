@@ -9,7 +9,6 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbg-check:$1 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, __0 = 117901063}}
 // gdbr-check:$1 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -19,7 +18,6 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbg-check:$4 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, __0 = 117901063}}
 // gdbr-check:$4 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$5 = -3
@@ -29,7 +27,6 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbg-check:$7 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
 // gdbr-check:$7 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
@@ -39,7 +36,6 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbg-check:$10 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
 // gdbr-check:$10 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
@@ -49,7 +45,6 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbg-check:$13 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
 // gdbr-check:$13 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$14 = -9

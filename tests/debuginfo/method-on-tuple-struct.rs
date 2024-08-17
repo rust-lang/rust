@@ -8,7 +8,6 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbg-check:$1 = {__0 = 100, __1 = -100.5}
 // gdbr-check:$1 = method_on_tuple_struct::TupleStruct (100, -100.5)
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -18,7 +17,6 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbg-check:$4 = {__0 = 100, __1 = -100.5}
 // gdbr-check:$4 = method_on_tuple_struct::TupleStruct (100, -100.5)
 // gdb-command:print arg1
 // gdb-check:$5 = -3
@@ -28,7 +26,6 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbg-check:$7 = {__0 = 200, __1 = -200.5}
 // gdbr-check:$7 = method_on_tuple_struct::TupleStruct (200, -200.5)
 // gdb-command:print arg1
 // gdb-check:$8 = -5
@@ -38,7 +35,6 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbg-check:$10 = {__0 = 200, __1 = -200.5}
 // gdbr-check:$10 = method_on_tuple_struct::TupleStruct (200, -200.5)
 // gdb-command:print arg1
 // gdb-check:$11 = -7
@@ -48,7 +44,6 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbg-check:$13 = {__0 = 200, __1 = -200.5}
 // gdbr-check:$13 = method_on_tuple_struct::TupleStruct (200, -200.5)
 // gdb-command:print arg1
 // gdb-check:$14 = -9

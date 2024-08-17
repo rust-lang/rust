@@ -9,7 +9,6 @@
 // gdb-command:print *a
 // gdb-check:$1 = 1
 // gdb-command:print *b
-// gdbg-check:$2 = {__0 = 2, __1 = 3.5}
 // gdbr-check:$2 = (2, 3.5)
 
 

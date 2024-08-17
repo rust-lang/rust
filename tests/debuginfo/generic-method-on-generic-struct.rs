@@ -10,7 +10,6 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbg-check:$1 = {x = {__0 = 8888, __1 = -8888}}
 // gdbr-check:$1 = generic_method_on_generic_struct::Struct<(u32, i32)> {x: (8888, -8888)}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -20,7 +19,6 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbg-check:$4 = {x = {__0 = 8888, __1 = -8888}}
 // gdbr-check:$4 = generic_method_on_generic_struct::Struct<(u32, i32)> {x: (8888, -8888)}
 // gdb-command:print arg1
 // gdb-check:$5 = -3
@@ -30,7 +28,6 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbg-check:$7 = {x = 1234.5}
 // gdbr-check:$7 = generic_method_on_generic_struct::Struct<f64> {x: 1234.5}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
@@ -40,7 +37,6 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbg-check:$10 = {x = 1234.5}
 // gdbr-check:$10 = generic_method_on_generic_struct::Struct<f64> {x: 1234.5}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
@@ -50,7 +46,6 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbg-check:$13 = {x = 1234.5}
 // gdbr-check:$13 = generic_method_on_generic_struct::Struct<f64> {x: 1234.5}
 // gdb-command:print arg1
 // gdb-check:$14 = -9

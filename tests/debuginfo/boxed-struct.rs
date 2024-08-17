@@ -7,11 +7,9 @@
 // gdb-command:run
 
 // gdb-command:print *boxed_with_padding
-// gdbg-check:$1 = {x = 99, y = 999, z = 9999, w = 99999}
 // gdbr-check:$1 = boxed_struct::StructWithSomePadding {x: 99, y: 999, z: 9999, w: 99999}
 
 // gdb-command:print *boxed_with_dtor
-// gdbg-check:$2 = {x = 77, y = 777, z = 7777, w = 77777}
 // gdbr-check:$2 = boxed_struct::StructWithDestructor {x: 77, y: 777, z: 7777, w: 77777}
 
 

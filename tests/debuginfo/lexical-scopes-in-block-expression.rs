@@ -6,7 +6,6 @@
 
 // gdb-command:run
 
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$1 = 0
 
@@ -19,7 +18,6 @@
 
 // gdb-command:print val
 // gdb-check:$4 = 11
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$5 = 1
 // gdb-command:print ten
@@ -41,7 +39,6 @@
 
 // gdb-command:print val
 // gdb-check:$11 = 12
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$12 = 2
 // gdb-command:print ten
@@ -63,7 +60,6 @@
 
 // gdb-command:print val
 // gdb-check:$18 = 13
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$19 = 3
 // gdb-command:print ten
@@ -85,7 +81,6 @@
 
 // gdb-command:print val
 // gdb-check:$25 = 14
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$26 = 4
 // gdb-command:print ten
@@ -107,7 +102,6 @@
 
 // gdb-command:print val
 // gdb-check:$32 = 15
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$33 = 5
 // gdb-command:print ten
@@ -129,7 +123,6 @@
 
 // gdb-command:print val
 // gdb-check:$39 = 16
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$40 = 6
 // gdb-command:print ten
@@ -152,7 +145,6 @@
 
 // gdb-command:print val
 // gdb-check:$46 = 17
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$47 = 7
 // gdb-command:print ten
@@ -174,7 +166,6 @@
 
 // gdb-command:print val
 // gdb-check:$53 = 18
-// gdbg-command:print 'lexical_scopes_in_block_expression::MUT_INT'
 // gdbr-command:print lexical_scopes_in_block_expression::MUT_INT
 // gdb-check:$54 = 8
 // gdb-command:print ten

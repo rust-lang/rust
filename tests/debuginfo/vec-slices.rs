@@ -12,48 +12,36 @@
 
 // gdb-command:print singleton.length
 // gdb-check:$2 = 1
-// gdbg-command:print *((i64[1]*)(singleton.data_ptr))
 // gdbr-command:print *(singleton.data_ptr as *const [i64; 1])
-// gdbg-check:$3 = {1}
 // gdbr-check:$3 = [1]
 
 // gdb-command:print multiple.length
 // gdb-check:$4 = 4
-// gdbg-command:print *((i64[4]*)(multiple.data_ptr))
 // gdbr-command:print *(multiple.data_ptr as *const [i64; 4])
-// gdbg-check:$5 = {2, 3, 4, 5}
 // gdbr-check:$5 = [2, 3, 4, 5]
 
 // gdb-command:print slice_of_slice.length
 // gdb-check:$6 = 2
-// gdbg-command:print *((i64[2]*)(slice_of_slice.data_ptr))
 // gdbr-command:print *(slice_of_slice.data_ptr as *const [i64; 2])
-// gdbg-check:$7 = {3, 4}
 // gdbr-check:$7 = [3, 4]
 
 // gdb-command:print padded_tuple.length
 // gdb-check:$8 = 2
 // gdb-command:print padded_tuple.data_ptr[0]
-// gdbg-check:$9 = {__0 = 6, __1 = 7}
 // gdbr-check:$9 = (6, 7)
 // gdb-command:print padded_tuple.data_ptr[1]
-// gdbg-check:$10 = {__0 = 8, __1 = 9}
 // gdbr-check:$10 = (8, 9)
 
 // gdb-command:print padded_struct.length
 // gdb-check:$11 = 2
 // gdb-command:print padded_struct.data_ptr[0]
-// gdbg-check:$12 = {x = 10, y = 11, z = 12}
 // gdbr-check:$12 = vec_slices::AStruct {x: 10, y: 11, z: 12}
 // gdb-command:print padded_struct.data_ptr[1]
-// gdbg-check:$13 = {x = 13, y = 14, z = 15}
 // gdbr-check:$13 = vec_slices::AStruct {x: 13, y: 14, z: 15}
 
 // gdb-command:print mut_slice.length
 // gdb-check:$14 = 5
-// gdbg-command:print *((i64[5]*)(mut_slice.data_ptr))
 // gdbr-command:print *(mut_slice.data_ptr as *const [i64; 5])
-// gdbg-check:$15 = {1, 2, 3, 4, 5}
 // gdbr-check:$15 = [1, 2, 3, 4, 5]
 
 // Some lines below are marked with [ignored] because old GDB versions seem to have trouble

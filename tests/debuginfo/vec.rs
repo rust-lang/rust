@@ -6,10 +6,8 @@
 
 // gdb-command:run
 // gdb-command:print a
-// gdbg-check:$1 = {1, 2, 3}
 // gdbr-check:$1 = [1, 2, 3]
 // gdb-command:print vec::VECT
-// gdbg-check:$2 = {4, 5, 6}
 // gdbr-check:$2 = [4, 5, 6]
 
 

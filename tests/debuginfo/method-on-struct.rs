@@ -8,7 +8,6 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbg-check:$1 = {x = 100}
 // gdbr-check:$1 = method_on_struct::Struct {x: 100}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -18,7 +17,6 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbg-check:$4 = {x = 100}
 // gdbr-check:$4 = method_on_struct::Struct {x: 100}
 // gdb-command:print arg1
 // gdb-check:$5 = -3
@@ -28,7 +26,6 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbg-check:$7 = {x = 200}
 // gdbr-check:$7 = method_on_struct::Struct {x: 200}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
@@ -38,7 +35,6 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbg-check:$10 = {x = 200}
 // gdbr-check:$10 = method_on_struct::Struct {x: 200}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
@@ -48,7 +44,6 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbg-check:$13 = {x = 200}
 // gdbr-check:$13 = method_on_struct::Struct {x: 200}
 // gdb-command:print arg1
 // gdb-check:$14 = -9
