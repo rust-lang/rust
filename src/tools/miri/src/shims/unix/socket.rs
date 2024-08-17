@@ -49,8 +49,8 @@ impl FileDescription for SocketPair {
     }
 
     fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
-        // We only check the status of EPOLLIN, EPOLLOUT and EPOLLRDHUP flags. If other event flags
-        // need to be supported in the future, the check should be added here.
+        // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
+        // If other event flags need to be supported in the future, the check should be added here.
 
         let mut epoll_ready_events = EpollReadyEvents::new();
 
@@ -69,8 +69,10 @@ impl FileDescription for SocketPair {
                 epoll_ready_events.epollout = true;
             }
         } else {
-            // Peer FD has been closed.
+            // Peer FD has been closed. This always sets both the RDHUP and HUP flags
+            // as we do not support `shutdown` that could be used to partially close the stream.
             epoll_ready_events.epollrdhup = true;
+            epoll_ready_events.epollhup = true;
             // Since the peer is closed, even if no data is available reads will return EOF and
             // writes will return EPIPE. In other words, they won't block, so we mark this as ready
             // for read and write.

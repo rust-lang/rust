@@ -69,17 +69,24 @@ pub struct EpollReadyEvents {
     /// Stream socket peer closed connection, or shut down writing
     /// half of connection.
     pub epollrdhup: bool,
+    /// For stream socket, this event merely indicates that the peer
+    /// closed its end of the channel.
+    /// Unlike epollrdhup, this should only be set when the stream is fully closed.
+    /// epollrdhup also gets set when only the write half is closed, which is possible
+    /// via `shutdown(_, SHUT_WR)`.
+    pub epollhup: bool,
 }
 
 impl EpollReadyEvents {
     pub fn new() -> Self {
-        EpollReadyEvents { epollin: false, epollout: false, epollrdhup: false }
+        EpollReadyEvents { epollin: false, epollout: false, epollrdhup: false, epollhup: false }
     }
 
     pub fn get_event_bitmask<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> u32 {
         let epollin = ecx.eval_libc_u32("EPOLLIN");
         let epollout = ecx.eval_libc_u32("EPOLLOUT");
         let epollrdhup = ecx.eval_libc_u32("EPOLLRDHUP");
+        let epollhup = ecx.eval_libc_u32("EPOLLHUP");
 
         let mut bitmask = 0;
         if self.epollin {
@@ -90,6 +97,9 @@ impl EpollReadyEvents {
         }
         if self.epollrdhup {
             bitmask |= epollrdhup;
+        }
+        if self.epollhup {
+            bitmask |= epollhup;
         }
         bitmask
     }
@@ -217,6 +227,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let epollout = this.eval_libc_u32("EPOLLOUT");
         let epollrdhup = this.eval_libc_u32("EPOLLRDHUP");
         let epollet = this.eval_libc_u32("EPOLLET");
+        let epollhup = this.eval_libc_u32("EPOLLHUP");
 
         // Fail on unsupported operations.
         if op & epoll_ctl_add != epoll_ctl_add
@@ -244,11 +255,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
             // Read event bitmask and data from epoll_event passed by caller.
-            let events = this.read_scalar(&this.project_field(&event, 0)?)?.to_u32()?;
+            let mut events = this.read_scalar(&this.project_field(&event, 0)?)?.to_u32()?;
             let data = this.read_scalar(&this.project_field(&event, 1)?)?.to_u64()?;
 
             // Unset the flag we support to discover if any unsupported flags are used.
             let mut flags = events;
+            // epoll_wait(2) will always wait for epollhup; it is not
+            // necessary to set it in events when calling epoll_ctl().
+            // So we will always set this event type.
+            events |= epollhup;
+
             if events & epollet != epollet {
                 // We only support edge-triggered notification for now.
                 throw_unsup_format!("epoll_ctl: epollet flag must be included.");
@@ -263,6 +279,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             if flags & epollrdhup == epollrdhup {
                 flags &= !epollrdhup;
+            }
+            if flags & epollhup == epollhup {
+                flags &= !epollhup;
             }
             if flags != 0 {
                 throw_unsup_format!(
