@@ -6,24 +6,25 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "windows")] {
         mod windows;
         pub use windows::fill_bytes;
-    } else if #[cfg(any(
-        target_os = "openbsd",
-        target_os = "freebsd",
-        target_os = "macos",
-        all(target_os = "netbsd", netbsd10),
-        target_os = "dragonfly",
-        target_os = "illumos",
-        target_os = "solaris",
-        target_os = "emscripten",
-        target_os = "vita",
-        target_os = "haiku",
-    ))] {
-        mod unix;
-        pub use unix::fill_bytes;
-    // Others, in alphabetical ordering.
-    } else if #[cfg(all(target_vendor = "apple", not(target_os = "macos")))] {
+    } else if #[cfg(target_vendor = "apple")] {
         mod apple;
         pub use apple::fill_bytes;
+    // Others, in alphabetical ordering.
+    } else if #[cfg(any(
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "haiku",
+        target_os = "illumos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "vita",
+    ))] {
+        mod arc4random;
+        pub use arc4random::fill_bytes;
+    } else if #[cfg(target_os = "emscripten")] {
+        mod getentropy;
+        pub use getentropy::fill_bytes;
     } else if #[cfg(target_os = "espidf")] {
         mod espidf;
         pub use espidf::fill_bytes;
@@ -34,7 +35,7 @@ cfg_if::cfg_if! {
         mod hermit;
         pub use hermit::fill_bytes;
     } else if #[cfg(target_os = "horizon")] {
-        // FIXME: add getentropy to shim-3ds
+        // FIXME: add arc4random_buf to shim-3ds
         mod horizon;
         pub use horizon::fill_bytes;
     } else if #[cfg(any(
@@ -44,10 +45,6 @@ cfg_if::cfg_if! {
     ))] {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;
-    } else if #[cfg(all(target_os = "netbsd", not(netbsd10)))] {
-        // FIXME: remove once NetBSD 10 is the minimum
-        mod netbsd;
-        pub use netbsd::fill_bytes;
     } else if #[cfg(target_os = "redox")] {
         mod redox;
         pub use redox::fill_bytes;

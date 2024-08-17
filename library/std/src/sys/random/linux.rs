@@ -63,9 +63,9 @@
 use crate::fs::File;
 use crate::io::Read;
 use crate::os::fd::AsRawFd;
+use crate::sync::OnceLock;
 use crate::sync::atomic::AtomicBool;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::OnceLock;
 use crate::sys::pal::os::errno;
 use crate::sys::pal::weak::syscall;
 

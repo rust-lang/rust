@@ -24,35 +24,34 @@ use crate::sys::random as sys;
 /// Platform               | Source
 /// -----------------------|---------------------------------------------------------------
 /// Linux                  | [`getrandom`] or [`/dev/urandom`] after polling `/dev/random`
-/// Windows                | [`ProcessPrng`]
-/// macOS and other UNIXes | [`getentropy`]
-/// other Apple platforms  | `CCRandomGenerateBytes`
-/// ESP-IDF                | [`esp_fill_random`]
-/// Fuchsia                | [`cprng_draw`]
+/// Windows                | [`ProcessPrng`](https://learn.microsoft.com/en-us/windows/win32/seccng/processprng)
+/// Apple                  | `CCRandomGenerateBytes`
+/// DragonFly              | [`arc4random_buf`](https://man.dragonflybsd.org/?command=arc4random&section=ANY)
+/// ESP-IDF                | [`esp_fill_random`](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/random.html#_CPPv415esp_fill_randomPv6size_t)
+/// FreeBSD                | [`arc4random_buf`](https://man.freebsd.org/cgi/man.cgi?query=arc4random&apropos=0&sektion=0&manpath=FreeBSD+15.0-CURRENT&arch=default&format=html)
+/// Fuchsia                | [`cprng_draw`](https://fuchsia.dev/reference/syscalls/cprng_draw)
+/// Haiku                  | `arc4random_buf`
+/// Illumos                | [`arc4random_buf`](https://www.illumos.org/man/3C/arc4random)
+/// NetBSD                 | [`arc4random_buf`](https://man.netbsd.org/arc4random.3)
+/// OpenBSD                | [`arc4random_buf`](https://man.openbsd.org/arc4random.3)
+/// Solaris                | [`arc4random_buf`](https://docs.oracle.com/cd/E88353_01/html/E37843/arc4random-3c.html)
+/// Vita                   | `arc4random_buf`
 /// Hermit                 | `read_entropy`
 /// Horizon                | `getrandom` shim
 /// Hurd, L4Re, QNX        | `/dev/urandom`
-/// NetBSD before 10.0     | [`kern.arandom`]
 /// Redox                  | `/scheme/rand`
-/// SGX                    | [`rdrand`]
+/// SGX                    | [`rdrand`](https://en.wikipedia.org/wiki/RDRAND)
 /// SOLID                  | `SOLID_RNG_SampleRandomBytes`
 /// TEEOS                  | `TEE_GenerateRandom`
-/// UEFI                   | [`EFI_RNG_PROTOCOL`]
+/// UEFI                   | [`EFI_RNG_PROTOCOL`](https://uefi.org/specs/UEFI/2.10/37_Secure_Technologies.html#random-number-generator-protocol)
 /// VxWorks                | `randABytes` after waiting for `randSecure` to become ready
-/// WASI                   | `random_get`
+/// WASI                   | [`random_get`](https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
 /// ZKVM                   | `sys_rand`
 ///
 /// **Disclaimer:** The sources used might change over time.
 ///
 /// [`getrandom`]: https://www.man7.org/linux/man-pages/man2/getrandom.2.html
 /// [`/dev/urandom`]: https://www.man7.org/linux/man-pages/man4/random.4.html
-/// [`ProcessPrng`]: https://learn.microsoft.com/en-us/windows/win32/seccng/processprng
-/// [`getentropy`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/getentropy.html
-/// [`esp_fill_random`]: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/random.html#_CPPv415esp_fill_randomPv6size_t
-/// [`cprng_draw`]: https://fuchsia.dev/reference/syscalls/cprng_draw
-/// [`kern.arandom`]: https://man.netbsd.org/rnd.4
-/// [`rdrand`]: https://en.wikipedia.org/wiki/RDRAND
-/// [`EFI_RNG_PROTOCOL`]: https://uefi.org/specs/UEFI/2.10/37_Secure_Technologies.html#random-number-generator-protocol
 #[derive(Default, Debug, Clone, Copy)]
 #[unstable(feature = "random", issue = "none")]
 pub struct DefaultRandomSource;
