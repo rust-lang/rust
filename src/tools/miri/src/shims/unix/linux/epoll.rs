@@ -71,6 +71,9 @@ pub struct EpollReadyEvents {
     pub epollrdhup: bool,
     /// For stream socket, this event merely indicates that the peer
     /// closed its end of the channel.
+    /// Unlike epollrdhup, this should only be set when the stream is fully closed.
+    /// epollrdhup also gets set when only the write half is closed, which is possible
+    /// via `shutdown(_, SHUT_WR)`.
     pub epollhup: bool,
 }
 

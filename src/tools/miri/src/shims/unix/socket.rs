@@ -69,7 +69,8 @@ impl FileDescription for SocketPair {
                 epoll_ready_events.epollout = true;
             }
         } else {
-            // Peer FD has been closed.
+            // Peer FD has been closed. This always sets both the RDHUP and HUP flags
+            // as we do not support `shutdown` that could be used to partially close the stream.
             epoll_ready_events.epollrdhup = true;
             epoll_ready_events.epollhup = true;
             // Since the peer is closed, even if no data is available reads will return EOF and
