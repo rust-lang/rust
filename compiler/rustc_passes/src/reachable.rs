@@ -34,7 +34,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, ExistentialTraitRef, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, InstanceKind, TyCtxt};
 use rustc_privacy::DefIdVisitor;
 use rustc_session::config::CrateType;
 use tracing::debug;
@@ -43,7 +43,7 @@ use tracing::debug;
 /// below for details.
 fn recursively_reachable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     tcx.generics_of(def_id).requires_monomorphization(tcx)
-        || tcx.cross_crate_inlinable(def_id)
+        || tcx.cross_crate_inlinable(InstanceKind::Item(def_id.into()))
         || tcx.is_const_fn(def_id)
 }
 

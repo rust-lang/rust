@@ -186,7 +186,7 @@ impl<'tcx> Inliner<'tcx> {
         self.check_mir_is_available(caller_body, callsite.callee)?;
 
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
-        let cross_crate_inlinable = self.tcx.cross_crate_inlinable(callsite.callee.def_id());
+        let cross_crate_inlinable = self.tcx.cross_crate_inlinable(callsite.callee.def);
         self.check_codegen_attributes(callsite, callee_attrs, cross_crate_inlinable)?;
 
         // Intrinsic fallback bodies are automatically made cross-crate inlineable,

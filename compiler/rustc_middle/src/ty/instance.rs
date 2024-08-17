@@ -342,13 +342,16 @@ impl<'tcx> InstanceKind<'tcx> {
                     }
                     _ => unreachable!(),
                 }
-                .map_or_else(|| adt_def.is_enum(), |did| tcx.cross_crate_inlinable(did))
+                .map_or_else(
+                    || adt_def.is_enum(),
+                    |did| tcx.cross_crate_inlinable(InstanceKind::Item(did)),
+                )
             });
         }
         if let ty::InstanceKind::ThreadLocalShim(..) = *self {
             return false;
         }
-        tcx.cross_crate_inlinable(self.def_id())
+        tcx.cross_crate_inlinable(*self)
     }
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {

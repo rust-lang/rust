@@ -20,7 +20,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::{AssocItemContainer, SymbolName};
+use rustc_middle::ty::{AssocItemContainer, InstanceKind, SymbolName};
 use rustc_middle::util::common::to_readable_str;
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
@@ -1068,7 +1068,7 @@ fn should_encode_mir(
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
-                        || tcx.cross_crate_inlinable(def_id)));
+                        || tcx.cross_crate_inlinable(InstanceKind::Item(def_id.into()))));
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
@@ -1667,9 +1667,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
-                self.tables
-                    .cross_crate_inlinable
-                    .set(def_id.to_def_id().index, self.tcx.cross_crate_inlinable(def_id));
+                self.tables.cross_crate_inlinable.set(
+                    def_id.to_def_id().index,
+                    self.tcx.cross_crate_inlinable(InstanceKind::Item(def_id.into())),
+                );
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 

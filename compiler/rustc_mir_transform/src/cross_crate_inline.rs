@@ -1,10 +1,9 @@
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{InstanceKind, TyCtxt};
 use rustc_session::config::{InliningThreshold, OptLevel};
 use rustc_span::sym;
 
@@ -14,7 +13,9 @@ pub fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;
 }
 
-fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+fn cross_crate_inlinable<'tcx>(tcx: TyCtxt<'tcx>, instance: InstanceKind<'tcx>) -> bool {
+    let def_id = instance.def_id();
+
     let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
     // If this has an extern indicator, then this function is globally shared and thus will not
     // generate cgu-internal copies which would make it cross-crate inlinable.

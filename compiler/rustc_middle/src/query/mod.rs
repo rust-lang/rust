@@ -2270,7 +2270,7 @@ rustc_queries! {
         desc { "check whether the item has a `where Self: Sized` bound" }
     }
 
-    query cross_crate_inlinable(def_id: DefId) -> bool {
+    query cross_crate_inlinable(instance: ty::InstanceKind<'tcx>) -> bool {
         desc { "whether the item should be made inlinable across crates" }
         separate_provide_extern
     }
