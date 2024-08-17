@@ -1,19 +1,30 @@
 #![unstable(feature = "unicode_internals", issue = "none")]
 #![allow(missing_docs)]
+// FIXME: This should be removed after #129204 is merged into beta.
+#![allow(clippy::useless_attribute)]
 
 // for use in alloc, not re-exported in std.
 #[rustfmt::skip]
+#[allow(non_snake_case)]
 pub use unicode_data::case_ignorable::lookup as Case_Ignorable;
+#[allow(non_snake_case)]
 pub use unicode_data::cased::lookup as Cased;
 pub use unicode_data::conversions;
 
 #[rustfmt::skip]
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::cc::lookup as Cc;
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::n::lookup as N;
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::uppercase::lookup as Uppercase;
+#[allow(non_snake_case)]
 pub(crate) use unicode_data::white_space::lookup as White_Space;
 
 pub(crate) mod printable;
