@@ -699,6 +699,11 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
+
+    /// We need some "real" `NodeId` to emit
+    /// [`elided_named_lifetimes`](lint::builtin::ELIDED_NAMED_LIFETIMES).
+    /// See comments in [`MissingLifetime::id_if_not_fake_or`].
+    crate_node_id: NodeId,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1317,7 +1322,10 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
 }
 
 impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
-    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    fn new(
+        resolver: &'b mut Resolver<'a, 'tcx>,
+        krate: &Crate,
+    ) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
@@ -1340,6 +1348,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
+            crate_node_id: krate.id,
         }
     }
 
@@ -2045,23 +2054,22 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 debug_assert_eq!(id, missing.id);
                 match res {
                     LifetimeRes::Static => {
-                        // FIXME: ICEs otherwise
-                        if missing.kind != MissingLifetimeKind::Ampersand {
-                            self.r.lint_buffer.buffer_lint(
-                                lint::builtin::ELIDED_NAMED_LIFETIMES,
-                                missing.id,
-                                missing.span,
-                                BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
-                            );
-                        }
+                        self.r.lint_buffer.buffer_lint(
+                            lint::builtin::ELIDED_NAMED_LIFETIMES,
+                            missing.id_if_not_fake_or(self.crate_node_id),
+                            missing.span,
+                            BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
+                        );
                     }
                     LifetimeRes::Param { param, binder } => {
                         self.r.lint_buffer.buffer_lint(
                             lint::builtin::ELIDED_NAMED_LIFETIMES,
-                            // HACK: we can't use `missing.id` instead of `binder` here,
-                            //       because for `missing.kind == Ampersand` it is a "fake" node that gets overlooked and its lints do not end up emitted.
-                            //       Alternatively, it might be possible to convert `param` to `NodeId` and use that instead.
-                            binder,
+                            // It should be possible to use `self.crate_node_id`
+                            // or `param`'s `NodeId` here as a fallback instead of the `binder`,
+                            // but `binder` sounds like a more appropriate place than the crate,
+                            // and to convert `param` from `LocalDefId` to `NodeId`,
+                            // we would have to do some additional work.
+                            missing.id_if_not_fake_or(binder),
                             missing.span,
                             BuiltinLintDiag::ElidedIsParam {
                                 elided: missing.span,
@@ -4971,7 +4979,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
-        let mut late_resolution_visitor = LateResolutionVisitor::new(self);
+        let mut late_resolution_visitor = LateResolutionVisitor::new(self, krate);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {

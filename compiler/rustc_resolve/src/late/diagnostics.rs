@@ -110,6 +110,23 @@ pub(super) struct MissingLifetime {
     pub count: usize,
 }
 
+impl MissingLifetime {
+    /// As we cannot yet emit lints in this crate and have to buffer them instead,
+    /// we need to associate each lint with some `NodeId`,
+    /// however for some `MissingLifetime`s their `NodeId`s are "fake",
+    /// in a sense that they are temporary and not get preserved down the line,
+    /// which means that the lints for those nodes will not get emitted.
+    /// To combat this, we can try to use some other `NodeId`s as a fallback option.
+    pub(super) fn id_if_not_fake_or(self, fallback: NodeId) -> NodeId {
+        match self.kind {
+            MissingLifetimeKind::Underscore
+            | MissingLifetimeKind::Comma
+            | MissingLifetimeKind::Brackets => self.id,
+            MissingLifetimeKind::Ampersand => fallback,
+        }
+    }
+}
+
 /// Description of the lifetimes appearing in a function parameter.
 /// This is used to provide a literal explanation to the elision failure.
 #[derive(Clone, Debug)]
