@@ -9,7 +9,6 @@ static mut BYTE_PTR: *mut u8 = ptr::addr_of_mut!(BYTE);
 // (it's fine to create raw refs to places!) the following derefs the ptr before creating its ref!
 static mut DEREF_BYTE_PTR: *mut u8 = ptr::addr_of_mut!(*BYTE_PTR);
 //~^ ERROR: use of mutable static
-//~| ERROR: dereference of raw pointer
 
 fn main() {
     let _ = unsafe { DEREF_BYTE_PTR };
