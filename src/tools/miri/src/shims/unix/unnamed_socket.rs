@@ -2,7 +2,7 @@
 //! are entirely implemented inside Miri.
 //! We also use the same infrastructure to implement unnamed pipes.
 
-use std::cell::{OnceCell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
@@ -27,6 +27,10 @@ struct AnonSocket {
     /// writing to. This is a weak reference because the other side may be closed before us; all
     /// future writes will then trigger EPIPE.
     peer_fd: OnceCell<WeakFileDescriptionRef>,
+    /// Indicates whether the peer has lost data when the file description is closed.
+    /// This flag is set to `true` if the peer's `readbuf` is non-empty at the time
+    /// of closure.
+    peer_lost_data: Cell<bool>,
     is_nonblock: bool,
 }
 
@@ -91,6 +95,10 @@ impl FileDescription for AnonSocket {
             // for read and write.
             epoll_ready_events.epollin = true;
             epoll_ready_events.epollout = true;
+            // If there is data lost in peer_fd, set EPOLLERR.
+            if self.peer_lost_data.get() {
+                epoll_ready_events.epollerr = true;
+            }
         }
         Ok(epoll_ready_events)
     }
@@ -101,6 +109,13 @@ impl FileDescription for AnonSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         if let Some(peer_fd) = self.peer_fd().upgrade() {
+            // If the current readbuf is non-empty when the file description is closed,
+            // notify the peer that data lost has happened in current file description.
+            if let Some(readbuf) = &self.readbuf {
+                if !readbuf.borrow().buf.is_empty() {
+                    peer_fd.downcast::<AnonSocket>().unwrap().peer_lost_data.set(true);
+                }
+            }
             // Notify peer fd that close has happened, since that can unblock reads and writes.
             ecx.check_and_update_readiness(&peer_fd)?;
         }
@@ -290,11 +305,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fd0 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
+            peer_lost_data: Cell::new(false),
             is_nonblock: is_sock_nonblock,
         });
         let fd1 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
+            peer_lost_data: Cell::new(false),
             is_nonblock: is_sock_nonblock,
         });
 
@@ -340,10 +357,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let fd0 = fds.new_ref(AnonSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
+            peer_lost_data: Cell::new(false),
             is_nonblock: false,
         });
-        let fd1 =
-            fds.new_ref(AnonSocket { readbuf: None, peer_fd: OnceCell::new(), is_nonblock: false });
+        let fd1 = fds.new_ref(AnonSocket {
+            readbuf: None,
+            peer_fd: OnceCell::new(),
+            peer_lost_data: Cell::new(false),
+            is_nonblock: false,
+        });
 
         // Make the file descriptions point to each other.
         fd0.downcast::<AnonSocket>().unwrap().peer_fd.set(fd1.downgrade()).unwrap();
