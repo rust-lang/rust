@@ -230,9 +230,6 @@ const_eval_memory_exhausted =
 const_eval_modified_global =
     modifying a static's initial value from another static's initializer
 
-const_eval_mut_deref =
-    mutation through a reference is not allowed in {const_eval_const_context}s
-
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
@@ -362,10 +359,6 @@ const_eval_too_generic =
     encountered overly generic constant
 const_eval_too_many_caller_args =
     calling a function with more arguments than it expected
-
-const_eval_transient_mut_borrow = mutable references are not allowed in {const_eval_const_context}s
-
-const_eval_transient_mut_raw = raw mutable pointers are not allowed in {const_eval_const_context}s
 
 const_eval_try_block_from_output_non_const =
     `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s

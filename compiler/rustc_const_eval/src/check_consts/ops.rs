@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
-use rustc_middle::mir::{self, CallSource};
+use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
 use rustc_middle::ty::{
@@ -431,9 +431,9 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
 /// This op is for `&mut` borrows in the trailing expression of a constant
 /// which uses the "enclosing scopes rule" to leak its locals into anonymous
 /// static or const items.
-pub(crate) struct MutBorrow(pub hir::BorrowKind);
+pub(crate) struct EscapingMutBorrow(pub hir::BorrowKind);
 
-impl<'tcx> NonConstOp<'tcx> for MutBorrow {
+impl<'tcx> NonConstOp<'tcx> for EscapingMutBorrow {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Forbidden
     }
@@ -460,49 +460,6 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct TransientMutBorrow(pub hir::BorrowKind);
-
-impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
-    fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        Status::Unstable(sym::const_mut_refs)
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        let kind = ccx.const_kind();
-        match self.0 {
-            hir::BorrowKind::Raw => ccx
-                .tcx
-                .sess
-                .create_feature_err(errors::TransientMutRawErr { span, kind }, sym::const_mut_refs),
-            hir::BorrowKind::Ref => ccx.tcx.sess.create_feature_err(
-                errors::TransientMutBorrowErr { span, kind },
-                sym::const_mut_refs,
-            ),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct MutDeref;
-impl<'tcx> NonConstOp<'tcx> for MutDeref {
-    fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        Status::Unstable(sym::const_mut_refs)
-    }
-
-    fn importance(&self) -> DiagImportance {
-        // Usually a side-effect of a `TransientMutBorrow` somewhere.
-        DiagImportance::Secondary
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.tcx.sess.create_feature_err(
-            errors::MutDerefErr { span, kind: ccx.const_kind() },
-            sym::const_mut_refs,
-        )
-    }
-}
-
 /// A call to a `panic()` lang item where the first argument is _not_ a `&str`.
 #[derive(Debug)]
 pub(crate) struct PanicNonStr;
@@ -521,24 +478,6 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         // FIXME(const_trait_impl): revert to span_bug?
         ccx.dcx().create_err(errors::RawPtrComparisonErr { span })
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct RawMutPtrDeref;
-impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
-    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-        Status::Unstable(sym::const_mut_refs)
-    }
-
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        feature_err(
-            &ccx.tcx.sess,
-            sym::const_mut_refs,
-            span,
-            format!("dereferencing raw mutable pointers in {}s is unstable", ccx.const_kind(),),
-        )
     }
 }
 
@@ -586,35 +525,5 @@ pub(crate) struct ThreadLocalAccess;
 impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         ccx.dcx().create_err(errors::ThreadLocalAccessErr { span })
-    }
-}
-
-/// Types that cannot appear in the signature or locals of a `const fn`.
-pub(crate) mod mut_ref {
-    use super::*;
-
-    #[derive(Debug)]
-    pub(crate) struct MutRef(pub mir::LocalKind);
-    impl<'tcx> NonConstOp<'tcx> for MutRef {
-        fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
-            Status::Unstable(sym::const_mut_refs)
-        }
-
-        fn importance(&self) -> DiagImportance {
-            match self.0 {
-                mir::LocalKind::Temp => DiagImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => DiagImportance::Primary,
-            }
-        }
-
-        #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-        fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-            feature_err(
-                &ccx.tcx.sess,
-                sym::const_mut_refs,
-                span,
-                format!("mutable references are not allowed in {}s", ccx.const_kind()),
-            )
-        }
     }
 }

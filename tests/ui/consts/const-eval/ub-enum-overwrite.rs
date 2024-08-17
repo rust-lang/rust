@@ -1,5 +1,3 @@
-#![feature(const_mut_refs)]
-
 enum E {
     A(u8),
     B,

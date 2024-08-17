@@ -143,6 +143,8 @@ declare_features! (
     (accepted, const_let, "1.33.0", Some(48821)),
     /// Allows the use of `loop` and `while` in constants.
     (accepted, const_loop, "1.46.0", Some(52000)),
+    /// Allows using `&mut` in constant functions.
+    (accepted, const_mut_refs, "CURRENT_RUSTC_VERSION", Some(57349)),
     /// Allows panicking during const eval (producing compile-time errors).
     (accepted, const_panic, "1.57.0", Some(51999)),
     /// Allows dereferencing raw pointers during const eval.

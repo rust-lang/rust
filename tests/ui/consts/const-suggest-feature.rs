@@ -1,7 +1,10 @@
+use std::cell::Cell;
+
 const WRITE: () = unsafe {
-    *std::ptr::null_mut() = 0;
-    //~^ ERROR dereferencing raw mutable pointers in constants is unstable
-    //~| HELP add `#![feature(const_mut_refs)]` to the crate attributes to enable
+    let x = Cell::new(0);
+    let y = &x;
+    //~^ ERROR interior mutability
+    //~| HELP add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
 };
 
 fn main() {}

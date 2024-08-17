@@ -1,5 +1,5 @@
 error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/promoted_const_call.rs:7:12
+  --> $DIR/promoted_const_call.rs:6:12
    |
 LL | impl const Drop for Panic { fn drop(&mut self) { panic!(); } }
    |            ^^^^
@@ -8,7 +8,7 @@ LL | impl const Drop for Panic { fn drop(&mut self) { panic!(); } }
    = note: adding a non-const method body in the future would be a breaking change
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:11:26
+  --> $DIR/promoted_const_call.rs:10:26
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------    ^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -19,7 +19,7 @@ LL | };
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:11:30
+  --> $DIR/promoted_const_call.rs:10:30
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------        ^^^^^ - temporary value is freed at the end of this statement
@@ -28,7 +28,7 @@ LL |     let _: &'static _ = &id(&Panic);
    |            type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:17:26
+  --> $DIR/promoted_const_call.rs:16:26
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------    ^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -39,7 +39,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:17:30
+  --> $DIR/promoted_const_call.rs:16:30
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------        ^^^^^ - temporary value is freed at the end of this statement
@@ -48,7 +48,7 @@ LL |     let _: &'static _ = &id(&Panic);
    |            type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:20:26
+  --> $DIR/promoted_const_call.rs:19:26
    |
 LL |     let _: &'static _ = &&(Panic, 0).1;
    |            ----------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -59,7 +59,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:20:27
+  --> $DIR/promoted_const_call.rs:19:27
    |
 LL |     let _: &'static _ = &&(Panic, 0).1;
    |            ----------     ^^^^^^^^^^ creates a temporary value which is freed while still in use

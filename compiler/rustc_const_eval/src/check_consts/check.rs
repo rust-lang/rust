@@ -22,7 +22,6 @@ use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
-use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 use tracing::{debug, instrument, trace};
 
 use super::ops::{self, NonConstOp, Status};
@@ -166,24 +165,6 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     }
 }
 
-struct LocalReturnTyVisitor<'a, 'mir, 'tcx> {
-    kind: LocalKind,
-    checker: &'a mut Checker<'mir, 'tcx>,
-}
-
-impl<'a, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'a, 'mir, 'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) {
-        match t.kind() {
-            ty::FnPtr(..) => {}
-            ty::Ref(_, _, hir::Mutability::Mut) => {
-                self.checker.check_op(ops::mut_ref::MutRef(self.kind));
-                t.super_visit_with(self)
-            }
-            _ => t.super_visit_with(self),
-        }
-    }
-}
-
 pub struct Checker<'mir, 'tcx> {
     ccx: &'mir ConstCx<'mir, 'tcx>,
     qualifs: Qualifs<'mir, 'tcx>,
@@ -228,25 +209,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         if self.ccx.is_async() || body.coroutine.is_some() {
             tcx.dcx().span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
             return;
-        }
-
-        // The local type and predicate checks are not free and only relevant for `const fn`s.
-        if self.const_kind() == hir::ConstContext::ConstFn {
-            for (idx, local) in body.local_decls.iter_enumerated() {
-                // Handle the return place below.
-                if idx == RETURN_PLACE {
-                    continue;
-                }
-
-                self.span = local.source_info.span;
-                self.check_local_or_return_ty(local.ty, idx);
-            }
-
-            // impl trait is gone in MIR, so check the return type of a const fn by its signature
-            // instead of the type of the return place.
-            self.span = body.local_decls[RETURN_PLACE].source_info.span;
-            let return_ty = self.ccx.fn_sig().output();
-            self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
         if !tcx.has_attr(def_id, sym::rustc_do_not_const_check) {
@@ -358,16 +320,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
-    fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {
-        let kind = self.body.local_kind(local);
-
-        let mut visitor = LocalReturnTyVisitor { kind, checker: self };
-
-        visitor.visit_ty(ty);
-    }
-
     fn check_mut_borrow(&mut self, place: &Place<'_>, kind: hir::BorrowKind) {
-        match self.const_kind() {
+        let is_transient = match self.const_kind() {
             // In a const fn all borrows are transient or point to the places given via
             // references in the arguments (so we already checked them with
             // TransientMutBorrow/MutBorrow as appropriate).
@@ -375,7 +329,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // NOTE: Once we have heap allocations during CTFE we need to figure out
             // how to prevent `const fn` to create long-lived allocations that point
             // to mutable memory.
-            hir::ConstContext::ConstFn => self.check_op(ops::TransientMutBorrow(kind)),
+            hir::ConstContext::ConstFn => true,
             _ => {
                 // For indirect places, we are not creating a new permanent borrow, it's just as
                 // transient as the already existing one. For reborrowing references this is handled
@@ -389,12 +343,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // `StorageDead` in every control flow path leading to a `return` terminator.
                 // The good news is that interning will detect if any unexpected mutable
                 // pointer slips through.
-                if place.is_indirect() || self.local_is_transient(place.local) {
-                    self.check_op(ops::TransientMutBorrow(kind));
-                } else {
-                    self.check_op(ops::MutBorrow(kind));
-                }
+                place.is_indirect() || self.local_is_transient(place.local)
             }
+        };
+        if !is_transient {
+            self.check_op(ops::EscapingMutBorrow(kind));
         }
     }
 }
@@ -634,58 +587,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             if let Some(def_id) = c.check_static_ptr(self.tcx) {
                 self.check_static(def_id, self.span);
             }
-        }
-    }
-    fn visit_projection_elem(
-        &mut self,
-        place_ref: PlaceRef<'tcx>,
-        elem: PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        trace!(
-            "visit_projection_elem: place_ref={:?} elem={:?} \
-            context={:?} location={:?}",
-            place_ref, elem, context, location,
-        );
-
-        self.super_projection_elem(place_ref, elem, context, location);
-
-        match elem {
-            ProjectionElem::Deref => {
-                let base_ty = place_ref.ty(self.body, self.tcx).ty;
-                if base_ty.is_unsafe_ptr() {
-                    if place_ref.projection.is_empty() {
-                        let decl = &self.body.local_decls[place_ref.local];
-                        // If this is a static, then this is not really dereferencing a pointer,
-                        // just directly accessing a static. That is not subject to any feature
-                        // gates (except for the one about whether statics can even be used, but
-                        // that is checked already by `visit_operand`).
-                        if let LocalInfo::StaticRef { .. } = *decl.local_info() {
-                            return;
-                        }
-                    }
-
-                    // `*const T` is stable, `*mut T` is not
-                    if !base_ty.is_mutable_ptr() {
-                        return;
-                    }
-
-                    self.check_op(ops::RawMutPtrDeref);
-                }
-
-                if context.is_mutating_use() {
-                    self.check_op(ops::MutDeref);
-                }
-            }
-
-            ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Downcast(..)
-            | ProjectionElem::OpaqueCast(..)
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Subtype(..)
-            | ProjectionElem::Field(..)
-            | ProjectionElem::Index(_) => {}
         }
     }
 

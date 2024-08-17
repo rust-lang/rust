@@ -403,8 +403,6 @@ declare_features! (
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
-    /// Allows using `&mut` in constant functions.
-    (unstable, const_mut_refs, "1.41.0", Some(57349)),
     /// Be more precise when looking for live drops in a const context.
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
     /// Allows references to types with interior mutability within constants

@@ -1,4 +1,4 @@
-#![feature(const_mut_refs)]
+use std::cell::UnsafeCell;
 
 const NULL: *mut i32 = std::ptr::null_mut();
 const A: *const i32 = &4;
@@ -25,7 +25,14 @@ const C: *const i32 = &{
     x
 };
 
-use std::cell::UnsafeCell;
+// Still ok, since `x` will be moved before the final pointer is crated,
+// so `_ref` doesn't actually point to the memory that escapes.
+const C_NO: *const i32 = &{
+    let mut x = 42;
+    let _ref = &mut x;
+    x
+};
+
 struct NotAMutex<T>(UnsafeCell<T>);
 
 unsafe impl<T> Sync for NotAMutex<T> {}

@@ -25,7 +25,7 @@ LL | const B4: Option<&mut i32> = helper(&mut 42);
    |                              using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:33:65
+  --> $DIR/mut_ref_in_final.rs:40:65
    |
 LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  -------------------------------^^--
@@ -35,7 +35,7 @@ LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                  using this value as a constant requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:36:67
+  --> $DIR/mut_ref_in_final.rs:43:67
    |
 LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    -------------------------------^^--
@@ -45,7 +45,7 @@ LL | static FOO2: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                    using this value as a static requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/mut_ref_in_final.rs:39:71
+  --> $DIR/mut_ref_in_final.rs:46:71
    |
 LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        -------------------------------^^--
@@ -55,25 +55,25 @@ LL | static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
    |                                        using this value as a static requires that borrow lasts for `'static`
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/mut_ref_in_final.rs:52:53
+  --> $DIR/mut_ref_in_final.rs:59:53
    |
 LL | static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                     ^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/mut_ref_in_final.rs:54:54
+  --> $DIR/mut_ref_in_final.rs:61:54
    |
 LL | static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                      ^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/mut_ref_in_final.rs:56:52
+  --> $DIR/mut_ref_in_final.rs:63:52
    |
 LL | const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
    |                                                    ^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/mut_ref_in_final.rs:58:53
+  --> $DIR/mut_ref_in_final.rs:65:53
    |
 LL | const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
    |                                                     ^^^^^^
