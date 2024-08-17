@@ -856,17 +856,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
-        let prefixes = if self.config.gdb_native_rust {
-            // GDB with Rust
-            static PREFIXES: &[&str] = &["gdb", "gdbr"];
-            println!("NOTE: compiletest thinks it is using GDB with native rust support");
-            PREFIXES
-        } else {
-            // Generic GDB
-            static PREFIXES: &[&str] = &["gdb", "gdbg"];
-            println!("NOTE: compiletest thinks it is using GDB without native rust support");
-            PREFIXES
-        };
+        let prefixes = &["gdb"];
 
         let dbg_cmds = DebuggerCommands::parse_from(
             &self.testpaths.file,
