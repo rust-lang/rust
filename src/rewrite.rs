@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use rustc_ast::ptr;
 use rustc_span::Span;
+use thiserror::Error;
 
 use crate::config::{Config, IndentStyle};
 use crate::parse::session::ParseSess;
@@ -13,14 +14,51 @@ use crate::skip::SkipContext;
 use crate::visitor::SnippetProvider;
 use crate::FormatReport;
 
+pub(crate) type RewriteResult = Result<String, RewriteError>;
 pub(crate) trait Rewrite {
     /// Rewrite self into shape.
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String>;
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        self.rewrite(context, shape).unknown_error()
+    }
 }
 
 impl<T: Rewrite> Rewrite for ptr::P<T> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         (**self).rewrite(context, shape)
+    }
+}
+
+#[derive(Clone, Error, Debug)]
+pub(crate) enum RewriteError {
+    #[error("Formatting was skipped due to skip attribute or out of file range.")]
+    SkipFormatting,
+
+    #[error("It exceeds the required width of {configured_width} for the span: {span:?}")]
+    ExceedsMaxWidth { configured_width: usize, span: Span },
+
+    /// Format failure that does not fit to above categories.
+    #[error("An unknown error occurred during formatting.")]
+    Unknown,
+}
+
+/// Extension trait used to conveniently convert to RewriteError
+pub(crate) trait RewriteErrorExt<T> {
+    fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError>;
+    fn unknown_error(self) -> Result<T, RewriteError>;
+}
+
+impl<T> RewriteErrorExt<T> for Option<T> {
+    fn max_width_error(self, width: usize, span: Span) -> Result<T, RewriteError> {
+        self.ok_or_else(|| RewriteError::ExceedsMaxWidth {
+            configured_width: width,
+            span: span,
+        })
+    }
+
+    fn unknown_error(self) -> Result<T, RewriteError> {
+        self.ok_or_else(|| RewriteError::Unknown)
     }
 }
 

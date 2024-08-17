@@ -25,13 +25,13 @@ use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
 };
 use crate::config::lists::*;
-use crate::config::Version;
+use crate::config::StyleEdition;
 use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
 use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{parse_expr, parse_macro_args, ParsedMacroArgs};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError};
 use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -283,6 +283,7 @@ fn rewrite_macro_inner(
                         Some(SeparatorTactic::Never)
                     },
                 )
+                .ok()
                 .map(|rw| match position {
                     MacroPosition::Item => format!("{};", rw),
                     _ => rw,
@@ -316,7 +317,8 @@ fn rewrite_macro_inner(
                     shape,
                     force_trailing_comma,
                     Some(original_style),
-                )?;
+                )
+                .ok()?;
                 let comma = match position {
                     MacroPosition::Item => ";",
                     _ => "",
@@ -452,13 +454,13 @@ pub(crate) fn rewrite_macro_def(
         |branch| branch.span.lo(),
         |branch| branch.span.hi(),
         |branch| match branch.rewrite(context, arm_shape, multi_branch_style) {
-            Some(v) => Some(v),
+            Some(v) => Ok(v),
             // if the rewrite returned None because a macro could not be rewritten, then return the
             // original body
             None if context.macro_rewrite_failure.get() => {
-                Some(context.snippet(branch.body).trim().to_string())
+                Ok(context.snippet(branch.body).trim().to_string())
             }
-            None => None,
+            None => Err(RewriteError::Unknown),
         },
         context.snippet_provider.span_after(span, "{"),
         span.hi(),
@@ -477,8 +479,8 @@ pub(crate) fn rewrite_macro_def(
     }
 
     match write_list(&branch_items, &fmt) {
-        Some(ref s) => result += s,
-        None => return snippet,
+        Ok(ref s) => result += s,
+        Err(_) => return snippet,
     }
 
     if multi_branch_style {
@@ -1249,7 +1251,7 @@ impl MacroBranch {
         let old_body = context.snippet(self.body).trim();
         let has_block_body = old_body.starts_with('{');
         let mut prefix_width = 5; // 5 = " => {"
-        if context.config.version() == Version::Two {
+        if context.config.style_edition() >= StyleEdition::Edition2024 {
             if has_block_body {
                 prefix_width = 6; // 6 = " => {{"
             }

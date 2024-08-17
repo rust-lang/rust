@@ -1,7 +1,7 @@
 // rustfmt-comment_width: 120
 // rustfmt-wrap_comments: true
 // rustfmt-max_width: 120
-// rustfmt-version: Two
+// rustfmt-style_edition: 2024
 
 /// This function is 120 columns wide and is left alone. This comment is 120 columns wide and the formatter is also fine
 fn my_super_cool_function_name(my_very_cool_argument_name: String, my_other_very_cool_argument_name: String) -> String {

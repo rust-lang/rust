@@ -2,7 +2,7 @@ use crate::config::StyleEdition;
 
 /// Defines the default value for the given style edition
 #[allow(dead_code)]
-pub(crate) trait StyleEditionDefault {
+pub trait StyleEditionDefault {
     type ConfigType;
     fn style_edition_default(style_edition: StyleEdition) -> Self::ConfigType;
 }

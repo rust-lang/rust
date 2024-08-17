@@ -534,7 +534,7 @@ Note that this option may be soft-deprecated in the future once the [ignore](#ig
 Specifies which edition is used by the parser.
 
 - **Default value**: `"2015"`
-- **Possible values**: `"2015"`, `"2018"`, `"2021"`
+- **Possible values**: `"2015"`, `"2018"`, `"2021"`, `"2024"`
 - **Stable**: Yes
 
 Rustfmt is able to pick up the edition used by reading the `Cargo.toml` file if executed
@@ -2692,6 +2692,17 @@ By default this option is set as a percentage of [`max_width`](#max_width) provi
 
 See also [`max_width`](#max_width) and [`use_small_heuristics`](#use_small_heuristics)
 
+## `style_edition`
+
+Controls the edition of the [Rust Style Guide] to use for formatting ([RFC 3338])
+
+- **Default value**: `"2015"`
+- **Possible values**: `"2015"`, `"2018"`, `"2021"`, `"2024"` (unstable variant)
+- **Stable**: No
+
+[Rust Style Guide]: https://doc.rust-lang.org/nightly/style-guide/
+[RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html
+
 ## `tab_spaces`
 
 Number of spaces per tab
@@ -3051,9 +3062,7 @@ fn main() {
 
 ## `version`
 
-Which version of the formatting rules to use. `Version::One` is backwards-compatible
-with Rustfmt 1.0. Other versions are only backwards compatible within a major
-version number.
+This option is deprecated and has been replaced by [`style_edition`](#style_edition)
 
 - **Default value**: `One`
 - **Possible values**: `One`, `Two`

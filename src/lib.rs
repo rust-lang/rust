@@ -3,7 +3,6 @@
 #![warn(unreachable_pub)]
 #![recursion_limit = "256"]
 #![allow(clippy::match_like_matches_macro)]
-#![allow(unreachable_pub)]
 
 #[macro_use]
 extern crate tracing;
@@ -49,7 +48,7 @@ use crate::utils::indent_next_line;
 
 pub use crate::config::{
     load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle,
-    Range, Verbosity,
+    Range, StyleEdition, Verbosity,
 };
 
 pub use crate::format_report_formatter::{FormatReportFormatter, FormatReportFormatterBuilder};

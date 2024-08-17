@@ -7,8 +7,7 @@ use rustc_span::{symbol, BytePos, Pos, Span};
 
 use crate::attr::*;
 use crate::comment::{contains_comment, rewrite_comment, CodeCharKind, CommentCodeSlices};
-use crate::config::Version;
-use crate::config::{BraceStyle, Config, MacroSelector};
+use crate::config::{BraceStyle, Config, MacroSelector, StyleEdition};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
@@ -290,7 +289,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
                     let mut comment_shape =
                         Shape::indented(self.block_indent, config).comment(config);
-                    if self.config.version() == Version::Two && comment_on_same_line {
+                    if self.config.style_edition() >= StyleEdition::Edition2024
+                        && comment_on_same_line
+                    {
                         self.push_str(" ");
                         // put the first line of the comment on the same line as the
                         // block's last line
@@ -311,8 +312,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 let comment_str =
                                     rewrite_comment(other_lines, false, comment_shape, config);
                                 match comment_str {
-                                    Some(ref s) => self.push_str(s),
-                                    None => self.push_str(other_lines),
+                                    Ok(ref s) => self.push_str(s),
+                                    Err(_) => self.push_str(other_lines),
                                 }
                             }
                         }
@@ -341,8 +342,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
                         let comment_str = rewrite_comment(&sub_slice, false, comment_shape, config);
                         match comment_str {
-                            Some(ref s) => self.push_str(s),
-                            None => self.push_str(&sub_slice),
+                            Ok(ref s) => self.push_str(s),
+                            Err(_) => self.push_str(&sub_slice),
                         }
                     }
                 }

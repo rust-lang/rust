@@ -109,17 +109,17 @@ If you want to test modified `cargo-fmt`, or run `rustfmt` on the whole project 
 RUSTFMT="./target/debug/rustfmt" cargo run --bin cargo-fmt -- --manifest-path path/to/project/you/want2test/Cargo.toml
 ```
 
-### Version-gate formatting changes
+### Gate formatting changes
 
-A change that introduces a different code-formatting should be gated on the
-`version` configuration. This is to ensure the formatting of the current major
-release is preserved, while allowing fixes to be implemented for the next
-release.
+A change that introduces a different code-formatting must be gated on the
+`style_edition` configuration. This is to ensure rustfmt upholds its formatting
+stability guarantees and adheres to the Style Edition process set in [RFC 3338]
 
-This is done by conditionally guarding the change like so:
+This can be done by conditionally guarding the formatting change, e.g.:
 
 ```rust
-if config.version() == Version::One { // if the current major release is 1.x
+// if the current stable Style Edition is Edition 2024
+if config.style_edition() <= StyleEdition::Edition2024 {
     // current formatting
 } else {
     // new formatting
@@ -129,12 +129,13 @@ if config.version() == Version::One { // if the current major release is 1.x
 This allows the user to apply the next formatting explicitly via the
 configuration, while being stable by default.
 
-When the next major release is done, the code block of the previous formatting
-can be deleted, e.g., the first block in the example above when going from `1.x`
-to `2.x`.
+This can then be enhanced as needed if and when there are
+new Style Editions with differing formatting prescriptions.
 
 | Note: Only formatting changes with default options need to be gated. |
 | --- |
+
+[RFC 3338]: https://rust-lang.github.io/rfcs/3338-style-evolution.html
 
 ### A quick tour of Rustfmt
 
