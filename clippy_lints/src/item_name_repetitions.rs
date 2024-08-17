@@ -1,5 +1,3 @@
-//! lint on enum variants that are prefixed or suffixed by the same characters
-
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
 use clippy_utils::is_bool;

@@ -1,5 +1,3 @@
-//! checks for attributes
-
 mod allow_attributes;
 mod allow_attributes_without_reason;
 mod blanket_clippy_restriction_lints;
