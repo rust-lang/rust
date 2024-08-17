@@ -1,6 +1,3 @@
-//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-//@ min-lldb-version: 310
-
 // This test case checks if function arguments already have the correct value
 // when breaking at the first line of the function, that is if the function
 // prologue has already been executed at the first line. Note that because of
@@ -8,7 +5,9 @@
 // arguments have been properly loaded when setting the breakpoint via the
 // function name.
 
-//@ compile-flags:-g
+//@ min-lldb-version: 1800
+//@ compile-flags:-g -Zmir-enable-passes=-SingleUseConsts
+// SingleUseConsts shouldn't need to be disabled, see #128945
 
 // === GDB TESTS ===================================================================================
 

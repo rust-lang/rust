@@ -358,9 +358,9 @@ impl<'a> Parser<'a> {
                     })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
-                } else if self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+                } else if self.token == token::OpenDelim(Delimiter::Parenthesis)
                     // FIXME(return_type_notation): Could also recover `...` here.
-                    && self.look_ahead(1, |tok| tok.kind == token::DotDot)
+                    && self.look_ahead(1, |t| *t == token::DotDot)
                 {
                     self.bump(); // (
                     self.bump(); // ..
@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
                     let token_before_parsing = self.token.clone();
                     let mut snapshot = None;
                     if self.may_recover()
-                        && prev_token_before_parsing.kind == token::PathSep
+                        && prev_token_before_parsing == token::PathSep
                         && (style == PathStyle::Expr && self.token.can_begin_expr()
                             || style == PathStyle::Pat && self.token.can_begin_pattern())
                     {
@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
 
                     let (inputs, _) = match self.parse_paren_comma_seq(|p| p.parse_ty()) {
                         Ok(output) => output,
-                        Err(mut error) if prev_token_before_parsing.kind == token::PathSep => {
+                        Err(mut error) if prev_token_before_parsing == token::PathSep => {
                             error.span_label(
                                 prev_token_before_parsing.span.to(token_before_parsing.span),
                                 "while parsing this parenthesized list of type arguments starting here",
@@ -913,7 +913,7 @@ impl<'a> Parser<'a> {
             let snapshot = self.create_snapshot_for_diagnostic();
             let attrs = self.parse_outer_attributes()?;
             match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
-                Ok(expr) => {
+                Ok((expr, _)) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
                         expr.span,

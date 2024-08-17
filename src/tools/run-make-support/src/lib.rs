@@ -38,6 +38,7 @@ pub use bstr;
 pub use gimli;
 pub use object;
 pub use regex;
+pub use serde_json;
 pub use wasmparser;
 
 // Re-exports of external dependencies.

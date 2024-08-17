@@ -78,6 +78,8 @@ use rustc_middle::mir::{self, dump_mir, MirPass};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
+use crate::pass_manager::validate_body;
+
 pub struct ByMoveBody;
 
 impl<'tcx> MirPass<'tcx> for ByMoveBody {
@@ -131,20 +133,40 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
                 // Store this set of additional projections (fields and derefs).
                 // We need to re-apply them later.
-                let child_precise_captures =
-                    &child_capture.place.projections[parent_capture.place.projections.len()..];
+                let mut child_precise_captures = child_capture.place.projections
+                    [parent_capture.place.projections.len()..]
+                    .to_vec();
 
-                // If the parent captures by-move, and the child captures by-ref, then we
-                // need to peel an additional `deref` off of the body of the child.
-                let needs_deref = child_capture.is_by_ref() && !parent_capture.is_by_ref();
-                if needs_deref {
-                    assert_ne!(
-                        coroutine_kind,
-                        ty::ClosureKind::FnOnce,
+                // If the parent capture is by-ref, then we need to apply an additional
+                // deref before applying any further projections to this place.
+                if parent_capture.is_by_ref() {
+                    child_precise_captures.insert(
+                        0,
+                        Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
+                    );
+                }
+                // If the child capture is by-ref, then we need to apply a "ref"
+                // projection (i.e. `&`) at the end. But wait! We don't have that
+                // as a projection kind. So instead, we can apply its dual and
+                // *peel* a deref off of the place when it shows up in the MIR body.
+                // Luckily, by construction this is always possible.
+                let peel_deref = if child_capture.is_by_ref() {
+                    assert!(
+                        parent_capture.is_by_ref() || coroutine_kind != ty::ClosureKind::FnOnce,
                         "`FnOnce` coroutine-closures return coroutines that capture from \
                         their body; it will always result in a borrowck error!"
                     );
-                }
+                    true
+                } else {
+                    false
+                };
+
+                // Regarding the behavior above, you may think that it's redundant to both
+                // insert a deref and then peel a deref if the parent and child are both
+                // captured by-ref. This would be correct, except for the case where we have
+                // precise capturing projections, since the inserted deref is to the *beginning*
+                // and the peeled deref is at the *end*. I cannot seem to actually find a
+                // case where this happens, though, but let's keep this code flexible.
 
                 // Finally, store the type of the parent's captured place. We need
                 // this when building the field projection in the MIR body later on.
@@ -164,7 +186,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
                     (
                         FieldIdx::from_usize(parent_field_idx + num_args),
                         parent_capture_ty,
-                        needs_deref,
+                        peel_deref,
                         child_precise_captures,
                     ),
                 )
@@ -192,6 +214,10 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         let mut by_move_body = body.clone();
         MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
         dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
+
+        // Let's just always validate this body.
+        validate_body(tcx, &mut by_move_body, "Initial coroutine_by_move body".to_string());
+
         // FIXME: use query feeding to generate the body right here and then only store the `DefId` of the new body.
         by_move_body.source = mir::MirSource::from_instance(InstanceKind::CoroutineKindShim {
             coroutine_def_id: coroutine_def_id.to_def_id(),
@@ -202,7 +228,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
 
 struct MakeByMoveBody<'tcx> {
     tcx: TyCtxt<'tcx>,
-    field_remapping: UnordMap<FieldIdx, (FieldIdx, Ty<'tcx>, bool, &'tcx [Projection<'tcx>])>,
+    field_remapping: UnordMap<FieldIdx, (FieldIdx, Ty<'tcx>, bool, Vec<Projection<'tcx>>)>,
     by_move_coroutine_ty: Ty<'tcx>,
 }
 
@@ -223,14 +249,14 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         if place.local == ty::CAPTURE_STRUCT_LOCAL
             && let Some((&mir::ProjectionElem::Field(idx, _), projection)) =
                 place.projection.split_first()
-            && let Some(&(remapped_idx, remapped_ty, needs_deref, bridging_projections)) =
+            && let Some(&(remapped_idx, remapped_ty, peel_deref, ref bridging_projections)) =
                 self.field_remapping.get(&idx)
         {
             // As noted before, if the parent closure captures a field by value, and
             // the child captures a field by ref, then for the by-move body we're
             // generating, we also are taking that field by value. Peel off a deref,
             // since a layer of ref'ing has now become redundant.
-            let final_projections = if needs_deref {
+            let final_projections = if peel_deref {
                 let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
                 else {
                     bug!(

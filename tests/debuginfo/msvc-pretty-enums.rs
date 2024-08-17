@@ -206,6 +206,30 @@
 // cdb-command: dx -r2 arbitrary_discr2,d
 // cdb-check: arbitrary_discr2,d : Def [Type: enum2$<msvc_pretty_enums::ArbitraryDiscr>]
 // cdb-check:     [+0x[...]] __0              : 5678 [Type: unsigned int]
+//
+// cdb-command: dx c_style_u128_a
+// cdb-check: c_style_u128_a   : A [Type: enum2$<msvc_pretty_enums::CStyleU128>]
+//
+// cdb-command: dx c_style_u128_b
+// cdb-check: c_style_u128_b   : B [Type: enum2$<msvc_pretty_enums::CStyleU128>]
+//
+// cdb-command: dx c_style_u128_c
+// cdb-check: c_style_u128_c   : C [Type: enum2$<msvc_pretty_enums::CStyleU128>]
+//
+// cdb-command: dx c_style_u128_d
+// cdb-check: c_style_u128_d   : D [Type: enum2$<msvc_pretty_enums::CStyleU128>]
+//
+// cdb-command: dx c_style_i128_a
+// cdb-check: c_style_i128_a   : A [Type: enum2$<msvc_pretty_enums::CStyleI128>]
+//
+// cdb-command: dx c_style_i128_b
+// cdb-check: c_style_i128_b   : B [Type: enum2$<msvc_pretty_enums::CStyleI128>]
+//
+// cdb-command: dx c_style_i128_c
+// cdb-check: c_style_i128_c   : C [Type: enum2$<msvc_pretty_enums::CStyleI128>]
+//
+// cdb-command: dx c_style_i128_d
+// cdb-check: c_style_i128_d   : D [Type: enum2$<msvc_pretty_enums::CStyleI128>]
 #![feature(rustc_attrs)]
 #![feature(repr128)]
 #![feature(arbitrary_enum_discriminant)]
@@ -270,6 +294,22 @@ enum ArbitraryDiscr {
     Def(u32) = 5000_000,
 }
 
+#[repr(u128)]
+pub enum CStyleU128 {
+    A = 0_u128,
+    B = 1_u128,
+    C = u64::MAX as u128 + 1,
+    D = u128::MAX,
+}
+
+#[repr(i128)]
+pub enum CStyleI128 {
+    A = 0_i128,
+    B = -1_i128,
+    C = i128::MIN,
+    D = i128::MAX,
+}
+
 fn main() {
     let a = Some(CStyleEnum::Low);
     let b = Option::<CStyleEnum>::None;
@@ -312,6 +352,16 @@ fn main() {
 
     let arbitrary_discr1 = ArbitraryDiscr::Abc(1234);
     let arbitrary_discr2 = ArbitraryDiscr::Def(5678);
+
+    let c_style_u128_a = CStyleU128::A;
+    let c_style_u128_b = CStyleU128::B;
+    let c_style_u128_c = CStyleU128::C;
+    let c_style_u128_d = CStyleU128::D;
+
+    let c_style_i128_a = CStyleI128::A;
+    let c_style_i128_b = CStyleI128::B;
+    let c_style_i128_c = CStyleI128::C;
+    let c_style_i128_d = CStyleI128::D;
 
     zzz(); // #break
 }
