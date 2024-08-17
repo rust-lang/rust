@@ -13,7 +13,6 @@ use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::custom_flags::Flag;
 use ui_test::spanned::Spanned;
-use ui_test::test_result::TestRun;
 use ui_test::{status_emitter, Args, CommandBuilder, Config, Match, OutputConflictHandling};
 
 use std::collections::{BTreeMap, HashMap};
@@ -469,15 +468,14 @@ fn applicability_ord(applicability: &Applicability) -> u8 {
 impl Flag for DiagnosticCollector {
     fn post_test_action(
         &self,
-        _config: &ui_test::per_test_config::TestConfig<'_>,
-        _cmd: &mut std::process::Command,
+        _config: &ui_test::per_test_config::TestConfig,
         output: &std::process::Output,
-        _build_manager: &ui_test::build_manager::BuildManager<'_>,
-    ) -> Result<Vec<TestRun>, ui_test::Errored> {
+        _build_manager: &ui_test::build_manager::BuildManager,
+    ) -> Result<(), ui_test::Errored> {
         if !output.stderr.is_empty() {
             self.sender.send(output.stderr.clone()).unwrap();
         }
-        Ok(Vec::new())
+        Ok(())
     }
 
     fn clone_inner(&self) -> Box<dyn Flag> {
