@@ -2759,6 +2759,7 @@ impl FullConfigInput {
         GlobalConfigInput::schema_fields(&mut fields);
         LocalConfigInput::schema_fields(&mut fields);
         ClientConfigInput::schema_fields(&mut fields);
+        WorkspaceConfigInput::schema_fields(&mut fields);
         fields.sort_by_key(|&(x, ..)| x);
         fields
             .iter()

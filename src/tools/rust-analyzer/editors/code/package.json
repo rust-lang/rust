@@ -2359,6 +2359,45 @@
                 }
             },
             {
+                "title": "rustfmt",
+                "properties": {
+                    "rust-analyzer.rustfmt.extraArgs": {
+                        "markdownDescription": "Additional arguments to `rustfmt`.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "rustfmt",
+                "properties": {
+                    "rust-analyzer.rustfmt.overrideCommand": {
+                        "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for\nformatting. This should be the equivalent of `rustfmt` here, and\nnot that of `cargo fmt`. The file contents will be passed on the\nstandard input and the formatted result will be read from the\nstandard output.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "array"
+                        ],
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "rustfmt",
+                "properties": {
+                    "rust-analyzer.rustfmt.rangeFormatting.enable": {
+                        "markdownDescription": "Enables the use of rustfmt's unstable range formatting command for the\n`textDocument/rangeFormatting` request. The rustfmt option is unstable and only\navailable on a nightly build.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
                 "title": "semanticHighlighting",
                 "properties": {
                     "rust-analyzer.semanticHighlighting.doc.comment.inject.enable": {
