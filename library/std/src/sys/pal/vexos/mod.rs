@@ -55,8 +55,8 @@ pub unsafe extern "C" fn _start() -> ! {
 #[used]
 static CODE_SIGNATURE: vex_sdk::vcodesig = vex_sdk::vcodesig {
     magic: u32::from_le_bytes(*b"XVX5"),
-    r#type: 2,
-    owner: 0,
+    r#type: 0,
+    owner: 2,
     options: 0,
 };
 
