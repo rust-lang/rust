@@ -44,16 +44,9 @@
 // gdb-command:print *(mut_slice.data_ptr as *const [i64; 5])
 // gdb-check:$15 = [1, 2, 3, 4, 5]
 
-// Some lines below are marked with [ignored] because old GDB versions seem to have trouble
-// accessing globals.
-
-// [ignored] gdbg-command:print 'vec_slices::MUT_VECT_SLICE'.length
 // gdb-command:print MUT_VECT_SLICE.length
-// [ignored] gdbg-check:$16 = 2
 // gdb-check:$16 = 2
-// [ignored] gdbg-command:print *((i64[2]*)('vec_slices::MUT_VECT_SLICE'.data_ptr))
 // gdb-command:print *(MUT_VECT_SLICE.data_ptr as *const [i64; 2])
-// [ignored] gdbg-check:$17 = {64, 65}
 // gdb-check:$17 = [64, 65]
 
 // === LLDB TESTS ==================================================================================
