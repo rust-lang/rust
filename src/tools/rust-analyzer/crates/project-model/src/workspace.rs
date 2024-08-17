@@ -441,14 +441,15 @@ impl ProjectWorkspace {
     ) -> anyhow::Result<WorkspaceBuildScripts> {
         match &self.kind {
             ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. }
-            | ProjectWorkspaceKind::Cargo { cargo, .. } => {
+            | ProjectWorkspaceKind::Cargo { cargo, .. }
+                if !cargo.no_deps() =>
+            {
                 WorkspaceBuildScripts::run_for_workspace(config, cargo, progress, &self.sysroot)
                     .with_context(|| {
                         format!("Failed to run build scripts for {}", cargo.workspace_root())
                     })
             }
-            ProjectWorkspaceKind::DetachedFile { cargo: None, .. }
-            | ProjectWorkspaceKind::Json { .. } => Ok(WorkspaceBuildScripts::default()),
+            _ => Ok(WorkspaceBuildScripts::default()),
         }
     }
 

@@ -165,6 +165,18 @@ impl GlobalState {
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
             for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
+                if matches!(
+                    &ws.kind,
+                    ProjectWorkspaceKind::Cargo { cargo, .. } | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. }
+                    if cargo.no_deps()
+                ) {
+                    status.health |= lsp_ext::Health::Warning;
+                    format_to!(
+                        message,
+                        "Workspace `{}` has been queried without dependencies, connecting to crates.io might have failed.\n\n",
+                        ws.manifest_or_root()
+                    );
+                }
                 if let Some(err) = ws.sysroot.error() {
                     status.health |= lsp_ext::Health::Warning;
                     format_to!(
