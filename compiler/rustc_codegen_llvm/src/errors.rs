@@ -40,13 +40,6 @@ pub(crate) enum PossibleFeature<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_error_creating_import_library)]
-pub(crate) struct ErrorCreatingImportLibrary<'a> {
-    pub lib_name: &'a str,
-    pub error: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]
 pub(crate) struct SymbolAlreadyDefined<'a> {
     #[primary_span]
