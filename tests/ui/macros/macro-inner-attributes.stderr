@@ -4,6 +4,16 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
 LL |     a::bar();
    |     ^ use of unresolved module or unlinked crate `a`
    |
+note: found an item that was configured out
+  --> $DIR/macro-inner-attributes.rs:7:7
+   |
+LL | test!(a,
+   |       ^
+note: the item is gated here
+  --> $DIR/macro-inner-attributes.rs:8:13
+   |
+LL |       #[cfg(false)],
+   |             ^^^^^
 help: there is a crate or module with a similar name
    |
 LL -     a::bar();

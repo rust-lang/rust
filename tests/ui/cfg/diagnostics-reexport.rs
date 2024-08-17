@@ -1,7 +1,7 @@
 pub mod inner {
-    #[cfg(false)]
+    #[cfg(false)] //~ NOTE the item is gated here
     mod gone {
-        pub fn uwu() {}
+        pub fn uwu() {} //~ NOTE found an item that was configured out
     }
 
     #[cfg(false)] //~ NOTE the item is gated here
@@ -34,7 +34,7 @@ mod b {
 }
 
 fn main() {
-    // There is no uwu at this path - no diagnostic.
+    // There is no uwu at this path, but there's one in a cgfd out sub-module, so we mention it.
     inner::uwu(); //~ ERROR cannot find function
     //~^ NOTE not found in `inner`
 }

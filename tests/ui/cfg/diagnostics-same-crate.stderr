@@ -33,7 +33,7 @@ LL |     #[cfg(false)]
    |           ^^^^^
 
 error[E0433]: failed to resolve: could not find `doesnt_exist` in `inner`
-  --> $DIR/diagnostics-same-crate.rs:54:12
+  --> $DIR/diagnostics-same-crate.rs:53:12
    |
 LL |     inner::doesnt_exist::hello();
    |            ^^^^^^^^^^^^ could not find `doesnt_exist` in `inner`
@@ -67,7 +67,7 @@ LL |     #[cfg(false)]
    |           ^^^^^
 
 error[E0425]: cannot find function `meow` in module `inner::right`
-  --> $DIR/diagnostics-same-crate.rs:58:19
+  --> $DIR/diagnostics-same-crate.rs:57:19
    |
 LL |     inner::right::meow();
    |                   ^^^^ not found in `inner::right`
@@ -90,10 +90,21 @@ LL |     uwu();
    |     ^^^ not found in this scope
 
 error[E0425]: cannot find function `vanished` in this scope
-  --> $DIR/diagnostics-same-crate.rs:64:5
+  --> $DIR/diagnostics-same-crate.rs:62:5
    |
 LL |     vanished();
    |     ^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-same-crate.rs:41:8
+   |
+LL | pub fn vanished() {}
+   |        ^^^^^^^^
+note: the item is gated here
+  --> $DIR/diagnostics-same-crate.rs:40:7
+   |
+LL | #[cfg(i_dont_exist_and_you_can_do_nothing_about_it)]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

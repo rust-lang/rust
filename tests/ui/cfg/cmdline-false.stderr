@@ -3,6 +3,17 @@ error[E0425]: cannot find function `foo` in this scope
    |
 LL |     foo();
    |     ^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/cmdline-false.rs:5:4
+   |
+LL | fn foo() {}
+   |    ^^^
+note: the item is gated here
+  --> $DIR/cmdline-false.rs:4:7
+   |
+LL | #[cfg(false)]
+   |       ^^^^^
 
 error: aborting due to 1 previous error
 

@@ -3,6 +3,27 @@ error[E0425]: cannot find function `foo` in this scope
    |
 LL |     foo();
    |     ^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/both-true-false.rs:6:4
+   |
+LL | fn foo() {}
+   |    ^^^
+note: the item is gated here
+  --> $DIR/both-true-false.rs:4:7
+   |
+LL | #[cfg(false)]
+   |       ^^^^^
+note: found an item that was configured out
+  --> $DIR/both-true-false.rs:10:4
+   |
+LL | fn foo() {}
+   |    ^^^
+note: the item is gated here
+  --> $DIR/both-true-false.rs:9:7
+   |
+LL | #[cfg(false)]
+   |       ^^^^^
 
 error: aborting due to 1 previous error
 
