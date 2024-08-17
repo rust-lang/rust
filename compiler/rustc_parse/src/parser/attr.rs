@@ -4,7 +4,7 @@ use rustc_ast::token::{self, Delimiter};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
 use rustc_span::symbol::kw;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -265,7 +265,6 @@ impl<'a> Parser<'a> {
             let is_unsafe = this.eat_keyword(kw::Unsafe);
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
-                this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
                 this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
                 ast::Safety::Unsafe(unsafe_span)
             } else {
@@ -406,7 +405,6 @@ impl<'a> Parser<'a> {
         };
         let unsafety = if is_unsafe {
             let unsafe_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
             self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
             ast::Safety::Unsafe(unsafe_span)

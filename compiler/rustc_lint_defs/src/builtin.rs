@@ -4971,7 +4971,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(unsafe_attributes)]
     /// #![warn(unsafe_attr_outside_unsafe)]
     ///
     /// #[no_mangle]
