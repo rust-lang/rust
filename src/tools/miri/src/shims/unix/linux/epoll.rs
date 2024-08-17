@@ -409,11 +409,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
-        if epfd <= 0 {
+        if epfd <= 0 || maxevents <= 0 {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             return Ok(Scalar::from_i32(-1));
         }
+
         // FIXME: Implement blocking support
         if timeout != 0 {
             throw_unsup_format!("epoll_wait: timeout value can only be 0");
