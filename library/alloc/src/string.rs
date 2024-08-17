@@ -2313,7 +2313,7 @@ impl<'b> Pattern for &'b String {
     }
 
     #[inline]
-    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&str>
+    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&'a str>
     where
         Self::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
     {
