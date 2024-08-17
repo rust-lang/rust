@@ -9,13 +9,13 @@
 // gdb-command:run
 
 // gdb-command:print *the_a
-// gdbr-check:$1 = unique_enum::ABC::TheA{x: 0, y: 8970181431921507452}
+// gdb-check:$1 = unique_enum::ABC::TheA{x: 0, y: 8970181431921507452}
 
 // gdb-command:print *the_b
-// gdbr-check:$2 = unique_enum::ABC::TheB(0, 286331153, 286331153)
+// gdb-check:$2 = unique_enum::ABC::TheB(0, 286331153, 286331153)
 
 // gdb-command:print *univariant
-// gdbr-check:$3 = unique_enum::Univariant::TheOnlyCase(123234)
+// gdb-check:$3 = unique_enum::Univariant::TheOnlyCase(123234)
 
 
 // === LLDB TESTS ==================================================================================

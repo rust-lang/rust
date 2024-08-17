@@ -8,28 +8,28 @@
 // gdb-command:run
 
 // gdb-command:print some
-// gdbr-check:$1 = core::option::Option<&u32>::Some(0x12345678)
+// gdb-check:$1 = core::option::Option<&u32>::Some(0x12345678)
 
 // gdb-command:print none
-// gdbr-check:$2 = core::option::Option<&u32>::None
+// gdb-check:$2 = core::option::Option<&u32>::None
 
 // gdb-command:print full
-// gdbr-check:$3 = option_like_enum::MoreFields::Full(454545, 0x87654321, 9988)
+// gdb-check:$3 = option_like_enum::MoreFields::Full(454545, 0x87654321, 9988)
 
-// gdbr-command:print empty_gdb.discr
+// gdb-command:print empty_gdb.discr
 // gdb-check:$4 = (*mut isize) 0x1
 
 // gdb-command:print droid
-// gdbr-check:$5 = option_like_enum::NamedFields::Droid{id: 675675, range: 10000001, internals: 0x43218765}
+// gdb-check:$5 = option_like_enum::NamedFields::Droid{id: 675675, range: 10000001, internals: 0x43218765}
 
-// gdbr-command:print void_droid_gdb.internals
+// gdb-command:print void_droid_gdb.internals
 // gdb-check:$6 = (*mut isize) 0x1
 
 // gdb-command:print nested_non_zero_yep
-// gdbr-check:$7 = option_like_enum::NestedNonZero::Yep(10.5, option_like_enum::NestedNonZeroField {a: 10, b: 20, c: 0x[...]})
+// gdb-check:$7 = option_like_enum::NestedNonZero::Yep(10.5, option_like_enum::NestedNonZeroField {a: 10, b: 20, c: 0x[...]})
 
 // gdb-command:print nested_non_zero_nope
-// gdbr-check:$8 = option_like_enum::NestedNonZero::Nope
+// gdb-check:$8 = option_like_enum::NestedNonZero::Nope
 
 // gdb-command:continue
 

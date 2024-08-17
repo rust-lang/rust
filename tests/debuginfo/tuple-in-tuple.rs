@@ -7,21 +7,21 @@
 // gdb-command:run
 
 // gdb-command:print no_padding1
-// gdbr-check:$1 = ((0, 1), 2, 3)
+// gdb-check:$1 = ((0, 1), 2, 3)
 // gdb-command:print no_padding2
-// gdbr-check:$2 = (4, (5, 6), 7)
+// gdb-check:$2 = (4, (5, 6), 7)
 // gdb-command:print no_padding3
-// gdbr-check:$3 = (8, 9, (10, 11))
+// gdb-check:$3 = (8, 9, (10, 11))
 
 // gdb-command:print internal_padding1
-// gdbr-check:$4 = (12, (13, 14))
+// gdb-check:$4 = (12, (13, 14))
 // gdb-command:print internal_padding2
-// gdbr-check:$5 = (15, (16, 17))
+// gdb-check:$5 = (15, (16, 17))
 
 // gdb-command:print padding_at_end1
-// gdbr-check:$6 = (18, (19, 20))
+// gdb-check:$6 = (18, (19, 20))
 // gdb-command:print padding_at_end2
-// gdbr-check:$7 = ((21, 22), 23)
+// gdb-check:$7 = ((21, 22), 23)
 
 
 // === LLDB TESTS ==================================================================================

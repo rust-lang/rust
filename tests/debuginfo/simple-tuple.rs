@@ -4,58 +4,58 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdbr-command:print simple_tuple::NO_PADDING_8
-// gdbr-check:$1 = (-50, 50)
-// gdbr-command:print simple_tuple::NO_PADDING_16
-// gdbr-check:$2 = (-1, 2, 3)
-// gdbr-command:print simple_tuple::NO_PADDING_32
-// gdbr-check:$3 = (4, 5, 6)
-// gdbr-command:print simple_tuple::NO_PADDING_64
-// gdbr-check:$4 = (7, 8, 9)
+// gdb-command:print simple_tuple::NO_PADDING_8
+// gdb-check:$1 = (-50, 50)
+// gdb-command:print simple_tuple::NO_PADDING_16
+// gdb-check:$2 = (-1, 2, 3)
+// gdb-command:print simple_tuple::NO_PADDING_32
+// gdb-check:$3 = (4, 5, 6)
+// gdb-command:print simple_tuple::NO_PADDING_64
+// gdb-check:$4 = (7, 8, 9)
 
-// gdbr-command:print simple_tuple::INTERNAL_PADDING_1
-// gdbr-check:$5 = (10, 11)
-// gdbr-command:print simple_tuple::INTERNAL_PADDING_2
-// gdbr-check:$6 = (12, 13, 14, 15)
+// gdb-command:print simple_tuple::INTERNAL_PADDING_1
+// gdb-check:$5 = (10, 11)
+// gdb-command:print simple_tuple::INTERNAL_PADDING_2
+// gdb-check:$6 = (12, 13, 14, 15)
 
-// gdbr-command:print simple_tuple::PADDING_AT_END
-// gdbr-check:$7 = (16, 17)
+// gdb-command:print simple_tuple::PADDING_AT_END
+// gdb-check:$7 = (16, 17)
 
 // gdb-command:run
 
-// gdbr-command:print noPadding8
-// gdbr-check:$8 = (-100, 100)
+// gdb-command:print noPadding8
+// gdb-check:$8 = (-100, 100)
 // gdb-command:print noPadding16
-// gdbr-check:$9 = (0, 1, 2)
+// gdb-check:$9 = (0, 1, 2)
 // gdb-command:print noPadding32
-// gdbr-check:$10 = (3, 4.5, 5)
+// gdb-check:$10 = (3, 4.5, 5)
 // gdb-command:print noPadding64
-// gdbr-check:$11 = (6, 7.5, 8)
+// gdb-check:$11 = (6, 7.5, 8)
 
 // gdb-command:print internalPadding1
-// gdbr-check:$12 = (9, 10)
+// gdb-check:$12 = (9, 10)
 // gdb-command:print internalPadding2
-// gdbr-check:$13 = (11, 12, 13, 14)
+// gdb-check:$13 = (11, 12, 13, 14)
 
 // gdb-command:print paddingAtEnd
-// gdbr-check:$14 = (15, 16)
+// gdb-check:$14 = (15, 16)
 
-// gdbr-command:print simple_tuple::NO_PADDING_8
-// gdbr-check:$15 = (-127, 127)
-// gdbr-command:print simple_tuple::NO_PADDING_16
-// gdbr-check:$16 = (-10, 10, 9)
-// gdbr-command:print simple_tuple::NO_PADDING_32
-// gdbr-check:$17 = (14, 15, 16)
-// gdbr-command:print simple_tuple::NO_PADDING_64
-// gdbr-check:$18 = (17, 18, 19)
+// gdb-command:print simple_tuple::NO_PADDING_8
+// gdb-check:$15 = (-127, 127)
+// gdb-command:print simple_tuple::NO_PADDING_16
+// gdb-check:$16 = (-10, 10, 9)
+// gdb-command:print simple_tuple::NO_PADDING_32
+// gdb-check:$17 = (14, 15, 16)
+// gdb-command:print simple_tuple::NO_PADDING_64
+// gdb-check:$18 = (17, 18, 19)
 
-// gdbr-command:print simple_tuple::INTERNAL_PADDING_1
-// gdbr-check:$19 = (110, 111)
-// gdbr-command:print simple_tuple::INTERNAL_PADDING_2
-// gdbr-check:$20 = (112, 113, 114, 115)
+// gdb-command:print simple_tuple::INTERNAL_PADDING_1
+// gdb-check:$19 = (110, 111)
+// gdb-command:print simple_tuple::INTERNAL_PADDING_2
+// gdb-check:$20 = (112, 113, 114, 115)
 
-// gdbr-command:print simple_tuple::PADDING_AT_END
-// gdbr-check:$21 = (116, 117)
+// gdb-command:print simple_tuple::PADDING_AT_END
+// gdb-check:$21 = (116, 117)
 
 
 // === LLDB TESTS ==================================================================================

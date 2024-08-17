@@ -11,9 +11,9 @@
 // gdb-command:print constant
 // gdb-check:$2 = 2
 // gdb-command:print a_struct
-// gdbr-check:$3 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$3 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *struct_ref
-// gdbr-check:$4 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$4 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *owned
 // gdb-check:$5 = 6
 // gdb-command:print closure_local
@@ -25,9 +25,9 @@
 // gdb-command:print constant
 // gdb-check:$8 = 2
 // gdb-command:print a_struct
-// gdbr-check:$9 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$9 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *struct_ref
-// gdbr-check:$10 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$10 = var_captured_in_nested_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *owned
 // gdb-check:$11 = 6
 // gdb-command:print closure_local

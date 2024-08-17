@@ -6,9 +6,9 @@
 
 // gdb-command:run
 // gdb-command:print a
-// gdbr-check:$1 = [1, 2, 3]
+// gdb-check:$1 = [1, 2, 3]
 // gdb-command:print vec::VECT
-// gdbr-check:$2 = [4, 5, 6]
+// gdb-check:$2 = [4, 5, 6]
 
 
 // === LLDB TESTS ==================================================================================

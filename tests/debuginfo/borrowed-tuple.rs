@@ -7,13 +7,13 @@
 // gdb-command:run
 
 // gdb-command:print *stack_val_ref
-// gdbr-check:$1 = (-14, -19)
+// gdb-check:$1 = (-14, -19)
 
 // gdb-command:print *ref_to_unnamed
-// gdbr-check:$2 = (-15, -20)
+// gdb-check:$2 = (-15, -20)
 
 // gdb-command:print *unique_val_ref
-// gdbr-check:$3 = (-17, -22)
+// gdb-check:$3 = (-17, -22)
 
 
 // === LLDB TESTS ==================================================================================

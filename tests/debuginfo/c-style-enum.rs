@@ -5,61 +5,61 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdbr-command:print c_style_enum::SINGLE_VARIANT
-// gdbr-check:$1 = c_style_enum::SingleVariant::TheOnlyVariant
+// gdb-command:print c_style_enum::SINGLE_VARIANT
+// gdb-check:$1 = c_style_enum::SingleVariant::TheOnlyVariant
 
-// gdbr-command:print c_style_enum::AUTO_ONE
-// gdbr-check:$2 = c_style_enum::AutoDiscriminant::One
+// gdb-command:print c_style_enum::AUTO_ONE
+// gdb-check:$2 = c_style_enum::AutoDiscriminant::One
 
-// gdbr-command:print c_style_enum::AUTO_TWO
-// gdbr-check:$3 = c_style_enum::AutoDiscriminant::One
+// gdb-command:print c_style_enum::AUTO_TWO
+// gdb-check:$3 = c_style_enum::AutoDiscriminant::One
 
-// gdbr-command:print c_style_enum::AUTO_THREE
-// gdbr-check:$4 = c_style_enum::AutoDiscriminant::One
+// gdb-command:print c_style_enum::AUTO_THREE
+// gdb-check:$4 = c_style_enum::AutoDiscriminant::One
 
-// gdbr-command:print c_style_enum::MANUAL_ONE
-// gdbr-check:$5 = c_style_enum::ManualDiscriminant::OneHundred
+// gdb-command:print c_style_enum::MANUAL_ONE
+// gdb-check:$5 = c_style_enum::ManualDiscriminant::OneHundred
 
-// gdbr-command:print c_style_enum::MANUAL_TWO
-// gdbr-check:$6 = c_style_enum::ManualDiscriminant::OneHundred
+// gdb-command:print c_style_enum::MANUAL_TWO
+// gdb-check:$6 = c_style_enum::ManualDiscriminant::OneHundred
 
-// gdbr-command:print c_style_enum::MANUAL_THREE
-// gdbr-check:$7 = c_style_enum::ManualDiscriminant::OneHundred
+// gdb-command:print c_style_enum::MANUAL_THREE
+// gdb-check:$7 = c_style_enum::ManualDiscriminant::OneHundred
 
 // gdb-command:run
 
 // gdb-command:print auto_one
-// gdbr-check:$8 = c_style_enum::AutoDiscriminant::One
+// gdb-check:$8 = c_style_enum::AutoDiscriminant::One
 
 // gdb-command:print auto_two
-// gdbr-check:$9 = c_style_enum::AutoDiscriminant::Two
+// gdb-check:$9 = c_style_enum::AutoDiscriminant::Two
 
 // gdb-command:print auto_three
-// gdbr-check:$10 = c_style_enum::AutoDiscriminant::Three
+// gdb-check:$10 = c_style_enum::AutoDiscriminant::Three
 
 // gdb-command:print manual_one_hundred
-// gdbr-check:$11 = c_style_enum::ManualDiscriminant::OneHundred
+// gdb-check:$11 = c_style_enum::ManualDiscriminant::OneHundred
 
 // gdb-command:print manual_one_thousand
-// gdbr-check:$12 = c_style_enum::ManualDiscriminant::OneThousand
+// gdb-check:$12 = c_style_enum::ManualDiscriminant::OneThousand
 
 // gdb-command:print manual_one_million
-// gdbr-check:$13 = c_style_enum::ManualDiscriminant::OneMillion
+// gdb-check:$13 = c_style_enum::ManualDiscriminant::OneMillion
 
 // gdb-command:print single_variant
-// gdbr-check:$14 = c_style_enum::SingleVariant::TheOnlyVariant
+// gdb-check:$14 = c_style_enum::SingleVariant::TheOnlyVariant
 
-// gdbr-command:print AUTO_TWO
-// gdbr-check:$15 = c_style_enum::AutoDiscriminant::Two
+// gdb-command:print AUTO_TWO
+// gdb-check:$15 = c_style_enum::AutoDiscriminant::Two
 
-// gdbr-command:print AUTO_THREE
-// gdbr-check:$16 = c_style_enum::AutoDiscriminant::Three
+// gdb-command:print AUTO_THREE
+// gdb-check:$16 = c_style_enum::AutoDiscriminant::Three
 
-// gdbr-command:print MANUAL_TWO
-// gdbr-check:$17 = c_style_enum::ManualDiscriminant::OneThousand
+// gdb-command:print MANUAL_TWO
+// gdb-check:$17 = c_style_enum::ManualDiscriminant::OneThousand
 
-// gdbr-command:print MANUAL_THREE
-// gdbr-check:$18 = c_style_enum::ManualDiscriminant::OneMillion
+// gdb-command:print MANUAL_THREE
+// gdb-check:$18 = c_style_enum::ManualDiscriminant::OneMillion
 
 
 // === LLDB TESTS ==================================================================================

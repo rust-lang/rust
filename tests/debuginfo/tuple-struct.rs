@@ -7,22 +7,22 @@
 // gdb-command:run
 
 // gdb-command:print no_padding16
-// gdbr-check:$1 = tuple_struct::NoPadding16 (10000, -10001)
+// gdb-check:$1 = tuple_struct::NoPadding16 (10000, -10001)
 
 // gdb-command:print no_padding32
-// gdbr-check:$2 = tuple_struct::NoPadding32 (-10002, -10003.5, 10004)
+// gdb-check:$2 = tuple_struct::NoPadding32 (-10002, -10003.5, 10004)
 
 // gdb-command:print no_padding64
-// gdbr-check:$3 = tuple_struct::NoPadding64 (-10005.5, 10006, 10007)
+// gdb-check:$3 = tuple_struct::NoPadding64 (-10005.5, 10006, 10007)
 
 // gdb-command:print no_padding163264
-// gdbr-check:$4 = tuple_struct::NoPadding163264 (-10008, 10009, 10010, 10011)
+// gdb-check:$4 = tuple_struct::NoPadding163264 (-10008, 10009, 10010, 10011)
 
 // gdb-command:print internal_padding
-// gdbr-check:$5 = tuple_struct::InternalPadding (10012, -10013)
+// gdb-check:$5 = tuple_struct::InternalPadding (10012, -10013)
 
 // gdb-command:print padding_at_end
-// gdbr-check:$6 = tuple_struct::PaddingAtEnd (-10014, 10015)
+// gdb-check:$6 = tuple_struct::PaddingAtEnd (-10014, 10015)
 
 
 // === LLDB TESTS ==================================================================================

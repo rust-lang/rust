@@ -8,9 +8,9 @@
 
 // gdb-command:run
 // gdb-command:print u
-// gdbr-check:$1 = union_smoke::U {a: (2, 2), b: 514}
+// gdb-check:$1 = union_smoke::U {a: (2, 2), b: 514}
 // gdb-command:print union_smoke::SU
-// gdbr-check:$2 = union_smoke::U {a: (1, 1), b: 257}
+// gdb-check:$2 = union_smoke::U {a: (1, 1), b: 257}
 
 // === LLDB TESTS ==================================================================================
 

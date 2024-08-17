@@ -6,16 +6,16 @@
 
 // gdb-command:run
 // gdb-command:print simple
-// gdbr-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
+// gdb-check:$1 = struct_with_destructor::WithDestructor {x: 10, y: 20}
 
 // gdb-command:print noDestructor
-// gdbr-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
+// gdb-check:$2 = struct_with_destructor::NoDestructorGuarded {a: struct_with_destructor::NoDestructor {x: 10, y: 20}, guard: -1}
 
 // gdb-command:print withDestructor
-// gdbr-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
+// gdb-check:$3 = struct_with_destructor::WithDestructorGuarded {a: struct_with_destructor::WithDestructor {x: 10, y: 20}, guard: -1}
 
 // gdb-command:print nested
-// gdbr-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
+// gdb-check:$4 = struct_with_destructor::NestedOuter {a: struct_with_destructor::NestedInner {a: struct_with_destructor::WithDestructor {x: 7890, y: 9870}}}
 
 
 // === LLDB TESTS ==================================================================================

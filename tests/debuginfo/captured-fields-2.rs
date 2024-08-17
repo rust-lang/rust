@@ -4,10 +4,10 @@
 
 // gdb-command:run
 // gdb-command:print my_ref__my_field1
-// gdbr-check:$1 = 11
+// gdb-check:$1 = 11
 // gdb-command:continue
 // gdb-command:print my_var__my_field2
-// gdbr-check:$2 = 22
+// gdb-check:$2 = 22
 // gdb-command:continue
 
 // === LLDB TESTS ==================================================================================

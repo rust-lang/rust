@@ -26,7 +26,7 @@
 // gdb-check:$5 = core::option::Option<i16>::Some(8)
 
 // gdb-command: print none
-// gdbr-check:$6 = core::option::Option<i64>::None
+// gdb-check:$6 = core::option::Option<i64>::None
 
 // gdb-command: print os_string
 // gdb-check:$7 = "IAMA OS string 😃"

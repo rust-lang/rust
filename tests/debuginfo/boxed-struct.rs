@@ -7,10 +7,10 @@
 // gdb-command:run
 
 // gdb-command:print *boxed_with_padding
-// gdbr-check:$1 = boxed_struct::StructWithSomePadding {x: 99, y: 999, z: 9999, w: 99999}
+// gdb-check:$1 = boxed_struct::StructWithSomePadding {x: 99, y: 999, z: 9999, w: 99999}
 
 // gdb-command:print *boxed_with_dtor
-// gdbr-check:$2 = boxed_struct::StructWithDestructor {x: 77, y: 777, z: 7777, w: 77777}
+// gdb-check:$2 = boxed_struct::StructWithDestructor {x: 77, y: 777, z: 7777, w: 77777}
 
 
 // === LLDB TESTS ==================================================================================

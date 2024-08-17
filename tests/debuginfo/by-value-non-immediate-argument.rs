@@ -7,11 +7,11 @@
 // gdb-command:run
 
 // gdb-command:print s
-// gdbr-check:$1 = by_value_non_immediate_argument::Struct {a: 1, b: 2.5}
+// gdb-check:$1 = by_value_non_immediate_argument::Struct {a: 1, b: 2.5}
 // gdb-command:continue
 
 // gdb-command:print x
-// gdbr-check:$2 = by_value_non_immediate_argument::Struct {a: 3, b: 4.5}
+// gdb-check:$2 = by_value_non_immediate_argument::Struct {a: 3, b: 4.5}
 // gdb-command:print y
 // gdb-check:$3 = 5
 // gdb-command:print z
@@ -19,15 +19,15 @@
 // gdb-command:continue
 
 // gdb-command:print a
-// gdbr-check:$5 = (7, 8, 9.5, 10.5)
+// gdb-check:$5 = (7, 8, 9.5, 10.5)
 // gdb-command:continue
 
 // gdb-command:print a
-// gdbr-check:$6 = by_value_non_immediate_argument::Newtype (11.5, 12.5, 13, 14)
+// gdb-check:$6 = by_value_non_immediate_argument::Newtype (11.5, 12.5, 13, 14)
 // gdb-command:continue
 
 // gdb-command:print x
-// gdbr-check:$7 = by_value_non_immediate_argument::Enum::Case1{x: 0, y: 8970181431921507452}
+// gdb-check:$7 = by_value_non_immediate_argument::Enum::Case1{x: 0, y: 8970181431921507452}
 // gdb-command:continue
 
 

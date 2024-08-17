@@ -5,10 +5,10 @@
 // gdb-command: run
 
 // gdb-command: print slice
-// gdbr-check: $1 = &[i32](size=3) = {0, 1, 2}
+// gdb-check: $1 = &[i32](size=3) = {0, 1, 2}
 
 // gdb-command: print mut_slice
-// gdbr-check: $2 = &mut [i32](size=4) = {2, 3, 5, 7}
+// gdb-check: $2 = &mut [i32](size=4) = {2, 3, 5, 7}
 
 // gdb-command: print str_slice
 // gdb-check: $3 = "string slice"

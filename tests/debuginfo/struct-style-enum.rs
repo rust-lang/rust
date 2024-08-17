@@ -9,16 +9,16 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbr-check:$1 = struct_style_enum::Regular::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
+// gdb-check:$1 = struct_style_enum::Regular::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
 
 // gdb-command:print case2
-// gdbr-check:$2 = struct_style_enum::Regular::Case2{a: 0, b: 286331153, c: 286331153}
+// gdb-check:$2 = struct_style_enum::Regular::Case2{a: 0, b: 286331153, c: 286331153}
 
 // gdb-command:print case3
-// gdbr-check:$3 = struct_style_enum::Regular::Case3{a: 0, b: 6438275382588823897}
+// gdb-check:$3 = struct_style_enum::Regular::Case3{a: 0, b: 6438275382588823897}
 
 // gdb-command:print univariant
-// gdbr-check:$4 = struct_style_enum::Univariant::TheOnlyCase{a: -1}
+// gdb-check:$4 = struct_style_enum::Univariant::TheOnlyCase{a: -1}
 
 
 // === LLDB TESTS ==================================================================================

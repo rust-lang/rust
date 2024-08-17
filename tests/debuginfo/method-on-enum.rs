@@ -9,7 +9,7 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbr-check:$1 = method_on_enum::Enum::Variant2(117901063)
+// gdb-check:$1 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$2 = -1
 // gdb-command:print arg2
@@ -18,7 +18,7 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbr-check:$4 = method_on_enum::Enum::Variant2(117901063)
+// gdb-check:$4 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$5 = -3
 // gdb-command:print arg2
@@ -27,7 +27,7 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbr-check:$7 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
+// gdb-check:$7 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
 // gdb-command:print arg2
@@ -36,7 +36,7 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbr-check:$10 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
+// gdb-check:$10 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
 // gdb-command:print arg2
@@ -45,7 +45,7 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbr-check:$13 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
+// gdb-check:$13 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$14 = -9
 // gdb-command:print arg2

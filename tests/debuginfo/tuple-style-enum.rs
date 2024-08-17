@@ -10,16 +10,16 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbr-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
+// gdb-check:$1 = tuple_style_enum::Regular::Case1(0, 31868, 31868, 31868, 31868)
 
 // gdb-command:print case2
-// gdbr-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
+// gdb-check:$2 = tuple_style_enum::Regular::Case2(0, 286331153, 286331153)
 
 // gdb-command:print case3
-// gdbr-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
+// gdb-check:$3 = tuple_style_enum::Regular::Case3(0, 6438275382588823897)
 
 // gdb-command:print univariant
-// gdbr-check:$4 = tuple_style_enum::Univariant::TheOnlyCase(-1)
+// gdb-check:$4 = tuple_style_enum::Univariant::TheOnlyCase(-1)
 
 
 // === LLDB TESTS ==================================================================================

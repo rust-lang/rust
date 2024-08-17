@@ -12,49 +12,49 @@
 
 // gdb-command:print singleton.length
 // gdb-check:$2 = 1
-// gdbr-command:print *(singleton.data_ptr as *const [i64; 1])
-// gdbr-check:$3 = [1]
+// gdb-command:print *(singleton.data_ptr as *const [i64; 1])
+// gdb-check:$3 = [1]
 
 // gdb-command:print multiple.length
 // gdb-check:$4 = 4
-// gdbr-command:print *(multiple.data_ptr as *const [i64; 4])
-// gdbr-check:$5 = [2, 3, 4, 5]
+// gdb-command:print *(multiple.data_ptr as *const [i64; 4])
+// gdb-check:$5 = [2, 3, 4, 5]
 
 // gdb-command:print slice_of_slice.length
 // gdb-check:$6 = 2
-// gdbr-command:print *(slice_of_slice.data_ptr as *const [i64; 2])
-// gdbr-check:$7 = [3, 4]
+// gdb-command:print *(slice_of_slice.data_ptr as *const [i64; 2])
+// gdb-check:$7 = [3, 4]
 
 // gdb-command:print padded_tuple.length
 // gdb-check:$8 = 2
 // gdb-command:print padded_tuple.data_ptr[0]
-// gdbr-check:$9 = (6, 7)
+// gdb-check:$9 = (6, 7)
 // gdb-command:print padded_tuple.data_ptr[1]
-// gdbr-check:$10 = (8, 9)
+// gdb-check:$10 = (8, 9)
 
 // gdb-command:print padded_struct.length
 // gdb-check:$11 = 2
 // gdb-command:print padded_struct.data_ptr[0]
-// gdbr-check:$12 = vec_slices::AStruct {x: 10, y: 11, z: 12}
+// gdb-check:$12 = vec_slices::AStruct {x: 10, y: 11, z: 12}
 // gdb-command:print padded_struct.data_ptr[1]
-// gdbr-check:$13 = vec_slices::AStruct {x: 13, y: 14, z: 15}
+// gdb-check:$13 = vec_slices::AStruct {x: 13, y: 14, z: 15}
 
 // gdb-command:print mut_slice.length
 // gdb-check:$14 = 5
-// gdbr-command:print *(mut_slice.data_ptr as *const [i64; 5])
-// gdbr-check:$15 = [1, 2, 3, 4, 5]
+// gdb-command:print *(mut_slice.data_ptr as *const [i64; 5])
+// gdb-check:$15 = [1, 2, 3, 4, 5]
 
 // Some lines below are marked with [ignored] because old GDB versions seem to have trouble
 // accessing globals.
 
 // [ignored] gdbg-command:print 'vec_slices::MUT_VECT_SLICE'.length
-// gdbr-command:print MUT_VECT_SLICE.length
+// gdb-command:print MUT_VECT_SLICE.length
 // [ignored] gdbg-check:$16 = 2
-// gdbr-check:$16 = 2
+// gdb-check:$16 = 2
 // [ignored] gdbg-command:print *((i64[2]*)('vec_slices::MUT_VECT_SLICE'.data_ptr))
-// gdbr-command:print *(MUT_VECT_SLICE.data_ptr as *const [i64; 2])
+// gdb-command:print *(MUT_VECT_SLICE.data_ptr as *const [i64; 2])
 // [ignored] gdbg-check:$17 = {64, 65}
-// gdbr-check:$17 = [64, 65]
+// gdb-check:$17 = [64, 65]
 
 // === LLDB TESTS ==================================================================================
 

@@ -21,7 +21,7 @@
 // gdb-command:print *t0
 // gdb-check:$5 = 5
 // gdb-command:print *t1
-// gdbr-check:$6 = generic_function::Struct {a: 6, b: 7.5}
+// gdb-check:$6 = generic_function::Struct {a: 6, b: 7.5}
 // gdb-command:continue
 
 // === LLDB TESTS ==================================================================================

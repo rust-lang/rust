@@ -9,7 +9,7 @@
 // gdb-command:print *a
 // gdb-check:$1 = 1
 // gdb-command:print *b
-// gdbr-check:$2 = (2, 3.5)
+// gdb-check:$2 = (2, 3.5)
 
 
 // === LLDB TESTS ==================================================================================

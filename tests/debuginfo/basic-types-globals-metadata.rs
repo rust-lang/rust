@@ -2,35 +2,35 @@
 
 //@ compile-flags:-g
 // gdb-command:run
-// gdbr-command:whatis basic_types_globals_metadata::B
+// gdb-command:whatis basic_types_globals_metadata::B
 // gdb-check:type = bool
-// gdbr-command:whatis basic_types_globals_metadata::I
+// gdb-command:whatis basic_types_globals_metadata::I
 // gdb-check:type = isize
-// gdbr-command:whatis basic_types_globals_metadata::C
+// gdb-command:whatis basic_types_globals_metadata::C
 // gdb-check:type = char
-// gdbr-command:whatis basic_types_globals_metadata::I8
+// gdb-command:whatis basic_types_globals_metadata::I8
 // gdb-check:type = i8
-// gdbr-command:whatis basic_types_globals_metadata::I16
+// gdb-command:whatis basic_types_globals_metadata::I16
 // gdb-check:type = i16
-// gdbr-command:whatis basic_types_globals_metadata::I32
+// gdb-command:whatis basic_types_globals_metadata::I32
 // gdb-check:type = i32
-// gdbr-command:whatis basic_types_globals_metadata::I64
+// gdb-command:whatis basic_types_globals_metadata::I64
 // gdb-check:type = i64
-// gdbr-command:whatis basic_types_globals_metadata::U
+// gdb-command:whatis basic_types_globals_metadata::U
 // gdb-check:type = usize
-// gdbr-command:whatis basic_types_globals_metadata::U8
+// gdb-command:whatis basic_types_globals_metadata::U8
 // gdb-check:type = u8
-// gdbr-command:whatis basic_types_globals_metadata::U16
+// gdb-command:whatis basic_types_globals_metadata::U16
 // gdb-check:type = u16
-// gdbr-command:whatis basic_types_globals_metadata::U32
+// gdb-command:whatis basic_types_globals_metadata::U32
 // gdb-check:type = u32
-// gdbr-command:whatis basic_types_globals_metadata::U64
+// gdb-command:whatis basic_types_globals_metadata::U64
 // gdb-check:type = u64
-// gdbr-command:whatis basic_types_globals_metadata::F16
+// gdb-command:whatis basic_types_globals_metadata::F16
 // gdb-check:type = f16
-// gdbr-command:whatis basic_types_globals_metadata::F32
+// gdb-command:whatis basic_types_globals_metadata::F32
 // gdb-check:type = f32
-// gdbr-command:whatis basic_types_globals_metadata::F64
+// gdb-command:whatis basic_types_globals_metadata::F64
 // gdb-check:type = f64
 // gdb-command:continue
 

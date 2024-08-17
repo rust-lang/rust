@@ -7,22 +7,22 @@
 // gdb-command:run
 
 // gdb-command:print a
-// gdbr-check:$1 = &unsized::Foo<[u8]> {data_ptr: [...], length: 4}
+// gdb-check:$1 = &unsized::Foo<[u8]> {data_ptr: [...], length: 4}
 
 // gdb-command:print b
-// gdbr-check:$2 = &unsized::Foo<unsized::Foo<[u8]>> {data_ptr: [...], length: 4}
+// gdb-check:$2 = &unsized::Foo<unsized::Foo<[u8]>> {data_ptr: [...], length: 4}
 
 // gdb-command:print c
-// gdbr-check:$3 = &unsized::Foo<dyn core::fmt::Debug> {pointer: [...], vtable: [...]}
+// gdb-check:$3 = &unsized::Foo<dyn core::fmt::Debug> {pointer: [...], vtable: [...]}
 
 // gdb-command:print _box
-// gdbr-check:$4 = alloc::boxed::Box<unsized::Foo<dyn core::fmt::Debug>, alloc::alloc::Global> {pointer: [...], vtable: [...]}
+// gdb-check:$4 = alloc::boxed::Box<unsized::Foo<dyn core::fmt::Debug>, alloc::alloc::Global> {pointer: [...], vtable: [...]}
 
 // gdb-command:print tuple_slice
-// gdbr-check:$5 = &(i32, i32, [i32]) {data_ptr: [...], length: 2}
+// gdb-check:$5 = &(i32, i32, [i32]) {data_ptr: [...], length: 2}
 
 // gdb-command:print tuple_dyn
-// gdbr-check:$6 = &(i32, i32, dyn core::fmt::Debug) {pointer: [...], vtable: [...]}
+// gdb-check:$6 = &(i32, i32, dyn core::fmt::Debug) {pointer: [...], vtable: [...]}
 
 // === CDB TESTS ===================================================================================
 
