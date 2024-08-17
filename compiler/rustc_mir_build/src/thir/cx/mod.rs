@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{HirId, Node};
+use rustc_hir::HirId;
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
@@ -110,11 +110,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &hir::Pat<'_>) -> Box<Pat<'tcx>> {
-        let p = match self.tcx.hir_node(p.hir_id) {
-            Node::Pat(p) => p,
-            node => bug!("pattern became {:?}", node),
-        };
+    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 
