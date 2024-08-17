@@ -622,8 +622,6 @@ declare_features! (
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
-    /// Allows unsafe attributes.
-    (unstable, unsafe_attributes, "1.80.0", Some(123757)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),

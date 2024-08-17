@@ -392,6 +392,8 @@ declare_features! (
     (accepted, universal_impl_trait, "1.26.0", Some(34511)),
     /// Allows arbitrary delimited token streams in non-macro attributes.
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208)),
+    /// Allows unsafe attributes.
+    (accepted, unsafe_attributes, "CURRENT_RUSTC_VERSION", Some(123757)),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668)),
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.

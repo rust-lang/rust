@@ -1,5 +1,4 @@
 //@ run-rustfix
-#![feature(unsafe_attributes)]
 #![deny(unsafe_attr_outside_unsafe)]
 
 macro_rules! tt {
