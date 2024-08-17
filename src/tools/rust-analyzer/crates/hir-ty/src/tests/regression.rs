@@ -2162,3 +2162,36 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn issue_17711() {
+    check_infer(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct Struct<'a, T>(&'a T);
+
+trait Trait {}
+
+impl<'a, T: Deref<Target = impl Trait>> Struct<'a, T> {
+    fn foo(&self) -> &Self { self }
+
+    fn bar(&self) {
+        let _ = self.foo();
+    }
+
+}
+"#,
+        expect![[r#"
+            137..141 'self': &'? Struct<'a, T>
+            152..160 '{ self }': &'? Struct<'a, T>
+            154..158 'self': &'? Struct<'a, T>
+            174..178 'self': &'? Struct<'a, T>
+            180..215 '{     ...     }': ()
+            194..195 '_': &'? Struct<'?, T>
+            198..202 'self': &'? Struct<'a, T>
+            198..208 'self.foo()': &'? Struct<'?, T>
+        "#]],
+    );
+}
