@@ -25,8 +25,8 @@ use rustc_session::Session;
 use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
-use rustc_span::InnerSpan;
 use rustc_span::symbol::sym;
+use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext};
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 
@@ -413,21 +413,32 @@ fn report_inline_asm(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     msg: String,
     level: llvm::DiagnosticLevel,
-    mut cookie: u64,
+    cookie: u64,
     source: Option<(String, Vec<InnerSpan>)>,
 ) {
     // In LTO build we may get srcloc values from other crates which are invalid
     // since they use a different source map. To be safe we just suppress these
     // in LTO builds.
-    if matches!(cgcx.lto, Lto::Fat | Lto::Thin) {
-        cookie = 0;
-    }
+    let span = if cookie == 0 || matches!(cgcx.lto, Lto::Fat | Lto::Thin) {
+        SpanData::default()
+    } else {
+        let lo = BytePos::from_u32(cookie as u32);
+        let hi = BytePos::from_u32((cookie >> 32) as u32);
+        SpanData {
+            lo,
+            // LLVM version < 19 silently truncates the cookie to 32 bits in some situations.
+            hi: if hi.to_u32() != 0 { hi } else { lo },
+            ctxt: SyntaxContext::root(),
+            parent: None,
+        }
+    };
     let level = match level {
         llvm::DiagnosticLevel::Error => Level::Error,
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
-    cgcx.diag_emitter.inline_asm_error(cookie.try_into().unwrap(), msg, level, source);
+    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
+    cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {

@@ -504,14 +504,13 @@ pub(crate) fn inline_asm_call<'ll>(
             let key = "srcloc";
             let kind = llvm::LLVMGetMDKindIDInContext(
                 bx.llcx,
-                key.as_ptr() as *const c_char,
+                key.as_ptr().cast::<c_char>(),
                 key.len() as c_uint,
             );
 
-            // srcloc contains one integer for each line of assembly code.
-            // Unfortunately this isn't enough to encode a full span so instead
-            // we just encode the start position of each line.
-            // FIXME: Figure out a way to pass the entire line spans.
+            // `srcloc` contains one 64-bit integer for each line of assembly code,
+            // where the lower 32 bits hold the lo byte position and the upper 32 bits
+            // hold the hi byte position.
             let mut srcloc = vec![];
             if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
                 // LLVM inserts an extra line to add the ".intel_syntax", so add
@@ -521,13 +520,13 @@ pub(crate) fn inline_asm_call<'ll>(
                 // due to the asm template string coming from a macro. LLVM will
                 // default to the first srcloc for lines that don't have an
                 // associated srcloc.
-                srcloc.push(llvm::LLVMValueAsMetadata(bx.const_i32(0)));
+                srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
             }
-            srcloc.extend(
-                line_spans
-                    .iter()
-                    .map(|span| llvm::LLVMValueAsMetadata(bx.const_i32(span.lo().to_u32() as i32))),
-            );
+            srcloc.extend(line_spans.iter().map(|span| {
+                llvm::LLVMValueAsMetadata(bx.const_u64(
+                    u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32),
+                ))
+            }));
             let md = llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len());
             let md = llvm::LLVMMetadataAsValue(&bx.llcx, md);
             llvm::LLVMSetMetadata(call, kind, md);
