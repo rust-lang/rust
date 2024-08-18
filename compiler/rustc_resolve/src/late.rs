@@ -710,7 +710,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// const HELLO_WORLD: &str = "Hello, world!";
     /// static ZEROES: &[u8] = &[0, 0, 0];
     /// ```
-    allow_elided_static: bool,
+    warn_elided_static: bool,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1356,7 +1356,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             in_func_body: false,
             lifetime_uses: Default::default(),
             crate_node_id: krate.id,
-            allow_elided_static: false,
+            warn_elided_static: true,
         }
     }
 
@@ -1568,10 +1568,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_ty_allow_elided_static(&mut self, ty: &'ast Ty) {
-        self.allow_elided_static = true;
+    fn visit_ty_do_not_warn_elided_static(&mut self, ty: &'ast Ty) {
+        self.warn_elided_static = false;
         self.visit_ty(ty);
-        self.allow_elided_static = false;
+        self.warn_elided_static = true;
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2069,7 +2069,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 debug_assert_eq!(id, missing.id);
                 match res {
                     LifetimeRes::Static => {
-                        if !self.allow_elided_static {
+                        if self.warn_elided_static {
                             self.r.lint_buffer.buffer_lint(
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
                                 missing.id_if_not_fake_or(self.crate_node_id),
@@ -2620,7 +2620,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
-                        this.visit_ty_allow_elided_static(ty);
+                        this.visit_ty_do_not_warn_elided_static(ty);
                     });
                     if let Some(expr) = expr {
                         // We already forbid generic params because of the above item rib,
@@ -2651,7 +2651,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
                         this.with_lifetime_rib(
                             LifetimeRibKind::Elided(LifetimeRes::Static),
-                            |this| this.visit_ty_allow_elided_static(ty),
+                            |this| this.visit_ty_do_not_warn_elided_static(ty),
                         );
 
                         if let Some(expr) = expr {
