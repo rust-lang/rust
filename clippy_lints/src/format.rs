@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                     span_useless_format(cx, call_site, sugg, applicability);
                 },
                 ([arg], [piece]) => {
-                    if let Ok(value) = find_format_arg_expr(expr, arg)
+                    if let Some(value) = find_format_arg_expr(expr, arg)
                         && let FormatArgsPiece::Placeholder(placeholder) = piece
                         && placeholder.format_trait == FormatTrait::Display
                         && placeholder.format_options == FormatOptions::default()
