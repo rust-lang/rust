@@ -251,7 +251,7 @@ fn lint_map_unit_fn(
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for MapUnit {
+impl LateLintPass<'_> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = stmt.kind
             && !stmt.span.from_expansion()

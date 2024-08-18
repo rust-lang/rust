@@ -203,7 +203,7 @@ fn find_stripping<'tcx>(
         results: Vec<Span>,
     }
 
-    impl<'a, 'tcx> Visitor<'tcx> for StrippingFinder<'a, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for StrippingFinder<'_, 'tcx> {
         fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
             if is_ref_str(self.cx, ex)
                 && let unref = peel_ref(ex)

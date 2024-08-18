@@ -241,7 +241,7 @@ struct VarVisitor<'a, 'tcx> {
     prefer_mutable: bool,
 }
 
-impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
+impl<'tcx> VarVisitor<'_, 'tcx> {
     fn check(&mut self, idx: &'tcx Expr<'_>, seqexpr: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) -> bool {
         if let ExprKind::Path(ref seqpath) = seqexpr.kind
             // the indexed container is referenced by a name
@@ -292,7 +292,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind
             // a range index op

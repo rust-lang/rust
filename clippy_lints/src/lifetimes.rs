@@ -397,7 +397,7 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.lts.push(*lifetime);

@@ -126,7 +126,7 @@ struct SelfFinder<'a, 'tcx> {
     invalid: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
     type NestedFilter = OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {

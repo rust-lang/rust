@@ -140,7 +140,7 @@ enum RetReplacement<'tcx> {
     Expr(Cow<'tcx, str>, Applicability),
 }
 
-impl<'tcx> RetReplacement<'tcx> {
+impl RetReplacement<'_> {
     fn sugg_help(&self) -> &'static str {
         match self {
             Self::Empty | Self::Expr(..) => "remove `return`",
@@ -158,7 +158,7 @@ impl<'tcx> RetReplacement<'tcx> {
     }
 }
 
-impl<'tcx> Display for RetReplacement<'tcx> {
+impl Display for RetReplacement<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => write!(f, ""),

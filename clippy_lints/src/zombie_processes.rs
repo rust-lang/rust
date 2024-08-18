@@ -118,7 +118,7 @@ enum WaitFinder<'a, 'tcx> {
     Found(&'a LateContext<'tcx>, HirId),
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for WaitFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
     type Result = ControlFlow<BreakReason>;
 
     fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) -> Self::Result {
@@ -300,7 +300,7 @@ struct ExitPointFinder<'a, 'tcx> {
 
 struct ExitCallFound;
 
-impl<'a, 'tcx> Visitor<'tcx> for ExitPointFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ExitPointFinder<'_, 'tcx> {
     type Result = ControlFlow<ExitCallFound>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> Self::Result {

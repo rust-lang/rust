@@ -91,7 +91,7 @@ fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>)
 #[derive(Default)]
 struct InferVisitor(bool);
 
-impl<'tcx> Visitor<'tcx> for InferVisitor {
+impl Visitor<'_> for InferVisitor {
     fn visit_ty(&mut self, t: &Ty<'_>) {
         self.0 |= matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
         if !self.0 {
