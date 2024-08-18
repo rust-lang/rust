@@ -29,6 +29,7 @@ fn has_broken_floats() -> bool {
     std::env::var("TARGET").is_ok_and(|v| v.contains("i586"))
 }
 
+#[cfg(target_arch = "x86_64")]
 fn f16(){
     const_assert!((1f16).to_bits(), 0x3c00);
     const_assert!(u16::from_be_bytes(1f16.to_be_bytes()), 0x3c00);
@@ -119,6 +120,7 @@ fn f64() {
     }
 }
 
+#[cfg(target_arch = "x86_64")]
 fn f128() {
     const_assert!((1f128).to_bits(), 0x3fff0000000000000000000000000000);
     const_assert!(u128::from_be_bytes(1f128.to_be_bytes()), 0x3fff0000000000000000000000000000);
@@ -150,8 +152,11 @@ fn f128() {
 }
 
 fn main() {
-    f16();
+    #[cfg(target_arch = "x86_64")]
+    {
+        f16();
+        f128();
+    }
     f32();
     f64();
-    f128();
 }
