@@ -16,6 +16,7 @@ use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -1742,8 +1743,7 @@ rustc_queries! {
         arena_cache
         desc { |tcx| "resolving lifetimes for `{}`", tcx.def_path_str(owner_id) }
     }
-    query named_variable_map(owner_id: hir::OwnerId) ->
-        Option<&'tcx FxIndexMap<ItemLocalId, ResolvedArg>> {
+    query named_variable_map(owner_id: hir::OwnerId) -> &'tcx SortedMap<ItemLocalId, ResolvedArg> {
         desc { |tcx| "looking up a named region inside `{}`", tcx.def_path_str(owner_id) }
     }
     query is_late_bound_map(owner_id: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
@@ -1759,7 +1759,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query late_bound_vars_map(owner_id: hir::OwnerId)
-        -> Option<&'tcx FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>> {
         desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(owner_id) }
     }
 
