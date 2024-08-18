@@ -604,6 +604,11 @@ fn find_continuable(
     }
 }
 
+enum ImplTraitReplacingMode {
+    ReturnPosition(FxHashSet<Ty>),
+    TypeAlias,
+}
+
 impl<'a> InferenceContext<'a> {
     fn new(
         db: &'a dyn HirDatabase,
@@ -825,13 +830,19 @@ impl<'a> InferenceContext<'a> {
                 self.write_binding_ty(self_param, ty);
             }
         }
-        let mut params_and_ret_tys = Vec::new();
+        let mut tait_candidates = FxHashSet::default();
         for (ty, pat) in param_tys.zip(&*self.body.params) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 
             self.infer_top_pat(*pat, &ty);
-            params_and_ret_tys.push(ty);
+            if ty
+                .data(Interner)
+                .flags
+                .intersects(TypeFlags::HAS_TY_OPAQUE.union(TypeFlags::HAS_TY_INFER))
+            {
+                tait_candidates.insert(ty);
+            }
         }
         let return_ty = &*data.ret_type;
 
@@ -844,7 +855,12 @@ impl<'a> InferenceContext<'a> {
         let return_ty = if let Some(rpits) = self.db.return_type_impl_traits(func) {
             // RPIT opaque types use substitution of their parent function.
             let fn_placeholders = TyBuilder::placeholder_subst(self.db, func);
-            let result = self.insert_inference_vars_for_impl_trait(return_ty, fn_placeholders);
+            let mut mode = ImplTraitReplacingMode::ReturnPosition(FxHashSet::default());
+            let result =
+                self.insert_inference_vars_for_impl_trait(return_ty, fn_placeholders, &mut mode);
+            if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
+                tait_candidates.extend(taits);
+            }
             let rpits = rpits.skip_binders();
             for (id, _) in rpits.impl_traits.iter() {
                 if let Entry::Vacant(e) = self.result.type_of_rpit.entry(id) {
@@ -863,11 +879,23 @@ impl<'a> InferenceContext<'a> {
         // Functions might be defining usage sites of TAITs.
         // To define an TAITs, that TAIT must appear in the function's signatures.
         // So, it suffices to check for params and return types.
-        params_and_ret_tys.push(self.return_ty.clone());
-        self.make_tait_coercion_table(params_and_ret_tys.iter());
+        if self
+            .return_ty
+            .data(Interner)
+            .flags
+            .intersects(TypeFlags::HAS_TY_OPAQUE.union(TypeFlags::HAS_TY_INFER))
+        {
+            tait_candidates.insert(self.return_ty.clone());
+        }
+        self.make_tait_coercion_table(tait_candidates.iter());
     }
 
-    fn insert_inference_vars_for_impl_trait<T>(&mut self, t: T, placeholders: Substitution) -> T
+    fn insert_inference_vars_for_impl_trait<T>(
+        &mut self,
+        t: T,
+        placeholders: Substitution,
+        mode: &mut ImplTraitReplacingMode,
+    ) -> T
     where
         T: crate::HasInterner<Interner = Interner> + crate::TypeFoldable<Interner>,
     {
@@ -880,10 +908,31 @@ impl<'a> InferenceContext<'a> {
                 };
                 let (impl_traits, idx) =
                     match self.db.lookup_intern_impl_trait_id(opaque_ty_id.into()) {
+                        // We don't replace opaque types from other kind with inference vars
+                        // because `insert_inference_vars_for_impl_traits` for each kinds
+                        // and unreplaced opaque types of other kind are resolved while
+                        // inferencing because of `tait_coercion_table`.
+                        // Moreover, calling `insert_inference_vars_for_impl_traits` with same
+                        // `placeholders` for other kind may cause trouble because
+                        // the substs for the bounds of each impl traits do not match
                         ImplTraitId::ReturnTypeImplTrait(def, idx) => {
+                            if matches!(mode, ImplTraitReplacingMode::TypeAlias) {
+                                // RPITs don't have `tait_coercion_table`, so use inserted inference
+                                // vars for them.
+                                if let Some(ty) = self.result.type_of_rpit.get(idx) {
+                                    return ty.clone();
+                                }
+                                return ty;
+                            }
                             (self.db.return_type_impl_traits(def), idx)
                         }
                         ImplTraitId::TypeAliasImplTrait(def, idx) => {
+                            if let ImplTraitReplacingMode::ReturnPosition(taits) = mode {
+                                // Gather TAITs while replacing RPITs because TAITs inside RPITs
+                                // may not visited while replacing TAITs
+                                taits.insert(ty.clone());
+                                return ty;
+                            }
                             (self.db.type_alias_impl_traits(def), idx)
                         }
                         _ => unreachable!(),
@@ -892,16 +941,20 @@ impl<'a> InferenceContext<'a> {
                     return ty;
                 };
                 let bounds = (*impl_traits)
-                    .map_ref(|rpits| rpits.impl_traits[idx].bounds.map_ref(|it| it.iter()));
+                    .map_ref(|its| its.impl_traits[idx].bounds.map_ref(|it| it.iter()));
                 let var = self.table.new_type_var();
                 let var_subst = Substitution::from1(Interner, var.clone());
                 for bound in bounds {
-                    let predicate = bound.map(|it| it.cloned()).substitute(Interner, &placeholders);
+                    let predicate = bound.map(|it| it.cloned());
+                    let predicate = predicate.substitute(Interner, &placeholders);
                     let (var_predicate, binders) =
                         predicate.substitute(Interner, &var_subst).into_value_and_skipped_binders();
                     always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
-                    let var_predicate = self
-                        .insert_inference_vars_for_impl_trait(var_predicate, placeholders.clone());
+                    let var_predicate = self.insert_inference_vars_for_impl_trait(
+                        var_predicate,
+                        placeholders.clone(),
+                        mode,
+                    );
                     self.push_obligation(var_predicate.cast(Interner));
                 }
                 self.result.type_of_rpit.insert(idx, var.clone());
@@ -1038,7 +1091,11 @@ impl<'a> InferenceContext<'a> {
                     self.db.lookup_intern_impl_trait_id(id.into())
                 {
                     let subst = TyBuilder::placeholder_subst(self.db, alias_id);
-                    let ty = self.insert_inference_vars_for_impl_trait(ty, subst);
+                    let ty = self.insert_inference_vars_for_impl_trait(
+                        ty,
+                        subst,
+                        &mut ImplTraitReplacingMode::TypeAlias,
+                    );
                     Some((id, ty))
                 } else {
                     None

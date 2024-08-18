@@ -2211,3 +2211,20 @@ fn f() -> Foo {}
         "#]],
     );
 }
+
+#[test]
+fn issue_17921() {
+    check_infer(
+        r#"
+//- minicore: future
+trait Foo {}
+type Bar = impl Foo;
+
+async fn f<A, B, C>() -> Bar {}
+"#,
+        expect![[r#"
+            64..66 '{}': ()
+            64..66 '{}': impl Future<Output = ()>
+        "#]],
+    );
+}
