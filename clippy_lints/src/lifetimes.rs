@@ -6,8 +6,8 @@ use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, walk_fn_decl, walk_generic_param, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
-    walk_poly_trait_ref, walk_trait_ref, walk_ty,
+    Visitor, walk_fn_decl, walk_generic_arg, walk_generics, walk_impl_item_ref, walk_item, walk_param_bound,
+    walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_where_predicate,
 };
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl,
@@ -21,7 +21,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::symbol::{Ident, kw};
 use std::ops::ControlFlow;
 
 declare_clippy_lint! {
@@ -191,50 +191,61 @@ fn check_fn_inner<'tcx>(
         if usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)) {
             return;
         }
-
-        let lts = elidable_lts
-            .iter()
-            // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
-            // `Node::GenericParam`.
-            .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
-            .map(|ident| ident.to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        span_lint_and_then(
-            cx,
-            NEEDLESS_LIFETIMES,
-            elidable_lts
-                .iter()
-                .map(|&lt| cx.tcx.def_span(lt))
-                .chain(usages.iter().filter_map(|usage| {
-                    if let LifetimeName::Param(def_id) = usage.res
-                        && elidable_lts.contains(&def_id)
-                    {
-                        return Some(usage.ident.span);
-                    }
-
-                    None
-                }))
-                .collect_vec(),
-            format!("the following explicit lifetimes could be elided: {lts}"),
-            |diag| {
-                if sig.header.is_async() {
-                    // async functions have usages whose spans point at the lifetime declaration which messes up
-                    // suggestions
-                    return;
-                };
-
-                if let Some(suggestions) = elision_suggestions(cx, generics, &elidable_lts, &usages) {
-                    diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);
-                }
-            },
-        );
+        // async functions have usages whose spans point at the lifetime declaration which messes up
+        // suggestions
+        let include_suggestions = !sig.header.is_async();
+        report_elidable_lifetimes(cx, generics, &elidable_lts, &usages, include_suggestions);
     }
 
     if report_extra_lifetimes {
         self::report_extra_lifetimes(cx, sig.decl, generics);
     }
+}
+
+/// Generate diagnostic messages for elidable lifetimes.
+fn report_elidable_lifetimes(
+    cx: &LateContext<'_>,
+    generics: &Generics<'_>,
+    elidable_lts: &[LocalDefId],
+    usages: &[Lifetime],
+    include_suggestions: bool,
+) {
+    let lts = elidable_lts
+        .iter()
+        // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
+        // `Node::GenericParam`.
+        .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
+        .map(|ident| ident.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    span_lint_and_then(
+        cx,
+        NEEDLESS_LIFETIMES,
+        elidable_lts
+            .iter()
+            .map(|&lt| cx.tcx.def_span(lt))
+            .chain(usages.iter().filter_map(|usage| {
+                if let LifetimeName::Param(def_id) = usage.res
+                    && elidable_lts.contains(&def_id)
+                {
+                    return Some(usage.ident.span);
+                }
+
+                None
+            }))
+            .collect_vec(),
+        format!("the following explicit lifetimes could be elided: {lts}"),
+        |diag| {
+            if !include_suggestions {
+                return;
+            };
+
+            if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, usages) {
+                diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);
+            }
+        },
+    );
 }
 
 fn elision_suggestions(
@@ -594,23 +605,34 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
     false
 }
 
+struct Usage {
+    lifetime: Lifetime,
+    in_where_predicate: bool,
+    in_generic_arg: bool,
+}
+
 struct LifetimeChecker<'cx, 'tcx, F> {
     cx: &'cx LateContext<'tcx>,
-    map: FxHashMap<Symbol, Span>,
+    map: FxHashMap<LocalDefId, Vec<Usage>>,
+    where_predicate_depth: usize,
+    generic_arg_depth: usize,
     phantom: std::marker::PhantomData<F>,
 }
 
 impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
-    fn new(cx: &'cx LateContext<'tcx>, map: FxHashMap<Symbol, Span>) -> LifetimeChecker<'cx, 'tcx, F> {
+    fn new(cx: &'cx LateContext<'tcx>, def_ids: Vec<LocalDefId>) -> LifetimeChecker<'cx, 'tcx, F> {
+        let map = def_ids.into_iter().map(|def_id| (def_id, Vec::new())).collect();
         Self {
             cx,
             map,
+            where_predicate_depth: 0,
+            generic_arg_depth: 0,
             phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl<'cx, 'tcx, F> Visitor<'tcx> for LifetimeChecker<'cx, 'tcx, F>
+impl<'tcx, F> Visitor<'tcx> for LifetimeChecker<'_, 'tcx, F>
 where
     F: NestedFilter<'tcx>,
 {
@@ -619,18 +641,27 @@ where
 
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        self.map.remove(&lifetime.ident.name);
+        if let LifetimeName::Param(def_id) = lifetime.res
+            && let Some(usages) = self.map.get_mut(&def_id)
+        {
+            usages.push(Usage {
+                lifetime: *lifetime,
+                in_where_predicate: self.where_predicate_depth != 0,
+                in_generic_arg: self.generic_arg_depth != 0,
+            });
+        }
     }
 
-    fn visit_generic_param(&mut self, param: &'tcx GenericParam<'_>) {
-        // don't actually visit `<'a>` or `<'a: 'b>`
-        // we've already visited the `'a` declarations and
-        // don't want to spuriously remove them
-        // `'b` in `'a: 'b` is useless unless used elsewhere in
-        // a non-lifetime bound
-        if let GenericParamKind::Type { .. } = param.kind {
-            walk_generic_param(self, param);
-        }
+    fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) {
+        self.where_predicate_depth += 1;
+        walk_where_predicate(self, predicate);
+        self.where_predicate_depth -= 1;
+    }
+
+    fn visit_generic_arg(&mut self, generic_arg: &'tcx GenericArg<'tcx>) -> Self::Result {
+        self.generic_arg_depth += 1;
+        walk_generic_arg(self, generic_arg);
+        self.generic_arg_depth -= 1;
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -639,44 +670,49 @@ where
 }
 
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
-    let hs = generics
+    let def_ids = generics
         .params
         .iter()
         .filter_map(|par| match par.kind {
             GenericParamKind::Lifetime {
                 kind: LifetimeParamKind::Explicit,
-            } => Some((par.name.ident().name, par.span)),
+            } => Some(par.def_id),
             _ => None,
         })
         .collect();
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, hs);
+    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, def_ids);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
 
-    for &v in checker.map.values() {
-        span_lint(
-            cx,
-            EXTRA_UNUSED_LIFETIMES,
-            v,
-            "this lifetime isn't used in the function definition",
-        );
+    for (def_id, usages) in checker.map {
+        if usages
+            .iter()
+            .all(|usage| usage.in_where_predicate && !usage.in_generic_arg)
+        {
+            span_lint(
+                cx,
+                EXTRA_UNUSED_LIFETIMES,
+                cx.tcx.def_span(def_id),
+                "this lifetime isn't used in the function definition",
+            );
+        }
     }
 }
 
 fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'_>) {
-    let hs = impl_
+    let def_ids = impl_
         .generics
         .params
         .iter()
         .filter_map(|par| match par.kind {
             GenericParamKind::Lifetime {
                 kind: LifetimeParamKind::Explicit,
-            } => Some((par.name.ident().name, par.span)),
+            } => Some(par.def_id),
             _ => None,
         })
         .collect();
-    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, hs);
+    let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, def_ids);
 
     walk_generics(&mut checker, impl_.generics);
     if let Some(ref trait_ref) = impl_.of_trait {
@@ -687,9 +723,62 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
         walk_impl_item_ref(&mut checker, item);
     }
 
-    for &v in checker.map.values() {
-        span_lint(cx, EXTRA_UNUSED_LIFETIMES, v, "this lifetime isn't used in the impl");
+    for (&def_id, usages) in &checker.map {
+        if usages
+            .iter()
+            .all(|usage| usage.in_where_predicate && !usage.in_generic_arg)
+        {
+            span_lint(
+                cx,
+                EXTRA_UNUSED_LIFETIMES,
+                cx.tcx.def_span(def_id),
+                "this lifetime isn't used in the impl",
+            );
+        }
     }
+
+    report_elidable_impl_lifetimes(cx, impl_, &checker.map);
+}
+
+// An `impl` lifetime is elidable if it satisfies the following conditions:
+// - It is used exactly once.
+// - That single use is not in a `GenericArg` in a `WherePredicate`. (Note that a `GenericArg` is
+//   different from a `GenericParam`.)
+fn report_elidable_impl_lifetimes<'tcx>(
+    cx: &LateContext<'tcx>,
+    impl_: &'tcx Impl<'_>,
+    map: &FxHashMap<LocalDefId, Vec<Usage>>,
+) {
+    let single_usages = map
+        .iter()
+        .filter_map(|(def_id, usages)| {
+            if let [
+                Usage {
+                    lifetime,
+                    in_where_predicate: false,
+                    ..
+                }
+                | Usage {
+                    lifetime,
+                    in_generic_arg: false,
+                    ..
+                },
+            ] = usages.as_slice()
+            {
+                Some((def_id, lifetime))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if single_usages.is_empty() {
+        return;
+    }
+
+    let (elidable_lts, usages): (Vec<_>, Vec<_>) = single_usages.into_iter().unzip();
+
+    report_elidable_lifetimes(cx, impl_.generics, &elidable_lts, &usages, true);
 }
 
 struct BodyLifetimeChecker;
