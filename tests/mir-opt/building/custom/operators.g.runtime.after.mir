@@ -6,8 +6,8 @@ fn g(_1: *const i32, _2: *const [i32]) -> () {
     let mut _4: usize;
 
     bb0: {
-        _3 = PtrMetadata(_1);
-        _4 = PtrMetadata(_2);
+        _3 = PtrMetadata(copy _1);
+        _4 = PtrMetadata(copy _2);
         return;
     }
 }

@@ -26,7 +26,7 @@
       bb1: {
           _2 = discriminant(_1);
 -         switchInt(move _2) -> [1: bb2, otherwise: bb6];
-+         _8 = Ne(_2, const 1_isize);
++         _8 = Ne(copy _2, const 1_isize);
 +         assume(move _8);
 +         goto -> bb6;
       }

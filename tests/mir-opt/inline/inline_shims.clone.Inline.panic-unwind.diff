@@ -15,7 +15,7 @@
 -     }
 - 
 -     bb1: {
-+         _0 = (*_2);
++         _0 = copy (*_2);
           StorageDead(_2);
           return;
       }

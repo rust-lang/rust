@@ -27,7 +27,7 @@
           _1 = const false;
           StorageLive(_2);
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
           _2 = move _3;
           StorageDead(_3);
           StorageLive(_4);

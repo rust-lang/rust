@@ -14,9 +14,9 @@ fn signy(_1: SignedAroundZero) -> i16 {
         StorageLive(_2);
         _2 = move _1;
         _3 = discriminant(_2);
-        _4 = _3 as u16 (IntToInt);
-        _5 = Ge(_4, const 65534_u16);
-        _6 = Le(_4, const 2_u16);
+        _4 = copy _3 as u16 (IntToInt);
+        _5 = Ge(copy _4, const 65534_u16);
+        _6 = Le(copy _4, const 2_u16);
         _7 = BitOr(move _5, move _6);
         assume(move _7);
         _0 = move _3 as i16 (IntToInt);

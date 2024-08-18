@@ -22,13 +22,13 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
 
     bb0: {
         StorageLive(_3);
-        _3 = ((*_1).0: char);
+        _3 = copy ((*_1).0: char);
         StorageLive(_4);
-        _4 = ((*_2).0: char);
+        _4 = copy ((*_2).0: char);
         _5 = Cmp(move _3, move _4);
         StorageDead(_4);
         StorageDead(_3);
-        _6 = Option::<std::cmp::Ordering>::Some(_5);
+        _6 = Option::<std::cmp::Ordering>::Some(copy _5);
         _7 = discriminant(_5);
         switchInt(move _7) -> [0: bb1, otherwise: bb2];
     }
@@ -36,9 +36,9 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
     bb1: {
         StorageLive(_10);
         StorageLive(_8);
-        _8 = ((*_1).1: i16);
+        _8 = copy ((*_1).1: i16);
         StorageLive(_9);
-        _9 = ((*_2).1: i16);
+        _9 = copy ((*_2).1: i16);
         _10 = Cmp(move _8, move _9);
         StorageDead(_9);
         StorageDead(_8);
@@ -48,7 +48,7 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
     }
 
     bb2: {
-        _0 = _6;
+        _0 = copy _6;
         goto -> bb3;
     }
 

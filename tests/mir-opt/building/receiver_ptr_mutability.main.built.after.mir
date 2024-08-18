@@ -38,7 +38,7 @@ fn main() -> () {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = _1;
+        _4 = copy _1;
         _3 = move _4 as *const Test (PointerCoercion(MutToConstPointer));
         StorageDead(_4);
         _2 = Test::x(move _3) -> [return: bb2, unwind: bb4];
@@ -63,7 +63,7 @@ fn main() -> () {
         StorageLive(_10);
         StorageLive(_11);
         StorageLive(_12);
-        _12 = (*(*(*(*_5))));
+        _12 = copy (*(*(*(*_5))));
         _11 = move _12 as *const Test (PointerCoercion(MutToConstPointer));
         StorageDead(_12);
         _10 = Test::x(move _11) -> [return: bb3, unwind: bb4];

@@ -52,7 +52,7 @@
           _5 = &_6;
           _4 = &_5;
 -         PlaceMention((*(*(*(*_4)))));
--         switchInt((*(*(*(*_4))))) -> [0: bb3, otherwise: bb4];
+-         switchInt(copy (*(*(*(*_4))))) -> [0: bb3, otherwise: bb4];
 +         _10 = deref_copy (*_4);
 +         _11 = deref_copy (*_10);
 +         _12 = deref_copy (*_11);
@@ -60,7 +60,7 @@
 +         _13 = deref_copy (*_4);
 +         _14 = deref_copy (*_13);
 +         _15 = deref_copy (*_14);
-+         switchInt((*_15)) -> [0: bb3, otherwise: bb4];
++         switchInt(copy (*_15)) -> [0: bb3, otherwise: bb4];
       }
   
       bb3: {

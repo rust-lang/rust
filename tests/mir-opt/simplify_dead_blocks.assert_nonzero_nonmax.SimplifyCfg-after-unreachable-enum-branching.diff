@@ -5,8 +5,8 @@
       let mut _0: u8;
   
       bb0: {
--         switchInt(_1) -> [0: bb3, 1: bb2, 255: bb3, otherwise: bb4];
-+         switchInt(_1) -> [0: bb2, 1: bb1, 255: bb2, otherwise: bb3];
+-         switchInt(copy _1) -> [0: bb3, 1: bb2, 255: bb3, otherwise: bb4];
++         switchInt(copy _1) -> [0: bb2, 1: bb1, 255: bb2, otherwise: bb3];
       }
   
       bb1: {
@@ -26,7 +26,7 @@
   
 -     bb4: {
 +     bb3: {
-          _0 = _1;
+          _0 = copy _1;
           return;
       }
   }

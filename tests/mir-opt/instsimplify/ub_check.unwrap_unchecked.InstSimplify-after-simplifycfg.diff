@@ -21,7 +21,7 @@
   
       bb0: {
           StorageLive(_2);
-          _2 = _1;
+          _2 = copy _1;
           StorageLive(_3);
           StorageLive(_5);
           _3 = discriminant(_2);
@@ -36,7 +36,7 @@
           StorageLive(_4);
 -         _4 = UbChecks();
 +         _4 = const false;
-          assume(_4);
+          assume(copy _4);
           _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
       }
   
