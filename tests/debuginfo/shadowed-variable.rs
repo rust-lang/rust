@@ -40,42 +40,32 @@
 
 // lldb-command:v x
 // lldbg-check:[...] false
-// lldbr-check:(bool) x = false
 // lldb-command:v y
 // lldbg-check:[...] true
-// lldbr-check:(bool) y = true
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] 10
-// lldbr-check:(i32) x = 10
 // lldb-command:v y
 // lldbg-check:[...] true
-// lldbr-check:(bool) y = true
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] 10.5
-// lldbr-check:(f64) x = 10.5
 // lldb-command:v y
 // lldbg-check:[...] 20
-// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] 10.5
-// lldbr-check:(f64) x = 10.5
 // lldb-command:v y
 // lldbg-check:[...] 20
-// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] 11.5
-// lldbr-check:(f64) x = 11.5
 // lldb-command:v y
 // lldbg-check:[...] 20
-// lldbr-check:(i32) y = 20
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

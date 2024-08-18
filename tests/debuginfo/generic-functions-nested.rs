@@ -35,34 +35,26 @@
 
 // lldb-command:v x
 // lldbg-check:[...] -1
-// lldbr-check:(i32) x = -1
 // lldb-command:v y
 // lldbg-check:[...] 1
-// lldbr-check:(i32) y = 1
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] -1
-// lldbr-check:(i32) x = -1
 // lldb-command:v y
 // lldbg-check:[...] 2.5
-// lldbr-check:(f64) y = 2.5
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] -2.5
-// lldbr-check:(f64) x = -2.5
 // lldb-command:v y
 // lldbg-check:[...] 1
-// lldbr-check:(i32) y = 1
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] -2.5
-// lldbr-check:(f64) x = -2.5
 // lldb-command:v y
 // lldbg-check:[...] 2.5
-// lldbr-check:(f64) y = 2.5
 // lldb-command:continue
 
 

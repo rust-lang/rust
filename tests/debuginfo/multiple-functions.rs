@@ -22,17 +22,14 @@
 
 // lldb-command:v a
 // lldbg-check:[...] 10101
-// lldbr-check:(i32) a = 10101
 // lldb-command:continue
 
 // lldb-command:v b
 // lldbg-check:[...] 20202
-// lldbr-check:(i32) b = 20202
 // lldb-command:continue
 
 // lldb-command:v c
 // lldbg-check:[...] 30303
-// lldbr-check:(i32) c = 30303
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

@@ -23,18 +23,14 @@
 
 // lldb-command:v x
 // lldbg-check:[...] 0.5
-// lldbr-check:(f64) x = 0.5
 // lldb-command:v y
 // lldbg-check:[...] 10
-// lldbr-check:(i32) y = 10
 // lldb-command:continue
 
 // lldb-command:v *x
 // lldbg-check:[...] 29
-// lldbr-check:(i32) *x = 29
 // lldb-command:v *y
 // lldbg-check:[...] 110
-// lldbr-check:(i32) *y = 110
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

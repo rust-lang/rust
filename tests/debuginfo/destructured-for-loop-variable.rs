@@ -78,89 +78,65 @@
 // DESTRUCTURED STRUCT
 // lldb-command:v x
 // lldbg-check:[...] 400
-// lldbr-check:(i16) x = 400
 // lldb-command:v y
 // lldbg-check:[...] 401.5
-// lldbr-check:(f32) y = 401.5
 // lldb-command:v z
 // lldbg-check:[...] true
-// lldbr-check:(bool) z = true
 // lldb-command:continue
 
 // DESTRUCTURED TUPLE
 // lldb-command:v _i8
 // lldbg-check:[...] 0x6f
-// lldbr-check:(i8) _i8 = 111
 // lldb-command:v _u8
 // lldbg-check:[...] 0x70
-// lldbr-check:(u8) _u8 = 112
 // lldb-command:v _i16
 // lldbg-check:[...] -113
-// lldbr-check:(i16) _i16 = -113
 // lldb-command:v _u16
 // lldbg-check:[...] 114
-// lldbr-check:(u16) _u16 = 114
 // lldb-command:v _i32
 // lldbg-check:[...] -115
-// lldbr-check:(i32) _i32 = -115
 // lldb-command:v _u32
 // lldbg-check:[...] 116
-// lldbr-check:(u32) _u32 = 116
 // lldb-command:v _i64
 // lldbg-check:[...] -117
-// lldbr-check:(i64) _i64 = -117
 // lldb-command:v _u64
 // lldbg-check:[...] 118
-// lldbr-check:(u64) _u64 = 118
 // lldb-command:v _f32
 // lldbg-check:[...] 119.5
-// lldbr-check:(f32) _f32 = 119.5
 // lldb-command:v _f64
 // lldbg-check:[...] 120.5
-// lldbr-check:(f64) _f64 = 120.5
 // lldb-command:continue
 
 // MORE COMPLEX CASE
 // lldb-command:v v1
 // lldbg-check:[...] 80000
-// lldbr-check:(i32) v1 = 80000
 // lldb-command:v x1
 // lldbg-check:[...] 8000
-// lldbr-check:(i16) x1 = 8000
 // lldb-command:v *y1
 // lldbg-check:[...] 80001.5
-// lldbr-check:(f32) *y1 = 80001.5
 // lldb-command:v z1
 // lldbg-check:[...] false
-// lldbr-check:(bool) z1 = false
 // lldb-command:v *x2
 // lldbg-check:[...] -30000
-// lldbr-check:(i16) *x2 = -30000
 // lldb-command:v y2
 // lldbg-check:[...] -300001.5
-// lldbr-check:(f32) y2 = -300001.5
 // lldb-command:v *z2
 // lldbg-check:[...] true
-// lldbr-check:(bool) *z2 = true
 // lldb-command:v v2
 // lldbg-check:[...] 854237.5
-// lldbr-check:(f64) v2 = 854237.5
 // lldb-command:continue
 
 // SIMPLE IDENTIFIER
 // lldb-command:v i
 // lldbg-check:[...] 1234
-// lldbr-check:(i32) i = 1234
 // lldb-command:continue
 
 // lldb-command:v simple_struct_ident
 // lldbg-check:[...] { x = 3537 y = 35437.5 z = true }
-// lldbr-check:(destructured_for_loop_variable::Struct) simple_struct_ident = { x = 3537 y = 35437.5 z = true }
 // lldb-command:continue
 
 // lldb-command:v simple_tuple_ident
 // lldbg-check:[...] { 0 = 34903493 1 = 232323 }
-// lldbr-check:((u32, i64)) simple_tuple_ident = { 0 = 34903493 1 = 232323 }
 // lldb-command:continue
 
 #![allow(unused_variables)]

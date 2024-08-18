@@ -11,11 +11,8 @@
 
 // lldb-command:v v
 // lldbg-check:[...] size=3 { [0] = 1 [1] = 2 [2] = 3 }
-// lldbr-check:(alloc::vec::Vec<i32>) v = size=3 { [0] = 1 [1] = 2 [2] = 3 }
 // lldb-command:v zs
 // lldbg-check:[...] { x = y = 123 z = w = 456 }
-// lldbr-check:(issue_22656::StructWithZeroSizedField) zs = { x = y = 123 z = w = 456 }
-// lldbr-command:continue
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

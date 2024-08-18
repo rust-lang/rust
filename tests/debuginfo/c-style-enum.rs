@@ -67,31 +67,24 @@
 
 // lldb-command:v auto_one
 // lldbg-check:[...] One
-// lldbr-check:(c_style_enum::AutoDiscriminant) auto_one = c_style_enum::AutoDiscriminant::One
 
 // lldb-command:v auto_two
 // lldbg-check:[...] Two
-// lldbr-check:(c_style_enum::AutoDiscriminant) auto_two = c_style_enum::AutoDiscriminant::Two
 
 // lldb-command:v auto_three
 // lldbg-check:[...] Three
-// lldbr-check:(c_style_enum::AutoDiscriminant) auto_three = c_style_enum::AutoDiscriminant::Three
 
 // lldb-command:v manual_one_hundred
 // lldbg-check:[...] OneHundred
-// lldbr-check:(c_style_enum::ManualDiscriminant) manual_one_hundred = c_style_enum::ManualDiscriminant::OneHundred
 
 // lldb-command:v manual_one_thousand
 // lldbg-check:[...] OneThousand
-// lldbr-check:(c_style_enum::ManualDiscriminant) manual_one_thousand = c_style_enum::ManualDiscriminant::OneThousand
 
 // lldb-command:v manual_one_million
 // lldbg-check:[...] OneMillion
-// lldbr-check:(c_style_enum::ManualDiscriminant) manual_one_million = c_style_enum::ManualDiscriminant::OneMillion
 
 // lldb-command:v single_variant
 // lldbg-check:[...] TheOnlyVariant
-// lldbr-check:(c_style_enum::SingleVariant) single_variant = c_style_enum::SingleVariant::TheOnlyVariant
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

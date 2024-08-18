@@ -55,34 +55,26 @@
 
 // lldb-command:v a
 // lldbg-check:[...] 10
-// lldbr-check:(i32) a = 10
 // lldb-command:v b
 // lldbg-check:[...] 34
-// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldb-command:v a
 // lldbg-check:[...] 890242
-// lldbr-check:(i32) a = 10
 // lldb-command:v b
 // lldbg-check:[...] 34
-// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldb-command:v a
 // lldbg-check:[...] 10
-// lldbr-check:(i32) a = 10
 // lldb-command:v b
 // lldbg-check:[...] 34
-// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldb-command:v a
 // lldbg-check:[...] 102
-// lldbr-check:(i32) a = 10
 // lldb-command:v b
 // lldbg-check:[...] 34
-// lldbr-check:(i32) b = 34
 // lldb-command:continue
 
 // lldbg-command:print a

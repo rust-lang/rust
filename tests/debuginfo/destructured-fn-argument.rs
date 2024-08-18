@@ -155,195 +155,146 @@
 
 // lldb-command:v a
 // lldbg-check:[...] 1
-// lldbr-check:(isize) a = 1
 // lldb-command:v b
 // lldbg-check:[...] false
-// lldbr-check:(bool) b = false
 // lldb-command:continue
 
 // lldb-command:v a
 // lldbg-check:[...] 2
-// lldbr-check:(isize) a = 2
 // lldb-command:v b
 // lldbg-check:[...] 3
-// lldbr-check:(u16) b = 3
 // lldb-command:v c
 // lldbg-check:[...] 4
-// lldbr-check:(u16) c = 4
 // lldb-command:continue
 
 // lldb-command:v a
 // lldbg-check:[...] 5
-// lldbr-check:(isize) a = 5
 // lldb-command:v b
 // lldbg-check:[...] { 0 = 6 1 = 7 }
-// lldbr-check:((u32, u32)) b = { 0 = 6 1 = 7 }
 // lldb-command:continue
 
 // lldb-command:v h
 // lldbg-check:[...] 8
-// lldbr-check:(i16) h = 8
 // lldb-command:v i
 // lldbg-check:[...] { a = 9 b = 10 }
-// lldbr-check:(destructured_fn_argument::Struct) i = { a = 9 b = 10 }
 // lldb-command:v j
 // lldbg-check:[...] 11
-// lldbr-check:(i16) j = 11
 // lldb-command:continue
 
 // lldb-command:v k
 // lldbg-check:[...] 12
-// lldbr-check:(i64) k = 12
 // lldb-command:v l
 // lldbg-check:[...] 13
-// lldbr-check:(i32) l = 13
 // lldb-command:continue
 
 // lldb-command:v m
 // lldbg-check:[...] 14
-// lldbr-check:(isize) m = 14
 // lldb-command:v n
 // lldbg-check:[...] 16
-// lldbr-check:(i32) n = 16
 // lldb-command:continue
 
 // lldb-command:v o
 // lldbg-check:[...] 18
-// lldbr-check:(i32) o = 18
 // lldb-command:continue
 
 // lldb-command:v p
 // lldbg-check:[...] 19
-// lldbr-check:(i64) p = 19
 // lldb-command:v q
 // lldbg-check:[...] 20
-// lldbr-check:(i32) q = 20
 // lldb-command:v r
 // lldbg-check:[...] { a = 21 b = 22 }
-// lldbr-check:(destructured_fn_argument::Struct) r = { a = 21, b = 22 }
 // lldb-command:continue
 
 // lldb-command:v s
 // lldbg-check:[...] 24
-// lldbr-check:(i32) s = 24
 // lldb-command:v t
 // lldbg-check:[...] 23
-// lldbr-check:(i64) t = 23
 // lldb-command:continue
 
 // lldb-command:v u
 // lldbg-check:[...] 25
-// lldbr-check:(i16) u = 25
 // lldb-command:v v
 // lldbg-check:[...] 26
-// lldbr-check:(i32) v = 26
 // lldb-command:v w
 // lldbg-check:[...] 27
-// lldbr-check:(i64) w = 27
 // lldb-command:v x
 // lldbg-check:[...] 28
-// lldbr-check:(i32) x = 28
 // lldb-command:v y
 // lldbg-check:[...] 29
-// lldbr-check:(i64) y = 29
 // lldb-command:v z
 // lldbg-check:[...] 30
-// lldbr-check:(i32) z = 30
 // lldb-command:v ae
 // lldbg-check:[...] 31
-// lldbr-check:(i64) ae = 31
 // lldb-command:v oe
 // lldbg-check:[...] 32
-// lldbr-check:(i32) oe = 32
 // lldb-command:v ue
 // lldbg-check:[...] 33
-// lldbr-check:(u16) ue = 33
 // lldb-command:continue
 
 // lldb-command:v aa
 // lldbg-check:[...] { 0 = 34 1 = 35 }
-// lldbr-check:((isize, isize)) aa = { 0 = 34 1 = 35 }
 // lldb-command:continue
 
 // lldb-command:v bb
 // lldbg-check:[...] { 0 = 36 1 = 37 }
-// lldbr-check:((isize, isize)) bb = { 0 = 36 1 = 37 }
 // lldb-command:continue
 
 // lldb-command:v cc
 // lldbg-check:[...] 38
-// lldbr-check:(isize) cc = 38
 // lldb-command:continue
 
 // lldb-command:v dd
 // lldbg-check:[...] { 0 = 40 1 = 41 2 = 42 }
-// lldbr-check:((isize, isize, isize)) dd = { 0 = 40 1 = 41 2 = 42 }
 // lldb-command:continue
 
 // lldb-command:v *ee
 // lldbg-check:[...] { 0 = 43 1 = 44 2 = 45 }
-// lldbr-check:((isize, isize, isize)) *ee = { 0 = 43 1 = 44 2 = 45 }
 // lldb-command:continue
 
 // lldb-command:v *ff
 // lldbg-check:[...] 46
-// lldbr-check:(isize) *ff = 46
 // lldb-command:v gg
 // lldbg-check:[...] { 0 = 47 1 = 48 }
-// lldbr-check:((isize, isize)) gg = { 0 = 47 1 = 48 }
 // lldb-command:continue
 
 // lldb-command:v *hh
 // lldbg-check:[...] 50
-// lldbr-check:(i32) *hh = 50
 // lldb-command:continue
 
 // lldb-command:v ii
 // lldbg-check:[...] 51
-// lldbr-check:(i32) ii = 51
 // lldb-command:continue
 
 // lldb-command:v *jj
 // lldbg-check:[...] 52
-// lldbr-check:(i32) *jj = 52
 // lldb-command:continue
 
 // lldb-command:v kk
 // lldbg-check:[...] 53
-// lldbr-check:(f64) kk = 53
 // lldb-command:v ll
 // lldbg-check:[...] 54
-// lldbr-check:(isize) ll = 54
 // lldb-command:continue
 
 // lldb-command:v mm
 // lldbg-check:[...] 55
-// lldbr-check:(f64) mm = 55
 // lldb-command:v *nn
 // lldbg-check:[...] 56
-// lldbr-check:(isize) *nn = 56
 // lldb-command:continue
 
 // lldb-command:v oo
 // lldbg-check:[...] 57
-// lldbr-check:(isize) oo = 57
 // lldb-command:v pp
 // lldbg-check:[...] 58
-// lldbr-check:(isize) pp = 58
 // lldb-command:v qq
 // lldbg-check:[...] 59
-// lldbr-check:(isize) qq = 59
 // lldb-command:continue
 
 // lldb-command:v rr
 // lldbg-check:[...] 60
-// lldbr-check:(isize) rr = 60
 // lldb-command:v ss
 // lldbg-check:[...] 61
-// lldbr-check:(isize) ss = 61
 // lldb-command:v tt
 // lldbg-check:[...] 62
-// lldbr-check:(isize) tt = 62
 // lldb-command:continue
 
 #![allow(unused_variables)]

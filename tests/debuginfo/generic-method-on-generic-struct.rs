@@ -1,9 +1,5 @@
 //@ compile-flags:-g
 
-// Some versions of the non-rust-enabled LLDB print the wrong generic
-// parameter type names in this test.
-//@ needs-rust-lldb
-
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
@@ -61,61 +57,46 @@
 // STACK BY REF
 // lldb-command:v *self
 // lldbg-check:[...] { x = { 0 = 8888, 1 = -8888 } }
-// lldbr-check:(generic_method_on_generic_struct::Struct<(u32, i32)>) *self = { x = { 0 = 8888 1 = -8888 } }
 // lldb-command:v arg1
 // lldbg-check:[...] -1
-// lldbr-check:(isize) arg1 = -1
 // lldb-command:v arg2
 // lldbg-check:[...] 2
-// lldbr-check:(u16) arg2 = 2
 // lldb-command:continue
 
 // STACK BY VAL
 // lldb-command:v self
 // lldbg-check:[...] { x = { 0 = 8888, 1 = -8888 } }
-// lldbr-check:(generic_method_on_generic_struct::Struct<(u32, i32)>) self = { x = { 0 = 8888, 1 = -8888 } }
 // lldb-command:v arg1
 // lldbg-check:[...] -3
-// lldbr-check:(isize) arg1 = -3
 // lldb-command:v arg2
 // lldbg-check:[...] -4
-// lldbr-check:(i16) arg2 = -4
 // lldb-command:continue
 
 // OWNED BY REF
 // lldb-command:v *self
 // lldbg-check:[...] { x = 1234.5 }
-// lldbr-check:(generic_method_on_generic_struct::Struct<f64>) *self = { x = 1234.5 }
 // lldb-command:v arg1
 // lldbg-check:[...] -5
-// lldbr-check:(isize) arg1 = -5
 // lldb-command:v arg2
 // lldbg-check:[...] -6
-// lldbr-check:(i32) arg2 = -6
 // lldb-command:continue
 
 // OWNED BY VAL
 // lldb-command:v self
 // lldbg-check:[...] { x = 1234.5 }
-// lldbr-check:(generic_method_on_generic_struct::Struct<f64>) self = { x = 1234.5 }
 // lldb-command:v arg1
 // lldbg-check:[...] -7
-// lldbr-check:(isize) arg1 = -7
 // lldb-command:v arg2
 // lldbg-check:[...] -8
-// lldbr-check:(i64) arg2 = -8
 // lldb-command:continue
 
 // OWNED MOVED
 // lldb-command:v *self
 // lldbg-check:[...] { x = 1234.5 }
-// lldbr-check:(generic_method_on_generic_struct::Struct<f64>) *self = { x = 1234.5 }
 // lldb-command:v arg1
 // lldbg-check:[...] -9
-// lldbr-check:(isize) arg1 = -9
 // lldb-command:v arg2
 // lldbg-check:[...] -10.5
-// lldbr-check:(f32) arg2 = -10.5
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

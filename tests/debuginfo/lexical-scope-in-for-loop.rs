@@ -44,40 +44,33 @@
 // FIRST ITERATION
 // lldb-command:v x
 // lldbg-check:[...] 1
-// lldbr-check:(i32) x = 1
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] -1
-// lldbr-check:(i32) x = -1
 // lldb-command:continue
 
 // SECOND ITERATION
 // lldb-command:v x
 // lldbg-check:[...] 2
-// lldbr-check:(i32) x = 2
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] -2
-// lldbr-check:(i32) x = -2
 // lldb-command:continue
 
 // THIRD ITERATION
 // lldb-command:v x
 // lldbg-check:[...] 3
-// lldbr-check:(i32) x = 3
 // lldb-command:continue
 
 // lldb-command:v x
 // lldbg-check:[...] -3
-// lldbr-check:(i32) x = -3
 // lldb-command:continue
 
 // AFTER LOOP
 // lldb-command:v x
 // lldbg-check:[...] 1000000
-// lldbr-check:(i32) x = 1000000
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

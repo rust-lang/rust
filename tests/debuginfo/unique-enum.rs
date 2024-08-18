@@ -22,15 +22,12 @@
 
 // lldb-command:v *the_a
 // lldbg-check:(unique_enum::ABC) *the_a = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
-// lldbr-check:(unique_enum::ABC::TheA) *the_a = TheA { TheA: 0, TheB: 8970181431921507452 }
 
 // lldb-command:v *the_b
 // lldbg-check:(unique_enum::ABC) *the_b = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
-// lldbr-check:(unique_enum::ABC::TheB) *the_b = { = 0 = 286331153 = 286331153 }
 
 // lldb-command:v *univariant
 // lldbg-check:(unique_enum::Univariant) *univariant = { value = { 0 = 123234 } }
-// lldbr-check:(unique_enum::Univariant) *univariant = { TheOnlyCase = { = 123234 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
