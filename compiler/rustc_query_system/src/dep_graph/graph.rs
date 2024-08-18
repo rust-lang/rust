@@ -1245,7 +1245,7 @@ impl<D: Deps> CurrentDepGraph<D> {
 
     fn promote_node_and_deps_to_current(
         &self,
-        prev_graph: &SerializedDepGraph,
+        _prev_graph: &SerializedDepGraph,
         prev_index: SerializedDepNodeIndex,
     ) -> DepNodeIndex {
         let mut prev_index_to_index = self.prev_index_to_index.lock();
@@ -1258,8 +1258,8 @@ impl<D: Deps> CurrentDepGraph<D> {
                 #[cfg(debug_assertions)]
                 self.record_edge(
                     dep_node_index,
-                    prev_graph.index_to_node(prev_index),
-                    prev_graph.fingerprint_by_index(prev_index),
+                    _prev_graph.index_to_node(prev_index),
+                    _prev_graph.fingerprint_by_index(prev_index),
                 );
                 dep_node_index
             }
