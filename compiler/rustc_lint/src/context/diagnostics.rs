@@ -10,6 +10,7 @@ use rustc_errors::{
 use rustc_middle::middle::stability;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::Session;
+use rustc_span::symbol::kw;
 use rustc_span::BytePos;
 use tracing::debug;
 
@@ -442,10 +443,14 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
         BuiltinLintDiag::ElidedIsStatic { elided } => {
-            lints::ElidedNamedLifetime::Static { elided }.decorate_lint(diag)
+            lints::ElidedNamedLifetime { elided, name: kw::StaticLifetime, named_declaration: None }
+                .decorate_lint(diag)
         }
-        BuiltinLintDiag::ElidedIsParam { elided, param } => {
-            lints::ElidedNamedLifetime::Param { elided, param }.decorate_lint(diag)
+        BuiltinLintDiag::ElidedIsParam { elided, param } => lints::ElidedNamedLifetime {
+            elided,
+            name: param.name,
+            named_declaration: Some(param.span),
         }
+        .decorate_lint(diag),
     }
 }

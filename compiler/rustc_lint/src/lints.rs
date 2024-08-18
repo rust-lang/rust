@@ -2612,19 +2612,13 @@ pub struct ElidedLifetimesInPaths {
 }
 
 #[derive(LintDiagnostic)]
-pub enum ElidedNamedLifetime {
-    #[diag(lint_elided_named_lifetime)]
-    Static {
-        #[label(lint_label_static)]
-        elided: Span,
-    },
-    #[diag(lint_elided_named_lifetime)]
-    Param {
-        #[label(lint_label_this)]
-        elided: Span,
-        #[label(lint_label_that)]
-        param: Span,
-    },
+#[diag(lint_elided_named_lifetime)]
+pub struct ElidedNamedLifetime {
+    #[label(lint_label_elided)]
+    pub elided: Span,
+    pub name: Symbol,
+    #[label(lint_label_named)]
+    pub named_declaration: Option<Span>,
 }
 
 #[derive(LintDiagnostic)]

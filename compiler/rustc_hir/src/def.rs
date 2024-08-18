@@ -8,7 +8,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::Symbol;
 
 use crate::definitions::DefPathData;
@@ -796,8 +796,8 @@ impl<Id> Res<Id> {
 pub enum LifetimeRes {
     /// Successfully linked the lifetime to a generic parameter.
     Param {
-        /// Id of the generic parameter that introduced it.
-        param: LocalDefId,
+        /// `LocalDefId` & `Ident` of the generic parameter that introduced it.
+        param: (LocalDefId, Ident),
         /// Id of the introducing place. That can be:
         /// - an item's id, for the item's generic parameters;
         /// - a TraitRef's ref_id, identifying the `for<...>` binder;

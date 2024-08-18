@@ -253,9 +253,8 @@ lint_duplicate_macro_attribute =
 lint_duplicate_matcher_binding = duplicate matcher binding
 
 lint_elided_named_lifetime = elided lifetime has a name
-    .label_static = this elided lifetime gets resolved as `'static`
-    .label_this = this elided lifetime
-    .label_that = gets resolved as this named lifetime
+    .label_elided = this elided lifetime gets resolved as `{$name}`
+    .label_named = lifetime `{$name}` declared here
 
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type

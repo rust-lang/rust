@@ -590,7 +590,7 @@ pub enum BuiltinLintDiag {
     },
     ElidedIsParam {
         elided: Span,
-        param: Span,
+        param: Ident,
     },
     UnknownCrateTypes {
         span: Span,

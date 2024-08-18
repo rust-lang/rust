@@ -1597,7 +1597,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
 
-                if let LifetimeRes::Param { param, binder } = res {
+                if let LifetimeRes::Param { param: (param, _), binder } = res {
                     match self.lifetime_uses.entry(param) {
                         Entry::Vacant(v) => {
                             debug!("First use of {:?} at {:?}", res, ident.span);
@@ -2065,7 +2065,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         match candidate {
-            LifetimeElisionCandidate::Missing(missing) => {
+            LifetimeElisionCandidate::Missing(missing @ MissingLifetime { span: elided, .. }) => {
                 debug_assert_eq!(id, missing.id);
                 match res {
                     LifetimeRes::Static => {
@@ -2074,11 +2074,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
                                 missing.id_if_not_fake_or(self.crate_node_id),
                                 missing.span,
-                                BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
+                                BuiltinLintDiag::ElidedIsStatic { elided },
                             );
                         }
                     }
-                    LifetimeRes::Param { param, binder } => {
+                    LifetimeRes::Param { param: (_, param), binder } => {
                         self.r.lint_buffer.buffer_lint(
                             lint::builtin::ELIDED_NAMED_LIFETIMES,
                             // It should be possible to use `self.crate_node_id`
@@ -2088,10 +2088,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             // we would have to do some additional work.
                             missing.id_if_not_fake_or(binder),
                             missing.span,
-                            BuiltinLintDiag::ElidedIsParam {
-                                elided: missing.span,
-                                param: self.r.tcx().source_span(param),
-                            },
+                            BuiltinLintDiag::ElidedIsParam { elided, param },
                         );
                     }
                     LifetimeRes::Fresh { .. }
@@ -2826,7 +2823,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         (&mut function_value_rib, DefKind::ConstParam)
                     }
                     GenericParamKind::Lifetime => {
-                        let res = LifetimeRes::Param { param: def_id, binder };
+                        let res = LifetimeRes::Param { param: (def_id, param.ident), binder };
                         self.record_lifetime_param(param.id, res);
                         function_lifetime_rib.bindings.insert(ident, (param.id, res));
                         continue;
