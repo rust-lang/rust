@@ -336,6 +336,18 @@ LL +         fn needless_lt(_x: &u8) {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/needless_lifetimes.rs:332:10
+   |
+LL |     impl<'a> Foo for Baz<'a> {}
+   |          ^^              ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a> Foo for Baz<'a> {}
+LL +     impl Foo for Baz<'_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
   --> tests/ui/needless_lifetimes.rs:334:16
    |
 LL |         fn baz<'a>(&'a self) -> impl Foo + 'a {
@@ -564,5 +576,5 @@ LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
 LL +         fn one_input(x: &u8) -> &u8 {
    |
 
-error: aborting due to 47 previous errors
+error: aborting due to 48 previous errors
 

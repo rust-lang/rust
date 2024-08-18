@@ -329,7 +329,7 @@ mod issue2944 {
         bar: &'a Bar,
     }
 
-    impl<'a> Foo for Baz<'a> {}
+    impl Foo for Baz<'_> {}
     impl Bar {
         fn baz(&self) -> impl Foo + '_ {
             Baz { bar: self }
