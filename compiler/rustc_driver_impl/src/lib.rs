@@ -176,6 +176,7 @@ pub trait Callbacks {
         Compilation::Continue
     }
     /// Called after analysis. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     /// At this point, the MIR (Middle-Level Intermediate Representation) becomes available.
     fn after_analysis<'tcx>(
         &mut self,
