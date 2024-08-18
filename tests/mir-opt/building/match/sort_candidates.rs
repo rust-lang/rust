@@ -25,7 +25,7 @@ fn disjoint_ranges(x: i32, b: bool) -> u32 {
     // CHECK-LABEL: fn disjoint_ranges(
     // CHECK: debug b => _2;
     // CHECK: bb0: {
-    // CHECK: switchInt(_2) -> [0: [[jump:bb.*]], otherwise: {{bb.*}}];
+    // CHECK: switchInt(copy _2) -> [0: [[jump:bb.*]], otherwise: {{bb.*}}];
     // CHECK: [[jump]]: {
     // CHECK-NEXT: _0 = const 3_u32;
     // CHECK-NEXT: return;
