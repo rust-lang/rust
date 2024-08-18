@@ -55,9 +55,9 @@ extern crate either;
 extern crate tracing;
 
 // The rustc crates we need
-extern crate rustc_attr;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_attr;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -123,9 +123,7 @@ pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,
 };
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
-pub use crate::borrow_tracker::{
-    BorTag, BorrowTrackerMethod, CallId, EvalContextExt as _, RetagFields,
-};
+pub use crate::borrow_tracker::{BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields};
 pub use crate::clock::{Clock, Instant};
 pub use crate::concurrency::{
     cpu_affinity::MAX_CPUS,

@@ -429,30 +429,14 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
             ProtectorKind::WeakProtector => "weakly protected",
             ProtectorKind::StrongProtector => "strongly protected",
         };
-        let item_tag = item.tag();
-        let call_id = self
-            .machine
-            .threads
-            .all_stacks()
-            .flat_map(|(_id, stack)| stack)
-            .map(|frame| {
-                frame.extra.borrow_tracker.as_ref().expect("we should have borrow tracking data")
-            })
-            .find(|frame| frame.protected_tags.iter().any(|(_, tag)| tag == &item_tag))
-            .map(|frame| frame.call_id)
-            .unwrap(); // FIXME: Surely we should find something, but a panic seems wrong here?
         match self.operation {
             Operation::Dealloc(_) =>
-                err_sb_ub(
-                    format!("deallocating while item {item:?} is {protected} by call {call_id:?}",),
-                    vec![],
-                    None,
-                ),
+                err_sb_ub(format!("deallocating while item {item:?} is {protected}",), vec![], None),
             Operation::Retag(RetagOp { orig_tag: tag, .. })
             | Operation::Access(AccessOp { tag, .. }) =>
                 err_sb_ub(
                     format!(
-                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected} because it is an argument of call {call_id:?}",
+                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected}",
                     ),
                     vec![],
                     tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),

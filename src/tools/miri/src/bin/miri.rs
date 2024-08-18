@@ -581,17 +581,6 @@ fn main() {
                     show_error!("-Zmiri-track-pointer-tag requires nonzero arguments");
                 }
             }
-        } else if let Some(param) = arg.strip_prefix("-Zmiri-track-call-id=") {
-            let ids: Vec<u64> = parse_comma_list(param).unwrap_or_else(|err| {
-                show_error!("-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {err}")
-            });
-            for id in ids.into_iter().map(miri::CallId::new) {
-                if let Some(id) = id {
-                    miri_config.tracked_call_ids.insert(id);
-                } else {
-                    show_error!("-Zmiri-track-call-id requires a nonzero argument");
-                }
-            }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
             let ids = parse_comma_list::<NonZero<u64>>(param).unwrap_or_else(|err| {
                 show_error!("-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {err}")

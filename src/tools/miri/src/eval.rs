@@ -118,8 +118,6 @@ pub struct MiriConfig {
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
     pub tracked_pointer_tags: FxHashSet<BorTag>,
-    /// The stacked borrows call IDs to report about
-    pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
     pub tracked_alloc_ids: FxHashSet<AllocId>,
     /// For the tracked alloc ids, also report read/write accesses.
@@ -183,7 +181,6 @@ impl Default for MiriConfig {
             args: vec![],
             seed: None,
             tracked_pointer_tags: FxHashSet::default(),
-            tracked_call_ids: FxHashSet::default(),
             tracked_alloc_ids: FxHashSet::default(),
             track_alloc_accesses: false,
             data_race_detector: true,
@@ -460,10 +457,13 @@ pub fn eval_entry<'tcx>(
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
+    // `Ok` can never happen.
+    #[cfg(not(bootstrap))]
+    let Err(res) = res;
+    #[cfg(bootstrap)]
     let res = match res {
         Err(res) => res,
         // `Ok` can never happen
-        #[cfg(bootstrap)]
         Ok(never) => match never {},
     };
 

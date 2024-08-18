@@ -455,6 +455,9 @@ pub struct MiriMachine<'tcx> {
     /// The table of directory descriptors.
     pub(crate) dirs: shims::DirTable,
 
+    /// The list of all EpollEventInterest.
+    pub(crate) epoll_interests: shims::EpollInterestTable,
+
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
 
@@ -649,6 +652,7 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
+            epoll_interests: shims::EpollInterestTable::new(),
             dirs: Default::default(),
             layouts,
             threads,
@@ -787,6 +791,7 @@ impl VisitProvenance for MiriMachine<'_> {
             data_race,
             alloc_addresses,
             fds,
+            epoll_interests:_,
             tcx: _,
             isolated_op: _,
             validation: _,
@@ -1370,7 +1375,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let borrow_tracker = ecx.machine.borrow_tracker.as_ref();
 
         let extra = FrameExtra {
-            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame(&ecx.machine)),
+            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame()),
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),

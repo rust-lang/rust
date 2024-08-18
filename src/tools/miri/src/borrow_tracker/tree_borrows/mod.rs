@@ -1,10 +1,6 @@
 use rustc_middle::{
     mir::{Mutability, RetagKind},
-    ty::{
-        self,
-        layout::{HasParamEnv, HasTyCtxt},
-        Ty,
-    },
+    ty::{self, layout::HasParamEnv, Ty},
 };
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{Abi, Size};
@@ -146,10 +142,9 @@ impl<'tcx> NewPermission {
         // interior mutability and protectors interact poorly.
         // To eliminate the case of Protected Reserved IM we override interior mutability
         // in the case of a protected reference: protected references are always considered
-        // "freeze".
+        // "freeze" in their reservation phase.
         let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin =>
-                Permission::new_reserved(ty_is_freeze || is_protected),
+            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze, is_protected),
             Mutability::Not if ty_is_freeze => Permission::new_frozen(),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
@@ -176,10 +171,12 @@ impl<'tcx> NewPermission {
             // Regular `Unpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.
             let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.param_env());
+            let protected = kind == RetagKind::FnEntry;
+            let initial_state = Permission::new_reserved(ty_is_freeze, protected);
             Self {
                 zero_size,
-                initial_state: Permission::new_reserved(ty_is_freeze),
-                protector: (kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
+                initial_state,
+                protector: protected.then_some(ProtectorKind::WeakProtector),
             }
         })
     }
@@ -521,11 +518,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn tb_protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
         let this = self.eval_context_mut();
 
+        // Note: if we were to inline `new_reserved` below we would find out that
+        // `ty_is_freeze` is eventually unused because it appears in a `ty_is_freeze || true`.
+        // We are nevertheless including it here for clarity.
+        let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.param_env());
         // Retag it. With protection! That is the entire point.
         let new_perm = NewPermission {
-            initial_state: Permission::new_reserved(
-                place.layout.ty.is_freeze(this.tcx(), this.param_env()),
-            ),
+            initial_state: Permission::new_reserved(ty_is_freeze, /* protected */ true),
             zero_size: false,
             protector: Some(ProtectorKind::StrongProtector),
         };

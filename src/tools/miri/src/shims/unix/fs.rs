@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::Size;
 
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::unix::fd::FileDescriptionRef;
 use crate::shims::unix::*;
 use crate::*;
 use shims::time::system_time_to_duration;
@@ -30,27 +31,29 @@ impl FileDescription for FileHandle {
     }
 
     fn read<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
         bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok(self.file.read(bytes))
+        Ok((&mut &self.file).read(bytes))
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok(self.file.write(bytes))
+        Ok((&mut &self.file).write(bytes))
     }
 
     fn pread<'tcx>(
-        &mut self,
+        &self,
         communicate_allowed: bool,
         bytes: &mut [u8],
         offset: u64,
@@ -60,13 +63,13 @@ impl FileDescription for FileHandle {
         // Emulates pread using seek + read + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
+        let file = &mut &self.file;
         let mut f = || {
-            let cursor_pos = self.file.stream_position()?;
-            self.file.seek(SeekFrom::Start(offset))?;
-            let res = self.file.read(bytes);
+            let cursor_pos = file.stream_position()?;
+            file.seek(SeekFrom::Start(offset))?;
+            let res = file.read(bytes);
             // Attempt to restore cursor position even if the read has failed
-            self.file
-                .seek(SeekFrom::Start(cursor_pos))
+            file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
         };
@@ -74,7 +77,7 @@ impl FileDescription for FileHandle {
     }
 
     fn pwrite<'tcx>(
-        &mut self,
+        &self,
         communicate_allowed: bool,
         bytes: &[u8],
         offset: u64,
@@ -84,13 +87,13 @@ impl FileDescription for FileHandle {
         // Emulates pwrite using seek + write + seek to restore cursor position.
         // Correctness of this emulation relies on sequential nature of Miri execution.
         // The closure is used to emulate `try` block, since we "bubble" `io::Error` using `?`.
+        let file = &mut &self.file;
         let mut f = || {
-            let cursor_pos = self.file.stream_position()?;
-            self.file.seek(SeekFrom::Start(offset))?;
-            let res = self.file.write(bytes);
+            let cursor_pos = file.stream_position()?;
+            file.seek(SeekFrom::Start(offset))?;
+            let res = file.write(bytes);
             // Attempt to restore cursor position even if the write has failed
-            self.file
-                .seek(SeekFrom::Start(cursor_pos))
+            file.seek(SeekFrom::Start(cursor_pos))
                 .expect("failed to restore file position, this shouldn't be possible");
             res
         };
@@ -98,17 +101,18 @@ impl FileDescription for FileHandle {
     }
 
     fn seek<'tcx>(
-        &mut self,
+        &self,
         communicate_allowed: bool,
         offset: SeekFrom,
     ) -> InterpResult<'tcx, io::Result<u64>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok(self.file.seek(offset))
+        Ok((&mut &self.file).seek(offset))
     }
 
     fn close<'tcx>(
         self: Box<Self>,
         communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         // We sync the file if it was opened in a mode different than read-only.
@@ -576,7 +580,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let communicate = this.machine.communicate();
 
-        let Some(mut file_description) = this.machine.fds.get_mut(fd) else {
+        let Some(file_description) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i64(this.fd_not_found()?));
         };
         let result = file_description
@@ -1272,7 +1276,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // FIXME: Support ftruncate64 for all FDs
         let FileHandle { file, writable } =
-            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!("`ftruncate64` is only supported on file-backed file descriptors")
             })?;
 
@@ -1324,7 +1328,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         // Only regular files support synchronization.
         let FileHandle { file, writable } =
-            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!("`fsync` is only supported on file-backed file descriptors")
             })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_all);
@@ -1349,7 +1353,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         // Only regular files support synchronization.
         let FileHandle { file, writable } =
-            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!("`fdatasync` is only supported on file-backed file descriptors")
             })?;
         let io_result = maybe_sync_file(file, *writable, File::sync_data);
@@ -1397,7 +1401,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         // Only regular files support synchronization.
         let FileHandle { file, writable } =
-            file_description.downcast_ref::<FileHandle>().ok_or_else(|| {
+            file_description.downcast::<FileHandle>().ok_or_else(|| {
                 err_unsup_format!(
                     "`sync_data_range` is only supported on file-backed file descriptors"
                 )
@@ -1704,7 +1708,7 @@ impl FileMetadata {
         };
 
         let file = &file_description
-            .downcast_ref::<FileHandle>()
+            .downcast::<FileHandle>()
             .ok_or_else(|| {
                 err_unsup_format!(
                     "obtaining metadata is only supported on file-backed file descriptors"
