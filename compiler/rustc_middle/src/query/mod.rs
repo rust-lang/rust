@@ -1738,16 +1738,16 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
-    query resolve_bound_vars(_: hir::OwnerId) -> &'tcx ResolveBoundVars {
+    query resolve_bound_vars(def_id: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
-        desc { "resolving lifetimes" }
+        desc { |tcx| "resolving lifetimes for `{}`", tcx.def_path_str(def_id) }
     }
-    query named_variable_map(_: hir::OwnerId) ->
+    query named_variable_map(def_id: hir::OwnerId) ->
         Option<&'tcx FxIndexMap<ItemLocalId, ResolvedArg>> {
-        desc { "looking up a named region" }
+        desc { |tcx| "looking up a named region inside `{}`", tcx.def_path_str(def_id) }
     }
-    query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
-        desc { "testing if a region is late bound" }
+    query is_late_bound_map(def_id: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
+        desc { |tcx| "testing if a region is late bound inside `{}`", tcx.def_path_str(def_id) }
     }
     /// For a given item's generic parameter, gets the default lifetimes to be used
     /// for each parameter if a trait object were to be passed for that parameter.
@@ -1758,9 +1758,9 @@ rustc_queries! {
         desc { "looking up lifetime defaults for generic parameter `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
-    query late_bound_vars_map(_: hir::OwnerId)
+    query late_bound_vars_map(def_id: hir::OwnerId)
         -> Option<&'tcx FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
-        desc { "looking up late bound vars" }
+        desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(def_id) }
     }
 
     /// Computes the visibility of the provided `def_id`.
