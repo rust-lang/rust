@@ -509,8 +509,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::RawBorrow { arg, .. } => {
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
-                // THIR desugars UNSAFE_STATIC into *UNSAFE_STATIC_REF, where
-                // UNSAFE_STATIC_REF holds the addr of the UNSAFE_STATIC, so: take two steps
                     && let ExprKind::Deref { arg } = self.thir[arg].kind
                 {
                     // Taking a raw ref to a deref place expr is always safe.
