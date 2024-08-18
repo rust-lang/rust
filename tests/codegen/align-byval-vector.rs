@@ -37,18 +37,18 @@ pub struct DoubleFoo {
 }
 
 extern "C" {
-    // x86-linux: declare void @f({{.*}}byval([32 x i8]) align 4{{.*}})
-    // x86-darwin: declare void @f({{.*}}byval([32 x i8]) align 16{{.*}})
     fn f(foo: Foo);
 
-    // x86-linux: declare void @g({{.*}}byval([64 x i8]) align 4{{.*}})
-    // x86-darwin: declare void @g({{.*}}byval([64 x i8]) align 16{{.*}})
     fn g(foo: DoubleFoo);
 }
 
 pub fn main() {
+    // x86-linux: call void @f({{.*}}byval([32 x i8]) align 4 {{.*}})
+    // x86-darwin: call void @f({{.*}}byval([32 x i8]) align 16 {{.*}})
     unsafe { f(Foo { a: i32x4([1, 2, 3, 4]), b: 0 }) }
 
+    // x86-linux: call void @g({{.*}}byval([64 x i8]) align 4 {{.*}})
+    // x86-darwin: call void @g({{.*}}byval([64 x i8]) align 16 {{.*}})
     unsafe {
         g(DoubleFoo {
             one: Foo { a: i32x4([1, 2, 3, 4]), b: 0 },

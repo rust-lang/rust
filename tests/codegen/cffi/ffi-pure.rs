@@ -2,15 +2,18 @@
 #![crate_type = "lib"]
 #![feature(ffi_pure)]
 
+#[no_mangle]
 pub fn bar() {
+    // CHECK-LABEL: @bar
+    // CHECK: @foo
+    // CHECK-SAME: [[ATTRS:#[0-9]+]]
     unsafe { foo() }
 }
 
 extern "C" {
-    // CHECK-LABEL: declare{{.*}}void @foo()
-    // CHECK-SAME: [[ATTRS:#[0-9]+]]
-    // The attribute changed from `readonly` to `memory(read)` with LLVM 16.0.
-    // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}{{readonly|memory\(read\)}}{{.*}} }
     #[ffi_pure]
     pub fn foo();
 }
+
+// The attribute changed from `readonly` to `memory(read)` with LLVM 16.0.
+// CHECK: attributes [[ATTRS]] = { {{.*}}{{readonly|memory\(read\)}}{{.*}} }

@@ -12,8 +12,9 @@
 //! * When in doubt, define.
 
 use itertools::Itertools;
-use rustc_codegen_ssa::traits::TypeMembershipMethods;
+use rustc_codegen_ssa::traits::{BaseTypeMethods, TypeMembershipMethods};
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
 use smallvec::SmallVec;
@@ -126,6 +127,42 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
+
+        // FFI imports need to be treated specially: in Rust one can import the same function
+        // with different signatures, but LLVM can only import each function once. Within a
+        // codegen unit, whatever declaration we set up last will "win"; across codegen units,
+        // LLVM is doing some sort of unspecified merging as part of LTO.
+        // This is partially unsound due to LLVM bugs (https://github.com/llvm/llvm-project/issues/58976),
+        // but on the Rust side we try to ensure soundness by making the least amount of promises
+        // for these imports: no matter the signatures, we declare all functions as `fn()`.
+        // If the same symbol is declared both as a function and a static, we just hope that
+        // doesn't lead to unsoundness (or LLVM crashes)...
+        let is_foreign_item = instance.is_some_and(|i| self.tcx.is_foreign_item(i.def_id()));
+        // If this is a Rust native allocator function, we want its attributes, so we do not
+        // treat it like the other FFI imports. If a user declares `__rust_alloc` we're going to have
+        // one import with the attributes and one with the default signature; that should hopefully be fine
+        // even if LLVM only sees the default one.
+        let is_rust_alloc_fn = instance.is_some_and(|i| {
+            let codegen_fn_flags = self.tcx.codegen_fn_attrs(i.def_id()).flags;
+            codegen_fn_flags.contains(CodegenFnAttrFlags::ALLOCATOR)
+                || codegen_fn_flags.contains(CodegenFnAttrFlags::ALLOCATOR_ZEROED)
+                || codegen_fn_flags.contains(CodegenFnAttrFlags::REALLOCATOR)
+                || codegen_fn_flags.contains(CodegenFnAttrFlags::DEALLOCATOR)
+        });
+        // If this is calling an LLVM intrinsic, we must set the right signature or LLVM complains.
+        // These are also unstable to call so nobody but us can screw up their signature.
+        let is_llvm_builtin = name.starts_with("llvm.");
+        if is_foreign_item && !is_rust_alloc_fn && !is_llvm_builtin {
+            return declare_raw_fn(
+                self,
+                name,
+                llvm::CallConv::CCallConv,
+                llvm::UnnamedAddr::Global,
+                llvm::Visibility::Default,
+                // The function type for `fn()`.
+                self.type_func(&[], self.type_void()),
+            );
+        }
 
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.

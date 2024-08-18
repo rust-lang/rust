@@ -8,7 +8,8 @@
 
 // CHECK-LABEL: @check_cold
 // CHECK: {{(call|invoke) void .+}}drop_in_place{{.+}} [[ATTRIBUTES:#[0-9]+]]
-// CHECK: attributes [[ATTRIBUTES]] = { cold }
+// CHECK: attributes [[ATTRIBUTES]]
+// CHECK-SAME: cold
 #[no_mangle]
 pub fn check_cold(f: fn(), x: Box<u32>) {
     // this may unwind

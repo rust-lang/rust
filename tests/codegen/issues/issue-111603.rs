@@ -12,7 +12,7 @@ pub fn new_from_array(x: u64) -> Arc<[u64]> {
 
     // CHECK: alloca
     // CHECK-SAME: [8000 x i8]
-    // CHECK-NOT: alloca
+    // CHECK-NOT: alloca{{ }}
     let array = [x; 1000];
     Arc::new(array)
 }

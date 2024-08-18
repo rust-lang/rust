@@ -8,7 +8,7 @@ use std::mem::MaybeUninit;
 pub fn box_uninitialized() -> Box<MaybeUninit<usize>> {
     // CHECK-LABEL: @box_uninitialized
     // CHECK-NOT: store
-    // CHECK-NOT: alloca
+    // CHECK-NOT: alloca{{ }}
     // CHECK-NOT: memcpy
     // CHECK-NOT: memset
     Box::new(MaybeUninit::uninit())
@@ -19,7 +19,7 @@ pub fn box_uninitialized() -> Box<MaybeUninit<usize>> {
 pub fn box_uninitialized2() -> Box<MaybeUninit<[usize; 1024 * 1024]>> {
     // CHECK-LABEL: @box_uninitialized2
     // CHECK-NOT: store
-    // CHECK-NOT: alloca
+    // CHECK-NOT: alloca{{ }}
     // CHECK-NOT: memcpy
     // CHECK-NOT: memset
     Box::new(MaybeUninit::uninit())
@@ -32,7 +32,7 @@ pub struct LotsaPadding(usize);
 #[no_mangle]
 pub fn box_lotsa_padding() -> Box<LotsaPadding> {
     // CHECK-LABEL: @box_lotsa_padding
-    // CHECK-NOT: alloca
+    // CHECK-NOT: alloca{{ }}
     // CHECK-NOT: getelementptr
     // CHECK-NOT: memcpy
     // CHECK-NOT: memset

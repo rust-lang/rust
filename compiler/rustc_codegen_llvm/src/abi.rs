@@ -321,7 +321,12 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     );
 
     /// Apply attributes to a function call.
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        callsite: &'ll Value,
+        instance: Option<ty::Instance<'tcx>>,
+    );
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
@@ -527,11 +532,18 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         // If the declaration has an associated instance, compute extra attributes based on that.
         if let Some(instance) = instance {
-            llfn_attrs_from_instance(cx, llfn, instance);
+            llfn_attrs_from_instance(cx, instance, Some(llfn), |place, attrs| {
+                attributes::apply_to_llfn(llfn, place, attrs)
+            });
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        callsite: &'ll Value,
+        instance: Option<ty::Instance<'tcx>>,
+    ) {
         let mut func_attrs = SmallVec::<[_; 2]>::new();
         if self.ret.layout.abi.is_uninhabited() {
             func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));
@@ -648,6 +660,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 llvm::AttributePlace::Argument(element_type_index as u32),
                 &[element_type_attr],
             );
+        }
+
+        // If the call site has an associated instance, compute extra attributes based on that.
+        if let Some(instance) = instance {
+            llfn_attrs_from_instance(bx.cx, instance, None, |place, attrs| {
+                attributes::apply_to_callsite(callsite, place, attrs)
+            });
         }
     }
 }

@@ -324,7 +324,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         link_llvm_intrinsics,
                         i.span,
-                        "linking to LLVM intrinsics is experimental"
+                        "linking to LLVM intrinsics is an internal feature reserved for the standard library"
                     );
                 }
             }

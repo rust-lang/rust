@@ -32,8 +32,13 @@ pub struct Wrapped8 {
 }
 
 extern "C" {
-    // CHECK: declare void @test_8([2 x i64], [2 x i64], [2 x i64])
     fn test_8(a: Align8, b: Transparent8, c: Wrapped8);
+}
+
+#[no_mangle]
+fn call_test_8(a: Align8, b: Transparent8, c: Wrapped8) {
+    // CHECK: call void @test_8([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    unsafe { test_8(a, b, c) }
 }
 
 #[repr(C)]
@@ -54,9 +59,14 @@ pub struct Wrapped16 {
 }
 
 extern "C" {
-    // It's important that this produces [1 x i128]  rather than just i128!
-    // CHECK: declare void @test_16([1 x i128], [1 x i128], [1 x i128])
     fn test_16(a: Align16, b: Transparent16, c: Wrapped16);
+}
+
+#[no_mangle]
+fn call_test_16(a: Align16, b: Transparent16, c: Wrapped16) {
+    // It's important that this produces [1 x i128]  rather than just i128!
+    // CHECK: call void @test_16([1 x i128] {{%.*}}, [1 x i128] {{%.*}}, [1 x i128] {{%.*}})
+    unsafe { test_16(a, b, c) }
 }
 
 #[repr(C)]
@@ -78,8 +88,13 @@ pub struct Wrapped32 {
 }
 
 extern "C" {
-    // CHECK: declare void @test_32([2 x i128], [2 x i128], [2 x i128])
     fn test_32(a: Align32, b: Transparent32, c: Wrapped32);
+}
+
+#[no_mangle]
+fn call_test_32(a: Align32, b: Transparent32, c: Wrapped32) {
+    // CHECK: call void @test_32([2 x i128] {{%.*}}, [2 x i128] {{%.*}}, [2 x i128] {{%.*}})
+    unsafe { test_32(a, b, c) }
 }
 
 pub unsafe fn main(
@@ -93,7 +108,7 @@ pub unsafe fn main(
     c2: Transparent32,
     c3: Wrapped32,
 ) {
-    test_8(a1, a2, a3);
-    test_16(b1, b2, b3);
-    test_32(c1, c2, c3);
+    call_test_8(a1, a2, a3);
+    call_test_16(b1, b2, b3);
+    call_test_32(c1, c2, c3);
 }

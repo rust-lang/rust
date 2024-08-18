@@ -39,10 +39,15 @@ pub struct Wrapped8 {
 }
 
 extern "C" {
-    // linux:  declare void @test_8([2 x i64], [2 x i64], [2 x i64])
-    // darwin: declare void @test_8([2 x i64], [2 x i64], [2 x i64])
-    // win:    declare void @test_8([2 x i64], [2 x i64], [2 x i64])
     fn test_8(a: Align8, b: Transparent8, c: Wrapped8);
+}
+
+#[no_mangle]
+fn call_test_8(a: Align8, b: Transparent8, c: Wrapped8) {
+    // linux:  call void @test_8([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    // darwin: call void @test_8([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    // win:    call void @test_8([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    unsafe { test_8(a, b, c) }
 }
 
 // Passed as `i128`, since it's an aggregate with size <= 128 bits, align = 128 bits.
@@ -69,10 +74,15 @@ pub struct Wrapped16 {
 }
 
 extern "C" {
-    // linux:  declare void @test_16([2 x i64], [2 x i64], i128)
-    // darwin: declare void @test_16(i128, i128, i128)
-    // win:    declare void @test_16(i128, i128, i128)
     fn test_16(a: Align16, b: Transparent16, c: Wrapped16);
+}
+
+#[no_mangle]
+fn call_test_16(a: Align16, b: Transparent16, c: Wrapped16) {
+    // linux:  call void @test_16([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, i128 {{%.*}})
+    // darwin: call void @test_16(i128 {{%.*}}, i128 {{%.*}}, i128 {{%.*}})
+    // win:    call void @test_16(i128 {{%.*}}, i128 {{%.*}}, i128 {{%.*}})
+    unsafe { test_16(a, b, c) }
 }
 
 // Passed as `i128`, since it's an aggregate with size <= 128 bits, align = 128 bits.
@@ -94,10 +104,15 @@ pub struct WrappedI128 {
 }
 
 extern "C" {
-    // linux:  declare void @test_i128(i128, i128, i128)
-    // darwin: declare void @test_i128(i128, i128, i128)
-    // win:    declare void @test_i128(i128, i128, i128)
     fn test_i128(a: I128, b: TransparentI128, c: WrappedI128);
+}
+
+#[no_mangle]
+fn call_test_i128(a: I128, b: TransparentI128, c: WrappedI128) {
+    // linux:  call void @test_i128(i128 {{%.*}}, i128 {{%.*}}, i128 {{%.*}})
+    // darwin: call void @test_i128(i128 {{%.*}}, i128 {{%.*}}, i128 {{%.*}})
+    // win:    call void @test_i128(i128 {{%.*}}, i128 {{%.*}}, i128 {{%.*}})
+    unsafe { test_i128(a, b, c) }
 }
 
 // Passed as `[2 x i64]`, since it's an aggregate with size <= 128 bits, align < 128 bits.
@@ -121,10 +136,15 @@ pub struct WrappedPacked {
 }
 
 extern "C" {
-    // linux:  declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
-    // darwin: declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
-    // win:    declare void @test_packed([2 x i64], [2 x i64], [2 x i64])
     fn test_packed(a: Packed, b: TransparentPacked, c: WrappedPacked);
+}
+
+#[no_mangle]
+fn call_test_packed(a: Packed, b: TransparentPacked, c: WrappedPacked) {
+    // linux:  call void @test_packed([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    // darwin: call void @test_packed([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    // win:    call void @test_packed([2 x i64] {{%.*}}, [2 x i64] {{%.*}}, [2 x i64] {{%.*}})
+    unsafe { test_packed(a, b, c) }
 }
 
 pub unsafe fn main(
@@ -141,8 +161,8 @@ pub unsafe fn main(
     d2: TransparentPacked,
     d3: WrappedPacked,
 ) {
-    test_8(a1, a2, a3);
-    test_16(b1, b2, b3);
-    test_i128(c1, c2, c3);
-    test_packed(d1, d2, d3);
+    call_test_8(a1, a2, a3);
+    call_test_16(b1, b2, b3);
+    call_test_i128(c1, c2, c3);
+    call_test_packed(d1, d2, d3);
 }

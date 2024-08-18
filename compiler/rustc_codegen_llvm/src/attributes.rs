@@ -14,8 +14,8 @@ use crate::context::CodegenCx;
 use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
+use crate::llvm_util;
 use crate::value::Value;
-use crate::{attributes, llvm_util};
 
 pub(crate) fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
@@ -324,13 +324,18 @@ fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
     llvm::CreateAttrStringValue(llcx, "alloc-family", "__rust_alloc")
 }
 
-/// Helper for `FnAbi::apply_attrs_llfn`:
+/// Helper for `FnAbi::apply_attrs_*`:
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
+///
+/// `apply_attrs` is called to apply the attributes, so this can be used both for declarations and
+/// calls. However, some things are not represented as attributes and can only be set on
+/// declarations, so `declare_llfn` should be `Some` if this is a declaration.
 pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    llfn: &'ll Value,
     instance: ty::Instance<'tcx>,
+    declare_llfn: Option<&'ll Value>,
+    apply_attrs: impl Fn(AttributePlace, &[&Attribute]),
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
@@ -445,7 +450,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(create_alloc_family_attr(cx.llcx));
         // apply to argument place instead of function
         let alloc_align = AttributeKind::AllocAlign.create_attr(cx.llcx);
-        attributes::apply_to_llfn(llfn, AttributePlace::Argument(1), &[alloc_align]);
+        apply_attrs(AttributePlace::Argument(1), &[alloc_align]);
         to_add.push(llvm::CreateAllocSizeAttr(cx.llcx, 0));
         let mut flags = AllocKindFlags::Alloc | AllocKindFlags::Aligned;
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
@@ -456,7 +461,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, flags));
         // apply to return place instead of function (unlike all other attributes applied in this function)
         let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
-        attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
+        apply_attrs(AttributePlace::ReturnValue, &[no_alias]);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::REALLOCATOR) {
         to_add.push(create_alloc_family_attr(cx.llcx));
@@ -466,26 +471,28 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         ));
         // applies to argument place instead of function place
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
-        attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
+        apply_attrs(AttributePlace::Argument(0), &[allocated_pointer]);
         // apply to argument place instead of function
         let alloc_align = AttributeKind::AllocAlign.create_attr(cx.llcx);
-        attributes::apply_to_llfn(llfn, AttributePlace::Argument(2), &[alloc_align]);
+        apply_attrs(AttributePlace::Argument(2), &[alloc_align]);
         to_add.push(llvm::CreateAllocSizeAttr(cx.llcx, 3));
         let no_alias = AttributeKind::NoAlias.create_attr(cx.llcx);
-        attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
+        apply_attrs(AttributePlace::ReturnValue, &[no_alias]);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::DEALLOCATOR) {
         to_add.push(create_alloc_family_attr(cx.llcx));
         to_add.push(llvm::CreateAllocKindAttr(cx.llcx, AllocKindFlags::Free));
         // applies to argument place instead of function place
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
-        attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
+        apply_attrs(AttributePlace::Argument(0), &[allocated_pointer]);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
     }
     if let Some(align) = codegen_fn_attrs.alignment {
-        llvm::set_alignment(llfn, align);
+        if let Some(llfn) = declare_llfn {
+            llvm::set_alignment(llfn, align);
+        }
     }
     if let Some(backchain) = backchain_attr(cx) {
         to_add.push(backchain);
@@ -503,24 +510,27 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features =
         codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
-    if let Some(f) = llvm_util::check_tied_features(
-        cx.tcx.sess,
-        &function_features.iter().map(|f| (*f, true)).collect(),
-    ) {
-        let span = cx
-            .tcx
-            .get_attrs(instance.def_id(), sym::target_feature)
-            .next()
-            .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        cx.tcx
-            .dcx()
-            .create_err(TargetFeatureDisableOrEnable {
-                features: f,
-                span: Some(span),
-                missing_features: Some(MissingFeatures),
-            })
-            .emit();
-        return;
+    // HACK: Avoid emitting the lint twice.
+    if declare_llfn.is_some() {
+        if let Some(f) = llvm_util::check_tied_features(
+            cx.tcx.sess,
+            &function_features.iter().map(|f| (*f, true)).collect(),
+        ) {
+            let span = cx
+                .tcx
+                .get_attrs(instance.def_id(), sym::target_feature)
+                .next()
+                .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
+            cx.tcx
+                .dcx()
+                .create_err(TargetFeatureDisableOrEnable {
+                    features: f,
+                    span: Some(span),
+                    missing_features: Some(MissingFeatures),
+                })
+                .emit();
+            return;
+        }
     }
 
     let function_features = function_features
@@ -562,7 +572,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }
 
-    attributes::apply_to_llfn(llfn, Function, &to_add);
+    apply_attrs(Function, &to_add);
 }
 
 fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<&String> {
