@@ -3,7 +3,7 @@
 //@ ignore-cross-compile
 //@ needs-unwind (test file contains #[should_panic] test)
 
-use run_make_support::{cmd, diff, python_command, rustc};
+use run_make_support::{cmd, diff, rustc, serde_json};
 
 fn main() {
     rustc().arg("--test").input("f.rs").run();
@@ -21,7 +21,18 @@ fn run_tests(extra_args: &[&str], expected_file: &str) {
         .run_fail();
     let test_stdout = &cmd_out.stdout_utf8();
 
-    python_command().arg("validate_json.py").stdin(test_stdout).run();
+    // Verify that the test process output is JSON Lines, i.e. each line is valid JSON.
+    for (line, n) in test_stdout.lines().zip(1..) {
+        if let Err(e) = serde_json::from_str::<serde_json::Value>(line) {
+            panic!(
+                "could not parse JSON on line {n}: {e}\n\
+                \n\
+                === STDOUT ===\n\
+                {test_stdout}\
+                =============="
+            );
+        }
+    }
 
     diff()
         .expected_file(expected_file)
