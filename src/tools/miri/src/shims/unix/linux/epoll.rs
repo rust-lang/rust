@@ -436,23 +436,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut num_of_events: i32 = 0;
         let mut array_iter = this.project_array_fields(&events)?;
 
-        while let Some((epoll_key, epoll_return)) = ready_list.pop_first() {
-            // If the file description is fully close, the entry for corresponding FdID in the
-            // global epoll event interest table would be empty.
-            if this.machine.epoll_interests.get_epoll_interest(epoll_key.0).is_some() {
-                // Return notification to the caller if the file description is not fully closed.
-                if let Some(des) = array_iter.next(this)? {
-                    this.write_int_fields_named(
-                        &[
-                            ("events", epoll_return.events.into()),
-                            ("u64", epoll_return.data.into()),
-                        ],
-                        &des.1,
-                    )?;
-                    num_of_events = num_of_events.checked_add(1).unwrap();
-                } else {
-                    break;
-                }
+        while let Some(des) = array_iter.next(this)? {
+            if let Some(epoll_event_instance) = ready_list_next(this, &mut ready_list) {
+                this.write_int_fields_named(
+                    &[
+                        ("events", epoll_event_instance.events.into()),
+                        ("u64", epoll_event_instance.data.into()),
+                    ],
+                    &des.1,
+                )?;
+                num_of_events = num_of_events.strict_add(1);
+            } else {
+                break;
             }
         }
         Ok(Scalar::from_i32(num_of_events))
@@ -494,4 +489,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         Ok(())
     }
+}
+
+/// This function takes in ready list and returns EpollEventInstance with file description
+/// that is not closed.
+fn ready_list_next(
+    ecx: &MiriInterpCx<'_>,
+    ready_list: &mut BTreeMap<(FdId, i32), EpollEventInstance>,
+) -> Option<EpollEventInstance> {
+    while let Some((epoll_key, epoll_event_instance)) = ready_list.pop_first() {
+        // This ensures that we only return events that we are interested. The FD might have been closed since
+        // the event was generated, in which case we are not interested anymore.
+        // When a file description is fully closed, it gets removed from `machine.epoll_interests`,
+        // so we skip events whose FD is not in that map anymore.
+        if ecx.machine.epoll_interests.get_epoll_interest(epoll_key.0).is_some() {
+            return Some(epoll_event_instance);
+        }
+    }
+    return None;
 }

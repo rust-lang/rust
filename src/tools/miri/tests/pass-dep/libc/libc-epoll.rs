@@ -20,6 +20,8 @@ fn main() {
     test_pointer();
     test_two_same_fd_in_same_epoll_instance();
     test_epoll_wait_maxevent_zero();
+    test_epoll_lost_events();
+    test_ready_list_fetching_logic();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -547,4 +549,66 @@ fn test_epoll_wait_maxevent_zero() {
     let e = std::io::Error::last_os_error();
     assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
     assert_eq!(res, -1);
+}
+
+// This is a test for https://github.com/rust-lang/miri/issues/3812,
+// epoll can lose events if they don't fit in the output buffer.
+fn test_epoll_lost_events() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Register both fd to the same epoll instance.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
+    assert_eq!(res, 0);
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[1] as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
+    assert_eq!(res, 0);
+
+    //Two notification should be received. But we only provide buffer for one event.
+    let expected_event0 = u32::try_from(libc::EPOLLOUT).unwrap();
+    let expected_value0 = fds[0] as u64;
+    check_epoll_wait::<1>(epfd, &[(expected_event0, expected_value0)]);
+
+    // Previous event should be returned for the second epoll_wait.
+    let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
+    let expected_value1 = fds[1] as u64;
+    check_epoll_wait::<1>(epfd, &[(expected_event1, expected_value1)]);
+}
+
+// This is testing if closing an fd that is already in ready list will cause an empty entry in
+// returned notification.
+// Related discussion in https://github.com/rust-lang/miri/pull/3818#discussion_r1720679440.
+fn test_ready_list_fetching_logic() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create two eventfd instances.
+    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
+    let fd0 = unsafe { libc::eventfd(0, flags) };
+    let fd1 = unsafe { libc::eventfd(0, flags) };
+
+    // Register both fd to the same epoll instance. At this point, both of them are on the ready list.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd0 as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd0, &mut ev) };
+    assert_eq!(res, 0);
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd1 as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd1, &mut ev) };
+    assert_eq!(res, 0);
+
+    // Close fd0 so the first entry in the ready list will be empty.
+    let res = unsafe { libc::close(fd0) };
+    assert_eq!(res, 0);
+
+    // Notification for fd1 should be returned.
+    let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
+    let expected_value1 = fd1 as u64;
+    check_epoll_wait::<1>(epfd, &[(expected_event1, expected_value1)]);
 }
