@@ -13,7 +13,7 @@
 
 // lldb-command:run
 // lldb-command:v a
-// lldbg-check:[...] { [0] = 1 [1] = 2 [2] = 3 }
+// lldb-check:[...] { [0] = 1 [1] = 2 [2] = 3 }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

@@ -19,13 +19,13 @@
 // lldb-command:run
 
 // lldb-command:v *stack_val_ref
-// lldbg-check:[...] { 0 = -14 1 = -19 }
+// lldb-check:[...] { 0 = -14 1 = -19 }
 
 // lldb-command:v *ref_to_unnamed
-// lldbg-check:[...] { 0 = -15 1 = -20 }
+// lldb-check:[...] { 0 = -15 1 = -20 }
 
 // lldb-command:v *unique_val_ref
-// lldbg-check:[...] { 0 = -17 1 = -22 }
+// lldb-check:[...] { 0 = -17 1 = -22 }
 
 
 #![allow(unused_variables)]

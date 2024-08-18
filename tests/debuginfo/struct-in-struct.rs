@@ -19,28 +19,28 @@
 // lldb-command:run
 
 // lldb-command:v three_simple_structs
-// lldbg-check:[...] { x = { x = 1 } y = { x = 2 } z = { x = 3 } }
+// lldb-check:[...] { x = { x = 1 } y = { x = 2 } z = { x = 3 } }
 
 // lldb-command:v internal_padding_parent
-// lldbg-check:[...] { x = { x = 4 y = 5 } y = { x = 6 y = 7 } z = { x = 8 y = 9 } }
+// lldb-check:[...] { x = { x = 4 y = 5 } y = { x = 6 y = 7 } z = { x = 8 y = 9 } }
 
 // lldb-command:v padding_at_end_parent
-// lldbg-check:[...] { x = { x = 10 y = 11 } y = { x = 12 y = 13 } z = { x = 14 y = 15 } }
+// lldb-check:[...] { x = { x = 10 y = 11 } y = { x = 12 y = 13 } z = { x = 14 y = 15 } }
 
 // lldb-command:v mixed
-// lldbg-check:[...] { x = { x = 16 y = 17 } y = { x = 18 y = 19 } z = { x = 20 } w = 21 }
+// lldb-check:[...] { x = { x = 16 y = 17 } y = { x = 18 y = 19 } z = { x = 20 } w = 21 }
 
 // lldb-command:v bag
-// lldbg-check:[...] { x = { x = 22 } }
+// lldb-check:[...] { x = { x = 22 } }
 
 // lldb-command:v bag_in_bag
-// lldbg-check:[...] { x = { x = { x = 23 } } }
+// lldb-check:[...] { x = { x = { x = 23 } } }
 
 // lldb-command:v tjo
-// lldbg-check:[...] { x = { x = { x = { x = 24 } } } }
+// lldb-check:[...] { x = { x = { x = { x = 24 } } } }
 
 // lldb-command:v tree
-// lldbg-check:[...] { x = { x = 25 } y = { x = { x = 26 y = 27 } y = { x = 28 y = 29 } z = { x = 30 y = 31 } } z = { x = { x = { x = 32 } } } }
+// lldb-check:[...] { x = { x = 25 } y = { x = { x = 26 y = 27 } y = { x = 28 y = 29 } z = { x = 30 y = 31 } } z = { x = { x = { x = 32 } } } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

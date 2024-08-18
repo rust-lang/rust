@@ -28,22 +28,22 @@
 // lldb-command:run
 
 // lldb-command:v no_padding16
-// lldbg-check:[...] { 0 = 10000 1 = -10001 }
+// lldb-check:[...] { 0 = 10000 1 = -10001 }
 
 // lldb-command:v no_padding32
-// lldbg-check:[...] { 0 = -10002 1 = -10003.5 2 = 10004 }
+// lldb-check:[...] { 0 = -10002 1 = -10003.5 2 = 10004 }
 
 // lldb-command:v no_padding64
-// lldbg-check:[...] { 0 = -10005.5 1 = 10006 2 = 10007 }
+// lldb-check:[...] { 0 = -10005.5 1 = 10006 2 = 10007 }
 
 // lldb-command:v no_padding163264
-// lldbg-check:[...] { 0 = -10008 1 = 10009 2 = 10010 3 = 10011 }
+// lldb-check:[...] { 0 = -10008 1 = 10009 2 = 10010 3 = 10011 }
 
 // lldb-command:v internal_padding
-// lldbg-check:[...] { 0 = 10012 1 = -10013 }
+// lldb-check:[...] { 0 = 10012 1 = -10013 }
 
 // lldb-command:v padding_at_end
-// lldbg-check:[...] { 0 = -10014 1 = 10015 }
+// lldb-check:[...] { 0 = -10014 1 = 10015 }
 
 // This test case mainly makes sure that no field names are generated for tuple structs (as opposed
 // to all fields having the name "<unnamed_field>"). Otherwise they are handled the same a normal

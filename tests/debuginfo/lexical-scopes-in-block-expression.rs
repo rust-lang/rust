@@ -183,155 +183,155 @@
 
 // STRUCT EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 11
+// lldb-check:[...] 11
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // FUNCTION CALL
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 12
+// lldb-check:[...] 12
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // TUPLE EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 13
+// lldb-check:[...] 13
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // VEC EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 14
+// lldb-check:[...] 14
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // REPEAT VEC EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 15
+// lldb-check:[...] 15
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // ASSIGNMENT EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 16
+// lldb-check:[...] 16
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 
 // ARITHMETIC EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 17
+// lldb-check:[...] 17
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // INDEX EXPRESSION
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] 18
+// lldb-check:[...] 18
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v val
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v ten
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 #![allow(unused_variables)]

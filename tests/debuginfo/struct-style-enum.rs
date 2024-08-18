@@ -24,16 +24,16 @@
 // lldb-command:run
 
 // lldb-command:v case1
-// lldbg-check:(struct_style_enum::Regular) case1 = { value = { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 } $discr$ = 0 }
+// lldb-check:(struct_style_enum::Regular) case1 = { value = { a = 0 b = 31868 c = 31868 d = 31868 e = 31868 } $discr$ = 0 }
 
 // lldb-command:v case2
-// lldbg-check:(struct_style_enum::Regular) case2 = { value = { a = 0 b = 286331153 c = 286331153 } $discr$ = 1 }
+// lldb-check:(struct_style_enum::Regular) case2 = { value = { a = 0 b = 286331153 c = 286331153 } $discr$ = 1 }
 
 // lldb-command:v case3
-// lldbg-check:(struct_style_enum::Regular) case3 = { value = { a = 0 b = 6438275382588823897 } $discr$ = 2 }
+// lldb-check:(struct_style_enum::Regular) case3 = { value = { a = 0 b = 6438275382588823897 } $discr$ = 2 }
 
 // lldb-command:v univariant
-// lldbg-check:(struct_style_enum::Univariant) univariant = { value = { a = -1 } }
+// lldb-check:(struct_style_enum::Univariant) univariant = { value = { a = -1 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

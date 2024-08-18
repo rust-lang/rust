@@ -28,21 +28,21 @@
 // lldb-command:run
 
 // lldb-command:v x
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:v y
-// lldbg-check:[...] true
+// lldb-check:[...] true
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:v y
-// lldbg-check:[...] true
+// lldb-check:[...] true
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 10.5
+// lldb-check:[...] 10.5
 // lldb-command:v y
-// lldbg-check:[...] 20
+// lldb-check:[...] 20
 // lldb-command:continue
 
 

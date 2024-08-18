@@ -21,11 +21,11 @@
 // lldb-command:run
 
 // lldb-command:v constant
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v a_struct
-// lldbg-check:[...] { a = -2 b = 3.5 c = 4 }
+// lldb-check:[...] { a = -2 b = 3.5 c = 4 }
 // lldb-command:v *owned
-// lldbg-check:[...] 5
+// lldb-check:[...] 5
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

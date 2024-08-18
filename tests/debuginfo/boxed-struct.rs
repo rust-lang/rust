@@ -16,10 +16,10 @@
 // lldb-command:run
 
 // lldb-command:v *boxed_with_padding
-// lldbg-check:[...] { x = 99 y = 999 z = 9999 w = 99999 }
+// lldb-check:[...] { x = 99 y = 999 z = 9999 w = 99999 }
 
 // lldb-command:v *boxed_with_dtor
-// lldbg-check:[...] { x = 77 y = 777 z = 7777 w = 77777 }
+// lldb-check:[...] { x = 77 y = 777 z = 7777 w = 77777 }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

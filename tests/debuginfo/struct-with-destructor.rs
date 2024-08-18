@@ -20,16 +20,16 @@
 
 // lldb-command:run
 // lldb-command:v simple
-// lldbg-check:[...] { x = 10 y = 20 }
+// lldb-check:[...] { x = 10 y = 20 }
 
 // lldb-command:v noDestructor
-// lldbg-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+// lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 
 // lldb-command:v withDestructor
-// lldbg-check:[...] { a = { x = 10 y = 20 } guard = -1 }
+// lldb-check:[...] { a = { x = 10 y = 20 } guard = -1 }
 
 // lldb-command:v nested
-// lldbg-check:[...] { a = { a = { x = 7890 y = 9870 } } }
+// lldb-check:[...] { a = { a = { x = 7890 y = 9870 } } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

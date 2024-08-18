@@ -22,15 +22,15 @@
 // lldb-command:run
 
 // lldb-command:v x
-// lldbg-check:[...] 0.5
+// lldb-check:[...] 0.5
 // lldb-command:v y
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v *x
-// lldbg-check:[...] 29
+// lldb-check:[...] 29
 // lldb-command:v *y
-// lldbg-check:[...] 110
+// lldb-check:[...] 110
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

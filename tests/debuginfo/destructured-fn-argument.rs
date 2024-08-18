@@ -154,147 +154,147 @@
 // lldb-command:run
 
 // lldb-command:v a
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v b
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:v b
-// lldbg-check:[...] 3
+// lldb-check:[...] 3
 // lldb-command:v c
-// lldbg-check:[...] 4
+// lldb-check:[...] 4
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 5
+// lldb-check:[...] 5
 // lldb-command:v b
-// lldbg-check:[...] { 0 = 6 1 = 7 }
+// lldb-check:[...] { 0 = 6 1 = 7 }
 // lldb-command:continue
 
 // lldb-command:v h
-// lldbg-check:[...] 8
+// lldb-check:[...] 8
 // lldb-command:v i
-// lldbg-check:[...] { a = 9 b = 10 }
+// lldb-check:[...] { a = 9 b = 10 }
 // lldb-command:v j
-// lldbg-check:[...] 11
+// lldb-check:[...] 11
 // lldb-command:continue
 
 // lldb-command:v k
-// lldbg-check:[...] 12
+// lldb-check:[...] 12
 // lldb-command:v l
-// lldbg-check:[...] 13
+// lldb-check:[...] 13
 // lldb-command:continue
 
 // lldb-command:v m
-// lldbg-check:[...] 14
+// lldb-check:[...] 14
 // lldb-command:v n
-// lldbg-check:[...] 16
+// lldb-check:[...] 16
 // lldb-command:continue
 
 // lldb-command:v o
-// lldbg-check:[...] 18
+// lldb-check:[...] 18
 // lldb-command:continue
 
 // lldb-command:v p
-// lldbg-check:[...] 19
+// lldb-check:[...] 19
 // lldb-command:v q
-// lldbg-check:[...] 20
+// lldb-check:[...] 20
 // lldb-command:v r
-// lldbg-check:[...] { a = 21 b = 22 }
+// lldb-check:[...] { a = 21 b = 22 }
 // lldb-command:continue
 
 // lldb-command:v s
-// lldbg-check:[...] 24
+// lldb-check:[...] 24
 // lldb-command:v t
-// lldbg-check:[...] 23
+// lldb-check:[...] 23
 // lldb-command:continue
 
 // lldb-command:v u
-// lldbg-check:[...] 25
+// lldb-check:[...] 25
 // lldb-command:v v
-// lldbg-check:[...] 26
+// lldb-check:[...] 26
 // lldb-command:v w
-// lldbg-check:[...] 27
+// lldb-check:[...] 27
 // lldb-command:v x
-// lldbg-check:[...] 28
+// lldb-check:[...] 28
 // lldb-command:v y
-// lldbg-check:[...] 29
+// lldb-check:[...] 29
 // lldb-command:v z
-// lldbg-check:[...] 30
+// lldb-check:[...] 30
 // lldb-command:v ae
-// lldbg-check:[...] 31
+// lldb-check:[...] 31
 // lldb-command:v oe
-// lldbg-check:[...] 32
+// lldb-check:[...] 32
 // lldb-command:v ue
-// lldbg-check:[...] 33
+// lldb-check:[...] 33
 // lldb-command:continue
 
 // lldb-command:v aa
-// lldbg-check:[...] { 0 = 34 1 = 35 }
+// lldb-check:[...] { 0 = 34 1 = 35 }
 // lldb-command:continue
 
 // lldb-command:v bb
-// lldbg-check:[...] { 0 = 36 1 = 37 }
+// lldb-check:[...] { 0 = 36 1 = 37 }
 // lldb-command:continue
 
 // lldb-command:v cc
-// lldbg-check:[...] 38
+// lldb-check:[...] 38
 // lldb-command:continue
 
 // lldb-command:v dd
-// lldbg-check:[...] { 0 = 40 1 = 41 2 = 42 }
+// lldb-check:[...] { 0 = 40 1 = 41 2 = 42 }
 // lldb-command:continue
 
 // lldb-command:v *ee
-// lldbg-check:[...] { 0 = 43 1 = 44 2 = 45 }
+// lldb-check:[...] { 0 = 43 1 = 44 2 = 45 }
 // lldb-command:continue
 
 // lldb-command:v *ff
-// lldbg-check:[...] 46
+// lldb-check:[...] 46
 // lldb-command:v gg
-// lldbg-check:[...] { 0 = 47 1 = 48 }
+// lldb-check:[...] { 0 = 47 1 = 48 }
 // lldb-command:continue
 
 // lldb-command:v *hh
-// lldbg-check:[...] 50
+// lldb-check:[...] 50
 // lldb-command:continue
 
 // lldb-command:v ii
-// lldbg-check:[...] 51
+// lldb-check:[...] 51
 // lldb-command:continue
 
 // lldb-command:v *jj
-// lldbg-check:[...] 52
+// lldb-check:[...] 52
 // lldb-command:continue
 
 // lldb-command:v kk
-// lldbg-check:[...] 53
+// lldb-check:[...] 53
 // lldb-command:v ll
-// lldbg-check:[...] 54
+// lldb-check:[...] 54
 // lldb-command:continue
 
 // lldb-command:v mm
-// lldbg-check:[...] 55
+// lldb-check:[...] 55
 // lldb-command:v *nn
-// lldbg-check:[...] 56
+// lldb-check:[...] 56
 // lldb-command:continue
 
 // lldb-command:v oo
-// lldbg-check:[...] 57
+// lldb-check:[...] 57
 // lldb-command:v pp
-// lldbg-check:[...] 58
+// lldb-check:[...] 58
 // lldb-command:v qq
-// lldbg-check:[...] 59
+// lldb-check:[...] 59
 // lldb-command:continue
 
 // lldb-command:v rr
-// lldbg-check:[...] 60
+// lldb-check:[...] 60
 // lldb-command:v ss
-// lldbg-check:[...] 61
+// lldb-check:[...] 61
 // lldb-command:v tt
-// lldbg-check:[...] 62
+// lldb-check:[...] 62
 // lldb-command:continue
 
 #![allow(unused_variables)]

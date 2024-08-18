@@ -17,11 +17,11 @@
 // lldb-command:run
 
 // lldb-command:v string1.length
-// lldbg-check:[...] 48
+// lldb-check:[...] 48
 // lldb-command:v string2.length
-// lldbg-check:[...] 49
+// lldb-check:[...] 49
 // lldb-command:v string3.length
-// lldbg-check:[...] 50
+// lldb-check:[...] 50
 
 // lldb-command:continue
 

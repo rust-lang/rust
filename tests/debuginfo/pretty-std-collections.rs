@@ -52,16 +52,16 @@
 // lldb-command:run
 
 // lldb-command:v vec_deque
-// lldbg-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
+// lldb-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
 
 // lldb-command:v vec_deque2
-// lldbg-check:[...] size=7 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
+// lldb-check:[...] size=7 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
 
 // lldb-command:v hash_map
-// lldbg-check:[...] size=4 { [0] = { 0 = 1 1 = 10 } [1] = { 0 = 2 1 = 20 } [2] = { 0 = 3 1 = 30 } [3] = { 0 = 4 1 = 40 } }
+// lldb-check:[...] size=4 { [0] = { 0 = 1 1 = 10 } [1] = { 0 = 2 1 = 20 } [2] = { 0 = 3 1 = 30 } [3] = { 0 = 4 1 = 40 } }
 
 // lldb-command:v hash_set
-// lldbg-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
+// lldb-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
 
 #![allow(unused_variables)]
 use std::collections::BTreeMap;

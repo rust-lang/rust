@@ -27,21 +27,21 @@
 // lldb-command:run
 
 // lldb-command:v no_padding1
-// lldbg-check:[...] { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
+// lldb-check:[...] { 0 = { 0 = 0 1 = 1 } 1 = 2 2 = 3 }
 // lldb-command:v no_padding2
-// lldbg-check:[...] { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
+// lldb-check:[...] { 0 = 4 1 = { 0 = 5 1 = 6 } 2 = 7 }
 // lldb-command:v no_padding3
-// lldbg-check:[...] { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
+// lldb-check:[...] { 0 = 8 1 = 9 2 = { 0 = 10 1 = 11 } }
 
 // lldb-command:v internal_padding1
-// lldbg-check:[...] { 0 = 12 1 = { 0 = 13 1 = 14 } }
+// lldb-check:[...] { 0 = 12 1 = { 0 = 13 1 = 14 } }
 // lldb-command:v internal_padding2
-// lldbg-check:[...] { 0 = 15 1 = { 0 = 16 1 = 17 } }
+// lldb-check:[...] { 0 = 15 1 = { 0 = 16 1 = 17 } }
 
 // lldb-command:v padding_at_end1
-// lldbg-check:[...] { 0 = 18 1 = { 0 = 19 1 = 20 } }
+// lldb-check:[...] { 0 = 18 1 = { 0 = 19 1 = 20 } }
 // lldb-command:v padding_at_end2
-// lldbg-check:[...] { 0 = { 0 = 21 1 = 22 } 1 = 23 }
+// lldb-check:[...] { 0 = { 0 = 21 1 = 22 } 1 = 23 }
 
 
 // === CDB TESTS ==================================================================================

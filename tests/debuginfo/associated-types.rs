@@ -37,33 +37,33 @@
 // lldb-command:run
 
 // lldb-command:v arg
-// lldbg-check:[...] { b = -1, b1 = 0 }
+// lldb-check:[...] { b = -1, b1 = 0 }
 // lldb-command:continue
 
 // lldb-command:v inferred
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v explicitly
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:continue
 
 // lldb-command:v arg
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 // lldb-command:v arg
-// lldbg-check:[...] (4, 5)
+// lldb-check:[...] (4, 5)
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 6
+// lldb-check:[...] 6
 // lldb-command:v b
-// lldbg-check:[...] 7
+// lldb-check:[...] 7
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 8
+// lldb-check:[...] 8
 // lldb-command:v b
-// lldbg-check:[...] 9
+// lldb-check:[...] 9
 // lldb-command:continue
 
 #![allow(unused_variables)]

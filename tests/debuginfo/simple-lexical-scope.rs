@@ -38,31 +38,31 @@
 // lldb-command:run
 
 // lldb-command:v x
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 10.5
+// lldb-check:[...] 10.5
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:continue
 
 

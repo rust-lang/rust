@@ -56,47 +56,47 @@
 
 // STACK BY REF
 // lldb-command:v *self
-// lldbg-check:[...] Struct<(u32, i32)> { x: (8888, -8888) }
+// lldb-check:[...] Struct<(u32, i32)> { x: (8888, -8888) }
 // lldb-command:v arg1
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:v arg2
-// lldbg-check:[...] -2
+// lldb-check:[...] -2
 // lldb-command:continue
 
 // STACK BY VAL
 // lldb-command:v self
-// lldbg-check:[...] Struct<(u32, i32)> { x: (8888, -8888) }
+// lldb-check:[...] Struct<(u32, i32)> { x: (8888, -8888) }
 // lldb-command:v arg1
-// lldbg-check:[...] -3
+// lldb-check:[...] -3
 // lldb-command:v arg2
-// lldbg-check:[...] -4
+// lldb-check:[...] -4
 // lldb-command:continue
 
 // OWNED BY REF
 // lldb-command:v *self
-// lldbg-check:[...] Struct<f64> { x: 1234.5 }
+// lldb-check:[...] Struct<f64> { x: 1234.5 }
 // lldb-command:v arg1
-// lldbg-check:[...] -5
+// lldb-check:[...] -5
 // lldb-command:v arg2
-// lldbg-check:[...] -6
+// lldb-check:[...] -6
 // lldb-command:continue
 
 // OWNED BY VAL
 // lldb-command:v self
-// lldbg-check:[...] Struct<f64> { x: 1234.5 }
+// lldb-check:[...] Struct<f64> { x: 1234.5 }
 // lldb-command:v arg1
-// lldbg-check:[...] -7
+// lldb-check:[...] -7
 // lldb-command:v arg2
-// lldbg-check:[...] -8
+// lldb-check:[...] -8
 // lldb-command:continue
 
 // OWNED MOVED
 // lldb-command:v *self
-// lldbg-check:[...] Struct<f64> { x: 1234.5 }
+// lldb-check:[...] Struct<f64> { x: 1234.5 }
 // lldb-command:v arg1
-// lldbg-check:[...] -9
+// lldb-check:[...] -9
 // lldb-command:v arg2
-// lldbg-check:[...] -10
+// lldb-check:[...] -10
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

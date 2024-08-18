@@ -19,13 +19,13 @@
 // lldb-command:run
 
 // lldb-command:v *the_a_ref
-// lldbg-check:[...] TheA
+// lldb-check:[...] TheA
 
 // lldb-command:v *the_b_ref
-// lldbg-check:[...] TheB
+// lldb-check:[...] TheB
 
 // lldb-command:v *the_c_ref
-// lldbg-check:[...] TheC
+// lldb-check:[...] TheC
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

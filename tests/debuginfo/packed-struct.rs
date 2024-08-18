@@ -28,22 +28,22 @@
 // lldb-command:run
 
 // lldb-command:v packed
-// lldbg-check:[...] { x = 123 y = 234 z = 345 }
+// lldb-check:[...] { x = 123 y = 234 z = 345 }
 
 // lldb-command:v packedInPacked
-// lldbg-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
+// lldb-check:[...] { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
 
 // lldb-command:v packedInUnpacked
-// lldbg-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
+// lldb-check:[...] { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
 
 // lldb-command:v unpackedInPacked
-// lldbg-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
+// lldb-check:[...] { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
 
 // lldb-command:expr sizeof(packed)
-// lldbg-check:[...] 14
+// lldb-check:[...] 14
 
 // lldb-command:expr sizeof(packedInPacked)
-// lldbg-check:[...] 40
+// lldb-check:[...] 40
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

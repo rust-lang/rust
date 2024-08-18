@@ -21,13 +21,13 @@
 // lldb-command:run
 
 // lldb-command:v *the_a
-// lldbg-check:(unique_enum::ABC) *the_a = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
+// lldb-check:(unique_enum::ABC) *the_a = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
 
 // lldb-command:v *the_b
-// lldbg-check:(unique_enum::ABC) *the_b = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
+// lldb-check:(unique_enum::ABC) *the_b = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
 
 // lldb-command:v *univariant
-// lldbg-check:(unique_enum::Univariant) *univariant = { value = { 0 = 123234 } }
+// lldb-check:(unique_enum::Univariant) *univariant = { value = { 0 = 123234 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

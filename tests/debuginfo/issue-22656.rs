@@ -10,9 +10,9 @@
 // lldb-command:run
 
 // lldb-command:v v
-// lldbg-check:[...] size=3 { [0] = 1 [1] = 2 [2] = 3 }
+// lldb-check:[...] size=3 { [0] = 1 [1] = 2 [2] = 3 }
 // lldb-command:v zs
-// lldbg-check:[...] { x = y = 123 z = w = 456 }
+// lldb-check:[...] { x = y = 123 z = w = 456 }
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

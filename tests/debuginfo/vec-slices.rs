@@ -53,22 +53,22 @@
 // lldb-command:run
 
 // lldb-command:v empty
-// lldbg-check:[...] size=0
+// lldb-check:[...] size=0
 
 // lldb-command:v singleton
-// lldbg-check:[...] size=1 { [0] = 1 }
+// lldb-check:[...] size=1 { [0] = 1 }
 
 // lldb-command:v multiple
-// lldbg-check:[...] size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
+// lldb-check:[...] size=4 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 }
 
 // lldb-command:v slice_of_slice
-// lldbg-check:[...] size=2 { [0] = 3 [1] = 4 }
+// lldb-check:[...] size=2 { [0] = 3 [1] = 4 }
 
 // lldb-command:v padded_tuple
-// lldbg-check:[...] size=2 { [0] = { 0 = 6 1 = 7 } [1] = { 0 = 8 1 = 9 } }
+// lldb-check:[...] size=2 { [0] = { 0 = 6 1 = 7 } [1] = { 0 = 8 1 = 9 } }
 
 // lldb-command:v padded_struct
-// lldbg-check:[...] size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }
+// lldb-check:[...] size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }
 
 #![allow(dead_code, unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

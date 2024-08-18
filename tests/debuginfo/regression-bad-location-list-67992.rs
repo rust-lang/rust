@@ -11,7 +11,7 @@
 
 // lldb-command:run
 // lldb-command:v a
-// lldbg-check:(regression_bad_location_list_67992::Foo) [...]
+// lldb-check:(regression_bad_location_list_67992::Foo) [...]
 
 const ARRAY_SIZE: usize = 1024;
 

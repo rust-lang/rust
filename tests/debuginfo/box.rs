@@ -14,9 +14,9 @@
 
 // lldb-command:run
 // lldb-command:v *a
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v *b
-// lldbg-check:[...] { 0 = 2 1 = 3.5 }
+// lldb-check:[...] { 0 = 2 1 = 3.5 }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

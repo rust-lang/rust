@@ -38,31 +38,31 @@
 // lldb-command:run
 
 // lldb-command:v variable
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v constant
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:v a_struct
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *struct_ref
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *owned
-// lldbg-check:[...] 6
+// lldb-check:[...] 6
 // lldb-command:v closure_local
-// lldbg-check:[...] 8
+// lldb-check:[...] 8
 // lldb-command:continue
 
 // lldb-command:v variable
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v constant
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:v a_struct
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *struct_ref
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *owned
-// lldbg-check:[...] 6
+// lldb-check:[...] 6
 // lldb-command:v closure_local
-// lldbg-check:[...] 8
+// lldb-check:[...] 8
 // lldb-command:continue
 
 

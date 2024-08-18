@@ -46,32 +46,32 @@
 
 // lldb-command:run
 // lldb-command:v b
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:v i
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 
 // lldb-command:v i8
-// lldbg-check:[...] 'D'
+// lldb-check:[...] 'D'
 // lldb-command:v i16
-// lldbg-check:[...] -16
+// lldb-check:[...] -16
 // lldb-command:v i32
-// lldbg-check:[...] -32
+// lldb-check:[...] -32
 // lldb-command:v i64
-// lldbg-check:[...] -64
+// lldb-check:[...] -64
 // lldb-command:v u
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v u8
-// lldbg-check:[...] 'd'
+// lldb-check:[...] 'd'
 // lldb-command:v u16
-// lldbg-check:[...] 16
+// lldb-check:[...] 16
 // lldb-command:v u32
-// lldbg-check:[...] 32
+// lldb-check:[...] 32
 // lldb-command:v u64
-// lldbg-check:[...] 64
+// lldb-check:[...] 64
 // lldb-command:v f32
-// lldbg-check:[...] 2.5
+// lldb-check:[...] 2.5
 // lldb-command:v f64
-// lldbg-check:[...] 3.5
+// lldb-check:[...] 3.5
 
 // === CDB TESTS ===================================================================================
 

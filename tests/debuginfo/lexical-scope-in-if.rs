@@ -67,58 +67,58 @@
 
 // BEFORE if
 // lldb-command:v x
-// lldbg-check:[...] 999
+// lldb-check:[...] 999
 // lldb-command:v y
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 // AT BEGINNING of 'then' block
 // lldb-command:v x
-// lldbg-check:[...] 999
+// lldb-check:[...] 999
 // lldb-command:v y
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 // AFTER 1st redeclaration of 'x'
 // lldb-command:v x
-// lldbg-check:[...] 1001
+// lldb-check:[...] 1001
 // lldb-command:v y
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 // AFTER 2st redeclaration of 'x'
 // lldb-command:v x
-// lldbg-check:[...] 1002
+// lldb-check:[...] 1002
 // lldb-command:v y
-// lldbg-check:[...] 1003
+// lldb-check:[...] 1003
 // lldb-command:continue
 
 // AFTER 1st if expression
 // lldb-command:v x
-// lldbg-check:[...] 999
+// lldb-check:[...] 999
 // lldb-command:v y
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 // BEGINNING of else branch
 // lldb-command:v x
-// lldbg-check:[...] 999
+// lldb-check:[...] 999
 // lldb-command:v y
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 // BEGINNING of else branch
 // lldb-command:v x
-// lldbg-check:[...] 1004
+// lldb-check:[...] 1004
 // lldb-command:v y
-// lldbg-check:[...] 1005
+// lldb-check:[...] 1005
 // lldb-command:continue
 
 // BEGINNING of else branch
 // lldb-command:v x
-// lldbg-check:[...] 999
+// lldb-check:[...] 999
 // lldb-command:v y
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

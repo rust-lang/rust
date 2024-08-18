@@ -43,34 +43,34 @@
 
 // FIRST ITERATION
 // lldb-command:v x
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] -1
+// lldb-check:[...] -1
 // lldb-command:continue
 
 // SECOND ITERATION
 // lldb-command:v x
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] -2
+// lldb-check:[...] -2
 // lldb-command:continue
 
 // THIRD ITERATION
 // lldb-command:v x
-// lldbg-check:[...] 3
+// lldb-check:[...] 3
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] -3
+// lldb-check:[...] -3
 // lldb-command:continue
 
 // AFTER LOOP
 // lldb-command:v x
-// lldbg-check:[...] 1000000
+// lldb-check:[...] 1000000
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

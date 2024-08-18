@@ -20,13 +20,13 @@
 // lldb-command:run
 
 // lldb-command:v len
-// lldbg-check:[...] 20
+// lldb-check:[...] 20
 // lldb-command:v local0
-// lldbg-check:[...] 19
+// lldb-check:[...] 19
 // lldb-command:v local1
-// lldbg-check:[...] true
+// lldb-check:[...] true
 // lldb-command:v local2
-// lldbg-check:[...] 20.5
+// lldb-check:[...] 20.5
 
 // lldb-command:continue
 

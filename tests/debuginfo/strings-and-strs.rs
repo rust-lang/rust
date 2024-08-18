@@ -25,19 +25,19 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 // lldb-command:v plain_string
-// lldbg-check:(alloc::string::String) plain_string = "Hello" { vec = size=5 { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+// lldb-check:(alloc::string::String) plain_string = "Hello" { vec = size=5 { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
 
 // lldb-command:v plain_str
-// lldbg-check:(&str) plain_str = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
+// lldb-check:(&str) plain_str = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
 
 // lldb-command:v str_in_struct
-// lldbg-check:((&str, &str)) str_in_tuple = { 0 = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } 1 = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' } }
+// lldb-check:((&str, &str)) str_in_tuple = { 0 = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } 1 = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' } }
 
 // lldb-command:v str_in_tuple
-// lldbg-check:((&str, &str)) str_in_tuple = { 0 = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } 1 = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' } }
+// lldb-check:((&str, &str)) str_in_tuple = { 0 = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } 1 = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' } }
 
 // lldb-command:v str_in_rc
-// lldbg-check:(alloc::rc::Rc<&str, alloc::alloc::Global>) str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+// lldb-check:(alloc::rc::Rc<&str, alloc::alloc::Global>) str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
 
 
 #![allow(unused_variables)]

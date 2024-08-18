@@ -25,16 +25,16 @@
 // lldb-command:run
 
 // lldb-command:v case1
-// lldbg-check:(tuple_style_enum::Regular) case1 = { value = { 0 = 0 1 = 31868 2 = 31868 3 = 31868 4 = 31868 } $discr$ = 0 }
+// lldb-check:(tuple_style_enum::Regular) case1 = { value = { 0 = 0 1 = 31868 2 = 31868 3 = 31868 4 = 31868 } $discr$ = 0 }
 
 // lldb-command:v case2
-// lldbg-check:(tuple_style_enum::Regular) case2 = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
+// lldb-check:(tuple_style_enum::Regular) case2 = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
 
 // lldb-command:v case3
-// lldbg-check:(tuple_style_enum::Regular) case3 = { value = { 0 = 0 1 = 6438275382588823897 } $discr$ = 2 }
+// lldb-check:(tuple_style_enum::Regular) case3 = { value = { 0 = 0 1 = 6438275382588823897 } $discr$ = 2 }
 
 // lldb-command:v univariant
-// lldbg-check:(tuple_style_enum::Univariant) univariant = { value = { 0 = -1 } }
+// lldb-check:(tuple_style_enum::Univariant) univariant = { value = { 0 = -1 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

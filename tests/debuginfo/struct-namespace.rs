@@ -5,14 +5,14 @@
 
 // lldb-command:run
 // lldb-command:v struct1
-// lldbg-check:(struct_namespace::Struct1)[...]
+// lldb-check:(struct_namespace::Struct1)[...]
 // lldb-command:v struct2
-// lldbg-check:(struct_namespace::Struct2)[...]
+// lldb-check:(struct_namespace::Struct2)[...]
 
 // lldb-command:v mod1_struct1
-// lldbg-check:(struct_namespace::mod1::Struct1)[...]
+// lldb-check:(struct_namespace::mod1::Struct1)[...]
 // lldb-command:v mod1_struct2
-// lldbg-check:(struct_namespace::mod1::Struct2)[...]
+// lldb-check:(struct_namespace::mod1::Struct2)[...]
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

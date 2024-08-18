@@ -12,10 +12,10 @@
 
 // lldb-command:run
 // lldb-command:v u
-// lldbg-check:[...] { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
+// lldb-check:[...] { a = { 0 = '\x02' 1 = '\x02' } b = 514 }
 
-// lldbg-command:print union_smoke::SU
-// lldbg-check:[...] { a = { 0 = '\x01' 1 = '\x01' } b = 257 }
+// lldb-command:print union_smoke::SU
+// lldb-check:[...] { a = { 0 = '\x01' 1 = '\x01' } b = 257 }
 
 #![allow(unused)]
 #![feature(omit_gdb_pretty_printer_section)]

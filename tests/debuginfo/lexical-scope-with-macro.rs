@@ -54,48 +54,48 @@
 // lldb-command:run
 
 // lldb-command:v a
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:v b
-// lldbg-check:[...] 34
+// lldb-check:[...] 34
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 890242
+// lldb-check:[...] 890242
 // lldb-command:v b
-// lldbg-check:[...] 34
+// lldb-check:[...] 34
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 // lldb-command:v b
-// lldbg-check:[...] 34
+// lldb-check:[...] 34
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 102
+// lldb-check:[...] 102
 // lldb-command:v b
-// lldbg-check:[...] 34
+// lldb-check:[...] 34
 // lldb-command:continue
 
-// lldbg-command:print a
-// lldbg-check:[...] 110
-// lldbg-command:print b
-// lldbg-check:[...] 34
-// lldbg-command:continue
+// lldb-command:print a
+// lldb-check:[...] 110
+// lldb-command:print b
+// lldb-check:[...] 34
+// lldb-command:continue
 
-// lldbg-command:print a
-// lldbg-check:[...] 10
-// lldbg-command:print b
-// lldbg-check:[...] 34
-// lldbg-command:continue
+// lldb-command:print a
+// lldb-check:[...] 10
+// lldb-command:print b
+// lldb-check:[...] 34
+// lldb-command:continue
 
-// lldbg-command:print a
-// lldbg-check:[...] 10
-// lldbg-command:print b
-// lldbg-check:[...] 34
-// lldbg-command:print c
-// lldbg-check:[...] 400
-// lldbg-command:continue
+// lldb-command:print a
+// lldb-check:[...] 10
+// lldb-command:print b
+// lldb-check:[...] 34
+// lldb-command:print c
+// lldb-check:[...] 400
+// lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]

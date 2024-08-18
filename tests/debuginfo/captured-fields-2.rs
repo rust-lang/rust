@@ -14,10 +14,10 @@
 
 // lldb-command:run
 // lldb-command:v my_ref__my_field1
-// lldbg-check:(unsigned int) my_ref__my_field1 = 11
+// lldb-check:(unsigned int) my_ref__my_field1 = 11
 // lldb-command:continue
 // lldb-command:v my_var__my_field2
-// lldbg-check:(unsigned int) my_var__my_field2 = 22
+// lldb-check:(unsigned int) my_var__my_field2 = 22
 // lldb-command:continue
 
 #![allow(unused)]

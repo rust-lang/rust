@@ -66,57 +66,57 @@
 
 // FIRST ITERATION
 // lldb-command:v x
-// lldbg-check:[...] 0
+// lldb-check:[...] 0
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 101
+// lldb-check:[...] 101
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 101
+// lldb-check:[...] 101
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] -987
+// lldb-check:[...] -987
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 101
+// lldb-check:[...] 101
 // lldb-command:continue
 
 
 // SECOND ITERATION
 // lldb-command:v x
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 102
+// lldb-check:[...] 102
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 102
+// lldb-check:[...] 102
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] -987
+// lldb-check:[...] -987
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 102
+// lldb-check:[...] 102
 // lldb-command:continue
 
 // lldb-command:v x
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

@@ -66,25 +66,25 @@
 // lldb-command:run
 
 // lldb-command:v auto_one
-// lldbg-check:[...] One
+// lldb-check:[...] One
 
 // lldb-command:v auto_two
-// lldbg-check:[...] Two
+// lldb-check:[...] Two
 
 // lldb-command:v auto_three
-// lldbg-check:[...] Three
+// lldb-check:[...] Three
 
 // lldb-command:v manual_one_hundred
-// lldbg-check:[...] OneHundred
+// lldb-check:[...] OneHundred
 
 // lldb-command:v manual_one_thousand
-// lldbg-check:[...] OneThousand
+// lldb-check:[...] OneThousand
 
 // lldb-command:v manual_one_million
-// lldbg-check:[...] OneMillion
+// lldb-check:[...] OneMillion
 
 // lldb-command:v single_variant
-// lldbg-check:[...] TheOnlyVariant
+// lldb-check:[...] TheOnlyVariant
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

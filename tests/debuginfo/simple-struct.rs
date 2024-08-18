@@ -65,22 +65,22 @@
 // lldb-command:run
 
 // lldb-command:v no_padding16
-// lldbg-check:[...] { x = 10000 y = -10001 }
+// lldb-check:[...] { x = 10000 y = -10001 }
 
 // lldb-command:v no_padding32
-// lldbg-check:[...] { x = -10002 y = -10003.5 z = 10004 }
+// lldb-check:[...] { x = -10002 y = -10003.5 z = 10004 }
 
 // lldb-command:v no_padding64
-// lldbg-check:[...] { x = -10005.5 y = 10006 z = 10007 }
+// lldb-check:[...] { x = -10005.5 y = 10006 z = 10007 }
 
 // lldb-command:v no_padding163264
-// lldbg-check:[...] { a = -10008 b = 10009 c = 10010 d = 10011 }
+// lldb-check:[...] { a = -10008 b = 10009 c = 10010 d = 10011 }
 
 // lldb-command:v internal_padding
-// lldbg-check:[...] { x = 10012 y = -10013 }
+// lldb-check:[...] { x = 10012 y = -10013 }
 
 // lldb-command:v padding_at_end
-// lldbg-check:[...] { x = -10014 y = 10015 }
+// lldb-check:[...] { x = -10014 y = 10015 }
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

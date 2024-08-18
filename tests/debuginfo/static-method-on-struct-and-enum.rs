@@ -27,18 +27,18 @@
 
 // STRUCT
 // lldb-command:v arg1
-// lldbg-check:[...] 1
+// lldb-check:[...] 1
 // lldb-command:v arg2
-// lldbg-check:[...] 2
+// lldb-check:[...] 2
 // lldb-command:continue
 
 // ENUM
 // lldb-command:v arg1
-// lldbg-check:[...] -3
+// lldb-check:[...] -3
 // lldb-command:v arg2
-// lldbg-check:[...] 4.5
+// lldb-check:[...] 4.5
 // lldb-command:v arg3
-// lldbg-check:[...] 5
+// lldb-check:[...] 5
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

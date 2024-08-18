@@ -18,14 +18,14 @@
 // lldb-command:run
 
 // lldb-command:v int_int
-// lldbg-check:[...] AGenericStruct<i32, i32> { key: 0, value: 1 }
+// lldb-check:[...] AGenericStruct<i32, i32> { key: 0, value: 1 }
 // lldb-command:v int_float
-// lldbg-check:[...] AGenericStruct<i32, f64> { key: 2, value: 3.5 }
+// lldb-check:[...] AGenericStruct<i32, f64> { key: 2, value: 3.5 }
 // lldb-command:v float_int
-// lldbg-check:[...] AGenericStruct<f64, i32> { key: 4.5, value: 5 }
+// lldb-check:[...] AGenericStruct<f64, i32> { key: 4.5, value: 5 }
 
 // lldb-command:v float_int_float
-// lldbg-check:[...] AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
+// lldb-check:[...] AGenericStruct<f64, generic_struct::AGenericStruct<i32, f64>> { key: 6.5, value: AGenericStruct<i32, f64> { key: 7, value: 8.5 } }
 
 // === CDB TESTS ===================================================================================
 

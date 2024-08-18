@@ -31,25 +31,25 @@
 // lldb-command:run
 
 // lldb-command:v *stack_val_ref
-// lldbg-check:[...] { x = 10 y = 23.5 }
+// lldb-check:[...] { x = 10 y = 23.5 }
 
 // lldb-command:v *stack_val_interior_ref_1
-// lldbg-check:[...] 10
+// lldb-check:[...] 10
 
 // lldb-command:v *stack_val_interior_ref_2
-// lldbg-check:[...] 23.5
+// lldb-check:[...] 23.5
 
 // lldb-command:v *ref_to_unnamed
-// lldbg-check:[...] { x = 11 y = 24.5 }
+// lldb-check:[...] { x = 11 y = 24.5 }
 
 // lldb-command:v *unique_val_ref
-// lldbg-check:[...] { x = 13 y = 26.5 }
+// lldb-check:[...] { x = 13 y = 26.5 }
 
 // lldb-command:v *unique_val_interior_ref_1
-// lldbg-check:[...] 13
+// lldb-check:[...] 13
 
 // lldb-command:v *unique_val_interior_ref_2
-// lldbg-check:[...] 26.5
+// lldb-check:[...] 26.5
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

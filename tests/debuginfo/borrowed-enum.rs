@@ -21,11 +21,11 @@
 // lldb-command:run
 
 // lldb-command:v *the_a_ref
-// lldbg-check:(borrowed_enum::ABC) *the_a_ref = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
+// lldb-check:(borrowed_enum::ABC) *the_a_ref = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
 // lldb-command:v *the_b_ref
-// lldbg-check:(borrowed_enum::ABC) *the_b_ref = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
+// lldb-check:(borrowed_enum::ABC) *the_b_ref = { value = { 0 = 0 1 = 286331153 2 = 286331153 } $discr$ = 1 }
 // lldb-command:v *univariant_ref
-// lldbg-check:(borrowed_enum::Univariant) *univariant_ref = { value = { 0 = 4820353753753434 } }
+// lldb-check:(borrowed_enum::Univariant) *univariant_ref = { value = { 0 = 4820353753753434 } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

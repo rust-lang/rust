@@ -77,66 +77,66 @@
 
 // DESTRUCTURED STRUCT
 // lldb-command:v x
-// lldbg-check:[...] 400
+// lldb-check:[...] 400
 // lldb-command:v y
-// lldbg-check:[...] 401.5
+// lldb-check:[...] 401.5
 // lldb-command:v z
-// lldbg-check:[...] true
+// lldb-check:[...] true
 // lldb-command:continue
 
 // DESTRUCTURED TUPLE
 // lldb-command:v _i8
-// lldbg-check:[...] 0x6f
+// lldb-check:[...] 0x6f
 // lldb-command:v _u8
-// lldbg-check:[...] 0x70
+// lldb-check:[...] 0x70
 // lldb-command:v _i16
-// lldbg-check:[...] -113
+// lldb-check:[...] -113
 // lldb-command:v _u16
-// lldbg-check:[...] 114
+// lldb-check:[...] 114
 // lldb-command:v _i32
-// lldbg-check:[...] -115
+// lldb-check:[...] -115
 // lldb-command:v _u32
-// lldbg-check:[...] 116
+// lldb-check:[...] 116
 // lldb-command:v _i64
-// lldbg-check:[...] -117
+// lldb-check:[...] -117
 // lldb-command:v _u64
-// lldbg-check:[...] 118
+// lldb-check:[...] 118
 // lldb-command:v _f32
-// lldbg-check:[...] 119.5
+// lldb-check:[...] 119.5
 // lldb-command:v _f64
-// lldbg-check:[...] 120.5
+// lldb-check:[...] 120.5
 // lldb-command:continue
 
 // MORE COMPLEX CASE
 // lldb-command:v v1
-// lldbg-check:[...] 80000
+// lldb-check:[...] 80000
 // lldb-command:v x1
-// lldbg-check:[...] 8000
+// lldb-check:[...] 8000
 // lldb-command:v *y1
-// lldbg-check:[...] 80001.5
+// lldb-check:[...] 80001.5
 // lldb-command:v z1
-// lldbg-check:[...] false
+// lldb-check:[...] false
 // lldb-command:v *x2
-// lldbg-check:[...] -30000
+// lldb-check:[...] -30000
 // lldb-command:v y2
-// lldbg-check:[...] -300001.5
+// lldb-check:[...] -300001.5
 // lldb-command:v *z2
-// lldbg-check:[...] true
+// lldb-check:[...] true
 // lldb-command:v v2
-// lldbg-check:[...] 854237.5
+// lldb-check:[...] 854237.5
 // lldb-command:continue
 
 // SIMPLE IDENTIFIER
 // lldb-command:v i
-// lldbg-check:[...] 1234
+// lldb-check:[...] 1234
 // lldb-command:continue
 
 // lldb-command:v simple_struct_ident
-// lldbg-check:[...] { x = 3537 y = 35437.5 z = true }
+// lldb-check:[...] { x = 3537 y = 35437.5 z = true }
 // lldb-command:continue
 
 // lldb-command:v simple_tuple_ident
-// lldbg-check:[...] { 0 = 34903493 1 = 232323 }
+// lldb-check:[...] { 0 = 34903493 1 = 232323 }
 // lldb-command:continue
 
 #![allow(unused_variables)]

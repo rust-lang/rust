@@ -21,15 +21,15 @@
 // lldb-command:run
 
 // lldb-command:v x
-// lldbg-check:[...] 111102
+// lldb-check:[...] 111102
 // lldb-command:v y
-// lldbg-check:[...] true
+// lldb-check:[...] true
 // lldb-command:continue
 
 // lldb-command:v a
-// lldbg-check:[...] 2000
+// lldb-check:[...] 2000
 // lldb-command:v b
-// lldbg-check:[...] 3000
+// lldb-check:[...] 3000
 // lldb-command:continue
 
 
