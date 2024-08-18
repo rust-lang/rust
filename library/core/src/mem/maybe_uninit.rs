@@ -1,5 +1,5 @@
 use crate::any::type_name;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::ManuallyDrop;
 use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
@@ -354,7 +354,7 @@ impl<T> MaybeUninit<T> {
     /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
     ///     unsafe {
     ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
-    ///         MaybeUninit::slice_assume_init_ref(&buf[..len])
+    ///         buf[..len].assume_init_ref()
     ///     }
     /// }
     ///
@@ -740,7 +740,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// On top of that, all additional invariants of the type `T` must be
     /// satisfied, as the `Drop` implementation of `T` (or its members) may
-    /// rely on this. For example, setting a [`Vec<T>`] to an invalid but
+    /// rely on this. For example, setting a `Vec<T>` to an invalid but
     /// non-null address makes it initialized (under the current implementation;
     /// this does not constitute a stable guarantee), because the only
     /// requirement the compiler knows about it is that the data pointer must be
@@ -748,7 +748,6 @@ impl<T> MaybeUninit<T> {
     /// behavior.
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
-    /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
     pub unsafe fn assume_init_drop(&mut self) {
         // SAFETY: the caller must guarantee that `self` is initialized and
@@ -982,339 +981,6 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Assuming all the elements are initialized, get a slice to them.
-    ///
-    /// # Safety
-    ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
-    /// really are in an initialized state.
-    /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    ///
-    /// See [`assume_init_ref`] for more details and examples.
-    ///
-    /// [`assume_init_ref`]: MaybeUninit::assume_init_ref
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const unsafe fn slice_assume_init_ref(slice: &[Self]) -> &[T] {
-        // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
-        // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
-        // The pointer obtained is valid since it refers to memory owned by `slice` which is a
-        // reference and thus guaranteed to be valid for reads.
-        unsafe { &*(slice as *const [Self] as *const [T]) }
-    }
-
-    /// Assuming all the elements are initialized, get a mutable slice to them.
-    ///
-    /// # Safety
-    ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
-    /// really are in an initialized state.
-    /// Calling this when the content is not yet fully initialized causes undefined behavior.
-    ///
-    /// See [`assume_init_mut`] for more details and examples.
-    ///
-    /// [`assume_init_mut`]: MaybeUninit::assume_init_mut
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
-        // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
-        // mutable reference which is also guaranteed to be valid for writes.
-        unsafe { &mut *(slice as *mut [Self] as *mut [T]) }
-    }
-
-    /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
-        this.as_ptr() as *const T
-    }
-
-    /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
-        this.as_mut_ptr() as *mut T
-    }
-
-    /// Copies the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
-    ///
-    /// If `T` does not implement `Copy`, use [`clone_from_slice`]
-    ///
-    /// This is similar to [`slice::copy_from_slice`].
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the two slices have different lengths.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut dst = [MaybeUninit::uninit(); 32];
-    /// let src = [0; 32];
-    ///
-    /// let init = MaybeUninit::copy_from_slice(&mut dst, &src);
-    ///
-    /// assert_eq!(init, src);
-    /// ```
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut vec = Vec::with_capacity(32);
-    /// let src = [0; 16];
-    ///
-    /// MaybeUninit::copy_from_slice(&mut vec.spare_capacity_mut()[..src.len()], &src);
-    ///
-    /// // SAFETY: we have just copied all the elements of len into the spare capacity
-    /// // the first src.len() elements of the vec are valid now.
-    /// unsafe {
-    ///     vec.set_len(src.len());
-    /// }
-    ///
-    /// assert_eq!(vec, src);
-    /// ```
-    ///
-    /// [`clone_from_slice`]: MaybeUninit::clone_from_slice
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    pub fn copy_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
-    where
-        T: Copy,
-    {
-        // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
-        let uninit_src: &[MaybeUninit<T>] = unsafe { super::transmute(src) };
-
-        this.copy_from_slice(uninit_src);
-
-        // SAFETY: Valid elements have just been copied into `this` so it is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(this) }
-    }
-
-    /// Clones the elements from `src` to `this`, returning a mutable reference to the now initialized contents of `this`.
-    /// Any already initialized elements will not be dropped.
-    ///
-    /// If `T` implements `Copy`, use [`copy_from_slice`]
-    ///
-    /// This is similar to [`slice::clone_from_slice`] but does not drop existing elements.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the two slices have different lengths, or if the implementation of `Clone` panics.
-    ///
-    /// If there is a panic, the already cloned elements will be dropped.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut dst = [MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit()];
-    /// let src = ["wibbly".to_string(), "wobbly".to_string(), "timey".to_string(), "wimey".to_string(), "stuff".to_string()];
-    ///
-    /// let init = MaybeUninit::clone_from_slice(&mut dst, &src);
-    ///
-    /// assert_eq!(init, src);
-    /// # // Prevent leaks for Miri
-    /// # unsafe { std::ptr::drop_in_place(init); }
-    /// ```
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut vec = Vec::with_capacity(32);
-    /// let src = ["rust", "is", "a", "pretty", "cool", "language"];
-    ///
-    /// MaybeUninit::clone_from_slice(&mut vec.spare_capacity_mut()[..src.len()], &src);
-    ///
-    /// // SAFETY: we have just cloned all the elements of len into the spare capacity
-    /// // the first src.len() elements of the vec are valid now.
-    /// unsafe {
-    ///     vec.set_len(src.len());
-    /// }
-    ///
-    /// assert_eq!(vec, src);
-    /// ```
-    ///
-    /// [`copy_from_slice`]: MaybeUninit::copy_from_slice
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    pub fn clone_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
-    where
-        T: Clone,
-    {
-        // unlike copy_from_slice this does not call clone_from_slice on the slice
-        // this is because `MaybeUninit<T: Clone>` does not implement Clone.
-
-        assert_eq!(this.len(), src.len(), "destination and source slices have different lengths");
-        // NOTE: We need to explicitly slice them to the same length
-        // for bounds checking to be elided, and the optimizer will
-        // generate memcpy for simple cases (for example T = u8).
-        let len = this.len();
-        let src = &src[..len];
-
-        // guard is needed b/c panic might happen during a clone
-        let mut guard = Guard { slice: this, initialized: 0 };
-
-        for i in 0..len {
-            guard.slice[i].write(src[i].clone());
-            guard.initialized += 1;
-        }
-
-        super::forget(guard);
-
-        // SAFETY: Valid elements have just been written into `this` so it is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(this) }
-    }
-
-    /// Fills `this` with elements by cloning `value`, returning a mutable reference to the now
-    /// initialized contents of `this`.
-    /// Any previously initialized elements will not be dropped.
-    ///
-    /// This is similar to [`slice::fill`].
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if any call to `Clone` panics.
-    ///
-    /// If such a panic occurs, any elements previously initialized during this operation will be
-    /// dropped.
-    ///
-    /// # Examples
-    ///
-    /// Fill an uninit vec with 1.
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = vec![MaybeUninit::uninit(); 10];
-    /// let initialized = MaybeUninit::fill(buf.as_mut_slice(), 1);
-    /// assert_eq!(initialized, &mut [1; 10]);
-    /// ```
-    #[doc(alias = "memset")]
-    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    pub fn fill<'a>(this: &'a mut [MaybeUninit<T>], value: T) -> &'a mut [T]
-    where
-        T: Clone,
-    {
-        SpecFill::spec_fill(this, value);
-        // SAFETY: Valid elements have just been filled into `this` so it is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(this) }
-    }
-
-    /// Fills `this` with elements returned by calling a closure repeatedly.
-    ///
-    /// This method uses a closure to create new values.  If you'd rather `Clone` a given value, use
-    /// [`MaybeUninit::fill`].  If you want to use the `Default` trait to generate values, you can
-    /// pass [`Default::default`] as the argument.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if any call to the provided closure panics.
-    ///
-    /// If such a panic occurs, any elements previously initialized during this operation will be
-    /// dropped.
-    ///
-    /// # Examples
-    ///
-    /// Fill an uninit vec with the default value.
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = vec![MaybeUninit::<i32>::uninit(); 10];
-    /// let initialized = MaybeUninit::fill_with(buf.as_mut_slice(), Default::default);
-    /// assert_eq!(initialized, &mut [0; 10]);
-    /// ```
-    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    pub fn fill_with<'a, F>(this: &'a mut [MaybeUninit<T>], mut f: F) -> &'a mut [T]
-    where
-        F: FnMut() -> T,
-    {
-        let mut guard = Guard { slice: this, initialized: 0 };
-
-        for element in guard.slice.iter_mut() {
-            element.write(f());
-            guard.initialized += 1;
-        }
-
-        super::forget(guard);
-
-        // SAFETY: Valid elements have just been written into `this` so it is initialized
-        unsafe { MaybeUninit::slice_assume_init_mut(this) }
-    }
-
-    /// Fills `this` with elements yielded by an iterator until either all elements have been
-    /// initialized or the iterator is empty.
-    ///
-    /// Returns two slices.  The first slice contains the initialized portion of the original slice.
-    /// The second slice is the still-uninitialized remainder of the original slice.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if the iterator's `next` function panics.
-    ///
-    /// If such a panic occurs, any elements previously initialized during this operation will be
-    /// dropped.
-    ///
-    /// # Examples
-    ///
-    /// Fill an uninit vec with a cycling iterator.
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = vec![MaybeUninit::uninit(); 5];
-    ///
-    /// let iter = [1, 2, 3].into_iter().cycle();
-    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter);
-    ///
-    /// assert_eq!(initialized, &mut [1, 2, 3, 1, 2]);
-    /// assert_eq!(0, remainder.len());
-    /// ```
-    ///
-    /// Fill an uninit vec, but not completely.
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = vec![MaybeUninit::uninit(); 5];
-    /// let iter = [1, 2];
-    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter);
-    ///
-    /// assert_eq!(initialized, &mut [1, 2]);
-    /// assert_eq!(remainder.len(), 3);
-    /// ```
-    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    pub fn fill_from<'a, I>(
-        this: &'a mut [MaybeUninit<T>],
-        it: I,
-    ) -> (&'a mut [T], &'a mut [MaybeUninit<T>])
-    where
-        I: IntoIterator<Item = T>,
-    {
-        let iter = it.into_iter();
-        let mut guard = Guard { slice: this, initialized: 0 };
-
-        for (element, val) in guard.slice.iter_mut().zip(iter) {
-            element.write(val);
-            guard.initialized += 1;
-        }
-
-        let initialized_len = guard.initialized;
-        super::forget(guard);
-
-        // SAFETY: guard.initialized <= this.len()
-        let (initted, remainder) = unsafe { this.split_at_mut_unchecked(initialized_len) };
-
-        // SAFETY: Valid elements have just been written into `init`, so that portion
-        // of `this` is initialized.
-        (unsafe { MaybeUninit::slice_assume_init_mut(initted) }, remainder)
-    }
-
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
     ///
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
@@ -1329,14 +995,14 @@ impl<T> MaybeUninit<T> {
     /// let val = 0x12345678_i32;
     /// let uninit = MaybeUninit::new(val);
     /// let uninit_bytes = uninit.as_bytes();
-    /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(uninit_bytes) };
+    /// let bytes = unsafe { uninit_bytes.assume_init_ref() };
     /// assert_eq!(bytes, val.to_ne_bytes());
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub fn as_bytes(&self) -> &[MaybeUninit<u8>] {
+    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
-            slice::from_raw_parts(self.as_ptr() as *const MaybeUninit<u8>, mem::size_of::<T>())
+            slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of::<T>())
         }
     }
 
@@ -1364,18 +1030,397 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(val2, 0x123456cd);
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub fn as_bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+    pub const fn as_bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts_mut(
-                self.as_mut_ptr() as *mut MaybeUninit<u8>,
-                mem::size_of::<T>(),
+                self.as_mut_ptr().cast::<MaybeUninit<u8>>(),
+                super::size_of::<T>(),
             )
         }
     }
 
-    /// Returns the contents of this slice of `MaybeUninit` as a slice of potentially uninitialized
-    /// bytes.
+    /// Deprecated version of [`slice::assume_init_ref`].
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[deprecated(
+        note = "replaced by inherent assume_init_ref method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub const unsafe fn slice_assume_init_ref(slice: &[Self]) -> &[T] {
+        // SAFETY: Same for both methods.
+        unsafe { slice.assume_init_ref() }
+    }
+
+    /// Deprecated version of [`slice::assume_init_mut`].
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[deprecated(
+        note = "replaced by inherent assume_init_mut method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub const unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
+        // SAFETY: Same for both methods.
+        unsafe { slice.assume_init_mut() }
+    }
+
+    /// Gets a pointer to the first element of the array.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[inline(always)]
+    pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
+        this.as_ptr() as *const T
+    }
+
+    /// Gets a mutable pointer to the first element of the array.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[inline(always)]
+    pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
+        this.as_mut_ptr() as *mut T
+    }
+
+    /// Deprecated version of [`slice::write_copy_of_slice`].
+    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[deprecated(
+        note = "replaced by inherent write_copy_of_slice method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn copy_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+    where
+        T: Copy,
+    {
+        this.write_copy_of_slice(src)
+    }
+
+    /// Deprecated version of [`slice::write_clone_of_slice`].
+    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[deprecated(
+        note = "replaced by inherent write_clone_of_slice method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn clone_from_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+    where
+        T: Clone,
+    {
+        this.write_clone_of_slice(src)
+    }
+
+    /// Fills a slice with elements by cloning `value`, returning a mutable reference to the now
+    /// initialized contents of the slice.
+    /// Any previously initialized elements will not be dropped.
+    ///
+    /// This is similar to [`slice::fill`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any call to `Clone` panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 10];
+    /// let initialized = MaybeUninit::fill(&mut buf, 1);
+    /// assert_eq!(initialized, &mut [1; 10]);
+    /// ```
+    #[doc(alias = "memset")]
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill(this: &mut [MaybeUninit<T>], value: T) -> &mut [T]
+    where
+        T: Clone,
+    {
+        SpecFill::spec_fill(this, value);
+        // SAFETY: Valid elements have just been filled into `this` so it is initialized
+        unsafe { this.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements returned by calling a closure repeatedly.
+    ///
+    /// This method uses a closure to create new values.  If you'd rather `Clone` a given value, use
+    /// [`MaybeUninit::fill`].  If you want to use the `Default` trait to generate values, you can
+    /// pass [`Default::default`] as the argument.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any call to the provided closure panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::<i32>::uninit() }; 10];
+    /// let initialized = MaybeUninit::fill_with(&mut buf, Default::default);
+    /// assert_eq!(initialized, &mut [0; 10]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill_with<F>(this: &mut [MaybeUninit<T>], mut f: F) -> &mut [T]
+    where
+        F: FnMut() -> T,
+    {
+        let mut guard = Guard { slice: this, initialized: 0 };
+
+        for element in guard.slice.iter_mut() {
+            element.write(f());
+            guard.initialized += 1;
+        }
+
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `this` so it is initialized
+        unsafe { this.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements yielded by an iterator until either all elements have been
+    /// initialized or the iterator is empty.
+    ///
+    /// Returns two slices. The first slice contains the initialized portion of the original slice.
+    /// The second slice is the still-uninitialized remainder of the original slice.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the iterator's `next` function panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// Completely filling the slice:
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 5];
+    ///
+    /// let iter = [1, 2, 3].into_iter().cycle();
+    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter);
+    ///
+    /// assert_eq!(initialized, &mut [1, 2, 3, 1, 2]);
+    /// assert_eq!(remainder.len(), 0);
+    /// ```
+    ///
+    /// Partially filling the slice:
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 5];
+    /// let iter = [1, 2];
+    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter);
+    ///
+    /// assert_eq!(initialized, &mut [1, 2]);
+    /// assert_eq!(remainder.len(), 3);
+    /// ```
+    ///
+    /// Checking an iterator after filling a slice:
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 3];
+    /// let mut iter = [1, 2, 3, 4, 5].into_iter();
+    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter.by_ref());
+    ///
+    /// assert_eq!(initialized, &mut [1, 2, 3]);
+    /// assert_eq!(remainder.len(), 0);
+    /// assert_eq!(iter.as_slice(), &[4, 5]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill_from<I>(this: &mut [MaybeUninit<T>], it: I) -> (&mut [T], &mut [MaybeUninit<T>])
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let iter = it.into_iter();
+        let mut guard = Guard { slice: this, initialized: 0 };
+
+        for (element, val) in guard.slice.iter_mut().zip(iter) {
+            element.write(val);
+            guard.initialized += 1;
+        }
+
+        let initialized_len = guard.initialized;
+        super::forget(guard);
+
+        // SAFETY: guard.initialized <= this.len()
+        let (initted, remainder) = unsafe { this.split_at_mut_unchecked(initialized_len) };
+
+        // SAFETY: Valid elements have just been written into `init`, so that portion
+        // of `this` is initialized.
+        (unsafe { initted.assume_init_mut() }, remainder)
+    }
+
+    /// Deprecated version of [`slice::as_bytes`].
+    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
+    #[deprecated(
+        note = "replaced by inherent as_bytes method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn slice_as_bytes(this: &[MaybeUninit<T>]) -> &[MaybeUninit<u8>] {
+        this.as_bytes()
+    }
+
+    /// Deprecated version of [`slice::as_bytes_mut`].
+    #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
+    #[deprecated(
+        note = "replaced by inherent as_bytes_mut method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn slice_as_bytes_mut(this: &mut [MaybeUninit<T>]) -> &mut [MaybeUninit<u8>] {
+        this.as_bytes_mut()
+    }
+}
+
+impl<T> [MaybeUninit<T>] {
+    /// Copies the elements from `src` to `self`,
+    /// returning a mutable reference to the now initialized contents of `self`.
+    ///
+    /// If `T` does not implement `Copy`, use [`write_clone_of_slice`] instead.
+    ///
+    /// This is similar to [`slice::copy_from_slice`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(); 32];
+    /// let src = [0; 32];
+    ///
+    /// let init = dst.write_copy_of_slice(&src);
+    ///
+    /// assert_eq!(init, src);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice)]
+    ///
+    /// let mut vec = Vec::with_capacity(32);
+    /// let src = [0; 16];
+    ///
+    /// vec.spare_capacity_mut()[..src.len()].write_copy_of_slice(&src);
+    ///
+    /// // SAFETY: we have just copied all the elements of len into the spare capacity
+    /// // the first src.len() elements of the vec are valid now.
+    /// unsafe {
+    ///     vec.set_len(src.len());
+    /// }
+    ///
+    /// assert_eq!(vec, src);
+    /// ```
+    ///
+    /// [`write_clone_of_slice`]: slice::write_clone_of_slice
+    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[rustc_const_unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
+    where
+        T: Copy,
+    {
+        // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+        let uninit_src: &[MaybeUninit<T>] = unsafe { super::transmute(src) };
+
+        self.copy_from_slice(uninit_src);
+
+        // SAFETY: Valid elements have just been copied into `self` so it is initialized
+        unsafe { self.assume_init_mut() }
+    }
+
+    /// Clones the elements from `src` to `self`,
+    /// returning a mutable reference to the now initialized contents of `self`.
+    /// Any already initialized elements will not be dropped.
+    ///
+    /// If `T` implements `Copy`, use [`write_copy_of_slice`] instead.
+    ///
+    /// This is similar to [`slice::clone_from_slice`] but does not drop existing elements.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths, or if the implementation of `Clone` panics.
+    ///
+    /// If there is a panic, the already cloned elements will be dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [const { MaybeUninit::uninit() }; 5];
+    /// let src = ["wibbly", "wobbly", "timey", "wimey", "stuff"].map(|s| s.to_string());
+    ///
+    /// let init = dst.write_clone_of_slice(&src);
+    ///
+    /// assert_eq!(init, src);
+    ///
+    /// # // Prevent leaks for Miri
+    /// # unsafe { std::ptr::drop_in_place(init); }
+    /// ```
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice)]
+    ///
+    /// let mut vec = Vec::with_capacity(32);
+    /// let src = ["rust", "is", "a", "pretty", "cool", "language"].map(|s| s.to_string());
+    ///
+    /// vec.spare_capacity_mut()[..src.len()].write_clone_of_slice(&src);
+    ///
+    /// // SAFETY: we have just cloned all the elements of len into the spare capacity
+    /// // the first src.len() elements of the vec are valid now.
+    /// unsafe {
+    ///     vec.set_len(src.len());
+    /// }
+    ///
+    /// assert_eq!(vec, src);
+    /// ```
+    ///
+    /// [`write_copy_of_slice`]: slice::write_copy_of_slice
+    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    pub fn write_clone_of_slice(&mut self, src: &[T]) -> &mut [T]
+    where
+        T: Clone,
+    {
+        // unlike copy_from_slice this does not call clone_from_slice on the slice
+        // this is because `MaybeUninit<T: Clone>` does not implement Clone.
+
+        assert_eq!(self.len(), src.len(), "destination and source slices have different lengths");
+
+        // NOTE: We need to explicitly slice them to the same length
+        // for bounds checking to be elided, and the optimizer will
+        // generate memcpy for simple cases (for example T = u8).
+        let len = self.len();
+        let src = &src[..len];
+
+        // guard is needed b/c panic might happen during a clone
+        let mut guard = Guard { slice: self, initialized: 0 };
+
+        for i in 0..len {
+            guard.slice[i].write(src[i].clone());
+            guard.initialized += 1;
+        }
+
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `self` so it is initialized
+        unsafe { self.assume_init_mut() }
+    }
+
+    /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
     ///
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
     /// contain padding bytes which are left uninitialized.
@@ -1387,21 +1432,22 @@ impl<T> MaybeUninit<T> {
     /// use std::mem::MaybeUninit;
     ///
     /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
-    /// let uninit_bytes = MaybeUninit::slice_as_bytes(&uninit);
-    /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(&uninit_bytes) };
+    /// let uninit_bytes = uninit.as_bytes();
+    /// let bytes = unsafe { uninit_bytes.assume_init_ref() };
     /// let val1 = u16::from_ne_bytes(bytes[0..2].try_into().unwrap());
     /// let val2 = u16::from_ne_bytes(bytes[2..4].try_into().unwrap());
     /// assert_eq!(&[val1, val2], &[0x1234u16, 0x5678u16]);
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub fn slice_as_bytes(this: &[MaybeUninit<T>]) -> &[MaybeUninit<u8>] {
-        let bytes = mem::size_of_val(this);
+    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
-        unsafe { slice::from_raw_parts(this.as_ptr() as *const MaybeUninit<u8>, bytes) }
+        unsafe {
+            slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of_val(self))
+        }
     }
 
-    /// Returns the contents of this mutable slice of `MaybeUninit` as a mutable slice of
-    /// potentially uninitialized bytes.
+    /// Returns the contents of this `MaybeUninit` slice as a mutable slice of potentially
+    /// uninitialized bytes.
     ///
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
     /// contain padding bytes which are left uninitialized.
@@ -1414,8 +1460,8 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
     /// let uninit_bytes = MaybeUninit::slice_as_bytes_mut(&mut uninit);
-    /// MaybeUninit::copy_from_slice(uninit_bytes, &[0x12, 0x34, 0x56, 0x78]);
-    /// let vals = unsafe { MaybeUninit::slice_assume_init_ref(&uninit) };
+    /// uninit_bytes.write_copy_of_slice(&[0x12, 0x34, 0x56, 0x78]);
+    /// let vals = unsafe { uninit.assume_init_ref() };
     /// if cfg!(target_endian = "little") {
     ///     assert_eq!(vals, &[0x3412u16, 0x7856u16]);
     /// } else {
@@ -1423,10 +1469,74 @@ impl<T> MaybeUninit<T> {
     /// }
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub fn slice_as_bytes_mut(this: &mut [MaybeUninit<T>]) -> &mut [MaybeUninit<u8>] {
-        let bytes = mem::size_of_val(this);
+    pub const fn as_bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
-        unsafe { slice::from_raw_parts_mut(this.as_mut_ptr() as *mut MaybeUninit<u8>, bytes) }
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr() as *mut MaybeUninit<u8>,
+                super::size_of_val(self),
+            )
+        }
+    }
+
+    /// Drops the contained values in place.
+    ///
+    /// # Safety
+    ///
+    /// It is up to the caller to guarantee that every `MaybeUninit<T>` in the slice
+    /// really is in an initialized state. Calling this when the content is not yet
+    /// fully initialized causes undefined behavior.
+    ///
+    /// On top of that, all additional invariants of the type `T` must be
+    /// satisfied, as the `Drop` implementation of `T` (or its members) may
+    /// rely on this. For example, setting a `Vec<T>` to an invalid but
+    /// non-null address makes it initialized (under the current implementation;
+    /// this does not constitute a stable guarantee), because the only
+    /// requirement the compiler knows about it is that the data pointer must be
+    /// non-null. Dropping such a `Vec<T>` however will cause undefined
+    /// behaviour.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[inline(always)]
+    pub unsafe fn assume_init_drop(&mut self) {
+        if !self.is_empty() {
+            // SAFETY: the caller must guarantee that every element of `self`
+            // is initialized and satisfies all invariants of `T`.
+            // Dropping the value in place is safe if that is the case.
+            unsafe { ptr::drop_in_place(self as *mut [MaybeUninit<T>] as *mut [T]) }
+        }
+    }
+
+    /// Gets a shared reference to the contained value.
+    ///
+    /// # Safety
+    ///
+    /// Calling this when the content is not yet fully initialized causes undefined
+    /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in
+    /// the slice really is in an initialized state.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[inline(always)]
+    pub const unsafe fn assume_init_ref(&self) -> &[T] {
+        // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
+        // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
+        // The pointer obtained is valid since it refers to memory owned by `slice` which is a
+        // reference and thus guaranteed to be valid for reads.
+        unsafe { &*(self as *const Self as *const [T]) }
+    }
+
+    /// Gets a mutable (unique) reference to the contained value.
+    ///
+    /// # Safety
+    ///
+    /// Calling this when the content is not yet fully initialized causes undefined
+    /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in the
+    /// slice really is in an initialized state. For instance, `.assume_init_mut()` cannot
+    /// be used to initialize a `MaybeUninit` slice.
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[inline(always)]
+    pub const unsafe fn assume_init_mut(&mut self) -> &mut [T] {
+        // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
+        // mutable reference which is also guaranteed to be valid for writes.
+        unsafe { &mut *(self as *mut Self as *mut [T]) }
     }
 }
 
@@ -1479,7 +1589,7 @@ impl<'a, T> Drop for Guard<'a, T> {
         let initialized_part = &mut self.slice[..self.initialized];
         // SAFETY: this raw sub-slice will contain only initialized objects.
         unsafe {
-            crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(initialized_part));
+            initialized_part.assume_init_drop();
         }
     }
 }
