@@ -1395,7 +1395,7 @@ pub struct LetExpr<'hir> {
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
     pub init: &'hir Expr<'hir>,
-    /// `Recovered::Yes` when this let expressions is not in a syntanctically valid location.
+    /// `Recovered::Yes` when this let expressions is not in a syntactically valid location.
     /// Used to prevent building MIR in such situations.
     pub recovered: ast::Recovered,
 }
