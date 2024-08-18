@@ -1,4 +1,3 @@
-//@ ignore-windows
 //@ ignore-android
 //@ ignore-aarch64
 //@ min-lldb-version: 1800
