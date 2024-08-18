@@ -479,11 +479,17 @@ fn test_socketpair_read() {
     assert_eq!(res, 3);
     assert_eq!(buf, "abc".as_bytes());
 
-    // Notification will be provided.
-    // But in real system, no notification will be provided here.
+    // Notification will be provided in Miri.
+    // But in real systems, no notification will be provided here, since Linux prefers to avoid
+    // wakeups that are likely to lead to only small amounts of data being read/written.
+    // We make the test work in both cases, thus documenting the difference in behavior.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value = fds[1] as u64;
-    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    if cfg!(miri) {
+        check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+    } else {
+        check_epoll_wait::<8>(epfd, &[]);
+    }
 
     // Read until the buffer is empty.
     let mut buf: [u8; 2] = [0; 2];
