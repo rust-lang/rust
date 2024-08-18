@@ -2195,3 +2195,19 @@ impl<'a, T: Deref<Target = impl Trait>> Struct<'a, T> {
         "#]],
     );
 }
+
+#[test]
+fn issue_17767() {
+    check_infer(
+        r#"
+extern "C" {
+    type Foo<T>;
+}
+
+fn f() -> Foo {}
+"#,
+        expect![[r#"
+            47..49 '{}': Foo
+        "#]],
+    );
+}
