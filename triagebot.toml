@@ -970,7 +970,6 @@ rustdoc = [
 docs = [
     "@ehuss",
     "@GuillaumeGomez",
-    "@JohnTitor",
 ]
 query-system = [
     "@cjgillot",
