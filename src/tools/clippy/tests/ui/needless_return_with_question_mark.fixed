@@ -30,7 +30,7 @@ fn main() -> Result<(), ()> {
     return Ok::<(), ()>(());
     Err(())?;
     Ok::<(), ()>(());
-    return Err(().into());
+    return Err(());
     external! {
         return Err(())?;
     }

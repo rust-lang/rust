@@ -446,6 +446,7 @@ pub trait AsMut<T: ?Sized> {
 #[doc(search_unbox)]
 pub trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
+    #[rustc_diagnostic_item = "into_fn"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;

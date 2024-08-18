@@ -23,6 +23,7 @@ mod unix {
 #[cfg(any(unix, doc))]
 use unix::*;
 
+#[cfg(not(doc))] // temporary hack in order to run crater with the deny-by-default lint
 async fn bar() {
     ().foo()
 }

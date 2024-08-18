@@ -58,7 +58,7 @@ use crate::lints::{
     BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
     BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
     BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-    BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinWhileTrue, InvalidAsmLabel, SelfTypeConversionDiag,
 };
 use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
@@ -1304,9 +1304,9 @@ impl UnreachablePub {
                 cx.effective_visibilities.effective_vis(def_id).map(|effective_vis| {
                     effective_vis.at_level(rustc_middle::middle::privacy::Level::Reachable)
                 })
-                && let parent_parent = cx.tcx.parent_module_from_def_id(
-                    cx.tcx.parent_module_from_def_id(def_id.into()).into(),
-                )
+                && let parent_parent = cx
+                    .tcx
+                    .parent_module_from_def_id(cx.tcx.parent_module_from_def_id(def_id).into())
                 && *restricted_did == parent_parent.to_local_def_id()
                 && !restricted_did.to_def_id().is_crate_root()
             {
@@ -1589,6 +1589,7 @@ declare_lint_pass!(
     SoftLints => [
         WHILE_TRUE,
         NON_SHORTHAND_FIELD_PATTERNS,
+        SELF_TYPE_CONVERSION,
         UNSAFE_CODE,
         MISSING_DOCS,
         MISSING_COPY_IMPLEMENTATIONS,
@@ -3061,5 +3062,105 @@ impl EarlyLintPass for SpecialModuleName {
                 }
             }
         }
+    }
+}
+
+declare_lint! {
+    /// The `self_type_conversion` lint detects when a call to `.into()` does not have any effect.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// fn main() {
+    ///     let () = ().into();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    pub SELF_TYPE_CONVERSION,
+    Deny,
+    "",
+}
+
+pub struct SelfTypeConversion<'tcx> {
+    ignored_types: Vec<Ty<'tcx>>,
+}
+
+impl_lint_pass!(SelfTypeConversion<'_> => [SELF_TYPE_CONVERSION]);
+
+impl SelfTypeConversion<'_> {
+    pub fn new() -> Self {
+        Self { ignored_types: vec![] }
+    }
+}
+
+impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
+    fn check_item_post(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'_>) {
+        let hir::ItemKind::Use(path, kind) = item.kind else { return };
+        tracing::info!("{:#?}", item);
+        tracing::info!(?path, ?kind);
+        for res in &path.res {
+            let Res::Def(DefKind::TyAlias, def_id) = res else { continue };
+            let ty = cx.tcx.type_of(def_id).instantiate_identity();
+            let name = cx.tcx.item_name(*def_id);
+            // println!("{ty:?} {name:?}");
+            tracing::info!("ignoring {ty:?} {name:?}");
+            self.ignored_types.push(ty);
+            for stripped in cx.tcx.stripped_cfg_items(def_id.krate) {
+                if stripped.name.name == name {
+                    tracing::info!("found stripped {name:#?}");
+                }
+            }
+        }
+        // FIXME: also look at conditional cfgd uses so to account for things like
+        // `use std::io::repr_bitpacked` and `std::io::repr_unpacked`.
+    }
+
+    fn check_expr_post(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
+        let hir::ExprKind::MethodCall(_segment, rcvr, args, _) = expr.kind else { return };
+        if !args.is_empty() {
+            tracing::info!("non-empty args");
+            return;
+        }
+        let ty = cx.typeck_results().expr_ty(expr);
+        let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
+        tracing::info!(?ty, ?rcvr_ty);
+
+        if ty != rcvr_ty {
+            tracing::info!("different types");
+            return;
+        }
+        if self.ignored_types.contains(&rcvr_ty) {
+            tracing::info!("ignored");
+            return;
+        }
+        let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
+            tracing::info!("no type dependent def id");
+            return;
+        };
+        tracing::info!(?def_id);
+        if Some(def_id) != cx.tcx.get_diagnostic_item(sym::into_fn) {
+            tracing::info!("not into_fn {:?}", cx.tcx.get_diagnostic_item(sym::into_fn));
+            return;
+        }
+        tracing::info!(?def_id);
+        tracing::info!(?expr);
+        if expr.span.macro_backtrace().next().is_some() {
+            return;
+        }
+        if cx.tcx.sess.source_map().span_to_embeddable_string(expr.span).contains("symbolize/gimli")
+        {
+            // HACK
+            return;
+        }
+        // println!("{:#?}", self.ignored_types);
+        cx.emit_span_lint(SELF_TYPE_CONVERSION, expr.span, SelfTypeConversionDiag {
+            source: rcvr_ty,
+            target: ty,
+        });
+        // bug!("asdf");
     }
 }

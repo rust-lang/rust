@@ -25,6 +25,7 @@ impl fmt::Debug for CommandEnv {
 
 impl CommandEnv {
     // Capture the current environment with these changes applied
+    #[cfg_attr(not(bootstrap), allow(self_type_conversion))]
     pub fn capture(&self) -> BTreeMap<EnvKey, OsString> {
         let mut result = BTreeMap::<EnvKey, OsString>::new();
         if !self.clear {

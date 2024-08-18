@@ -285,6 +285,7 @@ impl Command {
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
     #[cfg(not(any(target_os = "tvos", target_os = "watchos")))]
+    #[cfg_attr(not(bootstrap), allow(self_type_conversion))]
     unsafe fn do_exec(
         &mut self,
         stdio: ChildPipes,
