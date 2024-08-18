@@ -2730,19 +2730,23 @@ impl Config {
         asserts: bool,
     ) -> bool {
         let if_unchanged = || {
-            // Git is needed to track modifications here, but tarball source is not available.
-            // If not modified here or built through tarball source, we maintain consistency
-            // with '"if available"'.
-            if !self.rust_info.is_from_tarball()
-                && self
-                    .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
-                    .is_none()
-            {
-                // there are some untracked changes in the given paths.
-                false
-            } else {
-                llvm::is_ci_llvm_available(self, asserts)
+            if self.rust_info.is_from_tarball() {
+                // Git is needed for running "if-unchanged" logic.
+                println!(
+                    "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-llvm`."
+                );
+                return false;
             }
+
+            self.update_submodule("src/llvm-project");
+
+            // Check for untracked changes in `src/llvm-project`.
+            let has_changes = self
+                .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+                .is_none();
+
+            // Return false if there are untracked changes, otherwise check if CI LLVM is available.
+            if has_changes { false } else { llvm::is_ci_llvm_available(self, asserts) }
         };
 
         match download_ci_llvm {
