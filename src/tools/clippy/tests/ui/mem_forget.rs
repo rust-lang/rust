@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use std::rc::Rc;
 use std::sync::Arc;
 

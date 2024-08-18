@@ -1,5 +1,6 @@
 #![warn(clippy::single_component_path_imports)]
 #![allow(unused_imports)]
+#![allow(non_camel_case_types)]
 
 use regex;
 

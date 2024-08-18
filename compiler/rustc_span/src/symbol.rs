@@ -2452,6 +2452,9 @@ pub mod kw {
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
     // Used from a macro in `librustc_feature/accepted.rs`
+    // FIXME: `useless_attribute` should be removed after #129204 is merged into beta.
+    #[allow(clippy::useless_attribute)]
+    #[allow(non_upper_case_globals)]
     pub use super::kw::MacroRules as macro_rules;
     #[doc(inline)]
     pub use super::sym_generated::*;
