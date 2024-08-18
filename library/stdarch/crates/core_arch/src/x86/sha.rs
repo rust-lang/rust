@@ -121,9 +121,7 @@ pub unsafe fn _mm_sha256rnds2_epu32(a: __m128i, b: __m128i, k: __m128i) -> __m12
 #[cfg(test)]
 mod tests {
     use std::{
-        f32,
-        f64::{self, NAN},
-        i32,
+        f32, f64,
         mem::{self, transmute},
     };
 
@@ -132,6 +130,8 @@ mod tests {
         hint::black_box,
     };
     use stdarch_test::simd_test;
+
+    const NAN: f64 = f64::NAN;
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]

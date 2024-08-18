@@ -1,5 +1,5 @@
 use crate::core_arch::{aarch64::neon::*, arm_shared::*, simd::*};
-use std::{i16, i32, i8, mem::transmute, u16, u32, u8, vec::Vec};
+use std::{mem::transmute, vec::Vec};
 
 macro_rules! V_u64 {
     () => {
@@ -23,11 +23,11 @@ macro_rules! V_f64 {
             -1.0f64,
             1.2f64,
             2.4f64,
-            std::f64::MAX,
-            std::f64::MIN,
-            std::f64::INFINITY,
-            std::f64::NEG_INFINITY,
-            std::f64::NAN,
+            f64::MAX,
+            f64::MIN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NAN,
         ]
     };
 }

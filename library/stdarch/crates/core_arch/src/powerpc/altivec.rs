@@ -4680,7 +4680,7 @@ mod tests {
                 let a: vector_float = transmute(f32x4::new($($a),+));
 
                 let d: vector_float = transmute(f32x4::new($($d),+));
-                let r = transmute(vec_cmple(vec_abs(vec_sub($fn(a), d)), vec_splats(std::f32::EPSILON)));
+                let r = transmute(vec_cmple(vec_abs(vec_sub($fn(a), d)), vec_splats(f32::EPSILON)));
                 let e = m32x4::new(true, true, true, true);
                 assert_eq!(e, r);
             }
@@ -6610,10 +6610,7 @@ mod tests {
         let r8: vector_float = transmute(f32x4::new(0.0, 536870900.0, 536870900.0, 5.25));
 
         let check = |a, b| {
-            let r = transmute(vec_cmple(
-                vec_abs(vec_sub(a, b)),
-                vec_splats(std::f32::EPSILON),
-            ));
+            let r = transmute(vec_cmple(vec_abs(vec_sub(a, b)), vec_splats(f32::EPSILON)));
             let e = m32x4::new(true, true, true, true);
             assert_eq!(e, r);
         };
@@ -6662,10 +6659,7 @@ mod tests {
         let r8: vector_float = transmute(f32x4::new(-268435460.0, 268435460.0, 268435460.0, 5.25));
 
         let check = |a, b| {
-            let r = transmute(vec_cmple(
-                vec_abs(vec_sub(a, b)),
-                vec_splats(std::f32::EPSILON),
-            ));
+            let r = transmute(vec_cmple(vec_abs(vec_sub(a, b)), vec_splats(f32::EPSILON)));
             println!("{:?} {:?}", a, b);
             let e = m32x4::new(true, true, true, true);
             assert_eq!(e, r);

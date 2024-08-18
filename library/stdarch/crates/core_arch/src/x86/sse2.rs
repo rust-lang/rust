@@ -3046,13 +3046,13 @@ mod tests {
         hint::black_box,
     };
     use std::{
-        boxed, f32,
-        f64::{self, NAN},
-        i32,
+        boxed, f32, f64,
         mem::{self, transmute},
         ptr,
     };
     use stdarch_test::simd_test;
+
+    const NAN: f64 = f64::NAN;
 
     #[test]
     fn test_mm_pause() {

@@ -5,7 +5,7 @@ use crate::core_arch::arm::*;
 use crate::core_arch::aarch64::*;
 
 use crate::core_arch::simd::*;
-use std::{i16, i32, i8, mem::transmute, u16, u32, u8, vec::Vec};
+use std::{mem::transmute, vec::Vec};
 
 macro_rules! V_u8 {
     () => {
@@ -100,11 +100,11 @@ macro_rules! V_f32 {
             -1.0f32,
             1.2f32,
             2.4f32,
-            std::f32::MAX,
-            std::f32::MIN,
-            std::f32::INFINITY,
-            std::f32::NEG_INFINITY,
-            std::f32::NAN,
+            f32::MAX,
+            f32::MIN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::NAN,
         ]
     };
 }

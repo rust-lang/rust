@@ -2002,10 +2002,12 @@ pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
 #[cfg(test)]
 mod tests {
     use crate::{hint::black_box, mem::transmute, ptr};
-    use std::{boxed, f32::NAN};
+    use std::boxed;
     use stdarch_test::simd_test;
 
     use crate::core_arch::{simd::*, x86::*};
+
+    const NAN: f32 = f32::NAN;
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_add_ps() {
