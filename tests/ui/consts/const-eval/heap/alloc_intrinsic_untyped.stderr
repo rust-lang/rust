@@ -1,5 +1,5 @@
 error: encountered mutable pointer in final value of constant
-  --> $DIR/alloc_intrinsic_untyped.rs:6:1
+  --> $DIR/alloc_intrinsic_untyped.rs:9:1
    |
 LL | const BAR: *mut i32 = unsafe { intrinsics::const_allocate(4, 4) as *mut i32 };
    | ^^^^^^^^^^^^^^^^^^^
