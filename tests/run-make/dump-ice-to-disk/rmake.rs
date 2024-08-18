@@ -23,6 +23,9 @@
 //! - An attempt is made to re-enable this test on `i686-mingw` (by removing `ignore-windows`). If
 //!   this test is still flakey, please restore the `ignore-windows` directive.
 
+//@ ignore-windows
+//FIXME(#128911): still flakey on i686-mingw.
+
 use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
