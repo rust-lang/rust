@@ -1363,7 +1363,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[must_not_suspend]` is applied to a function.
+    /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
     fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Struct | Target::Enum | Target::Union | Target::Trait => {}

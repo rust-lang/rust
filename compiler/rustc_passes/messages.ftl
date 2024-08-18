@@ -478,8 +478,8 @@ passes_multiple_start_functions =
     .previous = previous `#[start]` function here
 
 passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, or trait
-    .label = is not a struct, enum, or trait
+    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
+    .label = is not a struct, enum, union, or trait
 
 passes_must_use_async =
     `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
