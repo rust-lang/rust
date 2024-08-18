@@ -19,7 +19,7 @@ fn main() {
     test_epoll_ctl_del();
     test_pointer();
     test_two_same_fd_in_same_epoll_instance();
-    test_epoll_wait_less_maxevent_zero();
+    test_epoll_wait_maxevent_zero();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -530,8 +530,7 @@ fn test_no_notification_for_unregister_flag() {
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 
-
-fn test_epoll_wait_less_maxevent_zero() {
+fn test_epoll_wait_maxevent_zero() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
     assert_ne!(epfd, -1);

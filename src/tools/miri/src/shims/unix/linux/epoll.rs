@@ -403,17 +403,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let epfd = this.read_scalar(epfd)?.to_i32()?;
         let maxevents = this.read_scalar(maxevents)?.to_i32()?;
-        let event = this.deref_pointer_as(
-            events_op,
-            this.libc_array_ty_layout("epoll_event", maxevents.try_into().unwrap()),
-        )?;
         let timeout = this.read_scalar(timeout)?.to_i32()?;
-
         if epfd <= 0 || maxevents <= 0 {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             return Ok(Scalar::from_i32(-1));
         }
+
+        // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
+        // will fail.
+        let event = this.deref_pointer_as(
+            events_op,
+            this.libc_array_ty_layout("epoll_event", maxevents.try_into().unwrap()),
+        )?;
 
         // FIXME: Implement blocking support
         if timeout != 0 {
