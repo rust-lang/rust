@@ -20,6 +20,7 @@ fn main() {
     test_pointer();
     test_two_same_fd_in_same_epoll_instance();
     test_epoll_wait_maxevent_zero();
+    test_socketpair_epollerr();
     test_epoll_lost_events();
     test_ready_list_fetching_logic();
 }
@@ -549,6 +550,43 @@ fn test_epoll_wait_maxevent_zero() {
     let e = std::io::Error::last_os_error();
     assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
     assert_eq!(res, -1);
+}
+
+fn test_socketpair_epollerr() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Write to fd[0]
+    let data = "abcde".as_bytes().as_ptr();
+    let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
+    assert_eq!(res, 5);
+
+    // Close fds[1].
+    // EPOLLERR will be triggered if we close peer fd that still has data in its read buffer.
+    let res = unsafe { libc::close(fds[1]) };
+    assert_eq!(res, 0);
+
+    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
+        u64: u64::try_from(fds[1]).unwrap(),
+    };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
+    assert_ne!(res, -1);
+
+    // Check result from epoll_wait.
+    let expected_event = u32::try_from(
+        libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLHUP | libc::EPOLLRDHUP | libc::EPOLLERR,
+    )
+    .unwrap();
+    let expected_value = u64::try_from(fds[1]).unwrap();
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 
 // This is a test for https://github.com/rust-lang/miri/issues/3812,

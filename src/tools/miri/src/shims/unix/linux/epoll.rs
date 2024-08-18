@@ -76,11 +76,19 @@ pub struct EpollReadyEvents {
     /// epollrdhup also gets set when only the write half is closed, which is possible
     /// via `shutdown(_, SHUT_WR)`.
     pub epollhup: bool,
+    /// Error condition happened on the associated file descriptor.
+    pub epollerr: bool,
 }
 
 impl EpollReadyEvents {
     pub fn new() -> Self {
-        EpollReadyEvents { epollin: false, epollout: false, epollrdhup: false, epollhup: false }
+        EpollReadyEvents {
+            epollin: false,
+            epollout: false,
+            epollrdhup: false,
+            epollhup: false,
+            epollerr: false,
+        }
     }
 
     pub fn get_event_bitmask<'tcx>(&self, ecx: &MiriInterpCx<'tcx>) -> u32 {
@@ -88,6 +96,7 @@ impl EpollReadyEvents {
         let epollout = ecx.eval_libc_u32("EPOLLOUT");
         let epollrdhup = ecx.eval_libc_u32("EPOLLRDHUP");
         let epollhup = ecx.eval_libc_u32("EPOLLHUP");
+        let epollerr = ecx.eval_libc_u32("EPOLLERR");
 
         let mut bitmask = 0;
         if self.epollin {
@@ -101,6 +110,9 @@ impl EpollReadyEvents {
         }
         if self.epollhup {
             bitmask |= epollhup;
+        }
+        if self.epollerr {
+            bitmask |= epollerr;
         }
         bitmask
     }
@@ -229,6 +241,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let epollrdhup = this.eval_libc_u32("EPOLLRDHUP");
         let epollet = this.eval_libc_u32("EPOLLET");
         let epollhup = this.eval_libc_u32("EPOLLHUP");
+        let epollerr = this.eval_libc_u32("EPOLLERR");
 
         // Fail on unsupported operations.
         if op & epoll_ctl_add != epoll_ctl_add
@@ -261,10 +274,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Unset the flag we support to discover if any unsupported flags are used.
             let mut flags = events;
-            // epoll_wait(2) will always wait for epollhup; it is not
+            // epoll_wait(2) will always wait for epollhup and epollerr; it is not
             // necessary to set it in events when calling epoll_ctl().
-            // So we will always set this event type.
+            // So we will always set these two event types.
             events |= epollhup;
+            events |= epollerr;
 
             if events & epollet != epollet {
                 // We only support edge-triggered notification for now.
@@ -283,6 +297,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             if flags & epollhup == epollhup {
                 flags &= !epollhup;
+            }
+            if flags & epollerr == epollerr {
+                flags &= !epollerr;
             }
             if flags != 0 {
                 throw_unsup_format!(
