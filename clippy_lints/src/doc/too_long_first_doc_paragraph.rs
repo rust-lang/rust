@@ -3,7 +3,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::LateContext;
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::snippet_opt;
 
 use super::TOO_LONG_FIRST_DOC_PARAGRAPH;
@@ -63,32 +64,28 @@ pub(super) fn check(
     let &[first_span, .., last_span] = spans.as_slice() else {
         return;
     };
+    if is_from_proc_macro(cx, item) {
+        return;
+    }
 
-    if should_suggest_empty_doc
-        && let Some(second_span) = spans.get(1)
-        && let new_span = first_span.with_hi(second_span.lo()).with_lo(first_span.hi())
-        && let Some(snippet) = snippet_opt(cx, new_span)
-    {
-        span_lint_and_then(
-            cx,
-            TOO_LONG_FIRST_DOC_PARAGRAPH,
-            first_span.with_hi(last_span.lo()),
-            "first doc comment paragraph is too long",
-            |diag| {
+    span_lint_and_then(
+        cx,
+        TOO_LONG_FIRST_DOC_PARAGRAPH,
+        first_span.with_hi(last_span.lo()),
+        "first doc comment paragraph is too long",
+        |diag| {
+            if should_suggest_empty_doc
+                && let Some(second_span) = spans.get(1)
+                && let new_span = first_span.with_hi(second_span.lo()).with_lo(first_span.hi())
+                && let Some(snippet) = snippet_opt(cx, new_span)
+            {
                 diag.span_suggestion(
                     new_span,
                     "add an empty line",
                     format!("{snippet}///\n"),
                     Applicability::MachineApplicable,
                 );
-            },
-        );
-        return;
-    }
-    span_lint(
-        cx,
-        TOO_LONG_FIRST_DOC_PARAGRAPH,
-        first_span.with_hi(last_span.lo()),
-        "first doc comment paragraph is too long",
+            }
+        },
     );
 }
