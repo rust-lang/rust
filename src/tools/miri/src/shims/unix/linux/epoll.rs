@@ -402,8 +402,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let epfd = this.read_scalar(epfd)?.to_i32()?;
+        let events = this.read_immediate(events_op)?;
         let maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let timeout = this.read_scalar(timeout)?.to_i32()?;
+
         if epfd <= 0 || maxevents <= 0 {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
@@ -412,8 +414,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
         // will fail.
-        let event = this.deref_pointer_as(
-            events_op,
+        let events = this.deref_pointer_as(
+            &events,
             this.libc_array_ty_layout("epoll_event", maxevents.try_into().unwrap()),
         )?;
 
@@ -432,7 +434,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ready_list = epoll_file_description.get_ready_list();
         let mut ready_list = ready_list.borrow_mut();
         let mut num_of_events: i32 = 0;
-        let mut array_iter = this.project_array_fields(&event)?;
+        let mut array_iter = this.project_array_fields(&events)?;
 
         while let Some((epoll_key, epoll_return)) = ready_list.pop_first() {
             // If the file description is fully close, the entry for corresponding FdID in the
