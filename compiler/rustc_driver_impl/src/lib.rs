@@ -166,6 +166,8 @@ pub trait Callbacks {
     }
     /// Called after expansion. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    /// At this point, the HIR (High-Level Intermediate Representation) becomes available.
+    /// Please call tcx.thir_body(owner_def), if you want to get THIR (Typed HIR).
     fn after_expansion<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
@@ -174,7 +176,7 @@ pub trait Callbacks {
         Compilation::Continue
     }
     /// Called after analysis. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    /// At this point, the MIR (Middle-Level Intermediate Representation) becomes available.
     fn after_analysis<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
