@@ -2978,7 +2978,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 },
                                 |this| {
                                     this.visit_generics(generics);
-                                    this.visit_ty(ty);
+                                    this.visit_ty_do_not_warn_elided_static(ty);
 
                                     // Only impose the restrictions of `ConstRibKind` for an
                                     // actual constant expression in a provided default.
@@ -3191,7 +3191,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 );
 
                                 this.visit_generics(generics);
-                                this.visit_ty(ty);
+                                this.visit_ty_do_not_warn_elided_static(ty);
                                 if let Some(expr) = expr {
                                     // We allow arbitrary const expressions inside of associated consts,
                                     // even if they are potentially not const evaluatable.
