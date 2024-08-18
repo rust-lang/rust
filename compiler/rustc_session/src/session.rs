@@ -788,7 +788,7 @@ impl Session {
         // codegen units in order to reduce the "collateral damage" small
         // changes cause.
         if self.opts.incremental.is_some() {
-            return CodegenUnits::Default(256);
+            return CodegenUnits::Default(4096);
         }
 
         // Why is 16 codegen units the default all the time?

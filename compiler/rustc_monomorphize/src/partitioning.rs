@@ -690,6 +690,14 @@ fn compute_codegen_unit_name(
     let mut cgu_def_id = None;
     // Walk backwards from the item we want to find the module for.
     loop {
+        if tcx.sess.opts.incremental.is_some()
+            && tcx.sess.opts.optimize == rustc_session::config::OptLevel::No
+            && def_id.is_local()
+        {
+            cgu_def_id = Some(current_def_id);
+            break;
+        }
+
         if current_def_id.is_crate_root() {
             if cgu_def_id.is_none() {
                 // If we have not found a module yet, take the crate root.
@@ -716,8 +724,7 @@ fn compute_codegen_unit_name(
         let def_path = tcx.def_path(cgu_def_id);
 
         let components = def_path.data.iter().map(|part| match part.data.name() {
-            DefPathDataName::Named(name) => name,
-            DefPathDataName::Anon { .. } => unreachable!(),
+            DefPathDataName::Named(name) | DefPathDataName::Anon { namespace: name } => name,
         });
 
         let volatile_suffix = volatile.then_some("volatile");

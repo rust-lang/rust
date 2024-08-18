@@ -127,16 +127,7 @@ impl<'tcx> MonoItem<'tcx> {
                     return InstantiationMode::LocalCopy;
                 }
 
-                // Finally, if this is `#[inline(always)]` we're sure to respect
-                // that with an inline copy per CGU, but otherwise we'll be
-                // creating one copy of this `#[inline]` function which may
-                // conflict with upstream crates as it could be an exported
-                // symbol.
-                if tcx.codegen_fn_attrs(instance.def_id()).inline.always() {
-                    InstantiationMode::LocalCopy
-                } else {
-                    InstantiationMode::GloballyShared { may_conflict: true }
-                }
+                InstantiationMode::GloballyShared { may_conflict: true }
             }
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
