@@ -202,143 +202,6 @@ fn check_fn_inner<'tcx>(
     }
 }
 
-/// Generate diagnostic messages for elidable lifetimes.
-fn report_elidable_lifetimes(
-    cx: &LateContext<'_>,
-    generics: &Generics<'_>,
-    elidable_lts: &[LocalDefId],
-    usages: &[Lifetime],
-    include_suggestions: bool,
-) {
-    let lts = elidable_lts
-        .iter()
-        // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
-        // `Node::GenericParam`.
-        .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
-        .map(|ident| ident.to_string())
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    span_lint_and_then(
-        cx,
-        NEEDLESS_LIFETIMES,
-        elidable_lts
-            .iter()
-            .map(|&lt| cx.tcx.def_span(lt))
-            .chain(usages.iter().filter_map(|usage| {
-                if let LifetimeName::Param(def_id) = usage.res
-                    && elidable_lts.contains(&def_id)
-                {
-                    return Some(usage.ident.span);
-                }
-
-                None
-            }))
-            .collect_vec(),
-        format!("the following explicit lifetimes could be elided: {lts}"),
-        |diag| {
-            if !include_suggestions {
-                return;
-            };
-
-            if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, usages) {
-                diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);
-            }
-        },
-    );
-}
-
-fn elision_suggestions(
-    cx: &LateContext<'_>,
-    generics: &Generics<'_>,
-    elidable_lts: &[LocalDefId],
-    usages: &[Lifetime],
-) -> Option<Vec<(Span, String)>> {
-    let explicit_params = generics
-        .params
-        .iter()
-        .filter(|param| !param.is_elided_lifetime() && !param.is_impl_trait())
-        .collect::<Vec<_>>();
-
-    let mut suggestions = if elidable_lts.len() == explicit_params.len() {
-        // if all the params are elided remove the whole generic block
-        //
-        // fn x<'a>() {}
-        //     ^^^^
-        vec![(generics.span, String::new())]
-    } else {
-        elidable_lts
-            .iter()
-            .map(|&id| {
-                let pos = explicit_params.iter().position(|param| param.def_id == id)?;
-                let param = explicit_params.get(pos)?;
-
-                let span = if let Some(next) = explicit_params.get(pos + 1) {
-                    // fn x<'prev, 'a, 'next>() {}
-                    //             ^^^^
-                    param.span.until(next.span)
-                } else {
-                    // `pos` should be at least 1 here, because the param in position 0 would either have a `next`
-                    // param or would have taken the `elidable_lts.len() == explicit_params.len()` branch.
-                    let prev = explicit_params.get(pos - 1)?;
-
-                    // fn x<'prev, 'a>() {}
-                    //           ^^^^
-                    param.span.with_lo(prev.span.hi())
-                };
-
-                Some((span, String::new()))
-            })
-            .collect::<Option<Vec<_>>>()?
-    };
-
-    suggestions.extend(
-        usages
-            .iter()
-            .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
-            .map(|usage| {
-                match cx.tcx.parent_hir_node(usage.hir_id) {
-                    Node::Ty(Ty {
-                        kind: TyKind::Ref(..), ..
-                    }) => {
-                        // expand `&'a T` to `&'a T`
-                        //          ^^         ^^^
-                        let span = cx.sess().source_map().span_extend_while_whitespace(usage.ident.span);
-
-                        (span, String::new())
-                    },
-                    // `T<'a>` and `impl Foo + 'a` should be replaced by `'_`
-                    _ => (usage.ident.span, String::from("'_")),
-                }
-            }),
-    );
-
-    Some(suggestions)
-}
-
-// elision doesn't work for explicit self types, see rust-lang/rust#69064
-fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>) -> bool {
-    if let Some(ident) = ident
-        && ident.name == kw::SelfLower
-        && !func.implicit_self.has_implicit_self()
-        && let Some(self_ty) = func.inputs.first()
-    {
-        let mut visitor = RefVisitor::new(cx);
-        visitor.visit_ty(self_ty);
-
-        !visitor.all_lts().is_empty()
-    } else {
-        false
-    }
-}
-
-fn named_lifetime(lt: &Lifetime) -> Option<LocalDefId> {
-    match lt.res {
-        LifetimeName::Param(id) if !lt.is_anonymous() => Some(id),
-        _ => None,
-    }
-}
-
 fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
@@ -461,6 +324,22 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<LocalDefId
         .collect()
 }
 
+// elision doesn't work for explicit self types, see rust-lang/rust#69064
+fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>) -> bool {
+    if let Some(ident) = ident
+        && ident.name == kw::SelfLower
+        && !func.implicit_self.has_implicit_self()
+        && let Some(self_ty) = func.inputs.first()
+    {
+        let mut visitor = RefVisitor::new(cx);
+        visitor.visit_ty(self_ty);
+
+        !visitor.all_lts().is_empty()
+    } else {
+        false
+    }
+}
+
 /// Number of times each named lifetime occurs in the given slice. Returns a vector to preserve
 /// relative order.
 #[must_use]
@@ -479,6 +358,13 @@ fn named_lifetime_occurrences(lts: &[Lifetime]) -> Vec<(LocalDefId, usize)> {
         }
     }
     occurrences
+}
+
+fn named_lifetime(lt: &Lifetime) -> Option<LocalDefId> {
+    match lt.res {
+        LifetimeName::Param(id) if !lt.is_anonymous() => Some(id),
+        _ => None,
+    }
 }
 
 struct RefVisitor<'a, 'tcx> {
@@ -779,6 +665,120 @@ fn report_elidable_impl_lifetimes<'tcx>(
     let (elidable_lts, usages): (Vec<_>, Vec<_>) = single_usages.into_iter().unzip();
 
     report_elidable_lifetimes(cx, impl_.generics, &elidable_lts, &usages, true);
+}
+
+/// Generate diagnostic messages for elidable lifetimes.
+fn report_elidable_lifetimes(
+    cx: &LateContext<'_>,
+    generics: &Generics<'_>,
+    elidable_lts: &[LocalDefId],
+    usages: &[Lifetime],
+    include_suggestions: bool,
+) {
+    let lts = elidable_lts
+        .iter()
+        // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
+        // `Node::GenericParam`.
+        .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
+        .map(|ident| ident.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    span_lint_and_then(
+        cx,
+        NEEDLESS_LIFETIMES,
+        elidable_lts
+            .iter()
+            .map(|&lt| cx.tcx.def_span(lt))
+            .chain(usages.iter().filter_map(|usage| {
+                if let LifetimeName::Param(def_id) = usage.res
+                    && elidable_lts.contains(&def_id)
+                {
+                    return Some(usage.ident.span);
+                }
+
+                None
+            }))
+            .collect_vec(),
+        format!("the following explicit lifetimes could be elided: {lts}"),
+        |diag| {
+            if !include_suggestions {
+                return;
+            };
+
+            if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, usages) {
+                diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);
+            }
+        },
+    );
+}
+
+fn elision_suggestions(
+    cx: &LateContext<'_>,
+    generics: &Generics<'_>,
+    elidable_lts: &[LocalDefId],
+    usages: &[Lifetime],
+) -> Option<Vec<(Span, String)>> {
+    let explicit_params = generics
+        .params
+        .iter()
+        .filter(|param| !param.is_elided_lifetime() && !param.is_impl_trait())
+        .collect::<Vec<_>>();
+
+    let mut suggestions = if elidable_lts.len() == explicit_params.len() {
+        // if all the params are elided remove the whole generic block
+        //
+        // fn x<'a>() {}
+        //     ^^^^
+        vec![(generics.span, String::new())]
+    } else {
+        elidable_lts
+            .iter()
+            .map(|&id| {
+                let pos = explicit_params.iter().position(|param| param.def_id == id)?;
+                let param = explicit_params.get(pos)?;
+
+                let span = if let Some(next) = explicit_params.get(pos + 1) {
+                    // fn x<'prev, 'a, 'next>() {}
+                    //             ^^^^
+                    param.span.until(next.span)
+                } else {
+                    // `pos` should be at least 1 here, because the param in position 0 would either have a `next`
+                    // param or would have taken the `elidable_lts.len() == explicit_params.len()` branch.
+                    let prev = explicit_params.get(pos - 1)?;
+
+                    // fn x<'prev, 'a>() {}
+                    //           ^^^^
+                    param.span.with_lo(prev.span.hi())
+                };
+
+                Some((span, String::new()))
+            })
+            .collect::<Option<Vec<_>>>()?
+    };
+
+    suggestions.extend(
+        usages
+            .iter()
+            .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
+            .map(|usage| {
+                match cx.tcx.parent_hir_node(usage.hir_id) {
+                    Node::Ty(Ty {
+                        kind: TyKind::Ref(..), ..
+                    }) => {
+                        // expand `&'a T` to `&'a T`
+                        //          ^^         ^^^
+                        let span = cx.sess().source_map().span_extend_while_whitespace(usage.ident.span);
+
+                        (span, String::new())
+                    },
+                    // `T<'a>` and `impl Foo + 'a` should be replaced by `'_`
+                    _ => (usage.ident.span, String::from("'_")),
+                }
+            }),
+    );
+
+    Some(suggestions)
 }
 
 struct BodyLifetimeChecker;
