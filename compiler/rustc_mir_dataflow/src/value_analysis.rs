@@ -177,7 +177,7 @@ pub trait ValueAnalysis<'tcx> {
         match rvalue {
             Rvalue::Use(operand) => self.handle_operand(operand, state),
             Rvalue::CopyForDeref(place) => self.handle_operand(&Operand::Copy(*place), state),
-            Rvalue::Ref(..) | Rvalue::AddressOf(..) => {
+            Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
                 ValueOrPlace::TOP
             }

@@ -851,7 +851,7 @@ impl<'a> Parser<'a> {
         self.expect_and()?;
         let has_lifetime = self.token.is_lifetime() && self.look_ahead(1, |t| t != &token::Colon);
         let lifetime = has_lifetime.then(|| self.expect_lifetime()); // For recovery, see below.
-        let (borrow_kind, mutbl) = self.parse_borrow_modifiers(lo);
+        let (borrow_kind, mutbl) = self.parse_borrow_modifiers();
         let attrs = self.parse_outer_attributes()?;
         let expr = if self.token.is_range_separator() {
             self.parse_expr_prefix_range(attrs)
@@ -871,13 +871,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `mut?` or `raw [ const | mut ]`.
-    fn parse_borrow_modifiers(&mut self, lo: Span) -> (ast::BorrowKind, ast::Mutability) {
+    fn parse_borrow_modifiers(&mut self) -> (ast::BorrowKind, ast::Mutability) {
         if self.check_keyword(kw::Raw) && self.look_ahead(1, Token::is_mutability) {
             // `raw [ const | mut ]`.
             let found_raw = self.eat_keyword(kw::Raw);
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
-            self.psess.gated_spans.gate(sym::raw_ref_op, lo.to(self.prev_token.span));
             (ast::BorrowKind::Raw, mutability)
         } else {
             // `mut?`

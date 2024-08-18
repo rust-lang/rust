@@ -967,7 +967,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
 
-                // Coerce to a raw pointer so that we generate AddressOf in MIR.
+                // Coerce to a raw pointer so that we generate RawPtr in MIR.
                 let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
                 fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
                     .unwrap_or_else(|_| {

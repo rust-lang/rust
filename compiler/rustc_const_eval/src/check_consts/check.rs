@@ -431,13 +431,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
             }
-            Rvalue::AddressOf(mutbl, place) => {
+            Rvalue::RawPtr(mutbl, place) => {
                 if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
                         }
-                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
+                        Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::RawBorrow),
                     };
                     self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
@@ -472,7 +472,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
-            | Rvalue::AddressOf(Mutability::Mut, place) => {
+            | Rvalue::RawPtr(Mutability::Mut, place) => {
                 // Inside mutable statics, we allow arbitrary mutable references.
                 // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
                 // reasons why are lost to history), and there is no reason to restrict that to
@@ -493,7 +493,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake(_), place)
-            | Rvalue::AddressOf(Mutability::Not, place) => {
+            | Rvalue::RawPtr(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
