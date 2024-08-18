@@ -19,6 +19,7 @@ fn main() {
     test_epoll_ctl_del();
     test_pointer();
     test_two_same_fd_in_same_epoll_instance();
+    test_epoll_wait_maxevent_zero();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -527,4 +528,17 @@ fn test_no_notification_for_unregister_flag() {
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value = u64::try_from(fds[0]).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+}
+
+fn test_epoll_wait_maxevent_zero() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+    // It is ok to use uninitialised pointer here because it will error out before the
+    // pointer actually get accessed.
+    let array_ptr = MaybeUninit::<libc::epoll_event>::uninit().as_mut_ptr();
+    let res = unsafe { libc::epoll_wait(epfd, array_ptr, 0, 0) };
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
+    assert_eq!(res, -1);
 }
