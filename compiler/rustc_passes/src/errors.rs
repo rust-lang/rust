@@ -737,6 +737,13 @@ pub struct NonExportedMacroInvalidAttrs {
     pub attr_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_may_dangle)]
+pub struct InvalidMayDangle {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_duplicate)]
 pub struct UnusedDuplicate {

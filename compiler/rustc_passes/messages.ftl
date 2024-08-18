@@ -444,6 +444,9 @@ passes_macro_export_on_decl_macro =
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
 
+passes_may_dangle =
+    `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
+
 passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
 passes_missing_const_err =
     attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
