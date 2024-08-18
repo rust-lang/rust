@@ -384,7 +384,7 @@ mod nested_elision_sites {
         f()
     }
     // lint
-    fn where_clause_elidadable<'a, T>(i: &'a i32, f: T) -> &'a i32
+    fn where_clause_elidable<'a, T>(i: &'a i32, f: T) -> &'a i32
     where
         T: Fn(&i32) -> &i32,
     {
