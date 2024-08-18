@@ -37,7 +37,7 @@
 // lldb-command:run
 
 // lldb-command:v arg
-// lldb-check:[...] { b = -1, b1 = 0 }
+// lldb-check:[...] { b = -1 b1 = 0 }
 // lldb-command:continue
 
 // lldb-command:v inferred
@@ -51,7 +51,7 @@
 // lldb-command:continue
 
 // lldb-command:v arg
-// lldb-check:[...] (4, 5)
+// lldb-check:[...] { 0 = 4 1 = 5 }
 // lldb-command:continue
 
 // lldb-command:v a
