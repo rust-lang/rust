@@ -533,6 +533,7 @@ fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locid::Lo
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Separator {
     And,
+    Or,
 }
 
 impl Separator {
@@ -543,6 +544,11 @@ impl Separator {
     ) -> ListFormatter {
         match self {
             Separator::And => icu_list::ListFormatter::try_new_and_with_length_with_any_provider(
+                &data_provider,
+                &locale.into(),
+                icu_list::ListLength::Wide,
+            ),
+            Separator::Or => icu_list::ListFormatter::try_new_or_with_length_with_any_provider(
                 &data_provider,
                 &locale.into(),
                 icu_list::ListLength::Wide,
@@ -630,4 +636,11 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
     let items = l.into_iter().map(|x| x.into_owned()).collect();
 
     FluentValue::Custom(Box::new(FluentStrListSepBy { sep: Separator::And, items }))
+}
+
+pub fn fluent_value_from_str_list_sep_by_or(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {
+    // Fluent requires 'static value here for its AnyEq usages.
+    let items = l.into_iter().map(|x| x.into_owned()).collect();
+
+    FluentValue::Custom(Box::new(FluentStrListSepBy { sep: Separator::Or, items }))
 }

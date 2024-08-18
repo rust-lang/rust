@@ -7,7 +7,9 @@ use std::panic;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::{fluent_value_from_str_list_sep_by_and, FluentValue};
+use rustc_error_messages::{
+    fluent_value_from_str_list_sep_by_and, fluent_value_from_str_list_sep_by_or, FluentValue,
+};
 use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
@@ -44,6 +46,7 @@ pub enum DiagArgValue {
     // to strings in `into_diag_arg` and stored using the `Str` variant.
     Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
+    StrListSepByOr(Vec<Cow<'static, str>>),
 }
 
 pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
@@ -167,6 +170,7 @@ impl Into<FluentValue<'static>> for DiagArgValue {
             DiagArgValue::Str(s) => From::from(s),
             DiagArgValue::Number(n) => From::from(n),
             DiagArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
+            DiagArgValue::StrListSepByOr(l) => fluent_value_from_str_list_sep_by_or(l),
         }
     }
 }
