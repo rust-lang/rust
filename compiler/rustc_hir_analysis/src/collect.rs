@@ -328,6 +328,19 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
+    /// Don't call `type_of` on opaque types, since that depends on type checking function bodies.
+    /// `check_item_type` ensures that it's called instead.
+    fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
+        let def_id = opaque.def_id;
+        self.tcx.ensure().generics_of(def_id);
+        self.tcx.ensure().predicates_of(def_id);
+        self.tcx.ensure().explicit_item_bounds(def_id);
+        self.tcx.ensure().explicit_item_super_predicates(def_id);
+        self.tcx.ensure().item_bounds(def_id);
+        self.tcx.ensure().item_super_predicates(def_id);
+        intravisit::walk_opaque_ty(self, opaque);
+    }
+
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         lower_trait_item(self.tcx, trait_item.trait_item_id());
         intravisit::walk_trait_item(self, trait_item);

@@ -1552,7 +1552,7 @@ rustc_queries! {
         feedable
     }
 
-    query check_well_formed(key: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
+    query check_well_formed(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key) }
         ensure_forwards_result_if_red
     }
