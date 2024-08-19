@@ -5,6 +5,8 @@
 #[cfg(test)]
 mod tests;
 
+use alloc::ffi::os_str::os_str_ext_unix::OsStringExt;
+use core::ffi::os_str::os_str_ext_unix::OsStrExt;
 use core::slice::memchr;
 
 use libc::{c_char, c_int, c_void};

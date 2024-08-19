@@ -1,23 +1,9 @@
+use core::path::*;
+
 use crate::ffi::{OsStr, OsString};
-use crate::path::{Path, PathBuf, Prefix};
+use crate::path::PathBuf;
 use crate::sys::pal::{c, fill_utf16_buf, os2path, to_u16s};
 use crate::{io, ptr};
-
-#[cfg(test)]
-mod tests;
-
-pub const MAIN_SEP_STR: &str = "\\";
-pub const MAIN_SEP: char = '\\';
-
-#[inline]
-pub fn is_sep_byte(b: u8) -> bool {
-    b == b'/' || b == b'\\'
-}
-
-#[inline]
-pub fn is_verbatim_sep(b: u8) -> bool {
-    b == b'\\'
-}
 
 /// Returns true if `path` looks like a lone filename.
 pub(crate) fn is_file_name(path: &OsStr) -> bool {

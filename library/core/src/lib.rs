@@ -407,6 +407,13 @@ pub mod slice;
 pub mod str;
 pub mod time;
 
+#[unstable(
+    feature = "path_internals",
+    reason = "internal details of the implementation of path",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod path;
 pub mod unicode;
 
 /* Async */

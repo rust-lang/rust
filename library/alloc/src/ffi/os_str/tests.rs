@@ -1,28 +1,28 @@
+#![feature(os_str_slice)]
+
 use super::*;
-use crate::mem::MaybeUninit;
-use crate::ptr;
 
 #[test]
 fn test_os_string_with_capacity() {
     let os_string = OsString::with_capacity(0);
-    assert_eq!(0, os_string.inner.into_inner().capacity());
+    assert_eq!(0, os_string.inner.inner.capacity());
 
     let os_string = OsString::with_capacity(10);
-    assert_eq!(10, os_string.inner.into_inner().capacity());
+    assert_eq!(10, os_string.inner.inner.capacity());
 
     let mut os_string = OsString::with_capacity(0);
     os_string.push("abc");
-    assert!(os_string.inner.into_inner().capacity() >= 3);
+    assert!(os_string.inner.inner.capacity() >= 3);
 }
 
 #[test]
 fn test_os_string_clear() {
     let mut os_string = OsString::from("abc");
-    assert_eq!(3, os_string.inner.as_inner().len());
+    assert_eq!(3, os_string.inner.inner.len());
 
     os_string.clear();
     assert_eq!(&os_string, "");
-    assert_eq!(0, os_string.inner.as_inner().len());
+    assert_eq!(0, os_string.inner.inner.len());
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn into_boxed() {
     let orig = "Hello, world!";
     let os_str = OsStr::new(orig);
     let boxed: Box<OsStr> = Box::from(os_str);
-    let os_string = os_str.to_owned().into_boxed_os_str().into_os_string();
+    let os_string = OsStr::into_os_string(os_str.to_owned().into_boxed_os_str());
     assert_eq!(os_str, &*boxed);
     assert_eq!(&*boxed, &*os_string);
     assert_eq!(&*os_string, os_str);
@@ -185,54 +185,13 @@ fn into_rc() {
     assert_eq!(&*arc2, os_str);
 }
 
-#[test]
-fn slice_encoded_bytes() {
-    let os_str = OsStr::new("123θგ🦀");
-    // ASCII
-    let digits = os_str.slice_encoded_bytes(..3);
-    assert_eq!(digits, "123");
-    let three = os_str.slice_encoded_bytes(2..3);
-    assert_eq!(three, "3");
-    // 2-byte UTF-8
-    let theta = os_str.slice_encoded_bytes(3..5);
-    assert_eq!(theta, "θ");
-    // 3-byte UTF-8
-    let gani = os_str.slice_encoded_bytes(5..8);
-    assert_eq!(gani, "გ");
-    // 4-byte UTF-8
-    let crab = os_str.slice_encoded_bytes(8..);
-    assert_eq!(crab, "🦀");
-}
-
-#[test]
-#[should_panic]
-fn slice_out_of_bounds() {
-    let crab = OsStr::new("🦀");
-    let _ = crab.slice_encoded_bytes(..5);
-}
-
-#[test]
-#[should_panic]
-fn slice_mid_char() {
-    let crab = OsStr::new("🦀");
-    let _ = crab.slice_encoded_bytes(..2);
-}
-
-#[cfg(unix)]
-#[test]
-#[should_panic(expected = "byte index 1 is not an OsStr boundary")]
-fn slice_invalid_data() {
-    use crate::os::unix::ffi::OsStrExt;
-
-    let os_string = OsStr::from_bytes(b"\xFF\xFF");
-    let _ = os_string.slice_encoded_bytes(1..);
-}
-
 #[cfg(unix)]
 #[test]
 #[should_panic(expected = "byte index 1 is not an OsStr boundary")]
 fn slice_partial_utf8() {
-    use crate::os::unix::ffi::{OsStrExt, OsStringExt};
+    use core::ffi::os_str::os_str_ext_unix::OsStrExt;
+
+    use os_str_ext_unix::OsStringExt;
 
     let part_crab = OsStr::from_bytes(&"🦀".as_bytes()[..3]);
     let mut os_string = OsString::from_vec(vec![0xFF]);
@@ -243,7 +202,9 @@ fn slice_partial_utf8() {
 #[cfg(unix)]
 #[test]
 fn slice_invalid_edge() {
-    use crate::os::unix::ffi::{OsStrExt, OsStringExt};
+    use core::ffi::os_str::os_str_ext_unix::OsStrExt;
+
+    use os_str_ext_unix::OsStringExt;
 
     let os_string = OsStr::from_bytes(b"a\xFFa");
     assert_eq!(os_string.slice_encoded_bytes(..1), "a");
@@ -265,7 +226,7 @@ fn slice_invalid_edge() {
 #[test]
 #[should_panic(expected = "byte index 3 lies between surrogate codepoints")]
 fn slice_between_surrogates() {
-    use crate::os::windows::ffi::OsStringExt;
+    use crate::ffi::os_str::os_str_ext_windows::OsStringExt;
 
     let os_string = OsString::from_wide(&[0xD800, 0xD800]);
     assert_eq!(os_string.as_encoded_bytes(), &[0xED, 0xA0, 0x80, 0xED, 0xA0, 0x80]);
@@ -275,7 +236,7 @@ fn slice_between_surrogates() {
 #[cfg(windows)]
 #[test]
 fn slice_surrogate_edge() {
-    use crate::os::windows::ffi::OsStringExt;
+    use crate::ffi::os_str::os_str_ext_windows::OsStringExt;
 
     let surrogate = OsString::from_wide(&[0xD800]);
     let mut pre_crab = surrogate.clone();
@@ -287,19 +248,4 @@ fn slice_surrogate_edge() {
     post_crab.push(&surrogate);
     assert_eq!(post_crab.slice_encoded_bytes(..4), "🦀");
     assert_eq!(post_crab.slice_encoded_bytes(4..), surrogate);
-}
-
-#[test]
-fn clone_to_uninit() {
-    let a = OsStr::new("hello.txt");
-
-    let mut storage = vec![MaybeUninit::<u8>::uninit(); size_of_val::<OsStr>(a)];
-    unsafe { a.clone_to_uninit(ptr::from_mut::<[_]>(storage.as_mut_slice()) as *mut OsStr) };
-    assert_eq!(a.as_encoded_bytes(), unsafe { MaybeUninit::slice_assume_init_ref(&storage) });
-
-    let mut b: Box<OsStr> = OsStr::new("world.exe").into();
-    assert_eq!(size_of_val::<OsStr>(a), size_of_val::<OsStr>(&b));
-    assert_ne!(a, &*b);
-    unsafe { a.clone_to_uninit(ptr::from_mut::<OsStr>(&mut b)) };
-    assert_eq!(a, &*b);
 }

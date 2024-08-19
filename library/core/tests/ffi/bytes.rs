@@ -1,4 +1,6 @@
-use super::*;
+#![feature(os_str_internals)]
+
+use core::ffi::os_str::Slice;
 
 #[test]
 fn slice_debug_output() {

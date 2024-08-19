@@ -89,3 +89,19 @@ pub use self::c_str::{FromVecWithNulError, IntoStringError, NulError};
 
 #[unstable(feature = "c_str_module", issue = "112134")]
 pub mod c_str;
+
+#[unstable(
+    feature = "os_str_internals",
+    reason = "internal details of the implementation of os str",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod os_str;
+
+#[unstable(
+    feature = "os_str_internals",
+    reason = "internal details of the implementation of os str",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod wtf8;

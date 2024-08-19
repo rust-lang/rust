@@ -4,6 +4,9 @@
 #[cfg(test)]
 mod tests;
 
+use alloc::ffi::os_str::os_str_ext_unix::OsStringExt;
+use core::ffi::os_str::os_str_ext_unix::OsStrExt;
+
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
 #[cfg(any(

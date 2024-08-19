@@ -1,6 +1,9 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
+use alloc::ffi::os_str::os_str_ext_unix::OsStringExt;
+use core::ffi::os_str::os_str_ext_unix::OsStrExt;
+
 use libc::{c_char, c_int, gid_t, pid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
 
 use crate::collections::BTreeMap;

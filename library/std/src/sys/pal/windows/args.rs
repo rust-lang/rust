@@ -15,7 +15,6 @@ use crate::sys::path::get_long_path;
 use crate::sys::process::ensure_no_nuls;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::wstr::WStrUnits;
-use crate::sys_common::AsInner;
 use crate::{fmt, io, iter, vec};
 
 /// This is the const equivalent to `NonZero::new(n).unwrap()`

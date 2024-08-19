@@ -24,6 +24,22 @@ use crate::fmt;
 pub mod c_str;
 
 #[unstable(
+    feature = "os_str_internals",
+    reason = "internal details of the implementation of os str",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod os_str;
+
+#[unstable(
+    feature = "os_str_internals",
+    reason = "internal details of the implementation of os str",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod wtf8;
+
+#[unstable(
     feature = "c_variadic",
     issue = "44930",
     reason = "the `c_variadic` feature has not been properly tested on all supported platforms"

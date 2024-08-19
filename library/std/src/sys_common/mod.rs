@@ -25,7 +25,6 @@ pub mod io;
 pub mod lazy_box;
 pub mod process;
 pub mod wstr;
-pub mod wtf8;
 
 cfg_if::cfg_if! {
     if #[cfg(any(

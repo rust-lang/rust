@@ -103,6 +103,7 @@
 #![feature(async_closure)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
+#![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
@@ -134,7 +135,10 @@
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
+#![feature(os_str_internals)]
+#![feature(os_str_slice)]
 #![feature(panic_internals)]
+#![feature(path_internals)]
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(ptr_internals)]
@@ -251,6 +255,14 @@ pub mod task;
 #[cfg(test)]
 mod tests;
 pub mod vec;
+
+#[unstable(
+    feature = "path_internals",
+    reason = "internal details of the implementation of path",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod path;
 
 #[doc(hidden)]
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]

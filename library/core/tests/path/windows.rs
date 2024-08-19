@@ -1,4 +1,4 @@
-use super::*;
+use crate::path::*;
 
 #[test]
 fn test_parse_next_component() {
