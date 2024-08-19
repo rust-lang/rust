@@ -550,9 +550,12 @@ impl GlobalState {
                 };
 
             watchers.extend(
-                iter::once(self.config.user_config_path().as_path())
-                    .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
-                    .flatten()
+                iter::once(Config::user_config_path())
+                    .chain(
+                        self.workspaces
+                            .iter()
+                            .filter_map(|ws| ws.manifest().map(ManifestPath::as_ref)),
+                    )
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
                         glob_pattern: lsp_types::GlobPattern::String(glob_pattern.to_string()),
                         kind: None,

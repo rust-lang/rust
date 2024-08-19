@@ -37,7 +37,6 @@ impl flags::Scip {
             lsp_types::ClientCapabilities::default(),
             vec![],
             None,
-            None,
         );
 
         if let Some(p) = self.config_path {

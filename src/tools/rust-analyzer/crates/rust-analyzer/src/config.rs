@@ -3,10 +3,13 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-use std::{fmt, iter, ops::Not, sync::OnceLock};
+use std::{
+    env, fmt, iter,
+    ops::Not,
+    sync::{LazyLock, OnceLock},
+};
 
 use cfg::{CfgAtom, CfgDiff};
-use dirs::config_dir;
 use hir::Symbol;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
@@ -735,7 +738,6 @@ pub enum RatomlFileKind {
 }
 
 #[derive(Debug, Clone)]
-// FIXME @alibektas : Seems like a clippy warning of this sort should tell that combining different ConfigInputs into one enum was not a good idea.
 #[allow(clippy::large_enum_variant)]
 enum RatomlFile {
     Workspace(GlobalLocalConfigInput),
@@ -756,16 +758,6 @@ pub struct Config {
     /// Config node that obtains its initial value during the server initialization and
     /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
     client_config: (FullConfigInput, ConfigErrors),
-
-    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
-    /// If not specified by init of a `Config` object this value defaults to :
-    ///
-    /// |Platform | Value                                 | Example                                  |
-    /// | ------- | ------------------------------------- | ---------------------------------------- |
-    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
-    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
-    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
-    user_config_path: VfsPath,
 
     /// Config node whose values apply to **every** Rust project.
     user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
@@ -794,8 +786,27 @@ impl std::ops::Deref for Config {
 }
 
 impl Config {
-    pub fn user_config_path(&self) -> &VfsPath {
-        &self.user_config_path
+    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
+    /// This path is equal to:
+    ///
+    /// |Platform | Value                                 | Example                                  |
+    /// | ------- | ------------------------------------- | ---------------------------------------- |
+    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
+    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
+    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
+    pub fn user_config_path() -> &'static AbsPath {
+        static USER_CONFIG_PATH: LazyLock<AbsPathBuf> = LazyLock::new(|| {
+            let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
+                std::path::PathBuf::from(path)
+            } else {
+                dirs::config_dir()
+                    .expect("A config dir is expected to existed on all platforms ra supports.")
+                    .join("rust-analyzer")
+            }
+            .join("rust-analyzer.toml");
+            AbsPathBuf::assert_utf8(user_config_path)
+        });
+        &USER_CONFIG_PATH
     }
 
     pub fn same_source_root_parent_map(
@@ -1315,24 +1326,8 @@ impl Config {
         caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
         visual_studio_code_version: Option<Version>,
-        user_config_path: Option<Utf8PathBuf>,
     ) -> Self {
         static DEFAULT_CONFIG_DATA: OnceLock<&'static DefaultConfigData> = OnceLock::new();
-        let user_config_path = if let Some(user_config_path) = user_config_path {
-            user_config_path.join("rust-analyzer").join("rust-analyzer.toml")
-        } else {
-            let p = config_dir()
-                .expect("A config dir is expected to existed on all platforms ra supports.")
-                .join("rust-analyzer")
-                .join("rust-analyzer.toml");
-            Utf8PathBuf::from_path_buf(p).expect("Config dir expected to be abs.")
-        };
-
-        // A user config cannot be a virtual path as rust-analyzer cannot support watching changes in virtual paths.
-        // See `GlobalState::process_changes` to get more info.
-        // FIXME @alibektas : Temporary solution. I don't think this is right as at some point we may allow users to specify
-        // custom USER_CONFIG_PATHs which may also be relative.
-        let user_config_path = VfsPath::from(AbsPathBuf::assert(user_config_path));
 
         Config {
             caps: ClientCapabilities::new(caps),
@@ -1345,7 +1340,6 @@ impl Config {
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
-            user_config_path,
             detached_files: Default::default(),
             validation_errors: Default::default(),
             ratoml_file: Default::default(),
@@ -3417,7 +3411,7 @@ mod tests {
     #[test]
     fn proc_macro_srv_null() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3432,7 +3426,7 @@ mod tests {
     #[test]
     fn proc_macro_srv_abs() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
         "procMacro" : {
@@ -3446,7 +3440,7 @@ mod tests {
     #[test]
     fn proc_macro_srv_rel() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
@@ -3466,7 +3460,7 @@ mod tests {
     #[test]
     fn cargo_target_dir_unset() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
@@ -3484,7 +3478,7 @@ mod tests {
     #[test]
     fn cargo_target_dir_subdir() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3502,7 +3496,7 @@ mod tests {
     #[test]
     fn cargo_target_dir_relative_dir() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3523,7 +3517,7 @@ mod tests {
     #[test]
     fn toml_unknown_key() {
         let config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 

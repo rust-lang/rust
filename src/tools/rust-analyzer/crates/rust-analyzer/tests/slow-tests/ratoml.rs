@@ -8,6 +8,7 @@ use lsp_types::{
 };
 use paths::Utf8PathBuf;
 
+use rust_analyzer::config::Config;
 use rust_analyzer::lsp::ext::{InternalTestingFetchConfig, InternalTestingFetchConfigParams};
 use serde_json::json;
 use test_utils::skip_slow_tests;
@@ -24,7 +25,6 @@ struct RatomlTest {
     urls: Vec<Url>,
     server: Server,
     tmp_path: Utf8PathBuf,
-    user_config_dir: Utf8PathBuf,
 }
 
 impl RatomlTest {
@@ -41,11 +41,7 @@ impl RatomlTest {
 
         let full_fixture = fixtures.join("\n");
 
-        let user_cnf_dir = TestDir::new();
-        let user_config_dir = user_cnf_dir.path().to_owned();
-
-        let mut project =
-            Project::with_fixture(&full_fixture).tmp_dir(tmp_dir).user_config_dir(user_cnf_dir);
+        let mut project = Project::with_fixture(&full_fixture).tmp_dir(tmp_dir);
 
         for root in roots {
             project = project.root(root);
@@ -57,7 +53,7 @@ impl RatomlTest {
 
         let server = project.server().wait_until_workspace_is_loaded();
 
-        let mut case = Self { urls: vec![], server, tmp_path, user_config_dir };
+        let mut case = Self { urls: vec![], server, tmp_path };
         let urls = fixtures.iter().map(|fixture| case.fixture_path(fixture)).collect::<Vec<_>>();
         case.urls = urls;
         case
@@ -81,7 +77,7 @@ impl RatomlTest {
         let mut spl = spl.into_iter();
         if let Some(first) = spl.next() {
             if first == "$$CONFIG_DIR$$" {
-                path = self.user_config_dir.clone();
+                path = Config::user_config_path().to_path_buf().into();
             } else {
                 path = path.join(first);
             }

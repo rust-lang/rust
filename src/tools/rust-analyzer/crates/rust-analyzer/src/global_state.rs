@@ -380,7 +380,7 @@ impl GlobalState {
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
             let config_change = {
-                let user_config_path = self.config.user_config_path();
+                let user_config_path = Config::user_config_path();
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
 
