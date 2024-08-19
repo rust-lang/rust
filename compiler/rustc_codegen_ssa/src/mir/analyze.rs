@@ -15,13 +15,18 @@ use crate::traits::*;
 
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
+    traversal_order: &[mir::BasicBlock],
+    reachable_locals: &BitSet<mir::Local>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
     let locals = mir
         .local_decls
-        .iter()
-        .map(|decl| {
+        .iter_enumerated()
+        .map(|(local, decl)| {
+            if !reachable_locals.contains(local) {
+                return LocalKind::Unused;
+            }
             let ty = fx.monomorphize(decl.ty);
             let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
             if layout.is_zst() {
@@ -44,7 +49,8 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // If there exists a local definition that dominates all uses of that local,
     // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for (bb, data) in traversal::reverse_postorder(mir) {
+    for bb in traversal_order.iter().copied() {
+        let data = &mir.basic_blocks[bb];
         analyzer.visit_basic_block_data(bb, data);
     }
 

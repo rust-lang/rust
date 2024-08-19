@@ -41,10 +41,8 @@ pub fn if_constant_match() {
         _ => 4,
     };
 
-    // CHECK: br label %[[MINUS1:.+]]
+    // CHECK: br label %{{.+}}
     _ = match -1 {
-        // CHECK: [[MINUS1]]:
-        // CHECK: store i32 1
         -1 => 1,
         _ => 0,
     }
