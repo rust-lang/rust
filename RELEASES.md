@@ -143,7 +143,8 @@ Compatibility Notes
 - [Turn `proc_macro_back_compat` lint into a hard error.](https://github.com/rust-lang/rust/pull/125596/)
 - [Detect unused structs even when implementing private traits](https://github.com/rust-lang/rust/pull/122382/)
 - [`std::sync::ReentrantLockGuard<T>` is no longer `Sync` if `T: !Sync`](https://github.com/rust-lang/rust/pull/125527) which means [`std::io::StdoutLock` and `std::io::StderrLock` are no longer Sync](https://github.com/rust-lang/rust/issues/127340)
-- [alloc: implement FromIterator for Box<str>](https://github.com/rust-lang/rust/pull/99969/)
+- [Type inference will fail in some cases due to a new impl of FromIterator for Box<str>](https://github.com/rust-lang/rust/pull/99969/)
+  Notably this breaks versions of the `time` crate before 0.3.55, due to no longer inferring the right impl.
 
 <a id="1.80-Internal-Changes"></a>
 
