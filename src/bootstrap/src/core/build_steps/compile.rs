@@ -199,16 +199,6 @@ impl Step for Std {
 
         builder.require_submodule("library/stdarch", None);
 
-        // Profiler information requires LLVM's compiler-rt
-        if builder.config.profiler {
-            builder.require_submodule(
-                "src/llvm-project",
-                Some(
-                    "The `build.profiler` config option requires `compiler-rt` sources from LLVM.",
-                ),
-            );
-        }
-
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
@@ -473,8 +463,25 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
+    // Paths needed by `library/profiler_builtins/build.rs`.
     if let Some(path) = builder.config.profiler_path(target) {
         cargo.env("LLVM_PROFILER_RT_LIB", path);
+    } else if builder.config.profiler_enabled(target) {
+        let compiler_rt = if builder.config.llvm_from_ci {
+            // There's a copy of `compiler-rt` in the CI LLVM tarball,
+            // so we don't need to check out the LLVM submodule.
+            builder.config.ci_llvm_root().join("compiler-rt")
+        } else {
+            builder.require_submodule("src/llvm-project", {
+                Some("The `build.profiler` config option requires `compiler-rt` sources from LLVM.")
+            });
+            builder.src.join("src/llvm-project/compiler-rt")
+        };
+        assert!(compiler_rt.exists(), "compiler-rt directory not found: {compiler_rt:?}");
+        // Currently this is separate from the env var used by `compiler_builtins`
+        // (below) so that adding support for CI LLVM here doesn't risk breaking
+        // the compiler builtins. But they could be unified if desired.
+        cargo.env("RUST_COMPILER_RT_FOR_PROFILER", compiler_rt);
     }
 
     // Determine if we're going to compile in optimized C intrinsics to
@@ -507,8 +514,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         );
         let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
         assert!(compiler_builtins_root.exists());
-        // Note that `libprofiler_builtins/build.rs` also computes this so if
-        // you're changing something here please also change that.
+        // The path to `compiler-rt` is also used by `profiler_builtins` (above),
+        // so if you're changing something here please also change that as appropriate.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
         " compiler-builtins-c"
     } else {

@@ -3,7 +3,7 @@
 //! See the build.rs for libcompiler_builtins crate for details.
 
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-env-changed=LLVM_PROFILER_RT_LIB");
@@ -79,9 +79,13 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
     }
 
-    // Note that this should exist if we're going to run (otherwise we just
-    // don't build profiler builtins at all).
-    let root = Path::new("../../src/llvm-project/compiler-rt");
+    // Get the LLVM `compiler-rt` directory from bootstrap.
+    println!("cargo:rerun-if-env-changed=RUST_COMPILER_RT_FOR_PROFILER");
+    let root = PathBuf::from(env::var("RUST_COMPILER_RT_FOR_PROFILER").unwrap_or_else(|_| {
+        let path = "../../src/llvm-project/compiler-rt";
+        println!("RUST_COMPILER_RT_FOR_PROFILER was not set; falling back to {path:?}");
+        path.to_owned()
+    }));
 
     let src_root = root.join("lib").join("profile");
     assert!(src_root.exists(), "profiler runtime source directory not found: {src_root:?}");
