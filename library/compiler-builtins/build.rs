@@ -5,7 +5,9 @@ mod configure;
 use configure::{configure_f16_f128, Target};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=configure.rs");
+
     let target = Target::from_env();
     let cwd = env::current_dir().unwrap();
 
@@ -46,7 +48,7 @@ fn main() {
     // These targets have hardware unaligned access support.
     println!("cargo::rustc-check-cfg=cfg(feature, values(\"mem-unaligned\"))");
     if target.arch.contains("x86_64")
-        || target.arch.contains("i686")
+        || target.arch.contains("x86")
         || target.arch.contains("aarch64")
         || target.arch.contains("bpf")
     {

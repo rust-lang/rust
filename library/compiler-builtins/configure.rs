@@ -2,6 +2,7 @@
 
 use std::env;
 
+#[derive(Debug)]
 #[allow(dead_code)]
 pub struct Target {
     pub triple: String,
@@ -39,6 +40,11 @@ impl Target {
                 .map(ToOwned::to_owned)
                 .collect(),
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn has_feature(&self, feature: &str) -> bool {
+        self.features.iter().any(|f| f == feature)
     }
 }
 
