@@ -2515,7 +2515,7 @@ impl Config {
     ///
     /// This *does not* update the submodule if `config.toml` explicitly says
     /// not to, or if we're not in a git repository (like a plain source
-    /// tarball). Typically [`Build::require_submodule`] should be
+    /// tarball). Typically [`crate::Build::require_submodule`] should be
     /// used instead to provide a nice error to the user if the submodule is
     /// missing.
     pub(crate) fn update_submodule(&self, relative_path: &str) {
