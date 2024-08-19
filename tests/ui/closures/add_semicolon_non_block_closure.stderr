@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/add_semicolon_non_block_closure.rs:8:12
    |
-LL | fn main() {
-   |          - expected `()` because of default return type
 LL |     foo(|| bar())
    |            ^^^^^ expected `()`, found `i32`
    |
@@ -10,6 +8,10 @@ help: consider using a semicolon here
    |
 LL |     foo(|| { bar(); })
    |            +      +++
+help: try adding a return type
+   |
+LL |     foo(|| -> i32 bar())
+   |            ++++++
 
 error: aborting due to 1 previous error
 
