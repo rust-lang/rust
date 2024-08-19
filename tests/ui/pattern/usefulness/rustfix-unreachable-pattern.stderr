@@ -1,40 +1,49 @@
 error: unreachable pattern
-  --> $DIR/patterns.rs:42:9
+  --> $DIR/rustfix-unreachable-pattern.rs:14:9
    |
-LL |         Some(_x) => (),
-   |         ^^^^^^^^-------
+LL |         Err(_) => {}
+   |         ^^^^^^------
    |         |
-   |         matches no values because `UninhabitedVariants` is uninhabited
+   |         matches no values because `Void` is uninhabited
    |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/patterns.rs:3:9
+  --> $DIR/rustfix-unreachable-pattern.rs:5:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/patterns.rs:47:15
+  --> $DIR/rustfix-unreachable-pattern.rs:15:9
    |
-LL |     while let PartiallyInhabitedVariants::Struct { x, .. } = partially_inhabited_variant() {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ matches no values because `!` is uninhabited
-   |
-   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
-
-error: unreachable pattern
-  --> $DIR/patterns.rs:49:15
-   |
-LL |     while let Some(_x) = uninhabited_struct() {
-   |               ^^^^^^^^ matches no values because `UninhabitedStruct` is uninhabited
+LL |         Err(_) => {},
+   |         ^^^^^^-------
+   |         |
+   |         matches no values because `Void` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/patterns.rs:52:15
+  --> $DIR/rustfix-unreachable-pattern.rs:20:9
    |
-LL |     while let Some(_x) = uninhabited_tuple_struct() {
-   |               ^^^^^^^^ matches no values because `UninhabitedTupleStruct` is uninhabited
+LL |         Err(!),
+   |         ^^^^^^-
+   |         |
+   |         matches no values because `Void` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/rustfix-unreachable-pattern.rs:21:9
+   |
+LL |         Err(!)
+   |         ^^^^^^
+   |         |
+   |         matches no values because `Void` is uninhabited
+   |         help: remove the match arm
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
