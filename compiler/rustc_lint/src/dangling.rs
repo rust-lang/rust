@@ -1,5 +1,5 @@
 use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::sym;
 
@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
             && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
             && is_temporary_rvalue(receiver)
             && let ty = cx.typeck_results().expr_ty(receiver)
-            && is_interesting(cx, ty)
+            && is_interesting(cx.tcx, ty)
         {
             cx.emit_span_lint(
                 DANGLING_POINTERS_FROM_TEMPORARIES,
@@ -164,22 +164,21 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
 
 // Array, Vec, String, CString, MaybeUninit, Cell, Box<[_]>, Box<str>, Box<CStr>,
 // or any of the above in arbitrary many nested Box'es.
-fn is_interesting(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+fn is_interesting(tcx: TyCtxt<'_>, ty: Ty<'_>) -> bool {
     if ty.is_array() {
         true
     } else if let Some(inner) = ty.boxed_ty() {
         inner.is_slice()
             || inner.is_str()
-            || inner.ty_adt_def().is_some_and(|def| cx.tcx.is_lang_item(def.did(), LangItem::CStr))
-            || is_interesting(cx, inner)
+            || inner.ty_adt_def().is_some_and(|def| tcx.is_lang_item(def.did(), LangItem::CStr))
+            || is_interesting(tcx, inner)
     } else if let Some(def) = ty.ty_adt_def() {
         for lang_item in [LangItem::String, LangItem::MaybeUninit] {
-            if cx.tcx.is_lang_item(def.did(), lang_item) {
+            if tcx.is_lang_item(def.did(), lang_item) {
                 return true;
             }
         }
-        cx.tcx
-            .get_diagnostic_name(def.did())
+        tcx.get_diagnostic_name(def.did())
             .is_some_and(|name| matches!(name, sym::cstring_type | sym::Vec | sym::Cell))
     } else {
         false
