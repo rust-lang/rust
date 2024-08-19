@@ -9,6 +9,10 @@
 +         debug g => _2;
 +         let mut _3: &fn() {g};
 +         let _4: ();
++         let mut _5: *mut fn() {g};
++         let mut _6: ();
++         scope 2 (inlined std::ptr::drop_in_place::<fn() {g}> - shim(None)) {
++         }
 +     }
   
       bb0: {
@@ -17,22 +21,23 @@
 +         StorageLive(_2);
 +         _2 = g;
 +         StorageLive(_4);
++         StorageLive(_5);
++         StorageLive(_6);
 +         StorageLive(_3);
 +         _3 = &_2;
-+         _4 = <fn() {g} as Fn<()>>::call(move _3, const ()) -> [return: bb2, unwind unreachable];
++         _4 = <fn() {g} as Fn<()>>::call(move _3, const ()) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
++         StorageDead(_3);
++         _5 = &raw mut _2;
++         StorageDead(_6);
++         StorageDead(_5);
 +         StorageDead(_4);
 +         StorageDead(_2);
           StorageDead(_1);
           _0 = const ();
           return;
-+     }
-+ 
-+     bb2: {
-+         StorageDead(_3);
-+         drop(_2) -> [return: bb1, unwind unreachable];
       }
   }
   

@@ -7,16 +7,23 @@
       let _2: ();
       let mut _3: std::vec::Vec<bool>;
       scope 1 (inlined std::mem::drop::<Vec<bool>>) {
+          let mut _4: *mut std::vec::Vec<bool>;
+          let mut _5: ();
       }
   
       bb0: {
           nop;
           StorageLive(_3);
           _3 = move _1;
-          drop(_3) -> [return: bb1, unwind unreachable];
+          StorageLive(_4);
+          nop;
+          _4 = &raw mut _3;
+          _5 = std::ptr::drop_in_place::<Vec<bool>>(move _4) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
+          nop;
+          StorageDead(_4);
           StorageDead(_3);
           nop;
           nop;

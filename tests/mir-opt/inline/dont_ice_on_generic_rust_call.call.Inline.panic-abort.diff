@@ -7,6 +7,8 @@
       let mut _0: ();
       let mut _3: &mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
       let mut _4: I;
++     let mut _5: *mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
++     let mut _6: ();
   
       bb0: {
           StorageLive(_3);
@@ -19,7 +21,9 @@
       bb1: {
           StorageDead(_4);
           StorageDead(_3);
-          drop(_1) -> [return: bb2, unwind unreachable];
+-         drop(_1) -> [return: bb2, unwind unreachable];
++         _5 = &raw mut _1;
++         _6 = std::ptr::drop_in_place::<Box<dyn FnMut<I, Output = ()>>>(move _5) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {

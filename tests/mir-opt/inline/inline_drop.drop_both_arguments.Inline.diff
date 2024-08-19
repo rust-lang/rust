@@ -1,0 +1,74 @@
+- // MIR for `drop_both_arguments` before Inline
++ // MIR for `drop_both_arguments` after Inline
+  
+  fn drop_both_arguments(_1: CallThingOnDrop, _2: CallThingOnDrop) -> () {
+      debug _a => _1;
+      debug _b => _2;
+      let mut _0: ();
++     let mut _3: *mut CallThingOnDrop;
++     let mut _4: ();
++     let mut _5: *mut CallThingOnDrop;
++     scope 1 (inlined std::ptr::drop_in_place::<CallThingOnDrop> - shim(Some(CallThingOnDrop))) {
++         let mut _6: &mut CallThingOnDrop;
++         let mut _7: ();
++         scope 2 (inlined <CallThingOnDrop as Drop>::drop) {
++             let _8: ();
++         }
++     }
++     scope 3 (inlined std::ptr::drop_in_place::<CallThingOnDrop> - shim(Some(CallThingOnDrop))) {
++         let mut _9: &mut CallThingOnDrop;
++         let mut _10: ();
++         scope 4 (inlined <CallThingOnDrop as Drop>::drop) {
++             let _11: ();
++         }
++     }
+  
+      bb0: {
+          _0 = const ();
+-         drop(_2) -> [return: bb1, unwind: bb3];
++         _3 = &raw mut _2;
++         StorageLive(_6);
++         StorageLive(_7);
++         _6 = &mut (*_3);
++         StorageLive(_8);
++         _8 = thing() -> [return: bb3, unwind: bb1];
+      }
+  
+-     bb1: {
+-         drop(_1) -> [return: bb2, unwind: bb4];
++     bb1 (cleanup): {
++         drop(_1) -> [return: bb2, unwind terminate(cleanup)];
+      }
+  
+-     bb2: {
+-         return;
++     bb2 (cleanup): {
++         resume;
+      }
+  
+-     bb3 (cleanup): {
+-         drop(_1) -> [return: bb4, unwind terminate(cleanup)];
++     bb3: {
++         StorageDead(_8);
++         _7 = const ();
++         StorageDead(_7);
++         StorageDead(_6);
++         _5 = &raw mut _1;
++         StorageLive(_9);
++         StorageLive(_10);
++         _9 = &mut (*_5);
++         StorageLive(_11);
++         _11 = thing() -> [return: bb4, unwind: bb2];
+      }
+  
+-     bb4 (cleanup): {
+-         resume;
++     bb4: {
++         StorageDead(_11);
++         _10 = const ();
++         StorageDead(_10);
++         StorageDead(_9);
++         return;
+      }
+  }
+  

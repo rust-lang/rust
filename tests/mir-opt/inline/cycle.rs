@@ -23,5 +23,7 @@ fn main() {
     // CHECK-NOT: inlined
     // CHECK: (inlined f::<fn() {g}>)
     // CHECK-NOT: inlined
+    // CHECK: inlined std::ptr::drop_in_place
+    // CHECK-NOT: inlined
     f(g);
 }
