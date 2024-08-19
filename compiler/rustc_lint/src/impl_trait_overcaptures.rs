@@ -1,3 +1,4 @@
+use std::assert_matches::debug_assert_matches;
 use std::cell::LazyCell;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
@@ -178,7 +179,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
                 ambient_variance: ty::Covariant,
                 generics: tcx.generics_of(parent_def_id),
             };
-            let _ = functional_variances.relate(sig, sig);
+            functional_variances.relate(sig, sig).unwrap();
             functional_variances.variances
         }),
         outlives_env: LazyCell::new(|| {
@@ -208,10 +209,7 @@ where
     VarFn: FnOnce() -> FxHashMap<DefId, ty::Variance>,
     OutlivesFn: FnOnce() -> OutlivesEnvironment<'tcx>,
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> Self::Result {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
         // When we get into a binder, we need to add its own bound vars to the scope.
         let mut added = vec![];
         for arg in t.bound_vars() {
@@ -241,7 +239,7 @@ where
         }
     }
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         if !t.has_aliases() {
             return;
         }
@@ -293,50 +291,43 @@ where
                     current_def_id = generics.parent;
                 }
 
-                // Compute the set of in scope params that are not captured. Get their spans,
-                // since that's all we really care about them for emitting the diagnostic.
+                // Compute the set of in scope params that are not captured.
                 let mut uncaptured_args: FxIndexSet<_> = self
                     .in_scope_parameters
                     .iter()
                     .filter(|&(def_id, _)| !captured.contains(def_id))
                     .collect();
-
-                // These are args that we know are likely fine to "overcapture", since they can be
-                // contravariantly shortened to one of the already-captured lifetimes that they
-                // outlive.
-                let covariant_long_args: FxIndexSet<_> = uncaptured_args
-                    .iter()
-                    .copied()
-                    .filter(|&(def_id, kind)| {
-                        let Some(ty::Bivariant | ty::Contravariant) = self.variances.get(def_id)
-                        else {
-                            return false;
-                        };
-                        let DefKind::LifetimeParam = self.tcx.def_kind(def_id) else {
-                            return false;
-                        };
-                        let uncaptured = match *kind {
-                            ParamKind::Early(name, index) => ty::Region::new_early_param(
-                                self.tcx,
-                                ty::EarlyParamRegion { name, index },
-                            ),
-                            ParamKind::Free(def_id, name) => ty::Region::new_late_param(
-                                self.tcx,
-                                self.parent_def_id.to_def_id(),
-                                ty::BoundRegionKind::BrNamed(def_id, name),
-                            ),
-                            ParamKind::Late => return false,
-                        };
-                        // Does this region outlive any captured region?
-                        captured_regions.iter().any(|r| {
-                            self.outlives_env
-                                .free_region_map()
-                                .sub_free_regions(self.tcx, *r, uncaptured)
-                        })
+                // Remove the set of lifetimes that are in-scope that outlive some other captured
+                // lifetime and are contravariant (i.e. covariant in argument position).
+                uncaptured_args.retain(|&(def_id, kind)| {
+                    let Some(ty::Bivariant | ty::Contravariant) = self.variances.get(def_id) else {
+                        // Keep all covariant/invariant args. Also if variance is `None`,
+                        // then that means it's either not a lifetime, or it didn't show up
+                        // anywhere in the signature.
+                        return true;
+                    };
+                    // We only computed variance of lifetimes...
+                    debug_assert_matches!(self.tcx.def_kind(def_id), DefKind::LifetimeParam);
+                    let uncaptured = match *kind {
+                        ParamKind::Early(name, index) => ty::Region::new_early_param(
+                            self.tcx,
+                            ty::EarlyParamRegion { name, index },
+                        ),
+                        ParamKind::Free(def_id, name) => ty::Region::new_late_param(
+                            self.tcx,
+                            self.parent_def_id.to_def_id(),
+                            ty::BoundRegionKind::BrNamed(def_id, name),
+                        ),
+                        // Totally ignore late bound args from binders.
+                        ParamKind::Late => return true,
+                    };
+                    // Does this region outlive any captured region?
+                    !captured_regions.iter().any(|r| {
+                        self.outlives_env
+                            .free_region_map()
+                            .sub_free_regions(self.tcx, *r, uncaptured)
                     })
-                    .collect();
-                // We don't care to warn on these args.
-                uncaptured_args.retain(|arg| !covariant_long_args.contains(arg));
+                });
 
                 // If we have uncaptured args, and if the opaque doesn't already have
                 // `use<>` syntax on it, and we're < edition 2024, then warn the user.
@@ -546,13 +537,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
     ) -> RelateResult<'tcx, T> {
         let old_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
-        self.relate(a, b)?;
+        self.relate(a, b).unwrap();
         self.ambient_variance = old_variance;
         Ok(a)
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        structurally_relate_tys(self, a, b)?;
+        structurally_relate_tys(self, a, b).unwrap();
         Ok(a)
     }
 
@@ -590,7 +581,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
         a: ty::Const<'tcx>,
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        structurally_relate_consts(self, a, b)?;
+        structurally_relate_consts(self, a, b).unwrap();
         Ok(a)
     }
 
@@ -602,7 +593,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        self.relate(a.skip_binder(), b.skip_binder())?;
+        self.relate(a.skip_binder(), b.skip_binder()).unwrap();
         Ok(a)
     }
 }
