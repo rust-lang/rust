@@ -1,3 +1,4 @@
+#![feature(f128)]
 #![allow(unused_macros)]
 
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
@@ -145,5 +146,20 @@ mod float_div {
     float! {
         f32, __divsf3, Single, all();
         f64, __divdf3, Double, all();
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    float! {
+        f128, __divtf3, Quad,
+        // FIXME(llvm): there is a bug in LLVM rt.
+        // See <https://github.com/llvm/llvm-project/issues/91840>.
+        not(any(feature = "no-sys-f128", all(target_arch = "aarch64", target_os = "linux")));
+    }
+
+    #[cfg(not(feature = "no-f16-f128"))]
+    #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+    float! {
+        f128, __divkf3, Quad, not(feature = "no-sys-f128");
     }
 }

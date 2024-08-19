@@ -256,6 +256,10 @@ mod intrinsics {
         a * b
     }
 
+    pub fn divtf(a: f128, b: f128) -> f128 {
+        a / b
+    }
+
     pub fn subtf(a: f128, b: f128) -> f128 {
         a - b
     }
@@ -440,6 +444,7 @@ fn run() {
     bb(aeabi_uldivmod(bb(2), bb(3)));
     bb(ashlti3(bb(2), bb(2)));
     bb(ashrti3(bb(2), bb(2)));
+    bb(divtf(bb(2.), bb(2.)));
     bb(divti3(bb(2), bb(2)));
     bb(eqtf(bb(2.), bb(2.)));
     bb(extendhfdf(bb(2.)));

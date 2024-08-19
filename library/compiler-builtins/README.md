@@ -222,7 +222,7 @@ of being added to Rust.
 
 - [x] addtf3.c
 - [x] comparetf2.c
-- [ ] divtf3.c
+- [x] divtf3.c
 - [x] extenddftf2.c
 - [x] extendhfsf2.c
 - [x] extendhftf2.c
