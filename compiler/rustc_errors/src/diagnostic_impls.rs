@@ -5,6 +5,7 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_ast::token::NonterminalKind;
 use rustc_ast_pretty::pprust;
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
@@ -301,6 +302,12 @@ impl IntoDiagArg for ClosureKind {
 impl IntoDiagArg for hir::def::Namespace {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
+impl IntoDiagArg for NonterminalKind {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
     }
 }
 
