@@ -5,8 +5,11 @@ use core::ptr::NonNull;
 
 #[test]
 // FIXME(GrigorenkoPV)
-#[allow(unknown_lints, reason = "`instantly_dangling_pointer` does not exist at stage 0 yet")]
-#[allow(instantly_dangling_pointer)]
+#[allow(
+    unknown_lints,
+    reason = "`dangling_pointers_from_temporaries` does not exist at stage 0 yet"
+)]
+#[allow(dangling_pointers_from_temporaries)]
 fn uninitialized_zero_size_box() {
     assert_eq!(
         &*Box::<()>::new_uninit() as *const _,

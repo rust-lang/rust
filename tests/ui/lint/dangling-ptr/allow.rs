@@ -2,7 +2,7 @@
 
 // This should not ICE.
 
-#![allow(instantly_dangling_pointer)]
+#![allow(dangling_pointers_from_temporaries)]
 
 fn main() {
     dbg!(String::new().as_ptr());

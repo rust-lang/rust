@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![deny(instantly_dangling_pointer)]
+#![deny(dangling_pointers_from_temporaries)]
 
 fn string() -> String {
     "hello".into()
@@ -18,16 +18,16 @@ fn main() {
     }
 
     // Call
-    string().as_ptr(); //~ ERROR [instantly_dangling_pointer]
+    string().as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
 
     // MethodCall
-    "hello".to_string().as_ptr(); //~ ERROR [instantly_dangling_pointer]
+    "hello".to_string().as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
 
     // Tup
     // impossible
 
     // Binary
-    (string() + "hello").as_ptr(); //~ ERROR [instantly_dangling_pointer]
+    (string() + "hello").as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
 
     // Path
     {
@@ -63,7 +63,7 @@ fn main() {
     // If
     {
         (if true { String::new() } else { "hello".into() }).as_ptr();
-        //~^ ERROR [instantly_dangling_pointer]
+        //~^ ERROR [dangling_pointers_from_temporaries]
     }
 
     // Loop
@@ -71,7 +71,7 @@ fn main() {
         (loop {
             break String::new();
         })
-        .as_ptr(); //~ ERROR [instantly_dangling_pointer]
+        .as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
     }
 
     // Match
@@ -79,14 +79,14 @@ fn main() {
         match string() {
             s => s,
         }
-        .as_ptr(); //~ ERROR [instantly_dangling_pointer]
+        .as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
     }
 
     // Closure
     // impossible
 
     // Block
-    { string() }.as_ptr(); //~ ERROR [instantly_dangling_pointer]
+    { string() }.as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
 
     // Assign, AssignOp
     // impossible
@@ -125,5 +125,5 @@ fn main() {
     // impossible
 
     // Macro
-    vec![0u8].as_ptr(); //~ ERROR [instantly_dangling_pointer]
+    vec![0u8].as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
 }

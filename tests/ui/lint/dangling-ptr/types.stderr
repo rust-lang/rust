@@ -1,5 +1,5 @@
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:20:26
+  --> $DIR/types.rs:20:26
    |
 LL |     declval::<CString>().as_ptr();
    |     -------------------- ^^^^^^ this pointer will immediately be invalid
@@ -9,13 +9,13 @@ LL |     declval::<CString>().as_ptr();
    = note: pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 note: the lint level is defined here
-  --> $DIR/instantly-dangling-pointer-types.rs:1:9
+  --> $DIR/types.rs:1:9
    |
-LL | #![deny(instantly_dangling_pointer)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(dangling_pointers_from_temporaries)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:21:25
+  --> $DIR/types.rs:21:25
    |
 LL |     declval::<String>().as_ptr();
    |     ------------------- ^^^^^^ this pointer will immediately be invalid
@@ -26,7 +26,7 @@ LL |     declval::<String>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Vec<u8>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:22:26
+  --> $DIR/types.rs:22:26
    |
 LL |     declval::<Vec<u8>>().as_ptr();
    |     -------------------- ^^^^^^ this pointer will immediately be invalid
@@ -37,7 +37,7 @@ LL |     declval::<Vec<u8>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<CString>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:23:31
+  --> $DIR/types.rs:23:31
    |
 LL |     declval::<Box<CString>>().as_ptr();
    |     ------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -48,7 +48,7 @@ LL |     declval::<Box<CString>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<[u8]>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:24:28
+  --> $DIR/types.rs:24:28
    |
 LL |     declval::<Box<[u8]>>().as_ptr();
    |     ---------------------- ^^^^^^ this pointer will immediately be invalid
@@ -59,7 +59,7 @@ LL |     declval::<Box<[u8]>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<str>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:25:27
+  --> $DIR/types.rs:25:27
    |
 LL |     declval::<Box<str>>().as_ptr();
    |     --------------------- ^^^^^^ this pointer will immediately be invalid
@@ -70,7 +70,7 @@ LL |     declval::<Box<str>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<CStr>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:26:28
+  --> $DIR/types.rs:26:28
    |
 LL |     declval::<Box<CStr>>().as_ptr();
    |     ---------------------- ^^^^^^ this pointer will immediately be invalid
@@ -81,7 +81,7 @@ LL |     declval::<Box<CStr>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `[u8; 10]` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:27:27
+  --> $DIR/types.rs:27:27
    |
 LL |     declval::<[u8; 10]>().as_ptr();
    |     --------------------- ^^^^^^ this pointer will immediately be invalid
@@ -92,7 +92,7 @@ LL |     declval::<[u8; 10]>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<[u8; 10]>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:28:32
+  --> $DIR/types.rs:28:32
    |
 LL |     declval::<Box<[u8; 10]>>().as_ptr();
    |     -------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -103,7 +103,7 @@ LL |     declval::<Box<[u8; 10]>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<Vec<u8>>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:29:31
+  --> $DIR/types.rs:29:31
    |
 LL |     declval::<Box<Vec<u8>>>().as_ptr();
    |     ------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -114,7 +114,7 @@ LL |     declval::<Box<Vec<u8>>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<String>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:30:30
+  --> $DIR/types.rs:30:30
    |
 LL |     declval::<Box<String>>().as_ptr();
    |     ------------------------ ^^^^^^ this pointer will immediately be invalid
@@ -125,7 +125,7 @@ LL |     declval::<Box<String>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Box<Box<Box<Box<[u8]>>>>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:31:43
+  --> $DIR/types.rs:31:43
    |
 LL |     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
    |     ------------------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -136,7 +136,7 @@ LL |     declval::<Box<Box<Box<Box<[u8]>>>>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Cell<u8>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:32:27
+  --> $DIR/types.rs:32:27
    |
 LL |     declval::<Cell<u8>>().as_ptr();
    |     --------------------- ^^^^^^ this pointer will immediately be invalid
@@ -147,7 +147,7 @@ LL |     declval::<Cell<u8>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `MaybeUninit<u8>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:33:34
+  --> $DIR/types.rs:33:34
    |
 LL |     declval::<MaybeUninit<u8>>().as_ptr();
    |     ---------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -158,7 +158,7 @@ LL |     declval::<MaybeUninit<u8>>().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Vec<AsPtrFake>` will result in a dangling pointer
-  --> $DIR/instantly-dangling-pointer-types.rs:34:33
+  --> $DIR/types.rs:34:33
    |
 LL |     declval::<Vec<AsPtrFake>>().as_ptr();
    |     --------------------------- ^^^^^^ this pointer will immediately be invalid

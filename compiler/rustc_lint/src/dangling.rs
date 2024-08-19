@@ -35,7 +35,7 @@ declare_lint! {
 // FIXME: does not catch UnsafeCell::get
 // FIXME: does not catch getting a ref to a temporary and then converting it to a ptr
 declare_lint! {
-    /// The `instantly_dangling_pointer` lint detects getting a pointer to data
+    /// The `dangling_pointers_from_temporaries` lint detects getting a pointer to data
     /// of a temporary that will immediately get dropped.
     ///
     /// ### Example
@@ -63,20 +63,12 @@ declare_lint! {
     ///
     /// If you need stronger guarantees, consider using references instead,
     /// as they are statically verified by the borrow-checker to never dangle.
-    ///
-    /// Note: This lint does **not** get triggered by methods & functions
-    /// that intentionally produce dangling pointers, such as:
-    ///
-    /// - `core::ptr::dangling` & `core::ptr::dangling_mut`
-    /// - `core::ptr::NonNull::dangling`
-    /// - `std::alloc::Layout::dangling`
-    ///
-    pub INSTANTLY_DANGLING_POINTER,
+    pub DANGLING_POINTERS_FROM_TEMPORARIES,
     Warn,
-    "detects getting a pointer that will immediately dangle"
+    "detects getting a pointer from a temporary"
 }
 
-declare_lint_pass!(DanglingPointers => [TEMPORARY_CSTRING_AS_PTR, INSTANTLY_DANGLING_POINTER]);
+declare_lint_pass!(DanglingPointers => [TEMPORARY_CSTRING_AS_PTR, DANGLING_POINTERS_FROM_TEMPORARIES]);
 
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -110,12 +102,16 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
             && let ty = cx.typeck_results().expr_ty(receiver)
             && is_interesting(cx, ty)
         {
-            cx.emit_span_lint(INSTANTLY_DANGLING_POINTER, method.ident.span, InstantlyDangling {
-                callee: method.ident.name,
-                ty,
-                ptr_span: method.ident.span,
-                temporary_span: receiver.span,
-            })
+            cx.emit_span_lint(
+                DANGLING_POINTERS_FROM_TEMPORARIES,
+                method.ident.span,
+                InstantlyDangling {
+                    callee: method.ident.name,
+                    ty,
+                    ptr_span: method.ident.span,
+                    temporary_span: receiver.span,
+                },
+            )
         }
     }
 }
