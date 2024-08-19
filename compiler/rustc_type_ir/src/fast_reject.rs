@@ -230,143 +230,189 @@ impl<I: Interner, const TREAT_LHS_PARAMS: bool, const TREAT_RHS_PARAMS: bool>
     }
 
     pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
-        match (lhs.kind(), rhs.kind()) {
-            (ty::Ref(_, lhs_ty, lhs_mutbl), ty::Ref(_, rhs_ty, rhs_mutbl)) => {
-                lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
-            }
+        if let ty::Infer(var) = rhs.kind() {
+            return self.var_and_ty_may_unify(var, lhs);
+        }
 
-            (ty::Adt(lhs_def, lhs_args), ty::Adt(rhs_def, rhs_args)) => {
-                lhs_def == rhs_def && self.args_may_unify(lhs_args, rhs_args)
-            }
+        if !Self::type_is_rigid::<TREAT_RHS_PARAMS>(rhs) {
+            return true;
+        }
 
-            (ty::Infer(var), _) => self.var_and_ty_may_unify(var, rhs),
-            (_, ty::Infer(var)) => self.var_and_ty_may_unify(var, lhs),
-
-            (ty::Int(_), ty::Int(_)) | (ty::Uint(_), ty::Uint(_)) => lhs == rhs,
-
-            (ty::Param(lhs), ty::Param(rhs)) => match (TREAT_LHS_PARAMS, TREAT_RHS_PARAMS) {
-                (false, false) => lhs == rhs,
-                (true, _) | (_, true) => true,
+        match lhs.kind() {
+            ty::Ref(_, lhs_ty, lhs_mutbl) => match rhs.kind() {
+                ty::Ref(_, rhs_ty, rhs_mutbl) => {
+                    lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
+                }
+                _ => false,
             },
+
+            ty::Adt(lhs_def, lhs_args) => match rhs.kind() {
+                ty::Adt(rhs_def, rhs_args) => {
+                    lhs_def == rhs_def && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::Param(lhs) => match rhs.kind() {
+                ty::Param(rhs) => match (TREAT_LHS_PARAMS, TREAT_RHS_PARAMS) {
+                    (false, false) => lhs == rhs,
+                    (true, _) | (_, true) => true,
+                },
+                _ => TREAT_LHS_PARAMS,
+            },
+
+            ty::Placeholder(lhs) => match rhs.kind() {
+                ty::Placeholder(rhs) => lhs == rhs,
+                _ => false,
+            },
+
+            ty::Infer(var) => self.var_and_ty_may_unify(var, rhs),
 
             // As we're walking the whole type, it may encounter projections
             // inside of binders and what not, so we're just going to assume that
             // projections can unify with other stuff.
             //
             // Looking forward to lazy normalization this is the safer strategy anyways.
-            (ty::Alias(..), _) | (_, ty::Alias(..)) => true,
+            ty::Alias(..) => true,
 
-            (ty::Bound(..), _) | (_, ty::Bound(..)) => true,
+            ty::Uint(_)
+            | ty::Int(_)
+            | ty::Float(_)
+            | ty::Str
+            | ty::Bool
+            | ty::Char
+            | ty::Never
+            | ty::Foreign(_) => lhs == rhs,
 
-            (ty::Param(_), _) => TREAT_LHS_PARAMS,
-            (_, ty::Param(_)) => TREAT_RHS_PARAMS,
+            ty::Tuple(lhs) => match rhs.kind() {
+                ty::Tuple(rhs) => {
+                    lhs.len() == rhs.len()
+                        && iter::zip(lhs.iter(), rhs.iter())
+                            .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
+                }
+                _ => false,
+            },
 
-            (ty::Tuple(lhs), ty::Tuple(rhs)) => {
-                lhs.len() == rhs.len()
-                    && iter::zip(lhs.iter(), rhs.iter())
-                        .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
-            }
+            ty::Array(lhs_ty, lhs_len) => match rhs.kind() {
+                ty::Array(rhs_ty, rhs_len) => {
+                    self.types_may_unify(lhs_ty, rhs_ty) && self.consts_may_unify(lhs_len, rhs_len)
+                }
+                _ => false,
+            },
 
-            (ty::Array(lhs_ty, lhs_len), ty::Array(rhs_ty, rhs_len)) => {
-                self.types_may_unify(lhs_ty, rhs_ty) && self.consts_may_unify(lhs_len, rhs_len)
-            }
+            ty::RawPtr(lhs_ty, lhs_mutbl) => match rhs.kind() {
+                ty::RawPtr(rhs_ty, rhs_mutbl) => {
+                    lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
+                }
+                _ => false,
+            },
 
-            (ty::RawPtr(lhs_ty, lhs_mutbl), ty::RawPtr(rhs_ty, rhs_mutbl)) => {
-                lhs_mutbl == rhs_mutbl && self.types_may_unify(lhs_ty, rhs_ty)
-            }
+            ty::Slice(lhs_ty) => match rhs.kind() {
+                ty::Slice(rhs_ty) => self.types_may_unify(lhs_ty, rhs_ty),
+                _ => false,
+            },
 
-            (ty::Slice(lhs_ty), ty::Slice(rhs_ty)) => self.types_may_unify(lhs_ty, rhs_ty),
+            ty::Dynamic(lhs_preds, ..) => match rhs.kind() {
+                ty::Dynamic(rhs_preds, ..) => {
+                    // Ideally we would walk the existential predicates here or at least
+                    // compare their length. But considering that the relevant `Relate` impl
+                    // actually sorts and deduplicates these, that doesn't work.
+                    lhs_preds.principal_def_id() == rhs_preds.principal_def_id()
+                }
+                _ => false,
+            },
 
-            (ty::Float(_), ty::Float(_))
-            | (ty::Str, ty::Str)
-            | (ty::Bool, ty::Bool)
-            | (ty::Char, ty::Char)
-            | (ty::Never, ty::Never)
-            | (ty::Foreign(_), ty::Foreign(_)) => lhs == rhs,
+            ty::FnPtr(lhs_sig_tys, lhs_hdr) => match rhs.kind() {
+                ty::FnPtr(rhs_sig_tys, rhs_hdr) => {
+                    let lhs_sig_tys = lhs_sig_tys.skip_binder().inputs_and_output;
+                    let rhs_sig_tys = rhs_sig_tys.skip_binder().inputs_and_output;
 
-            (ty::Dynamic(lhs_preds, ..), ty::Dynamic(rhs_preds, ..)) => {
-                // Ideally we would walk the existential predicates here or at least
-                // compare their length. But considering that the relevant `Relate` impl
-                // actually sorts and deduplicates these, that doesn't work.
-                lhs_preds.principal_def_id() == rhs_preds.principal_def_id()
-            }
+                    lhs_hdr == rhs_hdr
+                        && lhs_sig_tys.len() == rhs_sig_tys.len()
+                        && iter::zip(lhs_sig_tys.iter(), rhs_sig_tys.iter())
+                            .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
+                }
+                _ => false,
+            },
 
-            // Placeholder types don't unify with anything on their own.
-            (ty::Placeholder(lhs), ty::Placeholder(rhs)) => lhs == rhs,
+            ty::Bound(..) => true,
 
-            (ty::FnPtr(lhs_sig_tys, lhs_hdr), ty::FnPtr(rhs_sig_tys, rhs_hdr)) => {
-                let lhs_sig_tys = lhs_sig_tys.skip_binder().inputs_and_output;
-                let rhs_sig_tys = rhs_sig_tys.skip_binder().inputs_and_output;
+            ty::FnDef(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::FnDef(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
 
-                lhs_hdr == rhs_hdr
-                    && lhs_sig_tys.len() == rhs_sig_tys.len()
-                    && iter::zip(lhs_sig_tys.iter(), rhs_sig_tys.iter())
-                        .all(|(lhs, rhs)| self.types_may_unify(lhs, rhs))
-            }
+            ty::Closure(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::Closure(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
 
-            (ty::FnDef(lhs_def_id, lhs_args), ty::FnDef(rhs_def_id, rhs_args))
-            | (ty::Closure(lhs_def_id, lhs_args), ty::Closure(rhs_def_id, rhs_args))
-            | (
-                ty::CoroutineClosure(lhs_def_id, lhs_args),
-                ty::CoroutineClosure(rhs_def_id, rhs_args),
-            )
-            | (ty::Coroutine(lhs_def_id, lhs_args), ty::Coroutine(rhs_def_id, rhs_args))
-            | (
-                ty::CoroutineWitness(lhs_def_id, lhs_args),
-                ty::CoroutineWitness(rhs_def_id, rhs_args),
-            ) => lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args),
+            ty::CoroutineClosure(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::CoroutineClosure(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
 
-            (ty::Pat(lhs_ty, _), ty::Pat(rhs_ty, _)) => {
-                // FIXME(pattern_types): take pattern into account
-                self.types_may_unify(lhs_ty, rhs_ty)
-            }
+            ty::Coroutine(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::Coroutine(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
 
-            (ty::Error(..), _)
-            | (_, ty::Error(..))
-            | (ty::Placeholder(_), _)
-            | (_, ty::Placeholder(_))
-            | (ty::Bool, _)
-            | (_, ty::Bool)
-            | (ty::Char, _)
-            | (_, ty::Char)
-            | (ty::Int(_), _)
-            | (_, ty::Int(_))
-            | (ty::Uint(_), _)
-            | (_, ty::Uint(_))
-            | (ty::Float(_), _)
-            | (_, ty::Float(_))
-            | (ty::Str, _)
-            | (_, ty::Str)
-            | (ty::Never, _)
-            | (_, ty::Never)
-            | (ty::Foreign(_), _)
-            | (_, ty::Foreign(_))
-            | (ty::Ref(..), _)
-            | (_, ty::Ref(..))
-            | (ty::Adt(..), _)
-            | (_, ty::Adt(..))
-            | (ty::Pat(..), _)
-            | (_, ty::Pat(..))
-            | (ty::Slice(_), _)
-            | (_, ty::Slice(_))
-            | (ty::Array(..), _)
-            | (_, ty::Array(..))
-            | (ty::Tuple(_), _)
-            | (_, ty::Tuple(_))
-            | (ty::RawPtr(..), _)
-            | (_, ty::RawPtr(..))
-            | (ty::Dynamic(..), _)
-            | (_, ty::Dynamic(..))
-            | (ty::FnPtr(..), _)
-            | (_, ty::FnPtr(..))
-            | (ty::FnDef(..), _)
-            | (_, ty::FnDef(..))
-            | (ty::Closure(..), _)
-            | (_, ty::Closure(..))
-            | (ty::CoroutineClosure(..), _)
-            | (_, ty::CoroutineClosure(..))
-            | (ty::Coroutine(..), _)
-            | (_, ty::Coroutine(..)) => false,
+            ty::CoroutineWitness(lhs_def_id, lhs_args) => match rhs.kind() {
+                ty::CoroutineWitness(rhs_def_id, rhs_args) => {
+                    lhs_def_id == rhs_def_id && self.args_may_unify(lhs_args, rhs_args)
+                }
+                _ => false,
+            },
+
+            ty::Pat(lhs_ty, _) => match rhs.kind() {
+                ty::Pat(rhs_ty, _) => {
+                    // FIXME(pattern_types): take pattern into account
+                    self.types_may_unify(lhs_ty, rhs_ty)
+                }
+                _ => false,
+            },
+
+            ty::Error(..) => true,
+        }
+    }
+
+    fn type_is_rigid<const TREAT_PARAM: bool>(ty: I::Ty) -> bool {
+        match ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Pat(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_, _)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(..)
+            | ty::Dynamic(_, _, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Placeholder(_) => true,
+
+            ty::Param(_) => !TREAT_PARAM,
+
+            ty::Error(_) | ty::Infer(_) | ty::Alias(_, _) | ty::Bound(_, _) => false,
         }
     }
 
@@ -389,10 +435,6 @@ impl<I: Interner, const TREAT_LHS_PARAMS: bool, const TREAT_RHS_PARAMS: bool>
     }
 
     fn var_and_ty_may_unify(self, var: ty::InferTy, ty: I::Ty) -> bool {
-        if !ty.is_known_rigid() {
-            return true;
-        }
-
         match var {
             ty::IntVar(_) => ty.is_integral(),
             ty::FloatVar(_) => ty.is_floating_point(),
