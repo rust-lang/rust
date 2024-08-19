@@ -80,13 +80,6 @@ config_data! {
         pub(crate) cargo_autoreload: bool           = true,
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = true,
-        /// Specifies the working directory for running build scripts.
-        /// - "workspace": run build scripts for a workspace in the workspace's root directory.
-        ///   This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
-        /// - "root": run build scripts in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        cargo_buildScripts_invocationLocation: InvocationLocation = InvocationLocation::Workspace,
         /// Specifies the invocation strategy to use when running the build scripts command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
@@ -101,8 +94,7 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and
-        /// `#rust-analyzer.cargo.buildScripts.invocationLocation#`.
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
         ///
         /// By default, a cargo invocation will be constructed for the configured
         /// targets and features, with the following base command line:
@@ -182,14 +174,6 @@ config_data! {
         ///
         /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
         check_ignore: FxHashSet<String> = FxHashSet::default(),
-        /// Specifies the working directory for running checks.
-        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-        // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
-        /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
-        /// is set.
-        check_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = InvocationLocation::Workspace,
         /// Specifies the invocation strategy to use when running the check command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
@@ -212,8 +196,7 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.check.invocationStrategy#` and
-        /// `#rust-analyzer.check.invocationLocation#`.
+        /// by changing `#rust-analyzer.check.invocationStrategy#`.
         ///
         /// If `$saved_file` is part of the command, rust-analyzer will pass
         /// the absolute path of the saved file to the provided command. This is
@@ -1868,12 +1851,6 @@ impl Config {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
-            invocation_location: match self.cargo_buildScripts_invocationLocation(None) {
-                InvocationLocation::Root => {
-                    project_model::InvocationLocation::Root(self.root_path.clone())
-                }
-                InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
-            },
             run_build_script_command: self.cargo_buildScripts_overrideCommand(None).clone(),
             extra_args: self.cargo_extraArgs(None).clone(),
             extra_env: self.cargo_extraEnv(None).clone(),
@@ -1928,14 +1905,6 @@ impl Config {
                         InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
                             crate::flycheck::InvocationStrategy::PerWorkspace
-                        }
-                    },
-                    invocation_location: match self.check_invocationLocation(None) {
-                        InvocationLocation::Root => {
-                            crate::flycheck::InvocationLocation::Root(self.root_path.clone())
-                        }
-                        InvocationLocation::Workspace => {
-                            crate::flycheck::InvocationLocation::Workspace
                         }
                     },
                 }
@@ -2347,13 +2316,6 @@ pub(crate) enum InvocationStrategy {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct CheckOnSaveTargets(#[serde(with = "single_or_array")] Vec<String>);
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-enum InvocationLocation {
-    Root,
-    Workspace,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -3194,14 +3156,6 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "The command will be executed for each workspace.",
                 "The command will be executed once."
-            ],
-        },
-        "InvocationLocation" => set! {
-            "type": "string",
-            "enum": ["workspace", "root"],
-            "enumDescriptions": [
-                "The command will be executed in the corresponding workspace root.",
-                "The command will be executed in the project root."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {

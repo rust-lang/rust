@@ -13,7 +13,7 @@ use serde_json::from_value;
 use span::Edition;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, InvocationLocation, ManifestPath, Sysroot};
+use crate::{utf8_stdout, ManifestPath, Sysroot};
 use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -100,7 +100,6 @@ pub struct CargoConfig {
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
     pub invocation_strategy: InvocationStrategy,
-    pub invocation_location: InvocationLocation,
     /// Optional path to use instead of `target` when building
     pub target_dir: Option<Utf8PathBuf>,
 }
