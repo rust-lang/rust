@@ -1242,7 +1242,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::AddressOf(mutability, place) => {
+            &Rvalue::RawPtr(mutability, place) => {
                 let access_kind = match mutability {
                     Mutability::Mut => (
                         Deep,

@@ -351,7 +351,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, '_, 'tcx> {
             && let Some((_, rvalue)) = statement.kind.as_assign()
             && let mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place)
                 // FIXME: Does `&raw const foo` allow mutation? See #90413.
-                | mir::Rvalue::AddressOf(_, place) = rvalue
+                | mir::Rvalue::RawPtr(_, place) = rvalue
             && let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref())
         {
             on_all_children_bits(self.move_data(), mpi, |child| {

@@ -551,7 +551,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(rhs)?;
             }
 
-            Rvalue::AddressOf(_, place) => {
+            Rvalue::RawPtr(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
                 // no problem, only using it is.
                 if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection()

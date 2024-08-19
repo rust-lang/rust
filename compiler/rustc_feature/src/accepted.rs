@@ -321,6 +321,8 @@ declare_features! (
     (accepted, raw_dylib, "1.71.0", Some(58713)),
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589)),
+    /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
+    (accepted, raw_ref_op, "CURRENT_RUSTC_VERSION", Some(64490)),
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (accepted, re_rebalance_coherence, "1.41.0", Some(55437)),

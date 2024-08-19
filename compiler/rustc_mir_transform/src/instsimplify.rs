@@ -141,7 +141,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 
     /// Transform `&(*a)` ==> `a`.
     fn simplify_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
-        if let Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) = rvalue {
+        if let Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
                 if rvalue.ty(self.local_decls, self.tcx) != base.ty(self.local_decls, self.tcx).ty {
                     return;
