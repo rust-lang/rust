@@ -240,7 +240,7 @@ of being added to Rust.
 - [ ] floatunsitf.c
 - [ ] floatuntitf.c
 - [x] multf3.c
-- [ ] powitf2.c
+- [x] powitf2.c
 - [x] subtf3.c
 - [x] truncdfhf2.c
 - [x] truncsfhf2.c
