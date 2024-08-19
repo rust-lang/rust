@@ -61,6 +61,10 @@ pub(crate) enum ProcMacroProgress {
 }
 
 impl GlobalState {
+    /// Is the server quiescent?
+    ///
+    /// This indicates that we've fully loaded the projects and
+    /// are ready to do semantic work.
     pub(crate) fn is_quiescent(&self) -> bool {
         self.vfs_done
             && self.last_reported_status.is_some()
@@ -69,6 +73,15 @@ impl GlobalState {
             && !self.fetch_proc_macros_queue.op_in_progress()
             && !self.discover_workspace_queue.op_in_progress()
             && self.vfs_progress_config_version >= self.vfs_config_version
+    }
+
+    /// Is the server ready to respond to analysis dependent LSP requests?
+    ///
+    /// Unlike `is_quiescent`, this returns false when we're indexing
+    /// the project, because we're holding the salsa lock and cannot
+    /// respond to LSP requests that depend on salsa data.
+    fn is_fully_ready(&self) -> bool {
+        self.is_quiescent() && !self.prime_caches_queue.op_in_progress()
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
@@ -102,13 +115,15 @@ impl GlobalState {
     }
 
     pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
-        let quiescent = self.is_quiescent();
-        let mut status =
-            lsp_ext::ServerStatusParams { health: lsp_ext::Health::Ok, quiescent, message: None };
+        let mut status = lsp_ext::ServerStatusParams {
+            health: lsp_ext::Health::Ok,
+            quiescent: self.is_fully_ready(),
+            message: None,
+        };
         let mut message = String::new();
 
         if !self.config.cargo_autoreload(None)
-            && quiescent
+            && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
             && self.config.discover_workspace_config().is_none()
         {
