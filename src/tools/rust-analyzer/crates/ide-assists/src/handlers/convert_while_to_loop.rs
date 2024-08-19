@@ -1,5 +1,6 @@
-use std::iter::once;
+use std::iter;
 
+use either::Either;
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
     ast::{
@@ -52,18 +53,30 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
         |edit| {
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
-            let break_block =
-                make::block_expr(once(make::expr_stmt(make::expr_break(None, None)).into()), None)
-                    .indent(while_indent_level);
+            let break_block = make::block_expr(
+                iter::once(make::expr_stmt(make::expr_break(None, None)).into()),
+                None,
+            )
+            .indent(while_indent_level);
             let block_expr = if is_pattern_cond(while_cond.clone()) {
                 let if_expr = make::expr_if(while_cond, while_body, Some(break_block.into()));
-                let stmts = once(make::expr_stmt(if_expr).into());
+                let stmts = iter::once(make::expr_stmt(if_expr).into());
                 make::block_expr(stmts, None)
             } else {
                 let if_cond = invert_boolean_expression(while_cond);
-                let if_expr = make::expr_if(if_cond, break_block, None);
-                let stmts = once(make::expr_stmt(if_expr).into()).chain(while_body.statements());
-                make::block_expr(stmts, while_body.tail_expr())
+                let if_expr = make::expr_if(if_cond, break_block, None).syntax().clone().into();
+                let elements = while_body.stmt_list().map_or_else(
+                    || Either::Left(iter::empty()),
+                    |stmts| {
+                        Either::Right(stmts.syntax().children_with_tokens().filter(|node_or_tok| {
+                            // Filter out the trailing expr
+                            !node_or_tok
+                                .as_node()
+                                .is_some_and(|node| ast::Expr::can_cast(node.kind()))
+                        }))
+                    },
+                );
+                make::hacky_block_expr(iter::once(if_expr).chain(elements), while_body.tail_expr())
             };
 
             let replacement = make::expr_loop(block_expr.indent(while_indent_level));
@@ -180,6 +193,74 @@ fn main() {
 fn main() {
     while cond {$0
         bar();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn preserve_comments() {
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    let mut i = 0;
+
+    $0while i < 5 {
+        // comment 1
+        dbg!(i);
+        // comment 2
+        i += 1;
+        // comment 3
+    }
+}
+"#,
+            r#"
+fn main() {
+    let mut i = 0;
+
+    loop {
+        if i >= 5 {
+            break;
+        }
+        // comment 1
+        dbg!(i);
+        // comment 2
+        i += 1;
+        // comment 3
+    }
+}
+"#,
+        );
+
+        check_assist(
+            convert_while_to_loop,
+            r#"
+fn main() {
+    let v = vec![1, 2, 3];
+    let iter = v.iter();
+
+    $0while let Some(i) = iter.next() {
+        // comment 1
+        dbg!(i);
+        // comment 2
+    }
+}
+"#,
+            r#"
+fn main() {
+    let v = vec![1, 2, 3];
+    let iter = v.iter();
+
+    loop {
+        if let Some(i) = iter.next() {
+            // comment 1
+            dbg!(i);
+            // comment 2
+        } else {
+            break;
+        }
     }
 }
 "#,
