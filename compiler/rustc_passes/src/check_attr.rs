@@ -189,6 +189,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                 [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
                 [sym::must_use, ..] => self.check_must_use(hir_id, attr, target),
+                [sym::may_dangle, ..] => self.check_may_dangle(hir_id, attr),
                 [sym::rustc_pass_by_value, ..] => self.check_pass_by_value(attr, span, target),
                 [sym::rustc_allow_incoherent_impl, ..] => {
                     self.check_allow_incoherent_impl(attr, span, target)
@@ -255,7 +256,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | sym::cfg_attr
                     // need to be fixed
                     | sym::cfi_encoding // FIXME(cfi_encoding)
-                    | sym::may_dangle // FIXME(dropck_eyepatch)
                     | sym::pointee // FIXME(derive_smart_pointer)
                     | sym::omit_gdb_pretty_printer_section // FIXME(omit_gdb_pretty_printer_section)
                     | sym::used // handled elsewhere to restrict to static items
@@ -1363,7 +1363,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[must_not_suspend]` is applied to a function.
+    /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
     fn check_must_not_suspend(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Struct | Target::Enum | Target::Union | Target::Trait => {}
@@ -1371,6 +1371,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.dcx().emit_err(errors::MustNotSuspend { attr_span: attr.span, span });
             }
         }
+    }
+
+    /// Checks if `#[may_dangle]` is applied to a lifetime or type generic parameter in `Drop` impl.
+    fn check_may_dangle(&self, hir_id: HirId, attr: &Attribute) {
+        if let hir::Node::GenericParam(param) = self.tcx.hir_node(hir_id)
+            && matches!(
+                param.kind,
+                hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. }
+            )
+            && matches!(param.source, hir::GenericParamSource::Generics)
+            && let parent_hir_id = self.tcx.parent_hir_id(hir_id)
+            && let hir::Node::Item(item) = self.tcx.hir_node(parent_hir_id)
+            && let hir::ItemKind::Impl(impl_) = item.kind
+            && let Some(trait_) = impl_.of_trait
+            && let Some(def_id) = trait_.trait_def_id()
+            && self.tcx.is_lang_item(def_id, hir::LangItem::Drop)
+        {
+            return;
+        }
+
+        self.dcx().emit_err(errors::InvalidMayDangle { attr_span: attr.span });
     }
 
     /// Checks if `#[cold]` is applied to a non-function.
