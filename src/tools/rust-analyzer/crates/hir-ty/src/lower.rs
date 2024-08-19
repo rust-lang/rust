@@ -1976,13 +1976,13 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
     let type_alias_data = db.type_alias_data(t);
-    if type_alias_data.is_extern {
-        Binders::empty(Interner, TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner))
+    let inner = if type_alias_data.is_extern {
+        TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner)
     } else {
         let type_ref = &type_alias_data.type_ref;
-        let inner = ctx.lower_ty(type_ref.as_deref().unwrap_or(&TypeRef::Error));
-        make_binders(db, &generics, inner)
-    }
+        ctx.lower_ty(type_ref.as_deref().unwrap_or(&TypeRef::Error))
+    };
+    make_binders(db, &generics, inner)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
