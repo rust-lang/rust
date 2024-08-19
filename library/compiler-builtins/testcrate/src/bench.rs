@@ -30,13 +30,14 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
 
     // FIXME(f16_f128): system symbols have incorrect results
     // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2125914639>
-    const X86_NO_SSE_SKIPPED: &[&str] =
-        &["add_f128", "sub_f128", "mul_f128", "powi_f32", "powi_f64"];
+    const X86_NO_SSE_SKIPPED: &[&str] = &[
+        "add_f128", "sub_f128", "mul_f128", "div_f128", "powi_f32", "powi_f64",
+    ];
 
     // FIXME(f16_f128): Wide multiply carry bug in `compiler-rt`, re-enable when nightly no longer
     // uses `compiler-rt` version.
     // <https://github.com/llvm/llvm-project/issues/91840>
-    const AARCH64_SKIPPED: &[&str] = &["mul_f128"];
+    const AARCH64_SKIPPED: &[&str] = &["mul_f128", "div_f128"];
 
     // FIXME(llvm): system symbols have incorrect results on Windows
     // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2121359807>
