@@ -667,7 +667,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.buildScripts.invocationStrategy": {
-                        "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                        "markdownDescription": "Specifies the invocation strategy to use when running the build scripts command.\nIf `per_workspace` is set, the command will be executed for each Rust workspace with the\nworkspace as the working directory.\nIf `once` is set, the command will be executed once with the opened project as the\nworking directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
                         "default": "per_workspace",
                         "type": "string",
                         "enum": [
@@ -675,8 +675,8 @@
                             "once"
                         ],
                         "enumDescriptions": [
-                            "The command will be executed for each workspace.",
-                            "The command will be executed once."
+                            "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                            "The command will be executed once with the opened project as the working directory."
                         ]
                     }
                 }
@@ -959,8 +959,8 @@
                             "once"
                         ],
                         "enumDescriptions": [
-                            "The command will be executed for each workspace.",
-                            "The command will be executed once."
+                            "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                            "The command will be executed once with the opened project as the working directory."
                         ]
                     }
                 }
