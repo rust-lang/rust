@@ -2322,6 +2322,19 @@ impl Step for RustDev {
         let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
+        // Copy the `compiler-rt` source, so that `library/profiler_builtins`
+        // can potentially use it to build the profiler runtime without needing
+        // to check out the LLVM submodule.
+        copy_src_dirs(
+            builder,
+            &builder.src.join("src").join("llvm-project"),
+            &["compiler-rt"],
+            // The test subdirectory is much larger than the rest of the source,
+            // and we currently don't use these test files anyway.
+            &["compiler-rt/test"],
+            tarball.image_dir(),
+        );
+
         Some(tarball.generate())
     }
 }
