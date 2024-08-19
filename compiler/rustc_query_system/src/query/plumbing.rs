@@ -181,8 +181,15 @@ where
         cache.complete(key, result, dep_node_index);
 
         let job = {
-            let mut lock = state.active.lock_shard_by_value(&key);
-            lock.remove(&key).unwrap().expect_job()
+            let val = {
+                // don't keep the lock during the `unwrap()` of the retrieved value, or we taint the
+                // underlying shard.
+                // since unwinding also wants to look at this map, this can also prevent a double
+                // panic.
+                let mut lock = state.active.lock_shard_by_value(&key);
+                lock.remove(&key)
+            };
+            val.unwrap().expect_job()
         };
 
         job.signal_complete();
