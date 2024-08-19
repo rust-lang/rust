@@ -1,7 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance -Zmiri-backtrace=full
 //@only-target-x86_64-unknown-linux: support for tokio only on linux and x86
-//@error-in-other-file: timeout value can only be 0
-//@normalize-stderr-test: " += note:.*\n" -> ""
 
 use tokio::time::{sleep, Duration, Instant};
 
