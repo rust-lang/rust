@@ -596,6 +596,7 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) covered_by_one: Option<Span>,
     #[note(mir_build_unreachable_covered_by_many)]
     pub(crate) covered_by_many: Option<MultiSpan>,
+    pub(crate) covered_by_many_n_more_count: usize,
 }
 
 #[derive(Subdiagnostic)]

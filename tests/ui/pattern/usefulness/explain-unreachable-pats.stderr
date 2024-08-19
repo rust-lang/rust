@@ -32,7 +32,31 @@ LL |         (1 | 2,) => {}
    |         ^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:32:9
+  --> $DIR/explain-unreachable-pats.rs:40:9
+   |
+LL |         1 ..= 6 => {}
+   |         ^^^^^^^ no value can reach this
+   |
+note: multiple earlier patterns match some of the same values
+  --> $DIR/explain-unreachable-pats.rs:40:9
+   |
+LL |         1 => {}
+   |         - matches some of the same values
+LL |
+LL |         2 => {}
+   |         - matches some of the same values
+LL |
+LL |         3 => {}
+   |         - matches some of the same values
+LL |
+LL |         4 => {}
+   |         - matches some of the same values
+...
+LL |         1 ..= 6 => {}
+   |         ^^^^^^^ ...and 2 other patterns collectively make this unreachable
+
+error: unreachable pattern
+  --> $DIR/explain-unreachable-pats.rs:51:9
    |
 LL |         Err(_) => {}
    |         ^^^^^^
@@ -41,7 +65,7 @@ LL |         Err(_) => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:46:9
+  --> $DIR/explain-unreachable-pats.rs:65:9
    |
 LL |         (Err(_), Err(_)) => {}
    |         ^^^^^^^^^^^^^^^^
@@ -50,7 +74,7 @@ LL |         (Err(_), Err(_)) => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:53:9
+  --> $DIR/explain-unreachable-pats.rs:72:9
    |
 LL |         (Err(_), Err(_)) => {}
    |         ^^^^^^^^^^^^^^^^
@@ -59,7 +83,7 @@ LL |         (Err(_), Err(_)) => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:63:11
+  --> $DIR/explain-unreachable-pats.rs:82:11
    |
 LL |     if let (0
    |             - matches all the relevant values
@@ -68,13 +92,13 @@ LL |         | 0, _) = (0, 0) {}
    |           ^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:73:9
+  --> $DIR/explain-unreachable-pats.rs:92:9
    |
 LL |         (_, true) => {}
    |         ^^^^^^^^^ no value can reach this
    |
 note: multiple earlier patterns match some of the same values
-  --> $DIR/explain-unreachable-pats.rs:73:9
+  --> $DIR/explain-unreachable-pats.rs:92:9
    |
 LL |         (true, _) => {}
    |         --------- matches some of the same values
@@ -86,7 +110,7 @@ LL |         (_, true) => {}
    |         ^^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:86:9
+  --> $DIR/explain-unreachable-pats.rs:105:9
    |
 LL |         (true, _) => {}
    |         --------- matches all the relevant values
@@ -95,7 +119,7 @@ LL |         (true, true) => {}
    |         ^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:98:9
+  --> $DIR/explain-unreachable-pats.rs:117:9
    |
 LL |         (_, true, 0..10) => {}
    |         ---------------- matches all the relevant values
@@ -103,5 +127,5 @@ LL |         (_, true, 0..10) => {}
 LL |         (_, true, 3) => {}
    |         ^^^^^^^^^^^^ no value can reach this
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

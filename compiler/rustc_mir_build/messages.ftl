@@ -327,6 +327,8 @@ mir_build_union_pattern = cannot use unions in constant patterns
 
 mir_build_unreachable_making_this_unreachable = collectively making this unreachable
 
+mir_build_unreachable_making_this_unreachable_n_more = ...and {$covered_by_many_n_more_count} other patterns collectively make this unreachable
+
 mir_build_unreachable_matches_same_values = matches some of the same values
 
 mir_build_unreachable_pattern = unreachable pattern

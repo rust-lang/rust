@@ -26,6 +26,25 @@ fn main() {
         _ => {}
     }
 
+    match 0u8 {
+        1 => {}
+        //~^ NOTE matches some of the same values
+        2 => {}
+        //~^ NOTE matches some of the same values
+        3 => {}
+        //~^ NOTE matches some of the same values
+        4 => {}
+        //~^ NOTE matches some of the same values
+        5 => {}
+        6 => {}
+        1 ..= 6 => {}
+        //~^ ERROR unreachable pattern
+        //~| NOTE no value can reach this
+        //~| NOTE multiple earlier patterns match some of the same values
+        //~| NOTE ...and 2 other patterns
+        _ => {}
+    }
+
     let res: Result<(),!> = Ok(());
     match res {
         Ok(_) => {}
