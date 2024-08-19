@@ -1,5 +1,6 @@
 // this program is not technically incorrect, but is an obscure enough style to be worth linting
 #![deny(temporary_cstring_as_ptr)]
+//~^ [renamed_and_removed_lints]
 
 use std::ffi::CString;
 

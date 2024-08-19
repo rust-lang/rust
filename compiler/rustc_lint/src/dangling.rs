@@ -1,36 +1,10 @@
 use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::sym;
 
 use crate::lints::InstantlyDangling;
 use crate::{LateContext, LateLintPass, LintContext};
-
-declare_lint! {
-    /// The `temporary_cstring_as_ptr` lint detects getting the inner pointer of
-    /// a temporary `CString`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// # #![allow(unused)]
-    /// # use std::ffi::CString;
-    /// let c_str = CString::new("foo").unwrap().as_ptr();
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The inner pointer of a `CString` lives only as long as the `CString` it
-    /// points to. Getting the inner pointer of a *temporary* `CString` allows the `CString`
-    /// to be dropped at the end of the statement, as it is not being referenced as far as the
-    /// typesystem is concerned. This means outside of the statement the pointer will point to
-    /// freed memory, which causes undefined behavior if the pointer is later dereferenced.
-    pub TEMPORARY_CSTRING_AS_PTR,
-    Warn,
-    "detects getting the inner pointer of a temporary `CString`"
-}
 
 // FIXME: does not catch UnsafeCell::get
 // FIXME: does not catch getting a ref to a temporary and then converting it to a ptr
@@ -68,34 +42,10 @@ declare_lint! {
     "detects getting a pointer from a temporary"
 }
 
-declare_lint_pass!(DanglingPointers => [TEMPORARY_CSTRING_AS_PTR, DANGLING_POINTERS_FROM_TEMPORARIES]);
+declare_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
 
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(as_ptr_path, as_ptr_receiver, ..) = expr.kind
-            && as_ptr_path.ident.name == sym::as_ptr
-            && let ExprKind::MethodCall(unwrap_path, unwrap_receiver, ..) = as_ptr_receiver.kind
-            && (unwrap_path.ident.name == sym::unwrap || unwrap_path.ident.name == sym::expect)
-            && let source_type = cx.typeck_results().expr_ty(unwrap_receiver)
-            && let ty::Adt(def, args) = source_type.kind()
-            && cx.tcx.is_diagnostic_item(sym::Result, def.did())
-            && let ty = args.type_at(0)
-            && let ty::Adt(adt, _) = ty.kind()
-            && cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did())
-        {
-            cx.emit_span_lint(
-                TEMPORARY_CSTRING_AS_PTR,
-                as_ptr_path.ident.span,
-                InstantlyDangling {
-                    callee: as_ptr_path.ident.name,
-                    ty,
-                    ptr_span: as_ptr_path.ident.span,
-                    temporary_span: as_ptr_receiver.span,
-                },
-            );
-            return; // One lint is enough
-        }
-
         if let ExprKind::MethodCall(method, receiver, _args, _span) = expr.kind
             && matches!(method.ident.name, sym::as_ptr | sym::as_mut_ptr)
             && is_temporary_rvalue(receiver)

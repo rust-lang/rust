@@ -1,4 +1,5 @@
 #![deny(temporary_cstring_as_ptr)]
+//~^ [renamed_and_removed_lints]
 
 use std::ffi::CString;
 use std::os::raw::c_char;

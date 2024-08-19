@@ -1,5 +1,13 @@
+warning: lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
+  --> $DIR/cstring-as-param.rs:1:9
+   |
+LL | #![deny(temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/cstring-as-param.rs:9:45
+  --> $DIR/cstring-as-param.rs:10:45
    |
 LL |     some_function(CString::new("").unwrap().as_ptr());
    |                   ------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -14,5 +22,5 @@ note: the lint level is defined here
 LL | #![deny(temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 

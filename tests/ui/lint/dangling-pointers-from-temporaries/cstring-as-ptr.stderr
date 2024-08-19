@@ -1,5 +1,13 @@
+warning: lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
+  --> $DIR/cstring-as-ptr.rs:2:9
+   |
+LL | #![deny(temporary_cstring_as_ptr)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/cstring-as-ptr.rs:14:48
+  --> $DIR/cstring-as-ptr.rs:15:48
    |
 LL |     let s = CString::new("some text").unwrap().as_ptr();
    |             ---------------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -15,7 +23,7 @@ LL | #![deny(temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: getting a pointer from a temporary `CString` will result in a dangling pointer
-  --> $DIR/cstring-as-ptr.rs:8:52
+  --> $DIR/cstring-as-ptr.rs:9:52
    |
 LL |         let s = CString::new("some text").unwrap().as_ptr();
    |                 ---------------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -29,5 +37,5 @@ LL |     mymacro!();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
    = note: this error originates in the macro `mymacro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
