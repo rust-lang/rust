@@ -512,7 +512,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.force_mode = force;
 
             let fragment_kind = invoc.fragment_kind;
-            match self.expand_invoc(invoc, &ext) {
+            match self.expand_invoc(invoc, &ext.kind) {
                 ExpandResult::Ready(fragment) => {
                     let mut derive_invocations = Vec::new();
                     let derive_placeholders = self
@@ -674,7 +674,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn expand_invoc(
         &mut self,
         invoc: Invocation,
-        ext: &Lrc<SyntaxExtension>,
+        ext: &SyntaxExtensionKind,
     ) -> ExpandResult<AstFragment, Invocation> {
         let recursion_limit = match self.cx.reduced_recursion_limit {
             Some((limit, _)) => limit,
@@ -695,7 +695,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
-            InvocationKind::Bang { mac, span } => match &ext.kind {
+            InvocationKind::Bang { mac, span } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     match expander.expand(self.cx, span, mac.args.tokens.clone()) {
                         Ok(tok_result) => {
@@ -725,7 +725,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Attr { attr, pos, mut item, derives } => match &ext.kind {
+            InvocationKind::Attr { attr, pos, mut item, derives } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
@@ -804,10 +804,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Derive { path, item, is_const } => match &ext.kind {
+            InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
-                    if let SyntaxExtensionKind::Derive(..) = ext.kind {
+                    if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
                     // The `MetaItem` representing the trait to derive can't
@@ -818,7 +818,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span,
                         path,
                     };
-                    invoc.expansion_data.id.expn_data();
                     let items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
