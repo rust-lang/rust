@@ -96,16 +96,6 @@ dependencies = [
 
 [[package]]
 name = "annotate-snippets"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d9b665789884a7e8fb06c84b295e923b03ca51edbb7d08f91a6a50322ecbfe6"
-dependencies = [
- "anstyle",
- "unicode-width",
-]
-
-[[package]]
-name = "annotate-snippets"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24e35ed54e5ea7997c14ed4c70ba043478db1112e98263b3b035907aa197d991"
@@ -3642,7 +3632,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.10.2",
+ "annotate-snippets 0.11.4",
  "derive_setters",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3702,7 +3692,7 @@ dependencies = [
 name = "rustc_fluent_macro"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.10.2",
+ "annotate-snippets 0.11.4",
  "fluent-bundle",
  "fluent-syntax",
  "proc-macro2",
