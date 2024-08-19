@@ -30,7 +30,7 @@ where
 // FIXME: Nix this cfg, so we can write unit tests independently of rustc
 #[cfg(feature = "rustc")]
 mod rustc {
-    use rustc_middle::ty::layout::{LayoutCx, LayoutOf};
+    use rustc_middle::ty::layout::LayoutCx;
     use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 
     use super::*;
@@ -45,10 +45,9 @@ mod rustc {
 
             let layout_cx = LayoutCx { tcx: context, param_env: ParamEnv::reveal_all() };
             let layout_of = |ty| {
-                layout_cx
-                    .layout_of(ty)
+                crate::layout::rustc::layout_of(layout_cx, ty)
                     .map_err(|_| Err::NotYetSupported)
-                    .and_then(|tl| Tree::from_ty(tl, layout_cx))
+                    .and_then(|_| Tree::from_ty(ty, layout_cx))
             };
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
