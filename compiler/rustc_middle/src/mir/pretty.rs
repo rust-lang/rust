@@ -1038,7 +1038,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
             CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
-            AddressOf(mutability, ref place) => {
+            RawPtr(mutability, ref place) => {
                 write!(fmt, "&raw {mut_str} {place:?}", mut_str = mutability.ptr_str())
             }
 

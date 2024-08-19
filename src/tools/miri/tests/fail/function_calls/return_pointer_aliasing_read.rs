@@ -1,7 +1,6 @@
 //@revisions: stack tree none
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@[none]compile-flags: -Zmiri-disable-stacked-borrows
-#![feature(raw_ref_op)]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 

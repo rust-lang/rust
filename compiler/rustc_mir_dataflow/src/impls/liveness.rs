@@ -189,13 +189,13 @@ impl DefUse {
 
             // All other contexts are uses...
             PlaceContext::MutatingUse(
-                MutatingUseContext::AddressOf
+                MutatingUseContext::RawBorrow
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::Drop
                 | MutatingUseContext::Retag,
             )
             | PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::AddressOf
+                NonMutatingUseContext::RawBorrow
                 | NonMutatingUseContext::Copy
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move

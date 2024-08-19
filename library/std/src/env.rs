@@ -198,13 +198,12 @@ impl fmt::Debug for VarsOs {
 ///
 /// # Errors
 ///
-/// This function will return an error if the environment variable isn't set.
+/// Returns [`VarError::NotPresent`] if:
+/// - The variable is not set.
+/// - The variable's name contains an equal sign or NUL (`'='` or `'\0'`).
 ///
-/// This function may return an error if the environment variable's name contains
-/// the equal sign character (`=`) or the NUL character.
-///
-/// This function will return an error if the environment variable's value is
-/// not valid Unicode. If this is not desired, consider using [`var_os`].
+/// Returns [`VarError::NotUnicode`] if the variable's value is not valid
+/// Unicode. If this is not desired, consider using [`var_os`].
 ///
 /// # Examples
 ///

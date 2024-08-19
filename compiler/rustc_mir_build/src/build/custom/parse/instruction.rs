@@ -244,8 +244,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
             ),
-            ExprKind::AddressOf { mutability, arg } => Ok(
-                Rvalue::AddressOf(*mutability, self.parse_place(*arg)?)
+            ExprKind::RawBorrow { mutability, arg } => Ok(
+                Rvalue::RawPtr(*mutability, self.parse_place(*arg)?)
             ),
             ExprKind::Binary { op, lhs, rhs } =>  Ok(
                 Rvalue::BinaryOp(*op, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?)))

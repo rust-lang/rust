@@ -303,12 +303,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push_assign(block, source_info, destination, borrow);
                 block.unit()
             }
-            ExprKind::AddressOf { mutability, arg } => {
+            ExprKind::RawBorrow { mutability, arg } => {
                 let place = match mutability {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
                 };
-                let address_of = Rvalue::AddressOf(mutability, unpack!(block = place));
+                let address_of = Rvalue::RawPtr(mutability, unpack!(block = place));
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }

@@ -1,7 +1,6 @@
 // This does need an aliasing model and protectors.
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(raw_ref_op)]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 #![feature(explicit_tail_calls)]
