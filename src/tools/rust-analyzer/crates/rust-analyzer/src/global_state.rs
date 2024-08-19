@@ -399,7 +399,7 @@ impl GlobalState {
                     .collect_vec();
 
                 for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
-                    if vfs_path == *user_config_path {
+                    if vfs_path.as_path() == user_config_path {
                         change.change_user_config(Some(db.file_text(file_id)));
                         continue;
                     }

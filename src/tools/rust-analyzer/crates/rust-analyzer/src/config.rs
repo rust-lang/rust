@@ -794,19 +794,17 @@ impl Config {
     /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
     /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
     /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
-    pub fn user_config_path() -> &'static AbsPath {
-        static USER_CONFIG_PATH: LazyLock<AbsPathBuf> = LazyLock::new(|| {
+    pub fn user_config_path() -> Option<&'static AbsPath> {
+        static USER_CONFIG_PATH: LazyLock<Option<AbsPathBuf>> = LazyLock::new(|| {
             let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
                 std::path::PathBuf::from(path)
             } else {
-                dirs::config_dir()
-                    .expect("A config dir is expected to existed on all platforms ra supports.")
-                    .join("rust-analyzer")
+                dirs::config_dir()?.join("rust-analyzer")
             }
             .join("rust-analyzer.toml");
-            AbsPathBuf::assert_utf8(user_config_path)
+            Some(AbsPathBuf::assert_utf8(user_config_path))
         });
-        &USER_CONFIG_PATH
+        USER_CONFIG_PATH.as_deref()
     }
 
     pub fn same_source_root_parent_map(

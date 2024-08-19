@@ -123,7 +123,7 @@ impl Project<'_> {
                 if config_dir_guard.is_none() {
                     config_dir_guard = Some(CONFIG_DIR_LOCK.lock());
                 }
-                let path = Config::user_config_path().join(&pth['/'.len_utf8()..]);
+                let path = Config::user_config_path().unwrap().join(&pth['/'.len_utf8()..]);
                 fs::create_dir_all(path.parent().unwrap()).unwrap();
                 fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
             } else {

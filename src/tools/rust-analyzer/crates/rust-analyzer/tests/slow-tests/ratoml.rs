@@ -77,7 +77,7 @@ impl RatomlTest {
         let mut spl = spl.into_iter();
         if let Some(first) = spl.next() {
             if first == "$$CONFIG_DIR$$" {
-                path = Config::user_config_path().to_path_buf().into();
+                path = Config::user_config_path().unwrap().to_path_buf().into();
             } else {
                 path = path.join(first);
             }
