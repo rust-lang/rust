@@ -21,7 +21,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath};
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_middle::bug;
-use rustc_middle::ty::fast_reject::{new_reject_ctxt, simplify_type, DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::{new_reject_ctxt, simplify_type, TreatParams};
 use rustc_middle::ty::print::{
     with_crate_prefix, with_forced_trimmed_paths, PrintTraitRefExt as _,
 };

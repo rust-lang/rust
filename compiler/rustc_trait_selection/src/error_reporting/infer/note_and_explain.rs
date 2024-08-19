@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fast_reject::{new_reject_ctxt, DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::new_reject_ctxt;
 use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::def_id::DefId;

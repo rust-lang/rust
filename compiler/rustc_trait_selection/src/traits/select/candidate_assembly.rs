@@ -13,7 +13,7 @@ use hir::LangItem;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation, SelectionError};
-use rustc_middle::ty::fast_reject::{new_reject_ctxt, DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::new_reject_ctxt;
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 

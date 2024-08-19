@@ -3,7 +3,6 @@ mod inherent;
 mod opaque_types;
 mod weak_types;
 
-use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{self as ty, new_reject_ctxt, Interner, NormalizesTo, Upcast as _};

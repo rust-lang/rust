@@ -2,7 +2,6 @@
 
 use rustc_ast_ir::Movability;
 use rustc_type_ir::data_structures::IndexSet;
-use rustc_type_ir::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::visit::TypeVisitableExt as _;

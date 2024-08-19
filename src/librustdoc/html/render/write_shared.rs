@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::fast_reject::{new_reject_ctxt, DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::new_reject_ctxt;
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
 use serde::ser::SerializeSeq;

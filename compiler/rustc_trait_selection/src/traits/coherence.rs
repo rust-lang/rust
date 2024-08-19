@@ -15,7 +15,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::ty::fast_reject::{new_reject_ctxt, DeepRejectCtxt, TreatParams};
+use rustc_middle::ty::fast_reject::new_reject_ctxt;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 pub use rustc_next_trait_solver::coherence::*;

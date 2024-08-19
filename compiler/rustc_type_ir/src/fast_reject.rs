@@ -198,8 +198,12 @@ impl TreatParams {
 #[macro_export]
 macro_rules! new_reject_ctxt {
     ($interner:expr, $lhs:ident, $rhs:ident) => {
-        DeepRejectCtxt::<_, {TreatParams::$lhs.into_bool()}, {TreatParams::$rhs.into_bool()}>::new($interner)
-    }
+        $crate::fast_reject::DeepRejectCtxt::<
+            _,
+            { $crate::fast_reject::TreatParams::$lhs.into_bool() },
+            { $crate::fast_reject::TreatParams::$rhs.into_bool() },
+        >::new($interner)
+    };
 }
 
 impl<I: Interner, const TREAT_LHS_PARAMS: bool, const TREAT_RHS_PARAMS: bool>
