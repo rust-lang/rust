@@ -4,7 +4,7 @@ fn assert_nonzero(_1: i32) -> () {
     let mut _0: ();
 
     bb0: {
-        switchInt(_1) -> [0: bb1, otherwise: bb2];
+        switchInt(copy _1) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {

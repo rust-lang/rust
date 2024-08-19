@@ -6,7 +6,7 @@
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound(
     // CHECK-NOT: Lt
-    // CHECK: Lt(_1, const N);
+    // CHECK: Lt(copy _1, const N);
     // CHECK-NOT: Lt
     if index < slice.len() { slice[index] } else { 42 }
 }
@@ -15,7 +15,7 @@ pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
 pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 {
     // CHECK-LABEL: fn array_bound_mut(
     // CHECK-NOT: Lt
-    // CHECK: Lt(_1, const N);
+    // CHECK: Lt(copy _1, const N);
     // CHECK-NOT: Lt
     // CHECK: Lt(const 0_usize, const N)
     // CHECK-NOT: Lt

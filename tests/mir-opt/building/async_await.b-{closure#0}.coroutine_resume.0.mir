@@ -151,7 +151,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_13);
         StorageLive(_14);
         StorageLive(_15);
-        _15 = _38;
+        _15 = copy _38;
         _14 = move _15;
         goto -> bb6;
     }
@@ -194,8 +194,8 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
 
     bb10: {
         StorageLive(_17);
-        _17 = ((_9 as Ready).0: ());
-        _3 = _17;
+        _17 = copy ((_9 as Ready).0: ());
+        _3 = copy _17;
         StorageDead(_17);
         StorageDead(_14);
         StorageDead(_12);
@@ -253,7 +253,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
         StorageLive(_29);
         StorageLive(_30);
         StorageLive(_31);
-        _31 = _38;
+        _31 = copy _38;
         _30 = move _31;
         goto -> bb18;
     }
@@ -291,8 +291,8 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body of b()}>, _2: &mut Context<'_>) ->
 
     bb21: {
         StorageLive(_33);
-        _33 = ((_25 as Ready).0: ());
-        _37 = _33;
+        _33 = copy ((_25 as Ready).0: ());
+        _37 = copy _33;
         StorageDead(_33);
         StorageDead(_30);
         StorageDead(_28);

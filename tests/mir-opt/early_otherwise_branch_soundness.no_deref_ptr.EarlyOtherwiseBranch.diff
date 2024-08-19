@@ -34,8 +34,8 @@
   
       bb4: {
           StorageLive(_5);
-          _5 = (((*_2) as Some).0: i32);
-          _0 = _5;
+          _5 = copy (((*_2) as Some).0: i32);
+          _0 = copy _5;
           StorageDead(_5);
           goto -> bb5;
       }

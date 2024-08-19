@@ -10,15 +10,15 @@ fn single_switchint() -> () {
         StorageLive(_2);
         _2 = (const 1_i32, const true);
         PlaceMention(_2);
-        switchInt((_2.0: i32)) -> [1: bb2, 2: bb4, otherwise: bb1];
+        switchInt(copy (_2.0: i32)) -> [1: bb2, 2: bb4, otherwise: bb1];
     }
 
     bb1: {
-        switchInt((_2.0: i32)) -> [3: bb8, 4: bb8, otherwise: bb7];
+        switchInt(copy (_2.0: i32)) -> [3: bb8, 4: bb8, otherwise: bb7];
     }
 
     bb2: {
-        switchInt((_2.1: bool)) -> [0: bb6, otherwise: bb3];
+        switchInt(copy (_2.1: bool)) -> [0: bb6, otherwise: bb3];
     }
 
     bb3: {
@@ -26,7 +26,7 @@ fn single_switchint() -> () {
     }
 
     bb4: {
-        switchInt((_2.1: bool)) -> [0: bb5, otherwise: bb6];
+        switchInt(copy (_2.1: bool)) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {

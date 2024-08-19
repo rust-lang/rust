@@ -20,6 +20,6 @@ fn main() {
         *p.add(1) = 1;
     }
 
-    // CHECK: [[x1]] = ({{_.*}}.1: u8);
+    // CHECK: [[x1]] = copy ({{_.*}}.1: u8);
     let x1 = x.1; // should not be propagated
 }
