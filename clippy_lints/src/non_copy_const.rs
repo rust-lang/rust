@@ -1,7 +1,3 @@
-//! Checks for usage of const which the type is not `Freeze` (`Cell`-free).
-//!
-//! This lint is **warn** by default.
-
 use std::ptr;
 
 use clippy_config::Conf;

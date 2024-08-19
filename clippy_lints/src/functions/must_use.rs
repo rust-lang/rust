@@ -8,7 +8,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
@@ -193,17 +193,13 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
     }
 }
 
-static KNOWN_WRAPPER_TYS: &[Symbol] = &[sym::Rc, sym::Arc];
-
 fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet) -> bool {
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
         ty::Adt(adt, args) => {
             tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.param_env)
-                || KNOWN_WRAPPER_TYS
-                    .iter()
-                    .any(|&sym| cx.tcx.is_diagnostic_item(sym, adt.did()))
+                || matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Rc | sym::Arc))
                     && args.types().any(|ty| is_mutable_ty(cx, ty, tys))
         },
         ty::Tuple(args) => args.iter().any(|ty| is_mutable_ty(cx, ty, tys)),

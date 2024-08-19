@@ -1,5 +1,3 @@
-//! Checks for usage of  `&Vec[_]` and `&String`.
-
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::expr_sig;

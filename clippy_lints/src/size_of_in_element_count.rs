@@ -1,6 +1,3 @@
-//! Lint on use of `size_of` or `size_of_val` of T in an expression
-//! expecting a count of T
-
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

@@ -1,6 +1,3 @@
-//! Lints concerned with the grouping of digits with underscores in integral or
-//! floating-point literal expressions.
-
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};

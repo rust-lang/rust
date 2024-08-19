@@ -1,5 +1,3 @@
-//! lint on blocks unnecessarily using >= with a + 1 or - 1
-
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, LitKind};
