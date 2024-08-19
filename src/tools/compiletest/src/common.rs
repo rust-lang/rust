@@ -296,14 +296,8 @@ pub struct Config {
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     pub gdb_version: Option<u32>,
 
-    /// Whether GDB has native rust support
-    pub gdb_native_rust: bool,
-
     /// Version of LLDB
     pub lldb_version: Option<u32>,
-
-    /// Whether LLDB has native rust support
-    pub lldb_native_rust: bool,
 
     /// Version of LLVM
     pub llvm_version: Option<u32>,

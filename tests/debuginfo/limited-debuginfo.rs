@@ -4,14 +4,10 @@
 
 // Make sure functions have proper names
 // gdb-command:info functions
-// gdbg-check:[...]void[...]main([...]);
-// gdbr-check:fn limited_debuginfo::main();
-// gdbg-check:[...]void[...]some_function([...]);
-// gdbr-check:fn limited_debuginfo::some_function();
-// gdbg-check:[...]void[...]some_other_function([...]);
-// gdbr-check:fn limited_debuginfo::some_other_function();
-// gdbg-check:[...]void[...]zzz([...]);
-// gdbr-check:fn limited_debuginfo::zzz();
+// gdb-check:fn limited_debuginfo::main();
+// gdb-check:fn limited_debuginfo::some_function();
+// gdb-check:fn limited_debuginfo::some_other_function();
+// gdb-check:fn limited_debuginfo::zzz();
 
 // gdb-command:run
 

@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -59,64 +57,47 @@
 // lldb-command:run
 
 // lldb-command:v *bool_ref
-// lldbg-check:[...] true
-// lldbr-check:(bool) *bool_ref = true
+// lldb-check:[...] true
 
 // lldb-command:v *int_ref
-// lldbg-check:[...] -1
-// lldbr-check:(isize) *int_ref = -1
+// lldb-check:[...] -1
 
-// NOTE: only rust-enabled lldb supports 32bit chars
-// lldbr-command:print *char_ref
-// lldbr-check:(char) *char_ref = 97
 
 // lldb-command:v *i8_ref
-// lldbg-check:[...] 68
-// lldbr-check:(i8) *i8_ref = 68
+// lldb-check:[...] 68
 
 // lldb-command:v *i16_ref
-// lldbg-check:[...] -16
-// lldbr-check:(i16) *i16_ref = -16
+// lldb-check:[...] -16
 
 // lldb-command:v *i32_ref
-// lldbg-check:[...] -32
-// lldbr-check:(i32) *i32_ref = -32
+// lldb-check:[...] -32
 
 // lldb-command:v *i64_ref
-// lldbg-check:[...] -64
-// lldbr-check:(i64) *i64_ref = -64
+// lldb-check:[...] -64
 
 // lldb-command:v *uint_ref
-// lldbg-check:[...] 1
-// lldbr-check:(usize) *uint_ref = 1
+// lldb-check:[...] 1
 
 // lldb-command:v *u8_ref
-// lldbg-check:[...] 100
-// lldbr-check:(u8) *u8_ref = 100
+// lldb-check:[...] 100
 
 // lldb-command:v *u16_ref
-// lldbg-check:[...] 16
-// lldbr-check:(u16) *u16_ref = 16
+// lldb-check:[...] 16
 
 // lldb-command:v *u32_ref
-// lldbg-check:[...] 32
-// lldbr-check:(u32) *u32_ref = 32
+// lldb-check:[...] 32
 
 // lldb-command:v *u64_ref
-// lldbg-check:[...] 64
-// lldbr-check:(u64) *u64_ref = 64
+// lldb-check:[...] 64
 
 // lldb-command:v *f16_ref
-// lldbg-check:[...] 1.5
-// lldbr-check:(f16) *f16_ref = 1.5
+// lldb-check:[...] 1.5
 
 // lldb-command:v *f32_ref
-// lldbg-check:[...] 2.5
-// lldbr-check:(f32) *f32_ref = 2.5
+// lldb-check:[...] 2.5
 
 // lldb-command:v *f64_ref
-// lldbg-check:[...] 3.5
-// lldbr-check:(f64) *f64_ref = 3.5
+// lldb-check:[...] 3.5
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

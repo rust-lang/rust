@@ -1,6 +1,5 @@
 //@ compile-flags:-g
 
-//@ min-gdb-version: 8.1
 //@ ignore-windows-gnu: #128981
 
 // Tests the visualizations for `NonZero<T>`, `Wrapping<T>` and
