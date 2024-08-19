@@ -14,19 +14,23 @@ mod assert {
         const ASSUME_VISIBILITY: bool,
     >()
     where
-        Dst: BikeshedIntrinsicFrom< //~ ERROR trait takes at most 2 generic arguments but 5 generic arguments were supplied
-            Src,
-            ASSUME_ALIGNMENT,
-            ASSUME_LIFETIMES,
-            ASSUME_VALIDITY,
-            ASSUME_VISIBILITY,
-        >,
-    {}
+        Dst: BikeshedIntrinsicFrom<
+                //~^ ERROR trait takes at most 2 generic arguments but 5 generic arguments were supplied
+                Src,
+                ASSUME_ALIGNMENT, //~ ERROR: mismatched types
+                ASSUME_LIFETIMES,
+                ASSUME_VALIDITY,
+                ASSUME_VISIBILITY,
+            >,
+    {
+    }
 }
 
 fn via_const() {
-    #[repr(C)] struct Src;
-    #[repr(C)] struct Dst;
+    #[repr(C)]
+    struct Src;
+    #[repr(C)]
+    struct Dst;
 
     const FALSE: bool = false;
 
