@@ -19,6 +19,7 @@ use object::BinaryFormat;
 
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, Tool};
+use crate::core::build_steps::vendor::default_paths_to_vendor;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -1004,35 +1005,18 @@ impl Step for PlainSourceTarball {
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
-            // FIXME: This code looks _very_ similar to what we have in `src/core/build_steps/vendor.rs`
-            // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
-
             builder.require_and_update_all_submodules();
 
             // Vendor all Cargo dependencies
             let mut cmd = command(&builder.initial_cargo);
-            cmd.arg("vendor")
-                .arg("--versioned-dirs")
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/cargo/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./library/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rustc-perf/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rustbook/Cargo.toml"))
-                // Will read the libstd Cargo.toml
-                // which uses the unstable `public-dependency` feature.
+            cmd.arg("vendor").arg("--versioned-dirs");
+
+            for p in default_paths_to_vendor(builder) {
+                cmd.arg("--sync").arg(p);
+            }
+
+            cmd
+                // Will read the libstd Cargo.toml which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
                 .current_dir(plain_dst_src);
 
