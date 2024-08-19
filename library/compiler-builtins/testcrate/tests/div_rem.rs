@@ -115,7 +115,13 @@ macro_rules! float {
                 fuzz_float_2(N, |x: $f, y: $f| {
                     let quo0: $f = apfloat_fallback!($f, $apfloat_ty, $sys_available, Div::div, x, y);
                     let quo1: $f = $fn(x, y);
-                    #[cfg(not(target_arch = "arm"))]
+
+                    // ARM SIMD instructions always flush subnormals to zero
+                    if cfg!(target_arch = "arm") &&
+                        ((Float::is_subnormal(quo0)) || Float::is_subnormal(quo1)) {
+                        return;
+                    }
+
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
                             "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
@@ -125,21 +131,6 @@ macro_rules! float {
                             quo0,
                             quo1
                         );
-                    }
-
-                    // ARM SIMD instructions always flush subnormals to zero
-                    #[cfg(target_arch = "arm")]
-                    if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
-                        if !Float::eq_repr(quo0, quo1) {
-                            panic!(
-                                "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                                stringify!($fn),
-                                x,
-                                y,
-                                quo0,
-                                quo1
-                            );
-                        }
                     }
                 });
             }
