@@ -330,11 +330,11 @@ mir_build_unreachable_making_this_unreachable = collectively making this unreach
 mir_build_unreachable_matches_same_values = matches some of the same values
 
 mir_build_unreachable_pattern = unreachable pattern
-    .label = unreachable pattern
-    .unreachable_matches_no_values = this pattern matches no values because `{$ty}` is uninhabited
+    .label = no value can reach this
+    .unreachable_matches_no_values = matches no values because `{$ty}` is uninhabited
     .unreachable_covered_by_catchall = matches any value
-    .unreachable_covered_by_one = matches all the values already
-    .unreachable_covered_by_many = these patterns collectively make the last one unreachable
+    .unreachable_covered_by_one = matches all the relevant values
+    .unreachable_covered_by_many = multiple earlier patterns match some of the same values
 
 mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items

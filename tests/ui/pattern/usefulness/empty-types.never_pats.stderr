@@ -13,7 +13,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 note: the lint level is defined here
   --> $DIR/empty-types.rs:15:9
    |
@@ -26,7 +26,7 @@ error: unreachable pattern
 LL |         _x => {}
    |         ^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error[E0004]: non-exhaustive patterns: type `&!` is non-empty
   --> $DIR/empty-types.rs:56:11
@@ -49,7 +49,7 @@ error: unreachable pattern
 LL |         (_, _) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `(u32, !)` is uninhabited
+   = note: matches no values because `(u32, !)` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:76:9
@@ -57,7 +57,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `(!, !)` is uninhabited
+   = note: matches no values because `(!, !)` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:79:9
@@ -65,7 +65,7 @@ error: unreachable pattern
 LL |         (_, _) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `(!, !)` is uninhabited
+   = note: matches no values because `(!, !)` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:83:9
@@ -73,7 +73,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error[E0004]: non-exhaustive patterns: `Ok(_)` not covered
   --> $DIR/empty-types.rs:87:11
@@ -100,7 +100,7 @@ error: unreachable pattern
 LL |         Err(_) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:99:9
@@ -108,7 +108,7 @@ error: unreachable pattern
 LL |         Err(_) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
   --> $DIR/empty-types.rs:96:11
@@ -162,7 +162,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:115:9
@@ -170,7 +170,7 @@ error: unreachable pattern
 LL |         Ok(_) => {}
    |         ^^^^^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:118:9
@@ -178,7 +178,7 @@ error: unreachable pattern
 LL |         Ok(_) => {}
    |         ^^^^^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:119:9
@@ -186,7 +186,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:122:9
@@ -194,7 +194,7 @@ error: unreachable pattern
 LL |         Ok(_) => {}
    |         ^^^^^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:123:9
@@ -202,7 +202,7 @@ error: unreachable pattern
 LL |         Err(_) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:132:13
@@ -210,7 +210,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
-   = note: this pattern matches no values because `Void` is uninhabited
+   = note: matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:135:13
@@ -218,7 +218,7 @@ error: unreachable pattern
 LL |             _ if false => {}
    |             ^
    |
-   = note: this pattern matches no values because `Void` is uninhabited
+   = note: matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:143:13
@@ -226,15 +226,15 @@ error: unreachable pattern
 LL |             Some(_) => {}
    |             ^^^^^^^
    |
-   = note: this pattern matches no values because `Void` is uninhabited
+   = note: matches no values because `Void` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:147:13
    |
 LL |             None => {}
-   |             ---- matches all the values already
+   |             ---- matches all the relevant values
 LL |             _ => {}
-   |             ^ unreachable pattern
+   |             ^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `Some(!)` not covered
   --> $DIR/empty-types.rs:156:15
@@ -261,7 +261,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:204:13
@@ -269,7 +269,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:209:13
@@ -277,7 +277,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:214:13
@@ -285,7 +285,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:220:13
@@ -293,7 +293,7 @@ error: unreachable pattern
 LL |             _ => {}
    |             ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:281:9
@@ -301,7 +301,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:284:9
@@ -309,7 +309,7 @@ error: unreachable pattern
 LL |         (_, _) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `(!, !)` is uninhabited
+   = note: matches no values because `(!, !)` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:287:9
@@ -317,7 +317,7 @@ error: unreachable pattern
 LL |         Ok(_) => {}
    |         ^^^^^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:288:9
@@ -325,7 +325,7 @@ error: unreachable pattern
 LL |         Err(_) => {}
    |         ^^^^^^
    |
-   = note: this pattern matches no values because `Result<!, !>` is uninhabited
+   = note: matches no values because `Result<!, !>` is uninhabited
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/empty-types.rs:297:13
@@ -480,7 +480,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `[!; 3]` is uninhabited
+   = note: matches no values because `[!; 3]` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:371:9
@@ -488,7 +488,7 @@ error: unreachable pattern
 LL |         [_, _, _] => {}
    |         ^^^^^^^^^
    |
-   = note: this pattern matches no values because `[!; 3]` is uninhabited
+   = note: matches no values because `[!; 3]` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:374:9
@@ -496,7 +496,7 @@ error: unreachable pattern
 LL |         [_, ..] => {}
    |         ^^^^^^^
    |
-   = note: this pattern matches no values because `[!; 3]` is uninhabited
+   = note: matches no values because `[!; 3]` is uninhabited
 
 error[E0004]: non-exhaustive patterns: type `[!; 0]` is non-empty
   --> $DIR/empty-types.rs:388:11
@@ -516,9 +516,9 @@ error: unreachable pattern
   --> $DIR/empty-types.rs:395:9
    |
 LL |         [] => {}
-   |         -- matches all the values already
+   |         -- matches all the relevant values
 LL |         _ => {}
-   |         ^ unreachable pattern
+   |         ^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
   --> $DIR/empty-types.rs:397:11
@@ -540,7 +540,7 @@ error: unreachable pattern
 LL |         Some(_) => {}
    |         ^^^^^^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:421:9
@@ -548,25 +548,25 @@ error: unreachable pattern
 LL |         Some(_a) => {}
    |         ^^^^^^^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:426:9
    |
 LL |         None => {}
-   |         ---- matches all the values already
+   |         ---- matches all the relevant values
 LL |         // !useful, !reachable
 LL |         _ => {}
-   |         ^ unreachable pattern
+   |         ^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:431:9
    |
 LL |         None => {}
-   |         ---- matches all the values already
+   |         ---- matches all the relevant values
 LL |         // !useful, !reachable
 LL |         _a => {}
-   |         ^^ unreachable pattern
+   |         ^^ no value can reach this
 
 error[E0004]: non-exhaustive patterns: `&Some(!)` not covered
   --> $DIR/empty-types.rs:451:11
@@ -664,7 +664,7 @@ error: unreachable pattern
 LL |         _ => {}
    |         ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:606:9
@@ -672,7 +672,7 @@ error: unreachable pattern
 LL |         _x => {}
    |         ^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:609:9
@@ -680,7 +680,7 @@ error: unreachable pattern
 LL |         _ if false => {}
    |         ^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:612:9
@@ -688,7 +688,7 @@ error: unreachable pattern
 LL |         _x if false => {}
    |         ^^
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: matches no values because `!` is uninhabited
 
 error[E0004]: non-exhaustive patterns: `&!` not covered
   --> $DIR/empty-types.rs:637:11
