@@ -82,17 +82,16 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspaces: &[&CargoWorkspace],
         progress: &dyn Fn(String),
-        workspace_root: &AbsPathBuf,
+        working_directory: &AbsPathBuf,
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
 
-        let current_dir = workspace_root;
         let cmd = Self::build_command(
             config,
             &Default::default(),
             // This is not gonna be used anyways, so just construct a dummy here
-            &ManifestPath::try_from(workspace_root.clone()).unwrap(),
-            current_dir,
+            &ManifestPath::try_from(working_directory.clone()).unwrap(),
+            working_directory,
             &Sysroot::empty(),
         )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and

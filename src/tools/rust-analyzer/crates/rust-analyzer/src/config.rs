@@ -81,8 +81,10 @@ config_data! {
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = true,
         /// Specifies the invocation strategy to use when running the build scripts command.
-        /// If `per_workspace` is set, the command will be executed for each workspace.
-        /// If `once` is set, the command will be executed once.
+        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
+        /// workspace as the working directory.
+        /// If `once` is set, the command will be executed once with the opened project as the
+        /// working directory.
         /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
         /// is set.
         cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
@@ -3154,8 +3156,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "string",
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
-                "The command will be executed for each workspace.",
-                "The command will be executed once."
+                "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                "The command will be executed once with the opened project as the working directory."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {
