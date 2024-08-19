@@ -8,10 +8,6 @@ help: consider using a semicolon here
    |
 LL |     foo(|| { bar(); })
    |            +      +++
-help: try adding a return type
-   |
-LL |     foo(|| -> i32 bar())
-   |            ++++++
 
 error: aborting due to 1 previous error
 
