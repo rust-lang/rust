@@ -439,6 +439,10 @@ impl<I: Interner, const TREAT_LHS_PARAMS: bool, const TREAT_RHS_PARAMS: bool>
     }
 
     fn var_and_ty_may_unify(self, var: ty::InferTy, ty: I::Ty) -> bool {
+        if !ty.is_known_rigid() {
+            return true;
+        }
+
         match var {
             ty::IntVar(_) => ty.is_integral(),
             ty::FloatVar(_) => ty.is_floating_point(),
