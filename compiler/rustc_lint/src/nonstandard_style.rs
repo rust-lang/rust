@@ -1,4 +1,4 @@
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_middle::ty;
@@ -212,29 +212,37 @@ impl EarlyLintPass for NonCamelCaseTypes {
 
 impl<'tcx> LateLintPass<'tcx> for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &rustc_hir::Item<'_>) {
-        //  Lint for renamed type, trait, or variant.
+        // Lint for renamed type, trait, or variant.
         if let hir::ItemKind::Use(path, _) = it.kind {
             if let Some(origin_segment) = path.segments.last() {
                 if origin_segment.ident == it.ident {
                     return;
                 }
 
-                // Skip lint for multiple namespaces
-                // because they have different naming conventions.
-                if path.res.len() != 1 {
+                if path.res.len() == 2 {
+                    match path.res[0] {
+                        Res::Def(DefKind::Struct | DefKind::Ctor(CtorOf::Struct, ..), ..) => {
+                            self.check_case(cx, "renamed type", &it.ident)
+                        }
+                        Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), ..) => {
+                            self.check_case(cx, "renamed variant", &it.ident)
+                        }
+                        _ => (),
+                    }
+
                     return;
                 }
 
-                match path.res[0] {
-                    Res::Def(
-                        DefKind::Enum | DefKind::Struct | DefKind::Union | DefKind::TyAlias,
-                        ..,
-                    ) => self.check_case(cx, "renamed type", &it.ident),
-                    Res::Def(DefKind::Trait, ..) => self.check_case(cx, "renamed trait", &it.ident),
-                    Res::Def(DefKind::Variant, ..) => {
-                        self.check_case(cx, "renamed variant", &it.ident)
+                if path.res.len() == 1 {
+                    match path.res[0] {
+                        Res::Def(DefKind::Enum | DefKind::Union | DefKind::TyAlias, ..) => {
+                            self.check_case(cx, "renamed type", &it.ident)
+                        }
+                        Res::Def(DefKind::Trait, ..) => {
+                            self.check_case(cx, "renamed trait", &it.ident)
+                        }
+                        _ => (),
                     }
-                    _ => (),
                 }
             }
         }
@@ -448,7 +456,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
 
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Use(path, _) = it.kind {
-            //  Lint for renamed function and module.
+            // Lint for renamed function and module.
             if let Some(origin_segment) = path.segments.last() {
                 if origin_segment.ident == it.ident {
                     return;
