@@ -3,6 +3,7 @@ mod markdown;
 mod runner;
 mod rust;
 
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -52,31 +53,33 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     let mut file = File::create(file_path)
         .map_err(|error| format!("failed to create args file: {error:?}"))?;
 
+    let mut content = BTreeSet::new();
+
     // We now put the common arguments into the file we created.
-    let mut content = vec!["--crate-type=bin".to_string()];
+    content.insert("--crate-type=bin".to_string());
 
     for cfg in &options.cfgs {
-        content.push(format!("--cfg={cfg}"));
+        content.insert(format!("--cfg={cfg}"));
     }
     for check_cfg in &options.check_cfgs {
-        content.push(format!("--check-cfg={check_cfg}"));
+        content.insert(format!("--check-cfg={check_cfg}"));
     }
 
     for lib_str in &options.lib_strs {
-        content.push(format!("-L{lib_str}"));
+        content.insert(format!("-L{lib_str}"));
     }
     for extern_str in &options.extern_strs {
-        content.push(format!("--extern={extern_str}"));
+        content.insert(format!("--extern={extern_str}"));
     }
-    content.push("-Ccodegen-units=1".to_string());
+    content.insert("-Ccodegen-units=1".to_string());
     for codegen_options_str in &options.codegen_options_strs {
-        content.push(format!("-C{codegen_options_str}"));
+        content.insert(format!("-C{codegen_options_str}"));
     }
     for unstable_option_str in &options.unstable_opts_strs {
-        content.push(format!("-Z{unstable_option_str}"));
+        content.insert(format!("-Z{unstable_option_str}"));
     }
 
-    let content = content.join("\n");
+    let content = content.into_iter().intersperse("\n".to_string()).collect::<String>();
 
     file.write_all(content.as_bytes())
         .map_err(|error| format!("failed to write arguments to temporary file: {error:?}"))?;
