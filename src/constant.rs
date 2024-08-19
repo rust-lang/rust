@@ -391,7 +391,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         data.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
-            let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
+            let (segment_name, section_name) = if tcx.sess.target.is_like_darwin {
                 // See https://github.com/llvm/llvm-project/blob/main/llvm/lib/MC/MCSectionMachO.cpp
                 let mut parts = section_name.as_str().split(',');
                 let Some(segment_name) = parts.next() else {
