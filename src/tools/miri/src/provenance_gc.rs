@@ -187,9 +187,9 @@ impl LiveAllocs<'_, '_> {
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn run_provenance_gc(&mut self) {
-        // We collect all tags from various parts of the interpreter, but also
         let this = self.eval_context_mut();
 
+        // We collect all tags and AllocId from every part of the interpreter.
         let mut tags = FxHashSet::default();
         let mut alloc_ids = FxHashSet::default();
         this.visit_provenance(&mut |id, tag| {
@@ -200,6 +200,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                 tags.insert(tag);
             }
         });
+
+        // Based on this, clean up the interpreter state.
         self.remove_unreachable_tags(tags);
         self.remove_unreachable_allocs(alloc_ids);
     }
