@@ -38,25 +38,28 @@ LL |         Err(_) => {}
    |         ^^^^^^
    |
    = note: matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:45:9
+  --> $DIR/explain-unreachable-pats.rs:46:9
    |
 LL |         (Err(_), Err(_)) => {}
    |         ^^^^^^^^^^^^^^^^
    |
    = note: matches no values because `Void2` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:51:9
+  --> $DIR/explain-unreachable-pats.rs:53:9
    |
 LL |         (Err(_), Err(_)) => {}
    |         ^^^^^^^^^^^^^^^^
    |
    = note: matches no values because `Void1` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:60:11
+  --> $DIR/explain-unreachable-pats.rs:63:11
    |
 LL |     if let (0
    |             - matches all the relevant values
@@ -65,13 +68,13 @@ LL |         | 0, _) = (0, 0) {}
    |           ^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:70:9
+  --> $DIR/explain-unreachable-pats.rs:73:9
    |
 LL |         (_, true) => {}
    |         ^^^^^^^^^ no value can reach this
    |
 note: multiple earlier patterns match some of the same values
-  --> $DIR/explain-unreachable-pats.rs:70:9
+  --> $DIR/explain-unreachable-pats.rs:73:9
    |
 LL |         (true, _) => {}
    |         --------- matches some of the same values
@@ -83,7 +86,7 @@ LL |         (_, true) => {}
    |         ^^^^^^^^^ collectively making this unreachable
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:83:9
+  --> $DIR/explain-unreachable-pats.rs:86:9
    |
 LL |         (true, _) => {}
    |         --------- matches all the relevant values
@@ -92,7 +95,7 @@ LL |         (true, true) => {}
    |         ^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
-  --> $DIR/explain-unreachable-pats.rs:95:9
+  --> $DIR/explain-unreachable-pats.rs:98:9
    |
 LL |         (_, true, 0..10) => {}
    |         ---------------- matches all the relevant values

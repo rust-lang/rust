@@ -5,6 +5,7 @@ LL |         Ok(box _) => (),
    |         ^^^^^^^^^
    |
    = note: matches no values because `NotSoSecretlyEmpty` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/uninhabited-patterns.rs:3:9
    |
@@ -18,6 +19,7 @@ LL |         Err(Ok(_y)) => (),
    |         ^^^^^^^^^^^
    |
    = note: matches no values because `NotSoSecretlyEmpty` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/uninhabited-patterns.rs:41:15
@@ -26,6 +28,7 @@ LL |     while let Some(_y) = foo() {
    |               ^^^^^^^^
    |
    = note: matches no values because `NotSoSecretlyEmpty` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: aborting due to 3 previous errors
 

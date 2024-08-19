@@ -921,6 +921,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
     let mut lint = UnreachablePattern {
         span: Some(pat_span),
         matches_no_values: None,
+        uninhabited_note: None,
         covered_by_catchall: None,
         covered_by_one: None,
         covered_by_many: None,
@@ -929,6 +930,7 @@ fn report_unreachable_pattern<'p, 'tcx>(
         [] => {
             // Empty pattern; we report the uninhabited type that caused the emptiness.
             lint.span = None; // Don't label the pattern itself
+            lint.uninhabited_note = Some(()); // Give a link about empty types
             pat.walk(&mut |subpat| {
                 let ty = **subpat.ty();
                 if cx.is_uninhabited(ty) {

@@ -32,6 +32,7 @@ fn main() {
         Err(_) => {}
         //~^ ERROR unreachable pattern
         //~| NOTE matches no values because `!` is uninhabited
+        //~| NOTE to learn more about uninhabited types, see
     }
 
     #[derive(Copy, Clone)]
@@ -45,12 +46,14 @@ fn main() {
         (Err(_), Err(_)) => {}
         //~^ ERROR unreachable pattern
         //~| NOTE matches no values because `Void2` is uninhabited
+        //~| NOTE to learn more about uninhabited types, see
         _ => {}
     }
     match (res1, &res2) {
         (Err(_), Err(_)) => {}
         //~^ ERROR unreachable pattern
         //~| NOTE matches no values because `Void1` is uninhabited
+        //~| NOTE to learn more about uninhabited types, see
         _ => {}
     }
 

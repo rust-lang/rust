@@ -588,6 +588,8 @@ pub(crate) struct UnreachablePattern<'tcx> {
     pub(crate) span: Option<Span>,
     #[subdiagnostic]
     pub(crate) matches_no_values: Option<UnreachableMatchesNoValues<'tcx>>,
+    #[note(mir_build_unreachable_uninhabited_note)]
+    pub(crate) uninhabited_note: Option<()>,
     #[label(mir_build_unreachable_covered_by_catchall)]
     pub(crate) covered_by_catchall: Option<Span>,
     #[label(mir_build_unreachable_covered_by_one)]

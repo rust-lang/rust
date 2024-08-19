@@ -5,6 +5,7 @@ LL |         Err(!),
    |         ^^^^^^
    |
    = note: matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/unreachable.rs:4:9
    |
@@ -18,6 +19,7 @@ LL |     let (Ok(_x) | Err(!)) = res_void;
    |                   ^^^^^^
    |
    = note: matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:19:12
@@ -26,6 +28,7 @@ LL |     if let Err(!) = res_void {}
    |            ^^^^^^
    |
    = note: matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:21:24
@@ -34,6 +37,7 @@ LL |     if let (Ok(true) | Err(!)) = res_void {}
    |                        ^^^^^^
    |
    = note: matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:23:23
@@ -42,6 +46,7 @@ LL |     for (Ok(mut _x) | Err(!)) in [res_void] {}
    |                       ^^^^^^
    |
    = note: matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/unreachable.rs:27:18
@@ -50,6 +55,7 @@ LL | fn foo((Ok(_x) | Err(!)): Result<bool, Void>) {}
    |                  ^^^^^^
    |
    = note: matches no values because `Void` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: aborting due to 6 previous errors
 
