@@ -6,15 +6,15 @@
 #[macro_export]
 macro_rules! __impl_fallback_supplement_co_v1 {
     ($ provider : ty) => {
-        #[clippy::msrv = "1.66"]
+        #[clippy::msrv = "1.67"]
         const _: () = <$provider>::MUST_USE_MAKE_PROVIDER_MACRO;
-        #[clippy::msrv = "1.66"]
+        #[clippy::msrv = "1.67"]
         impl $provider {
             #[doc(hidden)]
             pub const SINGLETON_FALLBACK_SUPPLEMENT_CO_V1: &'static <icu_locid_transform::provider::CollationFallbackSupplementV1Marker as icu_provider::DataMarker>::Yokeable = &icu_locid_transform::provider::LocaleFallbackSupplementV1 {
                 parents: unsafe {
                     #[allow(unused_unsafe)]
-                    zerovec::ZeroMap::from_parts_unchecked(unsafe { zerovec::VarZeroVec::from_bytes_unchecked(b"\x01\0\0\0\0\0yue") }, unsafe { zerovec::ZeroVec::from_bytes_unchecked(b"zh\0\x01Hant\0\0\0\0") })
+                    zerovec::ZeroMap::from_parts_unchecked(unsafe { zerovec::VarZeroVec::from_bytes_unchecked(b"\x1D\0\0\0\0\0\x07\0\x0E\0\x15\0\x1C\0#\0*\x001\08\0?\0F\0M\0T\0[\0b\0i\0p\0z\0\x81\0\x88\0\x8F\0\x96\0\x9D\0\xA4\0\xA7\0\xAD\0\xB5\0\xC0\0\xC8\0az-Arabaz-Cyrlbs-Cyrlen-Dsrten-Shawff-Adlmff-Arabha-Arabhi-Latnkk-Arabku-Arabky-Arabky-Latnml-Arabmn-Mongpa-Arabsr-Cyrl-MEsr-Latnug-Cyrluz-Arabuz-Cyrlwo-Arabyo-Arabyueyue-CNyue-Hansyue-Hans-CNyue-Hantzh-Hant") }, unsafe { zerovec::ZeroVec::from_bytes_unchecked(b"az\0\0\0\0\0\0\0\0\0\0az\0\0\0\0\0\0\0\0\0\0bs\0\0\0\0\0\0\0\0\0\0en\0\0\0\0\0\0\0\0\0\0en\0\0\0\0\0\0\0\0\0\0ff\0\0\0\0\0\0\0\0\0\0ff\0\0\0\0\0\0\0\0\0\0ha\0\0\0\0\0\0\0\0\0\0hi\0\0\0\0\0\0\0\0\0\0kk\0\0\0\0\0\0\0\0\0\0ku\0\0\0\0\0\0\0\0\0\0ky\0\0\0\0\0\0\0\0\0\0ky\0\0\0\0\0\0\0\0\0\0ml\0\0\0\0\0\0\0\0\0\0mn\0\0\0\0\0\0\0\0\0\0pa\0\0\0\0\0\0\0\0\0\0sr\0\0\0\0\0\0\x01ME\0sr\0\0\0\0\0\0\0\0\0\0ug\0\0\0\0\0\0\0\0\0\0uz\0\0\0\0\0\0\0\0\0\0uz\0\0\0\0\0\0\0\0\0\0wo\0\0\0\0\0\0\0\0\0\0yo\0\0\0\0\0\0\0\0\0\0zh\0\x01Hant\0\0\0\0zh\0\x01Hans\0\0\0\0zh\0\x01Hans\0\0\0\0zh\0\x01Hans\0\0\0\0zh\0\x01Hant\0\0\0\0zh\0\0\0\0\0\0\0\0\0\0") })
                 },
                 unicode_extension_defaults: unsafe {
                     #[allow(unused_unsafe)]
@@ -22,10 +22,25 @@ macro_rules! __impl_fallback_supplement_co_v1 {
                 },
             };
         }
-        #[clippy::msrv = "1.66"]
+        #[clippy::msrv = "1.67"]
         impl icu_provider::DataProvider<icu_locid_transform::provider::CollationFallbackSupplementV1Marker> for $provider {
             fn load(&self, req: icu_provider::DataRequest) -> Result<icu_provider::DataResponse<icu_locid_transform::provider::CollationFallbackSupplementV1Marker>, icu_provider::DataError> {
                 if req.locale.is_empty() { Ok(icu_provider::DataResponse { payload: Some(icu_provider::DataPayload::from_static_ref(Self::SINGLETON_FALLBACK_SUPPLEMENT_CO_V1)), metadata: Default::default() }) } else { Err(icu_provider::DataErrorKind::ExtraneousLocale.with_req(<icu_locid_transform::provider::CollationFallbackSupplementV1Marker as icu_provider::KeyedDataMarker>::KEY, req)) }
+            }
+        }
+    };
+}
+/// Implement `IterableDataProvider<CollationFallbackSupplementV1Marker>` on the given struct using the data
+/// hardcoded in this file. This allows the struct to be used with
+/// `DatagenDriver` for this key.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __impliterable_fallback_supplement_co_v1 {
+    ($ provider : ty) => {
+        #[clippy::msrv = "1.67"]
+        impl icu_provider::datagen::IterableDataProvider<icu_locid_transform::provider::CollationFallbackSupplementV1Marker> for $provider {
+            fn supported_locales(&self) -> Result<alloc::vec::Vec<icu_provider::DataLocale>, icu_provider::DataError> {
+                Ok([icu_provider::DataLocale::default()].into())
             }
         }
     };

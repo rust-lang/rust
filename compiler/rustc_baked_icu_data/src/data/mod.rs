@@ -12,7 +12,7 @@ macro_rules! impl_data_provider {
 #[allow(unused_macros)]
 macro_rules! impl_any_provider {
     ($ provider : ty) => {
-        #[clippy::msrv = "1.66"]
+        #[clippy::msrv = "1.67"]
         impl icu_provider::AnyProvider for $provider {
             fn load_any(&self, key: icu_provider::DataKey, req: icu_provider::DataRequest) -> Result<icu_provider::AnyResponse, icu_provider::DataError> {
                 match key.hashed() {
@@ -26,6 +26,6 @@ macro_rules! impl_any_provider {
         }
     };
 }
-#[clippy::msrv = "1.66"]
+#[clippy::msrv = "1.67"]
 pub struct BakedDataProvider;
 impl_data_provider!(BakedDataProvider);
