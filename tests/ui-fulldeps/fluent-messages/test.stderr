@@ -112,11 +112,11 @@ LL |     rustc_fluent_macro::fluent_messages! { "./many-lines.ftl" }
    = help: see additional errors emitted
 
 error: expected a message field for "no_crate_bar"
-  --> ./many-lines.ftl:15:1
-   |
-15 | no_crate_bar =
-   | ^^^^^^^^^^^^^^
-   |
+ --> ./many-lines.ftl:8:1
+  |
+8 | no_crate_bar =
+  | ^^^^^^^^^^^^^^
+  |
 
 error: aborting due to 14 previous errors
 
