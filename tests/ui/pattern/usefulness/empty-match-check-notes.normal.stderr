@@ -2,9 +2,8 @@ error: unreachable pattern
   --> $DIR/empty-match-check-notes.rs:17:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `EmptyEnum` is uninhabited
    |
-   = note: matches no values because `EmptyEnum` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/empty-match-check-notes.rs:7:9
@@ -16,27 +15,24 @@ error: unreachable pattern
   --> $DIR/empty-match-check-notes.rs:22:9
    |
 LL |         _ if false => {}
-   |         ^
+   |         ^ matches no values because `EmptyEnum` is uninhabited
    |
-   = note: matches no values because `EmptyEnum` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/empty-match-check-notes.rs:31:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `EmptyForeignEnum` is uninhabited
    |
-   = note: matches no values because `EmptyForeignEnum` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/empty-match-check-notes.rs:36:9
    |
 LL |         _ if false => {}
-   |         ^
+   |         ^ matches no values because `EmptyForeignEnum` is uninhabited
    |
-   = note: matches no values because `EmptyForeignEnum` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0005]: refutable pattern in local binding

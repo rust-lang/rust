@@ -333,7 +333,7 @@ mir_build_unreachable_matches_same_values = matches some of the same values
 
 mir_build_unreachable_pattern = unreachable pattern
     .label = no value can reach this
-    .unreachable_matches_no_values = matches no values because `{$ty}` is uninhabited
+    .unreachable_matches_no_values = matches no values because `{$matches_no_values_ty}` is uninhabited
     .unreachable_uninhabited_note = to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
     .unreachable_covered_by_catchall = matches any value
     .unreachable_covered_by_one = matches all the relevant values

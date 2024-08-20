@@ -2,9 +2,8 @@ error: unreachable pattern
   --> $DIR/impl-trait.rs:16:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `Void` is uninhabited
    |
-   = note: matches no values because `Void` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/impl-trait.rs:4:9
@@ -16,18 +15,16 @@ error: unreachable pattern
   --> $DIR/impl-trait.rs:30:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `Void` is uninhabited
    |
-   = note: matches no values because `Void` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:44:13
    |
 LL |             Some(_) => {}
-   |             ^^^^^^^
+   |             ^^^^^^^ matches no values because `Void` is uninhabited
    |
-   = note: matches no values because `Void` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
@@ -42,9 +39,8 @@ error: unreachable pattern
   --> $DIR/impl-trait.rs:58:13
    |
 LL |             Some(_) => {}
-   |             ^^^^^^^
+   |             ^^^^^^^ matches no values because `Void` is uninhabited
    |
-   = note: matches no values because `Void` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
@@ -59,9 +55,8 @@ error: unreachable pattern
   --> $DIR/impl-trait.rs:75:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `Void` is uninhabited
    |
-   = note: matches no values because `Void` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
@@ -76,9 +71,8 @@ error: unreachable pattern
   --> $DIR/impl-trait.rs:93:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `Void` is uninhabited
    |
-   = note: matches no values because `Void` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
@@ -101,18 +95,16 @@ error: unreachable pattern
   --> $DIR/impl-trait.rs:137:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `SecretelyVoid` is uninhabited
    |
-   = note: matches no values because `SecretelyVoid` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/impl-trait.rs:150:13
    |
 LL |             _ => {}
-   |             ^
+   |             ^ matches no values because `SecretelyDoubleVoid` is uninhabited
    |
-   = note: matches no values because `SecretelyDoubleVoid` is uninhabited
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0004]: non-exhaustive patterns: type `impl Copy` is non-empty
