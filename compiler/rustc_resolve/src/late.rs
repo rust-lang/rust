@@ -2677,14 +2677,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // We also can't shadow bindings from associated parent items.
             for ns in [ValueNS, TypeNS] {
                 for parent_rib in self.ribs[ns].iter().rev() {
-                    seen_bindings
-                        .extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
-
                     // Break at mod level, to account for nested items which are
                     // allowed to shadow generic param names.
                     if matches!(parent_rib.kind, RibKind::Module(..)) {
                         break;
                     }
+
+                    seen_bindings
+                        .extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
                 }
             }
 
