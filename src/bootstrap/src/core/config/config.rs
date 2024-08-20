@@ -14,7 +14,7 @@ use std::sync::OnceLock;
 use std::{cmp, env, fs};
 
 use build_helper::exit;
-use build_helper::git::GitConfig;
+use build_helper::git::{output_result, GitConfig};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
@@ -2509,6 +2509,123 @@ impl Config {
         }
     }
 
+    /// Given a path to the directory of a submodule, update it.
+    ///
+    /// `relative_path` should be relative to the root of the git repository, not an absolute path.
+    ///
+    /// This *does not* update the submodule if `config.toml` explicitly says
+    /// not to, or if we're not in a git repository (like a plain source
+    /// tarball). Typically [`crate::Build::require_submodule`] should be
+    /// used instead to provide a nice error to the user if the submodule is
+    /// missing.
+    pub(crate) fn update_submodule(&self, relative_path: &str) {
+        if !self.submodules() {
+            return;
+        }
+
+        let absolute_path = self.src.join(relative_path);
+
+        // NOTE: The check for the empty directory is here because when running x.py the first time,
+        // the submodule won't be checked out. Check it out now so we can build it.
+        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
+            && !helpers::dir_is_empty(&absolute_path)
+        {
+            return;
+        }
+
+        // Submodule updating actually happens during in the dry run mode. We need to make sure that
+        // all the git commands below are actually executed, because some follow-up code
+        // in bootstrap might depend on the submodules being checked out. Furthermore, not all
+        // the command executions below work with an empty output (produced during dry run).
+        // Therefore, all commands below are marked with `run_always()`, so that they also run in
+        // dry run mode.
+        let submodule_git = || {
+            let mut cmd = helpers::git(Some(&absolute_path));
+            cmd.run_always();
+            cmd
+        };
+
+        // Determine commit checked out in submodule.
+        let checked_out_hash = output(submodule_git().args(["rev-parse", "HEAD"]).as_command_mut());
+        let checked_out_hash = checked_out_hash.trim_end();
+        // Determine commit that the submodule *should* have.
+        let recorded = output(
+            helpers::git(Some(&self.src))
+                .run_always()
+                .args(["ls-tree", "HEAD"])
+                .arg(relative_path)
+                .as_command_mut(),
+        );
+
+        let actual_hash = recorded
+            .split_whitespace()
+            .nth(2)
+            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
+
+        if actual_hash == checked_out_hash {
+            // already checked out
+            return;
+        }
+
+        println!("Updating submodule {relative_path}");
+        self.check_run(
+            helpers::git(Some(&self.src))
+                .run_always()
+                .args(["submodule", "-q", "sync"])
+                .arg(relative_path),
+        );
+
+        // Try passing `--progress` to start, then run git again without if that fails.
+        let update = |progress: bool| {
+            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
+            // even though that has no relation to the upstream for the submodule.
+            let current_branch = output_result(
+                helpers::git(Some(&self.src))
+                    .allow_failure()
+                    .run_always()
+                    .args(["symbolic-ref", "--short", "HEAD"])
+                    .as_command_mut(),
+            )
+            .map(|b| b.trim().to_owned());
+
+            let mut git = helpers::git(Some(&self.src)).allow_failure();
+            git.run_always();
+            if let Ok(branch) = current_branch {
+                // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
+                // This syntax isn't accepted by `branch.{branch}`. Strip it.
+                let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
+                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
+            }
+            git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
+            if progress {
+                git.arg("--progress");
+            }
+            git.arg(relative_path);
+            git
+        };
+        if !self.check_run(&mut update(true)) {
+            self.check_run(&mut update(false));
+        }
+
+        // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
+        // diff-index reports the modifications through the exit status
+        let has_local_modifications = !self.check_run(submodule_git().allow_failure().args([
+            "diff-index",
+            "--quiet",
+            "HEAD",
+        ]));
+        if has_local_modifications {
+            self.check_run(submodule_git().args(["stash", "push"]));
+        }
+
+        self.check_run(submodule_git().args(["reset", "-q", "--hard"]));
+        self.check_run(submodule_git().args(["clean", "-qdfx"]));
+
+        if has_local_modifications {
+            self.check_run(submodule_git().args(["stash", "pop"]));
+        }
+    }
+
     #[cfg(feature = "bootstrap-self-test")]
     pub fn check_stage0_version(&self, _program_path: &Path, _component_name: &'static str) {}
 
@@ -2613,19 +2730,23 @@ impl Config {
         asserts: bool,
     ) -> bool {
         let if_unchanged = || {
-            // Git is needed to track modifications here, but tarball source is not available.
-            // If not modified here or built through tarball source, we maintain consistency
-            // with '"if available"'.
-            if !self.rust_info.is_from_tarball()
-                && self
-                    .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
-                    .is_none()
-            {
-                // there are some untracked changes in the given paths.
-                false
-            } else {
-                llvm::is_ci_llvm_available(self, asserts)
+            if self.rust_info.is_from_tarball() {
+                // Git is needed for running "if-unchanged" logic.
+                println!(
+                    "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-llvm`."
+                );
+                return false;
             }
+
+            self.update_submodule("src/llvm-project");
+
+            // Check for untracked changes in `src/llvm-project`.
+            let has_changes = self
+                .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+                .is_none();
+
+            // Return false if there are untracked changes, otherwise check if CI LLVM is available.
+            if has_changes { false } else { llvm::is_ci_llvm_available(self, asserts) }
         };
 
         match download_ci_llvm {
