@@ -118,14 +118,14 @@ impl FlycheckHandle {
     }
 
     /// Schedule a re-start of the cargo check worker to do a workspace wide check.
-    pub(crate) fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
-        self.sender.send(StateChange::Restart { package: None, saved_file }).unwrap();
+    pub(crate) fn restart_workspace(&self, saved_file: Option<AbsPathBuf>, target: Option<String>) {
+        self.sender.send(StateChange::Restart { package: None, saved_file, target }).unwrap();
     }
 
     /// Schedule a re-start of the cargo check worker to do a package wide check.
-    pub(crate) fn restart_for_package(&self, package: String) {
+    pub(crate) fn restart_for_package(&self, package: String, target: Option<String>) {
         self.sender
-            .send(StateChange::Restart { package: Some(package), saved_file: None })
+            .send(StateChange::Restart { package: Some(package), saved_file: None, target })
             .unwrap();
     }
 
@@ -183,7 +183,7 @@ pub(crate) enum Progress {
 }
 
 enum StateChange {
-    Restart { package: Option<String>, saved_file: Option<AbsPathBuf> },
+    Restart { package: Option<String>, saved_file: Option<AbsPathBuf>, target: Option<String> },
     Cancel,
 }
 
@@ -271,7 +271,7 @@ impl FlycheckActor {
                     tracing::debug!(flycheck_id = self.id, "flycheck cancelled");
                     self.cancel_check_process();
                 }
-                Event::RequestStateChange(StateChange::Restart { package, saved_file }) => {
+                Event::RequestStateChange(StateChange::Restart { package, saved_file, target }) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
                     while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
@@ -281,11 +281,14 @@ impl FlycheckActor {
                         }
                     }
 
-                    let command =
-                        match self.check_command(package.as_deref(), saved_file.as_deref()) {
-                            Some(c) => c,
-                            None => continue,
-                        };
+                    let command = match self.check_command(
+                        package.as_deref(),
+                        saved_file.as_deref(),
+                        target.as_deref(),
+                    ) {
+                        Some(c) => c,
+                        None => continue,
+                    };
                     let formatted_command = format!("{command:?}");
 
                     tracing::debug!(?command, "will restart flycheck");
@@ -381,6 +384,7 @@ impl FlycheckActor {
         &self,
         package: Option<&str>,
         saved_file: Option<&AbsPath>,
+        bin_target: Option<&str>,
     ) -> Option<Command> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
@@ -395,6 +399,10 @@ impl FlycheckActor {
                     Some(pkg) => cmd.arg("-p").arg(pkg),
                     None => cmd.arg("--workspace"),
                 };
+
+                if let Some(tgt) = bin_target {
+                    cmd.arg("--bin").arg(tgt);
+                }
 
                 cmd.arg(if *ansi_color_output {
                     "--message-format=json-diagnostic-rendered-ansi"

@@ -20,6 +20,7 @@ use crate::{
     lsp_ext::{self, RunFlycheckParams},
     mem_docs::DocumentData,
     reload,
+    target_spec::TargetSpec,
 };
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
@@ -185,7 +186,7 @@ pub(crate) fn handle_did_save_text_document(
     } else if state.config.check_on_save() {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
-            flycheck.restart_workspace(None);
+            flycheck.restart_workspace(None, None);
         }
     }
     Ok(())
@@ -287,16 +288,33 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
         let world = state.snapshot();
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
-            // Trigger flychecks for all workspaces that depend on the saved file
-            // Crates containing or depending on the saved file
-            let crate_ids: Vec<_> = world
-                .analysis
-                .crates_for(file_id)?
-                .into_iter()
-                .flat_map(|id| world.analysis.transitive_rev_deps(id))
-                .flatten()
-                .unique()
-                .collect();
+            // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
+            let target_is_bin = TargetSpec::for_file(&world, file_id)?.and_then(|x| {
+                if x.target_kind() == project_model::TargetKind::Bin {
+                    return match x {
+                        TargetSpec::Cargo(c) => Some(c.target),
+                        TargetSpec::ProjectJson(p) => Some(p.label),
+                    };
+                }
+
+                None
+            });
+
+            let crate_ids = if target_is_bin.is_some() {
+                // Trigger flychecks for the only workspace which the binary crate belongs to
+                world.analysis.crates_for(file_id)?.into_iter().unique().collect::<Vec<_>>()
+            } else {
+                // Trigger flychecks for all workspaces that depend on the saved file
+                // Crates containing or depending on the saved file
+                world
+                    .analysis
+                    .crates_for(file_id)?
+                    .into_iter()
+                    .flat_map(|id| world.analysis.transitive_rev_deps(id))
+                    .flatten()
+                    .unique()
+                    .collect::<Vec<_>>()
+            };
 
             let crate_root_paths: Vec<_> = crate_ids
                 .iter()
@@ -347,8 +365,11 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                     if id == flycheck.id() {
                         updated = true;
                         match package.filter(|_| !world.config.flycheck_workspace()) {
-                            Some(package) => flycheck.restart_for_package(package),
-                            None => flycheck.restart_workspace(saved_file.clone()),
+                            Some(package) => {
+                                flycheck.restart_for_package(package, target_is_bin.clone())
+                            }
+                            None => flycheck
+                                .restart_workspace(saved_file.clone(), target_is_bin.clone()),
                         }
                         continue;
                     }
@@ -357,7 +378,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             // No specific flycheck was triggered, so let's trigger all of them.
             if !updated {
                 for flycheck in world.flycheck.iter() {
-                    flycheck.restart_workspace(saved_file.clone());
+                    flycheck.restart_workspace(saved_file.clone(), None);
                 }
             }
             Ok(())
@@ -399,7 +420,7 @@ pub(crate) fn handle_run_flycheck(
     }
     // No specific flycheck was triggered, so let's trigger all of them.
     for flycheck in state.flycheck.iter() {
-        flycheck.restart_workspace(None);
+        flycheck.restart_workspace(None, None);
     }
     Ok(())
 }
