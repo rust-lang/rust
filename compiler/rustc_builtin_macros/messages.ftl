@@ -235,6 +235,8 @@ builtin_macros_non_exhaustive_default = default variant must be exhaustive
     .label = declared `#[non_exhaustive]` here
     .help = consider a manual implementation of `Default`
 
+builtin_macros_non_generic_pointee = the `#[pointee]` attribute may only be used on generic parameters
+
 builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants
     .help = consider a manual implementation of `Default`
 
