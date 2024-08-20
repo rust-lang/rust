@@ -73,7 +73,6 @@
 #![feature(iter_next_chunk)]
 #![feature(iter_order_by)]
 #![feature(iter_partition_in_place)]
-#![feature(iter_repeat_n)]
 #![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
 #![feature(layout_for_ptr)]
