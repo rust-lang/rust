@@ -603,6 +603,33 @@ fn opts() -> Vec<RustcOptGroup> {
                 "path to function call information (for displaying examples in the documentation)",
             )
         }),
+        unstable("merge", |o| {
+            o.optopt(
+                "",
+                "merge",
+                "Controls how rustdoc handles files from previously documented crates in the doc root
+                      none = Do not write cross-crate information to the --out-dir
+                      shared = Append current crate's info to files found in the --out-dir
+                      finalize = Write current crate's info and --include-parts-dir info to the --out-dir, overwriting conflicting files",
+                "none|shared|finalize",
+            )
+        }),
+        unstable("parts-out-dir", |o| {
+            o.optopt(
+                "",
+                "parts-out-dir",
+                "Writes trait implementations and other info for the current crate to provided path. Only use with --merge=none",
+                "path/to/doc.parts/<crate-name>",
+            )
+        }),
+        unstable("include-parts-dir", |o| {
+            o.optmulti(
+                "",
+                "include-parts-dir",
+                "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
+                "path/to/doc.parts/<crate-name>",
+            )
+        }),
         // deprecated / removed options
         unstable("disable-minification", |o| o.optflagmulti("", "disable-minification", "removed")),
         stable("plugin-path", |o| {
@@ -697,6 +724,32 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
+/// Renders and writes cross-crate info files, like the search index. This function exists so that
+/// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
+/// discovered via `--include-parts-dir` are combined and written to the doc root.
+fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
+    assert!(
+        opt.should_merge.write_rendered_cci,
+        "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
+    );
+    assert!(
+        !opt.should_merge.read_rendered_cci,
+        "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
+    );
+    let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
+    let include_sources = !opt.html_no_source;
+    html::render::write_not_crate_specific(
+        &crates,
+        &opt.output,
+        &opt,
+        &opt.themes,
+        opt.extension_css.as_deref(),
+        &opt.resource_suffix,
+        include_sources,
+    )?;
+    Ok(())
+}
+
 fn main_args(
     early_dcx: &mut EarlyDiagCtxt,
     at_args: &[String],
@@ -736,6 +789,17 @@ fn main_args(
     let dcx =
         core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
     let dcx = dcx.handle();
+
+    let input = match input {
+        config::InputMode::HasFile(input) => input,
+        config::InputMode::NoInputMergeFinalize => {
+            return wrap_return(
+                dcx,
+                run_merge_finalize(render_options)
+                    .map_err(|e| format!("could not write merged cross-crate info: {e}")),
+            );
+        }
+    };
 
     match (options.should_test, config::markdown_input(&input)) {
         (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options)),
