@@ -363,7 +363,7 @@ impl<'a> Parser<'a> {
                 [parser_replacements_start..parser_replacements_end]
                 .iter()
                 .cloned()
-                .chain(inner_attr_parser_replacements.iter().cloned())
+                .chain(inner_attr_parser_replacements.into_iter())
                 .map(|(parser_range, data)| {
                     (NodeRange::new(parser_range, collect_pos.start_pos), data)
                 })
