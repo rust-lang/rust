@@ -1001,7 +1001,13 @@ fn coroutine_layout<'tcx>(
         },
         fields: outer_fields,
         abi,
-        largest_niche: prefix.largest_niche,
+        // Suppress niches inside coroutines. If the niche is inside a field that is aliased (due to
+        // self-referentiality), getting the discriminant can cause aliasing violations.
+        // `UnsafeCell` blocks niches for the same reason, but we don't yet have `UnsafePinned` that
+        // would do the same for us here.
+        // See <https://github.com/rust-lang/rust/issues/63818>, <https://github.com/rust-lang/miri/issues/3780>.
+        // FIXME: Remove when <https://github.com/rust-lang/rust/issues/125735> is implemented and aliased coroutine fields are wrapped in `UnsafePinned`.
+        largest_niche: None,
         size,
         align,
         max_repr_align: None,
