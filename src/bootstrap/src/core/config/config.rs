@@ -1885,6 +1885,22 @@ impl Config {
                     warn("link-shared");
                 }
 
+                // FIXME(#129153): instead of all the ad-hoc `download-ci-llvm` checks that follow,
+                // use the `builder-config` present in tarballs since #128822 to compare the local
+                // config to the ones used to build the LLVM artifacts on CI, and only notify users
+                // if they've chosen a different value.
+
+                if libzstd.is_some() {
+                    println!(
+                        "WARNING: when using `download-ci-llvm`, the local `llvm.libzstd` option, \
+                        like almost all `llvm.*` options, will be ignored and set by the LLVM CI \
+                        artifacts builder config."
+                    );
+                    println!(
+                        "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
+                    );
+                }
+
                 // None of the LLVM options, except assertions, are supported
                 // when using downloaded LLVM. We could just ignore these but
                 // that's potentially confusing, so force them to not be
@@ -1894,7 +1910,6 @@ impl Config {
                 check_ci_llvm!(optimize_toml);
                 check_ci_llvm!(thin_lto);
                 check_ci_llvm!(release_debuginfo);
-                check_ci_llvm!(libzstd);
                 check_ci_llvm!(targets);
                 check_ci_llvm!(experimental_targets);
                 check_ci_llvm!(clang_cl);
