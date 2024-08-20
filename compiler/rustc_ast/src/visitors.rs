@@ -30,9 +30,6 @@ macro_rules! mutability_dependent {
         fn visit_variant(&mut self, v: &'ast Variant) -> Self::Result {
             walk_variant(self, v)
         }
-        fn visit_variant_discr(&mut self, discr: &'ast AnonConst) -> Self::Result {
-            self.visit_anon_const(discr)
-        }
         // FIXME: inconsistent
         fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) -> Self::Result {
             walk_lifetime(self, lifetime)
@@ -418,6 +415,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_enum_def(&mut self, enum_definition: ref_t!(EnumDef)) -> result!() {
                 walk_enum_def(self, enum_definition)
+            }
+
+            fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
+                self.visit_anon_const(discr)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -1889,7 +1890,7 @@ pub mod mut_visit {
         visitor.visit_vis(vis);
         visitor.visit_ident(ident);
         visitor.visit_variant_data(data);
-        visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
+        visit_opt(disr_expr, |disr_expr| visitor.visit_variant_discr(disr_expr));
         visitor.visit_span(span);
         smallvec![variant]
     }
