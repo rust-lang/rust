@@ -1859,7 +1859,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         };
 
         // If this is due to an explicit `return`, suggest adding a return type.
-        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(parent_id)
+        if let Some((fn_id, fn_decl, can_suggest)) = fcx.get_fn_decl(block_or_return_id)
             && !due_to_block
         {
             fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, can_suggest, fn_id);

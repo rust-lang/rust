@@ -54,7 +54,7 @@ fn test_complex() -> () {
         StorageLive(_6);
         StorageLive(_7);
         _7 = Droppy(const 0_u8);
-        _6 = (_7.0: u8);
+        _6 = copy (_7.0: u8);
         _5 = Gt(move _6, const 0_u8);
         switchInt(move _5) -> [0: bb10, otherwise: bb9];
     }
@@ -92,7 +92,7 @@ fn test_complex() -> () {
         StorageLive(_9);
         StorageLive(_10);
         _10 = Droppy(const 1_u8);
-        _9 = (_10.0: u8);
+        _9 = copy (_10.0: u8);
         _8 = Gt(move _9, const 1_u8);
         switchInt(move _8) -> [0: bb16, otherwise: bb15];
     }

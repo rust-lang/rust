@@ -4,107 +4,73 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // gdb-command:run
 
 // Check initializers
-// gdbg-command:print 'basic_types_mut_globals::B'
-// gdbr-command:print B
+// gdb-command:print B
 // gdb-check:$1 = false
-// gdbg-command:print 'basic_types_mut_globals::I'
-// gdbr-command:print I
+// gdb-command:print I
 // gdb-check:$2 = -1
-// gdbg-command:print/d 'basic_types_mut_globals::C'
-// gdbr-command:print C
-// gdbg-check:$3 = 97
-// gdbr-check:$3 = 97 'a'
-// gdbg-command:print/d 'basic_types_mut_globals::I8'
-// gdbr-command:print I8
+// gdb-command:print C
+// gdb-check:$3 = 97 'a'
+// gdb-command:print I8
 // gdb-check:$4 = 68
-// gdbg-command:print 'basic_types_mut_globals::I16'
-// gdbr-command:print I16
+// gdb-command:print I16
 // gdb-check:$5 = -16
-// gdbg-command:print 'basic_types_mut_globals::I32'
-// gdbr-command:print I32
+// gdb-command:print I32
 // gdb-check:$6 = -32
-// gdbg-command:print 'basic_types_mut_globals::I64'
-// gdbr-command:print I64
+// gdb-command:print I64
 // gdb-check:$7 = -64
-// gdbg-command:print 'basic_types_mut_globals::U'
-// gdbr-command:print U
+// gdb-command:print U
 // gdb-check:$8 = 1
-// gdbg-command:print/d 'basic_types_mut_globals::U8'
-// gdbr-command:print U8
+// gdb-command:print U8
 // gdb-check:$9 = 100
-// gdbg-command:print 'basic_types_mut_globals::U16'
-// gdbr-command:print U16
+// gdb-command:print U16
 // gdb-check:$10 = 16
-// gdbg-command:print 'basic_types_mut_globals::U32'
-// gdbr-command:print U32
+// gdb-command:print U32
 // gdb-check:$11 = 32
-// gdbg-command:print 'basic_types_mut_globals::U64'
-// gdbr-command:print U64
+// gdb-command:print U64
 // gdb-check:$12 = 64
-// gdbg-command:print 'basic_types_mut_globals::F16'
-// gdbr-command:print F16
+// gdb-command:print F16
 // gdb-check:$13 = 1.5
-// gdbg-command:print 'basic_types_mut_globals::F32'
-// gdbr-command:print F32
+// gdb-command:print F32
 // gdb-check:$14 = 2.5
-// gdbg-command:print 'basic_types_mut_globals::F64'
-// gdbr-command:print F64
+// gdb-command:print F64
 // gdb-check:$15 = 3.5
 // gdb-command:continue
 
 // Check new values
-// gdbg-command:print 'basic_types_mut_globals'::B
-// gdbr-command:print B
+// gdb-command:print B
 // gdb-check:$16 = true
-// gdbg-command:print 'basic_types_mut_globals'::I
-// gdbr-command:print I
+// gdb-command:print I
 // gdb-check:$17 = 2
-// gdbg-command:print/d 'basic_types_mut_globals'::C
-// gdbr-command:print C
-// gdbg-check:$18 = 102
-// gdbr-check:$18 = 102 'f'
-// gdbg-command:print/d 'basic_types_mut_globals'::I8
-// gdbr-command:print/d I8
+// gdb-command:print C
+// gdb-check:$18 = 102 'f'
+// gdb-command:print/d I8
 // gdb-check:$19 = 78
-// gdbg-command:print 'basic_types_mut_globals'::I16
-// gdbr-command:print I16
+// gdb-command:print I16
 // gdb-check:$20 = -26
-// gdbg-command:print 'basic_types_mut_globals'::I32
-// gdbr-command:print I32
+// gdb-command:print I32
 // gdb-check:$21 = -12
-// gdbg-command:print 'basic_types_mut_globals'::I64
-// gdbr-command:print I64
+// gdb-command:print I64
 // gdb-check:$22 = -54
-// gdbg-command:print 'basic_types_mut_globals'::U
-// gdbr-command:print U
+// gdb-command:print U
 // gdb-check:$23 = 5
-// gdbg-command:print/d 'basic_types_mut_globals'::U8
-// gdbr-command:print/d U8
+// gdb-command:print/d U8
 // gdb-check:$24 = 20
-// gdbg-command:print 'basic_types_mut_globals'::U16
-// gdbr-command:print U16
+// gdb-command:print U16
 // gdb-check:$25 = 32
-// gdbg-command:print 'basic_types_mut_globals'::U32
-// gdbr-command:print U32
+// gdb-command:print U32
 // gdb-check:$26 = 16
-// gdbg-command:print 'basic_types_mut_globals'::U64
-// gdbr-command:print U64
+// gdb-command:print U64
 // gdb-check:$27 = 128
-// gdbg-command:print 'basic_types_mut_globals'::F16
-// gdbr-command:print F16
+// gdb-command:print F16
 // gdb-check:$28 = 2.25
-// gdbg-command:print 'basic_types_mut_globals'::F32
-// gdbr-command:print F32
+// gdb-command:print F32
 // gdb-check:$29 = 5.75
-// gdbg-command:print 'basic_types_mut_globals'::F64
-// gdbr-command:print F64
+// gdb-command:print F64
 // gdb-check:$30 = 9.25
 
 #![allow(unused_variables)]

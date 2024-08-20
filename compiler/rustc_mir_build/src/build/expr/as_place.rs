@@ -542,7 +542,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
-            | ExprKind::AddressOf { .. }
+            | ExprKind::RawBorrow { .. }
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::Loop { .. }

@@ -804,8 +804,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
                         let item = tcx.hir().foreign_item(item.id);
                         match &item.kind {
-                            hir::ForeignItemKind::Fn(fn_decl, _, _, _) => {
-                                require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
+                            hir::ForeignItemKind::Fn(sig, _, _) => {
+                                require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
                             }
                             hir::ForeignItemKind::Static(..) => {
                                 check_static_inhabited(tcx, def_id);

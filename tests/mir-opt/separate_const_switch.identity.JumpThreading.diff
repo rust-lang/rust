@@ -50,16 +50,16 @@
       }
   
       bb2: {
-          _5 = ((_2 as Continue).0: i32);
-          _0 = Result::<i32, i32>::Ok(_5);
+          _5 = copy ((_2 as Continue).0: i32);
+          _0 = Result::<i32, i32>::Ok(copy _5);
           StorageDead(_2);
           return;
       }
   
       bb3: {
-          _4 = ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
-          _10 = ((_4 as Err).0: i32);
-          _0 = Result::<i32, i32>::Err(_10);
+          _4 = copy ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
+          _10 = copy ((_4 as Err).0: i32);
+          _0 = Result::<i32, i32>::Err(copy _10);
           StorageDead(_2);
           return;
       }
@@ -74,9 +74,9 @@
       }
   
       bb5: {
-          _8 = ((_1 as Err).0: i32);
+          _8 = copy ((_1 as Err).0: i32);
           StorageLive(_9);
-          _9 = Result::<Infallible, i32>::Err(_8);
+          _9 = Result::<Infallible, i32>::Err(copy _8);
           _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _9);
           StorageDead(_9);
 -         goto -> bb4;
@@ -84,8 +84,8 @@
       }
   
       bb6: {
-          _7 = ((_1 as Ok).0: i32);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_7);
+          _7 = copy ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(copy _7);
           goto -> bb4;
 +     }
 + 

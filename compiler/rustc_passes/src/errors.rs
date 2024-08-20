@@ -644,6 +644,15 @@ pub struct CoroutineOnNonClosure {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_linkage)]
+pub struct Linkage {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_empty_confusables)]
 pub(crate) struct EmptyConfusables {
     #[primary_span]
@@ -725,6 +734,13 @@ pub struct Unused {
 pub struct NonExportedMacroInvalidAttrs {
     #[primary_span]
     #[label]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_may_dangle)]
+pub struct InvalidMayDangle {
+    #[primary_span]
     pub attr_span: Span,
 }
 

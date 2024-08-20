@@ -131,9 +131,9 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                             // Ptr-creating operations already do their own internal retagging, no
                             // need to also add a retag statement.
                             // *Except* if we are deref'ing a Box, because those get desugared to directly working
-                            // with the inner raw pointer! That's relevant for `AddressOf` as Miri otherwise makes it
+                            // with the inner raw pointer! That's relevant for `RawPtr` as Miri otherwise makes it
                             // a NOP when the original pointer is already raw.
-                            Rvalue::AddressOf(_mutbl, place) => {
+                            Rvalue::RawPtr(_mutbl, place) => {
                                 // Using `is_box_global` here is a bit sketchy: if this code is
                                 // generic over the allocator, we'll not add a retag! This is a hack
                                 // to make Stacked Borrows compatible with custom allocator code.

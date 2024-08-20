@@ -87,22 +87,22 @@
           _1 = const "my favourite slice";
           StorageLive(_2);
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
 -         _2 = opaque::<&str>(move _3) -> [return: bb1, unwind unreachable];
-+         _2 = opaque::<&str>(_1) -> [return: bb1, unwind unreachable];
++         _2 = opaque::<&str>(copy _1) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
           StorageDead(_3);
           StorageDead(_2);
           StorageLive(_4);
-          _4 = _1;
+          _4 = copy _1;
           StorageLive(_5);
           StorageLive(_6);
--         _6 = _4;
+-         _6 = copy _4;
 -         _5 = opaque::<&str>(move _6) -> [return: bb2, unwind unreachable];
-+         _6 = _1;
-+         _5 = opaque::<&str>(_1) -> [return: bb2, unwind unreachable];
++         _6 = copy _1;
++         _5 = opaque::<&str>(copy _1) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
@@ -138,24 +138,24 @@
 -         _8 = (move _9, move _12);
 -         StorageDead(_12);
 -         StorageDead(_9);
-+         _8 = (_9, _12);
++         _8 = (copy _9, copy _12);
 +         nop;
 +         nop;
           StorageLive(_15);
--         _15 = (_8.0: &*const u8);
-+         _15 = _9;
+-         _15 = copy (_8.0: &*const u8);
++         _15 = copy _9;
           StorageLive(_16);
--         _16 = (_8.1: &*const u8);
-+         _16 = _12;
+-         _16 = copy (_8.1: &*const u8);
++         _16 = copy _12;
           StorageLive(_17);
           StorageLive(_18);
--         _18 = (*_15);
-+         _18 = _10;
+-         _18 = copy (*_15);
++         _18 = copy _10;
           StorageLive(_19);
--         _19 = (*_16);
+-         _19 = copy (*_16);
 -         _17 = Eq(move _18, move _19);
-+         _19 = _13;
-+         _17 = Eq(_10, _13);
++         _19 = copy _13;
++         _17 = Eq(copy _10, copy _13);
           switchInt(move _17) -> [0: bb6, otherwise: bb5];
       }
   
@@ -180,9 +180,9 @@
           StorageDead(_30);
           StorageLive(_31);
           StorageLive(_32);
-          _32 = _29;
+          _32 = copy _29;
 -         _31 = opaque::<&[u8]>(move _32) -> [return: bb7, unwind unreachable];
-+         _31 = opaque::<&[u8]>(_29) -> [return: bb7, unwind unreachable];
++         _31 = opaque::<&[u8]>(copy _29) -> [return: bb7, unwind unreachable];
       }
   
       bb6: {
@@ -244,24 +244,24 @@
 -         _34 = (move _35, move _38);
 -         StorageDead(_38);
 -         StorageDead(_35);
-+         _34 = (_35, _38);
++         _34 = (copy _35, copy _38);
 +         nop;
 +         nop;
           StorageLive(_41);
--         _41 = (_34.0: &*const u8);
-+         _41 = _35;
+-         _41 = copy (_34.0: &*const u8);
++         _41 = copy _35;
           StorageLive(_42);
--         _42 = (_34.1: &*const u8);
-+         _42 = _38;
+-         _42 = copy (_34.1: &*const u8);
++         _42 = copy _38;
           StorageLive(_43);
           StorageLive(_44);
--         _44 = (*_41);
-+         _44 = _36;
+-         _44 = copy (*_41);
++         _44 = copy _36;
           StorageLive(_45);
--         _45 = (*_42);
+-         _45 = copy (*_42);
 -         _43 = Eq(move _44, move _45);
-+         _45 = _39;
-+         _43 = Eq(_36, _39);
++         _45 = copy _39;
++         _43 = Eq(copy _36, copy _39);
           switchInt(move _43) -> [0: bb11, otherwise: bb10];
       }
   

@@ -642,7 +642,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
-                self.mode = Self::indirect_pass_mode(&self.layout);
+                self.make_indirect_force();
             }
             PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
                 // already indirect
@@ -650,6 +650,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             }
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
+    }
+
+    /// Same as make_indirect, but doesn't check the current `PassMode`.
+    pub fn make_indirect_force(&mut self) {
+        self.mode = Self::indirect_pass_mode(&self.layout);
     }
 
     /// Pass this argument indirectly, by placing it at a fixed stack offset.
@@ -871,10 +876,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "x86_64" => match abi {
                 spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
-                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(self),
+                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(cx, self),
                 _ => {
                     if cx.target_spec().is_like_windows {
-                        x86_win64::compute_abi_info(self)
+                        x86_win64::compute_abi_info(cx, self)
                     } else {
                         x86_64::compute_abi_info(cx, self)
                     }
@@ -898,7 +903,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "csky" => csky::compute_abi_info(self),
             "mips" | "mips32r6" => mips::compute_abi_info(cx, self),
             "mips64" | "mips64r6" => mips64::compute_abi_info(cx, self),
-            "powerpc" => powerpc::compute_abi_info(self),
+            "powerpc" => powerpc::compute_abi_info(cx, self),
             "powerpc64" => powerpc64::compute_abi_info(cx, self),
             "s390x" => s390x::compute_abi_info(cx, self),
             "msp430" => msp430::compute_abi_info(self),

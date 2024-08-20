@@ -220,14 +220,14 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 | MutatingUseContext::SetDiscriminant
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
-                | MutatingUseContext::AddressOf
+                | MutatingUseContext::RawBorrow
                 | MutatingUseContext::Projection,
             )
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::FakeBorrow
-                | NonMutatingUseContext::AddressOf
+                | NonMutatingUseContext::RawBorrow
                 | NonMutatingUseContext::Projection,
             ) => {
                 self.locals[local] = LocalKind::Memory;

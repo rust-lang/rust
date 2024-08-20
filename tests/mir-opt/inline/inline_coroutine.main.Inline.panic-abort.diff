@@ -34,13 +34,13 @@
 -         _4 = g() -> [return: bb1, unwind unreachable];
 +         _4 = {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8 (#0)};
 +         _3 = &mut _4;
-+         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}> { __pointer: _3 };
++         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}> { __pointer: copy _3 };
 +         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = const false;
 +         StorageLive(_6);
 +         StorageLive(_7);
-+         _6 = (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8});
++         _6 = copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
       }
@@ -68,7 +68,7 @@
 -         StorageDead(_2);
 -         drop(_4) -> [return: bb4, unwind unreachable];
 +         StorageLive(_8);
-+         switchInt(_5) -> [0: bb4, otherwise: bb5];
++         switchInt(copy _5) -> [0: bb4, otherwise: bb5];
       }
   
       bb4: {
@@ -99,7 +99,7 @@
 +     bb8: {
 +         StorageLive(_8);
 +         StorageDead(_8);
-+         _1 = CoroutineState::<i32, bool>::Complete(_5);
++         _1 = CoroutineState::<i32, bool>::Complete(copy _5);
 +         discriminant((*_6)) = 1;
 +         goto -> bb2;
 +     }

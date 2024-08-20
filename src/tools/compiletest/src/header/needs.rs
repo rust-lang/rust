@@ -1,4 +1,4 @@
-use crate::common::{Config, Debugger, Sanitizer};
+use crate::common::{Config, Sanitizer};
 use crate::header::IgnoreDecision;
 
 pub(super) fn handle_needs(
@@ -113,11 +113,6 @@ pub(super) fn handle_needs(
             name: "needs-rust-lld",
             condition: cache.rust_lld,
             ignore_reason: "ignored on targets without Rust's LLD",
-        },
-        Need {
-            name: "needs-rust-lldb",
-            condition: config.debugger != Some(Debugger::Lldb) || config.lldb_native_rust,
-            ignore_reason: "ignored on targets without Rust's LLDB",
         },
         Need {
             name: "needs-dlltool",

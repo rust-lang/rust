@@ -140,7 +140,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_6);
         _6 = &raw const (*_1);
         AscribeUserType(_6, o, UserTypeProjection { base: UserType(0), projs: [] });
-        _5 = _6;
+        _5 = copy _6;
         StorageDead(_6);
         StorageDead(_5);
         StorageLive(_7);
@@ -153,7 +153,7 @@ fn address_of_reborrow() -> () {
         _9 = move _10 as *const dyn std::marker::Send (PointerCoercion(Unsize));
         StorageDead(_10);
         AscribeUserType(_9, o, UserTypeProjection { base: UserType(1), projs: [] });
-        _8 = _9;
+        _8 = copy _9;
         StorageDead(_9);
         StorageDead(_8);
         StorageLive(_11);
@@ -194,7 +194,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_22);
         _22 = &raw const (*_3);
         AscribeUserType(_22, o, UserTypeProjection { base: UserType(10), projs: [] });
-        _21 = _22;
+        _21 = copy _22;
         StorageDead(_22);
         StorageDead(_21);
         StorageLive(_23);
@@ -207,7 +207,7 @@ fn address_of_reborrow() -> () {
         _25 = move _26 as *const dyn std::marker::Send (PointerCoercion(Unsize));
         StorageDead(_26);
         AscribeUserType(_25, o, UserTypeProjection { base: UserType(11), projs: [] });
-        _24 = _25;
+        _24 = copy _25;
         StorageDead(_25);
         StorageDead(_24);
         StorageLive(_27);
@@ -242,7 +242,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_36);
         _36 = &raw mut (*_3);
         AscribeUserType(_36, o, UserTypeProjection { base: UserType(20), projs: [] });
-        _35 = _36;
+        _35 = copy _36;
         StorageDead(_36);
         StorageDead(_35);
         StorageLive(_37);
@@ -255,7 +255,7 @@ fn address_of_reborrow() -> () {
         _39 = move _40 as *mut dyn std::marker::Send (PointerCoercion(Unsize));
         StorageDead(_40);
         AscribeUserType(_39, o, UserTypeProjection { base: UserType(21), projs: [] });
-        _38 = _39;
+        _38 = copy _39;
         StorageDead(_39);
         StorageDead(_38);
         StorageLive(_41);

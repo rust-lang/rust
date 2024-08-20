@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 // == Test [gdb|lldb]-[command|check] are parsed correctly ===
 //@ should-fail
 //@ needs-run-enabled

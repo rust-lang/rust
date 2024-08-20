@@ -191,8 +191,8 @@
           StorageLive(_5);
           _5 = &_4;
           StorageLive(_6);
--         _6 = (*_5);
-+         _6 = _4;
+-         _6 = copy (*_5);
++         _6 = copy _4;
           StorageLive(_7);
           StorageLive(_8);
           _8 = ();
@@ -223,7 +223,7 @@
           StorageDead(_13);
 -         StorageDead(_14);
           StorageLive(_15);
-          _15 = (*_12);
+          _15 = copy (*_12);
           StorageLive(_16);
           StorageLive(_17);
           _17 = ();
@@ -247,11 +247,11 @@
           StorageLive(_21);
           _21 = &_20;
           StorageLive(_22);
--         _22 = (*_20);
-+         _22 = _19;
+-         _22 = copy (*_20);
++         _22 = copy _19;
           StorageLive(_23);
           StorageLive(_24);
-          _24 = _21;
+          _24 = copy _21;
           _23 = opaque::<&&usize>(move _24) -> [return: bb3, unwind continue];
       }
   
@@ -272,10 +272,10 @@
           StorageLive(_28);
           _28 = &raw mut _27;
           StorageLive(_29);
-          _29 = (*_27);
+          _29 = copy (*_27);
           StorageLive(_30);
           StorageLive(_31);
-          _31 = _28;
+          _31 = copy _28;
           _30 = opaque::<*mut &usize>(move _31) -> [return: bb4, unwind continue];
       }
   
@@ -294,11 +294,11 @@
           StorageLive(_34);
           _34 = &_33;
           StorageLive(_35);
--         _35 = (*_34);
-+         _35 = _33;
+-         _35 = copy (*_34);
++         _35 = copy _33;
           StorageLive(_36);
           StorageLive(_37);
-          _37 = _34;
+          _37 = copy _34;
           _36 = opaque::<&usize>(move _37) -> [return: bb5, unwind continue];
       }
   
@@ -316,18 +316,18 @@
           StorageLive(_40);
           _40 = &_39;
           StorageLive(_41);
--         _41 = (*_40);
-+         _41 = _39;
+-         _41 = copy (*_40);
++         _41 = copy _39;
           StorageLive(_42);
-          _42 = _40;
+          _42 = copy _40;
           StorageLive(_43);
--         _43 = (*_42);
-+         _43 = _39;
+-         _43 = copy (*_42);
++         _43 = copy _39;
           StorageLive(_44);
-          _44 = _42;
+          _44 = copy _42;
           StorageLive(_45);
           StorageLive(_46);
-          _46 = _44;
+          _46 = copy _44;
           _45 = opaque::<&usize>(move _46) -> [return: bb6, unwind continue];
       }
   
@@ -346,8 +346,8 @@
 -         StorageLive(_48);
 -         _48 = &(*_1);
           StorageLive(_49);
--         _49 = (*_48);
-+         _49 = (*_1);
+-         _49 = copy (*_48);
++         _49 = copy (*_1);
           StorageLive(_50);
           StorageLive(_51);
           _51 = ();
@@ -373,7 +373,7 @@
           StorageDead(_54);
 -         StorageDead(_55);
           StorageLive(_56);
-          _56 = (*_53);
+          _56 = copy (*_53);
           StorageLive(_57);
           StorageLive(_58);
           _58 = ();
@@ -395,8 +395,8 @@
           StorageLive(_62);
           _62 = &_61;
           StorageLive(_63);
--         _63 = (*_61);
-+         _63 = _60;
+-         _63 = copy (*_61);
++         _63 = copy _60;
           StorageLive(_64);
           StorageLive(_65);
           _65 = ();
@@ -419,7 +419,7 @@
           StorageLive(_68);
           _68 = &mut _67;
           StorageLive(_69);
-          _69 = (*_67);
+          _69 = copy (*_67);
           StorageLive(_70);
           StorageLive(_71);
           _71 = ();

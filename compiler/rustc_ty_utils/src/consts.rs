@@ -192,7 +192,7 @@ fn recurse_build<'tcx>(
         ExprKind::Borrow { arg, .. } => {
             let arg_node = &body.exprs[*arg];
 
-            // Skip reborrows for now until we allow Deref/Borrow/AddressOf
+            // Skip reborrows for now until we allow Deref/Borrow/RawBorrow
             // expressions.
             // FIXME(generic_const_exprs): Verify/explain why this is sound
             if let ExprKind::Deref { arg } = arg_node.kind {
@@ -202,7 +202,7 @@ fn recurse_build<'tcx>(
             }
         }
         // FIXME(generic_const_exprs): We may want to support these.
-        ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => maybe_supported_error(
+        ExprKind::RawBorrow { .. } | ExprKind::Deref { .. } => maybe_supported_error(
             GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
         )?,
         ExprKind::Repeat { .. } | ExprKind::Array { .. } => {
@@ -343,7 +343,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::VarRef { .. }
             | thir::ExprKind::UpvarRef { .. }
             | thir::ExprKind::Borrow { .. }
-            | thir::ExprKind::AddressOf { .. }
+            | thir::ExprKind::RawBorrow { .. }
             | thir::ExprKind::Break { .. }
             | thir::ExprKind::Continue { .. }
             | thir::ExprKind::Return { .. }

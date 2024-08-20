@@ -554,53 +554,43 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     pub fn get_fn_id_for_return_block(self, id: HirId) -> Option<HirId> {
-        let mut iter = self.parent_iter(id).peekable();
-        let mut ignore_tail = false;
-        if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = self.tcx.hir_node(id) {
-            // When dealing with `return` statements, we don't care about climbing only tail
-            // expressions.
-            ignore_tail = true;
-        }
+        let enclosing_body_owner = self.tcx.local_def_id_to_hir_id(self.enclosing_body_owner(id));
 
-        let mut prev_hir_id = None;
-        while let Some((hir_id, node)) = iter.next() {
-            if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
-                match next_node {
-                    Node::Block(Block { expr: None, .. }) => return None,
-                    // The current node is not the tail expression of its parent.
-                    Node::Block(Block { expr: Some(e), .. }) if hir_id != e.hir_id => return None,
+        // Return `None` if the `id` expression is not the returned value of the enclosing body
+        let mut iter = [id].into_iter().chain(self.parent_id_iter(id)).peekable();
+        while let Some(cur_id) = iter.next() {
+            if enclosing_body_owner == cur_id {
+                break;
+            }
+
+            // A return statement is always the value returned from the enclosing body regardless of
+            // what the parent expressions are.
+            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = self.tcx.hir_node(cur_id) {
+                break;
+            }
+
+            // If the current expression's value doesnt get used as the parent expressions value then return `None`
+            if let Some(&parent_id) = iter.peek() {
+                match self.tcx.hir_node(parent_id) {
+                    // The current node is not the tail expression of the block expression parent expr.
+                    Node::Block(Block { expr: Some(e), .. }) if cur_id != e.hir_id => return None,
                     Node::Block(Block { expr: Some(e), .. })
                         if matches!(e.kind, ExprKind::If(_, _, None)) =>
                     {
                         return None;
                     }
+
+                    // The current expression's value does not pass up through these parent expressions
+                    Node::Block(Block { expr: None, .. })
+                    | Node::Expr(Expr { kind: ExprKind::Loop(..), .. })
+                    | Node::LetStmt(..) => return None,
+
                     _ => {}
                 }
             }
-            match node {
-                Node::Item(_)
-                | Node::ForeignItem(_)
-                | Node::TraitItem(_)
-                | Node::Expr(Expr { kind: ExprKind::Closure(_), .. })
-                | Node::ImplItem(_)
-                    // The input node `id` must be enclosed in the method's body as opposed
-                    // to some other place such as its return type (fixes #114918).
-                    // We verify that indirectly by checking that the previous node is the
-                    // current node's body
-                    if node.body_id().map(|b| b.hir_id) == prev_hir_id =>  {
-                        return Some(hir_id)
-                }
-                // Ignore `return`s on the first iteration
-                Node::Expr(Expr { kind: ExprKind::Loop(..) | ExprKind::Ret(..), .. })
-                | Node::LetStmt(_) => {
-                    return None;
-                }
-                _ => {}
-            }
-
-            prev_hir_id = Some(hir_id);
         }
-        None
+
+        Some(enclosing_body_owner)
     }
 
     /// Retrieves the `OwnerId` for `id`'s parent item, or `id` itself if no
@@ -826,6 +816,11 @@ impl<'hir> Map<'hir> {
             })
             | Node::ImplItem(ImplItem {
                 kind: ImplItemKind::Fn(sig, ..), span: outer_span, ..
+            })
+            | Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Fn(sig, ..),
+                span: outer_span,
+                ..
             }) => {
                 // Ensure that the returned span has the item's SyntaxContext, and not the
                 // SyntaxContext of the visibility.
@@ -884,10 +879,7 @@ impl<'hir> Map<'hir> {
             },
             Node::Variant(variant) => named_span(variant.span, variant.ident, None),
             Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
-            Node::ForeignItem(item) => match item.kind {
-                ForeignItemKind::Fn(decl, _, _, _) => until_within(item.span, decl.output.span()),
-                _ => named_span(item.span, item.ident, None),
-            },
+            Node::ForeignItem(item) => named_span(item.span, item.ident, None),
             Node::Ctor(_) => return self.span(self.tcx.parent_hir_id(hir_id)),
             Node::Expr(Expr {
                 kind: ExprKind::Closure(Closure { fn_decl_span, .. }),

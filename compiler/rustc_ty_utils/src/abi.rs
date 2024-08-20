@@ -584,7 +584,7 @@ fn fn_abi_new_uncached<'tcx>(
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
     let mut inputs = sig.inputs();
-    let extra_args = if sig.abi == RustCall {
+    let extra_args = if sig.abi == SpecAbi::RustCall {
         assert!(!sig.c_variadic && extra_args.is_empty());
 
         if let Some(input) = sig.inputs().last() {
@@ -607,18 +607,6 @@ fn fn_abi_new_uncached<'tcx>(
         assert!(sig.c_variadic || extra_args.is_empty());
         extra_args
     };
-
-    let target = &cx.tcx.sess.target;
-    let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl" | "uclibc");
-    let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
-    let linux_s390x_gnu_like =
-        target.os == "linux" && target.arch == "s390x" && target_env_gnu_like;
-    let linux_sparc64_gnu_like =
-        target.os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
-    let linux_powerpc_gnu_like =
-        target.os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
-    use SpecAbi::*;
-    let rust_abi = matches!(sig.abi, RustIntrinsic | Rust | RustCall);
 
     let is_drop_in_place =
         fn_def_id.is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::DropInPlace));
@@ -659,18 +647,7 @@ fn fn_abi_new_uncached<'tcx>(
         });
 
         if arg.layout.is_zst() {
-            // For some forsaken reason, x86_64-pc-windows-gnu
-            // doesn't ignore zero-sized struct arguments.
-            // The same is true for {s390x,sparc64,powerpc}-unknown-linux-{gnu,musl,uclibc}.
-            if is_return
-                || rust_abi
-                || (!win_x64_gnu
-                    && !linux_s390x_gnu_like
-                    && !linux_sparc64_gnu_like
-                    && !linux_powerpc_gnu_like)
-            {
-                arg.mode = PassMode::Ignore;
-            }
+            arg.mode = PassMode::Ignore;
         }
 
         Ok(arg)

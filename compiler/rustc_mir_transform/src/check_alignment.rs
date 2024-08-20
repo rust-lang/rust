@@ -71,7 +71,7 @@ struct PointerFinder<'tcx, 'a> {
 impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         // We want to only check reads and writes to Places, so we specifically exclude
-        // Borrows and AddressOf.
+        // Borrow and RawBorrow.
         match context {
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store

@@ -31,38 +31,38 @@
           _3 = const 0_usize;
 -         _4 = Len(_1);
 +         _4 = const 2_usize;
-          _5 = Lt(_3, _4);
-          assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> [success: bb1, unwind continue];
+          _5 = Lt(copy _3, copy _4);
+          assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, copy _3) -> [success: bb1, unwind continue];
       }
   
       bb1: {
-          _2 = _1[_3];
+          _2 = copy _1[_3];
           StorageDead(_3);
           StorageLive(_6);
           StorageLive(_7);
           _7 = const 1_usize;
 -         _8 = Len(_1);
 +         _8 = const 2_usize;
-          _9 = Lt(_7, _8);
-          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb2, unwind continue];
+          _9 = Lt(copy _7, copy _8);
+          assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, copy _7) -> [success: bb2, unwind continue];
       }
   
       bb2: {
-          _6 = _1[_7];
+          _6 = copy _1[_7];
           StorageDead(_7);
           StorageLive(_10);
           StorageLive(_11);
-          _11 = _2;
+          _11 = copy _2;
           StorageLive(_12);
-          _12 = _2;
+          _12 = copy _2;
           _10 = Mul(move _11, move _12);
           StorageDead(_12);
           StorageDead(_11);
           StorageLive(_13);
           StorageLive(_14);
-          _14 = _6;
+          _14 = copy _6;
           StorageLive(_15);
-          _15 = _6;
+          _15 = copy _6;
           _13 = Mul(move _14, move _15);
           StorageDead(_15);
           StorageDead(_14);

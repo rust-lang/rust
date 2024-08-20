@@ -512,7 +512,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::NeverToAny { .. }
             | ExprKind::Use { .. }
             | ExprKind::Borrow { .. }
-            | ExprKind::AddressOf { .. }
+            | ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }
             | ExprKind::Loop { .. }
             | ExprKind::LogicalOp { .. }

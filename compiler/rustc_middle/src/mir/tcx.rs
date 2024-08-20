@@ -170,7 +170,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
-            Rvalue::AddressOf(mutability, ref place) => {
+            Rvalue::RawPtr(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, mutability)
             }

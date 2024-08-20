@@ -1091,18 +1091,13 @@ macro_rules! tool_extended {
     }
 }
 
-// NOTE: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
-// to make `./x.py build <tool>` work.
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
     CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
     Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
     Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=true, add_bins_to_sysroot = ["cargo-miri"];
-    // FIXME: tool_std is not quite right, we shouldn't allow nightly features.
-    // But `builder.cargo` doesn't know how to handle ToolBootstrap in stages other than 0,
-    // and this is close enough for now.
-    Rls, "src/tools/rls", "rls", stable=true, tool_std=true;
+    Rls, "src/tools/rls", "rls", stable=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
 );
 
