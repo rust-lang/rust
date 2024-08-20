@@ -10,19 +10,57 @@ note: lifetime declared here
 LL | fn dyn_hoops<T: Sized>() -> dyn for<'a> Iterator<Item = impl Captures<'a>> {
    |                                     ^^
 
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:6:29
+   |
+LL | fn dyn_hoops<T: Sized>() -> dyn for<'a> Iterator<Item = impl Captures<'a>> {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn dyn_hoops<T: Sized>() -> impl for<'a> Iterator<Item = impl Captures<'a>> {
+   |                             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn dyn_hoops<T: Sized>() -> Box<dyn for<'a> Iterator<Item = impl Captures<'a>>> {
+LL |
+LL |
+LL ~     Box::new(loop {})
+   |
+
 error: item does not constrain `Opaque::{opaque#0}`, but has it in its signature
-  --> $DIR/bound-lifetime-through-dyn-trait.rs:11:8
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:12:8
    |
 LL | pub fn main() {
    |        ^^^^
    |
    = note: consider moving the opaque type's declaration and defining uses into a separate module
 note: this opaque type is in the signature
-  --> $DIR/bound-lifetime-through-dyn-trait.rs:13:19
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:14:19
    |
 LL |     type Opaque = impl Sized;
    |                   ^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0277]: the size for values of type `(dyn Iterator<Item = impl Captures<'_>> + 'static)` cannot be known at compilation time
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:15:20
+   |
+LL |     fn define() -> Opaque {
+   |                    ^^^^^^ doesn't have a size known at compile-time
+...
+LL |         x
+   |         - return type was inferred to be `(dyn Iterator<Item = impl Captures<'_>> + 'static)` here
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Captures<'_>> + 'static)`
 
-For more information about this error, try `rustc --explain E0657`.
+error[E0277]: the size for values of type `(dyn Iterator<Item = impl Captures<'_>> + 'static)` cannot be known at compilation time
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:17:25
+   |
+LL |         let x: Opaque = dyn_hoops::<()>();
+   |                         ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Captures<'_>> + 'static)`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0657, E0746.
+For more information about an error, try `rustc --explain E0277`.

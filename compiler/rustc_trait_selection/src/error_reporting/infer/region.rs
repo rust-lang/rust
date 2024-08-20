@@ -862,22 +862,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.add_lt_suggs.push(lt.suggestion(self.new_lt));
                 }
             }
-
-            fn visit_ty(&mut self, ty: &'hir hir::Ty<'hir>) {
-                let hir::TyKind::OpaqueDef(opaque_ty, _) = ty.kind else {
-                    return hir::intravisit::walk_ty(self, ty);
-                };
-                if let Some(&(_, b)) =
-                    opaque_ty.lifetime_mapping.iter().find(|&(a, _)| a.res == self.needle)
-                {
-                    let prev_needle =
-                        std::mem::replace(&mut self.needle, hir::LifetimeName::Param(b));
-                    for bound in opaque_ty.bounds {
-                        self.visit_param_bound(bound);
-                    }
-                    self.needle = prev_needle;
-                }
-            }
         }
 
         let (lifetime_def_id, lifetime_scope) =

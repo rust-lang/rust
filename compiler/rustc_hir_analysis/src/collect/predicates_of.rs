@@ -329,13 +329,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // We create bi-directional Outlives predicates between the original
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::OpaqueTy(..) = node {
-        let opaque_ty_node = tcx.parent_hir_node(hir_id);
-        let Node::Ty(&hir::Ty { kind: TyKind::OpaqueDef(_, lifetimes), .. }) = opaque_ty_node
-        else {
-            bug!("unexpected {opaque_ty_node:?}")
-        };
-        debug!(?lifetimes);
-
         compute_bidirectional_outlives_predicates(tcx, &generics.own_params, &mut predicates);
         debug!(?predicates);
     }
