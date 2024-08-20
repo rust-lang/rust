@@ -570,7 +570,17 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         inlined_at: Option<&'ll DILocation>,
         span: Span,
     ) -> &'ll DILocation {
-        let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+        // When emitting debugging information, DWARF (i.e. everything but MSVC)
+        // treats line 0 as a magic value meaning that the code could not be
+        // attributed to any line in the source. That's also exactly what dummy
+        // spans are. Make that equivalence here, rather than passing dummy spans
+        // to lookup_debug_loc, which will return line 1 for them.
+        let (line, col) = if span.is_dummy() && !self.sess().target.is_like_msvc {
+            (0, 0)
+        } else {
+            let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
+            (line, col)
+        };
 
         unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
     }
