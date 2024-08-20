@@ -565,7 +565,7 @@ impl GlobalState {
                 };
 
             watchers.extend(
-                iter::once(self.config.user_config_path().as_path())
+                iter::once(Config::user_config_path())
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {

@@ -548,7 +548,6 @@ mod tests {
                 ClientCapabilities::default(),
                 Vec::new(),
                 None,
-                None,
             ),
         );
         let snap = state.snapshot();
