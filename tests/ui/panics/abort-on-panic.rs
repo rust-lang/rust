@@ -22,6 +22,10 @@ extern "C" fn panic_in_ffi() {
     panic!("Test");
 }
 
+extern "C-unwind" fn panic_in_ffi_unwind_abi() {
+    panic!("Test");
+}
+
 fn should_have_aborted() {
     io::stdout().write(b"This should never be printed.\n");
     let _ = io::stdout().flush();
@@ -62,11 +66,19 @@ fn test_always_abort_thread() {
     bomb_out_but_not_abort("joined - but we were supposed to panic!");
 }
 
+fn test_abort_after_transmute() {
+    let unwind: extern "C-unwind" fn() = panic_in_ffi_unwind_abi;
+    let unwind: extern "C" fn() = unsafe { std::mem::transmute(unwind) };
+    std::panic::catch_unwind(|| unwind()).unwrap_err();
+    should_have_aborted();
+}
+
 fn main() {
     let tests: &[(_, fn())] = &[
         ("test", test),
         ("test_always_abort", test_always_abort),
         ("test_always_abort_thread", test_always_abort_thread),
+        ("test_abort_after_transmute", test_abort_after_transmute),
     ];
 
     let args: Vec<String> = env::args().collect();
