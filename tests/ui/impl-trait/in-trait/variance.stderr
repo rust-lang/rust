@@ -1,22 +1,22 @@
-error: [Self: o, 'i: *, 'a: *, 'a: o, 'i: o]
+error: [Self: o, 'i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:9:44
    |
 LL |     fn implicit_capture_early<'a: 'a>() -> impl Sized {}
    |                                            ^^^^^^^^^^
 
-error: [Self: o, 'i: *, 'a: *, 'a: o, 'i: o]
+error: [Self: o, 'i: *, 'a: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:12:44
    |
 LL |     fn explicit_capture_early<'a: 'a>() -> impl Sized + Captures<'a> {}
    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [Self: o, 'i: *, 'a: o, 'i: o]
+error: [Self: o, 'i: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:15:48
    |
 LL |     fn implicit_capture_late<'a>(_: &'a ()) -> impl Sized {}
    |                                                ^^^^^^^^^^
 
-error: [Self: o, 'i: *, 'a: o, 'i: o]
+error: [Self: o, 'i: *, 'i: o, 'a: o]
   --> $DIR/variance.rs:18:48
    |
 LL |     fn explicit_capture_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {}
