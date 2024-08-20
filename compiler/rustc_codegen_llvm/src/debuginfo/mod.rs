@@ -109,7 +109,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustAddModuleFlagU32(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    c"Dwarf Version".as_ptr().cast(),
+                    c"Dwarf Version".as_ptr(),
                     dwarf_version,
                 );
             } else {
@@ -117,7 +117,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustAddModuleFlagU32(
                     self.llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    c"CodeView".as_ptr().cast(),
+                    c"CodeView".as_ptr(),
                     1,
                 )
             }
@@ -126,7 +126,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             llvm::LLVMRustAddModuleFlagU32(
                 self.llmod,
                 llvm::LLVMModFlagBehavior::Warning,
-                c"Debug Info Version".as_ptr().cast(),
+                c"Debug Info Version".as_ptr(),
                 llvm::LLVMRustDebugMetadataVersion(),
             );
         }
