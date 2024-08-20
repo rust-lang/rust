@@ -68,19 +68,14 @@ impl Layout {
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if Layout::is_size_align_valid(size, align) {
             // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
-            let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-            Ok(layout)
+            unsafe { Ok(Layout { size, align: mem::transmute(align) }) }
         } else {
             Err(LayoutError)
         }
     }
 
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
-        if !align.is_power_of_two() {
-            return false;
-        }
-        // SAFETY: Precondition checked directly above.
-        let align = unsafe { Alignment::new_unchecked(align) };
+        let Some(align) = Alignment::new(align) else { return false };
         if size > Self::max_size_for_align(align) {
             return false;
         }
@@ -139,7 +134,7 @@ impl Layout {
             ) => Layout::is_size_align_valid(size, align)
         );
         // SAFETY: the caller is required to uphold the preconditions.
-        unsafe { Layout { size, align: Alignment::new_unchecked(align) } }
+        unsafe { Layout { size, align: mem::transmute(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
