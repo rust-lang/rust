@@ -129,9 +129,9 @@ fn check_needless_must_use(
             cx,
             DOUBLE_MUST_USE,
             fn_header_span,
-            "this function has an empty `#[must_use]` attribute, but returns a type already marked as `#[must_use]`",
+            "this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`",
             None,
-            "either add some descriptive text or remove the attribute",
+            "either add some descriptive message or remove the attribute",
         );
     }
 }
