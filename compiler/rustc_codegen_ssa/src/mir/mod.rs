@@ -277,7 +277,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // So drop the builder of `start_llbb` to avoid having two at the same time.
     drop(start_bx);
 
-    let reachable_blocks = traversal::mono_reachable_as_bitset(mir, cx.tcx(), instance);
+    let reachable_blocks = rustc_mir_transform::mono_reachable_as_bitset(mir, cx.tcx(), instance);
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in traversal::reverse_postorder(mir) {

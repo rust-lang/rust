@@ -220,7 +220,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, traversal, Location, MentionedItem};
+use rustc_middle::mir::{self, Location, MentionedItem};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -1222,7 +1222,7 @@ fn collect_items_of_instance<'tcx>(
     };
 
     if mode == CollectionMode::UsedItems {
-        for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
+        for (bb, data) in rustc_mir_transform::mono_reachable(body, tcx, instance) {
             collector.visit_basic_block_data(bb, data)
         }
     }
