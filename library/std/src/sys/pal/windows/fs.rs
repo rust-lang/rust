@@ -14,7 +14,7 @@ use crate::sys::handle::Handle;
 use crate::sys::path::maybe_verbatim;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt, Align8};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{ignore_notfound, AsInner, FromInner, IntoInner};
 use crate::{fmt, ptr, slice, thread};
 
 pub struct File {
@@ -1160,7 +1160,7 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
         return Err(io::Error::from_raw_os_error(c::ERROR_DIRECTORY as _));
     }
 
-    match remove_dir_all_iterative(&file, File::posix_delete) {
+    match ignore_notfound(remove_dir_all_iterative(&file, File::posix_delete)) {
         Err(e) => {
             if let Some(code) = e.raw_os_error() {
                 match code as u32 {
