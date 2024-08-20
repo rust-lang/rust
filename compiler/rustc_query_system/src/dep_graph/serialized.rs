@@ -547,7 +547,7 @@ impl<D: Deps> EncoderState<D> {
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
     /// the previous dep graph for performance reasons.
     ///
-    /// This differs from `encode_node` where you have to explictly provide the relevant `NodeInfo`.
+    /// This differs from `encode_node` where you have to explicitly provide the relevant `NodeInfo`.
     ///
     /// It expects all edges to already have a new dep node index assigned.
     #[inline]

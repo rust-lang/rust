@@ -748,7 +748,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::UnwindResume);
     }
 
-    /// Sets up the drops for explict tail calls.
+    /// Sets up the drops for explicit tail calls.
     ///
     /// Unlike other kinds of early exits, tail calls do not go through the drop tree.
     /// Instead, all scheduled drops are immediately added to the CFG.
