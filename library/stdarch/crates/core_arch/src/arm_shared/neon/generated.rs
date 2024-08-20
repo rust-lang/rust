@@ -21988,10 +21988,9 @@ pub unsafe fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrn_n_s16_(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
-vqrshrn_n_s16_(a, const { int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16) })
+vqrshrn_n_s16_(a, const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) })
 }
 
 /// Signed saturating rounded shift right narrow
@@ -22027,10 +22026,9 @@ pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrn_n_s32_(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
-vqrshrn_n_s32_(a, const { int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32) })
+vqrshrn_n_s32_(a, const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) })
 }
 
 /// Signed saturating rounded shift right narrow
@@ -22066,10 +22064,9 @@ pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrn_n_s64_(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-vqrshrn_n_s64_(a, const { int64x2_t(-N as i64, -N as i64) })
+vqrshrn_n_s64_(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
 
 /// Signed saturating rounded shift right narrow
@@ -22105,10 +22102,9 @@ pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrn_n_u16_(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
-vqrshrn_n_u16_(a, const { uint16x8_t(-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16) })
+vqrshrn_n_u16_(a, const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) })
 }
 
 /// Unsigned signed saturating rounded shift right narrow
@@ -22144,10 +22140,9 @@ pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrn_n_u32_(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
-vqrshrn_n_u32_(a, const { uint32x4_t(-N as u32, -N as u32, -N as u32, -N as u32) })
+vqrshrn_n_u32_(a, const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) })
 }
 
 /// Unsigned signed saturating rounded shift right narrow
@@ -22183,10 +22178,9 @@ pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrn_n_u64_(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
-vqrshrn_n_u64_(a, const { uint64x2_t(-N as u64, -N as u64) })
+vqrshrn_n_u64_(a, const { uint64x2_t([-N as u64, -N as u64]) })
 }
 
 /// Unsigned signed saturating rounded shift right narrow
@@ -22222,10 +22216,9 @@ pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrun_n_s16_(a: int16x8_t, n: int16x8_t) -> uint8x8_t;
     }
-vqrshrun_n_s16_(a, const { int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16) })
+vqrshrun_n_s16_(a, const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) })
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -22261,10 +22254,9 @@ pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrun_n_s32_(a: int32x4_t, n: int32x4_t) -> uint16x4_t;
     }
-vqrshrun_n_s32_(a, const { int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32) })
+vqrshrun_n_s32_(a, const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) })
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -22300,10 +22292,9 @@ pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqrshrun_n_s64_(a: int64x2_t, n: int64x2_t) -> uint32x2_t;
     }
-vqrshrun_n_s64_(a, const { int64x2_t(-N as i64, -N as i64) })
+vqrshrun_n_s64_(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -22915,10 +22906,9 @@ pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshlu_n_s8_(a: int8x8_t, n: int8x8_t) -> uint8x8_t;
     }
-vqshlu_n_s8_(a, const { int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8) })
+vqshlu_n_s8_(a, const { int8x8_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -22934,11 +22924,10 @@ pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v8i8")]
         fn vqshlu_n_s8_(a: int8x8_t, n: int8x8_t) -> uint8x8_t;
     }
-vqshlu_n_s8_(a, const { int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8) })
+vqshlu_n_s8_(a, const { int8x8_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -22955,10 +22944,9 @@ pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshlu_n_s16_(a: int16x4_t, n: int16x4_t) -> uint16x4_t;
     }
-vqshlu_n_s16_(a, const { int16x4_t(N as i16, N as i16, N as i16, N as i16) })
+vqshlu_n_s16_(a, const { int16x4_t([N as i16, N as i16, N as i16, N as i16]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -22974,11 +22962,10 @@ pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v4i16")]
         fn vqshlu_n_s16_(a: int16x4_t, n: int16x4_t) -> uint16x4_t;
     }
-vqshlu_n_s16_(a, const { int16x4_t(N as i16, N as i16, N as i16, N as i16) })
+vqshlu_n_s16_(a, const { int16x4_t([N as i16, N as i16, N as i16, N as i16]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -22995,10 +22982,9 @@ pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshlu_n_s32_(a: int32x2_t, n: int32x2_t) -> uint32x2_t;
     }
-vqshlu_n_s32_(a, const { int32x2_t(N as i32, N as i32) })
+vqshlu_n_s32_(a, const { int32x2_t([N as i32, N as i32]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23014,11 +23000,10 @@ pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v2i32")]
         fn vqshlu_n_s32_(a: int32x2_t, n: int32x2_t) -> uint32x2_t;
     }
-vqshlu_n_s32_(a, const { int32x2_t(N as i32, N as i32) })
+vqshlu_n_s32_(a, const { int32x2_t([N as i32, N as i32]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23035,10 +23020,9 @@ pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v1i64")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshlu_n_s64_(a: int64x1_t, n: int64x1_t) -> uint64x1_t;
     }
-vqshlu_n_s64_(a, const { int64x1_t(N as i64) })
+vqshlu_n_s64_(a, const { int64x1_t([N as i64]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23054,11 +23038,10 @@ pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v1i64")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v1i64")]
         fn vqshlu_n_s64_(a: int64x1_t, n: int64x1_t) -> uint64x1_t;
     }
-vqshlu_n_s64_(a, const { int64x1_t(N as i64) })
+vqshlu_n_s64_(a, const { int64x1_t([N as i64]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23075,10 +23058,9 @@ pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v16i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshluq_n_s8_(a: int8x16_t, n: int8x16_t) -> uint8x16_t;
     }
-vqshluq_n_s8_(a, const { int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8) })
+vqshluq_n_s8_(a, const { int8x16_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23094,11 +23076,10 @@ pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v16i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v16i8")]
         fn vqshluq_n_s8_(a: int8x16_t, n: int8x16_t) -> uint8x16_t;
     }
-vqshluq_n_s8_(a, const { int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8) })
+vqshluq_n_s8_(a, const { int8x16_t([N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N as i8]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23115,10 +23096,9 @@ pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v8i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshluq_n_s16_(a: int16x8_t, n: int16x8_t) -> uint16x8_t;
     }
-vqshluq_n_s16_(a, const { int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16) })
+vqshluq_n_s16_(a, const { int16x8_t([N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23134,11 +23114,10 @@ pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v8i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v8i16")]
         fn vqshluq_n_s16_(a: int16x8_t, n: int16x8_t) -> uint16x8_t;
     }
-vqshluq_n_s16_(a, const { int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16) })
+vqshluq_n_s16_(a, const { int16x8_t([N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16, N as i16]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23155,10 +23134,9 @@ pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v4i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshluq_n_s32_(a: int32x4_t, n: int32x4_t) -> uint32x4_t;
     }
-vqshluq_n_s32_(a, const { int32x4_t(N as i32, N as i32, N as i32, N as i32) })
+vqshluq_n_s32_(a, const { int32x4_t([N as i32, N as i32, N as i32, N as i32]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23174,11 +23152,10 @@ pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v4i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v4i32")]
         fn vqshluq_n_s32_(a: int32x4_t, n: int32x4_t) -> uint32x4_t;
     }
-vqshluq_n_s32_(a, const { int32x4_t(N as i32, N as i32, N as i32, N as i32) })
+vqshluq_n_s32_(a, const { int32x4_t([N as i32, N as i32, N as i32, N as i32]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23195,10 +23172,9 @@ pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftsu.v2i64")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshluq_n_s64_(a: int64x2_t, n: int64x2_t) -> uint64x2_t;
     }
-vqshluq_n_s64_(a, const { int64x2_t(N as i64, N as i64) })
+vqshluq_n_s64_(a, const { int64x2_t([N as i64, N as i64]) })
 }
 
 /// Signed saturating shift left unsigned
@@ -23214,11 +23190,10 @@ pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
     #[allow(improper_ctypes)]
     extern "unadjusted" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqshlu.v2i64")]
-        #[rustc_intrinsic_const_vector_arg(1)]
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "llvm.aarch64.neon.sqshlu.v2i64")]
         fn vqshluq_n_s64_(a: int64x2_t, n: int64x2_t) -> uint64x2_t;
     }
-vqshluq_n_s64_(a, const { int64x2_t(N as i64, N as i64) })
+vqshluq_n_s64_(a, const { int64x2_t([N as i64, N as i64]) })
 }
 
 /// Signed saturating shift right narrow
@@ -23235,10 +23210,9 @@ pub unsafe fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrn_n_s16_(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
-vqshrn_n_s16_(a, const { int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16) })
+vqshrn_n_s16_(a, const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) })
 }
 
 /// Signed saturating shift right narrow
@@ -23274,10 +23248,9 @@ pub unsafe fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrn_n_s32_(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
-vqshrn_n_s32_(a, const { int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32) })
+vqshrn_n_s32_(a, const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) })
 }
 
 /// Signed saturating shift right narrow
@@ -23313,10 +23286,9 @@ pub unsafe fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftns.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrn_n_s64_(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-vqshrn_n_s64_(a, const { int64x2_t(-N as i64, -N as i64) })
+vqshrn_n_s64_(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
 
 /// Signed saturating shift right narrow
@@ -23352,10 +23324,9 @@ pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrn_n_u16_(a: uint16x8_t, n: uint16x8_t) -> uint8x8_t;
     }
-vqshrn_n_u16_(a, const { uint16x8_t(-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16) })
+vqshrn_n_u16_(a, const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) })
 }
 
 /// Unsigned saturating shift right narrow
@@ -23391,10 +23362,9 @@ pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrn_n_u32_(a: uint32x4_t, n: uint32x4_t) -> uint16x4_t;
     }
-vqshrn_n_u32_(a, const { uint32x4_t(-N as u32, -N as u32, -N as u32, -N as u32) })
+vqshrn_n_u32_(a, const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) })
 }
 
 /// Unsigned saturating shift right narrow
@@ -23430,10 +23400,9 @@ pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrn_n_u64_(a: uint64x2_t, n: uint64x2_t) -> uint32x2_t;
     }
-vqshrn_n_u64_(a, const { uint64x2_t(-N as u64, -N as u64) })
+vqshrn_n_u64_(a, const { uint64x2_t([-N as u64, -N as u64]) })
 }
 
 /// Unsigned saturating shift right narrow
@@ -23469,10 +23438,9 @@ pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrun_n_s16_(a: int16x8_t, n: int16x8_t) -> uint8x8_t;
     }
-vqshrun_n_s16_(a, const { int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16) })
+vqshrun_n_s16_(a, const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) })
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -23508,10 +23476,9 @@ pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrun_n_s32_(a: int32x4_t, n: int32x4_t) -> uint16x4_t;
     }
-vqshrun_n_s32_(a, const { int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32) })
+vqshrun_n_s32_(a, const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) })
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -23547,10 +23514,9 @@ pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vqshrun_n_s64_(a: int64x2_t, n: int64x2_t) -> uint32x2_t;
     }
-vqshrun_n_s64_(a, const { int64x2_t(-N as i64, -N as i64) })
+vqshrun_n_s64_(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -28266,10 +28232,9 @@ pub unsafe fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v8i8")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vrshrn_n_s16_(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
-vrshrn_n_s16_(a, const { int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16) })
+vrshrn_n_s16_(a, const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) })
 }
 
 /// Rounding shift right narrow
@@ -28305,10 +28270,9 @@ pub unsafe fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v4i16")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vrshrn_n_s32_(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
-vrshrn_n_s32_(a, const { int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32) })
+vrshrn_n_s32_(a, const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) })
 }
 
 /// Rounding shift right narrow
@@ -28344,10 +28308,9 @@ pub unsafe fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrshiftn.v2i32")]
-        #[rustc_intrinsic_const_vector_arg(1)]
         fn vrshrn_n_s64_(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-vrshrn_n_s64_(a, const { int64x2_t(-N as i64, -N as i64) })
+vrshrn_n_s64_(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
 
 /// Rounding shift right narrow

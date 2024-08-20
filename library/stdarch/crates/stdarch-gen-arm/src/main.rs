@@ -2049,17 +2049,6 @@ fn gen_arm(
         in_t[2].to_string(),
         out_t.to_string(),
     ];
-    let get_const_vector_arg_attr = |const_option: &Option<String>| -> &str {
-        if let Some(const_str) = const_option {
-            if const_str.contains("as ttn") {
-                return "
-        #[rustc_intrinsic_const_vector_arg(1)]";
-            }
-        }
-        ""
-    };
-    let const_vector_arg_arm = get_const_vector_arg_attr(const_arm);
-    let const_vector_arg_aarch64 = get_const_vector_arg_attr(const_aarch64);
     if let (Some(mut link_arm), Some(mut link_aarch64)) = (link_arm.clone(), link_aarch64.clone()) {
         if link_arm.contains(':') {
             let links: Vec<_> = link_arm.split(':').map(|v| v.to_string()).collect();
@@ -2213,7 +2202,7 @@ fn gen_arm(
         ext_c_arm.push_str(&format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(target_arch = "arm", link_name = "{}")]{const_vector_arg_arm}
+        #[cfg_attr(target_arch = "arm", link_name = "{}")]
         fn {}({}){};
     }}
 "#,
@@ -2315,7 +2304,7 @@ fn gen_arm(
         ext_c_aarch64.push_str(&format!(
             r#"#[allow(improper_ctypes)]
     extern "unadjusted" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]{const_vector_arg_aarch64}
+        #[cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), link_name = "{}")]
         fn {}({}){};
     }}
 "#,
@@ -2404,14 +2393,14 @@ fn gen_arm(
                     } else {
                         let const_arm = const_arm.replace("ttn", &type_to_native_type(in_t[1]));
                         let mut cnt = String::from(format!("const {{ {}", in_t[1]));
-                        cnt.push_str("(");
+                        cnt.push_str("([");
                         for i in 0..type_len(in_t[1]) {
                             if i != 0 {
                                 cnt.push_str(", ");
                             }
                             cnt.push_str(&const_arm);
                         }
-                        cnt.push_str(") }");
+                        cnt.push_str("]) }");
                         cnt
                     };
                     match para_num {
@@ -2485,7 +2474,7 @@ fn gen_arm(
                             }
                             cnt.push_str(&const_aarch64);
                         }
-                        cnt.push_str(")");
+                        cnt.push_str("])");
                         format!("{current_fn}(a, const {{ {cnt} }})")
                     } else {
                         match para_num {
