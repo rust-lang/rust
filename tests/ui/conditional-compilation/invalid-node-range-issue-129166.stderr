@@ -1,0 +1,8 @@
+error: removing an expression is not supported in this position
+  --> $DIR/invalid-node-range-issue-129166.rs:7:17
+   |
+LL |     #[cfg_eval] #[cfg(not(FALSE))] 0
+   |                 ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

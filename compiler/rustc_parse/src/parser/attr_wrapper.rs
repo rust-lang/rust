@@ -234,6 +234,8 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
         f: impl FnOnce(&mut Self, AttrVec) -> PResult<'a, (R, Trailing, UsePreAttrPos)>,
     ) -> PResult<'a, R> {
+        let possible_capture_mode = self.capture_cfg;
+
         // We must collect if anything could observe the collected tokens, i.e.
         // if any of the following conditions hold.
         // - We are force collecting tokens (because force collection requires
@@ -244,9 +246,9 @@ impl<'a> Parser<'a> {
             // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
             || R::SUPPORTS_CUSTOM_INNER_ATTRS
-            // - We are in `capture_cfg` mode (which requires tokens if
+            // - We are in "possible capture mode" (which requires tokens if
             //   the parsed node has `#[cfg]` or `#[cfg_attr]` attributes).
-            || self.capture_cfg;
+            || possible_capture_mode;
         if !needs_collection {
             return Ok(f(self, attrs.attrs)?.0);
         }
@@ -267,7 +269,7 @@ impl<'a> Parser<'a> {
             res?
         };
 
-        // When we're not in `capture_cfg` mode, then skip collecting and
+        // When we're not in "definite capture mode", then skip collecting and
         // return early if either of the following conditions hold.
         // - `None`: Our target doesn't support tokens at all (e.g. `NtIdent`).
         // - `Some(Some(_))`: Our target already has tokens set (e.g. we've
@@ -278,7 +280,10 @@ impl<'a> Parser<'a> {
         // Note that this check is independent of `force_collect`. There's no
         // need to collect tokens when we don't support tokens or already have
         // tokens.
-        if !self.capture_cfg && matches!(ret.tokens_mut(), None | Some(Some(_))) {
+        let definite_capture_mode = self.capture_cfg
+            && matches!(self.capture_state.capturing, Capturing::Yes)
+            && has_cfg_or_cfg_attr(ret.attrs());
+        if !definite_capture_mode && matches!(ret.tokens_mut(), None | Some(Some(_))) {
             return Ok(ret);
         }
 
@@ -298,11 +303,11 @@ impl<'a> Parser<'a> {
             //   the earlier `needs_tokens` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
             || needs_tokens(ret.attrs())
-            // - We are in `capture_cfg` mode and there are `#[cfg]` or
-            //   `#[cfg_attr]` attributes. (During normal non-`capture_cfg`
-            //   parsing, we don't need any special capturing for those
-            //   attributes, because they're builtin.)
-            || (self.capture_cfg && has_cfg_or_cfg_attr(ret.attrs()));
+            // - We are in "definite capture mode", which requires that there
+            //   are `#[cfg]` or `#[cfg_attr]` attributes. (During normal
+            //   non-`capture_cfg` parsing, we don't need any special capturing
+            //   for those attributes, because they're builtin.)
+            || definite_capture_mode;
         if !needs_collection {
             return Ok(ret);
         }
@@ -399,20 +404,18 @@ impl<'a> Parser<'a> {
             break_last_token: self.break_last_token,
             node_replacements,
         });
+        let mut tokens_used = false;
 
         // If we support tokens and don't already have them, store the newly captured tokens.
         if let Some(target_tokens @ None) = ret.tokens_mut() {
+            tokens_used = true;
             *target_tokens = Some(tokens.clone());
         }
 
-        // If `capture_cfg` is set and we're inside a recursive call to
-        // `collect_tokens`, then we need to register a replace range if we
-        // have `#[cfg]` or `#[cfg_attr]`. This allows us to run eager
-        // cfg-expansion on the captured token stream.
-        if self.capture_cfg
-            && matches!(self.capture_state.capturing, Capturing::Yes)
-            && has_cfg_or_cfg_attr(ret.attrs())
-        {
+        // If in "definite capture mode" we need to register a replace range
+        // for the `#[cfg]` and/or `#[cfg_attr]` attrs. This allows us to run
+        // eager cfg-expansion on the captured token stream.
+        if definite_capture_mode {
             assert!(!self.break_last_token, "Should not have unglued last token with cfg attr");
 
             // What is the status here when parsing the example code at the top of this method?
@@ -430,6 +433,7 @@ impl<'a> Parser<'a> {
             let start_pos =
                 if has_outer_attrs { attrs.start_pos.unwrap() } else { collect_pos.start_pos };
             let target = AttrsTarget { attrs: ret.attrs().iter().cloned().collect(), tokens };
+            tokens_used = true;
             self.capture_state
                 .parser_replacements
                 .push((ParserRange(start_pos..end_pos), Some(target)));
@@ -439,6 +443,7 @@ impl<'a> Parser<'a> {
             self.capture_state.parser_replacements.clear();
             self.capture_state.inner_attr_parser_ranges.clear();
         }
+        assert!(tokens_used); // check we didn't create `tokens` unnecessarily
         Ok(ret)
     }
 }
