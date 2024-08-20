@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::Display;
+use std::ptr;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 
@@ -51,6 +52,22 @@ mod issue_8493 {
     }
 
     issue_8493!();
+}
+
+#[repr(C, align(8))]
+struct NoAtomic(usize);
+#[repr(C, align(8))]
+struct WithAtomic(AtomicUsize);
+
+const fn with_non_null() -> *const WithAtomic {
+    const NO_ATOMIC: NoAtomic = NoAtomic(0);
+    (&NO_ATOMIC as *const NoAtomic).cast()
+}
+const WITH_ATOMIC: *const WithAtomic = with_non_null();
+
+struct Generic<T>(T);
+impl<T> Generic<T> {
+    const RAW_POINTER: *const Cell<T> = ptr::null();
 }
 
 fn main() {}
