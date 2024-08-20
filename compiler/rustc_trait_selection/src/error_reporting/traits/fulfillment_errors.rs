@@ -1723,7 +1723,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     None
                 };
-            let spans: Vec<_> = [trait_def_id, other_trait_def_id]
+            let candidates = if impl_candidates.is_empty() {
+                alternative_candidates(trait_def_id)
+            } else {
+                impl_candidates.into_iter().map(|cand| cand.trait_ref).collect()
+            };
+            let mut span: MultiSpan = self.tcx.def_span(trait_def_id).into();
+            span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
+            for (sp, label) in [trait_def_id, other_trait_def_id]
                 .iter()
                 .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
@@ -1740,25 +1747,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ),
                     )
                 })
-                .collect();
-            let mut span: MultiSpan = spans.iter().map(|(sp, _)| *sp).collect::<Vec<Span>>().into();
-            for (sp, label) in spans.into_iter() {
+            {
                 span.push_span_label(sp, label);
             }
-            err.highlighted_span_help(span, vec![
-                StringPart::normal("there are ".to_string()),
-                StringPart::highlighted("multiple different versions".to_string()),
-                StringPart::normal(" of crate `".to_string()),
-                StringPart::highlighted(format!("{crate_name}")),
-                StringPart::normal("` in the dependency graph".to_string()),
-            ]);
-            let candidates = if impl_candidates.is_empty() {
-                alternative_candidates(trait_def_id)
-            } else {
-                impl_candidates.into_iter().map(|cand| cand.trait_ref).collect()
-            };
-            let mut span: MultiSpan = self.tcx.def_span(trait_def_id).into();
-            span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
             if let Some(found_type) = found_type {
                 span.push_span_label(
                     self.tcx.def_span(found_type),
@@ -1786,6 +1777,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             span.push_span_label(self.tcx.def_span(other_trait_def_id), "this is the found trait");
             err.highlighted_span_note(span, vec![
+                StringPart::normal("there are ".to_string()),
+                StringPart::highlighted("multiple different versions".to_string()),
+                StringPart::normal(" of crate `".to_string()),
+                StringPart::highlighted(format!("{crate_name}")),
+                StringPart::normal("` in the dependency graph\n".to_string()),
+            ]);
+            err.highlighted_note(vec![
                 StringPart::normal(
                     "two types coming from two different versions of the same crate are \
                          different types "
@@ -1793,7 +1791,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ),
                 StringPart::highlighted("even if they look the same".to_string()),
             ]);
-            err.help("you can use `cargo tree` to explore your dependency tree");
+            err.highlighted_help(vec![
+                StringPart::normal("you can use `".to_string()),
+                StringPart::highlighted("cargo tree".to_string()),
+                StringPart::normal("` to explore your dependency tree".to_string()),
+            ]);
             return true;
         }
 
