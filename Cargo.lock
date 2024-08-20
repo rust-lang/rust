@@ -420,12 +420,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.1.13"
+version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72db2f7947ecee9b03b510377e8bb9077afa27176fdbff55c51027e976fdcc48"
-dependencies = [
- "shlex",
-]
+checksum = "5208975e568d83b6b05cc0a063c8e7e9acc2b43bee6da15616a5b73e109d7437"
 
 [[package]]
 name = "cfg-if"
