@@ -84,12 +84,16 @@ fn main() {
     let root = Path::new("../../src/llvm-project/compiler-rt");
 
     let src_root = root.join("lib").join("profile");
+    assert!(src_root.exists(), "profiler runtime source directory not found: {src_root:?}");
+    let mut n_sources_found = 0u32;
     for src in profile_sources {
         let path = src_root.join(src);
         if path.exists() {
             cfg.file(path);
+            n_sources_found += 1;
         }
     }
+    assert!(n_sources_found > 0, "couldn't find any profiler runtime source files in {src_root:?}");
 
     cfg.include(root.join("include"));
     cfg.warnings(false);
