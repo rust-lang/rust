@@ -1,4 +1,3 @@
-#![feature(raw_ref_op)]
 #![feature(strict_provenance)]
 use std::ptr;
 

@@ -19,6 +19,7 @@ use object::BinaryFormat;
 
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, Tool};
+use crate::core::build_steps::vendor::default_paths_to_vendor;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -1004,35 +1005,18 @@ impl Step for PlainSourceTarball {
         if builder.rust_info().is_managed_git_subrepository()
             || builder.rust_info().is_from_tarball()
         {
-            // FIXME: This code looks _very_ similar to what we have in `src/core/build_steps/vendor.rs`
-            // perhaps it should be removed in favor of making `dist` perform the `vendor` step?
-
             builder.require_and_update_all_submodules();
 
             // Vendor all Cargo dependencies
             let mut cmd = command(&builder.initial_cargo);
-            cmd.arg("vendor")
-                .arg("--versioned-dirs")
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/cargo/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./compiler/rustc_codegen_gcc/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./library/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/opt-dist/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rustc-perf/Cargo.toml"))
-                .arg("--sync")
-                .arg(builder.src.join("./src/tools/rustbook/Cargo.toml"))
-                // Will read the libstd Cargo.toml
-                // which uses the unstable `public-dependency` feature.
+            cmd.arg("vendor").arg("--versioned-dirs");
+
+            for p in default_paths_to_vendor(builder) {
+                cmd.arg("--sync").arg(p);
+            }
+
+            cmd
+                // Will read the libstd Cargo.toml which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
                 .current_dir(plain_dst_src);
 
@@ -2321,6 +2305,19 @@ impl Step for RustDev {
         maybe_install_llvm(builder, target, &dst_libdir, true);
         let link_type = if builder.llvm_link_shared() { "dynamic" } else { "static" };
         t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
+
+        // Copy the `compiler-rt` source, so that `library/profiler_builtins`
+        // can potentially use it to build the profiler runtime without needing
+        // to check out the LLVM submodule.
+        copy_src_dirs(
+            builder,
+            &builder.src.join("src").join("llvm-project"),
+            &["compiler-rt"],
+            // The test subdirectory is much larger than the rest of the source,
+            // and we currently don't use these test files anyway.
+            &["compiler-rt/test"],
+            tarball.image_dir(),
+        );
 
         Some(tarball.generate())
     }

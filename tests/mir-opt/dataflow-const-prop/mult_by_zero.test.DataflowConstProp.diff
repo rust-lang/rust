@@ -8,7 +8,7 @@
   
       bb0: {
           StorageLive(_2);
-          _2 = _1;
+          _2 = copy _1;
 -         _0 = Mul(move _2, const 0_i32);
 +         _0 = const 0_i32;
           StorageDead(_2);

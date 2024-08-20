@@ -10,7 +10,7 @@
           discriminant(_1) = 1;
           (((_1 as variant#1).0: NonZeroUsize).0: usize) = const 0_usize;
           _2 = discriminant(_1);
-          switchInt(_2) -> [0: bb1, otherwise: bb2];
+          switchInt(copy _2) -> [0: bb1, otherwise: bb2];
       }
   
       bb1: {

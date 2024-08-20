@@ -321,6 +321,8 @@ declare_features! (
     (accepted, raw_dylib, "1.71.0", Some(58713)),
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589)),
+    /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
+    (accepted, raw_ref_op, "CURRENT_RUSTC_VERSION", Some(64490)),
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (accepted, re_rebalance_coherence, "1.41.0", Some(55437)),
@@ -392,6 +394,8 @@ declare_features! (
     (accepted, universal_impl_trait, "1.26.0", Some(34511)),
     /// Allows arbitrary delimited token streams in non-macro attributes.
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208)),
+    /// Allows unsafe attributes.
+    (accepted, unsafe_attributes, "CURRENT_RUSTC_VERSION", Some(123757)),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668)),
     /// Allows unsafe on extern declarations and safety qualifiers over internal items.

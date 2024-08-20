@@ -1,6 +1,4 @@
-//@ ignore-windows
 //@ ignore-android
-//@ min-lldb-version: 310
 //@ ignore-test: #128971
 
 #![allow(unused)]

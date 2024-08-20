@@ -11,9 +11,9 @@ fn main() {
     // CHECK: debug z => [[z:_.*]];
     // CHECK: [[a]] = foo()
     // CHECK: [[x]] = const (1_i32, 2_i32);
-    // CHECK: ([[x]].1: i32) = [[a]];
-    // CHECK: [[y]] = ([[x]].1: i32);
-    // CHECK: [[z]] = ([[x]].0: i32);
+    // CHECK: ([[x]].1: i32) = copy [[a]];
+    // CHECK: [[y]] = copy ([[x]].1: i32);
+    // CHECK: [[z]] = copy ([[x]].0: i32);
     let a = foo();
     let mut x: (i32, i32) = (1, 2);
     x.1 = a;

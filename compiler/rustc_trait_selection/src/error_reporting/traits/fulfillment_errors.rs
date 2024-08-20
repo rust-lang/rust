@@ -1668,7 +1668,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let name = self.tcx.crate_name(trait_def_id.krate);
             let spans: Vec<_> = [trait_def_id, found_type]
                 .into_iter()
-                .filter_map(|def_id| self.tcx.extern_crate(def_id))
+                .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {
                         "direct dependency of the current crate".to_string()
@@ -1689,11 +1689,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             err.highlighted_span_help(
                 span,
                 vec![
-                    StringPart::normal("you have ".to_string()),
+                    StringPart::normal("there are ".to_string()),
                     StringPart::highlighted("multiple different versions".to_string()),
                     StringPart::normal(" of crate `".to_string()),
                     StringPart::highlighted(format!("{name}")),
-                    StringPart::normal("` in your dependency graph".to_string()),
+                    StringPart::normal("` the your dependency graph".to_string()),
                 ],
             );
             let candidates = if impl_candidates.is_empty() {
@@ -2729,6 +2729,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref sig, _), .. })
             | Node::TraitItem(&hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..
+            })
+            | Node::ForeignItem(&hir::ForeignItem {
+                kind: hir::ForeignItemKind::Fn(ref sig, _, _),
+                ..
             }) => (
                 sig.span,
                 None,

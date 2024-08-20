@@ -25,7 +25,7 @@ fn main() -> () {
     bb2: {
         StorageLive(_3);
         StorageLive(_4);
-        _4 = _1;
+        _4 = copy _1;
         switchInt(move _4) -> [0: bb4, otherwise: bb3];
     }
 

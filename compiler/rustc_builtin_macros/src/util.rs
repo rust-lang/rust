@@ -17,7 +17,6 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
     // All the built-in macro attributes are "words" at the moment.
     let template = AttributeTemplate { word: true, ..Default::default() };
     validate_attr::check_builtin_meta_item(
-        &ecx.ecfg.features,
         &ecx.sess.psess,
         meta_item,
         AttrStyle::Outer,

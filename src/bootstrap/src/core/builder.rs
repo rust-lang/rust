@@ -1455,15 +1455,11 @@ impl<'a> Builder<'a> {
             assert_eq!(target, compiler.host);
         }
 
-        if self.config.rust_optimize.is_release() {
-            // FIXME: cargo bench/install do not accept `--release`
-            // and miri doesn't want it
-            match cmd_kind {
-                Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest => {}
-                _ => {
-                    cargo.arg("--release");
-                }
-            }
+        if self.config.rust_optimize.is_release() &&
+        // cargo bench/install do not accept `--release` and miri doesn't want it
+        !matches!(cmd_kind, Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest)
+        {
+            cargo.arg("--release");
         }
 
         // Remove make-related flags to ensure Cargo can correctly set things up

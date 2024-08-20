@@ -18,13 +18,13 @@
           StorageLive(_4);
           _4 = const aggregate::FOO;
           StorageLive(_2);
-          _2 = (_4.0: u8);
+          _2 = copy (_4.0: u8);
           StorageLive(_3);
-          _3 = (_4.1: u8);
+          _3 = copy (_4.1: u8);
           StorageDead(_4);
           StorageLive(_5);
           StorageLive(_6);
-          _6 = _2;
+          _6 = copy _2;
           _5 = Eq(move _6, const 7_u8);
 -         switchInt(move _5) -> [0: bb2, otherwise: bb1];
 +         goto -> bb2;
@@ -32,13 +32,13 @@
   
       bb1: {
           StorageDead(_6);
-          _0 = _3;
+          _0 = copy _3;
           goto -> bb3;
       }
   
       bb2: {
           StorageDead(_6);
-          _0 = _2;
+          _0 = copy _2;
           goto -> bb3;
       }
   

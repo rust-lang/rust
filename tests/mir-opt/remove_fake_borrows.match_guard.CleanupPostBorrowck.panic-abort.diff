@@ -24,7 +24,7 @@
       }
   
       bb2: {
-          switchInt((*(*((_1 as Some).0: &&i32)))) -> [0: bb3, otherwise: bb1];
+          switchInt(copy (*(*((_1 as Some).0: &&i32)))) -> [0: bb3, otherwise: bb1];
       }
   
       bb3: {
@@ -42,7 +42,7 @@
 +         nop;
 +         nop;
           StorageLive(_8);
-          _8 = _2;
+          _8 = copy _2;
           switchInt(move _8) -> [0: bb6, otherwise: bb5];
       }
   

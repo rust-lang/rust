@@ -1520,7 +1520,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query extern_crate(def_id: DefId) -> Option<&'tcx ExternCrate> {
+    query extern_crate(def_id: CrateNum) -> Option<&'tcx ExternCrate> {
         eval_always
         desc { "getting crate's ExternCrateData" }
         separate_provide_extern
