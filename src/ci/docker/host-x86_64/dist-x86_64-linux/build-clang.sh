@@ -5,7 +5,7 @@ set -ex
 source shared.sh
 
 # Try to keep the LLVM version here in sync with src/ci/scripts/install-clang.sh
-LLVM=llvmorg-18.1.0
+LLVM=llvmorg-19.1.0-rc3
 
 mkdir llvm-project
 cd llvm-project
@@ -33,6 +33,7 @@ hide_output \
       -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
       -DCOMPILER_RT_BUILD_XRAY=OFF \
       -DCOMPILER_RT_BUILD_MEMPROF=OFF \
+      -DCOMPILER_RT_BUILD_CTX_PROFILE=OFF \
       -DLLVM_TARGETS_TO_BUILD=X86 \
       -DLLVM_INCLUDE_BENCHMARKS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
