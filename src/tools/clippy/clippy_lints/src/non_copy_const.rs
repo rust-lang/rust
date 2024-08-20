@@ -309,7 +309,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        self.interior_mut = InteriorMut::new(cx, &self.ignore_interior_mutability);
+        self.interior_mut = InteriorMut::without_pointers(cx, &self.ignore_interior_mutability);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
