@@ -1750,6 +1750,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 span.push_span_label(sp, label);
             }
+            let mut points_at_type = false;
             if let Some(found_type) = found_type {
                 span.push_span_label(
                     self.tcx.def_span(found_type),
@@ -1772,6 +1773,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             candidate_span,
                             "this type implements the required trait",
                         );
+                        points_at_type = true;
                     }
                 }
             }
@@ -1783,14 +1785,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 StringPart::highlighted(format!("{crate_name}")),
                 StringPart::normal("` in the dependency graph\n".to_string()),
             ]);
-            err.highlighted_note(vec![
-                StringPart::normal(
-                    "two types coming from two different versions of the same crate are \
+            if points_at_type {
+                // We only clarify that the same type from different crate versions are not the
+                // same when we *find* the same type coming from different crate versions, otherwise
+                // it could be that it was a type provided by a different crate than the one that
+                // provides the trait, and mentioning this adds verbosity without clarification.
+                err.highlighted_note(vec![
+                    StringPart::normal(
+                        "two types coming from two different versions of the same crate are \
                          different types "
-                        .to_string(),
-                ),
-                StringPart::highlighted("even if they look the same".to_string()),
-            ]);
+                            .to_string(),
+                    ),
+                    StringPart::highlighted("even if they look the same".to_string()),
+                ]);
+            }
             err.highlighted_help(vec![
                 StringPart::normal("you can use `".to_string()),
                 StringPart::highlighted("cargo tree".to_string()),
