@@ -561,8 +561,6 @@ declare_features! (
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
-    /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
-    (unstable, precise_capturing, "1.79.0", Some(123432)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.

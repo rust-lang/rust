@@ -8,10 +8,10 @@ LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
 LL |     x
    |     ^
    |
-help: to declare that `Opaque(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), ['a/#0, T, 'a/#2])` captures `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))`, you can add an explicit `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))` lifetime bound
+help: add a `use<...>` bound to explicitly capture `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))`
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_)) {
-   |                                      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + use<'a, ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_)), T> {
+   |                                      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

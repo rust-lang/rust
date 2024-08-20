@@ -5,8 +5,6 @@
 // To fix this soundly, we need to make sure that all the trait header args
 // remain captured, since they affect trait selection.
 
-#![feature(precise_capturing)]
-
 trait Foo<'a> {
     fn hello() -> impl PartialEq + use<Self>;
 }
