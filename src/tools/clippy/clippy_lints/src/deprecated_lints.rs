@@ -166,7 +166,7 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     #[clippy::version = ""]
     ("clippy::positional_named_format_parameters", "named_arguments_used_positionally"),
     #[clippy::version = ""]
-    ("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr"),
+    ("clippy::temporary_cstring_as_ptr", "dangling_pointers_from_temporaries"),
     #[clippy::version = ""]
     ("clippy::undropped_manually_drops", "undropped_manually_drops"),
     #[clippy::version = ""]
