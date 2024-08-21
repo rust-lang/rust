@@ -40,7 +40,7 @@ fn foo<T: Trait + Trait>() {}
 The [next-gen trait solver][next-gen-solver] also requires this elaboration to take place.
 
 [elaborate]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/traits/util/fn.elaborate.html
-[next-gen-solver]: https://rustc-dev-guide.rust-lang.org/solve/trait-solving.html
+[next-gen-solver]: ../solve/trait-solving.md
 
 ## Normalizing all bounds
 

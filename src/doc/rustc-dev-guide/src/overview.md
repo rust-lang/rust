@@ -72,7 +72,7 @@ following files are found in the `parser`:
 
 This naming scheme is used across many compiler stages. You will find either a
 file or directory with the same name across the parsing, lowering, type
-checking, [Typed High-level Intermediate Representation (`THIR`)] lowering, and
+checking, [Typed High-level Intermediate Representation (`THIR`)][thir] lowering, and
 [Mid-level Intermediate Representation (`MIR`)][mir] building sources.
 
 Macro-expansion, `AST`-validation, name-resolution, and early linting also take
@@ -168,7 +168,7 @@ the final binary.
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [rustc_parse_parser_dir]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_parse/src/parser
 [String interning]: https://en.wikipedia.org/wiki/String_interning
-[Typed High-level Intermediate Representation (`THIR`)]: https://rustc-dev-guide.rust-lang.org/thir.html
+[thir]: ./thir.md
 
 ## How it does it
 

@@ -95,7 +95,7 @@ end up leaking placeholders.
 The handling of member constraints does not change in the new solver. See the
 [relevant existing chapter][member-constraints] for that.
 
-[member-constraints]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/member_constraints.html
+[member-constraints]: ../borrow_check/region_inference/member_constraints.md
 
 ## calling methods on opaque types
 

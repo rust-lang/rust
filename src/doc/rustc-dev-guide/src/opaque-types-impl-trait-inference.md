@@ -5,8 +5,8 @@ This kind of type inference is particularly complex because,
 unlike other kinds of type inference,
 it can work across functions and function bodies.
 
-[hidden type]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/member_constraints.html?highlight=%22hidden%20type%22#member-constraints
-[opaque type]: https://rustc-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
+[hidden type]: ./borrow_check/region_inference/member_constraints.html?highlight=%22hidden%20type%22#member-constraints
+[opaque type]: ./opaque-types-type-alias-impl-trait.md
 
 ## Running example
 
