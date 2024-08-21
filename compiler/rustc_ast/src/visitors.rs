@@ -404,7 +404,8 @@ macro_rules! make_ast_visitor {
                     $vis.visit_ident($ident)
                 ,
                     $vis.visit_ident(*$ident)
-                ) }
+                )
+            }
         }
 
         macro_rules! return_result {
@@ -420,6 +421,18 @@ macro_rules! make_ast_visitor {
                     $visit
                 ,
                     try_visit!($visit)
+                )
+            }
+        }
+
+        macro_rules! visit_list {
+            ($visitor: expr, $visit: ident, $flat_map: ident, $list: expr) => {
+                if_mut_expr!(
+                    $list.flat_map_in_place(|x| $visitor.$flat_map(x))
+                ,
+                    for elem in $list {
+                        try_v!($visitor.$visit(elem));
+                    }
                 )
             }
         }
@@ -532,6 +545,20 @@ macro_rules! make_ast_visitor {
         ) -> result!(V) {
             let MutTy { ty, mutbl: _ } = mt;
             try_v!(vis.visit_ty(ty));
+            return_result!(V)
+        }
+
+        pub fn walk_closure_binder<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            binder: ref_t!(ClosureBinder)
+        ) -> result!(V) {
+            match binder {
+                ClosureBinder::NotPresent => {}
+                // TODO: skipped span
+                ClosureBinder::For { generic_params, span: _ } => {
+                    visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params)
+                }
+            }
             return_result!(V)
         }
 
@@ -1122,19 +1149,6 @@ pub mod visit {
         let Generics { params, where_clause, span: _ } = generics;
         walk_list!(visitor, visit_generic_param, params);
         try_visit!(visitor.visit_where_clause(where_clause));
-        V::Result::output()
-    }
-
-    pub fn walk_closure_binder<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        binder: &'a ClosureBinder,
-    ) -> V::Result {
-        match binder {
-            ClosureBinder::NotPresent => {}
-            ClosureBinder::For { generic_params, span: _ } => {
-                walk_list!(visitor, visit_generic_param, generic_params)
-            }
-        }
         V::Result::output()
     }
 
@@ -2151,15 +2165,6 @@ pub mod mut_visit {
         match constness {
             Const::Yes(span) => vis.visit_span(span),
             Const::No => {}
-        }
-    }
-
-    fn walk_closure_binder<T: MutVisitor>(vis: &mut T, binder: &mut ClosureBinder) {
-        match binder {
-            ClosureBinder::NotPresent => {}
-            ClosureBinder::For { span: _, generic_params } => {
-                generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-            }
         }
     }
 
