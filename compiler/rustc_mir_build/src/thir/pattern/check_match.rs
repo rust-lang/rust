@@ -718,7 +718,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
             interpreted_as_const,
-            witness_1_is_privately_uninhabited: witness_1_is_privately_uninhabited.then_some(()),
+            witness_1_is_privately_uninhabited,
             _p: (),
             pattern_ty,
             let_suggestion,

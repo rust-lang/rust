@@ -382,7 +382,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: None,
+                was_written: false,
                 path: Default::default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -393,7 +393,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: None,
+                was_written: false,
                 path: Default::default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -404,7 +404,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-                was_written: None,
+                was_written: false,
                 path: Default::default(),
             }),
         }
@@ -586,7 +586,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.as_ref().map(|_| ()),
+                was_written: path.is_some(),
                 path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
@@ -597,7 +597,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.as_ref().map(|_| ()),
+                was_written: path.is_some(),
                 path: path.unwrap_or_default(),
             }),
             TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
@@ -608,7 +608,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-                was_written: path.as_ref().map(|_| ()),
+                was_written: path.is_some(),
                 path: path.unwrap_or_default(),
             }),
         }

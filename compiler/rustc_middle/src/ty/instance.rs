@@ -581,9 +581,9 @@ impl<'tcx> Instance<'tcx> {
                     let mut path = PathBuf::new();
                     let was_written = if let Some(path2) = written_to_path {
                         path = path2;
-                        Some(())
+                        true
                     } else {
-                        None
+                        false
                     };
                     tcx.dcx().emit_fatal(error::TypeLengthLimit {
                         // We don't use `def_span(def_id)` so that diagnostics point

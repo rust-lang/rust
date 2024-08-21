@@ -913,7 +913,7 @@ pub(crate) struct InvalidLiteralSuffixOnTupleIndex {
     #[help(parse_tuple_exception_line_1)]
     #[help(parse_tuple_exception_line_2)]
     #[help(parse_tuple_exception_line_3)]
-    pub exception: Option<()>,
+    pub exception: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1299,7 +1299,7 @@ pub(crate) struct ComparisonOperatorsCannotBeChained {
     pub suggest_turbofish: Option<Span>,
     #[help(parse_sugg_turbofish_syntax)]
     #[help(parse_sugg_parentheses_for_function_args)]
-    pub help_turbofish: Option<()>,
+    pub help_turbofish: bool,
     #[subdiagnostic]
     pub chaining_sugg: Option<ComparisonOperatorsCannotBeChainedSugg>,
 }
@@ -1578,7 +1578,7 @@ pub(crate) struct PathSingleColon {
     pub suggestion: Span,
 
     #[note(parse_type_ascription_removed)]
-    pub type_ascription: Option<()>,
+    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1589,7 +1589,7 @@ pub(crate) struct ColonAsSemi {
     pub span: Span,
 
     #[note(parse_type_ascription_removed)]
-    pub type_ascription: Option<()>,
+    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -2462,7 +2462,7 @@ pub(crate) struct TrailingVertNotAllowed {
     pub start: Option<Span>,
     pub token: Token,
     #[note(parse_note_pattern_alternatives_use_single_vert)]
-    pub note_double_vert: Option<()>,
+    pub note_double_vert: bool,
 }
 
 #[derive(Diagnostic)]
@@ -2894,7 +2894,7 @@ pub(crate) struct BadItemKind {
     pub descr: &'static str,
     pub ctx: &'static str,
     #[help]
-    pub help: Option<()>,
+    pub help: bool,
 }
 
 #[derive(Diagnostic)]

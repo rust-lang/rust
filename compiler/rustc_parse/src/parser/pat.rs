@@ -333,7 +333,7 @@ impl<'a> Parser<'a> {
                     span: self.token.span,
                     start: lo,
                     token: self.token.clone(),
-                    note_double_vert: matches!(self.token.kind, token::OrOr).then_some(()),
+                    note_double_vert: matches!(self.token.kind, token::OrOr),
                 });
                 self.bump();
                 true

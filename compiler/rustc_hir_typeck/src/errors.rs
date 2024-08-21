@@ -706,7 +706,7 @@ pub(crate) struct CastThinPointerToFatPointer<'tcx> {
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: String,
     #[note(hir_typeck_teach_help)]
-    pub(crate) teach: Option<()>,
+    pub(crate) teach: bool,
 }
 
 #[derive(Diagnostic)]
@@ -720,7 +720,7 @@ pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
     pub sugg_span: Option<Span>,
     pub replace: String,
     #[help]
-    pub help: Option<()>,
+    pub help: bool,
     #[note(hir_typeck_teach_help)]
-    pub(crate) teach: Option<()>,
+    pub(crate) teach: bool,
 }

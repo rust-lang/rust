@@ -137,8 +137,7 @@ fn enforce_impl_params_are_constrained(
             }
         };
         if err {
-            let const_param_note =
-                matches!(param.kind, ty::GenericParamDefKind::Const { .. }).then_some(());
+            let const_param_note = matches!(param.kind, ty::GenericParamDefKind::Const { .. });
             let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
                 span: tcx.def_span(param.def_id),
                 param_name: param.name,
