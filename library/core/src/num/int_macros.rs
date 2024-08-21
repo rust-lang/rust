@@ -1329,11 +1329,11 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn unbounded_shl(self, v: u32) -> $SelfT{
-            if v < Self::BITS{
+        pub const fn unbounded_shl(self, rhs: u32) -> $SelfT{
+            if rhs < Self::BITS{
                 // SAFETY:
-                // v is just checked to be in-range above
-                unsafe{self.unchecked_shl(v)}
+                // rhs is just checked to be in-range above
+                unsafe { self.unchecked_shl(rhs) }
             }else{
                 0
             }
@@ -1456,17 +1456,17 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn unbounded_shr(self, v: u32) -> $SelfT{
-            if v < Self::BITS{
+        pub const fn unbounded_shr(self, rhs: u32) -> $SelfT{
+            if rhs < Self::BITS{
                 // SAFETY:
-                // v is just checked to be in-range above
-                unsafe{self.unchecked_shr(v)}
+                // rhs is just checked to be in-range above
+                unsafe { self.unchecked_shr(rhs) }
             }else{
                 // A shift by `Self::BITS-1` suffices for signed integers, because the sign bit is copied for each of the shifted bits.
 
                 // SAFETY:
                 // `Self::BITS-1` is guaranteed to be less than `Self::BITS`
-                unsafe{self.unchecked_shr(Self::BITS - 1)}
+                unsafe { self.unchecked_shr(Self::BITS - 1) }
             }
         }
 

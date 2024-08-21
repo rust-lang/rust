@@ -1518,11 +1518,11 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn unbounded_shl(self, v: u32) -> $SelfT{
-            if v < Self::BITS{
+        pub const fn unbounded_shl(self, rhs: u32) -> $SelfT{
+            if rhs < Self::BITS{
                 // SAFETY:
-                // v is just checked to be in-range above
-                unsafe{self.unchecked_shl(v)}
+                // rhs is just checked to be in-range above
+                unsafe { self.unchecked_shl(rhs) }
             }else{
                 0
             }
@@ -1643,11 +1643,11 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn unbounded_shr(self, v: u32) -> $SelfT{
-            if v < Self::BITS{
+        pub const fn unbounded_shr(self, rhs: u32) -> $SelfT{
+            if rhs < Self::BITS{
                 // SAFETY:
-                // v is just checked to be in-range above
-                unsafe{self.unchecked_shr(v)}
+                // rhs is just checked to be in-range above
+                unsafe { self.unchecked_shr(rhs) }
             }else{
                 0
             }
