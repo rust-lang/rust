@@ -44,18 +44,11 @@ mod rustc {
             let Self { src, dst, assume, context } = self;
 
             let layout_cx = LayoutCx { tcx: context, param_env: ParamEnv::reveal_all() };
-            let layout_of = |ty| {
-                crate::layout::rustc::layout_of(layout_cx, ty)
-                    .map_err(|_| Err::NotYetSupported)
-                    .and_then(|_| Tree::from_ty(ty, layout_cx))
-            };
 
             // Convert `src` and `dst` from their rustc representations, to `Tree`-based
-            // representations. If these conversions fail, conclude that the transmutation is
-            // unacceptable; the layouts of both the source and destination types must be
-            // well-defined.
-            let src = layout_of(src);
-            let dst = layout_of(dst);
+            // representations.
+            let src = Tree::from_ty(src, layout_cx);
+            let dst = Tree::from_ty(dst, layout_cx);
 
             match (src, dst) {
                 (Err(Err::TypeError(_)), _) | (_, Err(Err::TypeError(_))) => {
