@@ -517,6 +517,17 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        // FIXME: should only exist while Visitor::visit_ident
+        // doesn't receives a reference
+        macro_rules! visit_ident {
+            ($vis: ident, $ident: ident) => {
+                if_mut_stmt!(
+                    $vis.visit_ident($ident)
+                ,
+                    $vis.visit_ident(*$ident)
+                ) }
+        }
+
         macro_rules! return_result {
             ($V: ty) => { if_mut_expr!({}, {
                 <$V>::Result::output()
@@ -531,6 +542,16 @@ macro_rules! make_ast_visitor {
             visit_span!(vis, span);
             return_result!(V)
         }
+
+        pub fn walk_label<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            label: ref_t!(Label)
+        ) -> result!(V) {
+            let Label { ident } = label;
+            visit_ident!(vis, ident);
+            return_result!(V)
+        }
+
     }
 }
 
@@ -677,13 +698,6 @@ pub mod visit {
             visit_opt!(visitor, visit_block, els);
         }
         V::Result::output()
-    }
-
-    pub fn walk_label<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        Label { ident }: &'a Label,
-    ) -> V::Result {
-        visitor.visit_ident(*ident)
     }
 
     pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) -> V::Result {
@@ -2379,10 +2393,6 @@ pub mod mut_visit {
     ) -> SmallVec<[GenericParam; 1]> {
         vis.visit_generic_param(&mut param);
         smallvec![param]
-    }
-
-    fn walk_label<T: MutVisitor>(vis: &mut T, Label { ident }: &mut Label) {
-        vis.visit_ident(ident);
     }
 
     fn walk_lifetime<T: MutVisitor>(vis: &mut T, Lifetime { id, ident }: &mut Lifetime) {
