@@ -104,10 +104,6 @@ macro_rules! mutability_dependent {
             walk_fn(self, fk)
         }
 
-        fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
-            walk_flat_map_field_def(self, fd)
-        }
-
         fn flat_map_assoc_item(
             &mut self,
             i: P<AssocItem>,
@@ -124,20 +120,12 @@ macro_rules! mutability_dependent {
             walk_flat_map_stmt(self, s)
         }
 
-        fn flat_map_arm(&mut self, arm: Arm) -> SmallVec<[Arm; 1]> {
-            walk_flat_map_arm(self, arm)
-        }
-
         fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
             noop_filter_map_expr(self, e)
         }
 
         fn visit_lifetime(&mut self, l: &mut Lifetime) {
             walk_lifetime(self, l);
-        }
-
-        fn flat_map_variant(&mut self, v: Variant) -> SmallVec<[Variant; 1]> {
-            walk_flat_map_variant(self, v)
         }
 
         fn visit_path(&mut self, p: &mut Path) {
@@ -148,28 +136,12 @@ macro_rules! mutability_dependent {
             walk_macro_def(self, def);
         }
 
-        fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
-            walk_flat_map_param(self, param)
-        }
-
-        fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
-            walk_flat_map_generic_param(self, param)
-        }
-
-        fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
-            walk_flat_map_expr_field(self, f)
-        }
-
         fn visit_id(&mut self, _id: &mut NodeId) {
             // Do nothing.
         }
 
         fn visit_span(&mut self, _sp: &mut Span) {
             // Do nothing.
-        }
-
-        fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
-            walk_flat_map_pat_field(self, fp)
         }
     };
 }
@@ -318,19 +290,20 @@ macro_rules! make_ast_visitor {
             make_visit!{MutTy, visit_mt, walk_mt}
             make_visit!{WhereClause, visit_where_clause, walk_where_clause}
             make_visit!{EnumDef, visit_enum_def, walk_enum_def}
-            make_visit!{Arm, visit_arm, walk_arm}
-            make_visit!{ExprField, visit_expr_field, walk_expr_field}
-            make_visit!{FieldDef, visit_field_def, walk_field_def}
-            make_visit!{Param, visit_param, walk_param}
-            make_visit!{PatField, visit_pat_field, walk_pat_field}
-            make_visit!{GenericParam, visit_generic_param, walk_generic_param}
-            make_visit!{Variant, visit_variant, walk_variant}
             make_visit!{P!(Local), visit_local, walk_local}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Ty), visit_ty, walk_ty}
             make_visit!{P!(Block), visit_block, walk_block}
             make_visit!{P!(FnDecl), visit_fn_decl, walk_fn_decl}
+            // flat_maps
+            make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
+            make_visit!{ExprField, visit_expr_field, walk_expr_field, flat_map_expr_field, walk_flat_map_expr_field}
+            make_visit!{GenericParam, visit_generic_param, walk_generic_param, flat_map_generic_param, walk_flat_map_generic_param}
+            make_visit!{FieldDef, visit_field_def, walk_field_def, flat_map_field_def, walk_flat_map_field_def}
+            make_visit!{Param, visit_param, walk_param, flat_map_param, walk_flat_map_param}
+            make_visit!{PatField, visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
+            make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
                 walk_param_bound(self, tpb)
