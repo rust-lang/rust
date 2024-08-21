@@ -1547,10 +1547,23 @@ instead, we check that it's not a "finger" cursor.
 	margin-left: 24px;
 }
 
+@keyframes targetfadein {
+	from {
+		background-color: var(--main-background-color);
+	}
+	10% {
+		background-color: var(--target-border-color);
+	}
+	to {
+		background-color: var(--target-background-color);
+	}
+}
+
 :target {
 	padding-right: 3px;
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
+	animation: 0.65s cubic-bezier(0, 0, 0.1, 1.0) 0.1s targetfadein;
 }
 
 .code-header a.tooltip {
