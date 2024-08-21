@@ -222,6 +222,15 @@ top_level_options!(
         color: ColorConfig [UNTRACKED],
 
         verbose: bool [TRACKED_NO_CRATE_HASH],
+
+        /// The raw value of the `*_DEPLOYMENT_TARGET` environment variable
+        /// for the selected target OS.
+        ///
+        /// The exact environment variable to use depends on the target that
+        /// the user has chosen, and we do not want to re-compile if an
+        /// unrelated deployment target environment variable changed, so we
+        /// defer the initialization of this to `build_session`.
+        apple_deployment_target_env: Option<String> [TRACKED],
     }
 );
 
