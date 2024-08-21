@@ -576,6 +576,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_poly_trait_ref<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            trait_ref: ref_t!(PolyTraitRef)
+        ) -> result!(V) {
+            let PolyTraitRef { bound_generic_params, trait_ref, span } = trait_ref;
+            visit_list!(vis, visit_generic_param, flat_map_generic_param, bound_generic_params);
+            try_v!(vis.visit_trait_ref(trait_ref));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
         make_walk_flat_map!{FieldDef, walk_flat_map_field_def, visit_field_def}
@@ -729,15 +740,6 @@ pub mod visit {
             visit_opt!(visitor, visit_block, els);
         }
         V::Result::output()
-    }
-
-    pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) -> V::Result
-    where
-        V: Visitor<'a>,
-    {
-        let PolyTraitRef { bound_generic_params, trait_ref, span: _ } = trait_ref;
-        walk_list!(visitor, visit_generic_param, bound_generic_params);
-        visitor.visit_trait_ref(trait_ref)
     }
 
     pub fn walk_trait_ref<'a, V: Visitor<'a>>(
@@ -2313,13 +2315,6 @@ pub mod mut_visit {
     fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut TraitRef) {
         vis.visit_id(ref_id);
         vis.visit_path(path);
-    }
-
-    fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
-        let PolyTraitRef { bound_generic_params, trait_ref, span } = p;
-        bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-        vis.visit_trait_ref(trait_ref);
-        vis.visit_span(span);
     }
 
     pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
