@@ -237,9 +237,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
-        // Any expression that produces a value of type `!` must have diverged
+        // Any expression that produces a value of type `!` must have diverged,
+        // unless it's the place of a raw ref expr.
         if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            if let hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::AddrOf(hir::BorrowKind::Raw, ..),
+                ..
+            }) = self.tcx.parent_hir_node(expr.hir_id)
+            {
+                // Taking a raw ref does not constitute a read, so this expression
+                // evaluating to `!` does not guarantee that the program diverges.
+                // So do nothing here.
+            } else {
+                self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            }
         }
 
         // Record the type, which applies it effects.
