@@ -117,18 +117,6 @@ impl TargetAbi {
 }
 
 fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
-    let platform_name: StaticCow<str> = match abi {
-        TargetAbi::Normal => os.into(),
-        TargetAbi::Simulator => format!("{os}-simulator").into(),
-        TargetAbi::MacCatalyst => "mac-catalyst".into(),
-    };
-
-    let min_version: StaticCow<str> = {
-        let (major, minor, patch) = deployment_target(os, arch, abi);
-        format!("{major}.{minor}.{patch}").into()
-    };
-    let sdk_version = min_version.clone();
-
     // From the man page for ld64 (`man ld`):
     // > The linker accepts universal (multiple-architecture) input files,
     // > but always creates a "thin" (single-architecture), standard Mach-O
@@ -140,11 +128,46 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     let mut args =
         TargetOptions::link_args(LinkerFlavor::Darwin(Cc::No, Lld::No), &["-arch", arch.ld_arch()]);
 
+    // From the man page for ld64 (`man ld`):
+    // > This is set to indicate the platform, oldest supported version of
+    // > that platform that output is to be used on, and the SDK that the
+    // > output was built against. platform [...] may be one of the following
+    // > strings:
+    // > - macos
+    // > - ios
+    // > - tvos
+    // > - watchos
+    // > - bridgeos
+    // > - visionos
+    // > - xros
+    // > - mac-catalyst
+    // > - ios-simulator
+    // > - tvos-simulator
+    // > - watchos-simulator
+    // > - visionos-simulator
+    // > - xros-simulator
+    // > - driverkit
+    //
+    // Like with `-arch`, the linker can figure out the platform versions
+    // itself from the binaries being linked, but to be safe, we specify the
+    // desired versions here explicitly.
+    let platform_name: StaticCow<str> = match abi {
+        TargetAbi::Normal => os.into(),
+        TargetAbi::Simulator => format!("{os}-simulator").into(),
+        TargetAbi::MacCatalyst => "mac-catalyst".into(),
+    };
+    let min_version: StaticCow<str> = {
+        let (major, minor, patch) = deployment_target(os, arch, abi);
+        format!("{major}.{minor}.{patch}").into()
+    };
+    // Lie about the SDK version, we don't know it here
+    let sdk_version = min_version.clone();
     add_link_args_iter(
         &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         ["-platform_version".into(), platform_name, min_version, sdk_version].into_iter(),
     );
+
     if abi != TargetAbi::MacCatalyst {
         // CC forwards the `-arch` to the linker, so we use the same value
         // here intentionally.
