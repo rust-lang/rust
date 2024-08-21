@@ -15,9 +15,6 @@ macro_rules! mutability_dependent {
         fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
             walk_assoc_item(self, i, ctxt)
         }
-        fn visit_variant(&mut self, v: &'ast Variant) -> Self::Result {
-            walk_variant(self, v)
-        }
         // FIXME: inconsistent
         fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) -> Self::Result {
             walk_lifetime(self, lifetime)
@@ -425,6 +422,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_generic_param(&mut self, param: ref_t!(GenericParam)) -> result!() {
                 walk_generic_param(self, param)
+            }
+
+            fn visit_variant(&mut self, v: ref_t!(Variant)) -> result!() {
+                walk_variant(self, v)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -1896,12 +1897,12 @@ pub mod mut_visit {
         items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
     }
 
-    pub fn walk_flat_map_variant<T: MutVisitor>(
+    pub fn walk_variant<T: MutVisitor>(
         visitor: &mut T,
-        mut variant: Variant,
-    ) -> SmallVec<[Variant; 1]> {
+        variant: &mut Variant,
+    ) {
         let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } =
-            &mut variant;
+            variant;
         visitor.visit_id(id);
         visit_attrs(visitor, attrs);
         visitor.visit_vis(vis);
@@ -1909,6 +1910,13 @@ pub mod mut_visit {
         visitor.visit_variant_data(data);
         visit_opt(disr_expr, |disr_expr| visitor.visit_variant_discr(disr_expr));
         visitor.visit_span(span);
+    }
+
+    pub fn walk_flat_map_variant<T: MutVisitor>(
+        visitor: &mut T,
+        mut variant: Variant,
+    ) -> SmallVec<[Variant; 1]> {
+        visitor.visit_variant(&mut variant);
         smallvec![variant]
     }
 
