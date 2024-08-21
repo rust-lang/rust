@@ -1,11 +1,9 @@
 PRINT-DERIVE INPUT (DISPLAY): struct
 Foo([bool; #[rustc_dummy(first)] #[rustc_dummy(second)]
-{ #![rustc_dummy(third)] #[rustc_dummy(fourth)] #[rustc_dummy(fourth)] 30 }]);
+{ #![rustc_dummy(third)] #[rustc_dummy(fourth)] 30 }]);
 PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): struct
 Foo([bool; #[rustc_dummy(first)] #[rustc_dummy(second)]
-{
-    #! [rustc_dummy(third)] #[rustc_dummy(fourth)] #[rustc_dummy(fourth)] 30
-}]);
+{ #! [rustc_dummy(third)] #[rustc_dummy(fourth)] 30 }]);
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -112,31 +110,6 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                     },
                                 ],
                                 span: $DIR/macro-rules-derive-cfg.rs:24:7: 24:49 (#0),
-                            },
-                            Punct {
-                                ch: '#',
-                                spacing: Alone,
-                                span: $DIR/macro-rules-derive-cfg.rs:25:5: 25:6 (#0),
-                            },
-                            Group {
-                                delimiter: Bracket,
-                                stream: TokenStream [
-                                    Ident {
-                                        ident: "rustc_dummy",
-                                        span: $DIR/macro-rules-derive-cfg.rs:25:28: 25:39 (#0),
-                                    },
-                                    Group {
-                                        delimiter: Parenthesis,
-                                        stream: TokenStream [
-                                            Ident {
-                                                ident: "fourth",
-                                                span: $DIR/macro-rules-derive-cfg.rs:25:40: 25:46 (#0),
-                                            },
-                                        ],
-                                        span: $DIR/macro-rules-derive-cfg.rs:25:39: 25:47 (#0),
-                                    },
-                                ],
-                                span: $DIR/macro-rules-derive-cfg.rs:25:6: 25:49 (#0),
                             },
                             Punct {
                                 ch: '#',

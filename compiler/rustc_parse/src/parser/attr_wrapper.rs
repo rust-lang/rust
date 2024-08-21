@@ -256,6 +256,20 @@ impl<'a> Parser<'a> {
             res?
         };
 
+        // Ignore any attributes we've previously processed. This happens when
+        // an inner call to `collect_tokens` returns an AST node and then an
+        // outer call ends up with the same AST node without any additional
+        // wrapping layer.
+        let ret_attrs: AttrVec = ret
+            .attrs()
+            .iter()
+            .cloned()
+            .filter(|attr| {
+                let is_unseen = self.capture_state.seen_attrs.insert(attr.id);
+                is_unseen
+            })
+            .collect();
+
         // When we're not in "definite capture mode", then skip collecting and
         // return early if either of the following conditions hold.
         // - `None`: Our target doesn't support tokens at all (e.g. `NtIdent`).
@@ -269,7 +283,7 @@ impl<'a> Parser<'a> {
         // tokens.
         let definite_capture_mode = self.capture_cfg
             && matches!(self.capture_state.capturing, Capturing::Yes)
-            && has_cfg_or_cfg_attr(ret.attrs());
+            && has_cfg_or_cfg_attr(&ret_attrs);
         if !definite_capture_mode && matches!(ret.tokens_mut(), None | Some(Some(_))) {
             return Ok(ret);
         }
@@ -289,7 +303,7 @@ impl<'a> Parser<'a> {
             //   outer and inner attributes. So this check is more precise than
             //   the earlier `needs_tokens` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
-            || needs_tokens(ret.attrs())
+            || needs_tokens(&ret_attrs)
             // - We are in "definite capture mode", which requires that there
             //   are `#[cfg]` or `#[cfg_attr]` attributes. (During normal
             //   non-`capture_cfg` parsing, we don't need any special capturing
@@ -328,7 +342,7 @@ impl<'a> Parser<'a> {
         // `Parser::parse_inner_attributes`, and pair them in a `ParserReplacement` with `None`,
         // which means the relevant tokens will be removed. (More details below.)
         let mut inner_attr_parser_replacements = Vec::new();
-        for attr in ret.attrs() {
+        for attr in ret_attrs.iter() {
             if attr.style == ast::AttrStyle::Inner {
                 if let Some(inner_attr_parser_range) =
                     self.capture_state.inner_attr_parser_ranges.remove(&attr.id)
@@ -418,7 +432,7 @@ impl<'a> Parser<'a> {
             // cfg-expand this AST node.
             let start_pos =
                 if has_outer_attrs { attrs.start_pos.unwrap() } else { collect_pos.start_pos };
-            let target = AttrsTarget { attrs: ret.attrs().iter().cloned().collect(), tokens };
+            let target = AttrsTarget { attrs: ret_attrs, tokens };
             tokens_used = true;
             self.capture_state
                 .parser_replacements
@@ -428,6 +442,7 @@ impl<'a> Parser<'a> {
             // the outermost call to this method.
             self.capture_state.parser_replacements.clear();
             self.capture_state.inner_attr_parser_ranges.clear();
+            self.capture_state.seen_attrs.clear();
         }
         assert!(tokens_used); // check we didn't create `tokens` unnecessarily
         Ok(ret)
