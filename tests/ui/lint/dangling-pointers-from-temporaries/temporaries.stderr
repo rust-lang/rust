@@ -15,7 +15,7 @@ LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/temporaries.rs:24:25
+  --> $DIR/temporaries.rs:25:25
    |
 LL |     "hello".to_string().as_ptr();
    |     ------------------- ^^^^^^ this pointer will immediately be invalid
@@ -26,7 +26,7 @@ LL |     "hello".to_string().as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/temporaries.rs:30:26
+  --> $DIR/temporaries.rs:32:26
    |
 LL |     (string() + "hello").as_ptr();
    |     -------------------- ^^^^^^ this pointer will immediately be invalid
@@ -37,7 +37,7 @@ LL |     (string() + "hello").as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/temporaries.rs:65:61
+  --> $DIR/temporaries.rs:68:61
    |
 LL |         (if true { String::new() } else { "hello".into() }).as_ptr();
    |         --------------------------------------------------- ^^^^^^ this pointer will immediately be invalid
@@ -48,7 +48,7 @@ LL |         (if true { String::new() } else { "hello".into() }).as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/temporaries.rs:74:10
+  --> $DIR/temporaries.rs:77:10
    |
 LL | /         (loop {
 LL | |             break String::new();
@@ -61,7 +61,7 @@ LL |           .as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/temporaries.rs:82:10
+  --> $DIR/temporaries.rs:86:10
    |
 LL | /         match string() {
 LL | |             s => s,
@@ -74,7 +74,7 @@ LL |           .as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `String` will result in a dangling pointer
-  --> $DIR/temporaries.rs:89:18
+  --> $DIR/temporaries.rs:94:18
    |
 LL |     { string() }.as_ptr();
    |     ------------ ^^^^^^ this pointer will immediately be invalid
@@ -85,7 +85,7 @@ LL |     { string() }.as_ptr();
    = help: for more information, see https://doc.rust-lang.org/reference/destructors.html
 
 error: getting a pointer from a temporary `Vec<u8>` will result in a dangling pointer
-  --> $DIR/temporaries.rs:128:15
+  --> $DIR/temporaries.rs:134:15
    |
 LL |     vec![0u8].as_ptr();
    |     --------- ^^^^^^ this pointer will immediately be invalid

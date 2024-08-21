@@ -1,6 +1,6 @@
 // this program is not technically incorrect, but is an obscure enough style to be worth linting
 #![deny(temporary_cstring_as_ptr)]
-//~^ [renamed_and_removed_lints]
+//~^ WARNING lint `temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
 
 use std::ffi::CString;
 

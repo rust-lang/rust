@@ -15,7 +15,7 @@ LL | #![deny(dangling_pointers_from_temporaries)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: getting a pointer from a temporary `Vec<u8>` will result in a dangling pointer
-  --> $DIR/methods.rs:5:15
+  --> $DIR/methods.rs:6:15
    |
 LL |     vec![0u8].as_mut_ptr();
    |     --------- ^^^^^^^^^^ this pointer will immediately be invalid

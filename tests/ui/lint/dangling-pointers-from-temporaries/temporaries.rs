@@ -18,16 +18,19 @@ fn main() {
     }
 
     // Call
-    string().as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+    string().as_ptr();
+    //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
 
     // MethodCall
-    "hello".to_string().as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+    "hello".to_string().as_ptr();
+    //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
 
     // Tup
     // impossible
 
     // Binary
-    (string() + "hello").as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+    (string() + "hello").as_ptr();
+    //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
 
     // Path
     {
@@ -63,7 +66,7 @@ fn main() {
     // If
     {
         (if true { String::new() } else { "hello".into() }).as_ptr();
-        //~^ ERROR [dangling_pointers_from_temporaries]
+        //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
     }
 
     // Loop
@@ -71,7 +74,8 @@ fn main() {
         (loop {
             break String::new();
         })
-        .as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+        .as_ptr();
+        //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
     }
 
     // Match
@@ -79,14 +83,16 @@ fn main() {
         match string() {
             s => s,
         }
-        .as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+        .as_ptr();
+        //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
     }
 
     // Closure
     // impossible
 
     // Block
-    { string() }.as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+    { string() }.as_ptr();
+    //~^ ERROR getting a pointer from a temporary `String` will result in a dangling pointer
 
     // Assign, AssignOp
     // impossible
@@ -125,5 +131,6 @@ fn main() {
     // impossible
 
     // Macro
-    vec![0u8].as_ptr(); //~ ERROR [dangling_pointers_from_temporaries]
+    vec![0u8].as_ptr();
+    //~^ ERROR getting a pointer from a temporary `Vec<u8>` will result in a dangling pointer
 }
