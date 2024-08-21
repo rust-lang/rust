@@ -1502,12 +1502,12 @@ macro_rules! uint_impl {
         }
 
                 /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
-        /// 
-        /// If `rhs` is larger or equal to the number of bits in `self`, 
+        ///
+        /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
         ///
         /// # Examples
-        /// 
+        ///
         /// Basic usage:
         /// ```
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
@@ -1627,12 +1627,12 @@ macro_rules! uint_impl {
         }
 
         /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
-        /// 
-        /// If `rhs` is larger or equal to the number of bits in `self`, 
+        ///
+        /// If `rhs` is larger or equal to the number of bits in `self`,
         /// the entire value is shifted out, and `0` is returned.
         ///
         /// # Examples
-        /// 
+        ///
         /// Basic usage:
         /// ```
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x10);")]
