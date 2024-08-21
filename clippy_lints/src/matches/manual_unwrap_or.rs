@@ -1,6 +1,6 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
+use clippy_utils::source::{indent_of, reindent_multiline, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::contains_return_break_continue_macro;
 use clippy_utils::{is_res_lang_ctor, path_to_local_id, peel_blocks, sugg};
@@ -67,11 +67,11 @@ fn check_and_lint<'tcx>(
         && path_to_local_id(peel_blocks(then_expr), binding_hir_id)
         && cx.typeck_results().expr_adjustments(then_expr).is_empty()
         && let Some(ty_name) = find_type_name(cx, ty)
-        && let Some(or_body_snippet) = snippet_opt(cx, else_expr.span)
+        && let Some(or_body_snippet) = else_expr.span.get_source_text(cx)
         && let Some(indent) = indent_of(cx, expr.span)
         && ConstEvalCtxt::new(cx).eval_simple(else_expr).is_some()
     {
-        lint(cx, expr, let_expr, ty_name, or_body_snippet, indent);
+        lint(cx, expr, let_expr, ty_name, &or_body_snippet, indent);
     }
 }
 
@@ -110,7 +110,7 @@ fn lint<'tcx>(
     expr: &Expr<'tcx>,
     scrutinee: &'tcx Expr<'_>,
     ty_name: &str,
-    or_body_snippet: String,
+    or_body_snippet: &str,
     indent: usize,
 ) {
     let reindented_or_body = reindent_multiline(or_body_snippet.into(), true, Some(indent));

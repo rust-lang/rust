@@ -1,7 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_const_context;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_isize_or_usize;
 use rustc_errors::Applicability;
@@ -34,7 +34,7 @@ pub(super) fn check(
             diag.help("an `as` cast can become silently lossy if the types change in the future");
             let mut applicability = Applicability::MachineApplicable;
             let from_sugg = Sugg::hir_with_context(cx, cast_from_expr, expr.span.ctxt(), "<from>", &mut applicability);
-            let Some(ty) = snippet_opt(cx, hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt())) else {
+            let Some(ty) = hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt()).get_source_text(cx) else {
                 return;
             };
             match cast_to_hir.kind {

@@ -12,7 +12,7 @@ use rustc_span::{sym, Span};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_must_use_ty;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{return_ty, trait_ref_of_method};
@@ -155,7 +155,7 @@ fn check_must_use_candidate<'tcx>(
         return;
     }
     span_lint_and_then(cx, MUST_USE_CANDIDATE, fn_span, msg, |diag| {
-        if let Some(snippet) = snippet_opt(cx, fn_span) {
+        if let Some(snippet) = fn_span.get_source_text(cx) {
             diag.span_suggestion(
                 fn_span,
                 "add the attribute",
