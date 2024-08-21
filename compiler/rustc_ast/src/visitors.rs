@@ -51,9 +51,6 @@ macro_rules! mutability_dependent {
         fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
             walk_fn(self, fk)
         }
-        fn visit_expr_field(&mut self, f: &'ast ExprField) -> Self::Result {
-            walk_expr_field(self, f)
-        }
         fn visit_pat_field(&mut self, fp: &'ast PatField) -> Self::Result {
             walk_pat_field(self, fp)
         }
@@ -420,6 +417,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_arm(&mut self, a: ref_t!(Arm)) -> result!() {
                 walk_arm(self, a)
+            }
+
+            fn visit_expr_field(&mut self, f: ref_t!(ExprField)) -> result!() {
+                walk_expr_field(self, f)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -2419,16 +2420,23 @@ pub mod mut_visit {
         smallvec![fd]
     }
 
-    pub fn walk_flat_map_expr_field<T: MutVisitor>(
+    pub fn walk_expr_field<T: MutVisitor>(
         vis: &mut T,
-        mut f: ExprField,
-    ) -> SmallVec<[ExprField; 1]> {
-        let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
+        f: &mut ExprField,
+    ) {
+        let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
         vis.visit_id(id);
         visit_attrs(vis, attrs);
         vis.visit_ident(ident);
         vis.visit_expr(expr);
         vis.visit_span(span);
+    }
+
+    pub fn walk_flat_map_expr_field<T: MutVisitor>(
+        vis: &mut T,
+        mut f: ExprField,
+    ) -> SmallVec<[ExprField; 1]> {
+        vis.visit_expr_field(&mut f);
         smallvec![f]
     }
 
