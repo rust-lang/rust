@@ -637,6 +637,15 @@ macro_rules! make_ast_visitor {
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
+
+        pub fn walk_mt<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            mt: ref_t!(MutTy)
+        ) -> result!(V) {
+            let MutTy { ty, mutbl: _ } = mt;
+            try_v!(vis.visit_ty(ty));
+            return_result!(V)
+        }
     }
 }
 
@@ -1684,11 +1693,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    fn walk_mt<'a, V: Visitor<'a>>(vis: &mut V, MutTy { ty, mutbl: _ }: &'a MutTy) -> V::Result {
-        try_visit!(vis.visit_ty(ty));
-        V::Result::output()
-    }
-
     fn walk_where_clause<'a, V: Visitor<'a>>(vis: &mut V, wc: &'a WhereClause) -> V::Result {
         let WhereClause { has_where_token: _, predicates, span: _ } = wc;
         walk_list!(vis, visit_where_predicate, predicates);
@@ -2487,10 +2491,6 @@ pub mod mut_visit {
     ) -> SmallVec<[ExprField; 1]> {
         vis.visit_expr_field(&mut f);
         smallvec![f]
-    }
-
-    fn walk_mt<T: MutVisitor>(vis: &mut T, MutTy { ty, mutbl: _ }: &mut MutTy) {
-        vis.visit_ty(ty);
     }
 
     pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
