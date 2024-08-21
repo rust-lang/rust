@@ -1,23 +1,23 @@
 error[E0412]: cannot find type `Missing` in this scope
-  --> $DIR/unknown_src_field.rs:17:27
+  --> $DIR/unknown_dst_field.rs:18:27
    |
-LL |     #[repr(C)] struct Src(Missing);
+LL |     #[repr(C)] struct Dst(Missing);
    |                           ^^^^^^^ not found in this scope
 
 error[E0412]: cannot find type `Missing` in this scope
-  --> $DIR/unknown_src_field.rs:23:36
+  --> $DIR/unknown_dst_field.rs:24:36
    |
-LL |     #[repr(C)] struct Src(&'static Missing);
+LL |     #[repr(C)] struct Dst(&'static Missing);
    |                                    ^^^^^^^ not found in this scope
 
-error[E0277]: `should_gracefully_handle_unknown_src_field::Src` cannot be safely transmuted into `should_gracefully_handle_unknown_src_field::Dst`
-  --> $DIR/unknown_src_field.rs:19:36
+error[E0277]: `should_gracefully_handle_unknown_dst_field::Src` cannot be safely transmuted into `should_gracefully_handle_unknown_dst_field::Dst`
+  --> $DIR/unknown_dst_field.rs:19:36
    |
 LL |     assert::is_transmutable::<Src, Dst>();
-   |                                    ^^^ `should_gracefully_handle_unknown_src_field::Src` has an unknown layout
+   |                                    ^^^ `should_gracefully_handle_unknown_dst_field::Dst` has an unknown layout
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/unknown_src_field.rs:12:14
+  --> $DIR/unknown_dst_field.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function
@@ -25,14 +25,14 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
-error[E0277]: `should_gracefully_handle_unknown_src_ref_field::Src` cannot be safely transmuted into `should_gracefully_handle_unknown_src_ref_field::Dst`
-  --> $DIR/unknown_src_field.rs:25:36
+error[E0277]: `should_gracefully_handle_unknown_dst_ref_field::Src` cannot be safely transmuted into `should_gracefully_handle_unknown_dst_ref_field::Dst`
+  --> $DIR/unknown_dst_field.rs:25:36
    |
 LL |     assert::is_transmutable::<Src, Dst>();
-   |                                    ^^^ `should_gracefully_handle_unknown_src_ref_field::Src` has an unknown layout
+   |                                    ^^^ `should_gracefully_handle_unknown_dst_ref_field::Dst` has an unknown layout
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/unknown_src_field.rs:12:14
+  --> $DIR/unknown_dst_field.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function

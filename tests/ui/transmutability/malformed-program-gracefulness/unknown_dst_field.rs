@@ -2,7 +2,7 @@
 
 #![crate_type = "lib"]
 #![feature(transmutability)]
-#![allow(dead_code, incomplete_features, non_camel_case_types)]
+#![allow(incomplete_features)]
 
 mod assert {
     use std::mem::BikeshedIntrinsicFrom;
@@ -13,14 +13,14 @@ mod assert {
     {}
 }
 
-fn should_gracefully_handle_unknown_src_field() {
-    #[repr(C)] struct Src(Missing); //~ cannot find type
-    #[repr(C)] struct Dst();
+fn should_gracefully_handle_unknown_dst_field() {
+    #[repr(C)] struct Src;
+    #[repr(C)] struct Dst(Missing); //~ cannot find type
     assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot be safely transmuted
 }
 
-fn should_gracefully_handle_unknown_src_ref_field() {
-    #[repr(C)] struct Src(&'static Missing); //~ cannot find type
-    #[repr(C)] struct Dst(&'static Dst);
+fn should_gracefully_handle_unknown_dst_ref_field() {
+    #[repr(C)] struct Src(&'static Src);
+    #[repr(C)] struct Dst(&'static Missing); //~ cannot find type
     assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot be safely transmuted
 }
