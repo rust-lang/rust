@@ -15,9 +15,6 @@ macro_rules! mutability_dependent {
         fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
             Self::Result::output()
         }
-        fn visit_generic_param(&mut self, param: &'ast GenericParam) -> Self::Result {
-            walk_generic_param(self, param)
-        }
         fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
             walk_assoc_item(self, i, ctxt)
         }
@@ -422,6 +419,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_field_def(&mut self, s: ref_t!(FieldDef)) -> result!() {
                 walk_field_def(self, s)
+            }
+
+            fn visit_generic_param(&mut self, param: ref_t!(GenericParam)) -> result!() {
+                walk_generic_param(self, param)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -2302,12 +2303,11 @@ pub mod mut_visit {
         }
     }
 
-    pub fn walk_flat_map_generic_param<T: MutVisitor>(
+    pub fn walk_generic_param<T: MutVisitor>(
         vis: &mut T,
-        mut param: GenericParam,
-    ) -> SmallVec<[GenericParam; 1]> {
-        let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } =
-            &mut param;
+        param: &mut GenericParam,
+    ) {
+        let GenericParam { id, ident, attrs, bounds, kind, colon_span, is_placeholder: _ } = param;
         vis.visit_id(id);
         visit_attrs(vis, attrs);
         vis.visit_ident(ident);
@@ -2325,6 +2325,13 @@ pub mod mut_visit {
         if let Some(colon_span) = colon_span {
             vis.visit_span(colon_span);
         }
+    }
+
+    pub fn walk_flat_map_generic_param<T: MutVisitor>(
+        vis: &mut T,
+        mut param: GenericParam,
+    ) -> SmallVec<[GenericParam; 1]> {
+        vis.visit_generic_param(&mut param);
         smallvec![param]
     }
 
