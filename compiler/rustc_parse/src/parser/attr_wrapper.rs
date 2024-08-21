@@ -510,9 +510,11 @@ fn make_attr_token_stream(
 }
 
 /// Tokens are needed if:
-/// - any non-single-segment attributes (other than doc comments) are present; or
-/// - any `cfg_attr` attributes are present;
-/// - any single-segment, non-builtin attributes are present.
+/// - any non-single-segment attributes (other than doc comments) are present,
+///   e.g. `rustfmt::skip`; or
+/// - any `cfg_attr` attributes are present; or
+/// - any single-segment, non-builtin attributes are present, e.g. `derive`,
+///   `test`, `global_allocator`.
 fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().any(|attr| match attr.ident() {
         None => !attr.is_doc_comment(),
