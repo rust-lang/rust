@@ -770,7 +770,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                     let reported =
                                         tcx.dcx().emit_err(UnableToConstructConstantValue {
                                             span: tcx.def_span(unevaluated.def),
-                                            unevaluated: unevaluated,
+                                            unevaluated,
                                         });
                                     Err(ErrorHandled::Reported(reported.into(), tcx.def_span(unevaluated.def)))
                                 }

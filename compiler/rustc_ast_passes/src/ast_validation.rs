@@ -562,10 +562,8 @@ impl<'a> AstValidator<'a> {
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
         let report_err = |span| {
-            self.dcx().emit_err(errors::FnQualifierInExtern {
-                span: span,
-                block: self.current_extern_span(),
-            });
+            self.dcx()
+                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
         };
         match coroutine_kind {
             Some(knd) => report_err(knd.span()),
