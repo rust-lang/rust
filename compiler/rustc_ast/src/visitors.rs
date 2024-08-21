@@ -21,9 +21,6 @@ macro_rules! mutability_dependent {
         fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
             walk_assoc_item(self, i, ctxt)
         }
-        fn visit_field_def(&mut self, s: &'ast FieldDef) -> Self::Result {
-            walk_field_def(self, s)
-        }
         fn visit_variant(&mut self, v: &'ast Variant) -> Self::Result {
             walk_variant(self, v)
         }
@@ -421,6 +418,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_expr_field(&mut self, f: ref_t!(ExprField)) -> result!() {
                 walk_expr_field(self, f)
+            }
+
+            fn visit_field_def(&mut self, s: ref_t!(FieldDef)) -> result!() {
+                walk_field_def(self, s)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -2406,17 +2407,24 @@ pub mod mut_visit {
         vis.visit_span(span);
     }
 
-    pub fn walk_flat_map_field_def<T: MutVisitor>(
+    pub fn walk_field_def<T: MutVisitor>(
         visitor: &mut T,
-        mut fd: FieldDef,
-    ) -> SmallVec<[FieldDef; 1]> {
-        let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+        fd: &mut FieldDef,
+    ) {
+        let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = fd;
         visitor.visit_id(id);
         visit_attrs(visitor, attrs);
         visitor.visit_vis(vis);
         visit_opt(ident, |ident| visitor.visit_ident(ident));
         visitor.visit_ty(ty);
         visitor.visit_span(span);
+    }
+
+    pub fn walk_flat_map_field_def<T: MutVisitor>(
+        visitor: &mut T,
+        mut fd: FieldDef,
+    ) -> SmallVec<[FieldDef; 1]> {
+        visitor.visit_field_def(&mut fd);
         smallvec![fd]
     }
 
