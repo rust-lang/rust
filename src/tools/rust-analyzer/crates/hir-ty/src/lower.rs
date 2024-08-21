@@ -1551,6 +1551,10 @@ pub(crate) fn generic_predicates_for_param_query(
                 }
             };
             if invalid_target {
+                // If this is filtered out without lowering, `?Sized` is not gathered into `ctx.unsized_types`
+                if let TypeBound::Path(_, TraitBoundModifier::Maybe) = &**bound {
+                    ctx.lower_where_predicate(pred, &def, true).for_each(drop);
+                }
                 return false;
             }
 
