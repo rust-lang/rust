@@ -351,12 +351,18 @@ fn deployment_target(os: &str, arch: Arch, abi: TargetAbi) -> (u16, u8, u8) {
     };
 
     // On certain targets it makes sense to raise the minimum OS version.
+    //
+    // This matches what LLVM does, see:
+    // <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/llvm/lib/TargetParser/Triple.cpp#L1900-L1932>
     let min = match (os, arch, abi) {
-        // Use 11.0 on Aarch64 as that's the earliest version with M1 support.
         ("macos", Arch::Arm64 | Arch::Arm64e, _) => (11, 0, 0),
-        ("ios", Arch::Arm64e, _) => (14, 0, 0),
+        ("ios", Arch::Arm64 | Arch::Arm64e, TargetAbi::MacCatalyst) => (14, 0, 0),
+        ("ios", Arch::Arm64 | Arch::Arm64e, TargetAbi::Simulator) => (14, 0, 0),
+        ("ios", Arch::Arm64e, TargetAbi::Normal) => (14, 0, 0),
         // Mac Catalyst defaults to 13.1 in Clang.
         ("ios", _, TargetAbi::MacCatalyst) => (13, 1, 0),
+        ("tvos", Arch::Arm64 | Arch::Arm64e, TargetAbi::Simulator) => (14, 0, 0),
+        ("watchos", Arch::Arm64 | Arch::Arm64e, TargetAbi::Simulator) => (7, 0, 0),
         _ => os_min,
     };
 
