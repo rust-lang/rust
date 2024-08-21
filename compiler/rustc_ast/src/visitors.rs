@@ -205,6 +205,16 @@ macro_rules! mutability_helpers {
             };
             ($a: expr) => {};
         }
+
+        macro_rules! if_mut_stmt {
+            (, $b: stmt) => {
+                $b
+            };
+            ($a: stmt, $b: stmt) => {
+                $b
+            };
+            ($a: stmt) => {};
+        }
     };
     (mut) => {
         macro_rules! if_mut_ty {
@@ -236,17 +246,27 @@ macro_rules! mutability_helpers {
                 $a
             };
         }
+
+        macro_rules! if_mut_stmt {
+            (, $b: stmt) => {};
+            ($a: stmt, $b: stmt) => {
+                $a
+            };
+            ($a: stmt) => {
+                $a
+            };
+        }
     };
 }
 
 macro_rules! make_ast_visitor {
     ($visitor_trait_name: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
 
-
         mutability_helpers!($($mut)?);
 
         macro_rules! result {
-            () => { if_mut_ty!((), Self::Result) };
+            () => { result!(Self) };
+            ($V: ty) => { if_mut_ty!((), <$V>::Result) };
         }
 
         macro_rules! ref_t {
@@ -433,14 +453,9 @@ macro_rules! make_ast_visitor {
                 walk_qself(self, qs)
             }
 
-            // FIXME: remove _ on ident if mut
             // FIXME: for some reason the immutable version doesn't receive a reference
-            fn visit_ident(&mut self, _ident: if_mut_ty!(ref_t!(Ident), Ident)) -> result!() {
-                if_mut_expr!(
-                    walk_ident(self, _ident)
-                ,
-                    Self::Result::output()
-                )
+            fn visit_ident(&mut self, ident: if_mut_ty!(ref_t!(Ident), Ident)) -> result!() {
+                walk_ident(self, ident)
             }
 
             // FIXME: remove _ on capture_by if mut
@@ -490,7 +505,32 @@ macro_rules! make_ast_visitor {
             fn visit_fn_decl(&mut self, d: ref_t!(P!(FnDecl))) -> result!() {
                 walk_fn_decl(self, d)
             }
+        }
 
+        macro_rules! visit_span {
+            ($vis: ident, $span: ident) => {
+                if_mut_stmt!(
+                    $vis.visit_span($span)
+                ,
+                    // assign to _ to prevent unused_variable warnings
+                    let _ = (&$vis, &$span)
+                )
+            }
+        }
+
+        macro_rules! return_result {
+            ($V: ty) => { if_mut_expr!({}, {
+                <$V>::Result::output()
+            }) }
+        }
+
+        pub fn walk_ident<$($lt,)? V: $visitor_trait_name$(<$lt>)?>(
+            vis: &mut V,
+            ident: if_mut_ty!(ref_t!(Ident), Ident)
+        ) -> result!(V) {
+            let Ident { name: _, span } = ident;
+            visit_span!(vis, span);
+            return_result!(V)
         }
     }
 }
@@ -1911,10 +1951,6 @@ pub mod mut_visit {
     ) -> SmallVec<[Variant; 1]> {
         visitor.visit_variant(&mut variant);
         smallvec![variant]
-    }
-
-    fn walk_ident<T: MutVisitor>(vis: &mut T, Ident { name: _, span }: &mut Ident) {
-        vis.visit_span(span);
     }
 
     fn walk_path_segment<T: MutVisitor>(vis: &mut T, segment: &mut PathSegment) {
