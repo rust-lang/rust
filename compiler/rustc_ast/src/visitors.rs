@@ -9,9 +9,6 @@ macro_rules! mutability_dependent {
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
             walk_stmt(self, s)
         }
-        fn visit_param(&mut self, param: &'ast Param) -> Self::Result {
-            walk_param(self, param)
-        }
         fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
             Self::Result::output()
         }
@@ -419,6 +416,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_field_def(&mut self, s: ref_t!(FieldDef)) -> result!() {
                 walk_field_def(self, s)
+            }
+
+            fn visit_param(&mut self, param: ref_t!(Param)) -> result!() {
+                walk_param(self, param)
             }
 
             fn visit_generic_param(&mut self, param: ref_t!(GenericParam)) -> result!() {
@@ -2035,16 +2036,23 @@ pub mod mut_visit {
         vis.visit_span(span);
     }
 
-    pub fn walk_flat_map_param<T: MutVisitor>(
+    pub fn walk_param<T: MutVisitor>(
         vis: &mut T,
-        mut param: Param,
-    ) -> SmallVec<[Param; 1]> {
-        let Param { attrs, id, pat, span, ty, is_placeholder: _ } = &mut param;
+        param: &mut Param,
+    ) {
+        let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
         vis.visit_id(id);
         visit_attrs(vis, attrs);
         vis.visit_pat(pat);
         vis.visit_ty(ty);
         vis.visit_span(span);
+    }
+
+    pub fn walk_flat_map_param<T: MutVisitor>(
+        vis: &mut T,
+        mut param: Param,
+    ) -> SmallVec<[Param; 1]> {
+        vis.visit_param(&mut param);
         smallvec![param]
     }
 
