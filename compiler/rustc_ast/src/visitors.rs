@@ -517,6 +517,17 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        macro_rules! visit_id {
+            ($vis: ident, $id: ident) => {
+                if_mut_stmt!(
+                    $vis.visit_id($id)
+                ,
+                    // assign to _ to prevent unused_variable warnings
+                    let _ = (&$vis, &$id)
+                )
+            }
+        }
+
         // FIXME: should only exist while Visitor::visit_ident
         // doesn't receives a reference
         macro_rules! visit_ident {
@@ -552,6 +563,15 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_lifetime<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            lifetime: ref_t!(Lifetime)
+        ) -> result!(V) {
+            let Lifetime { id, ident } = lifetime;
+            visit_id!(vis, id);
+            visit_ident!(vis, ident);
+            return_result!(V)
+        }
     }
 }
 
@@ -698,11 +718,6 @@ pub mod visit {
             visit_opt!(visitor, visit_block, els);
         }
         V::Result::output()
-    }
-
-    pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) -> V::Result {
-        let Lifetime { id: _, ident } = lifetime;
-        visitor.visit_ident(*ident)
     }
 
     pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef) -> V::Result
@@ -2393,11 +2408,6 @@ pub mod mut_visit {
     ) -> SmallVec<[GenericParam; 1]> {
         vis.visit_generic_param(&mut param);
         smallvec![param]
-    }
-
-    fn walk_lifetime<T: MutVisitor>(vis: &mut T, Lifetime { id, ident }: &mut Lifetime) {
-        vis.visit_id(id);
-        vis.visit_ident(ident);
     }
 
     fn walk_generics<T: MutVisitor>(vis: &mut T, generics: &mut Generics) {
