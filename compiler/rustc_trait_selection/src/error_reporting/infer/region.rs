@@ -257,7 +257,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .add_to_diag(err);
                 }
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain {
                     span,
                     msg: fluent::trait_selection_relate_region_param_bound,
@@ -410,7 +410,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note,
                 })
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, ty) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
@@ -419,11 +419,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note_and_explain::PrefixKind::LfParamInstantiatedWith,
                     note_and_explain::SuffixKind::Empty,
                 );
+                let mut alt_span = None;
+                if let Some(ty) = ty
+                    && sub.is_static()
+                    && let ty::Dynamic(preds, _, ty::DynKind::Dyn) = ty.kind()
+                    && let Some(def_id) = preds.principal_def_id()
+                {
+                    for (clause, span) in
+                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                    {
+                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
+                            clause.kind().skip_binder()
+                            && let ty::Param(param) = a.kind()
+                            && param.name == kw::SelfUpper
+                            && b.is_static()
+                        {
+                            // Point at explicit `'static` bound on the trait (`trait T: 'static`).
+                            alt_span = Some(span);
+                        }
+                    }
+                }
                 let param_must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
                     sub,
-                    None,
+                    alt_span,
                     note_and_explain::PrefixKind::LfParamMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
