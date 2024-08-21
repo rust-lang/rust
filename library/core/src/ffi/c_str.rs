@@ -464,7 +464,9 @@ impl CStr {
     /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
-    /// # #![allow(unused_must_use)] #![allow(dangling_pointers_from_temporaries)]
+    /// # #![allow(unused_must_use)]
+    /// # #![cfg_attr(bootstrap, expect(temporary_cstring_as_ptr))]
+    /// # #![cfg_attr(not(bootstrap), expect(dangling_pointers_from_temporaries))]
     /// use std::ffi::CString;
     ///
     /// // Do not do this:
