@@ -1,10 +1,8 @@
 use crate::spec::base::apple::{base, Arch, TargetAbi};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (mut opts, llvm_target, arch) = base("macos", Arch::I686, TargetAbi::Normal);
-    opts.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
-
+    let (opts, llvm_target, arch) = base("macos", Arch::I686, TargetAbi::Normal);
     Target {
         llvm_target,
         metadata: crate::spec::TargetMetadata {

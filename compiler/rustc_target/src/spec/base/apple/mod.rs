@@ -168,7 +168,26 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
         ["-platform_version".into(), platform_name, min_version, sdk_version].into_iter(),
     );
 
-    if abi != TargetAbi::MacCatalyst {
+    // We need to communicate four things to the C compiler to be able to link:
+    // - The architecture.
+    // - The operating system (and that it's an Apple platform).
+    // - The deployment target.
+    // - The environment / ABI.
+    //
+    // We'd like to use `-target` everywhere, since that can uniquely
+    // communicate all of these, but that doesn't work on GCC, and since we
+    // don't know whether the `cc` compiler is Clang, GCC, or something else,
+    // we fall back to other options that also work on GCC when compiling for
+    // macOS.
+    //
+    // Targets other than macOS are ill-supported by GCC (it doesn't even
+    // support e.g. `-miphoneos-version-min`), so in those cases we can fairly
+    // safely use `-target`. See also the following, where it is made explicit
+    // that the recommendation by LLVM developers is to use `-target`:
+    // <https://github.com/llvm/llvm-project/issues/88271>
+    if os == "macos" {
+        // `-arch` communicates the architecture.
+        //
         // CC forwards the `-arch` to the linker, so we use the same value
         // here intentionally.
         add_link_args(
@@ -176,6 +195,15 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
             LinkerFlavor::Darwin(Cc::Yes, Lld::No),
             &["-arch", arch.ld_arch()],
         );
+        // The presence of `-mmacosx-version-min` makes CC default to macOS,
+        // and it sets the deployment target.
+        let (major, minor, patch) = deployment_target(os, arch, abi);
+        let opt = format!("-mmacosx-version-min={major}.{minor}.{patch}").into();
+        add_link_args_iter(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), [opt].into_iter());
+        // macOS has no environment, so with these two, we've told CC all the
+        // desired parameters.
+        //
+        // We avoid `-m32`/`-m64`, as this is already encoded by `-arch`.
     } else {
         add_link_args_iter(
             &mut args,
