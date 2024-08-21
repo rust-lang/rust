@@ -622,6 +622,21 @@ macro_rules! make_ast_visitor {
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
+
+        pub fn walk_angle_bracketed_parameter_data<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            data: ref_t!(AngleBracketedArgs)
+        ) -> result!(V) {
+            let AngleBracketedArgs { args, span } = data;
+            for arg in args {
+                match arg {
+                    AngleBracketedArg::Arg(a) => try_v!(vis.visit_generic_arg(a)),
+                    AngleBracketedArg::Constraint(c) => try_v!(vis.visit_assoc_item_constraint(c)),
+                }
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
     }
 }
 
@@ -1653,22 +1668,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    fn walk_angle_bracketed_parameter_data<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        data: &'a AngleBracketedArgs,
-    ) -> V::Result {
-        let AngleBracketedArgs { args, span: _ } = data;
-        for arg in args {
-            match arg {
-                AngleBracketedArg::Arg(a) => try_visit!(visitor.visit_generic_arg(a)),
-                AngleBracketedArg::Constraint(c) => {
-                    try_visit!(visitor.visit_assoc_item_constraint(c))
-                }
-            }
-        }
-        V::Result::output()
-    }
-
     fn walk_parenthesized_parameter_data<'a, V: Visitor<'a>>(
         vis: &mut V,
         data: &'a ParenthesizedArgs,
@@ -2014,20 +2013,6 @@ pub mod mut_visit {
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
-    }
-
-    fn walk_angle_bracketed_parameter_data<T: MutVisitor>(
-        vis: &mut T,
-        data: &mut AngleBracketedArgs,
-    ) {
-        let AngleBracketedArgs { args, span } = data;
-        visit_thin_vec(args, |arg| match arg {
-            AngleBracketedArg::Arg(arg) => vis.visit_generic_arg(arg),
-            AngleBracketedArg::Constraint(constraint) => {
-                vis.visit_assoc_item_constraint(constraint)
-            }
-        });
-        vis.visit_span(span);
     }
 
     fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
