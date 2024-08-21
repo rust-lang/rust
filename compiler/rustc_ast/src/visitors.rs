@@ -260,7 +260,7 @@ macro_rules! mutability_helpers {
 }
 
 macro_rules! make_ast_visitor {
-    ($visitor_trait_name: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
+    ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
 
         mutability_helpers!($($mut)?);
 
@@ -286,8 +286,7 @@ macro_rules! make_ast_visitor {
         /// explicitly, you need to override each method. (And you also need
         /// to monitor future changes to `Visitor` in case a new method with a
         /// new default implementation gets introduced.)
-        pub trait $visitor_trait_name$(<$lt>)?: Sized {
-
+        pub trait $trait$(<$lt>)?: Sized {
             if_mut_item!{
 
             ,
@@ -524,7 +523,7 @@ macro_rules! make_ast_visitor {
             }) }
         }
 
-        pub fn walk_ident<$($lt,)? V: $visitor_trait_name$(<$lt>)?>(
+        pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             ident: if_mut_ty!(ref_t!(Ident), Ident)
         ) -> result!(V) {
