@@ -305,12 +305,14 @@ macro_rules! make_ast_visitor {
             make_visit!{MutTy, visit_mt, walk_mt}
             make_visit!{WhereClause, visit_where_clause, walk_where_clause}
             make_visit!{EnumDef, visit_enum_def, walk_enum_def}
+            make_visit!{CaptureBy, visit_capture_by, walk_capture_by}
             make_visit!{P!(Local), visit_local, walk_local}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Ty), visit_ty, walk_ty}
             make_visit!{P!(Block), visit_block, walk_block}
             make_visit!{P!(FnDecl), visit_fn_decl, walk_fn_decl}
+
             // flat_maps
             make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
             make_visit!{ExprField, visit_expr_field, walk_expr_field, flat_map_expr_field, walk_flat_map_expr_field}
@@ -350,15 +352,6 @@ macro_rules! make_ast_visitor {
             // FIXME: for some reason the immutable version doesn't receive a reference
             fn visit_ident(&mut self, ident: if_mut_ty!(ref_t!(Ident), Ident)) -> result!() {
                 walk_ident(self, ident)
-            }
-
-            // FIXME: remove _ on capture_by if mut
-            fn visit_capture_by(&mut self, _capture_by: ref_t!(CaptureBy)) -> result!() {
-                if_mut_expr!(
-                    walk_capture_by(self, _capture_by)
-                ,
-                    Self::Result::output()
-                )
             }
 
             // FIXME: remove _ on header if mut
@@ -595,6 +588,19 @@ macro_rules! make_ast_visitor {
             visit_list!(vis, visit_generic_param, flat_map_generic_param, params);
             try_v!(vis.visit_where_clause(where_clause));
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_capture_by<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            capture_by: ref_t!(CaptureBy)
+        ) -> result!(V) {
+            match capture_by {
+                CaptureBy::Ref => {}
+                CaptureBy::Value { move_kw } => {
+                    try_v!(visit_span!(vis, move_kw))
+                }
+            }
             return_result!(V)
         }
 
@@ -2948,15 +2954,6 @@ pub mod mut_visit {
         }
         visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
-    }
-
-    fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
-        match capture_by {
-            CaptureBy::Ref => {}
-            CaptureBy::Value { move_kw } => {
-                vis.visit_span(move_kw);
-            }
-        }
     }
 
     pub fn walk_enum_def<T: MutVisitor>(vis: &mut T, EnumDef { variants }: &mut EnumDef) {
