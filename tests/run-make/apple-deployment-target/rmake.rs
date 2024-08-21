@@ -81,9 +81,8 @@ fn main() {
         rustc().env(env_var, example_version).run();
         minos("libfoo.dylib", example_version);
 
-        // FIXME(madsmtm): Deployment target is not currently passed properly to linker
-        // rustc().env_remove(env_var).run();
-        // minos("libfoo.dylib", default_version);
+        rustc().env_remove(env_var).run();
+        minos("libfoo.dylib", default_version);
 
         // Test with ld64 instead
 
@@ -110,9 +109,8 @@ fn main() {
             rustc().env(env_var, example_version).run();
             minos("foo", example_version);
 
-            // FIXME(madsmtm): Deployment target is not currently passed properly to linker
-            // rustc().env_remove(env_var).run();
-            // minos("foo", default_version);
+            rustc().env_remove(env_var).run();
+            minos("foo", default_version);
         }
 
         // Test with ld64 instead
