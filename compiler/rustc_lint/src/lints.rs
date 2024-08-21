@@ -257,7 +257,7 @@ pub struct BuiltinUnreachablePub<'a> {
     #[suggestion(code = "pub(crate)")]
     pub suggestion: (Span, Applicability),
     #[help]
-    pub help: Option<()>,
+    pub help: bool,
 }
 
 #[derive(LintDiagnostic)]
@@ -572,7 +572,7 @@ pub struct Expectation {
     #[subdiagnostic]
     pub rationale: Option<ExpectationNote>,
     #[note]
-    pub note: Option<()>,
+    pub note: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -756,7 +756,7 @@ pub enum InvalidReferenceCastingDiag<'tcx> {
         #[label]
         orig_cast: Option<Span>,
         #[note(lint_invalid_reference_casting_note_ty_has_interior_mutability)]
-        ty_has_interior_mutability: Option<()>,
+        ty_has_interior_mutability: bool,
     },
     #[diag(lint_invalid_reference_casting_assign_to_ref)]
     #[note(lint_invalid_reference_casting_note_book)]
@@ -764,7 +764,7 @@ pub enum InvalidReferenceCastingDiag<'tcx> {
         #[label]
         orig_cast: Option<Span>,
         #[note(lint_invalid_reference_casting_note_ty_has_interior_mutability)]
-        ty_has_interior_mutability: Option<()>,
+        ty_has_interior_mutability: bool,
     },
     #[diag(lint_invalid_reference_casting_bigger_layout)]
     #[note(lint_layout)]

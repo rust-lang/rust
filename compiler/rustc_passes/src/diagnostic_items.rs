@@ -49,7 +49,7 @@ fn report_duplicate_item(
         orig_span,
         crate_name: tcx.crate_name(item_def_id.krate),
         orig_crate_name: tcx.crate_name(original_def_id.krate),
-        different_crates: (item_def_id.krate != original_def_id.krate).then_some(()),
+        different_crates: (item_def_id.krate != original_def_id.krate),
         name,
     });
 }

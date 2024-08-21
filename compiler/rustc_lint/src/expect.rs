@@ -24,7 +24,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
                 && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
             {
                 let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });
-                let note = expectation.is_unfulfilled_lint_expectations.then_some(());
+                let note = expectation.is_unfulfilled_lint_expectations;
                 tcx.emit_node_span_lint(
                     UNFULFILLED_LINT_EXPECTATIONS,
                     *hir_id,

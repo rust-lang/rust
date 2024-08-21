@@ -161,7 +161,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -413,7 +413,7 @@ pub(crate) struct CallToFunctionWithRequiresUnsafe {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -431,7 +431,7 @@ pub(crate) struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -621,7 +621,7 @@ pub(crate) struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
     #[label]
     pub(crate) span: Span,
     #[note(mir_build_teach_note)]
-    pub(crate) teach: Option<()>,
+    pub(crate) teach: bool,
 }
 
 #[derive(Diagnostic)]
@@ -863,7 +863,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
-    pub(crate) witness_1_is_privately_uninhabited: Option<()>,
+    pub(crate) witness_1_is_privately_uninhabited: bool,
     #[note(mir_build_pattern_ty)]
     pub(crate) _p: (),
     pub(crate) pattern_ty: Ty<'tcx>,

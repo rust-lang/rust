@@ -77,7 +77,7 @@ pub struct UnknownToolInScopedLint {
     pub tool_name: Symbol,
     pub lint_name: String,
     #[help]
-    pub is_nightly_build: Option<()>,
+    pub is_nightly_build: bool,
 }
 
 #[derive(Diagnostic)]

@@ -2619,8 +2619,7 @@ fn check_duplicates(
                             warning: matches!(
                                 duplicates,
                                 FutureWarnFollowing | FutureWarnPreceding
-                            )
-                            .then_some(()),
+                            ),
                         },
                     );
                 }
