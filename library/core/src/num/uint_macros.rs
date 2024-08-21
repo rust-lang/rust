@@ -1501,6 +1501,33 @@ macro_rules! uint_impl {
             }
         }
 
+                /// Unbounded shift left. Computes `self << rhs`, without bounding the value of `rhs`
+        /// 
+        /// If `rhs` is larger or equal to the number of bits in `self`, 
+        /// the entire value is shifted out, and `0` is returned.
+        ///
+        /// # Examples
+        /// 
+        /// Basic usage:
+        /// ```
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
+        /// ```
+        #[unstable(feature = "unbounded_shifts", issue = "129375")]
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn unbounded_shl(self, v: u32) -> $SelfT{
+            if v < Self::BITS{
+                // SAFETY:
+                // v is just checked to be in-range above
+                unsafe{self.unchecked_shl(v)}
+            }else{
+                0
+            }
+        }
+
         /// Checked shift right. Computes `self >> rhs`, returning `None`
         /// if `rhs` is larger than or equal to the number of bits in `self`.
         ///
@@ -1596,6 +1623,33 @@ macro_rules! uint_impl {
             // SAFETY: this is guaranteed to be safe by the caller.
             unsafe {
                 intrinsics::unchecked_shr(self, rhs)
+            }
+        }
+
+        /// Unbounded shift right. Computes `self >> rhs`, without bounding the value of `rhs`
+        /// 
+        /// If `rhs` is larger or equal to the number of bits in `self`, 
+        /// the entire value is shifted out, and `0` is returned.
+        ///
+        /// # Examples
+        /// 
+        /// Basic usage:
+        /// ```
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(4), 0x10);")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
+        /// ```
+        #[unstable(feature = "unbounded_shifts", issue = "129375")]
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn unbounded_shr(self, v: u32) -> $SelfT{
+            if v < Self::BITS{
+                // SAFETY:
+                // v is just checked to be in-range above
+                unsafe{self.unchecked_shr(v)}
+            }else{
+                0
             }
         }
 
