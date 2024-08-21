@@ -433,7 +433,18 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 // `TransientCellBorrow` (we consider the equivalent mutable case a
                 // `TransientMutBorrow`), but such reborrows got accidentally stabilized already and
                 // it is too much of a breaking change to take back.
-                if borrowed_place_has_mut_interior && !place.is_indirect() {
+                // However, we only want to consider places that are obtained by dereferencing
+                // a *shared* reference. Mutable references to interior mutable data are stable,
+                // and we don't want `&*&mut interior_mut` to be accepted.
+                let is_indirect = place.iter_projections().any(|(base, proj)| {
+                    matches!(proj, ProjectionElem::Deref)
+                        && matches!(
+                            base.ty(self.body, self.tcx).ty.kind(),
+                            ty::Ref(_, _, Mutability::Not) | ty::RawPtr(_, Mutability::Not)
+                        )
+                });
+
+                if borrowed_place_has_mut_interior && !is_indirect {
                     match self.const_kind() {
                         // In a const fn all borrows are transient or point to the places given via
                         // references in the arguments (so we already checked them with
