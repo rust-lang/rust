@@ -1,0 +1,17 @@
+error[E0507]: cannot move out of `self.thread` which is behind a mutable reference
+  --> $DIR/remap-path-prefix-sysroot.rs:LL:COL
+   |
+LL |         self.thread.join().unwrap();
+   |         ^^^^^^^^^^^ ------ `self.thread` moved due to this method call
+   |         |
+   |         move occurs because `self.thread` has type `JoinHandle<()>`, which does not implement the `Copy` trait
+   |
+note: `JoinHandle::<T>::join` takes ownership of the receiver `self`, which moves `self.thread`
+  --> $SRC_DIR_REAL/std/src/thread/mod.rs:LL:COL
+   |
+LL |     pub fn join(self) -> Result<T> {
+   |                 ^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.
