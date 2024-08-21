@@ -14,17 +14,15 @@ extern crate test_macros;
 macro_rules! produce_it {
     ($expr:expr) => {
         #[derive(Print)]
-        struct Foo {
-            val: [bool; {
-                let a = #[cfg_attr(not(FALSE), rustc_dummy(first))] $expr;
-                0
-            }]
-        }
+        struct Foo(
+            [bool; #[cfg_attr(not(FALSE), rustc_dummy(first))] $expr]
+        );
     }
 }
 
 produce_it!(#[cfg_attr(not(FALSE), rustc_dummy(second))] {
-    #![cfg_attr(not(FALSE), allow(unused))]
+    #![cfg_attr(not(FALSE), rustc_dummy(third))]
+    #[cfg_attr(not(FALSE), rustc_dummy(fourth))]
     30
 });
 
