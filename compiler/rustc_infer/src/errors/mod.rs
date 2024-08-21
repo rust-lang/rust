@@ -54,6 +54,8 @@ pub struct AnnotationRequired<'a> {
     #[note(infer_full_type_written)]
     pub was_written: Option<()>,
     pub path: PathBuf,
+    #[note(infer_type_annotations_needed_error_time)]
+    pub time_version: bool,
 }
 
 // Copy of `AnnotationRequired` for E0283
