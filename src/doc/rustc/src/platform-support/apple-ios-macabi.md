@@ -24,7 +24,7 @@ environment variable.
 
 ### OS version
 
-The minimum supported version is iOS 13.1.
+The minimum supported version is iOS 13.1 on x86 and 14.0 on Aarch64.
 
 This can be raised per-binary by changing the deployment target. `rustc`
 respects the common environment variables used by Xcode to do so, in this

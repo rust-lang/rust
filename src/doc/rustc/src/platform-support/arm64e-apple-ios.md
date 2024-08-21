@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-ARM64e iOS (12.0+)
+ARM64e iOS (14.0+)
 
 ## Target maintainers
 
