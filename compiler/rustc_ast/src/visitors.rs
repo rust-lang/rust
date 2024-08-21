@@ -563,6 +563,24 @@ macro_rules! make_ast_visitor {
             try_v!(visit_ident!(vis, ident));
             return_result!(V)
         }
+
+        pub fn walk_generic_args<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            generic_args: ref_t!(GenericArgs)
+        ) -> result!(V) {
+            match generic_args {
+                GenericArgs::AngleBracketed(data) => {
+                    try_v!(vis.visit_angle_bracketed_parameter_data(data));
+                }
+                GenericArgs::Parenthesized(data) => {
+                    try_v!(vis.visit_parenthesized_parameter_data(data));
+                }
+                GenericArgs::ParenthesizedElided(span) => {
+                    try_v!(visit_span!(vis, span));
+                }
+            }
+            return_result!(V)
+        }
     }
 }
 
@@ -977,22 +995,6 @@ pub mod visit {
         let PathSegment { ident, id: _, args } = segment;
         try_visit!(visitor.visit_ident(*ident));
         visit_opt!(visitor, visit_generic_args, args);
-        V::Result::output()
-    }
-
-    pub fn walk_generic_args<'a, V>(visitor: &mut V, generic_args: &'a GenericArgs) -> V::Result
-    where
-        V: Visitor<'a>,
-    {
-        match generic_args {
-            GenericArgs::AngleBracketed(data) => {
-                try_visit!(visitor.visit_angle_bracketed_parameter_data(data));
-            }
-            GenericArgs::Parenthesized(data) => {
-                try_visit!(visitor.visit_parenthesized_parameter_data(data));
-            }
-            GenericArgs::ParenthesizedElided(_span) => {}
-        }
         V::Result::output()
     }
 
@@ -1993,14 +1995,6 @@ pub mod mut_visit {
             vis.visit_ty(ty);
             vis.visit_span(path_span);
         })
-    }
-
-    fn walk_generic_args<T: MutVisitor>(vis: &mut T, generic_args: &mut GenericArgs) {
-        match generic_args {
-            GenericArgs::AngleBracketed(data) => vis.visit_angle_bracketed_parameter_data(data),
-            GenericArgs::Parenthesized(data) => vis.visit_parenthesized_parameter_data(data),
-            GenericArgs::ParenthesizedElided(span) => vis.visit_span(span),
-        }
     }
 
     fn walk_generic_arg<T: MutVisitor>(vis: &mut T, arg: &mut GenericArg) {
