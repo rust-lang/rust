@@ -267,14 +267,32 @@ impl Thread {
 
     #[cfg(target_os = "espidf")]
     pub fn sleep(dur: Duration) {
-        let mut micros = dur.as_micros();
-        unsafe {
-            while micros > 0 {
-                let st = if micros > u32::MAX as u128 { u32::MAX } else { micros as u32 };
-                libc::usleep(st);
+        // ESP-IDF does not have `nanosleep`, so we use `usleep` instead.
+        // As per the documentation of `usleep`, it is expected to support
+        // sleep times as big as at least up to 1 second.
+        //
+        // ESP-IDF does support almost up to `u32::MAX`, but due to a potential integer overflow in its
+        // `usleep` implementation
+        // (https://github.com/espressif/esp-idf/blob/d7ca8b94c852052e3bc33292287ef4dd62c9eeb1/components/newlib/time.c#L210),
+        // we limit the sleep time to the maximum one that would not cause the underlying `usleep` implementation to overflow
+        // (`portTICK_PERIOD_MS` can be anything between 1 to 1000, and is 10 by default).
+        const MAX_MICROS: u32 = u32::MAX - 1_000_000 - 1;
 
-                micros -= st as u128;
+        // Add any nanoseconds smaller than a microsecond as an extra microsecond
+        // so as to comply with the `std::thread::sleep` contract which mandates
+        // implementations to sleep for _at least_ the provided `dur`.
+        // We can't overflow `micros` as it is a `u128`, while `Duration` is a pair of
+        // (`u64` secs, `u32` nanos), where the nanos are strictly smaller than 1 second
+        // (i.e. < 1_000_000_000)
+        let mut micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
+
+        while micros > 0 {
+            let st = if micros > MAX_MICROS as u128 { MAX_MICROS } else { micros as u32 };
+            unsafe {
+                libc::usleep(st);
             }
+
+            micros -= st as u128;
         }
     }
 
