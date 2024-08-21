@@ -6,7 +6,7 @@
 
 use crate::error::Error;
 use crate::ptr::{Alignment, NonNull};
-use crate::{cmp, fmt, mem};
+use crate::{assert_unsafe_precondition, cmp, fmt, mem};
 
 // While this function is used in one place and its implementation
 // could be inlined, the previous attempts to do so made rustc
@@ -66,12 +66,20 @@ impl Layout {
     #[inline]
     #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
-        if !align.is_power_of_two() {
-            return Err(LayoutError);
+        if Layout::is_size_align_valid(size, align) {
+            // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
+            unsafe { Ok(Layout { size, align: mem::transmute(align) }) }
+        } else {
+            Err(LayoutError)
         }
+    }
 
-        // SAFETY: just checked that align is a power of two.
-        Layout::from_size_alignment(size, unsafe { Alignment::new_unchecked(align) })
+    const fn is_size_align_valid(size: usize, align: usize) -> bool {
+        let Some(align) = Alignment::new(align) else { return false };
+        if size > Self::max_size_for_align(align) {
+            return false;
+        }
+        true
     }
 
     #[inline(always)]
@@ -116,8 +124,17 @@ impl Layout {
     #[inline]
     #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "Layout::from_size_align_unchecked requires that align is a power of 2 \
+            and the rounded-up allocation size does not exceed isize::MAX",
+            (
+                size: usize = size,
+                align: usize = align,
+            ) => Layout::is_size_align_valid(size, align)
+        );
         // SAFETY: the caller is required to uphold the preconditions.
-        unsafe { Layout { size, align: Alignment::new_unchecked(align) } }
+        unsafe { Layout { size, align: mem::transmute(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
