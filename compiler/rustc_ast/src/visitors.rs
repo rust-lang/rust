@@ -42,9 +42,6 @@ macro_rules! mutability_dependent {
         fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
             walk_fn(self, fk)
         }
-        fn visit_pat_field(&mut self, fp: &'ast PatField) -> Self::Result {
-            walk_pat_field(self, fp)
-        }
     };
     (mut $($lf: lifetime)?) => {
         /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
@@ -420,6 +417,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_param(&mut self, param: ref_t!(Param)) -> result!() {
                 walk_param(self, param)
+            }
+
+            fn visit_pat_field(&mut self, fp: ref_t!(PatField)) -> result!() {
+                walk_pat_field(self, fp)
             }
 
             fn visit_generic_param(&mut self, param: ref_t!(GenericParam)) -> result!() {
@@ -1761,16 +1762,23 @@ pub mod mut_visit {
         vis.visit_span(close);
     }
 
-    pub fn walk_flat_map_pat_field<T: MutVisitor>(
+    pub fn walk_pat_field<T: MutVisitor>(
         vis: &mut T,
-        mut fp: PatField,
-    ) -> SmallVec<[PatField; 1]> {
-        let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
+        fp: &mut PatField,
+    ) {
+        let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
         vis.visit_id(id);
         visit_attrs(vis, attrs);
         vis.visit_ident(ident);
         vis.visit_pat(pat);
         vis.visit_span(span);
+    }
+
+    pub fn walk_flat_map_pat_field<T: MutVisitor>(
+        vis: &mut T,
+        mut fp: PatField,
+    ) -> SmallVec<[PatField; 1]> {
+        vis.visit_pat_field(&mut fp);
         smallvec![fp]
     }
 
