@@ -229,6 +229,10 @@ macro_rules! make_ast_visitor {
             ($t: ty) => { if_mut_ty!(P<$t>, $t) }
         }
 
+        macro_rules! deref_P {
+            ($p: expr) => { if_mut_expr!($p.deref_mut(), $p) }
+        }
+
         macro_rules! make_visit {
             ($ty: ty, $visit: ident, $walk: ident) => {
                 fn $visit(&mut self, arg: ref_t!($ty)) -> result!() {
@@ -559,6 +563,16 @@ macro_rules! make_ast_visitor {
                     visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params)
                 }
             }
+            return_result!(V)
+        }
+
+        pub fn walk_fn_decl<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            decl: ref_t!(P!(FnDecl))
+        ) -> result!(V) {
+            let FnDecl { inputs, output } = deref_P!(decl);
+            visit_list!(vis, visit_param, flat_map_param, inputs);
+            try_v!(vis.visit_fn_ret_ty(output));
             return_result!(V)
         }
 
@@ -1177,14 +1191,6 @@ pub mod visit {
             }
         }
         V::Result::output()
-    }
-
-    pub fn walk_fn_decl<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        FnDecl { inputs, output }: &'a FnDecl,
-    ) -> V::Result {
-        walk_list!(visitor, visit_param, inputs);
-        visitor.visit_fn_ret_ty(output)
     }
 
     pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Result {
@@ -2198,12 +2204,6 @@ pub mod mut_visit {
                 vis.visit_expr(body);
             }
         }
-    }
-
-    fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
-        let FnDecl { inputs, output } = decl.deref_mut();
-        inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-        vis.visit_fn_ret_ty(output);
     }
 
     fn walk_param_bound<T: MutVisitor>(vis: &mut T, pb: &mut GenericBound) {
