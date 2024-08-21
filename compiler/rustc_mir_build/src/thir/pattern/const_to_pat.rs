@@ -129,7 +129,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let err = TypeNotPartialEq { span: self.span, non_peq_ty: ty };
                 let e = self.tcx().dcx().emit_err(err);
                 let kind = PatKind::Error(e);
-                return Box::new(Pat { span: self.span, ty: ty, kind });
+                return Box::new(Pat { span: self.span, ty, kind });
             }
         }
 

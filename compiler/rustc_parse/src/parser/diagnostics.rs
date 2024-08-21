@@ -1403,7 +1403,7 @@ impl<'a> Parser<'a> {
                 let mut err = ComparisonOperatorsCannotBeChained {
                     span: vec![op.span, self.prev_token.span],
                     suggest_turbofish: None,
-                    help_turbofish: None,
+                    help_turbofish: false,
                     chaining_sugg: None,
                 };
 
@@ -1436,7 +1436,7 @@ impl<'a> Parser<'a> {
                         {
                             err.suggest_turbofish = Some(op.span.shrink_to_lo());
                         } else {
-                            err.help_turbofish = Some(());
+                            err.help_turbofish = true;
                         }
 
                         let snapshot = self.create_snapshot_for_diagnostic();
@@ -1468,7 +1468,7 @@ impl<'a> Parser<'a> {
                         {
                             err.suggest_turbofish = Some(op.span.shrink_to_lo());
                         } else {
-                            err.help_turbofish = Some(());
+                            err.help_turbofish = true;
                         }
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
@@ -1487,7 +1487,7 @@ impl<'a> Parser<'a> {
                         {
                             // All we know is that this is `foo < bar >` and *nothing* else. Try to
                             // be helpful, but don't attempt to recover.
-                            err.help_turbofish = Some(());
+                            err.help_turbofish = true;
                         }
 
                         // If it looks like a genuine attempt to chain operators (as opposed to a
@@ -1895,7 +1895,7 @@ impl<'a> Parser<'a> {
         {
             self.dcx().emit_err(ColonAsSemi {
                 span: self.token.span,
-                type_ascription: self.psess.unstable_features.is_nightly_build().then_some(()),
+                type_ascription: self.psess.unstable_features.is_nightly_build(),
             });
             self.bump();
             return true;

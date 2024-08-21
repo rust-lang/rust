@@ -86,9 +86,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 // Multiple different abi names may actually be the same ABI
                                 // If the specified ABIs are not the same name, alert the user that they resolve to the same ABI
                                 let source_map = self.tcx.sess.source_map();
-                                let equivalent = (source_map.span_to_snippet(*prev_sp)
-                                    != source_map.span_to_snippet(*abi_span))
-                                .then_some(());
+                                let equivalent = source_map.span_to_snippet(*prev_sp)
+                                    != source_map.span_to_snippet(*abi_span);
 
                                 self.dcx().emit_err(AbiSpecifiedMultipleTimes {
                                     abi_span: *abi_span,

@@ -1972,8 +1972,7 @@ fn report_bivariance<'tcx>(
     }
 
     let const_param_help =
-        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
-            .then_some(());
+        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds);
 
     let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
         span: param.span,

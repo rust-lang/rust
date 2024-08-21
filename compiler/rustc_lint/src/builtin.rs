@@ -1330,7 +1330,7 @@ impl UnreachablePub {
                 BuiltinUnreachablePub {
                     what,
                     suggestion: (vis_span, applicability),
-                    help: exportable.then_some(()),
+                    help: exportable,
                 },
             );
         }

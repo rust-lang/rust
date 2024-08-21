@@ -338,7 +338,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             tcx,
             local_decls: &body.local_decls,
             ecx: InterpCx::new(tcx, DUMMY_SP, param_env, DummyMachine),
-            param_env: param_env,
+            param_env,
         }
     }
 

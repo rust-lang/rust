@@ -284,7 +284,7 @@ fn error(
 ) -> Result<!, ErrorGuaranteed> {
     let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
-        maybe_supported: None,
+        maybe_supported: false,
         sub,
     });
 
@@ -298,7 +298,7 @@ fn maybe_supported_error(
 ) -> Result<!, ErrorGuaranteed> {
     let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
-        maybe_supported: Some(()),
+        maybe_supported: true,
         sub,
     });
 

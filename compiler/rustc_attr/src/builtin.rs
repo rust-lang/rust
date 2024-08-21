@@ -846,7 +846,7 @@ pub fn find_deprecation(
                                     sess.dcx().emit_err(
                                         session_diagnostics::DeprecatedItemSuggestion {
                                             span: mi.span,
-                                            is_nightly: sess.is_nightly_build().then_some(()),
+                                            is_nightly: sess.is_nightly_build(),
                                             details: (),
                                         },
                                     );

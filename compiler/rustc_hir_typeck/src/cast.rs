@@ -505,7 +505,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     span: self.span,
                     expr_ty: self.expr_ty,
                     cast_ty: fcx.ty_to_string(self.cast_ty),
-                    teach: fcx.tcx.sess.teach(E0607).then_some(()),
+                    teach: fcx.tcx.sess.teach(E0607),
                 });
             }
             CastError::IntToFatCast(known_metadata) => {

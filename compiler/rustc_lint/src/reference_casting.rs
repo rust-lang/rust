@@ -54,8 +54,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                 && let Some(ty_has_interior_mutability) =
                     is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
-                let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
-
                 cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
                     expr.span,

@@ -395,7 +395,7 @@ pub enum StatementKind<'tcx> {
     /// `PlaceMention(PLACE)`.
     ///
     /// When executed at runtime, this computes the given place, but then discards
-    /// it without doing a load. It is UB if the place is not pointing to live memory.
+    /// it without doing a load. `let _ = *ptr;` is fine even if the pointer is dangling.
     PlaceMention(Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved

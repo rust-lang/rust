@@ -1421,7 +1421,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         hir::FnHeader {
             safety: self.lower_safety(h.safety, default_safety),
-            asyncness: asyncness,
+            asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
         }

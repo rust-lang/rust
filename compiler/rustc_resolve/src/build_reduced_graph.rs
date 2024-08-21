@@ -1158,7 +1158,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
-                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner).then_some(());
+                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
                 self.r
                     .dcx()
                     .emit_warn(errors::MacroExternDeprecated { span: attr.span, inner_attribute });

@@ -207,7 +207,7 @@ pub unsafe fn create_module<'ll>(
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
-        let avoid_plt = c"RtLibUseGOT".as_ptr().cast();
+        let avoid_plt = c"RtLibUseGOT".as_ptr();
         unsafe {
             llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
         }
@@ -215,7 +215,7 @@ pub unsafe fn create_module<'ll>(
 
     // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
     if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
-        let canonical_jump_tables = c"CFI Canonical Jump Tables".as_ptr().cast();
+        let canonical_jump_tables = c"CFI Canonical Jump Tables".as_ptr();
         unsafe {
             llvm::LLVMRustAddModuleFlagU32(
                 llmod,
@@ -228,7 +228,7 @@ pub unsafe fn create_module<'ll>(
 
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
-        let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr().cast();
+        let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr();
         unsafe {
             llvm::LLVMRustAddModuleFlagU32(
                 llmod,
@@ -241,7 +241,7 @@ pub unsafe fn create_module<'ll>(
 
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
-        let kcfi = c"kcfi".as_ptr().cast();
+        let kcfi = c"kcfi".as_ptr();
         unsafe {
             llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
         }
@@ -280,26 +280,26 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Min,
-                    c"branch-target-enforcement".as_ptr().cast(),
+                    c"branch-target-enforcement".as_ptr(),
                     bti.into(),
                 );
                 llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Min,
-                    c"sign-return-address".as_ptr().cast(),
+                    c"sign-return-address".as_ptr(),
                     pac_ret.is_some().into(),
                 );
                 let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
                 llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Min,
-                    c"sign-return-address-all".as_ptr().cast(),
+                    c"sign-return-address-all".as_ptr(),
                     pac_opts.leaf.into(),
                 );
                 llvm::LLVMRustAddModuleFlagU32(
                     llmod,
                     llvm::LLVMModFlagBehavior::Min,
-                    c"sign-return-address-with-bkey".as_ptr().cast(),
+                    c"sign-return-address-with-bkey".as_ptr(),
                     u32::from(pac_opts.key == PAuthKey::B),
                 );
             }
@@ -317,7 +317,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Override,
-                c"cf-protection-branch".as_ptr().cast(),
+                c"cf-protection-branch".as_ptr(),
                 1,
             );
         }
@@ -327,7 +327,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Override,
-                c"cf-protection-return".as_ptr().cast(),
+                c"cf-protection-return".as_ptr(),
                 1,
             );
         }
@@ -338,7 +338,7 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMRustAddModuleFlagU32(
                 llmod,
                 llvm::LLVMModFlagBehavior::Error,
-                c"Virtual Function Elim".as_ptr().cast(),
+                c"Virtual Function Elim".as_ptr(),
                 1,
             );
         }

@@ -116,7 +116,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 if pfd.revents & libc::POLLNVAL == 0 {
                     continue;
                 }
-                if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                if open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0) == -1 {
                     // If the stream is closed but we failed to reopen it, abort the
                     // process. Otherwise we wouldn't preserve the safety of
                     // operations on the corresponding Rust object Stdin, Stdout, or
@@ -147,7 +147,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             use crate::sys::os::errno;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                    if open64(c"/dev/null".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    if open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
                         // operations on the corresponding Rust object Stdin, Stdout, or

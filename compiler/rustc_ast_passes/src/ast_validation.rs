@@ -562,10 +562,8 @@ impl<'a> AstValidator<'a> {
         FnHeader { safety: _, coroutine_kind, constness, ext }: FnHeader,
     ) {
         let report_err = |span| {
-            self.dcx().emit_err(errors::FnQualifierInExtern {
-                span: span,
-                block: self.current_extern_span(),
-            });
+            self.dcx()
+                .emit_err(errors::FnQualifierInExtern { span, block: self.current_extern_span() });
         };
         match coroutine_kind {
             Some(knd) => report_err(knd.span()),
@@ -963,14 +961,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self_ty,
                 items,
             }) => {
-                let error =
-                    |annotation_span, annotation, only_trait: bool| errors::InherentImplCannot {
-                        span: self_ty.span,
-                        annotation_span,
-                        annotation,
-                        self_ty: self_ty.span,
-                        only_trait: only_trait.then_some(()),
-                    };
+                let error = |annotation_span, annotation, only_trait| errors::InherentImplCannot {
+                    span: self_ty.span,
+                    annotation_span,
+                    annotation,
+                    self_ty: self_ty.span,
+                    only_trait,
+                };
 
                 self.with_in_trait_impl(None, |this| {
                     this.visibility_not_permitted(
@@ -1195,7 +1192,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
                         span: where_clauses.after.span,
-                        help: self.session.is_nightly_build().then_some(()),
+                        help: self.session.is_nightly_build(),
                     });
                 }
             }

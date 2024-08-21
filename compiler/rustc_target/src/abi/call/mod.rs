@@ -642,7 +642,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn make_indirect(&mut self) {
         match self.mode {
             PassMode::Direct(_) | PassMode::Pair(_, _) => {
-                self.make_indirect_force();
+                self.mode = Self::indirect_pass_mode(&self.layout);
             }
             PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
                 // already indirect
@@ -652,9 +652,19 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         }
     }
 
-    /// Same as make_indirect, but doesn't check the current `PassMode`.
-    pub fn make_indirect_force(&mut self) {
-        self.mode = Self::indirect_pass_mode(&self.layout);
+    /// Same as `make_indirect`, but for arguments that are ignored. Only needed for ABIs that pass
+    /// ZSTs indirectly.
+    pub fn make_indirect_from_ignore(&mut self) {
+        match self.mode {
+            PassMode::Ignore => {
+                self.mode = Self::indirect_pass_mode(&self.layout);
+            }
+            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+                // already indirect
+                return;
+            }
+            _ => panic!("Tried to make {:?} indirect (expected `PassMode::Ignore`)", self.mode),
+        }
     }
 
     /// Pass this argument indirectly, by placing it at a fixed stack offset.

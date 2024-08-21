@@ -1564,7 +1564,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // * compare the param span to the pred span to detect lone user-written `Sized` bounds
             let has_explicit_bounds = bounded_params.is_empty()
                 || (*bounded_params).get(&param.index).is_some_and(|&&pred_sp| pred_sp != span);
-            let const_param_help = (!has_explicit_bounds).then_some(());
+            let const_param_help = !has_explicit_bounds;
 
             let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
                 span,

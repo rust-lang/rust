@@ -189,10 +189,10 @@ pub struct CreateLock<'a> {
     pub lock_err: std::io::Error,
     pub session_dir: &'a Path,
     #[note(incremental_lock_unsupported)]
-    pub is_unsupported_lock: Option<()>,
+    pub is_unsupported_lock: bool,
     #[help(incremental_cargo_help_1)]
     #[help(incremental_cargo_help_2)]
-    pub is_cargo: Option<()>,
+    pub is_cargo: bool,
 }
 
 #[derive(Diagnostic)]

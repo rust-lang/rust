@@ -218,12 +218,7 @@ impl<'tcx> Cx<'tcx> {
                     let lhs =
                         self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
                     let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
-                    self.thir.exprs.push(Expr {
-                        temp_lifetime,
-                        ty: discr_ty,
-                        span: span,
-                        kind: bin,
-                    })
+                    self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind: bin })
                 }
                 None => offset,
             };
