@@ -875,6 +875,95 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         None
     }
 
+    fn try_as_place_elem(
+        &mut self,
+        proj: ProjectionElem<VnIndex, Ty<'tcx>>,
+        loc: Location,
+    ) -> Option<PlaceElem<'tcx>> {
+        Some(match proj {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Field(idx, ty) => ProjectionElem::Field(idx, ty),
+            ProjectionElem::Index(idx) => {
+                let Some(local) = self.try_as_local(idx, loc) else {
+                    return None;
+                };
+                self.reused_locals.insert(local);
+                ProjectionElem::Index(local)
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
+            ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
+            ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
+        })
+    }
+
+    fn simplify_aggregate_to_copy(
+        &mut self,
+        rvalue: &mut Rvalue<'tcx>,
+        location: Location,
+        fields: &[VnIndex],
+        variant_index: VariantIdx,
+    ) -> Option<VnIndex> {
+        let Some(&first_field) = fields.first() else {
+            return None;
+        };
+        let Value::Projection(copy_from_value, _) = *self.get(first_field) else {
+            return None;
+        };
+        // All fields must correspond one-to-one and come from the same aggregate value.
+        if fields.iter().enumerate().any(|(index, &v)| {
+            if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = *self.get(v)
+                && copy_from_value == pointer
+                && from_index.index() == index
+            {
+                return false;
+            }
+            true
+        }) {
+            return None;
+        }
+
+        let mut copy_from_local_value = copy_from_value;
+        if let Value::Projection(pointer, proj) = *self.get(copy_from_value)
+            && let ProjectionElem::Downcast(_, read_variant) = proj
+        {
+            if variant_index == read_variant {
+                // When copying a variant, there is no need to downcast.
+                copy_from_local_value = pointer;
+            } else {
+                // The copied variant must be identical.
+                return None;
+            }
+        }
+
+        let tcx = self.tcx;
+        let mut projection = SmallVec::<[PlaceElem<'tcx>; 1]>::new();
+        loop {
+            if let Some(local) = self.try_as_local(copy_from_local_value, location) {
+                projection.reverse();
+                let place = Place { local, projection: tcx.mk_place_elems(projection.as_slice()) };
+                if rvalue.ty(self.local_decls, tcx) == place.ty(self.local_decls, tcx).ty {
+                    self.reused_locals.insert(local);
+                    *rvalue = Rvalue::Use(Operand::Copy(place));
+                    return Some(copy_from_value);
+                }
+                return None;
+            } else if let Value::Projection(pointer, proj) = *self.get(copy_from_local_value)
+                && let Some(proj) = self.try_as_place_elem(proj, location)
+            {
+                projection.push(proj);
+                copy_from_local_value = pointer;
+            } else {
+                return None;
+            }
+        }
+    }
+
     fn simplify_aggregate(
         &mut self,
         rvalue: &mut Rvalue<'tcx>,
@@ -969,6 +1058,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 return Some(self.insert(Value::Repeat(first, len)));
             }
+        }
+
+        if let AggregateTy::Def(_, _) = ty
+            && let Some(value) =
+                self.simplify_aggregate_to_copy(rvalue, location, &fields, variant_index)
+        {
+            return Some(value);
         }
 
         Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
@@ -1485,7 +1581,7 @@ impl<'tcx> VnState<'_, 'tcx> {
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
-    /// return it.
+    /// return it. If you used this local, add it to `reused_locals` to remove storage statements.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
         let other = self.rev_locals.get(index)?;
         other
