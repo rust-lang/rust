@@ -1031,7 +1031,7 @@ unsafe fn embed_bitcode(
             let llglobal = llvm::LLVMAddGlobal(
                 llmod,
                 common::val_ty(llconst),
-                c"rustc.embedded.module".as_ptr().cast(),
+                c"rustc.embedded.module".as_ptr(),
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
 
@@ -1044,7 +1044,7 @@ unsafe fn embed_bitcode(
             let llglobal = llvm::LLVMAddGlobal(
                 llmod,
                 common::val_ty(llconst),
-                c"rustc.embedded.cmdline".as_ptr().cast(),
+                c"rustc.embedded.cmdline".as_ptr(),
             );
             llvm::LLVMSetInitializer(llglobal, llconst);
             let section = if is_apple {
@@ -1054,7 +1054,7 @@ unsafe fn embed_bitcode(
             } else {
                 c".llvmcmd"
             };
-            llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
+            llvm::LLVMSetSection(llglobal, section.as_ptr());
             llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
         } else {
             // We need custom section flags, so emit module-level inline assembly.
@@ -1107,7 +1107,7 @@ fn create_msvc_imps(
             .collect::<Vec<_>>();
 
         for (imp_name, val) in globals {
-            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr().cast());
+            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr());
             llvm::LLVMSetInitializer(imp, val);
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
