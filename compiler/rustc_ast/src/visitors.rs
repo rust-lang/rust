@@ -205,16 +205,6 @@ macro_rules! mutability_helpers {
             };
             ($a: expr) => {};
         }
-
-        macro_rules! if_mut_stmt {
-            (, $b: stmt) => {
-                $b
-            };
-            ($a: stmt, $b: stmt) => {
-                $b
-            };
-            ($a: stmt) => {};
-        }
     };
     (mut) => {
         macro_rules! if_mut_ty {
@@ -243,16 +233,6 @@ macro_rules! mutability_helpers {
                 $a
             };
             ($a: expr) => {
-                $a
-            };
-        }
-
-        macro_rules! if_mut_stmt {
-            (, $b: stmt) => {};
-            ($a: stmt, $b: stmt) => {
-                $a
-            };
-            ($a: stmt) => {
                 $a
             };
         }
@@ -508,22 +488,22 @@ macro_rules! make_ast_visitor {
 
         macro_rules! visit_span {
             ($vis: ident, $span: ident) => {
-                if_mut_stmt!(
+                if_mut_expr!(
                     $vis.visit_span($span)
                 ,
                     // assign to _ to prevent unused_variable warnings
-                    let _ = (&$vis, &$span)
+                    {let _ = (&$vis, &$span);}
                 )
             }
         }
 
         macro_rules! visit_id {
             ($vis: ident, $id: ident) => {
-                if_mut_stmt!(
+                if_mut_expr!(
                     $vis.visit_id($id)
                 ,
                     // assign to _ to prevent unused_variable warnings
-                    let _ = (&$vis, &$id)
+                    {let _ = (&$vis, &$id);}
                 )
             }
         }
@@ -532,7 +512,7 @@ macro_rules! make_ast_visitor {
         // doesn't receives a reference
         macro_rules! visit_ident {
             ($vis: ident, $ident: ident) => {
-                if_mut_stmt!(
+                if_mut_expr!(
                     $vis.visit_ident($ident)
                 ,
                     $vis.visit_ident(*$ident)
@@ -545,12 +525,23 @@ macro_rules! make_ast_visitor {
             }) }
         }
 
+        // TODO: temporary name
+        macro_rules! try_v {
+            ($visit: expr) => {
+                if_mut_expr!(
+                    $visit
+                ,
+                    try_visit!($visit)
+                )
+            }
+        }
+
         pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             ident: if_mut_ty!(ref_t!(Ident), Ident)
         ) -> result!(V) {
             let Ident { name: _, span } = ident;
-            visit_span!(vis, span);
+            try_v!(visit_span!(vis, span));
             return_result!(V)
         }
 
@@ -559,7 +550,7 @@ macro_rules! make_ast_visitor {
             label: ref_t!(Label)
         ) -> result!(V) {
             let Label { ident } = label;
-            visit_ident!(vis, ident);
+            try_v!(visit_ident!(vis, ident));
             return_result!(V)
         }
 
@@ -568,8 +559,8 @@ macro_rules! make_ast_visitor {
             lifetime: ref_t!(Lifetime)
         ) -> result!(V) {
             let Lifetime { id, ident } = lifetime;
-            visit_id!(vis, id);
-            visit_ident!(vis, ident);
+            try_v!(visit_id!(vis, id));
+            try_v!(visit_ident!(vis, ident));
             return_result!(V)
         }
     }
