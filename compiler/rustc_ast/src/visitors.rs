@@ -604,6 +604,15 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_enum_def<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            enum_def: ref_t!(EnumDef)
+        ) -> result!(V) {
+            let EnumDef { variants } = enum_def;
+            visit_list!(vis, visit_variant, flat_map_variant, variants);
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
         make_walk_flat_map!{FieldDef, walk_flat_map_field_def, visit_field_def}
@@ -884,14 +893,6 @@ pub mod visit {
         item: &'a Item<impl WalkItemKind>,
     ) -> V::Result {
         walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
-    }
-
-    pub fn walk_enum_def<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        EnumDef { variants }: &'a EnumDef,
-    ) -> V::Result {
-        walk_list!(visitor, visit_variant, variants);
-        V::Result::output()
     }
 
     pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) -> V::Result
@@ -2954,10 +2955,6 @@ pub mod mut_visit {
         }
         visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
-    }
-
-    pub fn walk_enum_def<T: MutVisitor>(vis: &mut T, EnumDef { variants }: &mut EnumDef) {
-        variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
     }
 
     /// Some value for the AST node that is valid but possibly meaningless. Similar
