@@ -30,6 +30,7 @@ mod int_log;
 mod ops;
 mod wrapping;
 
+mod float_iter_sum_identity;
 mod ieee754;
 mod nan;
 
