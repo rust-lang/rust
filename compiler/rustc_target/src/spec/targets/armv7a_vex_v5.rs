@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
             exe_suffix: ".elf".into(),
             cpu: "cortex-a9".into(),
             abi: "eabihf".into(),
-            features: "+v7,+neon,+vfp3,+thumb2,+thumb-mode".into(),
+            features: "+v7,+neon,+vfp3,+thumb2".into(),
             linker: Some("rust-lld".into()),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             link_script: Some(LINK_SCRIPT.into()),
