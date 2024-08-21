@@ -257,6 +257,22 @@ macro_rules! make_ast_visitor {
             ($t: ty) => { if_mut_ty!(P<$t>, $t) }
         }
 
+        macro_rules! make_visit {
+            ($ty: ty, $visit: ident, $walk: ident) => {
+                fn $visit(&mut self, arg: ref_t!($ty)) -> result!() {
+                    $walk(self, arg)
+                }
+            };
+            ($ty: ty, $visit: ident, $walk: ident, $flat_map: ident, $walk_flat_map: ident) => {
+                make_visit!{$ty, $visit, $walk}
+                if_mut_item!{
+                    fn $flat_map(&mut self, arg: $ty) -> SmallVec<[$ty; 1]> {
+                        $walk_flat_map(self, arg)
+                    }
+                }
+            };
+        }
+
         /// Each method of the `Visitor` trait is a hook to be potentially
         /// overridden. Each method's default implementation recursively visits
         /// the substructure of the input via the corresponding `walk` method;
@@ -277,41 +293,44 @@ macro_rules! make_ast_visitor {
 
             mutability_dependent!{$($mut)? $($lt)?}
 
-            fn visit_crate(&mut self, c: ref_t!(Crate)) -> result!() {
-                walk_crate(self, c)
-            }
-
-            fn visit_anon_const(&mut self, c: ref_t!(AnonConst)) -> result!() {
-                walk_anon_const(self, c)
-            }
-
-            fn visit_format_args(&mut self, fmt: ref_t!(FormatArgs)) -> result!() {
-                walk_format_args(self, fmt)
-            }
-
-            fn visit_inline_asm(&mut self, asm: ref_t!(InlineAsm)) -> result!() {
-                walk_inline_asm(self, asm)
-            }
-
-            fn visit_inline_asm_sym(&mut self, sym: ref_t!(InlineAsmSym)) -> result!() {
-                walk_inline_asm_sym(self, sym)
-            }
-
-            fn visit_generics(&mut self, generics: ref_t!(Generics)) -> result!() {
-                walk_generics(self, generics)
-            }
-
-            fn visit_closure_binder(&mut self, b: ref_t!(ClosureBinder)) -> result!() {
-                walk_closure_binder(self, b)
-            }
-
-            fn visit_where_predicate(&mut self, where_predicate: ref_t!(WherePredicate)) -> result!() {
-                walk_where_predicate(self, where_predicate)
-            }
-
-            fn visit_trait_ref(&mut self, tr: ref_t!(TraitRef)) -> result!() {
-                walk_trait_ref(self, tr)
-            }
+            make_visit!{Crate, visit_crate, walk_crate}
+            make_visit!{AnonConst, visit_anon_const, walk_anon_const}
+            make_visit!{FormatArgs, visit_format_args, walk_format_args}
+            make_visit!{InlineAsm, visit_inline_asm, walk_inline_asm}
+            make_visit!{InlineAsmSym, visit_inline_asm_sym, walk_inline_asm_sym}
+            make_visit!{Generics, visit_generics, walk_generics}
+            make_visit!{ClosureBinder, visit_closure_binder, walk_closure_binder}
+            make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate}
+            make_visit!{TraitRef, visit_trait_ref, walk_trait_ref}
+            make_visit!{PolyTraitRef, visit_poly_trait_ref, walk_poly_trait_ref}
+            make_visit!{Label, visit_label, walk_label}
+            make_visit!{MacCall, visit_mac_call, walk_mac}
+            make_visit!{PathSegment, visit_path_segment, walk_path_segment}
+            make_visit!{GenericArgs, visit_generic_args, walk_generic_args}
+            make_visit!{GenericArg, visit_generic_arg, walk_generic_arg}
+            make_visit!{AssocItemConstraint, visit_assoc_item_constraint, walk_assoc_item_constraint}
+            make_visit!{Attribute, visit_attribute, walk_attribute}
+            make_visit!{Visibility, visit_vis, walk_vis}
+            make_visit!{FnRetTy, visit_fn_ret_ty, walk_fn_ret_ty}
+            make_visit!{AngleBracketedArgs, visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
+            make_visit!{ParenthesizedArgs, visit_parenthesized_parameter_data, walk_parenthesized_parameter_data}
+            make_visit!{ForeignMod, visit_foreign_mod, walk_foreign_mod}
+            make_visit!{MutTy, visit_mt, walk_mt}
+            make_visit!{WhereClause, visit_where_clause, walk_where_clause}
+            make_visit!{EnumDef, visit_enum_def, walk_enum_def}
+            make_visit!{Arm, visit_arm, walk_arm}
+            make_visit!{ExprField, visit_expr_field, walk_expr_field}
+            make_visit!{FieldDef, visit_field_def, walk_field_def}
+            make_visit!{Param, visit_param, walk_param}
+            make_visit!{PatField, visit_pat_field, walk_pat_field}
+            make_visit!{GenericParam, visit_generic_param, walk_generic_param}
+            make_visit!{Variant, visit_variant, walk_variant}
+            make_visit!{P!(Local), visit_local, walk_local}
+            make_visit!{P!(Pat), visit_pat, walk_pat}
+            make_visit!{P!(Expr), visit_expr, walk_expr}
+            make_visit!{P!(Ty), visit_ty, walk_ty}
+            make_visit!{P!(Block), visit_block, walk_block}
+            make_visit!{P!(FnDecl), visit_fn_decl, walk_fn_decl}
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
                 walk_param_bound(self, tpb)
@@ -320,10 +339,6 @@ macro_rules! make_ast_visitor {
             // FIXME: for some reason the immutable version doesn't return result!()
             fn visit_precise_capturing_arg(&mut self, arg: ref_t!(PreciseCapturingArg)) {
                 walk_precise_capturing_arg(self, arg);
-            }
-
-            fn visit_poly_trait_ref(&mut self, p: ref_t!(PolyTraitRef)) -> result!() {
-                walk_poly_trait_ref(self, p)
             }
 
             fn visit_variant_data(&mut self, vdata: ref_t!(VariantData)) -> result!() {
@@ -335,96 +350,8 @@ macro_rules! make_ast_visitor {
                 )
             }
 
-            fn visit_label(&mut self, label: ref_t!(Label)) -> result!() {
-                walk_label(self, label)
-            }
-
-            fn visit_mac_call(&mut self, mac: ref_t!(MacCall)) -> result!() {
-                walk_mac(self, mac)
-            }
-
-            fn visit_path_segment(&mut self, p: ref_t!(PathSegment)) -> result!() {
-                walk_path_segment(self, p)
-            }
-
-            fn visit_generic_args(&mut self, p: ref_t!(GenericArgs)) -> result!() {
-                walk_generic_args(self, p)
-            }
-
-            fn visit_generic_arg(&mut self, arg: ref_t!(GenericArg)) -> result!() {
-                walk_generic_arg(self, arg)
-            }
-
-            fn visit_assoc_item_constraint(&mut self, c: ref_t!(AssocItemConstraint)) -> result!() {
-                walk_assoc_item_constraint(self, c)
-            }
-
-            fn visit_attribute(&mut self, at: ref_t!(Attribute)) -> result!() {
-                walk_attribute(self, at)
-            }
-
-            fn visit_vis(&mut self, vis: ref_t!(Visibility)) -> result!() {
-                walk_vis(self, vis)
-            }
-
-            fn visit_fn_ret_ty(&mut self, ret_ty: ref_t!(FnRetTy)) -> result!() {
-                walk_fn_ret_ty(self, ret_ty)
-            }
-
-            fn visit_angle_bracketed_parameter_data(&mut self, p: ref_t!(AngleBracketedArgs)) -> result!() {
-                walk_angle_bracketed_parameter_data(self, p)
-            }
-
-            fn visit_parenthesized_parameter_data(&mut self, p: ref_t!(ParenthesizedArgs)) -> result!() {
-                walk_parenthesized_parameter_data(self, p)
-            }
-
-            fn visit_foreign_mod(&mut self, nm: ref_t!(ForeignMod)) -> result!() {
-                walk_foreign_mod(self, nm)
-            }
-
-            fn visit_mt(&mut self, mt: ref_t!(MutTy)) -> result!() {
-                walk_mt(self, mt)
-            }
-
-            fn visit_where_clause(&mut self, where_clause: ref_t!(WhereClause)) -> result!() {
-                walk_where_clause(self, where_clause)
-            }
-
-            fn visit_enum_def(&mut self, enum_definition: ref_t!(EnumDef)) -> result!() {
-                walk_enum_def(self, enum_definition)
-            }
-
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
                 self.visit_anon_const(discr)
-            }
-
-            fn visit_arm(&mut self, a: ref_t!(Arm)) -> result!() {
-                walk_arm(self, a)
-            }
-
-            fn visit_expr_field(&mut self, f: ref_t!(ExprField)) -> result!() {
-                walk_expr_field(self, f)
-            }
-
-            fn visit_field_def(&mut self, s: ref_t!(FieldDef)) -> result!() {
-                walk_field_def(self, s)
-            }
-
-            fn visit_param(&mut self, param: ref_t!(Param)) -> result!() {
-                walk_param(self, param)
-            }
-
-            fn visit_pat_field(&mut self, fp: ref_t!(PatField)) -> result!() {
-                walk_pat_field(self, fp)
-            }
-
-            fn visit_generic_param(&mut self, param: ref_t!(GenericParam)) -> result!() {
-                walk_generic_param(self, param)
-            }
-
-            fn visit_variant(&mut self, v: ref_t!(Variant)) -> result!() {
-                walk_variant(self, v)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -455,35 +382,12 @@ macro_rules! make_ast_visitor {
                 )
             }
 
-            fn visit_local(&mut self, l: ref_t!(P!(Local))) -> result!() {
-                walk_local(self, l)
-            }
-
-            fn visit_pat(&mut self, p: ref_t!(P!(Pat))) -> result!() {
-                walk_pat(self, p)
-            }
-
-            fn visit_expr(&mut self, e: ref_t!(P!(Expr))) -> result!() {
-                walk_expr(self, e)
-            }
-
             /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
             /// It can be removed once that feature is stabilized.
             fn visit_method_receiver_expr(&mut self, ex: ref_t!(P!(Expr))) -> result!() {
                 self.visit_expr(ex)
             }
 
-            fn visit_ty(&mut self, t: ref_t!(P!(Ty))) -> result!() {
-                walk_ty(self, t)
-            }
-
-            fn visit_block(&mut self, b: ref_t!(P!(Block))) -> result!() {
-                walk_block(self, b)
-            }
-
-            fn visit_fn_decl(&mut self, d: ref_t!(P!(FnDecl))) -> result!() {
-                walk_fn_decl(self, d)
-            }
         }
 
         macro_rules! visit_span {
