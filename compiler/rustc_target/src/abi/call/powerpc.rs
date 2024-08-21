@@ -16,7 +16,7 @@ fn classify_arg<Ty>(cx: &impl HasTargetSpec, arg: &mut ArgAbi<'_, Ty>) {
             && matches!(&*cx.target_spec().env, "gnu" | "musl" | "uclibc")
             && arg.layout.is_zst()
         {
-            arg.make_indirect_force();
+            arg.make_indirect_from_ignore();
         }
         return;
     }
