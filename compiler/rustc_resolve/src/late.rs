@@ -702,8 +702,9 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// We need some "real" `NodeId` to emit
     /// [`elided_named_lifetimes`](lint::builtin::ELIDED_NAMED_LIFETIMES).
-    /// See comments in [`MissingLifetime::id_if_not_fake_or`].
+    /// See comments in [`MissingLifetime::id_if_exists_in_source_or`].
     crate_node_id: NodeId,
+
     /// Don't emit [`elided_named_lifetimes`](lint::builtin::ELIDED_NAMED_LIFETIMES)
     /// when we are in a type annotation for a `const` or `static`.
     /// ```rust
@@ -2072,7 +2073,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         if self.warn_elided_static {
                             self.r.lint_buffer.buffer_lint(
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
-                                missing.id_if_not_fake_or(self.crate_node_id),
+                                missing.id_if_exists_in_source_or(self.crate_node_id),
                                 missing.span,
                                 BuiltinLintDiag::ElidedIsStatic { elided },
                             );
@@ -2086,7 +2087,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             // but `binder` sounds like a more appropriate place than the crate,
                             // and to convert `param` from `LocalDefId` to `NodeId`,
                             // we would have to do some additional work.
-                            missing.id_if_not_fake_or(binder),
+                            missing.id_if_exists_in_source_or(binder),
                             missing.span,
                             BuiltinLintDiag::ElidedIsParam { elided, param },
                         );

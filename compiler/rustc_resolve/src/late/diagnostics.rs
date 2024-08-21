@@ -117,12 +117,12 @@ impl MissingLifetime {
     /// in a sense that they are temporary and not get preserved down the line,
     /// which means that the lints for those nodes will not get emitted.
     /// To combat this, we can try to use some other `NodeId`s as a fallback option.
-    pub(super) fn id_if_not_fake_or(self, fallback: NodeId) -> NodeId {
+    pub(super) fn id_if_exists_in_source_or(self, fallback: NodeId) -> NodeId {
         match self.kind {
-            MissingLifetimeKind::Underscore
-            | MissingLifetimeKind::Comma
-            | MissingLifetimeKind::Brackets => self.id,
-            MissingLifetimeKind::Ampersand => fallback,
+            MissingLifetimeKind::Underscore => self.id,
+            MissingLifetimeKind::Ampersand
+            | MissingLifetimeKind::Brackets
+            | MissingLifetimeKind::Comma => fallback,
         }
     }
 }
