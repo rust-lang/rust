@@ -12,9 +12,6 @@ macro_rules! mutability_dependent {
         fn visit_param(&mut self, param: &'ast Param) -> Self::Result {
             walk_param(self, param)
         }
-        fn visit_arm(&mut self, a: &'ast Arm) -> Self::Result {
-            walk_arm(self, a)
-        }
         fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
             Self::Result::output()
         }
@@ -419,6 +416,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
                 self.visit_anon_const(discr)
+            }
+
+            fn visit_arm(&mut self, a: ref_t!(Arm)) -> result!() {
+                walk_arm(self, a)
             }
 
             // TODO: Ask if this Option<> is intentional
@@ -1786,14 +1787,18 @@ pub mod mut_visit {
         vis.visit_span(span);
     }
 
-    pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
-        let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = &mut arm;
+    pub fn walk_arm<T: MutVisitor>(vis: &mut T, arm: &mut Arm) {
+        let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
         vis.visit_id(id);
         visit_attrs(vis, attrs);
         vis.visit_pat(pat);
         visit_opt(guard, |guard| vis.visit_expr(guard));
         visit_opt(body, |body| vis.visit_expr(body));
         vis.visit_span(span);
+    }
+
+    pub fn walk_flat_map_arm<T: MutVisitor>(vis: &mut T, mut arm: Arm) -> SmallVec<[Arm; 1]> {
+        vis.visit_arm(&mut arm);
         smallvec![arm]
     }
 
