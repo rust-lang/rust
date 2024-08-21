@@ -2254,54 +2254,6 @@ impl<'a, I, A: Allocator> IntoIterator for &'a mut Box<[I], A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
-impl FromIterator<char> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
-        String::from_iter(iter).into_boxed_str()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
-impl<'a> FromIterator<&'a char> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
-        String::from_iter(iter).into_boxed_str()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
-impl<'a> FromIterator<&'a str> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
-        String::from_iter(iter).into_boxed_str()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
-impl FromIterator<String> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
-        String::from_iter(iter).into_boxed_str()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
-impl<A: Allocator> FromIterator<Box<str, A>> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = Box<str, A>>>(iter: T) -> Self {
-        String::from_iter(iter).into_boxed_str()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_str_from_iter", since = "1.80.0")]
-impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
-    fn from_iter<T: IntoIterator<Item = Cow<'a, str>>>(iter: T) -> Self {
-        String::from_iter(iter).into_boxed_str()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
