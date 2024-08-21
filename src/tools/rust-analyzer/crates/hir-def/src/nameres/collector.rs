@@ -247,18 +247,23 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let crate_graph = self.db.crate_graph();
+        let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
+        crate_data.crate_name = crate_graph[self.def_map.krate]
+            .display_name
+            .as_ref()
+            .map(|it| it.crate_name().symbol().clone());
+
         let file_id = crate_graph[self.def_map.krate].root_file_id();
         let item_tree = self.db.file_item_tree(file_id.into());
         let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
-        let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
 
-        let mut process = true;
+        let mut crate_cged_out = false;
 
         // Process other crate-level attributes.
         for attr in &*attrs {
             if let Some(cfg) = attr.cfg() {
                 if self.cfg_options.check(&cfg) == Some(false) {
-                    process = false;
+                    crate_cged_out = true;
                     break;
                 }
             }
@@ -270,6 +275,11 @@ impl DefCollector<'_> {
                         if let Ok(limit) = limit.as_str().parse() {
                             crate_data.recursion_limit = Some(limit);
                         }
+                    }
+                }
+                () if *attr_name == sym::crate_name.clone() => {
+                    if let Some(name) = attr.string_value().cloned() {
+                        crate_data.crate_name = Some(name);
                     }
                 }
                 () if *attr_name == sym::crate_type.clone() => {
@@ -337,7 +347,7 @@ impl DefCollector<'_> {
 
         self.inject_prelude();
 
-        if !process {
+        if crate_cged_out {
             return;
         }
 
@@ -1207,8 +1217,9 @@ impl DefCollector<'_> {
                         ast_id,
                         *call_site,
                         *expand_to,
-                        self.def_map.krate,
+                        self.def_map.module_id(directive.module_id),
                         resolver_def_id,
+                        |module| self.def_map.path_for_module(self.db, module),
                     );
                     if let Ok(Some(call_id)) = call_id {
                         self.def_map.modules[directive.module_id]
@@ -1486,7 +1497,7 @@ impl DefCollector<'_> {
                         ast_id,
                         *call_site,
                         *expand_to,
-                        self.def_map.krate,
+                        self.def_map.module_id(directive.module_id),
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
                                 self.db,
@@ -1498,6 +1509,7 @@ impl DefCollector<'_> {
                             );
                             resolved_res.resolved_def.take_macros().map(|it| self.db.macro_def(it))
                         },
+                        |module| self.def_map.path_for_module(self.db, module),
                     );
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
@@ -2351,7 +2363,7 @@ impl ModCollector<'_, '_> {
             &ast_id.path,
             ctxt,
             expand_to,
-            self.def_collector.def_map.krate,
+            self.def_collector.def_map.module_id(self.module_id),
             |path| {
                 path.as_ident().and_then(|name| {
                     let def_map = &self.def_collector.def_map;
@@ -2381,6 +2393,7 @@ impl ModCollector<'_, '_> {
                 );
                 resolved_res.resolved_def.take_macros().map(|it| db.macro_def(it))
             },
+            |module| self.def_collector.def_map.path_for_module(self.def_collector.db, module),
         ) {
             // FIXME: if there were errors, this might've been in the eager expansion from an
             // unresolved macro, so we need to push this into late macro resolution. see fixme above

@@ -41,6 +41,7 @@
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     manually_drop: drop
+//!     module_path:
 //!     non_null:
 //!     non_zero:
 //!     option: panic
@@ -1434,6 +1435,16 @@ mod panicking {
 
 #[macro_use]
 mod macros {
+    // region:module_path
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! module_path {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+    // endregion:module_path
+
     // region:panic
     #[macro_export]
     #[rustc_builtin_macro(core_panic)]

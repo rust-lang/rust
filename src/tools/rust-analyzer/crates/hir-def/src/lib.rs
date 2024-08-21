@@ -77,7 +77,7 @@ use base_db::{
 use hir_expand::{
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
-    eager::expand_eager_macro_input,
+    eager::{expand_eager_macro_input, expand_module_path_as_eager},
     impl_intern_lookup,
     name::Name,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
@@ -1400,26 +1400,19 @@ pub trait AsMacroCall {
     fn as_call_id(
         &self,
         db: &dyn ExpandDatabase,
-        krate: CrateId,
+        module: ModuleId,
         resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
-    ) -> Option<MacroCallId> {
-        self.as_call_id_with_errors(db, krate, resolver).ok()?.value
-    }
-
-    fn as_call_id_with_errors(
-        &self,
-        db: &dyn ExpandDatabase,
-        krate: CrateId,
-        resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
+        mod_path: impl FnOnce(ModuleId) -> String,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
 
 impl AsMacroCall for InFile<&ast::MacroCall> {
-    fn as_call_id_with_errors(
+    fn as_call_id(
         &self,
         db: &dyn ExpandDatabase,
-        krate: CrateId,
+        module: ModuleId,
         resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
+        mod_path: impl FnOnce(ModuleId) -> String,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
@@ -1446,9 +1439,10 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             &path,
             call_site.ctx,
             expands_to,
-            krate,
+            module,
             resolver,
             resolver,
+            mod_path,
         )
     }
 }
@@ -1475,8 +1469,9 @@ fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
-    krate: CrateId,
+    module: ModuleId,
     resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
+    mod_path: impl FnOnce(ModuleId) -> String,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
     macro_call_as_call_id_with_eager(
         db,
@@ -1484,9 +1479,10 @@ fn macro_call_as_call_id(
         &call.path,
         call_site,
         expand_to,
-        krate,
+        module,
         resolver,
         resolver,
+        mod_path,
     )
     .map(|res| res.value)
 }
@@ -1497,16 +1493,26 @@ fn macro_call_as_call_id_with_eager(
     path: &path::ModPath,
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
-    krate: CrateId,
+    module: ModuleId,
     resolver: impl FnOnce(&path::ModPath) -> Option<MacroDefId>,
     eager_resolver: impl Fn(&path::ModPath) -> Option<MacroDefId>,
+    mod_path: impl FnOnce(ModuleId) -> String,
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
     let def = resolver(path).ok_or_else(|| UnresolvedMacro { path: path.clone() })?;
 
     let res = match def.kind {
+        MacroDefKind::BuiltInEager(_, EagerExpander::ModulePath) => expand_module_path_as_eager(
+            db,
+            module.krate,
+            mod_path(module),
+            &ast_id.to_node(db),
+            ast_id,
+            def,
+            call_site,
+        ),
         MacroDefKind::BuiltInEager(..) => expand_eager_macro_input(
             db,
-            krate,
+            module.krate,
             &ast_id.to_node(db),
             ast_id,
             def,
@@ -1516,7 +1522,7 @@ fn macro_call_as_call_id_with_eager(
         _ if def.is_fn_like() => ExpandResult {
             value: Some(def.make_call(
                 db,
-                krate,
+                module.krate,
                 MacroCallKind::FnLike { ast_id, expand_to, eager: None },
                 call_site,
             )),

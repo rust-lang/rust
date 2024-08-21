@@ -69,6 +69,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                 dependencies,
                 origin,
                 is_proc_macro,
+                ..
             } = &crate_graph[crate_id];
             format_to!(
                 buf,

@@ -32,6 +32,51 @@ use crate::{
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
+pub fn expand_module_path_as_eager(
+    db: &dyn ExpandDatabase,
+    krate: CrateId,
+    mod_path: String,
+    macro_call: &ast::MacroCall,
+    ast_id: AstId<ast::MacroCall>,
+    def: MacroDefId,
+    call_site: SyntaxContextId,
+) -> ExpandResult<Option<MacroCallId>> {
+    let expand_to = ExpandTo::from_call_site(macro_call);
+
+    // Note:
+    // When `lazy_expand` is called, its *parent* file must already exist.
+    // Here we store an eager macro id for the argument expanded subtree
+    // for that purpose.
+    let arg_id = MacroCallLoc {
+        def,
+        krate,
+        kind: MacroCallKind::FnLike { ast_id, expand_to: ExpandTo::Expr, eager: None },
+        ctxt: call_site,
+    }
+    .intern(db);
+    #[allow(deprecated)] // builtin eager macros are never derives
+    let (_, _, span) = db.macro_arg(arg_id);
+    let subtree = crate::builtin::quote::quote! {span => #mod_path};
+
+    let loc = MacroCallLoc {
+        def,
+        krate,
+        kind: MacroCallKind::FnLike {
+            ast_id,
+            expand_to,
+            eager: Some(Arc::new(EagerCallInfo {
+                arg: Arc::new(subtree),
+                arg_id,
+                error: None,
+                span,
+            })),
+        },
+        ctxt: call_site,
+    };
+
+    ExpandResult { value: Some(loc.intern(db)), err: None }
+}
+
 pub fn expand_eager_macro_input(
     db: &dyn ExpandDatabase,
     krate: CrateId,

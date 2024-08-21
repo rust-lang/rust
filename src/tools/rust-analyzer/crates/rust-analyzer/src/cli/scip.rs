@@ -49,7 +49,6 @@ impl flags::Scip {
             let error_sink;
             (config, error_sink, _) = config.apply_change(change);
 
-            // FIXME @alibektas : What happens to errors without logging?
             error!(?error_sink, "Config Error(s)");
         }
         let cargo_config = config.cargo();
@@ -116,7 +115,6 @@ impl flags::Scip {
 
             tokens.into_iter().for_each(|(text_range, id)| {
                 let token = si.tokens.get(id).unwrap();
-
                 let range = text_range_to_scip_range(&line_index, text_range);
                 let symbol = tokens_to_symbol
                     .entry(id)
