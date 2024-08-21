@@ -1922,7 +1922,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// - At all times, you must avoid data races. If multiple threads have access to
 /// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other
-/// accesses (or use atomics).
+/// accesses, or all accesses must use atomic operations that establish a memory barrier (e.g.,
+/// operations in [core::sync::atomic] or compiler intrinsics).
 ///
 /// To assist with proper design, the following scenarios are explicitly declared legal
 /// for single-threaded code:
