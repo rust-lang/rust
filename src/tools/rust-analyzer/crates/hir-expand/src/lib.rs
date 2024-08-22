@@ -279,6 +279,7 @@ pub enum MacroCallKind {
 }
 
 pub trait HirFileIdExt {
+    fn edition(self, db: &dyn ExpandDatabase) -> Edition;
     /// Returns the original file of this macro call hierarchy.
     fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId;
 
@@ -293,6 +294,12 @@ pub trait HirFileIdExt {
 }
 
 impl HirFileIdExt for HirFileId {
+    fn edition(self, db: &dyn ExpandDatabase) -> Edition {
+        match self.repr() {
+            HirFileIdRepr::FileId(file_id) => file_id.edition(),
+            HirFileIdRepr::MacroFile(m) => m.macro_call_id.lookup(db).def.edition,
+        }
+    }
     fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId {
         let mut file_id = self;
         loop {

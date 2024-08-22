@@ -6,7 +6,7 @@ mod tests;
 use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{db::DefDatabase, DescendPreference, HasCrate, HasSource, LangItem, Semantics};
+use hir::{db::DefDatabase, HasCrate, HasSource, LangItem, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
@@ -178,29 +178,24 @@ fn hover_simple(
         return Some(RangeInfo::new(range, res));
     }
 
-    let in_attr = original_token
-        .parent_ancestors()
-        .filter_map(ast::Item::cast)
-        .any(|item| sema.is_attr_macro_call(&item))
-        && !matches!(
-            original_token.parent().and_then(ast::TokenTree::cast),
-            Some(tt) if tt.syntax().ancestors().any(|it| ast::Meta::can_cast(it.kind()))
-        );
-
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
-    let descended = sema.descend_into_macros(
-        if in_attr { DescendPreference::SameKind } else { DescendPreference::SameText },
-        original_token.clone(),
-    );
+    let mut descended = vec![];
+    sema.descend_into_macros_ng(original_token.clone(), |_, token| {
+        descended.push(token.value);
+    });
     let descended = || descended.iter();
 
-    let result = descended()
+    // FIXME: WE should not try these step by step, instead to accommodate for macros we should run
+    // all of these in "parallel" and rank their results
+    let result = None
         // try lint hover
-        .find_map(|token| {
-            // FIXME: Definition should include known lints and the like instead of having this special case here
-            let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
-            render::try_for_lint(&attr, token)
+        .or_else(|| {
+            descended().find_map(|token| {
+                // FIXME: Definition should include known lints and the like instead of having this special case here
+                let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+                render::try_for_lint(&attr, token)
+            })
         })
         // try definitions
         .or_else(|| {

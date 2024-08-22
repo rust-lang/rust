@@ -410,7 +410,8 @@ fn traverse(
                             })
                             .unwrap()
                     } else {
-                        sema.descend_into_macros_single(DescendPreference::SameKind, token)
+                        // FIXME: We should probably rank the tokens and find the most suitable?
+                        sema.descend_into_macros_single_exact(token)
                     };
                     match token.parent().and_then(ast::NameLike::cast) {
                         // Remap the token into the wrapping single token nodes

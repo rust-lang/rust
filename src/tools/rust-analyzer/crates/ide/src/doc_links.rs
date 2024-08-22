@@ -144,7 +144,7 @@ pub(crate) fn external_docs(
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;
-    let token = sema.descend_into_macros_single(DescendPreference::None, token);
+    let token = sema.descend_into_macros_single_exact(token);
 
     let node = token.parent()?;
     let definition = match_ast! {
