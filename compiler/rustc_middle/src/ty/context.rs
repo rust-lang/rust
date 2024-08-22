@@ -3035,13 +3035,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
             match self.named_bound_var(lifetime.hir_id) {
                 Some(resolve_bound_vars::ResolvedArg::EarlyBound(ebv)) => {
-                    let new_parent = self.parent(ebv);
+                    let new_parent = self.local_parent(ebv);
 
                     // If we map to another opaque, then it should be a parent
                     // of the opaque we mapped from. Continue mapping.
                     if matches!(self.def_kind(new_parent), DefKind::OpaqueTy) {
-                        debug_assert_eq!(self.parent(parent.to_def_id()), new_parent);
-                        opaque_lifetime_param_def_id = ebv.expect_local();
+                        debug_assert_eq!(self.local_parent(parent), new_parent);
+                        opaque_lifetime_param_def_id = ebv;
                         continue;
                     }
 
@@ -3050,20 +3050,20 @@ impl<'tcx> TyCtxt<'tcx> {
                         self,
                         ty::EarlyParamRegion {
                             index: generics
-                                .param_def_id_to_index(self, ebv)
+                                .param_def_id_to_index(self, ebv.to_def_id())
                                 .expect("early-bound var should be present in fn generics"),
-                            name: self.hir().name(self.local_def_id_to_hir_id(ebv.expect_local())),
+                            name: self.item_name(ebv.to_def_id()),
                         },
                     );
                 }
                 Some(resolve_bound_vars::ResolvedArg::LateBound(_, _, lbv)) => {
-                    let new_parent = self.parent(lbv);
+                    let new_parent = self.local_parent(lbv);
                     return ty::Region::new_late_param(
                         self,
-                        new_parent,
+                        new_parent.to_def_id(),
                         ty::BoundRegionKind::BrNamed(
-                            lbv,
-                            self.hir().name(self.local_def_id_to_hir_id(lbv.expect_local())),
+                            lbv.to_def_id(),
+                            self.item_name(lbv.to_def_id()),
                         ),
                     );
                 }

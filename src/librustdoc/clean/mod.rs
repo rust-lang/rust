@@ -272,7 +272,7 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
         | rbv::ResolvedArg::LateBound(_, _, did)
         | rbv::ResolvedArg::Free(_, did),
     ) = cx.tcx.named_bound_var(lifetime.hir_id)
-        && let Some(lt) = cx.args.get(&did).and_then(|arg| arg.as_lt())
+        && let Some(lt) = cx.args.get(&did.to_def_id()).and_then(|arg| arg.as_lt())
     {
         return lt.clone();
     }

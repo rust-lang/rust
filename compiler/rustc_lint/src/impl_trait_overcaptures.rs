@@ -300,16 +300,17 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for VisitOpaqueTypes<'tcx> {
                         Some(
                             ResolvedArg::EarlyBound(def_id) | ResolvedArg::LateBound(_, _, def_id),
                         ) => {
-                            if self.tcx.def_kind(self.tcx.parent(def_id)) == DefKind::OpaqueTy {
+                            if self.tcx.def_kind(self.tcx.local_parent(def_id)) == DefKind::OpaqueTy
+                            {
                                 let def_id = self
                                     .tcx
-                                    .map_opaque_lifetime_to_parent_lifetime(def_id.expect_local())
+                                    .map_opaque_lifetime_to_parent_lifetime(def_id)
                                     .opt_param_def_id(self.tcx, self.parent_def_id.to_def_id())
                                     .expect("variable should have been duplicated from parent");
 
                                 explicitly_captured.insert(def_id);
                             } else {
-                                explicitly_captured.insert(def_id);
+                                explicitly_captured.insert(def_id.to_def_id());
                             }
                         }
                         _ => {
