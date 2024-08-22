@@ -269,34 +269,45 @@ fn make_win_dist(
     let target_libs = find_files(&target_libs, &lib_path);
 
     // Copy runtime dlls next to rustc.exe
-    let dist_bin_dir = rust_root.join("bin/");
-    fs::create_dir_all(&dist_bin_dir).expect("creating dist_bin_dir failed");
-    for src in rustc_dlls {
-        builder.copy_link_to_folder(&src, &dist_bin_dir);
+    let rust_bin_dir = rust_root.join("bin/");
+    fs::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
+    for src in &rustc_dlls {
+        builder.copy_link_to_folder(src, &rust_bin_dir);
+    }
+
+    if builder.config.lld_enabled {
+        // rust-lld.exe also needs runtime dlls
+        let rust_target_bin_dir = rust_root.join("lib/rustlib").join(target).join("bin");
+        fs::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
+        for src in &rustc_dlls {
+            builder.copy_link_to_folder(src, &rust_target_bin_dir);
+        }
     }
 
     //Copy platform tools to platform-specific bin directory
-    let target_bin_dir =
-        plat_root.join("lib").join("rustlib").join(target).join("bin").join("self-contained");
-    fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
+    let plat_target_bin_self_contained_dir =
+        plat_root.join("lib/rustlib").join(target).join("bin/self-contained");
+    fs::create_dir_all(&plat_target_bin_self_contained_dir)
+        .expect("creating plat_target_bin_self_contained_dir failed");
     for src in target_tools {
-        builder.copy_link_to_folder(&src, &target_bin_dir);
+        builder.copy_link_to_folder(&src, &plat_target_bin_self_contained_dir);
     }
 
     // Warn windows-gnu users that the bundled GCC cannot compile C files
     builder.create(
-        &target_bin_dir.join("GCC-WARNING.txt"),
+        &plat_target_bin_self_contained_dir.join("GCC-WARNING.txt"),
         "gcc.exe contained in this folder cannot be used for compiling C files - it is only \
          used as a linker. In order to be able to compile projects containing C code use \
          the GCC provided by MinGW or Cygwin.",
     );
 
     //Copy platform libs to platform-specific lib directory
-    let target_lib_dir =
-        plat_root.join("lib").join("rustlib").join(target).join("lib").join("self-contained");
-    fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
+    let plat_target_lib_self_contained_dir =
+        plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
+    fs::create_dir_all(&plat_target_lib_self_contained_dir)
+        .expect("creating plat_target_lib_self_contained_dir failed");
     for src in target_libs {
-        builder.copy_link_to_folder(&src, &target_lib_dir);
+        builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
     }
 }
 
