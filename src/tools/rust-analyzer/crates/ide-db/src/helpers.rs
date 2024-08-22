@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use base_db::SourceRootDatabase;
-use hir::{Crate, DescendPreference, ItemInNs, ModuleDef, Name, Semantics};
+use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
 use span::{Edition, FileId};
 use syntax::{
     ast::{self, make},
@@ -112,11 +112,12 @@ pub fn is_editable_crate(krate: Crate, db: &RootDatabase) -> bool {
     !db.source_root(source_root_id).is_library
 }
 
+// FIXME: This is a weird function
 pub fn get_definition(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
 ) -> Option<Definition> {
-    for token in sema.descend_into_macros(DescendPreference::None, token) {
+    for token in sema.descend_into_macros_exact(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
         if let Some(&[x]) = def.as_deref() {
             return Some(x);

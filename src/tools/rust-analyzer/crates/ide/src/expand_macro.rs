@@ -1,4 +1,4 @@
-use hir::{DescendPreference, InFile, MacroFileIdExt, Semantics};
+use hir::{InFile, MacroFileIdExt, Semantics};
 use ide_db::{
     helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into, FileId,
     RootDatabase,
@@ -41,37 +41,30 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // struct Bar;
     // ```
 
-    let derive = sema
-        .descend_into_macros(DescendPreference::None, tok.clone())
-        .into_iter()
-        .find_map(|descended| {
-            let macro_file = sema.hir_file_for(&descended.parent()?).macro_file()?;
-            if !macro_file.is_derive_attr_pseudo_expansion(db) {
-                return None;
-            }
+    let derive = sema.descend_into_macros_exact(tok.clone()).into_iter().find_map(|descended| {
+        let macro_file = sema.hir_file_for(&descended.parent()?).macro_file()?;
+        if !macro_file.is_derive_attr_pseudo_expansion(db) {
+            return None;
+        }
 
-            let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
-            // up map out of the #[derive] expansion
-            let InFile { file_id, value: tokens } =
-                hir::InMacroFile::new(macro_file, descended).upmap_once(db);
-            let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
-            let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
-            let expansions = sema.expand_derive_macro(&attr)?;
-            let idx = attr
-                .token_tree()?
-                .token_trees_and_tokens()
-                .filter_map(NodeOrToken::into_token)
-                .take_while(|it| it != &token)
-                .filter(|it| it.kind() == T![,])
-                .count();
-            let expansion = format(
-                db,
-                SyntaxKind::MACRO_ITEMS,
-                position.file_id,
-                expansions.get(idx).cloned()?,
-            );
-            Some(ExpandedMacro { name, expansion })
-        });
+        let name = descended.parent_ancestors().filter_map(ast::Path::cast).last()?.to_string();
+        // up map out of the #[derive] expansion
+        let InFile { file_id, value: tokens } =
+            hir::InMacroFile::new(macro_file, descended).upmap_once(db);
+        let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
+        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+        let expansions = sema.expand_derive_macro(&attr)?;
+        let idx = attr
+            .token_tree()?
+            .token_trees_and_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .take_while(|it| it != &token)
+            .filter(|it| it.kind() == T![,])
+            .count();
+        let expansion =
+            format(db, SyntaxKind::MACRO_ITEMS, position.file_id, expansions.get(idx).cloned()?);
+        Some(ExpandedMacro { name, expansion })
+    });
 
     if derive.is_some() {
         return derive;

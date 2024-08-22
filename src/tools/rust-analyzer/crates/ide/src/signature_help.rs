@@ -4,10 +4,7 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{
-    AssocItem, DescendPreference, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics,
-    Trait,
-};
+use hir::{AssocItem, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics, Trait};
 use ide_db::{
     active_parameter::{callable_for_node, generic_def_for_node},
     documentation::{Documentation, HasDocs},
@@ -82,7 +79,7 @@ pub(crate) fn signature_help(
         // if the cursor is sandwiched between two space tokens and the call is unclosed
         // this prevents us from leaving the CallExpression
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
-    let token = sema.descend_into_macros_single(DescendPreference::None, token);
+    let token = sema.descend_into_macros_single_exact(token);
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
 

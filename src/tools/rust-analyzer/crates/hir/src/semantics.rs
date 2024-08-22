@@ -4,6 +4,7 @@ mod source_to_def;
 
 use std::{
     cell::RefCell,
+    convert::Infallible,
     fmt, iter, mem,
     ops::{self, ControlFlow, Not},
 };
@@ -48,11 +49,7 @@ use crate::{
     Variant, VariantDef,
 };
 
-pub enum DescendPreference {
-    SameText,
-    SameKind,
-    None,
-}
+const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PathResolution {
@@ -182,6 +179,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
     /// descend it and find again
+    // FIXME: Rethink this API
     pub fn find_node_at_offset_with_descend<N: AstNode>(
         &self,
         node: &SyntaxNode,
@@ -190,8 +188,9 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
-    /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
+    /// Find an AstNode by offset inside SyntaxNode, if it is inside an attribute macro call,
     /// descend it and find again
+    // FIXME: Rethink this API
     pub fn find_nodes_at_offset_with_descend<'slf, N: AstNode + 'slf>(
         &'slf self,
         node: &SyntaxNode,
@@ -545,51 +544,53 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
+    /// Retrieves all the formatting parts of the format_args! template string.
     pub fn as_format_args_parts(
         &self,
         string: &ast::String,
     ) -> Option<Vec<(TextRange, Option<PathResolution>)>> {
-        if let Some(quote) = string.open_quote_text_range() {
-            return self
-                .descend_into_macros(DescendPreference::SameText, string.syntax().clone())
-                .into_iter()
-                .find_map(|token| {
-                    let string = ast::String::cast(token)?;
-                    let literal =
-                        string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
-                    let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
-                    let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
-                    let format_args = self.wrap_node_infile(format_args);
-                    let res = source_analyzer
-                        .as_format_args_parts(self.db, format_args.as_ref())?
-                        .map(|(range, res)| (range + quote.end(), res))
-                        .collect();
-                    Some(res)
-                });
-        }
-        None
+        let quote = string.open_quote_text_range()?;
+
+        let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
+        self.descend_into_macros_breakable(token, |token| {
+            (|| {
+                let token = token.value;
+                let string = ast::String::cast(token)?;
+                let literal =
+                    string.syntax().parent().filter(|it| it.kind() == SyntaxKind::LITERAL)?;
+                let format_args = ast::FormatArgsExpr::cast(literal.parent()?)?;
+                let source_analyzer = self.analyze_no_infer(format_args.syntax())?;
+                let format_args = self.wrap_node_infile(format_args);
+                let res = source_analyzer
+                    .as_format_args_parts(self.db, format_args.as_ref())?
+                    .map(|(range, res)| (range + quote.end(), res))
+                    .collect();
+                Some(res)
+            })()
+            .map_or(ControlFlow::Continue(()), ControlFlow::Break)
+        })
     }
 
+    /// Retrieves the formatting part of the format_args! template string at the given offset.
     pub fn check_for_format_args_template(
         &self,
         original_token: SyntaxToken,
         offset: TextSize,
     ) -> Option<(TextRange, Option<PathResolution>)> {
-        if let Some(original_string) = ast::String::cast(original_token.clone()) {
-            if let Some(quote) = original_string.open_quote_text_range() {
-                return self
-                    .descend_into_macros(DescendPreference::SameText, original_token)
-                    .into_iter()
-                    .find_map(|token| {
-                        self.resolve_offset_in_format_args(
-                            ast::String::cast(token)?,
-                            offset.checked_sub(quote.end())?,
-                        )
-                    })
-                    .map(|(range, res)| (range + quote.end(), res));
-            }
-        }
-        None
+        let original_string = ast::String::cast(original_token.clone())?;
+        let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
+        let quote = original_string.open_quote_text_range()?;
+        self.descend_into_macros_breakable(original_token, |token| {
+            (|| {
+                let token = token.value;
+                self.resolve_offset_in_format_args(
+                    ast::String::cast(token)?,
+                    offset.checked_sub(quote.end())?,
+                )
+                .map(|(range, res)| (range + quote.end(), res))
+            })()
+            .map_or(ControlFlow::Continue(()), ControlFlow::Break)
+        })
     }
 
     fn resolve_offset_in_format_args(
@@ -619,30 +620,37 @@ impl<'db> SemanticsImpl<'db> {
             Some(it) => it,
             None => return res,
         };
+        let file = self.find_file(node.syntax());
+        let Some(file_id) = file.file_id.file_id() else {
+            return res;
+        };
 
         if first == last {
             // node is just the token, so descend the token
-            self.descend_into_macros_impl(first, &mut |InFile { value, .. }| {
-                if let Some(node) = value
-                    .parent_ancestors()
-                    .take_while(|it| it.text_range() == value.text_range())
-                    .find_map(N::cast)
-                {
-                    res.push(node)
-                }
-                ControlFlow::Continue(())
-            });
+            self.descend_into_macros_impl(
+                InRealFile::new(file_id, first),
+                &mut |InFile { value, .. }| {
+                    if let Some(node) = value
+                        .parent_ancestors()
+                        .take_while(|it| it.text_range() == value.text_range())
+                        .find_map(N::cast)
+                    {
+                        res.push(node)
+                    }
+                    CONTINUE_NO_BREAKS
+                },
+            );
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(first, &mut |token| {
+            self.descend_into_macros_impl(InRealFile::new(file_id, first), &mut |token| {
                 scratch.push(token);
-                ControlFlow::Continue(())
+                CONTINUE_NO_BREAKS
             });
 
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
-                last,
+                InRealFile::new(file_id, last),
                 &mut |InFile { value: last, file_id: last_fid }| {
                     if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
                         if first_fid == last_fid {
@@ -659,130 +667,122 @@ impl<'db> SemanticsImpl<'db> {
                             }
                         }
                     }
-                    ControlFlow::Continue(())
+                    CONTINUE_NO_BREAKS
                 },
             );
         }
         res
     }
 
-    /// Descend the token into its macro call if it is part of one, returning the tokens in the
-    /// expansion that it is associated with.
-    pub fn descend_into_macros(
+    pub fn descend_into_macros_cb(
         &self,
-        mode: DescendPreference,
         token: SyntaxToken,
-    ) -> SmallVec<[SyntaxToken; 1]> {
-        enum Dp<'t> {
-            SameText(&'t str),
-            SameKind(SyntaxKind),
-            None,
+        mut cb: impl FnMut(InFile<SyntaxToken>),
+    ) {
+        if let Ok(token) = self.wrap_token_infile(token).into_real_file() {
+            self.descend_into_macros_impl(token, &mut |t| {
+                cb(t);
+                CONTINUE_NO_BREAKS
+            });
         }
-        let fetch_kind = |token: &SyntaxToken| match token.parent() {
-            Some(node) => match node.kind() {
-                kind @ (SyntaxKind::NAME | SyntaxKind::NAME_REF) => kind,
-                _ => token.kind(),
-            },
-            None => token.kind(),
-        };
-        let mode = match mode {
-            DescendPreference::SameText => Dp::SameText(token.text()),
-            DescendPreference::SameKind => Dp::SameKind(fetch_kind(&token)),
-            DescendPreference::None => Dp::None,
-        };
+    }
+
+    pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
-            let is_a_match = match mode {
-                Dp::SameText(text) => value.text() == text,
-                Dp::SameKind(preferred_kind) => {
-                    let kind = fetch_kind(&value);
-                    kind == preferred_kind
-                        // special case for derive macros
-                        || (preferred_kind == SyntaxKind::IDENT && kind == SyntaxKind::NAME_REF)
-                }
-                Dp::None => true,
-            };
-            if is_a_match {
-                res.push(value);
-            }
-            ControlFlow::Continue(())
-        });
+        if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
+            self.descend_into_macros_impl(token, &mut |t| {
+                res.push(t.value);
+                CONTINUE_NO_BREAKS
+            });
+        }
         if res.is_empty() {
             res.push(token);
         }
         res
     }
 
-    pub fn descend_into_macros_single(
+    pub fn descend_into_macros_breakable<T>(
         &self,
-        mode: DescendPreference,
-        token: SyntaxToken,
-    ) -> SyntaxToken {
-        enum Dp<'t> {
-            SameText(&'t str),
-            SameKind(SyntaxKind),
-            None,
-        }
-        let fetch_kind = |token: &SyntaxToken| match token.parent() {
-            Some(node) => match node.kind() {
-                kind @ (SyntaxKind::NAME | SyntaxKind::NAME_REF) => kind,
-                _ => token.kind(),
-            },
-            None => token.kind(),
-        };
-        let mode = match mode {
-            DescendPreference::SameText => Dp::SameText(token.text()),
-            DescendPreference::SameKind => Dp::SameKind(fetch_kind(&token)),
-            DescendPreference::None => Dp::None,
-        };
-        let mut res = token.clone();
-        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
-            let is_a_match = match mode {
-                Dp::SameText(text) => value.text() == text,
-                Dp::SameKind(preferred_kind) => {
-                    let kind = fetch_kind(&value);
-                    kind == preferred_kind
-                        // special case for derive macros
-                        || (preferred_kind == SyntaxKind::IDENT && kind == SyntaxKind::NAME_REF)
-                }
-                Dp::None => true,
-            };
-            res = value;
-            if is_a_match {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
-        });
-        res
+        token: InRealFile<SyntaxToken>,
+        mut cb: impl FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
+    ) -> Option<T> {
+        self.descend_into_macros_impl(token.clone(), &mut cb)
     }
 
-    fn descend_into_macros_impl(
+    /// Descends the token into expansions, returning the tokens that matches the input
+    /// token's [`SyntaxKind`] and text.
+    pub fn descend_into_macros_exact(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+        let mut r = smallvec![];
+        let text = token.text();
+        let kind = token.kind();
+
+        self.descend_into_macros_cb(token.clone(), |InFile { value, file_id: _ }| {
+            let mapped_kind = value.kind();
+            let any_ident_match = || kind.is_any_identifier() && value.kind().is_any_identifier();
+            let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
+            if matches {
+                r.push(value);
+            }
+        });
+        if r.is_empty() {
+            r.push(token);
+        }
+        r
+    }
+
+    /// Descends the token into expansions, returning the first token that matches the input
+    /// token's [`SyntaxKind`] and text.
+    pub fn descend_into_macros_single_exact(&self, token: SyntaxToken) -> SyntaxToken {
+        let text = token.text();
+        let kind = token.kind();
+        if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
+            self.descend_into_macros_breakable(token.clone(), |InFile { value, file_id: _ }| {
+                let mapped_kind = value.kind();
+                let any_ident_match =
+                    || kind.is_any_identifier() && value.kind().is_any_identifier();
+                let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
+                if matches {
+                    ControlFlow::Break(value)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
+        } else {
+            None
+        }
+        .unwrap_or(token)
+    }
+
+    fn descend_into_macros_impl<T>(
         &self,
-        token: SyntaxToken,
-        f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
-    ) {
+        InRealFile { value: token, file_id }: InRealFile<SyntaxToken>,
+        f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
+    ) -> Option<T> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
-        let (sa, span, file_id) =
-            match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
-                Some(sa) => match sa.file_id.file_id() {
-                    Some(file_id) => (
-                        sa,
-                        self.db.real_span_map(file_id).span_for_range(token.text_range()),
-                        file_id.into(),
-                    ),
-                    None => {
-                        stdx::never!();
-                        return;
-                    }
-                },
-                None => return,
-            };
+        let (sa, span, file_id) = token
+            .parent()
+            .and_then(|parent| {
+                self.analyze_impl(InRealFile::new(file_id, &parent).into(), None, false)
+            })
+            .and_then(|sa| {
+                let file_id = sa.file_id.file_id()?;
+                Some((
+                    sa,
+                    self.db.real_span_map(file_id).span_for_range(token.text_range()),
+                    HirFileId::from(file_id),
+                ))
+            })?;
 
         let mut m_cache = self.macro_call_cache.borrow_mut();
         let def_map = sa.resolver.def_map();
 
+        // A stack of tokens to process, along with the file they came from
+        // These are tracked to know which macro calls we still have to look into
+        // the tokens themselves aren't that interesting as the span that is being used to map
+        // things down never changes.
         let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(file_id, smallvec![token])];
+
+        // Process the expansion of a call, pushing all tokens with our span in the expansion back onto our stack
         let process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
             let InMacroFile { file_id, value: mapped_tokens } = self.with_ctx(|ctx| {
                 Some(
@@ -809,7 +809,13 @@ impl<'db> SemanticsImpl<'db> {
             res
         };
 
-        while let Some((file_id, mut tokens)) = stack.pop() {
+        // Filters out all tokens that contain the given range (usually the macro call), any such
+        // token is redundant as the corresponding macro call has already been processed
+        let filter_duplicates = |tokens: &mut SmallVec<_>, range: TextRange| {
+            tokens.retain(|t: &mut SyntaxToken| !range.contains_range(t.text_range()))
+        };
+
+        while let Some((expansion, ref mut tokens)) = stack.pop() {
             while let Some(token) = tokens.pop() {
                 let was_not_remapped = (|| {
                     // First expand into attribute invocations
@@ -817,7 +823,7 @@ impl<'db> SemanticsImpl<'db> {
                         token.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
                             // Don't force populate the dyn cache for items that don't have an attribute anyways
                             item.attrs().next()?;
-                            Some((ctx.item_to_macro_call(InFile::new(file_id, &item))?, item))
+                            Some((ctx.item_to_macro_call(InFile::new(expansion, &item))?, item))
                         })
                     });
                     if let Some((call_id, item)) = containing_attribute_macro_call {
@@ -849,9 +855,7 @@ impl<'db> SemanticsImpl<'db> {
                             })
                             .unwrap_or_else(|| text_range.start());
                         let text_range = TextRange::new(start, text_range.end());
-                        // remove any other token in this macro input, all their mappings are the
-                        // same as this one
-                        tokens.retain(|t| !text_range.contains_range(t.text_range()));
+                        filter_duplicates(tokens, text_range);
                         return process_expansion_for_token(&mut stack, file_id);
                     }
 
@@ -862,6 +866,7 @@ impl<'db> SemanticsImpl<'db> {
                         .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
                         .last()?;
                     match tt {
+                        // function-like macro call
                         Either::Left(tt) => {
                             if tt.left_delimiter_token().map_or(false, |it| it == token) {
                                 return None;
@@ -870,7 +875,7 @@ impl<'db> SemanticsImpl<'db> {
                                 return None;
                             }
                             let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
-                            let mcall = InFile::new(file_id, macro_call);
+                            let mcall = InFile::new(expansion, macro_call);
                             let file_id = match m_cache.get(&mcall) {
                                 Some(&it) => it,
                                 None => {
@@ -888,9 +893,7 @@ impl<'db> SemanticsImpl<'db> {
                                 }
                             };
                             let text_range = tt.syntax().text_range();
-                            // remove any other token in this macro input, all their mappings are the
-                            // same as this one
-                            tokens.retain(|t| !text_range.contains_range(t.text_range()));
+                            filter_duplicates(tokens, text_range);
 
                             process_expansion_for_token(&mut stack, file_id).or(file_id
                                 .eager_arg(self.db.upcast())
@@ -899,6 +902,7 @@ impl<'db> SemanticsImpl<'db> {
                                     process_expansion_for_token(&mut stack, arg.as_macro_file())
                                 }))
                         }
+                        // derive or derive helper
                         Either::Right(meta) => {
                             // attribute we failed expansion for earlier, this might be a derive invocation
                             // or derive helper attribute
@@ -910,8 +914,8 @@ impl<'db> SemanticsImpl<'db> {
                                         // so try downmapping the token into the pseudo derive expansion
                                         // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
                                         ctx.attr_to_derive_macro_call(
-                                            InFile::new(file_id, &adt),
-                                            InFile::new(file_id, attr.clone()),
+                                            InFile::new(expansion, &adt),
+                                            InFile::new(expansion, attr.clone()),
                                         )
                                         .map(|(_, call_id, _)| call_id)
                                     });
@@ -945,28 +949,29 @@ impl<'db> SemanticsImpl<'db> {
                                     )
                                 }
                             }?;
-                            if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(file_id, &adt))) {
+                            if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(expansion, &adt))) {
                                 return None;
                             }
                             let attr_name =
                                 attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
-                            // Not an attribute, nor a derive, so it's either a builtin or a derive helper
+                            // Not an attribute, nor a derive, so it's either an intert attribute or a derive helper
                             // Try to resolve to a derive helper and downmap
-                            let id = self.db.ast_id_map(file_id).ast_id(&adt);
+                            let id = self.db.ast_id_map(expansion).ast_id(&adt);
                             let helpers =
-                                def_map.derive_helpers_in_scope(InFile::new(file_id, id))?;
+                                def_map.derive_helpers_in_scope(InFile::new(expansion, id))?;
 
                             if !helpers.is_empty() {
                                 let text_range = attr.syntax().text_range();
-                                // remove any other token in this macro input, all their mappings are the
-                                // same as this
-                                tokens.retain(|t| !text_range.contains_range(t.text_range()));
+                                filter_duplicates(tokens, text_range);
                             }
 
                             let mut res = None;
                             for (.., derive) in
                                 helpers.iter().filter(|(helper, ..)| *helper == attr_name)
                             {
+                                // as there may be multiple derives registering the same helper
+                                // name, we gotta make sure to call this for all of them!
+                                // FIXME: We need to call `f` for all of them as well though!
                                 res = res.or(process_expansion_for_token(
                                     &mut stack,
                                     derive.as_macro_file(),
@@ -978,11 +983,14 @@ impl<'db> SemanticsImpl<'db> {
                 })()
                 .is_none();
 
-                if was_not_remapped && f(InFile::new(file_id, token)).is_break() {
-                    break;
+                if was_not_remapped {
+                    if let ControlFlow::Break(b) = f(InFile::new(expansion, token)) {
+                        return Some(b);
+                    }
                 }
             }
         }
+        None
     }
 
     // Note this return type is deliberate as [`find_nodes_at_offset_with_descend`] wants to stop
@@ -995,7 +1003,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: TextSize,
     ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
         node.token_at_offset(offset)
-            .map(move |token| self.descend_into_macros(DescendPreference::None, token))
+            .map(move |token| self.descend_into_macros_exact(token))
             .map(|descendants| {
                 descendants.into_iter().map(move |it| self.token_ancestors_with_macros(it))
             })
@@ -1414,11 +1422,13 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Returns none if the file of the node is not part of a crate.
     fn analyze(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
+        let node = self.find_file(node);
         self.analyze_impl(node, None, true)
     }
 
     /// Returns none if the file of the node is not part of a crate.
     fn analyze_no_infer(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
+        let node = self.find_file(node);
         self.analyze_impl(node, None, false)
     }
 
@@ -1427,17 +1437,17 @@ impl<'db> SemanticsImpl<'db> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<SourceAnalyzer> {
+        let node = self.find_file(node);
         self.analyze_impl(node, Some(offset), false)
     }
 
     fn analyze_impl(
         &self,
-        node: &SyntaxNode,
+        node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
         infer_body: bool,
     ) -> Option<SourceAnalyzer> {
         let _p = tracing::info_span!("SemanticsImpl::analyze_impl").entered();
-        let node = self.find_file(node);
 
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;
 
@@ -1480,6 +1490,11 @@ impl<'db> SemanticsImpl<'db> {
     fn wrap_node_infile<N: AstNode>(&self, node: N) -> InFile<N> {
         let InFile { file_id, .. } = self.find_file(node.syntax());
         InFile::new(file_id, node)
+    }
+
+    fn wrap_token_infile(&self, token: SyntaxToken) -> InFile<SyntaxToken> {
+        let InFile { file_id, .. } = self.find_file(&token.parent().unwrap());
+        InFile::new(file_id, token)
     }
 
     /// Wraps the node in a [`InFile`] with the file id it belongs to.

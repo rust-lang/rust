@@ -3,7 +3,7 @@
 
 use core::fmt;
 
-use hir::{Adt, AsAssocItem, AssocItemContainer, Crate, DescendPreference, MacroKind, Semantics};
+use hir::{Adt, AsAssocItem, AssocItemContainer, Crate, MacroKind, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin},
     defs::{Definition, IdentClass},
@@ -154,7 +154,7 @@ pub(crate) fn moniker(
         });
     }
     let navs = sema
-        .descend_into_macros(DescendPreference::None, original_token.clone())
+        .descend_into_macros_exact(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops).map(|it| {

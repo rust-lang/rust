@@ -6,7 +6,7 @@ mod tests;
 use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{db::DefDatabase, DescendPreference, HasCrate, HasSource, LangItem, Semantics};
+use hir::{db::DefDatabase, HasCrate, HasSource, LangItem, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
@@ -58,7 +58,7 @@ pub enum HoverDocFormat {
     PlainText,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum HoverAction {
     Runnable(Runnable),
     Implementation(FilePosition),
@@ -97,7 +97,7 @@ pub struct HoverGotoTypeData {
 }
 
 /// Contains the results when hovering over an item
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub struct HoverResult {
     pub markup: Markup,
     pub actions: Vec<HoverAction>,
@@ -119,7 +119,7 @@ pub(crate) fn hover(
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
     let mut res = if range.is_empty() {
-        hover_simple(sema, FilePosition { file_id, offset: range.start() }, file, config, edition)
+        hover_offset(sema, FilePosition { file_id, offset: range.start() }, file, config, edition)
     } else {
         hover_ranged(sema, frange, file, config, edition)
     }?;
@@ -131,7 +131,7 @@ pub(crate) fn hover(
 }
 
 #[allow(clippy::field_reassign_with_default)]
-fn hover_simple(
+fn hover_offset(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,
     file: SyntaxNode,
@@ -178,34 +178,43 @@ fn hover_simple(
         return Some(RangeInfo::new(range, res));
     }
 
-    let in_attr = original_token
-        .parent_ancestors()
-        .filter_map(ast::Item::cast)
-        .any(|item| sema.is_attr_macro_call(&item))
-        && !matches!(
-            original_token.parent().and_then(ast::TokenTree::cast),
-            Some(tt) if tt.syntax().ancestors().any(|it| ast::Meta::can_cast(it.kind()))
-        );
-
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
-    let descended = sema.descend_into_macros(
-        if in_attr { DescendPreference::SameKind } else { DescendPreference::SameText },
-        original_token.clone(),
-    );
-    let descended = || descended.iter();
+    let mut descended = sema.descend_into_macros(original_token.clone());
 
-    let result = descended()
-        // try lint hover
-        .find_map(|token| {
+    let kind = original_token.kind();
+    let text = original_token.text();
+    let ident_kind = kind.is_any_identifier();
+
+    descended.sort_by_cached_key(|tok| {
+        let tok_kind = tok.kind();
+
+        let exact_same_kind = tok_kind == kind;
+        let both_idents = exact_same_kind || (tok_kind.is_any_identifier() && ident_kind);
+        let same_text = tok.text() == text;
+        // anything that mapped into a token tree has likely no semantic information
+        let no_tt_parent = tok.parent().map_or(false, |it| it.kind() != TOKEN_TREE);
+        !((both_idents as usize)
+            | ((exact_same_kind as usize) << 1)
+            | ((same_text as usize) << 2)
+            | ((no_tt_parent as usize) << 3))
+    });
+
+    let mut res = vec![];
+    for token in descended {
+        let is_same_kind = token.kind() == kind;
+        let lint_hover = (|| {
             // FIXME: Definition should include known lints and the like instead of having this special case here
             let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
-            render::try_for_lint(&attr, token)
-        })
-        // try definitions
-        .or_else(|| {
-            descended()
-                .filter_map(|token| {
+            render::try_for_lint(&attr, &token)
+        })();
+        if let Some(lint_hover) = lint_hover {
+            res.push(lint_hover);
+            continue;
+        }
+        let definitions = (|| {
+            Some(
+                'a: {
                     let node = token.parent()?;
 
                     // special case macro calls, we wanna render the invoked arm index
@@ -220,11 +229,11 @@ fn hover_simple(
                                 .and_then(ast::MacroCall::cast)
                             {
                                 if let Some(macro_) = sema.resolve_macro_call(&macro_call) {
-                                    return Some(vec![(
+                                    break 'a vec![(
                                         Definition::Macro(macro_),
                                         sema.resolve_macro_call_arm(&macro_call),
                                         node,
-                                    )]);
+                                    )];
                                 }
                             }
                         }
@@ -233,88 +242,101 @@ fn hover_simple(
                     match IdentClass::classify_node(sema, &node)? {
                         // It's better for us to fall back to the keyword hover here,
                         // rendering poll is very confusing
-                        IdentClass::Operator(OperatorClass::Await(_)) => None,
+                        IdentClass::Operator(OperatorClass::Await(_)) => return None,
 
                         IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
                             decl,
                             ..
-                        }) => Some(vec![(Definition::ExternCrateDecl(decl), None, node)]),
+                        }) => {
+                            vec![(Definition::ExternCrateDecl(decl), None, node)]
+                        }
 
-                        class => Some(
+                        class => {
                             multizip((class.definitions(), iter::repeat(None), iter::repeat(node)))
-                                .collect::<Vec<_>>(),
-                        ),
+                                .collect::<Vec<_>>()
+                        }
                     }
-                })
-                .flatten()
+                }
+                .into_iter()
                 .unique_by(|&(def, _, _)| def)
                 .map(|(def, macro_arm, node)| {
                     hover_for_definition(sema, file_id, def, &node, macro_arm, config, edition)
                 })
-                .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
-                    acc.actions.extend(actions);
-                    acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
-                    acc
-                })
-        })
-        // try keywords
-        .or_else(|| descended().find_map(|token| render::keyword(sema, config, token, edition)))
-        // try _ hovers
-        .or_else(|| descended().find_map(|token| render::underscore(sema, config, token, edition)))
-        // try rest pattern hover
-        .or_else(|| {
-            descended().find_map(|token| {
-                if token.kind() != DOT2 {
-                    return None;
-                }
+                .collect::<Vec<_>>(),
+            )
+        })();
+        if let Some(definitions) = definitions {
+            res.extend(definitions);
+            continue;
+        }
+        let keywords = || render::keyword(sema, config, &token, edition);
+        let underscore = || {
+            if !is_same_kind {
+                return None;
+            }
+            render::underscore(sema, config, &token, edition)
+        };
+        let rest_pat = || {
+            if !is_same_kind || token.kind() != DOT2 {
+                return None;
+            }
 
-                let rest_pat = token.parent().and_then(ast::RestPat::cast)?;
-                let record_pat_field_list =
-                    rest_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast)?;
+            let rest_pat = token.parent().and_then(ast::RestPat::cast)?;
+            let record_pat_field_list =
+                rest_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast)?;
 
-                let record_pat =
-                    record_pat_field_list.syntax().parent().and_then(ast::RecordPat::cast)?;
+            let record_pat =
+                record_pat_field_list.syntax().parent().and_then(ast::RecordPat::cast)?;
 
-                Some(render::struct_rest_pat(sema, config, &record_pat, edition))
-            })
-        })
-        // try () call hovers
-        .or_else(|| {
-            descended().find_map(|token| {
-                if token.kind() != T!['('] && token.kind() != T![')'] {
-                    return None;
+            Some(render::struct_rest_pat(sema, config, &record_pat, edition))
+        };
+        let call = || {
+            if !is_same_kind || token.kind() != T!['('] && token.kind() != T![')'] {
+                return None;
+            }
+            let arg_list = token.parent().and_then(ast::ArgList::cast)?.syntax().parent()?;
+            let call_expr = syntax::match_ast! {
+                match arg_list {
+                    ast::CallExpr(expr) => expr.into(),
+                    ast::MethodCallExpr(expr) => expr.into(),
+                    _ => return None,
                 }
-                let arg_list = token.parent().and_then(ast::ArgList::cast)?.syntax().parent()?;
-                let call_expr = syntax::match_ast! {
-                    match arg_list {
-                        ast::CallExpr(expr) => expr.into(),
-                        ast::MethodCallExpr(expr) => expr.into(),
-                        _ => return None,
-                    }
-                };
-                render::type_info_of(sema, config, &Either::Left(call_expr), edition)
-            })
-        })
-        // try closure
-        .or_else(|| {
-            descended().find_map(|token| {
-                if token.kind() != T![|] {
-                    return None;
-                }
-                let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
-                render::closure_expr(sema, config, c, edition)
-            })
-        })
-        // tokens
-        .or_else(|| {
+            };
+            render::type_info_of(sema, config, &Either::Left(call_expr), edition)
+        };
+        let closure = || {
+            if !is_same_kind || token.kind() != T![|] {
+                return None;
+            }
+            let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
+            render::closure_expr(sema, config, c, edition)
+        };
+        let literal = || {
             render::literal(sema, original_token.clone(), edition)
                 .map(|markup| HoverResult { markup, actions: vec![] })
-        });
+        };
+        if let Some(result) = keywords()
+            .or_else(underscore)
+            .or_else(rest_pat)
+            .or_else(call)
+            .or_else(closure)
+            .or_else(literal)
+        {
+            res.push(result)
+        }
+    }
 
-    result.map(|mut res: HoverResult| {
-        res.actions = dedupe_or_merge_hover_actions(res.actions);
-        RangeInfo::new(original_token.text_range(), res)
-    })
+    res.into_iter()
+        .unique()
+        .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
+            acc.actions.extend(actions);
+            acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
+            acc
+        })
+        .map(|mut res: HoverResult| {
+            res.actions = dedupe_or_merge_hover_actions(res.actions);
+            RangeInfo::new(original_token.text_range(), res)
+        })
 }
 
 fn hover_ranged(
