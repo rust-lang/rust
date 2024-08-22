@@ -10,10 +10,8 @@ use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 pub enum VtblEntry<'tcx> {
     /// destructor of this type (used in vtable header)
     MetadataDropInPlace,
-    /// layout size of this type (used in vtable header)
-    MetadataSize,
-    /// layout align of this type (used in vtable header)
-    MetadataAlign,
+    /// size and align of this type (used in vtable header)
+    MetadataTyLayout,
     /// non-dispatchable associated function that is excluded from trait object
     Vacant,
     /// dispatchable associated function
@@ -28,8 +26,7 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
         // so we implement this manually.
         match self {
             VtblEntry::MetadataDropInPlace => write!(f, "MetadataDropInPlace"),
-            VtblEntry::MetadataSize => write!(f, "MetadataSize"),
-            VtblEntry::MetadataAlign => write!(f, "MetadataAlign"),
+            VtblEntry::MetadataTyLayout => write!(f, "MetadataTyLayout"),
             VtblEntry::Vacant => write!(f, "Vacant"),
             VtblEntry::Method(instance) => write!(f, "Method({instance})"),
             VtblEntry::TraitVPtr(trait_ref) => write!(f, "TraitVPtr({trait_ref})"),
@@ -40,12 +37,11 @@ impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
 // Needs to be associated with the `'tcx` lifetime
 impl<'tcx> TyCtxt<'tcx> {
     pub const COMMON_VTABLE_ENTRIES: &'tcx [VtblEntry<'tcx>] =
-        &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataSize, VtblEntry::MetadataAlign];
+        &[VtblEntry::MetadataDropInPlace, VtblEntry::MetadataTyLayout];
 }
 
 pub const COMMON_VTABLE_ENTRIES_DROPINPLACE: usize = 0;
-pub const COMMON_VTABLE_ENTRIES_SIZE: usize = 1;
-pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
+pub const COMMON_VTABLE_ENTRIES_LAYOUT: usize = 1;
 
 // Note that we don't have access to a self type here, this has to be purely based on the trait (and
 // supertrait) definitions. That means we can't call into the same vtable_entries code since that
@@ -126,8 +122,11 @@ pub(super) fn vtable_allocation_provider<'tcx>(
                     Scalar::from_maybe_pointer(Pointer::null(), &tcx)
                 }
             }
-            VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size),
-            VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size),
+            VtblEntry::MetadataTyLayout => {
+                // Pack size and alignment into a single usize
+                let layout = size << 1 | align;
+                Scalar::from_uint(layout, ptr_size)
+            }
             VtblEntry::Vacant => continue,
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.

@@ -1121,8 +1121,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             .iter()
             .filter_map(|entry| match entry {
                 VtblEntry::MetadataDropInPlace
-                | VtblEntry::MetadataSize
-                | VtblEntry::MetadataAlign
+                | VtblEntry::MetadataTyLayout
                 | VtblEntry::Vacant => None,
                 VtblEntry::TraitVPtr(_) => {
                     // all super trait items already covered, so skip them.

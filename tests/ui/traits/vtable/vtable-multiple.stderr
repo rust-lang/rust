@@ -1,7 +1,6 @@
 error: vtable entries for `<S as C>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a),
            Method(<S as B>::foo_b),
            TraitVPtr(<S as B>),
@@ -14,8 +13,7 @@ LL | trait C: A + B {
 
 error: vtable entries for `<S as B>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as B>::foo_b),
        ]
   --> $DIR/vtable-multiple.rs:10:1

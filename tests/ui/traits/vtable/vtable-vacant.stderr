@@ -1,7 +1,6 @@
 error: vtable entries for `<S as B>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a1),
            Vacant,
            Method(<S as B>::foo_b1),

@@ -3,7 +3,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{sym, Span};
 use rustc_target::abi::call::{FnAbi, PassMode};
-use rustc_target::abi::WrappingRange;
 
 use super::operand::OperandRef;
 use super::place::PlaceRef;
@@ -121,25 +120,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();
-                let idx = match name {
-                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
-                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
-                    _ => bug!(),
-                };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+
+                let idx = ty::COMMON_VTABLE_ENTRIES_LAYOUT;
+
+                let layout = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                let (size, align) = size_of_val::unpack_vtable_layout(bx, layout);
+
                 match name {
-                    // Size is always <= isize::MAX.
-                    sym::vtable_size => {
-                        let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
-                        bx.range_metadata(value, WrappingRange { start: 0, end: size_bound });
-                    }
-                    // Alignment is always nonzero.
-                    sym::vtable_align => {
-                        bx.range_metadata(value, WrappingRange { start: 1, end: !0 })
-                    }
-                    _ => {}
+                    sym::vtable_size => size,
+                    sym::vtable_align => align,
+                    _ => bug!(),
                 }
-                value
             }
             sym::pref_align_of
             | sym::needs_drop

@@ -1,7 +1,6 @@
 error: vtable entries for `<S as D>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a),
            Method(<S as B>::foo_b),
            Method(<S as C>::foo_c),
@@ -15,8 +14,7 @@ LL | trait D: B + C {
 
 error: vtable entries for `<S as C>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a),
            Method(<S as C>::foo_c),
        ]

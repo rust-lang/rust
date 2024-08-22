@@ -11,6 +11,25 @@ use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::{common, meth};
 
+pub(crate) fn unpack_vtable_layout<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    layout: Bx::Value,
+) -> (Bx::Value, Bx::Value) {
+    // The packed layout is never 0
+    bx.range_metadata(layout, WrappingRange { start: 1, end: !0 });
+
+    // layout & layout.wrapping_sub(1)
+    let decremented = bx.sub(layout, bx.const_usize(1));
+    let clear_lsb = bx.and(layout, decremented);
+
+    // clear_lsb >> 1
+    let size = bx.lshr(clear_lsb, bx.const_usize(1));
+    // layout ^ clear_lsb
+    let align = bx.xor(layout, clear_lsb);
+
+    (size, align)
+}
+
 pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     t: Ty<'tcx>,
@@ -27,18 +46,10 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         ty::Dynamic(..) => {
             // Load size/align from vtable.
             let vtable = info.unwrap();
-            let size = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
-                .get_usize(bx, vtable);
-            let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
-                .get_usize(bx, vtable);
+            let idx = ty::COMMON_VTABLE_ENTRIES_LAYOUT;
+            let layout = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
 
-            // Size is always <= isize::MAX.
-            let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
-            bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
-            // Alignment is always nonzero.
-            bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
-
-            (size, align)
+            unpack_vtable_layout(bx, layout)
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(bx, 0);

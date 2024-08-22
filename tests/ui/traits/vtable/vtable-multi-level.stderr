@@ -1,7 +1,6 @@
 error: vtable entries for `<S as O>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a),
            Method(<S as B>::foo_b),
            TraitVPtr(<S as B>),
@@ -36,8 +35,7 @@ LL | trait O: G + N {
 
 error: vtable entries for `<S as A>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a),
        ]
   --> $DIR/vtable-multi-level.rs:14:1
@@ -47,8 +45,7 @@ LL | trait A {
 
 error: vtable entries for `<S as B>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as B>::foo_b),
        ]
   --> $DIR/vtable-multi-level.rs:20:1
@@ -58,8 +55,7 @@ LL | trait B {
 
 error: vtable entries for `<S as C>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as A>::foo_a),
            Method(<S as B>::foo_b),
            TraitVPtr(<S as B>),
@@ -72,8 +68,7 @@ LL | trait C: A + B {
 
 error: vtable entries for `<S as D>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as D>::foo_d),
        ]
   --> $DIR/vtable-multi-level.rs:32:1
@@ -83,8 +78,7 @@ LL | trait D {
 
 error: vtable entries for `<S as E>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as E>::foo_e),
        ]
   --> $DIR/vtable-multi-level.rs:38:1
@@ -94,8 +88,7 @@ LL | trait E {
 
 error: vtable entries for `<S as F>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as D>::foo_d),
            Method(<S as E>::foo_e),
            TraitVPtr(<S as E>),
@@ -108,8 +101,7 @@ LL | trait F: D + E {
 
 error: vtable entries for `<S as H>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as H>::foo_h),
        ]
   --> $DIR/vtable-multi-level.rs:55:1
@@ -119,8 +111,7 @@ LL | trait H {
 
 error: vtable entries for `<S as I>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as I>::foo_i),
        ]
   --> $DIR/vtable-multi-level.rs:61:1
@@ -130,8 +121,7 @@ LL | trait I {
 
 error: vtable entries for `<S as J>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as H>::foo_h),
            Method(<S as I>::foo_i),
            TraitVPtr(<S as I>),
@@ -144,8 +134,7 @@ LL | trait J: H + I {
 
 error: vtable entries for `<S as K>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as K>::foo_k),
        ]
   --> $DIR/vtable-multi-level.rs:73:1
@@ -155,8 +144,7 @@ LL | trait K {
 
 error: vtable entries for `<S as L>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as L>::foo_l),
        ]
   --> $DIR/vtable-multi-level.rs:79:1
@@ -166,8 +154,7 @@ LL | trait L {
 
 error: vtable entries for `<S as M>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as K>::foo_k),
            Method(<S as L>::foo_l),
            TraitVPtr(<S as L>),
@@ -180,8 +167,7 @@ LL | trait M: K + L {
 
 error: vtable entries for `<S as N>`: [
            MetadataDropInPlace,
-           MetadataSize,
-           MetadataAlign,
+           MetadataTyLayout,
            Method(<S as H>::foo_h),
            Method(<S as I>::foo_i),
            TraitVPtr(<S as I>),

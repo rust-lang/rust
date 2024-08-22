@@ -5,6 +5,31 @@
 use crate::constant::data_id_for_vtable;
 use crate::prelude::*;
 
+pub(crate) fn unpack_vtable_layout<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    vtable: Value,
+) -> (Value, Value) {
+    let usize_size = fx.tcx.data_layout.pointer_size.bytes() as usize;
+    let layout = fx.bcx.ins().load(
+        fx.pointer_type,
+        vtable_memflags(),
+        vtable,
+        (ty::COMMON_VTABLE_ENTRIES_LAYOUT * usize_size) as i32,
+    );
+
+    // layout & layout.wrapping_sub(1)
+    let one = fx.bcx.ins().iconst(fx.pointer_type, 1);
+    let decremented = fx.bcx.ins().isub(layout, one);
+    let clear_lsb = fx.bcx.ins().band(layout, decremented);
+
+    // clear_lsb >> 1
+    let size = fx.bcx.ins().ushr(clear_lsb, one);
+    // layout ^ clear_lsb
+    let align = fx.bcx.ins().bxor(layout, clear_lsb);
+
+    (size, align)
+}
+
 pub(crate) fn vtable_memflags() -> MemFlags {
     let mut flags = MemFlags::trusted(); // A vtable access is always aligned and will never trap.
     flags.set_readonly(); // A vtable is always read-only.
@@ -22,23 +47,11 @@ pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> 
 }
 
 pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
-    fx.bcx.ins().load(
-        fx.pointer_type,
-        vtable_memflags(),
-        vtable,
-        (ty::COMMON_VTABLE_ENTRIES_SIZE * usize_size) as i32,
-    )
+    unpack_vtable_layout(fx, vtable).0
 }
 
 pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
-    let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
-    fx.bcx.ins().load(
-        fx.pointer_type,
-        vtable_memflags(),
-        vtable,
-        (ty::COMMON_VTABLE_ENTRIES_ALIGN * usize_size) as i32,
-    )
+    unpack_vtable_layout(fx, vtable).1
 }
 
 pub(crate) fn get_ptr_and_method_ref<'tcx>(
