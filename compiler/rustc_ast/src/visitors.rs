@@ -426,6 +426,15 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        // TODO: temporary name
+        macro_rules! visit_o {
+            ($opt: expr, $fn: expr) => {
+                if let Some(elem) = $opt {
+                    try_v!($fn(elem))
+                }
+            }
+        }
+
         pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             ident: if_mut_ty!(ref_t!(Ident), Ident)
@@ -695,6 +704,20 @@ macro_rules! make_ast_visitor {
             visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
             try_v!(visit_ident!(vis, ident));
             try_v!(vis.visit_expr(expr));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_arm<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            arm: ref_t!(Arm)
+        ) -> result!(V) {
+            let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
+            try_v!(vis.visit_pat(pat));
+            visit_o!(guard, |guard| vis.visit_expr(guard));
+            visit_o!(body, |body| vis.visit_expr(body));
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
@@ -1617,15 +1640,6 @@ pub mod visit {
         visitor.visit_expr_post(expression)
     }
 
-    pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) -> V::Result {
-        let Arm { attrs, pat, guard, body, span: _, id: _, is_placeholder: _ } = arm;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_pat(pat));
-        visit_opt!(visitor, visit_expr, guard);
-        visit_opt!(visitor, visit_expr, body);
-        V::Result::output()
-    }
-
     pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) -> V::Result {
         let Visibility { kind, span: _, tokens: _ } = vis;
         match kind {
@@ -1822,16 +1836,6 @@ pub mod mut_visit {
             }
             UseTreeKind::Glob => {}
         }
-        vis.visit_span(span);
-    }
-
-    pub fn walk_arm<T: MutVisitor>(vis: &mut T, arm: &mut Arm) {
-        let Arm { attrs, pat, guard, body, span, id, is_placeholder: _ } = arm;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_pat(pat);
-        visit_opt(guard, |guard| vis.visit_expr(guard));
-        visit_opt(body, |body| vis.visit_expr(body));
         vis.visit_span(span);
     }
 
