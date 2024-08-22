@@ -686,6 +686,19 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_expr_field<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            f: ref_t!(ExprField)
+        ) -> result!(V) {
+            let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
+            try_v!(visit_ident!(vis, ident));
+            try_v!(vis.visit_expr(expr));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -975,15 +988,6 @@ pub mod visit {
         try_visit!(visitor.visit_ident(*ident));
         try_visit!(visitor.visit_variant_data(data));
         visit_opt!(visitor, visit_variant_discr, disr_expr);
-        V::Result::output()
-    }
-
-    pub fn walk_expr_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a ExprField) -> V::Result {
-        let ExprField { attrs, id: _, span: _, ident, expr, is_shorthand: _, is_placeholder: _ } =
-            f;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(*ident));
-        try_visit!(visitor.visit_expr(expr));
         V::Result::output()
     }
 
@@ -2321,15 +2325,6 @@ pub mod mut_visit {
         visit_opt(ident, |ident| visitor.visit_ident(ident));
         visitor.visit_ty(ty);
         visitor.visit_span(span);
-    }
-
-    pub fn walk_expr_field<T: MutVisitor>(vis: &mut T, f: &mut ExprField) {
-        let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = f;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_ident(ident);
-        vis.visit_expr(expr);
-        vis.visit_span(span);
     }
 
     pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
