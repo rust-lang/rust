@@ -1738,29 +1738,29 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes` for details.
-    query resolve_bound_vars(def_id: hir::OwnerId) -> &'tcx ResolveBoundVars {
+    query resolve_bound_vars(owner_id: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
-        desc { |tcx| "resolving lifetimes for `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "resolving lifetimes for `{}`", tcx.def_path_str(owner_id) }
     }
-    query named_variable_map(def_id: hir::OwnerId) ->
+    query named_variable_map(owner_id: hir::OwnerId) ->
         Option<&'tcx FxIndexMap<ItemLocalId, ResolvedArg>> {
-        desc { |tcx| "looking up a named region inside `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "looking up a named region inside `{}`", tcx.def_path_str(owner_id) }
     }
-    query is_late_bound_map(def_id: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
-        desc { |tcx| "testing if a region is late bound inside `{}`", tcx.def_path_str(def_id) }
+    query is_late_bound_map(owner_id: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
+        desc { |tcx| "testing if a region is late bound inside `{}`", tcx.def_path_str(owner_id) }
     }
     /// For a given item's generic parameter, gets the default lifetimes to be used
     /// for each parameter if a trait object were to be passed for that parameter.
     /// For example, for `T` in `struct Foo<'a, T>`, this would be `'static`.
     /// For `T` in `struct Foo<'a, T: 'a>`, this would instead be `'a`.
     /// This query will panic if passed something that is not a type parameter.
-    query object_lifetime_default(key: DefId) -> ObjectLifetimeDefault {
-        desc { "looking up lifetime defaults for generic parameter `{}`", tcx.def_path_str(key) }
+    query object_lifetime_default(def_id: DefId) -> ObjectLifetimeDefault {
+        desc { "looking up lifetime defaults for generic parameter `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
-    query late_bound_vars_map(def_id: hir::OwnerId)
+    query late_bound_vars_map(owner_id: hir::OwnerId)
         -> Option<&'tcx FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
-        desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(owner_id) }
     }
 
     /// Computes the visibility of the provided `def_id`.
