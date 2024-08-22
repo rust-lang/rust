@@ -188,7 +188,7 @@ impl GlobalState {
                     status.health |= lsp_ext::Health::Warning;
                     format_to!(
                         message,
-                        "Workspace `{}` has been queried without dependencies, connecting to crates.io might have failed.\n\n",
+                        "Failed to read Cargo metadata for `{}`, the `Cargo.toml` might be invalid or you have no internet connection.\n\n",
                         ws.manifest_or_root()
                     );
                 }
