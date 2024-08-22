@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::{iter, mem};
 
 use rustc_ast::token::{Delimiter, Token, TokenKind};
@@ -6,6 +7,7 @@ use rustc_ast::tokenstream::{
     Spacing, ToAttrTokenStream,
 };
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, HasTokens};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, DUMMY_SP};
@@ -256,27 +258,40 @@ impl<'a> Parser<'a> {
             res?
         };
 
+        // - `None`: Our target doesn't support tokens at all (e.g. `NtIdent`).
+        // - `Some(None)`: Our target supports tokens and has none.
+        // - `Some(Some(_))`: Our target already has tokens set (e.g. we've
+        //   parsed something like `#[my_attr] $item`).
+        let ret_can_hold_tokens = matches!(ret.tokens_mut(), Some(None));
+
         // Ignore any attributes we've previously processed. This happens when
         // an inner call to `collect_tokens` returns an AST node and then an
         // outer call ends up with the same AST node without any additional
         // wrapping layer.
-        let ret_attrs: AttrVec = ret
-            .attrs()
-            .iter()
-            .cloned()
-            .filter(|attr| {
-                let is_unseen = self.capture_state.seen_attrs.insert(attr.id);
-                is_unseen
-            })
-            .collect();
+        let mut seen_indices = FxHashSet::default();
+        for (i, attr) in ret.attrs().iter().enumerate() {
+            let is_unseen = self.capture_state.seen_attrs.insert(attr.id);
+            if !is_unseen {
+                seen_indices.insert(i);
+            }
+        }
+        let ret_attrs: Cow<'_, [Attribute]> =
+            if seen_indices.is_empty() {
+                Cow::Borrowed(ret.attrs())
+            } else {
+                let ret_attrs =
+                    ret.attrs()
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, attr)| {
+                            if seen_indices.contains(&i) { None } else { Some(attr.clone()) }
+                        })
+                        .collect();
+                Cow::Owned(ret_attrs)
+            };
 
         // When we're not in "definite capture mode", then skip collecting and
-        // return early if either of the following conditions hold.
-        // - `None`: Our target doesn't support tokens at all (e.g. `NtIdent`).
-        // - `Some(Some(_))`: Our target already has tokens set (e.g. we've
-        //   parsed something like `#[my_attr] $item`). The actual parsing code
-        //   takes care of prepending any attributes to the nonterminal, so we
-        //   don't need to modify the already captured tokens.
+        // return early if `ret` doesn't support tokens or already has some.
         //
         // Note that this check is independent of `force_collect`. There's no
         // need to collect tokens when we don't support tokens or already have
@@ -284,7 +299,7 @@ impl<'a> Parser<'a> {
         let definite_capture_mode = self.capture_cfg
             && matches!(self.capture_state.capturing, Capturing::Yes)
             && has_cfg_or_cfg_attr(&ret_attrs);
-        if !definite_capture_mode && matches!(ret.tokens_mut(), None | Some(Some(_))) {
+        if !definite_capture_mode && !ret_can_hold_tokens {
             return Ok(ret);
         }
 
@@ -406,12 +421,6 @@ impl<'a> Parser<'a> {
         });
         let mut tokens_used = false;
 
-        // If we support tokens and don't already have them, store the newly captured tokens.
-        if let Some(target_tokens @ None) = ret.tokens_mut() {
-            tokens_used = true;
-            *target_tokens = Some(tokens.clone());
-        }
-
         // If in "definite capture mode" we need to register a replace range
         // for the `#[cfg]` and/or `#[cfg_attr]` attrs. This allows us to run
         // eager cfg-expansion on the captured token stream.
@@ -432,7 +441,8 @@ impl<'a> Parser<'a> {
             // cfg-expand this AST node.
             let start_pos =
                 if has_outer_attrs { attrs.start_pos.unwrap() } else { collect_pos.start_pos };
-            let target = AttrsTarget { attrs: ret_attrs, tokens };
+            let target =
+                AttrsTarget { attrs: ret_attrs.iter().cloned().collect(), tokens: tokens.clone() };
             tokens_used = true;
             self.capture_state
                 .parser_replacements
@@ -444,6 +454,13 @@ impl<'a> Parser<'a> {
             self.capture_state.inner_attr_parser_ranges.clear();
             self.capture_state.seen_attrs.clear();
         }
+
+        // If we support tokens and don't already have them, store the newly captured tokens.
+        if let Some(target_tokens @ None) = ret.tokens_mut() {
+            tokens_used = true;
+            *target_tokens = Some(tokens);
+        }
+
         assert!(tokens_used); // check we didn't create `tokens` unnecessarily
         Ok(ret)
     }
