@@ -304,6 +304,7 @@ macro_rules! make_ast_visitor {
             make_visit!{WhereClause, visit_where_clause, walk_where_clause}
             make_visit!{EnumDef, visit_enum_def, walk_enum_def}
             make_visit!{CaptureBy, visit_capture_by, walk_capture_by}
+            make_visit!{VariantData, visit_variant_data, walk_variant_data}
             make_visit!{P!(Local), visit_local, walk_local}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
@@ -329,15 +330,6 @@ macro_rules! make_ast_visitor {
             // FIXME: for some reason the immutable version doesn't return result!()
             fn visit_precise_capturing_arg(&mut self, arg: ref_t!(PreciseCapturingArg)) {
                 walk_precise_capturing_arg(self, arg);
-            }
-
-            fn visit_variant_data(&mut self, vdata: ref_t!(VariantData)) -> result!() {
-                // FIXME: inconsistent naming
-                if_mut_expr!(
-                    walk_variant_data(self, vdata)
-                ,
-                    walk_struct_def(self, vdata)
-                )
             }
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
@@ -672,6 +664,25 @@ macro_rules! make_ast_visitor {
             let WhereClause { has_where_token: _, predicates, span } = wc;
             visit_list!(vis, visit_where_predicate, flat_map_where_predicate, predicates);
             try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_variant_data<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            vdata: ref_t!(VariantData)
+        ) -> result!(V) {
+            match vdata {
+                VariantData::Struct { fields, recovered: _ } => {
+                    visit_list!(vis, visit_field_def, flat_map_field_def, fields);
+                }
+                VariantData::Tuple(fields, id) => {
+                    try_v!(visit_id!(vis, id));
+                    visit_list!(vis, visit_field_def, flat_map_field_def, fields);
+                }
+                VariantData::Unit(id) => {
+                    try_v!(visit_id!(vis, id));
+                }
+            }
             return_result!(V)
         }
 
@@ -1356,12 +1367,12 @@ pub mod visit {
         V::Result::output()
     }
 
+    // FIXME: Remove this function. Use walk_variant_data
     pub fn walk_struct_def<'a, V: Visitor<'a>>(
         visitor: &mut V,
         struct_definition: &'a VariantData,
     ) -> V::Result {
-        walk_list!(visitor, visit_field_def, struct_definition.fields());
-        V::Result::output()
+        walk_variant_data(visitor, struct_definition)
     }
 
     pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) -> V::Result {
@@ -2294,19 +2305,6 @@ pub mod mut_visit {
                 vis.visit_ty(rhs_ty);
                 vis.visit_span(span);
             }
-        }
-    }
-
-    fn walk_variant_data<T: MutVisitor>(vis: &mut T, vdata: &mut VariantData) {
-        match vdata {
-            VariantData::Struct { fields, recovered: _ } => {
-                fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-            }
-            VariantData::Tuple(fields, id) => {
-                vis.visit_id(id);
-                fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-            }
-            VariantData::Unit(id) => vis.visit_id(id),
         }
     }
 
