@@ -1195,6 +1195,7 @@ pub mod future {
     #[doc(notable_trait)]
     #[lang = "future_trait"]
     pub trait Future {
+        #[lang = "future_output"]
         type Output;
         #[lang = "poll"]
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
@@ -1292,6 +1293,7 @@ pub mod iter {
     mod traits {
         mod iterator {
             #[doc(notable_trait)]
+            #[lang = "iterator"]
             pub trait Iterator {
                 type Item;
                 #[lang = "next"]

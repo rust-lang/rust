@@ -461,6 +461,7 @@ language_item_table! {
 
     Context,                 sym::Context,             context,                    Target::Struct,         GenericRequirement::None;
     FuturePoll,              sym::poll,                future_poll_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    FutureOutput,            sym::future_output,       future_output,              Target::TypeAlias,      GenericRequirement::None;
 
     Option,                  sym::Option,              option_type,                Target::Enum,           GenericRequirement::None;
     OptionSome,              sym::Some,                option_some_variant,        Target::Variant,        GenericRequirement::None;
@@ -475,6 +476,7 @@ language_item_table! {
     IntoFutureIntoFuture,    sym::into_future,         into_future_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false}), GenericRequirement::None;
+    Iterator,                sym::iterator,            iterator,                   Target::Trait,           GenericRequirement::None;
 
     PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           Target::Method(MethodKind::Inherent), GenericRequirement::None;
 
