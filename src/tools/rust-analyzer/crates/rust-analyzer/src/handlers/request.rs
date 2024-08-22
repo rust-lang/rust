@@ -565,7 +565,7 @@ pub(crate) fn handle_workspace_symbol(
 ) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = tracing::info_span!("handle_workspace_symbol").entered();
 
-    let config = snap.config.workspace_symbol();
+    let config = snap.config.workspace_symbol(None);
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
 
     let query = {

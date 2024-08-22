@@ -252,8 +252,6 @@ config_data! {
 
 config_data! {
     workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
-
-
         /// Pass `--all-targets` to cargo invocation.
         cargo_allTargets: bool           = true,
         /// Automatically refresh project info via `cargo metadata` on
@@ -446,6 +444,16 @@ config_data! {
         /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = false,
+
+
+        /// Workspace symbol search kind.
+        workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
+        /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
+        /// Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
+        /// Other clients requires all results upfront and might require a higher limit.
+        workspace_symbol_search_limit: usize = 128,
+        /// Workspace symbol search scope.
+        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
 
     }
 }
@@ -731,14 +739,6 @@ config_data! {
         /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
         typing_autoClosingAngleBrackets_enable: bool = false,
 
-        /// Workspace symbol search kind.
-        workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
-        /// Limits the number of items returned from a workspace symbol search (Defaults to 128).
-        /// Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
-        /// Other clients requires all results upfront and might require a higher limit.
-        workspace_symbol_search_limit: usize = 128,
-        /// Workspace symbol search scope.
-        workspace_symbol_search_scope: WorkspaceSymbolSearchScopeDef = WorkspaceSymbolSearchScopeDef::Workspace,
     }
 }
 
@@ -2019,19 +2019,19 @@ impl Config {
         }
     }
 
-    pub fn workspace_symbol(&self) -> WorkspaceSymbolConfig {
+    pub fn workspace_symbol(&self, source_root: Option<SourceRootId>) -> WorkspaceSymbolConfig {
         WorkspaceSymbolConfig {
-            search_scope: match self.workspace_symbol_search_scope() {
+            search_scope: match self.workspace_symbol_search_scope(source_root) {
                 WorkspaceSymbolSearchScopeDef::Workspace => WorkspaceSymbolSearchScope::Workspace,
                 WorkspaceSymbolSearchScopeDef::WorkspaceAndDependencies => {
                     WorkspaceSymbolSearchScope::WorkspaceAndDependencies
                 }
             },
-            search_kind: match self.workspace_symbol_search_kind() {
+            search_kind: match self.workspace_symbol_search_kind(source_root) {
                 WorkspaceSymbolSearchKindDef::OnlyTypes => WorkspaceSymbolSearchKind::OnlyTypes,
                 WorkspaceSymbolSearchKindDef::AllSymbols => WorkspaceSymbolSearchKind::AllSymbols,
             },
-            search_limit: *self.workspace_symbol_search_limit(),
+            search_limit: *self.workspace_symbol_search_limit(source_root),
         }
     }
 
