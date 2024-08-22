@@ -249,7 +249,7 @@ impl Config {
             curl.arg("--progress-bar");
         }
         // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
-        if dbg!(curl_version()) > 7.70 {
+        if curl_version() > 7.70 {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
