@@ -163,6 +163,7 @@
 #![feature(const_typed_swap)]
 #![feature(const_ub_checks)]
 #![feature(const_unicode_case_lookup)]
+#![feature(const_unsafecell_get)]
 #![feature(const_unsafecell_get_mut)]
 #![feature(coverage_attribute)]
 #![feature(do_not_recommend)]
