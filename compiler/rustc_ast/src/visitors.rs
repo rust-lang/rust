@@ -748,6 +748,18 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_qself<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            qself: ref_t!(Option<P<QSelf>>)
+        ) -> result!(V) {
+            if let Some(qself) = qself {
+                let QSelf { ty, path_span, position: _ } = &$($mut)? **qself;
+                try_v!(vis.visit_ty(ty));
+                try_v!(visit_span!(vis, path_span));
+            }
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1070,14 +1082,6 @@ pub mod visit {
             TyKind::AnonStruct(_id, ref fields) | TyKind::AnonUnion(_id, ref fields) => {
                 walk_list!(visitor, visit_field_def, fields);
             }
-        }
-        V::Result::output()
-    }
-
-    fn walk_qself<'a, V: Visitor<'a>>(visitor: &mut V, qself: &'a Option<P<QSelf>>) -> V::Result {
-        if let Some(qself) = qself {
-            let QSelf { ty, path_span: _, position: _ } = &**qself;
-            try_visit!(visitor.visit_ty(ty));
         }
         V::Result::output()
     }
@@ -1929,14 +1933,6 @@ pub mod mut_visit {
         }
         visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
-    }
-
-    fn walk_qself<T: MutVisitor>(vis: &mut T, qself: &mut Option<P<QSelf>>) {
-        visit_opt(qself, |qself| {
-            let QSelf { ty, path_span, position: _ } = &mut **qself;
-            vis.visit_ty(ty);
-            vis.visit_span(path_span);
-        })
     }
 
     fn walk_generic_arg<T: MutVisitor>(vis: &mut T, arg: &mut GenericArg) {
