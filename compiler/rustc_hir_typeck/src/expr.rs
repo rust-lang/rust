@@ -299,10 +299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         match self.tcx.parent_hir_node(expr.hir_id) {
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::AddrOf(hir::BorrowKind::Raw, ..),
-                ..
-            }) => false,
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }) => false,
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Assign(target, _, _) | hir::ExprKind::Field(target, _),
                 ..
