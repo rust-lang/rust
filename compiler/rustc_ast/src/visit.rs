@@ -679,6 +679,10 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Res
             visit_opt!(visitor, visit_expr, lower_bound);
             visit_opt!(visitor, visit_expr, upper_bound);
         }
+        PatKind::Guard(subpattern, guard_condition) => {
+            try_visit!(visitor.visit_pat(subpattern));
+            try_visit!(visitor.visit_expr(guard_condition));
+        }
         PatKind::Wild | PatKind::Rest | PatKind::Never => {}
         PatKind::Err(_guar) => {}
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {

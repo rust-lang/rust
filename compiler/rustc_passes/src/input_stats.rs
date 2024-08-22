@@ -556,6 +556,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Slice,
             Rest,
             Never,
+            Guard,
             Paren,
             MacCall,
             Err

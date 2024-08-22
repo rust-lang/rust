@@ -632,9 +632,11 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s) | PatKind::Deref(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => {
-                s.walk(it)
-            }
+            PatKind::Box(s)
+            | PatKind::Deref(s)
+            | PatKind::Ref(s, _)
+            | PatKind::Paren(s)
+            | PatKind::Guard(s, _) => s.walk(it),
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
@@ -843,6 +845,9 @@ pub enum PatKind {
 
     // A never pattern `!`.
     Never,
+
+    /// A guard pattern (e.g., `x if guard(x)`).
+    Guard(P<Pat>, P<Expr>),
 
     /// Parentheses in patterns used for grouping (i.e., `(PAT)`).
     Paren(P<Pat>),
