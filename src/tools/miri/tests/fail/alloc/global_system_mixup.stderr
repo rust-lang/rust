@@ -12,7 +12,7 @@ LL |         FREE();
 note: inside `main`
   --> $DIR/global_system_mixup.rs:LL:CC
    |
-LL |         System.deallocate(ptr, l);
+LL |     unsafe { System.deallocate(ptr, l) };
    | ^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
