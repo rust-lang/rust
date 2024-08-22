@@ -87,7 +87,7 @@
 //!   even if they only modify `UnsafeCell` data.
 //!
 //! If a pointer follows all of these rules, it is said to be
-//! *convertable to a reference*.
+//! *convertible to a reference*.
 // ^ we use this term instead of saying that the produced reference must
 // be valid, as the validity of a reference is easily confused for the
 // validity of the thing it refers to, and while the two concepts are

@@ -129,7 +129,7 @@ impl<T: Sized> NonNull<T> {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that
-    /// the pointer is [convirtible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     /// Note that because the created reference is to `MaybeUninit<T>`, the
     /// source pointer can point to uninitialized memory.
     #[inline]
@@ -153,7 +153,7 @@ impl<T: Sized> NonNull<T> {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that
-    /// the pointer is [convirtible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     /// Note that because the created reference is to `MaybeUninit<T>`, the
     /// source pointer can point to uninitialized memory.
     #[inline]

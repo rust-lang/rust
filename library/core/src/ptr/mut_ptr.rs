@@ -247,7 +247,7 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convirtible to a reference](crate::ptr#pointer-to-reference-conversion)
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion)
     ///
     /// # Examples
     ///
@@ -296,7 +296,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that the pointer is [convirtible to a reference](crate::ptr#pointer-to-reference-conversion)
+    /// When calling this method, you have to ensure that the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion)
     ///
     /// # Examples
     ///
@@ -330,7 +330,7 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convirtible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     /// Note that because the created reference is to `MaybeUninit<T>`, the
     /// source pointer can point to uninitialized memory.
     ///
@@ -566,7 +566,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// When calling this method, you have to ensure that *either*
     /// the pointer is null *or*
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion)
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
     ///
     /// # Examples
