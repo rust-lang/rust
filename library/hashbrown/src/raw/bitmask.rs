@@ -105,22 +105,6 @@ impl IntoIterator for BitMask {
 #[derive(Copy, Clone)]
 pub(crate) struct BitMaskIter(pub(crate) BitMask);
 
-impl BitMaskIter {
-    /// Flip the bit in the mask for the entry at the given index.
-    ///
-    /// Returns the bit's previous state.
-    #[inline]
-    #[allow(clippy::cast_ptr_alignment)]
-    #[cfg(feature = "raw")]
-    pub(crate) unsafe fn flip(&mut self, index: usize) -> bool {
-        // NOTE: The + BITMASK_STRIDE - 1 is to set the high bit.
-        let mask = 1 << (index * BITMASK_STRIDE + BITMASK_STRIDE - 1);
-        self.0 .0 ^= mask;
-        // The bit was set if the bit is now 0.
-        self.0 .0 & mask == 0
-    }
-}
-
 impl Iterator for BitMaskIter {
     type Item = usize;
 
