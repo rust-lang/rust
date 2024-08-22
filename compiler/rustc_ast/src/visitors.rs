@@ -737,6 +737,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_path_segment<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            segment: ref_t!(PathSegment)
+        ) -> result!(V) {
+            let PathSegment { id, ident, args } = segment;
+            try_v!(visit_id!(vis, id));
+            try_v!(visit_ident!(vis, ident));
+            visit_o!(args, |args| vis.visit_generic_args(args));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1096,16 +1107,6 @@ pub mod visit {
                 }
             }
         }
-        V::Result::output()
-    }
-
-    pub fn walk_path_segment<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        segment: &'a PathSegment,
-    ) -> V::Result {
-        let PathSegment { ident, id: _, args } = segment;
-        try_visit!(visitor.visit_ident(*ident));
-        visit_opt!(visitor, visit_generic_args, args);
         V::Result::output()
     }
 
@@ -1920,13 +1921,6 @@ pub mod mut_visit {
         let ForeignMod { safety, abi: _, items } = foreign_mod;
         visit_safety(vis, safety);
         items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
-    }
-
-    fn walk_path_segment<T: MutVisitor>(vis: &mut T, segment: &mut PathSegment) {
-        let PathSegment { ident, id, args } = segment;
-        vis.visit_id(id);
-        vis.visit_ident(ident);
-        visit_opt(args, |args| vis.visit_generic_args(args));
     }
 
     fn walk_path<T: MutVisitor>(vis: &mut T, Path { segments, span, tokens }: &mut Path) {
