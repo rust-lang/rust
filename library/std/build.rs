@@ -96,9 +96,6 @@ fn main() {
     let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
         // We can always enable these in Miri as that is not affected by codegen bugs.
         _ if is_miri => true,
-        // Selection failure until recent LLVM <https://github.com/llvm/llvm-project/issues/93894>
-        // FIXME(llvm19): can probably be removed at the version bump
-        ("loongarch64", _) => false,
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
         ("s390x", _) => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
@@ -108,18 +105,18 @@ fn main() {
         // Apple has a special ABI for `f16` that we do not yet support
         // FIXME(builtins): fixed by <https://github.com/rust-lang/compiler-builtins/pull/675>
         ("x86" | "x86_64", _) if target_vendor == "apple" => false,
-        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
+        // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
+        ("csky", _) => false,
+        ("hexagon", _) => false,
+        ("loongarch64", _) => false,
+        ("mips" | "mips64" | "mips32r6" | "mips64r6", _) => false,
         ("powerpc" | "powerpc64", _) => false,
-        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
-        ("mips" | "mips32r6" | "mips64" | "mips64r6", _) => false,
-        // Missing `__extendhfsf` and `__truncsfhf`
-        ("riscv32" | "riscv64", _) => false,
-        // Most OSs are missing `__extendhfsf` and `__truncsfhf`
-        (_, "linux" | "macos") => true,
-        // Almost all OSs besides Linux and MacOS are missing symbols until compiler-builtins can
-        // be updated. <https://github.com/rust-lang/rust/pull/125016> will get some of these, the
-        // next CB update should get the rest.
-        _ => false,
+        ("sparc" | "sparc64", _) => false,
+        ("wasm32" | "wasm64", _) => false,
+        // `f16` support only requires that symbols converting to and from `f32` are available. We
+        // provide these in `compiler-builtins`, so `f16` should be available on all platforms that
+        // do not have other ABI issues or LLVM crashes.
+        _ => true,
     };
 
     let has_reliable_f128 = match (target_arch.as_str(), target_os.as_str()) {
