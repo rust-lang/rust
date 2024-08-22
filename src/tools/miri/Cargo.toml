@@ -20,7 +20,7 @@ doctest = false # and no doc tests
 [dependencies]
 getrandom = { version = "0.2", features = ["std"] }
 rand = "0.8"
-smallvec = "1.7"
+smallvec = { version = "1.7", features = ["drain_filter"] }
 aes = { version = "0.8.3", features = ["hazmat"] }
 measureme = "11"
 ctrlc = "3.2.5"
