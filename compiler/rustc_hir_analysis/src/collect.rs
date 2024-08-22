@@ -260,7 +260,6 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
         | hir::ItemKind::Trait(_, _, generics, ..)
         | hir::ItemKind::Impl(hir::Impl { generics, .. })
         | hir::ItemKind::Struct(_, generics) => (generics, true),
-        // FIXME: how to handle opaque types since no longer items
         hir::ItemKind::TyAlias(_, generics) => (generics, false),
         // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
         _ => return,
@@ -744,8 +743,6 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
         }
 
-        // FIXME: ok to ignore opaque tys in collection?
-        //
         hir::ItemKind::TyAlias(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
