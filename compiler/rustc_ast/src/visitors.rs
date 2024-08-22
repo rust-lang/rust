@@ -296,7 +296,6 @@ macro_rules! make_ast_visitor {
             make_visit!{GenericArgs, visit_generic_args, walk_generic_args}
             make_visit!{GenericArg, visit_generic_arg, walk_generic_arg}
             make_visit!{AssocItemConstraint, visit_assoc_item_constraint, walk_assoc_item_constraint}
-            make_visit!{Attribute, visit_attribute, walk_attribute}
             make_visit!{Visibility, visit_vis, walk_vis}
             make_visit!{FnRetTy, visit_fn_ret_ty, walk_fn_ret_ty}
             make_visit!{AngleBracketedArgs, visit_angle_bracketed_parameter_data, walk_angle_bracketed_parameter_data}
@@ -315,6 +314,7 @@ macro_rules! make_ast_visitor {
 
             // flat_maps
             make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
+            make_visit!{Attribute, visit_attribute, walk_attribute, flat_map_attribute, walk_flat_map_attribute}
             make_visit!{ExprField, visit_expr_field, walk_expr_field, flat_map_expr_field, walk_flat_map_expr_field}
             make_visit!{GenericParam, visit_generic_param, walk_generic_param, flat_map_generic_param, walk_flat_map_generic_param}
             make_visit!{FieldDef, visit_field_def, walk_field_def, flat_map_field_def, walk_flat_map_field_def}
@@ -613,7 +613,22 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_crate<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            krate: ref_t!(Crate)
+        ) -> result!(V) {
+            let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
+            visit_list!(vis, visit_item, flat_map_item, items);
+            let ModSpans { inner_span, inject_use_span } = spans;
+            try_v!(visit_span!(vis, inner_span));
+            try_v!(visit_span!(vis, inject_use_span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
+        make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
         make_walk_flat_map!{FieldDef, walk_flat_map_field_def, visit_field_def}
         make_walk_flat_map!{GenericParam, walk_flat_map_generic_param, visit_generic_param}
@@ -748,13 +763,6 @@ pub mod visit {
     }
 
     make_ast_visitor!(Visitor<'ast>);
-
-    pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) -> V::Result {
-        let Crate { attrs, items, spans: _, id: _, is_placeholder: _ } = krate;
-        walk_list!(visitor, visit_attribute, attrs);
-        walk_list!(visitor, visit_item, items);
-        V::Result::output()
-    }
 
     pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) -> V::Result {
         let Local { id: _, pat, ty, kind, span: _, colon_sp: _, attrs, tokens: _ } = local;
@@ -2562,16 +2570,6 @@ pub mod mut_visit {
         visit_constness(vis, constness);
         coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
         visit_safety(vis, safety);
-    }
-
-    pub fn walk_crate<T: MutVisitor>(vis: &mut T, krate: &mut Crate) {
-        let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        items.flat_map_in_place(|item| vis.flat_map_item(item));
-        let ModSpans { inner_span, inject_use_span } = spans;
-        vis.visit_span(inner_span);
-        vis.visit_span(inject_use_span);
     }
 
     /// Mutates one item, returning the item again.
