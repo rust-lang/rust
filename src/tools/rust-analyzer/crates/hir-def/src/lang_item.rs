@@ -117,11 +117,19 @@ impl LangItems {
                 match def {
                     ModuleDefId::TraitId(trait_) => {
                         lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                        db.trait_data(trait_).items.iter().for_each(|&(_, assoc_id)| {
-                            if let AssocItemId::FunctionId(f) = assoc_id {
-                                lang_items.collect_lang_item(db, f, LangItemTarget::Function);
-                            }
-                        });
+                        db.trait_data(trait_).items.iter().for_each(
+                            |&(_, assoc_id)| match assoc_id {
+                                AssocItemId::FunctionId(f) => {
+                                    lang_items.collect_lang_item(db, f, LangItemTarget::Function);
+                                }
+                                AssocItemId::TypeAliasId(alias) => lang_items.collect_lang_item(
+                                    db,
+                                    alias,
+                                    LangItemTarget::TypeAlias,
+                                ),
+                                AssocItemId::ConstId(_) => {}
+                            },
+                        );
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                         lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
