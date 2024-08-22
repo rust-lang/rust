@@ -15,8 +15,8 @@ LL |     const { assert!(LANE < 4); } // the error should be here...
 note: the above error was encountered while instantiating `fn get_elem::<4>`
   --> $DIR/const-err-trumps-simd-err.rs:23:5
    |
-LL |     get_elem::<4>(int8x4_t(0,0,0,0));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     get_elem::<4>(int8x4_t([0, 0, 0, 0]));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
