@@ -5,7 +5,7 @@
 //! what is used by LSP, so let's keep it simple.
 use std::fmt;
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Markup {
     text: String,
 }
