@@ -652,6 +652,19 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_param<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            param: ref_t!(Param)
+        ) -> result!(V) {
+            let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
+            try_v!(vis.visit_pat(pat));
+            try_v!(vis.visit_ty(ty));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1578,14 +1591,6 @@ pub mod visit {
         visitor.visit_expr_post(expression)
     }
 
-    pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) -> V::Result {
-        let Param { attrs, ty, pat, id: _, span: _, is_placeholder: _ } = param;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_pat(pat));
-        try_visit!(visitor.visit_ty(ty));
-        V::Result::output()
-    }
-
     pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) -> V::Result {
         let Arm { attrs, pat, guard, body, span: _, id: _, is_placeholder: _ } = arm;
         walk_list!(visitor, visit_attribute, attrs);
@@ -1998,15 +2003,6 @@ pub mod mut_visit {
             MetaItemKind::List(mis) => visit_thin_vec(mis, |mi| vis.visit_meta_list_item(mi)),
             MetaItemKind::NameValue(_s) => {}
         }
-        vis.visit_span(span);
-    }
-
-    pub fn walk_param<T: MutVisitor>(vis: &mut T, param: &mut Param) {
-        let Param { attrs, id, pat, span, ty, is_placeholder: _ } = param;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_pat(pat);
-        vis.visit_ty(ty);
         vis.visit_span(span);
     }
 
