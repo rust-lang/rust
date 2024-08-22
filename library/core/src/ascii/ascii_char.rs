@@ -3,8 +3,8 @@
 //! suggestions from rustc if you get anything slightly wrong in here, and overall
 //! helps with clarity as we're also referring to `char` intentionally in here.
 
-use crate::fmt;
 use crate::mem::transmute;
+use crate::{assert_unsafe_precondition, fmt};
 
 /// One of the 128 Unicode characters from U+0000 through U+007F,
 /// often known as the [ASCII] subset.
@@ -497,14 +497,18 @@ impl AsciiChar {
     /// Notably, it should not be expected to return hex digits, or any other
     /// reasonable extension of the decimal digits.
     ///
-    /// (This lose safety condition is intended to simplify soundness proofs
+    /// (This loose safety condition is intended to simplify soundness proofs
     /// when writing code using this method, since the implementation doesn't
     /// need something really specific, not to make those other arguments do
     /// something useful. It might be tightened before stabilization.)
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
-        debug_assert!(d < 10);
+        assert_unsafe_precondition!(
+            check_language_ub,
+            "`AsciiChar::digit_unchecked` input cannot exceed 9.",
+            (d: u8 = d) => d < 10
+        );
 
         // SAFETY: `'0'` through `'9'` are U+00030 through U+0039,
         // so because `d` must be 64 or less the addition can return at most

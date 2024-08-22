@@ -11,6 +11,7 @@ use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::middle::codegen_fn_attrs::PatchableFunctionEntry;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
@@ -226,6 +227,20 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
+    // If we're normalizing integers with CFI, ensure LLVM generated functions do the same.
+    // See https://github.com/llvm/llvm-project/pull/104826
+    if sess.is_sanitizer_cfi_normalize_integers_enabled() {
+        let cfi_normalize_integers = c"cfi-normalize-integers".as_ptr().cast();
+        unsafe {
+            llvm::LLVMRustAddModuleFlagU32(
+                llmod,
+                llvm::LLVMModFlagBehavior::Override,
+                cfi_normalize_integers,
+                1,
+            );
+        }
+    }
+
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
         let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr();
@@ -244,6 +259,22 @@ pub unsafe fn create_module<'ll>(
         let kcfi = c"kcfi".as_ptr();
         unsafe {
             llvm::LLVMRustAddModuleFlagU32(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
+        }
+
+        // Add "kcfi-offset" module flag with -Z patchable-function-entry (See
+        // https://reviews.llvm.org/D141172).
+        let pfe =
+            PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry);
+        if pfe.prefix() > 0 {
+            let kcfi_offset = c"kcfi-offset".as_ptr().cast();
+            unsafe {
+                llvm::LLVMRustAddModuleFlagU32(
+                    llmod,
+                    llvm::LLVMModFlagBehavior::Override,
+                    kcfi_offset,
+                    pfe.prefix().into(),
+                );
+            }
         }
     }
 

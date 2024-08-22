@@ -1099,16 +1099,8 @@ fn msg_span_from_named_region<'tcx>(
 ) -> (String, Option<Span>) {
     match *region {
         ty::ReEarlyParam(br) => {
-            let scope = tcx
-                .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
-                .expect_local();
-            let span = if let Some(param) =
-                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-            {
-                param.span
-            } else {
-                tcx.def_span(scope)
-            };
+            let param_def_id = tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id;
+            let span = tcx.def_span(param_def_id);
             let text = if br.has_name() {
                 format!("the lifetime `{}` as defined here", br.name)
             } else {
@@ -1124,16 +1116,8 @@ fn msg_span_from_named_region<'tcx>(
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
                 match fr.bound_region {
-                    ty::BoundRegionKind::BrNamed(_, name) => {
-                        let span = if let Some(param) = tcx
-                            .hir()
-                            .get_generics(generic_param_scope)
-                            .and_then(|generics| generics.get_named(name))
-                        {
-                            param.span
-                        } else {
-                            tcx.def_span(generic_param_scope)
-                        };
+                    ty::BoundRegionKind::BrNamed(param_def_id, name) => {
+                        let span = tcx.def_span(param_def_id);
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
                         } else {
