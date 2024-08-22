@@ -722,6 +722,21 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_variant<$($lt,)? V: $trait$(<$lt>)?>(
+            visitor: &mut V,
+            variant: ref_t!(Variant)
+        ) -> result!(V) {
+            let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
+            try_v!(visit_id!(visitor, id));
+            visit_list!(visitor, visit_attribute, flat_map_attribute, attrs);
+            try_v!(visitor.visit_vis(vis));
+            try_v!(visit_ident!(visitor, ident));
+            try_v!(visitor.visit_variant_data(data));
+            visit_o!(disr_expr, |disr_expr| visitor.visit_variant_discr(disr_expr));
+            try_v!(visit_span!(visitor, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -998,20 +1013,6 @@ pub mod visit {
         item: &'a Item<impl WalkItemKind>,
     ) -> V::Result {
         walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
-    }
-
-    pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant) -> V::Result
-    where
-        V: Visitor<'a>,
-    {
-        let Variant { attrs, id: _, span: _, vis, ident, data, disr_expr, is_placeholder: _ } =
-            variant;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_vis(vis));
-        try_visit!(visitor.visit_ident(*ident));
-        try_visit!(visitor.visit_variant_data(data));
-        visit_opt!(visitor, visit_variant_discr, disr_expr);
-        V::Result::output()
     }
 
     pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
@@ -1919,17 +1920,6 @@ pub mod mut_visit {
         let ForeignMod { safety, abi: _, items } = foreign_mod;
         visit_safety(vis, safety);
         items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
-    }
-
-    pub fn walk_variant<T: MutVisitor>(visitor: &mut T, variant: &mut Variant) {
-        let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = variant;
-        visitor.visit_id(id);
-        visit_attrs(visitor, attrs);
-        visitor.visit_vis(vis);
-        visitor.visit_ident(ident);
-        visitor.visit_variant_data(data);
-        visit_opt(disr_expr, |disr_expr| visitor.visit_variant_discr(disr_expr));
-        visitor.visit_span(span);
     }
 
     fn walk_path_segment<T: MutVisitor>(vis: &mut T, segment: &mut PathSegment) {
