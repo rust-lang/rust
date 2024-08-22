@@ -985,6 +985,7 @@ symbols! {
         global_registration,
         globs,
         gt,
+        guard_patterns,
         half_open_range_patterns,
         half_open_range_patterns_in_slices,
         hash,
