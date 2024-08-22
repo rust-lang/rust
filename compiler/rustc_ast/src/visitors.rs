@@ -287,7 +287,6 @@ macro_rules! make_ast_visitor {
             make_visit!{InlineAsmSym, visit_inline_asm_sym, walk_inline_asm_sym}
             make_visit!{Generics, visit_generics, walk_generics}
             make_visit!{ClosureBinder, visit_closure_binder, walk_closure_binder}
-            make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate}
             make_visit!{TraitRef, visit_trait_ref, walk_trait_ref}
             make_visit!{PolyTraitRef, visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{Label, visit_label, walk_label}
@@ -320,6 +319,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Param, visit_param, walk_param, flat_map_param, walk_flat_map_param}
             make_visit!{PatField, visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
             make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
+            make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
             make_visit!{P!(Ty), visit_ty, walk_ty, flat_map_ty, walk_flat_map_ty}
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
@@ -665,6 +665,16 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_where_clause<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            wc: ref_t!(WhereClause)
+        ) -> result!(V) {
+            let WhereClause { has_where_token: _, predicates, span } = wc;
+            visit_list!(vis, visit_where_predicate, flat_map_where_predicate, predicates);
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -673,6 +683,7 @@ macro_rules! make_ast_visitor {
         make_walk_flat_map!{Param, walk_flat_map_param, visit_param}
         make_walk_flat_map!{PatField, walk_flat_map_pat_field, visit_pat_field}
         make_walk_flat_map!{Variant, walk_flat_map_variant, visit_variant}
+        make_walk_flat_map!{WherePredicate, walk_flat_map_where_predicate, visit_where_predicate}
         make_walk_flat_map!{P!(Ty), walk_flat_map_ty, visit_ty}
     }
 }
@@ -1642,12 +1653,6 @@ pub mod visit {
         walk_list!(vis, visit_foreign_item, items);
         V::Result::output()
     }
-
-    fn walk_where_clause<'a, V: Visitor<'a>>(vis: &mut V, wc: &'a WhereClause) -> V::Result {
-        let WhereClause { has_where_token: _, predicates, span: _ } = wc;
-        walk_list!(vis, visit_where_predicate, predicates);
-        V::Result::output()
-    }
 }
 
 pub mod mut_visit {
@@ -2266,12 +2271,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    fn walk_where_clause<T: MutVisitor>(vis: &mut T, wc: &mut WhereClause) {
-        let WhereClause { has_where_token: _, predicates, span } = wc;
-        visit_thin_vec(predicates, |predicate| vis.visit_where_predicate(predicate));
-        vis.visit_span(span);
     }
 
     fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
