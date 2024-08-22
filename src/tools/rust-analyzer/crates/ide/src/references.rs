@@ -2516,6 +2516,7 @@ fn main() {
 
     #[test]
     fn goto_ref_on_short_associated_function() {
+        cov_mark::check!(short_associated_function_fast_search);
         check(
             r#"
 struct Foo;
@@ -2541,6 +2542,9 @@ fn baz() {
 
     #[test]
     fn goto_ref_on_short_associated_function_with_aliases() {
+        cov_mark::check!(short_associated_function_fast_search);
+        cov_mark::check!(container_use_rename);
+        cov_mark::check!(container_type_alias);
         check(
             r#"
 //- /lib.rs
@@ -2589,6 +2593,8 @@ pub(in super::super) type Baz = Itself<crate::Foo>;
 
     #[test]
     fn goto_ref_on_short_associated_function_self_works() {
+        cov_mark::check!(short_associated_function_fast_search);
+        cov_mark::check!(self_type_alias);
         check(
             r#"
 //- /lib.rs
@@ -2651,6 +2657,7 @@ impl Foo {
 
     #[test]
     fn goto_ref_on_short_associated_function_no_direct_self_but_path_contains_self() {
+        cov_mark::check!(short_associated_function_fast_search);
         check(
             r#"
 struct Foo;
@@ -2684,6 +2691,8 @@ impl Foo {
     // Usages search is not 100% accurate anyway; we miss macros.
     #[test]
     fn goto_ref_on_short_associated_function_complicated_type_magic_can_confuse_our_logic() {
+        cov_mark::check!(short_associated_function_fast_search);
+        cov_mark::check!(same_name_different_def_type_alias);
         check(
             r#"
 struct Foo;
@@ -2718,6 +2727,7 @@ fn bar() {
 
     #[test]
     fn goto_ref_on_short_associated_function_same_path_mention_alias_and_self() {
+        cov_mark::check!(short_associated_function_fast_search);
         check(
             r#"
 struct Foo;
