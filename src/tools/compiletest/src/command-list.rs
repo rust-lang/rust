@@ -141,6 +141,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-force-clang-based-tests",
     "needs-git-hash",
     "needs-llvm-components",
+    "needs-llvm-zstd",
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
