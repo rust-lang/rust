@@ -542,6 +542,7 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(new_zeroed_alloc)]
     /// #![feature(new_uninit)]
     ///
     /// use std::sync::Arc;
@@ -555,7 +556,7 @@ impl<T> Arc<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -1134,6 +1135,7 @@ impl<T> Arc<[T]> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(new_zeroed_alloc)]
     /// #![feature(new_uninit)]
     ///
     /// use std::sync::Arc;
@@ -1147,7 +1149,7 @@ impl<T> Arc<[T]> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -1191,7 +1193,7 @@ impl<T, A: Allocator> Arc<[T], A> {
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Arc<[mem::MaybeUninit<T>], A> {
         unsafe { Arc::from_ptr_in(Arc::allocate_for_slice_in(len, &alloc), alloc) }
@@ -1220,7 +1222,7 @@ impl<T, A: Allocator> Arc<[T], A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Arc<[mem::MaybeUninit<T>], A> {
         unsafe {
