@@ -85,7 +85,7 @@ and copy the settings from [`src/etc/rust_analyzer_settings.json`].
 Another way is without a plugin, and creating your own logic in your configuration. To do this you 
 must translate the JSON to Lua yourself. The translation is 1:1 and fairly straight-forward. It 
 must be put in the `["rust-analyzer"]` key of the setup table, which is 
-[shown here](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer)
+[shown here](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer).
 
 If you would like to use the build task that is described above, you may either make your own 
 command in your config, or you can install a plugin such as 
