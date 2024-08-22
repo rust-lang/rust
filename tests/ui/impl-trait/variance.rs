@@ -12,17 +12,17 @@ trait Captures<'a> {}
 impl<T> Captures<'_> for T {}
 
 fn not_captured_early<'a: 'a>() -> impl Sized {}
-//[old]~^ [*]
-//[new]~^^ [*, o]
-//[e2024]~^^^ [*, o]
+//[old]~^ ['a: *]
+//[new]~^^ ['a: *, 'a: o]
+//[e2024]~^^^ ['a: *, 'a: o]
 
-fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {} //~ [*, o]
+fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {} //~ ['a: *, 'a: o]
 
 fn not_captured_late<'a>(_: &'a ()) -> impl Sized {}
 //[old]~^ []
-//[new]~^^ [o]
-//[e2024]~^^^ [o]
+//[new]~^^ ['a: o]
+//[e2024]~^^^ ['a: o]
 
-fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {} //~ [o]
+fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {} //~ ['a: o]
 
 fn main() {}

@@ -7,14 +7,16 @@ impl<T> Captures<'_> for T {}
 
 trait Foo<'i> {
     fn implicit_capture_early<'a: 'a>() -> impl Sized {}
-    //~^ [o, *, *, o, o]
-    // Self, 'i, 'a, 'i_duplicated, 'a_duplicated
+    //~^ [Self: o, 'i: *, 'a: *, 'a: o, 'i: o]
 
-    fn explicit_capture_early<'a: 'a>() -> impl Sized + Captures<'a> {} //~ [o, *, *, o, o]
+    fn explicit_capture_early<'a: 'a>() -> impl Sized + Captures<'a> {}
+    //~^ [Self: o, 'i: *, 'a: *, 'a: o, 'i: o]
 
-    fn implicit_capture_late<'a>(_: &'a ()) -> impl Sized {} //~ [o, *, o, o]
+    fn implicit_capture_late<'a>(_: &'a ()) -> impl Sized {}
+    //~^ [Self: o, 'i: *, 'a: o, 'i: o]
 
-    fn explicit_capture_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {} //~ [o, *, o, o]
+    fn explicit_capture_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {}
+    //~^ [Self: o, 'i: *, 'a: o, 'i: o]
 }
 
 fn main() {}
