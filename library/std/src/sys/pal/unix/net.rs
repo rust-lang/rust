@@ -564,18 +564,24 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
-    pub fn todevice(&self) -> io::Result<&CStr> {
+    pub fn todevice(&self) -> io::Result<crate::ffi::CString> {
         let buf: [libc::c_char; libc::IFNAMSIZ] =
             getsockopt(self, libc::SOL_SOCKET, libc::SO_BINDTODEVICE)?;
         let s: &[u8] = unsafe { core::slice::from_raw_parts(buf.as_ptr() as *const u8, buf.len()) };
-        let ifrname = CStr::from_bytes_until_nul(s).unwrap();
-        Ok(ifrname)
+        let name = CStr::from_bytes_until_nul(s).unwrap();
+        Ok(crate::ffi::CString::new(name.to_bytes()).unwrap())
     }
 
     #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
     pub fn set_todevice(&self, ifrname: &CStr) -> io::Result<()> {
+        let istr = ifrname.to_bytes();
+
+        if istr.len() >= libc::IFNAMSIZ {
+            return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG));
+        }
+
         let mut buf = [0; libc::IFNAMSIZ];
-        for (src, dst) in ifrname.to_bytes().iter().zip(&mut buf[..libc::IFNAMSIZ - 1]) {
+        for (src, dst) in istr.iter().zip(&mut buf[..libc::IFNAMSIZ - 1]) {
             *dst = *src as libc::c_char;
         }
         setsockopt(self, libc::SOL_SOCKET, libc::SO_BINDTODEVICE, buf)

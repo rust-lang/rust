@@ -16,7 +16,7 @@ use libc::MSG_NOSIGNAL;
 use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
 use super::{sockaddr_un, SocketAddr};
 #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
-use crate::ffi::CStr;
+use crate::ffi::{CStr, CString};
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use crate::io::{IoSlice, IoSliceMut};
 use crate::net::Shutdown;
@@ -886,7 +886,7 @@ impl UnixDatagram {
     /// ```
     #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
     #[unstable(feature = "unix_set_todevice", issue = "129182")]
-    pub fn todevice(&self) -> io::Result<&CStr> {
+    pub fn todevice(&self) -> io::Result<CString> {
         self.0.todevice()
     }
     /// Returns the value of the `SO_ERROR` option.
