@@ -86,6 +86,8 @@ mod raw;
 
 mod external_trait_impls;
 mod map;
+#[cfg(feature = "raw-entry")]
+mod raw_entry;
 #[cfg(feature = "rustc-internal-api")]
 mod rustc_entry;
 mod scopeguard;
