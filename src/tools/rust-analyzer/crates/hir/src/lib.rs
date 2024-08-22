@@ -78,7 +78,7 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
-use span::{Edition, EditionedFileId, FileId, MacroCallId};
+use span::{Edition, EditionedFileId, FileId, MacroCallId, SyntaxContextId};
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasGenericParams, HasName},
@@ -4377,6 +4377,22 @@ impl Type {
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
         method_resolution::implements_trait(&canonical_ty, db, &self.env, trait_)
+    }
+
+    /// This does **not** resolve `IntoFuture`, only `Future`.
+    pub fn future_output(self, db: &dyn HirDatabase) -> Option<Type> {
+        let future_output =
+            db.lang_item(self.env.krate, LangItem::FutureOutput)?.as_type_alias()?;
+        self.normalize_trait_assoc_type(db, &[], future_output.into())
+    }
+
+    /// This does **not** resolve `IntoIterator`, only `Iterator`.
+    pub fn iterator_item(self, db: &dyn HirDatabase) -> Option<Type> {
+        let iterator_trait = db.lang_item(self.env.krate, LangItem::Iterator)?.as_trait()?;
+        let iterator_item = db
+            .trait_data(iterator_trait)
+            .associated_type_by_name(&Name::new_symbol(sym::Item.clone(), SyntaxContextId::ROOT))?;
+        self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.

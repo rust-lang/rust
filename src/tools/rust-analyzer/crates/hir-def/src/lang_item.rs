@@ -74,6 +74,13 @@ impl LangItemTarget {
             _ => None,
         }
     }
+
+    pub fn as_type_alias(self) -> Option<TypeAliasId> {
+        match self {
+            LangItemTarget::TypeAlias(id) => Some(id),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
