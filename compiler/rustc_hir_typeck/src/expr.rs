@@ -237,9 +237,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
-        // Any expression that produces a value of type `!` must have diverged
+        // Any expression that produces a value of type `!` must have diverged,
+        // unless it's the place of a raw ref expr, or a scrutinee of a match.
         if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _)) {
+                match self.tcx.parent_hir_node(expr.hir_id) {
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::AddrOf(hir::BorrowKind::Raw, ..),
+                        ..
+                    }) => {}
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Let(hir::LetExpr { init: target, .. }),
+                        ..
+                    })
+                    | hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Match(target, _, _), ..
+                    })
+                    | hir::Node::LetStmt(hir::LetStmt { init: Some(target), .. })
+                        if expr.hir_id == target.hir_id => {}
+                    _ => {
+                        self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+                    }
+                }
+            } else {
+                self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            }
         }
 
         // Record the type, which applies it effects.
