@@ -83,7 +83,7 @@ pub(crate) fn goto_definition(
     }
 
     let navs = sema
-        .descend_into_macros_ng_v(original_token.clone())
+        .descend_into_macros(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -248,10 +248,7 @@ pub(crate) fn find_fn_or_blocks(
         None
     };
 
-    sema.descend_into_macros_ng_v(token.clone())
-        .into_iter()
-        .filter_map(find_ancestors)
-        .collect_vec()
+    sema.descend_into_macros(token.clone()).into_iter().filter_map(find_ancestors).collect_vec()
 }
 
 fn nav_for_exit_points(
@@ -366,7 +363,7 @@ pub(crate) fn find_loops(
         None
     };
 
-    sema.descend_into_macros_ng_v(token.clone())
+    sema.descend_into_macros(token.clone())
         .into_iter()
         .filter_map(find_ancestors)
         .collect_vec()

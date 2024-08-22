@@ -181,7 +181,7 @@ fn hover_simple(
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
     let mut descended = vec![];
-    sema.descend_into_macros_ng(original_token.clone(), |token| {
+    sema.descend_into_macros_cb(original_token.clone(), |token| {
         descended.push(token.value);
     });
     let descended = || descended.iter();

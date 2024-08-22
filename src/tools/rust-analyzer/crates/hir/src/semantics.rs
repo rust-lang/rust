@@ -188,7 +188,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
-    /// Find an AstNode by offset inside SyntaxNode, if it is inside an attribte macro call,
+    /// Find an AstNode by offset inside SyntaxNode, if it is inside an attribute macro call,
     /// descend it and find again
     // FIXME: Rethink this API
     pub fn find_nodes_at_offset_with_descend<'slf, N: AstNode + 'slf>(
@@ -550,7 +550,7 @@ impl<'db> SemanticsImpl<'db> {
         string: &ast::String,
     ) -> Option<Vec<(TextRange, Option<PathResolution>)>> {
         let quote = string.open_quote_text_range()?;
-        self.descend_into_macros_ng_b(string.syntax().clone(), |token| {
+        self.descend_into_macros_breakable(string.syntax().clone(), |token| {
             (|| {
                 let token = token.value;
                 let string = ast::String::cast(token)?;
@@ -577,7 +577,7 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<(TextRange, Option<PathResolution>)> {
         let original_string = ast::String::cast(original_token.clone())?;
         let quote = original_string.open_quote_text_range()?;
-        self.descend_into_macros_ng_b(original_token.clone(), |token| {
+        self.descend_into_macros_breakable(original_token.clone(), |token| {
             (|| {
                 let token = token.value;
                 self.resolve_offset_in_format_args(
@@ -664,7 +664,7 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    pub fn descend_into_macros_ng(
+    pub fn descend_into_macros_cb(
         &self,
         token: SyntaxToken,
         mut cb: impl FnMut(InFile<SyntaxToken>),
@@ -675,7 +675,7 @@ impl<'db> SemanticsImpl<'db> {
         });
     }
 
-    pub fn descend_into_macros_ng_v(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+    pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
         self.descend_into_macros_impl(token.clone(), &mut |t| {
             res.push(t.value);
@@ -687,7 +687,7 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    pub fn descend_into_macros_ng_b<T>(
+    pub fn descend_into_macros_breakable<T>(
         &self,
         token: SyntaxToken,
         mut cb: impl FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
@@ -702,7 +702,7 @@ impl<'db> SemanticsImpl<'db> {
         let text = token.text();
         let kind = token.kind();
 
-        self.descend_into_macros_ng(token.clone(), |InFile { value, file_id: _ }| {
+        self.descend_into_macros_cb(token.clone(), |InFile { value, file_id: _ }| {
             let mapped_kind = value.kind();
             let any_ident_match = || kind.is_any_identifier() && value.kind().is_any_identifier();
             let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
@@ -722,7 +722,7 @@ impl<'db> SemanticsImpl<'db> {
         let text = token.text();
         let kind = token.kind();
 
-        self.descend_into_macros_ng_b(token.clone(), |InFile { value, file_id: _ }| {
+        self.descend_into_macros_breakable(token.clone(), |InFile { value, file_id: _ }| {
             let mapped_kind = value.kind();
             let any_ident_match = || kind.is_any_identifier() && value.kind().is_any_identifier();
             let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();

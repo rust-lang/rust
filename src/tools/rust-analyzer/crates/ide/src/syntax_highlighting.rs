@@ -409,7 +409,7 @@ fn traverse(
                     let mut r = 0;
                     // FIXME: Add an extra API that takes the file id of this. That is a simple way
                     // to prevent us constantly walking up the tree to fetch the file
-                    sema.descend_into_macros_ng_b(token.clone(), |tok| {
+                    sema.descend_into_macros_breakable(token.clone(), |tok| {
                         let tok = tok.value;
                         let tok_kind = tok.kind();
 
