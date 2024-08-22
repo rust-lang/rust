@@ -9,8 +9,8 @@ use std::mem;
 
 use base_db::{salsa::Database, SourceDatabase, SourceRootDatabase};
 use hir::{
-    sym, AsAssocItem, DefWithBody, DescendPreference, FileRange, HasAttrs, HasSource, HirFileIdExt,
-    InFile, InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
+    sym, AsAssocItem, DefWithBody, FileRange, HasAttrs, HasSource, HirFileIdExt, InFile,
+    InRealFile, ModuleSource, PathResolution, Semantics, Visibility,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -549,9 +549,7 @@ impl<'a> FindUsages<'a> {
                     // every textual hit. That function is notoriously
                     // expensive even for things that do not get down mapped
                     // into macros.
-                    sema.descend_into_macros(DescendPreference::None, token)
-                        .into_iter()
-                        .filter_map(|it| it.parent())
+                    sema.descend_into_macros_exact(token).into_iter().filter_map(|it| it.parent())
                 })
         };
 

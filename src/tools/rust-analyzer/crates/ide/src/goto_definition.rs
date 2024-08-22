@@ -5,10 +5,7 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{
-    AsAssocItem, AssocItem, DescendPreference, FileRange, InFile, MacroFileIdExt, ModuleDef,
-    Semantics,
-};
+use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
@@ -86,7 +83,7 @@ pub(crate) fn goto_definition(
     }
 
     let navs = sema
-        .descend_into_macros(DescendPreference::None, original_token.clone())
+        .descend_into_macros_ng_v(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -251,7 +248,7 @@ pub(crate) fn find_fn_or_blocks(
         None
     };
 
-    sema.descend_into_macros(DescendPreference::None, token.clone())
+    sema.descend_into_macros_ng_v(token.clone())
         .into_iter()
         .filter_map(find_ancestors)
         .collect_vec()
@@ -369,7 +366,7 @@ pub(crate) fn find_loops(
         None
     };
 
-    sema.descend_into_macros(DescendPreference::None, token.clone())
+    sema.descend_into_macros_ng_v(token.clone())
         .into_iter()
         .filter_map(find_ancestors)
         .collect_vec()

@@ -51,10 +51,6 @@ use crate::{
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
 
-pub enum DescendPreference {
-    None,
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PathResolution {
     /// An item
@@ -183,6 +179,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
     /// descend it and find again
+    // FIXME: Rethink this API
     pub fn find_node_at_offset_with_descend<N: AstNode>(
         &self,
         node: &SyntaxNode,
@@ -191,8 +188,9 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_node_at_offset(node, offset).flatten().find_map(N::cast)
     }
 
-    /// Find an AstNode by offset inside SyntaxNode, if it is inside *MacroCall*,
+    /// Find an AstNode by offset inside SyntaxNode, if it is inside an attribte macro call,
     /// descend it and find again
+    // FIXME: Rethink this API
     pub fn find_nodes_at_offset_with_descend<'slf, N: AstNode + 'slf>(
         &'slf self,
         node: &SyntaxNode,
@@ -666,38 +664,6 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    /// Descend the token into its macro call if it is part of one, returning the tokens in the
-    /// expansion that it is associated with.
-    pub fn descend_into_macros(
-        &self,
-        mode: DescendPreference,
-        token: SyntaxToken,
-    ) -> SmallVec<[SyntaxToken; 1]> {
-        enum Dp {
-            None,
-        }
-        let mode = match mode {
-            DescendPreference::None => Dp::None,
-        };
-        let mut res = smallvec![];
-        self.descend_into_macros_impl::<Infallible>(
-            token.clone(),
-            &mut |InFile { value, .. }| {
-                let is_a_match = match mode {
-                    Dp::None => true,
-                };
-                if is_a_match {
-                    res.push(value);
-                }
-                ControlFlow::Continue(())
-            },
-        );
-        if res.is_empty() {
-            res.push(token);
-        }
-        res
-    }
-
     pub fn descend_into_macros_ng(
         &self,
         token: SyntaxToken,
@@ -707,6 +673,18 @@ impl<'db> SemanticsImpl<'db> {
             cb(t);
             CONTINUE_NO_BREAKS
         });
+    }
+
+    pub fn descend_into_macros_ng_v(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+        let mut res = smallvec![];
+        self.descend_into_macros_impl(token.clone(), &mut |t| {
+            res.push(t.value);
+            CONTINUE_NO_BREAKS
+        });
+        if res.is_empty() {
+            res.push(token);
+        }
+        res
     }
 
     pub fn descend_into_macros_ng_b<T>(
@@ -1003,7 +981,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: TextSize,
     ) -> impl Iterator<Item = impl Iterator<Item = SyntaxNode> + '_> + '_ {
         node.token_at_offset(offset)
-            .map(move |token| self.descend_into_macros(DescendPreference::None, token))
+            .map(move |token| self.descend_into_macros_exact(token))
             .map(|descendants| {
                 descendants.into_iter().map(move |it| self.token_ancestors_with_macros(it))
             })
