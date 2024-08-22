@@ -35,7 +35,6 @@ where
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             RustcEntry::Occupied(RustcOccupiedEntry {
-                key: Some(key),
                 elem,
                 table: &mut self.table,
             })
@@ -88,7 +87,6 @@ pub struct RustcOccupiedEntry<'a, K, V, A = Global>
 where
     A: Allocator,
 {
-    key: Option<K>,
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V), A>,
 }
@@ -456,66 +454,6 @@ impl<'a, K, V, A: Allocator> RustcOccupiedEntry<'a, K, V, A> {
     pub fn remove(self) -> V {
         self.remove_entry().1
     }
-
-    /// Replaces the entry, returning the old key and value. The new key in the hash map will be
-    /// the key used to create this entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_map::{RustcEntry, HashMap};
-    /// use std::rc::Rc;
-    ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// map.insert(Rc::new("Stringthing".to_string()), 15);
-    ///
-    /// let my_key = Rc::new("Stringthing".to_string());
-    ///
-    /// if let RustcEntry::Occupied(entry) = map.rustc_entry(my_key) {
-    ///     // Also replace the key with a handle to our other key.
-    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
-    /// }
-    ///
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn replace_entry(self, value: V) -> (K, V) {
-        let entry = unsafe { self.elem.as_mut() };
-
-        let old_key = mem::replace(&mut entry.0, self.key.unwrap());
-        let old_value = mem::replace(&mut entry.1, value);
-
-        (old_key, old_value)
-    }
-
-    /// Replaces the key in the hash map with the key used to create this entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_map::{RustcEntry, HashMap};
-    /// use std::rc::Rc;
-    ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
-    ///
-    /// // Initialise known strings, run program, etc.
-    ///
-    /// reclaim_memory(&mut map, &known_strings);
-    ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
-    ///     for s in known_strings {
-    ///         if let RustcEntry::Occupied(entry) = map.rustc_entry(s.clone()) {
-    ///             // Replaces the entry's key with our version of it in `known_strings`.
-    ///             entry.replace_key();
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn replace_key(self) -> K {
-        let entry = unsafe { self.elem.as_mut() };
-        mem::replace(&mut entry.0, self.key.unwrap())
-    }
 }
 
 impl<'a, K, V, A: Allocator> RustcVacantEntry<'a, K, V, A> {
@@ -598,7 +536,6 @@ impl<'a, K, V, A: Allocator> RustcVacantEntry<'a, K, V, A> {
     pub fn insert_entry(self, value: V) -> RustcOccupiedEntry<'a, K, V, A> {
         let bucket = unsafe { self.table.insert_no_grow(self.hash, (self.key, value)) };
         RustcOccupiedEntry {
-            key: None,
             elem: bucket,
             table: self.table,
         }

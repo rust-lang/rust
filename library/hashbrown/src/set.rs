@@ -2,10 +2,11 @@
 use crate::raw::RawTable;
 use crate::{Equivalent, TryReserveError};
 use alloc::borrow::ToOwned;
-use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FusedIterator};
 use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use core::{fmt, mem};
+use map::{equivalent_key, make_hash, make_hasher};
 
 use super::map::{self, HashMap, Keys};
 use crate::raw::{Allocator, Global, RawExtractIf};
@@ -1157,10 +1158,17 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
-        match self.map.entry(value) {
-            map::Entry::Occupied(occupied) => Some(occupied.replace_key()),
-            map::Entry::Vacant(vacant) => {
-                vacant.insert(());
+        let hash = make_hash(&self.map.hash_builder, &value);
+        match self.map.table.find_or_find_insert_slot(
+            hash,
+            equivalent_key(&value),
+            make_hasher(&self.map.hash_builder),
+        ) {
+            Ok(bucket) => Some(mem::replace(unsafe { &mut bucket.as_mut().0 }, value)),
+            Err(slot) => {
+                unsafe {
+                    self.map.table.insert_in_slot(hash, slot, (value, ()));
+                }
                 None
             }
         }
@@ -2396,7 +2404,7 @@ impl<T: fmt::Debug, S, A: Allocator> fmt::Debug for VacantEntry<'_, T, S, A> {
 }
 
 impl<'a, T, S, A: Allocator> Entry<'a, T, S, A> {
-    /// Sets the value of the entry, and returns an OccupiedEntry.
+    /// Sets the value of the entry, and returns an `OccupiedEntry`.
     ///
     /// # Examples
     ///
@@ -2520,42 +2528,6 @@ impl<T, S, A: Allocator> OccupiedEntry<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> T {
         self.inner.remove_entry().0
-    }
-
-    /// Replaces the entry, returning the old value. The new value in the hash map will be
-    /// the value used to create this entry.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if this OccupiedEntry was created through [`Entry::insert`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    ///  use hashbrown::hash_set::{Entry, HashSet};
-    ///  use std::rc::Rc;
-    ///
-    ///  let mut set: HashSet<Rc<String>> = HashSet::new();
-    ///  let key_one = Rc::new("Stringthing".to_string());
-    ///  let key_two = Rc::new("Stringthing".to_string());
-    ///
-    ///  set.insert(key_one.clone());
-    ///  assert!(Rc::strong_count(&key_one) == 2 && Rc::strong_count(&key_two) == 1);
-    ///
-    ///  match set.entry(key_two.clone()) {
-    ///      Entry::Occupied(entry) => {
-    ///          let old_key: Rc<String> = entry.replace();
-    ///          assert!(Rc::ptr_eq(&key_one, &old_key));
-    ///      }
-    ///      Entry::Vacant(_) => panic!(),
-    ///  }
-    ///
-    ///  assert!(Rc::strong_count(&key_one) == 1 && Rc::strong_count(&key_two) == 2);
-    ///  assert!(set.contains(&"Stringthing".to_owned()));
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn replace(self) -> T {
-        self.inner.replace_key()
     }
 }
 
