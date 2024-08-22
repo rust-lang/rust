@@ -13,7 +13,6 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirId, HirIdMap, LifetimeName, Node};
 use rustc_macros::extension;
@@ -22,7 +21,7 @@ use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
@@ -32,7 +31,7 @@ use crate::errors;
 impl ResolvedArg {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
         debug!("ResolvedArg::early: def_id={:?}", param.def_id);
-        (param.def_id, ResolvedArg::EarlyBound(param.def_id.to_def_id()))
+        (param.def_id, ResolvedArg::EarlyBound(param.def_id))
     }
 
     fn late(idx: u32, param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
@@ -41,10 +40,10 @@ impl ResolvedArg {
             "ResolvedArg::late: idx={:?}, param={:?} depth={:?} def_id={:?}",
             idx, param, depth, param.def_id,
         );
-        (param.def_id, ResolvedArg::LateBound(depth, idx, param.def_id.to_def_id()))
+        (param.def_id, ResolvedArg::LateBound(depth, idx, param.def_id))
     }
 
-    fn id(&self) -> Option<DefId> {
+    fn id(&self) -> Option<LocalDefId> {
         match *self {
             ResolvedArg::StaticLifetime | ResolvedArg::Error(_) => None,
 
@@ -288,13 +287,14 @@ fn late_arg_as_bound_arg<'tcx>(
 ) -> ty::BoundVariableKind {
     match arg {
         ResolvedArg::LateBound(_, _, def_id) => {
-            let name = tcx.hir().name(tcx.local_def_id_to_hir_id(def_id.expect_local()));
+            let def_id = def_id.to_def_id();
+            let name = tcx.item_name(def_id);
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {
-                    ty::BoundVariableKind::Region(ty::BrNamed(*def_id, name))
+                    ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
                 }
                 GenericParamKind::Type { .. } => {
-                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(*def_id, name))
+                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
                 }
                 GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
             }
@@ -717,7 +717,6 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     // In the future, this should be fixed and this error should be removed.
                     let def = self.map.defs.get(&lifetime.hir_id).copied();
                     let Some(ResolvedArg::LateBound(_, _, lifetime_def_id)) = def else { continue };
-                    let Some(lifetime_def_id) = lifetime_def_id.as_local() else { continue };
                     let lifetime_hir_id = self.tcx.local_def_id_to_hir_id(lifetime_def_id);
 
                     let bad_place = match self.tcx.hir_node(self.tcx.parent_hir_id(lifetime_hir_id))
@@ -1150,7 +1149,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             .param_def_id_to_index(self.tcx, region_def_id.to_def_id())
                             .is_some()
                     {
-                        break Some(ResolvedArg::EarlyBound(region_def_id.to_def_id()));
+                        break Some(ResolvedArg::EarlyBound(region_def_id));
                     }
                     break None;
                 }
@@ -1259,7 +1258,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     kind => span_bug!(
                         use_span,
                         "did not expect to resolve lifetime to {}",
-                        kind.descr(param_def_id)
+                        kind.descr(param_def_id.to_def_id())
                     ),
                 };
                 def = ResolvedArg::Error(guar);
@@ -1277,10 +1276,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         kind: hir::ImplItemKind::Fn(..),
                         ..
                     }) => {
-                        def = ResolvedArg::Free(owner_id.to_def_id(), def.id().unwrap());
+                        def = ResolvedArg::Free(owner_id.def_id, def.id().unwrap());
                     }
                     Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) => {
-                        def = ResolvedArg::Free(closure.def_id.to_def_id(), def.id().unwrap());
+                        def = ResolvedArg::Free(closure.def_id, def.id().unwrap());
                     }
                     _ => {}
                 }
@@ -1351,7 +1350,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             .param_def_id_to_index(self.tcx, param_def_id.to_def_id())
                             .is_some()
                     {
-                        break Some(ResolvedArg::EarlyBound(param_def_id.to_def_id()));
+                        break Some(ResolvedArg::EarlyBound(param_def_id));
                     }
                     break None;
                 }
