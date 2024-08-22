@@ -192,7 +192,7 @@ impl ExpandErrorKind {
                 ("overflow expanding the original macro".to_owned(), true)
             }
             ExpandErrorKind::Other(e) => ((**e).to_owned(), true),
-            ExpandErrorKind::ProcMacroPanic(e) => ((**e).to_owned(), true),
+            ExpandErrorKind::ProcMacroPanic(e) => (format!("proc-macro panicked: {e}"), true),
         }
     }
 }
