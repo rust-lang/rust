@@ -180,11 +180,25 @@ fn hover_simple(
 
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
-    let mut descended = vec![];
-    sema.descend_into_macros_cb(original_token.clone(), |token| {
-        descended.push(token.value);
+    let mut descended = sema.descend_into_macros(original_token.clone());
+
+    let kind = original_token.kind();
+    let text = original_token.text();
+    let ident_kind = kind.is_any_identifier();
+
+    descended.sort_by_key(|tok| {
+        let tok_kind = tok.kind();
+
+        let exact_same_kind = tok_kind == kind;
+        let both_idents = exact_same_kind || (tok_kind.is_any_identifier() && ident_kind);
+        let same_text = tok.text() == text;
+        // anything that mapped into a token tree has likely no semantic information
+        let no_tt_parent = tok.parent().map_or(false, |it| it.kind() != TOKEN_TREE);
+        (both_idents as usize)
+            | ((exact_same_kind as usize) << 1)
+            | ((same_text as usize) << 2)
+            | ((no_tt_parent as usize) << 3)
     });
-    let descended = || descended.iter();
 
     // TODO: WE should not try these step by step, instead to accommodate for macros we should run
     // all of these in "parallel" and rank their results

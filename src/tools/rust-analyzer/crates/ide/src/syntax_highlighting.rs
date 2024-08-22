@@ -407,8 +407,6 @@ fn traverse(
 
                     let mut t = None;
                     let mut r = 0;
-                    // FIXME: Add an extra API that takes the file id of this. That is a simple way
-                    // to prevent us constantly walking up the tree to fetch the file
                     sema.descend_into_macros_breakable(
                         InRealFile::new(file_id, token.clone()),
                         |tok| {
