@@ -19,7 +19,8 @@ use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
-use stdx::never;
+use stdx::{format_to, never};
+use syntax::utils::is_raw_identifier;
 
 use crate::{
     db::{HirDatabase, InternedClosure},
@@ -251,6 +252,11 @@ impl CapturedItem {
         self.place.local
     }
 
+    /// Returns whether this place has any field (aka. non-deref) projections.
+    pub fn has_field_projections(&self) -> bool {
+        self.place.projections.iter().any(|it| !matches!(it, ProjectionElem::Deref))
+    }
+
     pub fn ty(&self, subst: &Substitution) -> Ty {
         self.ty.clone().substitute(Interner, utils::ClosureSubst(subst).parent_subst())
     }
@@ -261,6 +267,97 @@ impl CapturedItem {
 
     pub fn spans(&self) -> SmallVec<[MirSpan; 3]> {
         self.span_stacks.iter().map(|stack| *stack.last().expect("empty span stack")).collect()
+    }
+
+    /// Converts the place to a name that can be inserted into source code.
+    pub fn place_to_name(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
+        let body = db.body(owner);
+        let mut result = body[self.place.local].name.unescaped().display(db.upcast()).to_string();
+        for proj in &self.place.projections {
+            match proj {
+                ProjectionElem::Deref => {}
+                ProjectionElem::Field(Either::Left(f)) => {
+                    match &*f.parent.variant_data(db.upcast()) {
+                        VariantData::Record(fields) => {
+                            result.push('_');
+                            result.push_str(fields[f.local_id].name.as_str())
+                        }
+                        VariantData::Tuple(fields) => {
+                            let index = fields.iter().position(|it| it.0 == f.local_id);
+                            if let Some(index) = index {
+                                format_to!(result, "_{index}");
+                            }
+                        }
+                        VariantData::Unit => {}
+                    }
+                }
+                ProjectionElem::Field(Either::Right(f)) => format_to!(result, "_{}", f.index),
+                &ProjectionElem::ClosureField(field) => format_to!(result, "_{field}"),
+                ProjectionElem::Index(_)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::OpaqueCast(_) => {
+                    never!("Not happen in closure capture");
+                    continue;
+                }
+            }
+        }
+        if is_raw_identifier(&result, db.crate_graph()[owner.module(db.upcast()).krate()].edition) {
+            result.insert_str(0, "r#");
+        }
+        result
+    }
+
+    pub fn display_place_source_code(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
+        let body = db.body(owner);
+        let krate = owner.krate(db.upcast());
+        let edition = db.crate_graph()[krate].edition;
+        let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
+        for proj in &self.place.projections {
+            match proj {
+                // In source code autoderef kicks in.
+                ProjectionElem::Deref => {}
+                ProjectionElem::Field(Either::Left(f)) => {
+                    let variant_data = f.parent.variant_data(db.upcast());
+                    match &*variant_data {
+                        VariantData::Record(fields) => format_to!(
+                            result,
+                            ".{}",
+                            fields[f.local_id].name.display(db.upcast(), edition)
+                        ),
+                        VariantData::Tuple(fields) => format_to!(
+                            result,
+                            ".{}",
+                            fields.iter().position(|it| it.0 == f.local_id).unwrap_or_default()
+                        ),
+                        VariantData::Unit => {}
+                    }
+                }
+                ProjectionElem::Field(Either::Right(f)) => {
+                    let field = f.index;
+                    format_to!(result, ".{field}");
+                }
+                &ProjectionElem::ClosureField(field) => {
+                    format_to!(result, ".{field}");
+                }
+                ProjectionElem::Index(_)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::OpaqueCast(_) => {
+                    never!("Not happen in closure capture");
+                    continue;
+                }
+            }
+        }
+        let final_derefs_count = self
+            .place
+            .projections
+            .iter()
+            .rev()
+            .take_while(|proj| matches!(proj, ProjectionElem::Deref))
+            .count();
+        result.insert_str(0, &"*".repeat(final_derefs_count));
+        result
     }
 
     pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
@@ -451,14 +548,6 @@ impl InferenceContext<'_> {
         });
     }
 
-    fn is_ref_span(&self, span: MirSpan) -> bool {
-        match span {
-            MirSpan::ExprId(expr) => matches!(self.body[expr], Expr::Ref { .. }),
-            MirSpan::BindingId(_) => true,
-            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
-        }
-    }
-
     fn truncate_capture_spans(&self, capture: &mut CapturedItemWithoutTy, mut truncate_to: usize) {
         // The first span is the identifier, and it must always remain.
         truncate_to += 1;
@@ -467,7 +556,7 @@ impl InferenceContext<'_> {
             let mut actual_truncate_to = 0;
             for &span in &*span_stack {
                 actual_truncate_to += 1;
-                if !self.is_ref_span(span) {
+                if !span.is_ref_span(self.body) {
                     remained -= 1;
                     if remained == 0 {
                         break;
@@ -475,7 +564,7 @@ impl InferenceContext<'_> {
                 }
             }
             if actual_truncate_to < span_stack.len()
-                && self.is_ref_span(span_stack[actual_truncate_to])
+                && span_stack[actual_truncate_to].is_ref_span(self.body)
             {
                 // Include the ref operator if there is one, we will fix it later (in `strip_captures_ref_span()`) if it's incorrect.
                 actual_truncate_to += 1;
@@ -1147,7 +1236,7 @@ impl InferenceContext<'_> {
         for capture in &mut captures {
             if matches!(capture.kind, CaptureKind::ByValue) {
                 for span_stack in &mut capture.span_stacks {
-                    if self.is_ref_span(span_stack[span_stack.len() - 1]) {
+                    if span_stack[span_stack.len() - 1].is_ref_span(self.body) {
                         span_stack.truncate(span_stack.len() - 1);
                     }
                 }

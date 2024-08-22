@@ -16,7 +16,8 @@ use base_db::CrateId;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
-    hir::{BindingId, Expr, ExprId, Ordering, PatId},
+    body::Body,
+    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
@@ -1172,6 +1173,20 @@ pub enum MirSpan {
     BindingId(BindingId),
     SelfParam,
     Unknown,
+}
+
+impl MirSpan {
+    pub fn is_ref_span(&self, body: &Body) -> bool {
+        match *self {
+            MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
+            // FIXME: Figure out if this is correct wrt. match ergonomics.
+            MirSpan::BindingId(binding) => matches!(
+                body.bindings[binding].mode,
+                BindingAnnotation::Ref | BindingAnnotation::RefMut
+            ),
+            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
+        }
+    }
 }
 
 impl_from!(ExprId, PatId for MirSpan);
