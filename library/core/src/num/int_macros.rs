@@ -1326,7 +1326,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
         /// ```
         #[unstable(feature = "unbounded_shifts", issue = "129375")]
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1454,7 +1454,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.unbounded_shr(129), -1);")]
         /// ```
         #[unstable(feature = "unbounded_shifts", issue = "129375")]
-        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
+        #[rustc_const_unstable(feature = "const_unbounded_shifts", issue = "129375")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
