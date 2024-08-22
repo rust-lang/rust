@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
@@ -145,8 +145,9 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
                 let old = mem::replace(&mut self.update_retained, false);
                 let ret = self.set_is_in_hidden_item_and_fold(true, i);
                 self.update_retained = old;
-                if ret.is_crate() {
-                    // We don't strip the crate, even if it has `#[doc(hidden)]`.
+                if ret.item_id == clean::ItemId::DefId(CRATE_DEF_ID.into()) {
+                    // We don't strip the current crate, even if it has `#[doc(hidden)]`.
+                    debug!("strip_hidden: Not strippping local crate");
                     Some(ret)
                 } else {
                     Some(strip_item(ret))
