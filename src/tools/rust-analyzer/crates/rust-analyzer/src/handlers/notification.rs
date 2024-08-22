@@ -15,6 +15,7 @@ use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
     config::{Config, ConfigChange},
+    flycheck::Target,
     global_state::{FetchWorkspaceRequest, GlobalState},
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
@@ -186,7 +187,7 @@ pub(crate) fn handle_did_save_text_document(
     } else if state.config.check_on_save() {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
-            flycheck.restart_workspace(None, None);
+            flycheck.restart_workspace(None);
         }
     }
     Ok(())
@@ -289,18 +290,25 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
             // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
-            let target_is_bin = TargetSpec::for_file(&world, file_id)?.and_then(|x| {
-                if x.target_kind() == project_model::TargetKind::Bin {
-                    return match x {
-                        TargetSpec::Cargo(c) => Some(c.target),
-                        TargetSpec::ProjectJson(p) => Some(p.label),
-                    };
-                }
+            let target = TargetSpec::for_file(&world, file_id)?.and_then(|x| {
+                let tgt_kind = x.target_kind();
+                let tgt_name = match x {
+                    TargetSpec::Cargo(c) => c.target,
+                    TargetSpec::ProjectJson(p) => p.label,
+                };
 
-                None
+                let tgt = match tgt_kind {
+                    project_model::TargetKind::Bin => Target::Bin(tgt_name),
+                    project_model::TargetKind::Example => Target::Example(tgt_name),
+                    project_model::TargetKind::Test => Target::Test(tgt_name),
+                    project_model::TargetKind::Bench => Target::Benchmark(tgt_name),
+                    _ => return None,
+                };
+
+                Some(tgt)
             });
 
-            let crate_ids = if target_is_bin.is_some() {
+            let crate_ids = if target.is_some() {
                 // Trigger flychecks for the only workspace which the binary crate belongs to
                 world.analysis.crates_for(file_id)?.into_iter().unique().collect::<Vec<_>>()
             } else {
@@ -364,12 +372,11 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 for (id, package) in workspace_ids.clone() {
                     if id == flycheck.id() {
                         updated = true;
-                        match package.filter(|_| !world.config.flycheck_workspace()) {
-                            Some(package) => {
-                                flycheck.restart_for_package(package, target_is_bin.clone())
-                            }
-                            None => flycheck
-                                .restart_workspace(saved_file.clone(), target_is_bin.clone()),
+                        match package
+                            .filter(|_| !world.config.flycheck_workspace() || target.is_some())
+                        {
+                            Some(package) => flycheck.restart_for_package(package, target.clone()),
+                            None => flycheck.restart_workspace(saved_file.clone()),
                         }
                         continue;
                     }
@@ -378,7 +385,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             // No specific flycheck was triggered, so let's trigger all of them.
             if !updated {
                 for flycheck in world.flycheck.iter() {
-                    flycheck.restart_workspace(saved_file.clone(), None);
+                    flycheck.restart_workspace(saved_file.clone());
                 }
             }
             Ok(())
@@ -420,7 +427,7 @@ pub(crate) fn handle_run_flycheck(
     }
     // No specific flycheck was triggered, so let's trigger all of them.
     for flycheck in state.flycheck.iter() {
-        flycheck.restart_workspace(None, None);
+        flycheck.restart_workspace(None);
     }
     Ok(())
 }
