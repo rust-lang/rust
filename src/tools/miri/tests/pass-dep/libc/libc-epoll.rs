@@ -1,8 +1,7 @@
 //@only-target-linux
 
-#![feature(exposed_provenance)] // Needed for fn test_pointer()
+#![feature(strict_provenance)]
 use std::convert::TryInto;
-use std::mem::MaybeUninit;
 
 fn main() {
     test_epoll_socketpair();
@@ -17,7 +16,6 @@ fn main() {
     test_no_notification_for_unregister_flag();
     test_epoll_ctl_mod();
     test_epoll_ctl_del();
-    test_pointer();
     test_two_same_fd_in_same_epoll_instance();
     test_epoll_wait_maxevent_zero();
     test_socketpair_epollerr();
@@ -259,24 +257,6 @@ fn test_epoll_eventfd() {
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = u64::try_from(fd).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
-}
-
-fn test_pointer() {
-    // Create an epoll instance.
-    let epfd = unsafe { libc::epoll_create1(0) };
-    assert_ne!(epfd, -1);
-
-    // Create a socketpair instance.
-    let mut fds = [-1, -1];
-    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
-    assert_eq!(res, 0);
-
-    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET
-    let data = MaybeUninit::<u64>::uninit().as_ptr();
-    let mut ev =
-        libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: data.expose_provenance() as u64 };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
-    assert_eq!(res, 0);
 }
 
 // When read/write happened on one side of the socketpair, only the other side will be notified.
@@ -543,9 +523,9 @@ fn test_epoll_wait_maxevent_zero() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
     assert_ne!(epfd, -1);
-    // It is ok to use uninitialised pointer here because it will error out before the
-    // pointer actually get accessed.
-    let array_ptr = MaybeUninit::<libc::epoll_event>::uninit().as_mut_ptr();
+    // It is ok to use a dangling pointer here because it will error out before the
+    // pointer actually gets accessed.
+    let array_ptr = std::ptr::without_provenance_mut::<libc::epoll_event>(0x100);
     let res = unsafe { libc::epoll_wait(epfd, array_ptr, 0, 0) };
     let e = std::io::Error::last_os_error();
     assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
