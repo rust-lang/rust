@@ -52,7 +52,6 @@ use crate::{
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
 
 pub enum DescendPreference {
-    SameKind,
     None,
 }
 
@@ -675,20 +674,9 @@ impl<'db> SemanticsImpl<'db> {
         token: SyntaxToken,
     ) -> SmallVec<[SyntaxToken; 1]> {
         enum Dp {
-            // SameText(&'t str),
-            SameKind(SyntaxKind),
             None,
         }
-        let fetch_kind = |token: &SyntaxToken| match token.parent() {
-            Some(node) => match node.kind() {
-                kind @ (SyntaxKind::NAME | SyntaxKind::NAME_REF) => kind,
-                _ => token.kind(),
-            },
-            None => token.kind(),
-        };
         let mode = match mode {
-            // DescendPreference::SameText => Dp::SameText(token.text()),
-            DescendPreference::SameKind => Dp::SameKind(fetch_kind(&token)),
             DescendPreference::None => Dp::None,
         };
         let mut res = smallvec![];
@@ -696,13 +684,6 @@ impl<'db> SemanticsImpl<'db> {
             token.clone(),
             &mut |InFile { value, .. }| {
                 let is_a_match = match mode {
-                    // Dp::SameText(text) => value.text() == text,
-                    Dp::SameKind(preferred_kind) => {
-                        let kind = fetch_kind(&value);
-                        kind == preferred_kind
-                        // special case for derive macros
-                        || (preferred_kind == SyntaxKind::IDENT && kind == SyntaxKind::NAME_REF)
-                    }
                     Dp::None => true,
                 };
                 if is_a_match {
@@ -733,7 +714,7 @@ impl<'db> SemanticsImpl<'db> {
         token: SyntaxToken,
         mut cb: impl FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
     ) -> Option<T> {
-        self.descend_into_macros_impl(token.clone(), &mut |t| cb(t))
+        self.descend_into_macros_impl(token.clone(), &mut cb)
     }
 
     /// Descends the token into expansions, returning the tokens that matches the input

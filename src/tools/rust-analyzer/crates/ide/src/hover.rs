@@ -186,7 +186,7 @@ fn hover_simple(
     });
     let descended = || descended.iter();
 
-    // FIXME: WE should not try these step by step, instead to accommodate for macros we should run
+    // TODO: WE should not try these step by step, instead to accommodate for macros we should run
     // all of these in "parallel" and rank their results
     let result = None
         // try lint hover
