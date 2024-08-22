@@ -754,29 +754,32 @@ impl Tree {
                 // list of remaining children back in.
                 let mut children_of_node =
                     mem::take(&mut self.nodes.get_mut(*tag).unwrap().children);
-                // Remove all useless children, and save them for later.
-                // The closure needs `&self` and the loop below needs `&mut self`, so we need to `collect`
-                // in to a temporary list.
-                let to_remove: Vec<_> =
-                    children_of_node.drain_filter(|x| self.is_useless(*x, live)).collect();
+                // Remove all useless children.
+                children_of_node.retain_mut(|idx| {
+                    if self.is_useless(*idx, live) {
+                        // Note: In the rest of this comment, "this node" refers to `idx`.
+                        // This node has no more children (if there were any, they have already been removed).
+                        // It is also unreachable as determined by the GC, so we can remove it everywhere.
+                        // Due to the API of UniMap we must make sure to call
+                        // `UniValMap::remove` for the key of this node on *all* maps that used it
+                        // (which are `self.nodes` and every range of `self.rperms`)
+                        // before we can safely apply `UniKeyMap::remove` to truly remove
+                        // this tag from the `tag_mapping`.
+                        let node = self.nodes.remove(*idx).unwrap();
+                        for (_perms_range, perms) in self.rperms.iter_mut_all() {
+                            perms.remove(*idx);
+                        }
+                        self.tag_mapping.remove(&node.tag);
+                        // now delete it
+                        false
+                    } else {
+                        // do nothing, but retain
+                        true
+                    }
+                });
                 // Put back the now-filtered vector.
                 self.nodes.get_mut(*tag).unwrap().children = children_of_node;
-                // Now, all that is left is unregistering the children saved in `to_remove`.
-                for idx in to_remove {
-                    // Note: In the rest of this comment, "this node" refers to `idx`.
-                    // This node has no more children (if there were any, they have already been removed).
-                    // It is also unreachable as determined by the GC, so we can remove it everywhere.
-                    // Due to the API of UniMap we must make sure to call
-                    // `UniValMap::remove` for the key of this node on *all* maps that used it
-                    // (which are `self.nodes` and every range of `self.rperms`)
-                    // before we can safely apply `UniKeyMap::remove` to truly remove
-                    // this tag from the `tag_mapping`.
-                    let node = self.nodes.remove(idx).unwrap();
-                    for (_perms_range, perms) in self.rperms.iter_mut_all() {
-                        perms.remove(idx);
-                    }
-                    self.tag_mapping.remove(&node.tag);
-                }
+
                 // We are done, the parent can continue.
                 stack.pop();
                 continue;
