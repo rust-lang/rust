@@ -482,20 +482,20 @@ macro_rules! intrinsics {
 #[cfg(all(any(windows, target_os = "uefi"), target_pointer_width = "64"))]
 pub mod win64_128bit_abi_hack {
     #[repr(simd)]
-    pub struct U64x2(u64, u64);
+    pub struct U64x2([u64; 2]);
 
     impl From<i128> for U64x2 {
         fn from(i: i128) -> U64x2 {
             use crate::int::DInt;
             let j = i as u128;
-            U64x2(j.lo(), j.hi())
+            U64x2([j.lo(), j.hi()])
         }
     }
 
     impl From<u128> for U64x2 {
         fn from(i: u128) -> U64x2 {
             use crate::int::DInt;
-            U64x2(i.lo(), i.hi())
+            U64x2([i.lo(), i.hi()])
         }
     }
 }
