@@ -1204,14 +1204,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         )?;
                     }
                     "freebsd" => {
-                        this.write_int(ino, &this.project_field_named(&entry_place, "d_fileno")?)?;
-                        // `d_off` only exists on FreeBSD 12+, but we support v11 as well.
-                        // `libc` uses a build script to determine which version of the API to use,
-                        // and cross-builds always end up using v11.
-                        // To support both v11 and v12+, we dynamically check whether the field exists.
-                        if this.projectable_has_field(&entry_place, "d_off") {
-                            this.write_int(0, &this.project_field_named(&entry_place, "d_off")?)?;
-                        }
+                        #[rustfmt::skip]
+                        this.write_int_fields_named(
+                            &[
+                                ("d_fileno", ino.into()),
+                                ("d_off", 0),
+                            ],
+                            &entry_place,
+                        )?;
                     }
                     _ => unreachable!(),
                 }
