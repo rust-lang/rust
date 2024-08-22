@@ -35,10 +35,6 @@ macro_rules! mutability_dependent {
         ) -> Self::Result {
             walk_use_tree(self, use_tree, id)
         }
-        // TODO: hard because of different lifetime bounds
-        fn visit_fn(&mut self, fk: FnKind<'ast>, _: Span, _: NodeId) -> Self::Result {
-            walk_fn(self, fk)
-        }
     };
     (mut $($lf: lifetime)?) => {
         /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
@@ -97,11 +93,6 @@ macro_rules! mutability_dependent {
 
         fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
             walk_flat_map_item(self, i)
-        }
-
-        /// `Span` and `NodeId` are mutated at the caller site.
-        fn visit_fn(&mut self, fk: FnKind<'_>, _: Span, _: NodeId) {
-            walk_fn(self, fk)
         }
 
         fn flat_map_assoc_item(
@@ -211,10 +202,24 @@ macro_rules! mutability_helpers {
     };
 }
 
+macro_rules! lifetime_helpers {
+    () => {
+        macro_rules! fn_kind {
+            () => { FnKind<'_> }
+        }
+    };
+    ($lt: lifetime) => {
+        macro_rules! fn_kind {
+            () => { FnKind<$lt> }
+        }
+    };
+}
+
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
 
         mutability_helpers!($($mut)?);
+        lifetime_helpers!($($lt)?);
 
         macro_rules! result {
             () => { result!(Self) };
@@ -322,6 +327,11 @@ macro_rules! make_ast_visitor {
             make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
             make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
             make_visit!{P!(Ty), visit_ty, walk_ty, flat_map_ty, walk_flat_map_ty}
+
+            /// `MutVisitor`: `Span` and `NodeId` are mutated at the caller site.
+            fn visit_fn(&mut self, fk: fn_kind!(), _: Span, _: NodeId) -> result!(){
+                walk_fn(self, fk)
+            }
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
                 walk_param_bound(self, tpb)
