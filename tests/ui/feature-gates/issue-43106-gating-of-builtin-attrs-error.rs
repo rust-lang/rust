@@ -164,4 +164,28 @@ mod repr {
     //~| NOTE not a struct, enum, or union
 }
 
+
+#[repr(Rust)]
+//~^ ERROR: attribute should be applied to a struct, enum, or union
+mod repr_rust {
+//~^ NOTE not a struct, enum, or union
+    mod inner { #![repr(Rust)] }
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+
+    #[repr(Rust)] fn f() { }
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+
+    struct S;
+
+    #[repr(Rust)] type T = S;
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+
+    #[repr(Rust)] impl S { }
+    //~^ ERROR: attribute should be applied to a struct, enum, or union
+    //~| NOTE not a struct, enum, or union
+}
+
 fn main() {}
