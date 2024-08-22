@@ -239,29 +239,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Any expression that produces a value of type `!` must have diverged,
         // unless it's the place of a raw ref expr, or a scrutinee of a match.
-        if ty.is_never() {
-            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _)) {
-                match self.tcx.parent_hir_node(expr.hir_id) {
-                    hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::AddrOf(hir::BorrowKind::Raw, ..),
-                        ..
-                    }) => {}
-                    hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::Let(hir::LetExpr { init: target, .. }),
-                        ..
-                    })
-                    | hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::Match(target, _, _), ..
-                    })
-                    | hir::Node::LetStmt(hir::LetStmt { init: Some(target), .. })
-                        if expr.hir_id == target.hir_id => {}
-                    _ => {
-                        self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
-                    }
-                }
-            } else {
-                self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
-            }
+        if ty.is_never() && self.expr_is_rvalue_for_divergence(expr) {
+            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
         }
 
         // Record the type, which applies it effects.
@@ -276,6 +255,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("... {:?}, expected is {:?}", ty, expected);
 
         ty
+    }
+
+    // FIXME: built-in indexing should be supported here.
+    /// THIS IS SUBTLE BUT I DONT WANT TO EXPLAIN IT YET.
+    pub(super) fn expr_is_rvalue_for_divergence(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
+        match expr.kind {
+            ExprKind::Path(QPath::Resolved(
+                _,
+                hir::Path {
+                    res: Res::Local(..) | Res::Def(DefKind::Static { .. }, _) | Res::Err,
+                    ..
+                },
+            ))
+            | ExprKind::Unary(hir::UnOp::Deref, _)
+            | ExprKind::Field(..)
+            | ExprKind::Index(..) => {
+                // All places.
+            }
+
+            _ => return true,
+        }
+
+        // If this expression has any adjustments, they may constitute reads.
+        if !self.typeck_results.borrow().expr_adjustments(expr).is_empty() {
+            return true;
+        }
+
+        fn pat_does_read(pat: &hir::Pat<'_>) -> bool {
+            let mut does_read = false;
+            pat.walk(|pat| {
+                if matches!(
+                    pat.kind,
+                    hir::PatKind::Wild | hir::PatKind::Never | hir::PatKind::Or(_)
+                ) {
+                    true
+                } else {
+                    does_read = true;
+                    false
+                }
+            });
+            does_read
+        }
+
+        match self.tcx.parent_hir_node(expr.hir_id) {
+            hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::AddrOf(hir::BorrowKind::Raw, ..),
+                ..
+            }) => false,
+            hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Assign(target, _, _) | hir::ExprKind::Field(target, _),
+                ..
+            }) if expr.hir_id == target.hir_id => false,
+            hir::Node::LetStmt(hir::LetStmt { init: Some(target), pat, .. })
+            | hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Let(hir::LetExpr { init: target, pat, .. }),
+                ..
+            }) if expr.hir_id == target.hir_id && !pat_does_read(*pat) => false,
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Match(target, arms, _), .. })
+                if expr.hir_id == target.hir_id
+                    && !arms.iter().any(|arm| pat_does_read(arm.pat)) =>
+            {
+                false
+            }
+            _ => true,
+        }
     }
 
     #[instrument(skip(self, expr), level = "debug")]
