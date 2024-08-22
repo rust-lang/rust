@@ -189,10 +189,10 @@ pub(crate) fn handle_did_save_text_document(
             }
         }
 
-        if !state.config.check_on_save() || run_flycheck(state, vfs_path) {
+        if !state.config.check_on_save(Some(sr)) || run_flycheck(state, vfs_path) {
             return Ok(());
         }
-    } else if state.config.check_on_save() {
+    } else if state.config.check_on_save(None) {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
             flycheck.restart_workspace(None);

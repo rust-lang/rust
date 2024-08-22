@@ -76,8 +76,6 @@ config_data! {
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
-        /// Run the check command for diagnostics on save.
-        checkOnSave | checkOnSave_enable: bool                         = true,
 
         /// Check all targets and tests (`--all-targets`). Defaults to
         /// `#rust-analyzer.cargo.allTargets#`.
@@ -350,7 +348,7 @@ config_data! {
     workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
 
 
-/// Pass `--all-targets` to cargo invocation.
+        /// Pass `--all-targets` to cargo invocation.
         cargo_allTargets: bool           = true,
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` or `.cargo/config.toml` changes.
@@ -430,6 +428,9 @@ config_data! {
         /// Set to `true` to use a subdirectory of the existing target directory or
         /// set to a path relative to the workspace to use that path.
         cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
+
+        /// Run the check command for diagnostics on save.
+        checkOnSave | checkOnSave_enable: bool                         = true,
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = vec![],
@@ -1960,8 +1961,8 @@ impl Config {
         })
     }
 
-    pub fn check_on_save(&self) -> bool {
-        *self.checkOnSave()
+    pub fn check_on_save(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.checkOnSave(source_root)
     }
 
     pub fn script_rebuild_on_save(&self, source_root: Option<SourceRootId>) -> bool {
