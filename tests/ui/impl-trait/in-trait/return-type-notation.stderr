@@ -1,0 +1,27 @@
+error[E0391]: cycle detected when resolving lifetimes for `IntFactory::stream`
+  --> $DIR/return-type-notation.rs:5:5
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): IntFactory<stream(..): Send> + Send>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing function signature of `IntFactory::stream`...
+  --> $DIR/return-type-notation.rs:5:5
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): IntFactory<stream(..): Send> + Send>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires looking up late bound vars inside `IntFactory::stream`...
+  --> $DIR/return-type-notation.rs:5:5
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): IntFactory<stream(..): Send> + Send>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires resolving lifetimes for `IntFactory::stream`, completing the cycle
+note: cycle used when listing captured lifetimes for opaque `IntFactory::stream::{opaque#0}`
+  --> $DIR/return-type-notation.rs:5:25
+   |
+LL |     fn stream(&self) -> impl IntFactory<stream(..): IntFactory<stream(..): Send> + Send>;
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.
