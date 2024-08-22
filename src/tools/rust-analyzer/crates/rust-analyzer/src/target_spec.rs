@@ -113,7 +113,7 @@ impl CargoTargetSpec {
         kind: &RunnableKind,
         cfg: &Option<CfgExpr>,
     ) -> (Vec<String>, Vec<String>) {
-        let config = snap.config.runnables();
+        let config = snap.config.runnables(None);
         let extra_test_binary_args = config.extra_test_binary_args;
 
         let mut cargo_args = Vec::new();

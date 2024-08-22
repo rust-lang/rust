@@ -1365,8 +1365,9 @@ pub(crate) fn runnable(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
 ) -> Cancellable<Option<lsp_ext::Runnable>> {
-    let config = snap.config.runnables();
     let target_spec = TargetSpec::for_file(snap, runnable.nav.file_id)?;
+    let source_root = snap.analysis.source_root_id(runnable.nav.file_id).ok();
+    let config = snap.config.runnables(source_root);
 
     match target_spec {
         Some(TargetSpec::Cargo(spec)) => {
