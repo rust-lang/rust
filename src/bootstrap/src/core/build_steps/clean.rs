@@ -6,7 +6,6 @@
 //! directory unless the `--all` flag is present.
 
 use std::fs;
-use std::io::{self, ErrorKind};
 use std::path::Path;
 
 use crate::core::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
@@ -101,11 +100,11 @@ fn clean(build: &Build, all: bool, stage: Option<u32>) {
         return;
     }
 
-    rm_rf("tmp".as_ref());
+    remove_dir_recursive("tmp");
 
     // Clean the entire build directory
     if all {
-        rm_rf(&build.out);
+        remove_dir_recursive(&build.out);
         return;
     }
 
@@ -136,17 +135,17 @@ fn clean_specific_stage(build: &Build, stage: u32) {
             }
 
             let path = t!(entry.path().canonicalize());
-            rm_rf(&path);
+            remove_dir_recursive(&path);
         }
     }
 }
 
 fn clean_default(build: &Build) {
-    rm_rf(&build.out.join("tmp"));
-    rm_rf(&build.out.join("dist"));
-    rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
-    rm_rf(&build.out.join("bootstrap-shims-dump"));
-    rm_rf(&build.out.join("rustfmt.stamp"));
+    remove_dir_recursive(build.out.join("tmp"));
+    remove_dir_recursive(build.out.join("dist"));
+    remove_dir_recursive(build.out.join("bootstrap").join(".last-warned-change-id"));
+    remove_dir_recursive(build.out.join("bootstrap-shims-dump"));
+    remove_dir_recursive(build.out.join("rustfmt.stamp"));
 
     let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
@@ -166,78 +165,16 @@ fn clean_default(build: &Build) {
                 continue;
             }
             let path = t!(entry.path().canonicalize());
-            rm_rf(&path);
+            remove_dir_recursive(&path);
         }
     }
 }
 
-fn rm_rf(path: &Path) {
-    match path.symlink_metadata() {
-        Err(e) => {
-            if e.kind() == ErrorKind::NotFound {
-                return;
-            }
-            panic!("failed to get metadata for file {}: {}", path.display(), e);
-        }
-        Ok(metadata) => {
-            if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
-                do_op(path, "remove file", |p| match fs::remove_file(p) {
-                    #[cfg(windows)]
-                    Err(e)
-                        if e.kind() == std::io::ErrorKind::PermissionDenied
-                            && p.file_name().and_then(std::ffi::OsStr::to_str)
-                                == Some("bootstrap.exe") =>
-                    {
-                        eprintln!("WARNING: failed to delete '{}'.", p.display());
-                        Ok(())
-                    }
-                    r => r,
-                });
-
-                return;
-            }
-
-            for file in t!(fs::read_dir(path)) {
-                rm_rf(&t!(file).path());
-            }
-
-            do_op(path, "remove dir", |p| match fs::remove_dir(p) {
-                // Check for dir not empty on Windows
-                // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
-                // match on `e.kind()` instead.
-                #[cfg(windows)]
-                Err(e) if e.raw_os_error() == Some(145) => Ok(()),
-                r => r,
-            });
-        }
-    };
-}
-
-fn do_op<F>(path: &Path, desc: &str, mut f: F)
-where
-    F: FnMut(&Path) -> io::Result<()>,
-{
-    match f(path) {
-        Ok(()) => {}
-        // On windows we can't remove a readonly file, and git will often clone files as readonly.
-        // As a result, we have some special logic to remove readonly files on windows.
-        // This is also the reason that we can't use things like fs::remove_dir_all().
-        #[cfg(windows)]
-        Err(ref e) if e.kind() == ErrorKind::PermissionDenied => {
-            let m = t!(path.symlink_metadata());
-            let mut p = m.permissions();
-            p.set_readonly(false);
-            t!(fs::set_permissions(path, p));
-            f(path).unwrap_or_else(|e| {
-                // Delete symlinked directories on Windows
-                if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
-                    return;
-                }
-                panic!("failed to {} {}: {}", desc, path.display(), e);
-            });
-        }
-        Err(e) => {
-            panic!("failed to {} {}: {}", desc, path.display(), e);
-        }
+/// Wrapper for [`std::fs::remove_dir_all`] that panics on failure and prints the `path` we failed
+/// on.
+fn remove_dir_recursive<P: AsRef<Path>>(path: P) {
+    let path = path.as_ref();
+    if let Err(e) = fs::remove_dir_all(path) {
+        panic!("failed to `remove_dir_all` at `{}`: {e}", path.display());
     }
 }
