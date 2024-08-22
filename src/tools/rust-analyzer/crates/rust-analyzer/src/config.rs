@@ -77,28 +77,6 @@ config_data! {
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
 
-        /// List of rust-analyzer diagnostics to disable.
-        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
-        /// Whether to show native rust-analyzer diagnostics.
-        diagnostics_enable: bool                = true,
-        /// Whether to show experimental rust-analyzer diagnostics that might
-        /// have more false positives than usual.
-        diagnostics_experimental_enable: bool    = false,
-        /// Map of prefixes to be substituted when parsing diagnostic file paths.
-        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
-        diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
-        /// Whether to run additional style lints.
-        diagnostics_styleLints_enable: bool =    false,
-        /// List of warnings that should be displayed with hint severity.
-        ///
-        /// The warnings will be indicated by faded text or three dots in code
-        /// and will not show up in the `Problems Panel`.
-        diagnostics_warningsAsHint: Vec<String> = vec![],
-        /// List of warnings that should be displayed with info severity.
-        ///
-        /// The warnings will be indicated by a blue squiggly underline in code
-        /// and a blue icon in the `Problems Panel`.
-        diagnostics_warningsAsInfo: Vec<String> = vec![],
 
         /// These directories will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
@@ -230,6 +208,29 @@ config_data! {
         assist_termSearch_borrowcheck: bool = true,
         /// Term search fuel in "units of work" for assists (Defaults to 1800).
         assist_termSearch_fuel: usize = 1800,
+
+        /// List of rust-analyzer diagnostics to disable.
+        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
+        /// Whether to show native rust-analyzer diagnostics.
+        diagnostics_enable: bool                = true,
+        /// Whether to show experimental rust-analyzer diagnostics that might
+        /// have more false positives than usual.
+        diagnostics_experimental_enable: bool    = false,
+        /// Map of prefixes to be substituted when parsing diagnostic file paths.
+        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+        diagnostics_remapPrefix: FxHashMap<String, String> = FxHashMap::default(),
+        /// Whether to run additional style lints.
+        diagnostics_styleLints_enable: bool =    false,
+        /// List of warnings that should be displayed with hint severity.
+        ///
+        /// The warnings will be indicated by faded text or three dots in code
+        /// and will not show up in the `Problems Panel`.
+        diagnostics_warningsAsHint: Vec<String> = vec![],
+        /// List of warnings that should be displayed with info severity.
+        ///
+        /// The warnings will be indicated by a blue squiggly underline in code
+        /// and a blue icon in the `Problems Panel`.
+        diagnostics_warningsAsInfo: Vec<String> = vec![],
 
         /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
         imports_granularity_enforce: bool              = false,
@@ -1447,11 +1448,11 @@ impl Config {
 
     pub fn diagnostics(&self, source_root: Option<SourceRootId>) -> DiagnosticsConfig {
         DiagnosticsConfig {
-            enabled: *self.diagnostics_enable(),
+            enabled: *self.diagnostics_enable(source_root),
             proc_attr_macros_enabled: self.expand_proc_attr_macros(),
             proc_macros_enabled: *self.procMacro_enable(),
-            disable_experimental: !self.diagnostics_experimental_enable(),
-            disabled: self.diagnostics_disabled().clone(),
+            disable_experimental: !self.diagnostics_experimental_enable(source_root),
+            disabled: self.diagnostics_disabled(source_root).clone(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
@@ -1461,7 +1462,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
-            style_lints: self.diagnostics_styleLints_enable().to_owned(),
+            style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
@@ -1719,15 +1720,15 @@ impl Config {
         self.cachePriming_enable().to_owned()
     }
 
-    pub fn publish_diagnostics(&self) -> bool {
-        self.diagnostics_enable().to_owned()
+    pub fn publish_diagnostics(&self, source_root: Option<SourceRootId>) -> bool {
+        self.diagnostics_enable(source_root).to_owned()
     }
 
     pub fn diagnostics_map(&self, source_root: Option<SourceRootId>) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
-            remap_prefix: self.diagnostics_remapPrefix().clone(),
-            warnings_as_info: self.diagnostics_warningsAsInfo().clone(),
-            warnings_as_hint: self.diagnostics_warningsAsHint().clone(),
+            remap_prefix: self.diagnostics_remapPrefix(source_root).clone(),
+            warnings_as_info: self.diagnostics_warningsAsInfo(source_root).clone(),
+            warnings_as_hint: self.diagnostics_warningsAsHint(source_root).clone(),
             check_ignore: self.check_ignore(source_root).clone(),
         }
     }

@@ -434,7 +434,7 @@ impl GlobalState {
 
             let project_or_mem_docs_changed =
                 became_quiescent || state_changed || memdocs_added_or_removed;
-            if project_or_mem_docs_changed && self.config.publish_diagnostics() {
+            if project_or_mem_docs_changed && self.config.publish_diagnostics(None) {
                 self.update_diagnostics();
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
