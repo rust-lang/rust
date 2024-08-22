@@ -1393,6 +1393,7 @@ function initSearch(rawSearchIndex) {
          */
         async function sortResults(results, isType, preferredCrate) {
             const userQuery = parsedQuery.userQuery;
+            const casedUserQuery = parsedQuery.original;
             const result_list = [];
             for (const result of results.values()) {
                 result.item = searchIndex[result.id];
@@ -1402,6 +1403,13 @@ function initSearch(rawSearchIndex) {
 
             result_list.sort((aaa, bbb) => {
                 let a, b;
+
+                // sort by exact case-sensitive match
+                a = (aaa.item.name !== casedUserQuery);
+                b = (bbb.item.name !== casedUserQuery);
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by exact match with regard to the last word (mismatch goes later)
                 a = (aaa.word !== userQuery);
