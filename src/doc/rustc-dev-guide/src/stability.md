@@ -49,11 +49,11 @@ marks an item as stabilized. Note that stable functions may use unstable things 
 
 ## rustc_const_unstable
 
-The `#[rustc_const_unstable(feature = "foo", issue = "1234", reason = "lorem ipsum")]`
-has the same interface as the `unstable` attribute. It is used to mark
-`const fn` as having their constness be unstable. This allows you to make a
-function stable without stabilizing its constness or even just marking an existing
-stable function as `const fn` without instantly stabilizing the `const fn`ness.
+The `#[rustc_const_unstable(feature = "foo", issue = "1234", reason = "lorem
+ipsum")]` has the same interface as the `unstable` attribute. It is used to mark
+`const fn` as having their constness be unstable. Every `const fn` with
+stability attributes should carry either this attribute or
+`#[rustc_const_stable]` (see below).
 
 Furthermore this attribute is needed to mark an intrinsic as `const fn`, because
 there's no way to add `const` to functions in `extern` blocks for now.
