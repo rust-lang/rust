@@ -100,7 +100,7 @@ impl GlobalState {
         {
             let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
             self.fetch_workspaces_queue.request_op("discovered projects changed".to_owned(), req)
-        } else if self.config.flycheck() != old_config.flycheck() {
+        } else if self.config.flycheck(None) != old_config.flycheck(None) {
             self.reload_flycheck();
         }
 
@@ -122,7 +122,7 @@ impl GlobalState {
         };
         let mut message = String::new();
 
-        if !self.config.cargo_autoreload()
+        if !self.config.cargo_autoreload(None)
             && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
             && self.config.discover_workspace_config().is_none()
@@ -264,7 +264,7 @@ impl GlobalState {
                 .map(ManifestPath::try_from)
                 .filter_map(Result::ok)
                 .collect();
-            let cargo_config = self.config.cargo();
+            let cargo_config = self.config.cargo(None);
             let discover_command = self.config.discover_workspace_config().cloned();
             let is_quiescent = !(self.discover_workspace_queue.op_in_progress()
                 || self.vfs_progress_config_version < self.vfs_config_version
@@ -357,7 +357,7 @@ impl GlobalState {
     pub(crate) fn fetch_build_data(&mut self, cause: Cause) {
         info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
-        let config = self.config.cargo();
+        let config = self.config.cargo(None);
         let root_path = self.config.root_path().clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
@@ -507,7 +507,7 @@ impl GlobalState {
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
 
-            if self.config.run_build_scripts() {
+            if self.config.run_build_scripts(None) {
                 self.build_deps_changed = false;
                 self.fetch_build_data_queue.request_op("workspace updated".to_owned(), ());
             }
@@ -627,7 +627,7 @@ impl GlobalState {
                         ..
                     } => cargo_config_extra_env
                         .iter()
-                        .chain(self.config.extra_env())
+                        .chain(self.config.extra_env(None))
                         .map(|(a, b)| (a.clone(), b.clone()))
                         .chain(
                             ws.sysroot
@@ -702,7 +702,7 @@ impl GlobalState {
                 vfs.file_id(&vfs_path)
             };
 
-            ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
+            ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
         };
         let mut change = ChangeWithProcMacros::new();
         if self.config.expand_proc_macros() {
@@ -791,7 +791,7 @@ impl GlobalState {
 
     fn reload_flycheck(&mut self) {
         let _p = tracing::info_span!("GlobalState::reload_flycheck").entered();
-        let config = self.config.flycheck();
+        let config = self.config.flycheck(None);
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {
             FlycheckConfig::CargoCommand { .. } => {

@@ -168,7 +168,7 @@ impl CargoTargetSpec {
             (Default::default(), Default::default())
         };
 
-        let cargo_config = snap.config.cargo();
+        let cargo_config = snap.config.cargo(None);
 
         match &cargo_config.features {
             CargoFeatures::All => {

@@ -145,14 +145,21 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
-    if state.config.script_rebuild_on_save() && state.build_deps_changed {
-        state.build_deps_changed = false;
-        state
-            .fetch_build_data_queue
-            .request_op("build_deps_changed - save notification".to_owned(), ());
-    }
+    let mut deps_change_processed = false;
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
+        let snap = state.snapshot();
+        let file_id = snap.vfs_path_to_file_id(&vfs_path)?;
+        let sr = snap.analysis.source_root_id(file_id)?;
+        deps_change_processed = true;
+
+        if state.config.script_rebuild_on_save(Some(sr)) && state.build_deps_changed {
+            state.build_deps_changed = false;
+            state
+                .fetch_build_data_queue
+                .request_op("build_deps_changed - save notification".to_owned(), ());
+        }
+
         // Re-fetch workspaces if a workspace related file has changed
         if let Some(path) = vfs_path.as_path() {
             let additional_files = &state
@@ -191,6 +198,17 @@ pub(crate) fn handle_did_save_text_document(
             flycheck.restart_workspace(None);
         }
     }
+
+    if !deps_change_processed
+        && state.config.script_rebuild_on_save(None)
+        && state.build_deps_changed
+    {
+        state.build_deps_changed = false;
+        state
+            .fetch_build_data_queue
+            .request_op("build_deps_changed - save notification".to_owned(), ());
+    }
+
     Ok(())
 }
 

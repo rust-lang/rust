@@ -455,7 +455,7 @@ impl GlobalState {
             }
         }
 
-        if self.config.cargo_autoreload_config()
+        if self.config.cargo_autoreload_config(None)
             || self.config.discover_workspace_config().is_some()
         {
             if let Some((cause, FetchWorkspaceRequest { path, force_crate_graph_reload })) =
@@ -973,9 +973,9 @@ impl GlobalState {
                 // When we're running multiple flychecks, we have to include a disambiguator in
                 // the title, or the editor complains. Note that this is a user-facing string.
                 let title = if self.flycheck.len() == 1 {
-                    format!("{}", self.config.flycheck())
+                    format!("{}", self.config.flycheck(None))
                 } else {
-                    format!("{} (#{})", self.config.flycheck(), id + 1)
+                    format!("{} (#{})", self.config.flycheck(None), id + 1)
                 };
                 self.report_progress(
                     &title,

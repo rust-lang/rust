@@ -76,87 +76,6 @@ config_data! {
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
-        /// Pass `--all-targets` to cargo invocation.
-        cargo_allTargets: bool           = true,
-        /// Automatically refresh project info via `cargo metadata` on
-        /// `Cargo.toml` or `.cargo/config.toml` changes.
-        pub(crate) cargo_autoreload: bool           = true,
-        /// Run build scripts (`build.rs`) for more precise code analysis.
-        cargo_buildScripts_enable: bool  = true,
-        /// Specifies the invocation strategy to use when running the build scripts command.
-        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
-        /// workspace as the working directory.
-        /// If `once` is set, the command will be executed once with the opened project as the
-        /// working directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
-        /// Override the command rust-analyzer uses to run build scripts and
-        /// build procedural macros. The command is required to output json
-        /// and should therefore include `--message-format=json` or a similar
-        /// option.
-        ///
-        /// If there are multiple linked projects/workspaces, this command is invoked for
-        /// each of them, with the working directory being the workspace root
-        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
-        ///
-        /// By default, a cargo invocation will be constructed for the configured
-        /// targets and features, with the following base command line:
-        ///
-        /// ```bash
-        /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
-        /// ```
-        /// .
-        cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
-        /// Rerun proc-macros building/build-scripts running when proc-macro
-        /// or build-script sources change and are saved.
-        cargo_buildScripts_rebuildOnSave: bool = true,
-        /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
-        /// avoid checking unnecessary things.
-        cargo_buildScripts_useRustcWrapper: bool = true,
-        /// List of cfg options to enable with the given values.
-        cargo_cfgs: FxHashMap<String, Option<String>> = {
-            let mut m = FxHashMap::default();
-            m.insert("debug_assertions".to_owned(), None);
-            m.insert("miri".to_owned(), None);
-            m
-        },
-        /// Extra arguments that are passed to every cargo invocation.
-        cargo_extraArgs: Vec<String> = vec![],
-        /// Extra environment variables that will be set when running cargo, rustc
-        /// or other commands within the workspace. Useful for setting RUSTFLAGS.
-        cargo_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
-        /// List of features to activate.
-        ///
-        /// Set this to `"all"` to pass `--all-features` to cargo.
-        cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
-        /// Whether to pass `--no-default-features` to cargo.
-        cargo_noDefaultFeatures: bool    = false,
-        /// Relative path to the sysroot, or "discover" to try to automatically find it via
-        /// "rustc --print sysroot".
-        ///
-        /// Unsetting this disables sysroot loading.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        cargo_sysroot: Option<String>    = Some("discover".to_owned()),
-        /// Relative path to the sysroot library sources. If left unset, this will default to
-        /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        cargo_sysrootSrc: Option<String>    = None,
-        /// Compilation target override (target triple).
-        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
-        // than `checkOnSave_target`
-        cargo_target: Option<String>     = None,
-        /// Optional path to a rust-analyzer specific target directory.
-        /// This prevents rust-analyzer's `cargo check` and initial build-script and proc-macro
-        /// building from locking the `Cargo.lock` at the expense of duplicating build artifacts.
-        ///
-        /// Set to `true` to use a subdirectory of the existing target directory or
-        /// set to a path relative to the workspace to use that path.
-        cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
-
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = true,
 
@@ -429,6 +348,88 @@ config_data! {
 
 config_data! {
     workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
+
+
+/// Pass `--all-targets` to cargo invocation.
+        cargo_allTargets: bool           = true,
+        /// Automatically refresh project info via `cargo metadata` on
+        /// `Cargo.toml` or `.cargo/config.toml` changes.
+        pub(crate) cargo_autoreload: bool           = true,
+        /// Run build scripts (`build.rs`) for more precise code analysis.
+        cargo_buildScripts_enable: bool  = true,
+        /// Specifies the invocation strategy to use when running the build scripts command.
+        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
+        /// workspace as the working directory.
+        /// If `once` is set, the command will be executed once with the opened project as the
+        /// working directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
+        /// Override the command rust-analyzer uses to run build scripts and
+        /// build procedural macros. The command is required to output json
+        /// and should therefore include `--message-format=json` or a similar
+        /// option.
+        ///
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
+        ///
+        /// By default, a cargo invocation will be constructed for the configured
+        /// targets and features, with the following base command line:
+        ///
+        /// ```bash
+        /// cargo check --quiet --workspace --message-format=json --all-targets --keep-going
+        /// ```
+        /// .
+        cargo_buildScripts_overrideCommand: Option<Vec<String>> = None,
+        /// Rerun proc-macros building/build-scripts running when proc-macro
+        /// or build-script sources change and are saved.
+        cargo_buildScripts_rebuildOnSave: bool = true,
+        /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
+        /// avoid checking unnecessary things.
+        cargo_buildScripts_useRustcWrapper: bool = true,
+        /// List of cfg options to enable with the given values.
+        cargo_cfgs: FxHashMap<String, Option<String>> = {
+            let mut m = FxHashMap::default();
+            m.insert("debug_assertions".to_owned(), None);
+            m.insert("miri".to_owned(), None);
+            m
+        },
+        /// Extra arguments that are passed to every cargo invocation.
+        cargo_extraArgs: Vec<String> = vec![],
+        /// Extra environment variables that will be set when running cargo, rustc
+        /// or other commands within the workspace. Useful for setting RUSTFLAGS.
+        cargo_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
+        /// List of features to activate.
+        ///
+        /// Set this to `"all"` to pass `--all-features` to cargo.
+        cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
+        /// Whether to pass `--no-default-features` to cargo.
+        cargo_noDefaultFeatures: bool    = false,
+        /// Relative path to the sysroot, or "discover" to try to automatically find it via
+        /// "rustc --print sysroot".
+        ///
+        /// Unsetting this disables sysroot loading.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysroot: Option<String>    = Some("discover".to_owned()),
+        /// Relative path to the sysroot library sources. If left unset, this will default to
+        /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysrootSrc: Option<String>    = None,
+        /// Compilation target override (target triple).
+        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
+        // than `checkOnSave_target`
+        cargo_target: Option<String>     = None,
+        /// Optional path to a rust-analyzer specific target directory.
+        /// This prevents rust-analyzer's `cargo check` and initial build-script and proc-macro
+        /// building from locking the `Cargo.lock` at the expense of duplicating build artifacts.
+        ///
+        /// Set to `true` to use a subdirectory of the existing target directory or
+        /// set to a path relative to the workspace to use that path.
+        cargo_targetDir | rust_analyzerTargetDir: Option<TargetDirectory> = None,
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = vec![],
@@ -1728,22 +1729,22 @@ impl Config {
         }
     }
 
-    pub fn extra_args(&self) -> &Vec<String> {
-        self.cargo_extraArgs()
+    pub fn extra_args(&self, source_root: Option<SourceRootId>) -> &Vec<String> {
+        self.cargo_extraArgs(source_root)
     }
 
-    pub fn extra_env(&self) -> &FxHashMap<String, String> {
-        self.cargo_extraEnv()
+    pub fn extra_env(&self, source_root: Option<SourceRootId>) -> &FxHashMap<String, String> {
+        self.cargo_extraEnv(source_root)
     }
 
-    pub fn check_extra_args(&self) -> Vec<String> {
-        let mut extra_args = self.extra_args().clone();
+    pub fn check_extra_args(&self, source_root: Option<SourceRootId>) -> Vec<String> {
+        let mut extra_args = self.extra_args(source_root).clone();
         extra_args.extend_from_slice(self.check_extraArgs());
         extra_args
     }
 
-    pub fn check_extra_env(&self) -> FxHashMap<String, String> {
-        let mut extra_env = self.cargo_extraEnv().clone();
+    pub fn check_extra_env(&self, source_root: Option<SourceRootId>) -> FxHashMap<String, String> {
+        let mut extra_env = self.cargo_extraEnv(source_root).clone();
         extra_env.extend(self.check_extraEnv().clone());
         extra_env
     }
@@ -1787,15 +1788,15 @@ impl Config {
         }
     }
 
-    pub fn cargo_autoreload_config(&self) -> bool {
-        self.cargo_autoreload().to_owned()
+    pub fn cargo_autoreload_config(&self, source_root: Option<SourceRootId>) -> bool {
+        self.cargo_autoreload(source_root).to_owned()
     }
 
-    pub fn run_build_scripts(&self) -> bool {
-        self.cargo_buildScripts_enable().to_owned() || self.procMacro_enable().to_owned()
+    pub fn run_build_scripts(&self, source_root: Option<SourceRootId>) -> bool {
+        self.cargo_buildScripts_enable(source_root).to_owned() || self.procMacro_enable().to_owned()
     }
 
-    pub fn cargo(&self) -> CargoConfig {
+    pub fn cargo(&self, source_root: Option<SourceRootId>) -> CargoConfig {
         let rustc_source = self.rustc_source().as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustLibSource::Discover
@@ -1803,7 +1804,7 @@ impl Config {
                 RustLibSource::Path(self.root_path.join(rustc_src))
             }
         });
-        let sysroot = self.cargo_sysroot().as_ref().map(|sysroot| {
+        let sysroot = self.cargo_sysroot(source_root).as_ref().map(|sysroot| {
             if sysroot == "discover" {
                 RustLibSource::Discover
             } else {
@@ -1811,24 +1812,24 @@ impl Config {
             }
         });
         let sysroot_src =
-            self.cargo_sysrootSrc().as_ref().map(|sysroot| self.root_path.join(sysroot));
+            self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
 
         CargoConfig {
-            all_targets: *self.cargo_allTargets(),
-            features: match &self.cargo_features() {
+            all_targets: *self.cargo_allTargets(source_root),
+            features: match &self.cargo_features(source_root) {
                 CargoFeaturesDef::All => CargoFeatures::All,
                 CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
                     features: features.clone(),
-                    no_default_features: self.cargo_noDefaultFeatures().to_owned(),
+                    no_default_features: self.cargo_noDefaultFeatures(source_root).to_owned(),
                 },
             },
-            target: self.cargo_target().clone(),
+            target: self.cargo_target(source_root).clone(),
             sysroot,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
                 global: CfgDiff::new(
-                    self.cargo_cfgs()
+                    self.cargo_cfgs(source_root)
                         .iter()
                         .map(|(key, val)| match val {
                             Some(val) => CfgAtom::KeyValue {
@@ -1843,15 +1844,15 @@ impl Config {
                 .unwrap(),
                 selective: Default::default(),
             },
-            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(),
-            invocation_strategy: match self.cargo_buildScripts_invocationStrategy() {
+            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(source_root),
+            invocation_strategy: match self.cargo_buildScripts_invocationStrategy(source_root) {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
-            run_build_script_command: self.cargo_buildScripts_overrideCommand().clone(),
-            extra_args: self.cargo_extraArgs().clone(),
-            extra_env: self.cargo_extraEnv().clone(),
-            target_dir: self.target_dir_from_config(),
+            run_build_script_command: self.cargo_buildScripts_overrideCommand(source_root).clone(),
+            extra_args: self.cargo_extraArgs(source_root).clone(),
+            extra_env: self.cargo_extraEnv(source_root).clone(),
+            target_dir: self.target_dir_from_config(source_root),
         }
     }
 
@@ -1873,24 +1874,24 @@ impl Config {
         *self.check_workspace()
     }
 
-    pub(crate) fn cargo_test_options(&self) -> CargoOptions {
+    pub(crate) fn cargo_test_options(&self, source_root: Option<SourceRootId>) -> CargoOptions {
         CargoOptions {
-            target_triples: self.cargo_target().clone().into_iter().collect(),
+            target_triples: self.cargo_target(source_root).clone().into_iter().collect(),
             all_targets: false,
-            no_default_features: *self.cargo_noDefaultFeatures(),
-            all_features: matches!(self.cargo_features(), CargoFeaturesDef::All),
-            features: match self.cargo_features().clone() {
+            no_default_features: *self.cargo_noDefaultFeatures(source_root),
+            all_features: matches!(self.cargo_features(source_root), CargoFeaturesDef::All),
+            features: match self.cargo_features(source_root).clone() {
                 CargoFeaturesDef::All => vec![],
                 CargoFeaturesDef::Selected(it) => it,
             },
-            extra_args: self.extra_args().clone(),
+            extra_args: self.extra_args(source_root).clone(),
             extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
-            extra_env: self.extra_env().clone(),
-            target_dir: self.target_dir_from_config(),
+            extra_env: self.extra_env(source_root).clone(),
+            target_dir: self.target_dir_from_config(source_root),
         }
     }
 
-    pub(crate) fn flycheck(&self) -> FlycheckConfig {
+    pub(crate) fn flycheck(&self, source_root: Option<SourceRootId>) -> FlycheckConfig {
         match &self.check_overrideCommand() {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
@@ -1898,7 +1899,7 @@ impl Config {
                 FlycheckConfig::CustomCommand {
                     command,
                     args,
-                    extra_env: self.check_extra_env(),
+                    extra_env: self.check_extra_env(source_root),
                     invocation_strategy: match self.check_invocationStrategy() {
                         InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
@@ -1917,35 +1918,39 @@ impl Config {
                             [] => None,
                             targets => Some(targets.into()),
                         })
-                        .unwrap_or_else(|| self.cargo_target().clone().into_iter().collect()),
-                    all_targets: self.check_allTargets().unwrap_or(*self.cargo_allTargets()),
+                        .unwrap_or_else(|| {
+                            self.cargo_target(source_root).clone().into_iter().collect()
+                        }),
+                    all_targets: self
+                        .check_allTargets()
+                        .unwrap_or(*self.cargo_allTargets(source_root)),
                     no_default_features: self
                         .check_noDefaultFeatures()
-                        .unwrap_or(*self.cargo_noDefaultFeatures()),
+                        .unwrap_or(*self.cargo_noDefaultFeatures(source_root)),
                     all_features: matches!(
-                        self.check_features().as_ref().unwrap_or(self.cargo_features()),
+                        self.check_features().as_ref().unwrap_or(self.cargo_features(source_root)),
                         CargoFeaturesDef::All
                     ),
                     features: match self
                         .check_features()
                         .clone()
-                        .unwrap_or_else(|| self.cargo_features().clone())
+                        .unwrap_or_else(|| self.cargo_features(source_root).clone())
                     {
                         CargoFeaturesDef::All => vec![],
                         CargoFeaturesDef::Selected(it) => it,
                     },
-                    extra_args: self.check_extra_args(),
+                    extra_args: self.check_extra_args(source_root),
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
-                    extra_env: self.check_extra_env(),
-                    target_dir: self.target_dir_from_config(),
+                    extra_env: self.check_extra_env(source_root),
+                    target_dir: self.target_dir_from_config(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
     }
 
-    fn target_dir_from_config(&self) -> Option<Utf8PathBuf> {
-        self.cargo_targetDir().as_ref().and_then(|target_dir| match target_dir {
+    fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> Option<Utf8PathBuf> {
+        self.cargo_targetDir(source_root).as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(true) => {
                 Some(Utf8PathBuf::from("target/rust-analyzer"))
             }
@@ -1959,8 +1964,8 @@ impl Config {
         *self.checkOnSave()
     }
 
-    pub fn script_rebuild_on_save(&self) -> bool {
-        *self.cargo_buildScripts_rebuildOnSave()
+    pub fn script_rebuild_on_save(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.cargo_buildScripts_rebuildOnSave(source_root)
     }
 
     pub fn runnables(&self) -> RunnablesConfig {
@@ -3522,9 +3527,9 @@ mod tests {
         }));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.cargo_targetDir(), &None);
+        assert_eq!(config.cargo_targetDir(None), &None);
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
         );
     }
 
@@ -3540,9 +3545,9 @@ mod tests {
 
         (config, _, _) = config.apply_change(change);
 
-        assert_eq!(config.cargo_targetDir(), &Some(TargetDirectory::UseSubdirectory(true)));
+        assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
         );
     }
 
@@ -3559,11 +3564,11 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(
-            config.cargo_targetDir(),
+            config.cargo_targetDir(None),
             &Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
         assert!(
-            matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
         );
     }
 

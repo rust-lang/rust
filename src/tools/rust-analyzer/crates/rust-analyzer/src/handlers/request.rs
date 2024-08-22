@@ -256,7 +256,7 @@ pub(crate) fn handle_run_test(
 
             let handle = CargoTestHandle::new(
                 test_path,
-                state.config.cargo_test_options(),
+                state.config.cargo_test_options(None),
                 cargo.workspace_root(),
                 test_target,
                 state.test_run_sender.clone(),
@@ -2119,7 +2119,7 @@ fn run_rustfmt(
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(extra_args);
 
             if let Some(edition) = edition {
@@ -2177,7 +2177,7 @@ fn run_rustfmt(
                 _ => process::Command::new(cmd),
             };
 
-            cmd.envs(snap.config.extra_env());
+            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(args);
             cmd
         }
