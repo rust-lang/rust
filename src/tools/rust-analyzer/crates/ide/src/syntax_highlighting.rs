@@ -15,7 +15,7 @@ mod tests;
 
 use std::ops::ControlFlow;
 
-use hir::{Name, Semantics};
+use hir::{InRealFile, Name, Semantics};
 use ide_db::{FxHashMap, RootDatabase, SymbolKind};
 use span::EditionedFileId;
 use syntax::{
@@ -409,43 +409,47 @@ fn traverse(
                     let mut r = 0;
                     // FIXME: Add an extra API that takes the file id of this. That is a simple way
                     // to prevent us constantly walking up the tree to fetch the file
-                    sema.descend_into_macros_breakable(token.clone(), |tok| {
-                        let tok = tok.value;
-                        let tok_kind = tok.kind();
+                    sema.descend_into_macros_breakable(
+                        InRealFile::new(file_id, token.clone()),
+                        |tok| {
+                            let tok = tok.value;
+                            let tok_kind = tok.kind();
 
-                        let exact_same_kind = tok_kind == kind;
-                        let both_idents =
-                            exact_same_kind || (tok_kind.is_any_identifier() && ident_kind);
-                        let same_text = tok.text() == text;
-                        // anything that mapped into a token tree has likely no semantic information
-                        let no_tt_parent = tok.parent().map_or(false, |it| it.kind() != TOKEN_TREE);
-                        let my_rank = (both_idents as usize)
-                            | ((exact_same_kind as usize) << 1)
-                            | ((same_text as usize) << 2)
-                            | ((no_tt_parent as usize) << 3);
+                            let exact_same_kind = tok_kind == kind;
+                            let both_idents =
+                                exact_same_kind || (tok_kind.is_any_identifier() && ident_kind);
+                            let same_text = tok.text() == text;
+                            // anything that mapped into a token tree has likely no semantic information
+                            let no_tt_parent =
+                                tok.parent().map_or(false, |it| it.kind() != TOKEN_TREE);
+                            let my_rank = (both_idents as usize)
+                                | ((exact_same_kind as usize) << 1)
+                                | ((same_text as usize) << 2)
+                                | ((no_tt_parent as usize) << 3);
 
-                        if my_rank > 0b1110 {
-                            // a rank of 0b1110 means that we have found a maximally interesting
-                            // token so stop early.
-                            t = Some(tok);
-                            return ControlFlow::Break(());
-                        }
-
-                        // r = r.max(my_rank);
-                        // t = Some(t.take_if(|_| r < my_rank).unwrap_or(tok));
-                        match &mut t {
-                            Some(prev) if r < my_rank => {
-                                *prev = tok;
-                                r = my_rank;
+                            if my_rank > 0b1110 {
+                                // a rank of 0b1110 means that we have found a maximally interesting
+                                // token so stop early.
+                                t = Some(tok);
+                                return ControlFlow::Break(());
                             }
-                            Some(_) => (),
-                            None => {
-                                r = my_rank;
-                                t = Some(tok)
+
+                            // r = r.max(my_rank);
+                            // t = Some(t.take_if(|_| r < my_rank).unwrap_or(tok));
+                            match &mut t {
+                                Some(prev) if r < my_rank => {
+                                    *prev = tok;
+                                    r = my_rank;
+                                }
+                                Some(_) => (),
+                                None => {
+                                    r = my_rank;
+                                    t = Some(tok)
+                                }
                             }
-                        }
-                        ControlFlow::Continue(())
-                    });
+                            ControlFlow::Continue(())
+                        },
+                    );
 
                     let token = t.unwrap_or(token);
                     match token.parent().and_then(ast::NameLike::cast) {

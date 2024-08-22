@@ -550,7 +550,9 @@ impl<'db> SemanticsImpl<'db> {
         string: &ast::String,
     ) -> Option<Vec<(TextRange, Option<PathResolution>)>> {
         let quote = string.open_quote_text_range()?;
-        self.descend_into_macros_breakable(string.syntax().clone(), |token| {
+
+        let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
+        self.descend_into_macros_breakable(token, |token| {
             (|| {
                 let token = token.value;
                 let string = ast::String::cast(token)?;
@@ -576,8 +578,9 @@ impl<'db> SemanticsImpl<'db> {
         offset: TextSize,
     ) -> Option<(TextRange, Option<PathResolution>)> {
         let original_string = ast::String::cast(original_token.clone())?;
+        let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
         let quote = original_string.open_quote_text_range()?;
-        self.descend_into_macros_breakable(original_token.clone(), |token| {
+        self.descend_into_macros_breakable(original_token, |token| {
             (|| {
                 let token = token.value;
                 self.resolve_offset_in_format_args(
@@ -617,30 +620,37 @@ impl<'db> SemanticsImpl<'db> {
             Some(it) => it,
             None => return res,
         };
+        let file = self.find_file(node.syntax());
+        let Some(file_id) = file.file_id.file_id() else {
+            return res;
+        };
 
         if first == last {
             // node is just the token, so descend the token
-            self.descend_into_macros_impl(first, &mut |InFile { value, .. }| {
-                if let Some(node) = value
-                    .parent_ancestors()
-                    .take_while(|it| it.text_range() == value.text_range())
-                    .find_map(N::cast)
-                {
-                    res.push(node)
-                }
-                CONTINUE_NO_BREAKS
-            });
+            self.descend_into_macros_impl(
+                InRealFile::new(file_id, first),
+                &mut |InFile { value, .. }| {
+                    if let Some(node) = value
+                        .parent_ancestors()
+                        .take_while(|it| it.text_range() == value.text_range())
+                        .find_map(N::cast)
+                    {
+                        res.push(node)
+                    }
+                    CONTINUE_NO_BREAKS
+                },
+            );
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(first, &mut |token| {
+            self.descend_into_macros_impl(InRealFile::new(file_id, first), &mut |token| {
                 scratch.push(token);
                 CONTINUE_NO_BREAKS
             });
 
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
-                last,
+                InRealFile::new(file_id, last),
                 &mut |InFile { value: last, file_id: last_fid }| {
                     if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
                         if first_fid == last_fid {
@@ -669,18 +679,22 @@ impl<'db> SemanticsImpl<'db> {
         token: SyntaxToken,
         mut cb: impl FnMut(InFile<SyntaxToken>),
     ) {
-        self.descend_into_macros_impl(token.clone(), &mut |t| {
-            cb(t);
-            CONTINUE_NO_BREAKS
-        });
+        if let Ok(token) = self.wrap_token_infile(token).into_real_file() {
+            self.descend_into_macros_impl(token, &mut |t| {
+                cb(t);
+                CONTINUE_NO_BREAKS
+            });
+        }
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token.clone(), &mut |t| {
-            res.push(t.value);
-            CONTINUE_NO_BREAKS
-        });
+        if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
+            self.descend_into_macros_impl(token, &mut |t| {
+                res.push(t.value);
+                CONTINUE_NO_BREAKS
+            });
+        }
         if res.is_empty() {
             res.push(token);
         }
@@ -689,7 +703,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn descend_into_macros_breakable<T>(
         &self,
-        token: SyntaxToken,
+        token: InRealFile<SyntaxToken>,
         mut cb: impl FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
     ) -> Option<T> {
         self.descend_into_macros_impl(token.clone(), &mut cb)
@@ -721,28 +735,36 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros_single_exact(&self, token: SyntaxToken) -> SyntaxToken {
         let text = token.text();
         let kind = token.kind();
-
-        self.descend_into_macros_breakable(token.clone(), |InFile { value, file_id: _ }| {
-            let mapped_kind = value.kind();
-            let any_ident_match = || kind.is_any_identifier() && value.kind().is_any_identifier();
-            let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
-            if matches {
-                ControlFlow::Break(value)
-            } else {
-                ControlFlow::Continue(())
-            }
-        })
+        if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
+            self.descend_into_macros_breakable(token.clone(), |InFile { value, file_id: _ }| {
+                let mapped_kind = value.kind();
+                let any_ident_match =
+                    || kind.is_any_identifier() && value.kind().is_any_identifier();
+                let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
+                if matches {
+                    ControlFlow::Break(value)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
+        } else {
+            None
+        }
         .unwrap_or(token)
     }
 
     fn descend_into_macros_impl<T>(
         &self,
-        token: SyntaxToken,
+        InRealFile { value: token, file_id }: InRealFile<SyntaxToken>,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
-        let (sa, span, file_id) =
-            token.parent().and_then(|parent| self.analyze_no_infer(&parent)).and_then(|sa| {
+        let (sa, span, file_id) = token
+            .parent()
+            .and_then(|parent| {
+                self.analyze_impl(InRealFile::new(file_id, &parent).into(), None, false)
+            })
+            .and_then(|sa| {
                 let file_id = sa.file_id.file_id()?;
                 Some((
                     sa,
@@ -1400,11 +1422,13 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Returns none if the file of the node is not part of a crate.
     fn analyze(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
+        let node = self.find_file(node);
         self.analyze_impl(node, None, true)
     }
 
     /// Returns none if the file of the node is not part of a crate.
     fn analyze_no_infer(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
+        let node = self.find_file(node);
         self.analyze_impl(node, None, false)
     }
 
@@ -1413,17 +1437,17 @@ impl<'db> SemanticsImpl<'db> {
         node: &SyntaxNode,
         offset: TextSize,
     ) -> Option<SourceAnalyzer> {
+        let node = self.find_file(node);
         self.analyze_impl(node, Some(offset), false)
     }
 
     fn analyze_impl(
         &self,
-        node: &SyntaxNode,
+        node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
         infer_body: bool,
     ) -> Option<SourceAnalyzer> {
         let _p = tracing::info_span!("SemanticsImpl::analyze_impl").entered();
-        let node = self.find_file(node);
 
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;
 
@@ -1466,6 +1490,11 @@ impl<'db> SemanticsImpl<'db> {
     fn wrap_node_infile<N: AstNode>(&self, node: N) -> InFile<N> {
         let InFile { file_id, .. } = self.find_file(node.syntax());
         InFile::new(file_id, node)
+    }
+
+    fn wrap_token_infile(&self, token: SyntaxToken) -> InFile<SyntaxToken> {
+        let InFile { file_id, .. } = self.find_file(&token.parent().unwrap());
+        InFile::new(file_id, token)
     }
 
     /// Wraps the node in a [`InFile`] with the file id it belongs to.
