@@ -3265,7 +3265,7 @@ impl<'test> TestCx<'test> {
 
         let tmpdir = cwd.join(self.output_base_name());
         if tmpdir.exists() {
-            fs::remove_dir_all(&tmpdir).unwrap();
+            self.aggressive_rm_rf(&tmpdir).unwrap();
         }
         create_dir_all(&tmpdir).unwrap();
 
@@ -3404,6 +3404,29 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn aggressive_rm_rf(&self, path: &Path) -> io::Result<()> {
+        for e in path.read_dir()? {
+            let entry = e?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
+                self.aggressive_rm_rf(&path)?;
+            } else {
+                // Remove readonly files as well on windows (by default we can't)
+                fs::remove_file(&path).or_else(|e| {
+                    if cfg!(windows) && e.kind() == io::ErrorKind::PermissionDenied {
+                        let mut meta = entry.metadata()?.permissions();
+                        meta.set_readonly(false);
+                        fs::set_permissions(&path, meta)?;
+                        fs::remove_file(&path)
+                    } else {
+                        Err(e)
+                    }
+                })?;
+            }
+        }
+        fs::remove_dir(path)
+    }
+
     fn run_rmake_v2_test(&self) {
         // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
         // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
@@ -3452,7 +3475,7 @@ impl<'test> TestCx<'test> {
         // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = self.output_base_name();
         if base_dir.exists() {
-            fs::remove_dir_all(&base_dir).unwrap();
+            self.aggressive_rm_rf(&base_dir).unwrap();
         }
         let rmake_out_dir = base_dir.join("rmake_out");
         create_dir_all(&rmake_out_dir).unwrap();
