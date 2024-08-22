@@ -321,7 +321,7 @@ fn not_unpin_not_protected() {
     pub struct NotUnpin(#[allow(dead_code)] i32, PhantomPinned);
 
     fn inner(x: &mut NotUnpin, f: fn(&mut NotUnpin)) {
-        // `f` may mutate, but it may not deallocate!
+        // `f` is allowed to deallocate `x`.
         f(x)
     }
 
