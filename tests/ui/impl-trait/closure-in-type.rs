@@ -1,4 +1,5 @@
-//@ known-bug: rust-lang/rust#126850
+//@ check-pass
+
 fn bug<T>() -> impl Iterator<
     Item = [(); {
                |found: &String| Some(false);
