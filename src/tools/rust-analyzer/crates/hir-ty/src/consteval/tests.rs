@@ -248,6 +248,17 @@ fn casts() {
 }
 
 #[test]
+fn floating_point_casts() {
+    check_number(r#"const GOAL: usize = 12i32 as f32 as usize"#, 12);
+    check_number(r#"const GOAL: i8 = -12i32 as f64 as i8"#, -12);
+    check_number(r#"const GOAL: i32 = (-1ui8 as f32 + 2u64 as f32) as i32"#, 1);
+    check_number(r#"const GOAL: i8 = (0./0.) as i8"#, 0);
+    check_number(r#"const GOAL: i8 = (1./0.) as i8"#, 127);
+    check_number(r#"const GOAL: i8 = (-1./0.) as i8"#, -128);
+    check_number(r#"const GOAL: i64 = 1e18f64 as f32 as i64"#, 999999984306749440);
+}
+
+#[test]
 fn raw_pointer_equality() {
     check_number(
         r#"
