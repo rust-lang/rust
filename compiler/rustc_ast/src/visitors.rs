@@ -627,6 +627,19 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_pat_field<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            fp: ref_t!(PatField)
+        ) -> result!(V) {
+            let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
+            try_v!(visit_ident!(vis, ident));
+            try_v!(vis.visit_pat(pat));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -923,14 +936,6 @@ pub mod visit {
         walk_list!(visitor, visit_attribute, attrs);
         try_visit!(visitor.visit_ident(*ident));
         try_visit!(visitor.visit_expr(expr));
-        V::Result::output()
-    }
-
-    pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) -> V::Result {
-        let PatField { ident, pat, is_shorthand: _, attrs, id: _, span: _, is_placeholder: _ } = fp;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_ident(*ident));
-        try_visit!(visitor.visit_pat(pat));
         V::Result::output()
     }
 
@@ -1773,15 +1778,6 @@ pub mod mut_visit {
     pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &mut DelimSpan) {
         vis.visit_span(open);
         vis.visit_span(close);
-    }
-
-    pub fn walk_pat_field<T: MutVisitor>(vis: &mut T, fp: &mut PatField) {
-        let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = fp;
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_ident(ident);
-        vis.visit_pat(pat);
-        vis.visit_span(span);
     }
 
     fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree) {
