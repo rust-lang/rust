@@ -382,7 +382,7 @@ impl GlobalState {
 
     pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
         info!(%cause, "will load proc macros");
-        let ignored_proc_macros = self.config.ignored_proc_macros().clone();
+        let ignored_proc_macros = self.config.ignored_proc_macros(None).clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {

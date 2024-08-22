@@ -119,10 +119,6 @@ config_data! {
         /// Sets the LRU capacity of the specified queries.
         lru_query_capacities: FxHashMap<Box<str>, u16> = FxHashMap::default(),
 
-        /// These proc-macros will be ignored when trying to expand them.
-        ///
-        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
-        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
@@ -408,6 +404,11 @@ config_data! {
         /// Whether `--workspace` should be passed to `cargo check`.
         /// If false, `-p <package>` will be passed instead.
         check_workspace: bool = true,
+
+        /// These proc-macros will be ignored when trying to expand them.
+        ///
+        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
+        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
@@ -1764,8 +1765,11 @@ impl Config {
         Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(path)))
     }
 
-    pub fn ignored_proc_macros(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
-        self.procMacro_ignored()
+    pub fn ignored_proc_macros(
+        &self,
+        source_root: Option<SourceRootId>,
+    ) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
+        self.procMacro_ignored(source_root)
     }
 
     pub fn expand_proc_macros(&self) -> bool {
