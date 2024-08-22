@@ -119,7 +119,7 @@ pub(crate) fn hover(
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
     let mut res = if range.is_empty() {
-        hover_simple(sema, FilePosition { file_id, offset: range.start() }, file, config, edition)
+        hover_offset(sema, FilePosition { file_id, offset: range.start() }, file, config, edition)
     } else {
         hover_ranged(sema, frange, file, config, edition)
     }?;
@@ -131,7 +131,7 @@ pub(crate) fn hover(
 }
 
 #[allow(clippy::field_reassign_with_default)]
-fn hover_simple(
+fn hover_offset(
     sema: &Semantics<'_, RootDatabase>,
     FilePosition { file_id, offset }: FilePosition,
     file: SyntaxNode,
@@ -186,7 +186,7 @@ fn hover_simple(
     let text = original_token.text();
     let ident_kind = kind.is_any_identifier();
 
-    descended.sort_by_key(|tok| {
+    descended.sort_by_cached_key(|tok| {
         let tok_kind = tok.kind();
 
         let exact_same_kind = tok_kind == kind;
@@ -194,18 +194,15 @@ fn hover_simple(
         let same_text = tok.text() == text;
         // anything that mapped into a token tree has likely no semantic information
         let no_tt_parent = tok.parent().map_or(false, |it| it.kind() != TOKEN_TREE);
-        (both_idents as usize)
+        !((both_idents as usize)
             | ((exact_same_kind as usize) << 1)
             | ((same_text as usize) << 2)
-            | ((no_tt_parent as usize) << 3)
+            | ((no_tt_parent as usize) << 3))
     });
 
     let mut res = vec![];
-    // let mut merge_result = |next: HoverResult| {
-    //     res.markup = Markup::from(format!("{}\n---\n{}", res.markup, next.markup));
-    //     res.actions.extend(next.actions);
-    // };
     for token in descended {
+        let is_same_kind = token.kind() == kind;
         let lint_hover = (|| {
             // FIXME: Definition should include known lints and the like instead of having this special case here
             let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
@@ -273,9 +270,14 @@ fn hover_simple(
             continue;
         }
         let keywords = || render::keyword(sema, config, &token, edition);
-        let underscore = || render::underscore(sema, config, &token, edition);
+        let underscore = || {
+            if !is_same_kind {
+                return None;
+            }
+            render::underscore(sema, config, &token, edition)
+        };
         let rest_pat = || {
-            if token.kind() != DOT2 {
+            if !is_same_kind || token.kind() != DOT2 {
                 return None;
             }
 
@@ -289,7 +291,7 @@ fn hover_simple(
             Some(render::struct_rest_pat(sema, config, &record_pat, edition))
         };
         let call = || {
-            if token.kind() != T!['('] && token.kind() != T![')'] {
+            if !is_same_kind || token.kind() != T!['('] && token.kind() != T![')'] {
                 return None;
             }
             let arg_list = token.parent().and_then(ast::ArgList::cast)?.syntax().parent()?;
@@ -303,7 +305,7 @@ fn hover_simple(
             render::type_info_of(sema, config, &Either::Left(call_expr), edition)
         };
         let closure = || {
-            if token.kind() != T![|] {
+            if !is_same_kind || token.kind() != T![|] {
                 return None;
             }
             let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
