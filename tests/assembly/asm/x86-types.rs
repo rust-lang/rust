@@ -31,216 +31,55 @@ trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 
+// Do we really need to use no_core for this?!?
+impl<T: Copy, const N: usize> Copy for [T; N] {}
+
 type ptr = *mut u8;
 
 #[repr(simd)]
-pub struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x16([i8; 16]);
 #[repr(simd)]
-pub struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x8([i16; 8]);
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4([i32; 4]);
 #[repr(simd)]
-pub struct i64x2(i64, i64);
+pub struct i64x2([i64; 2]);
 #[repr(simd)]
-pub struct f16x8(f16, f16, f16, f16, f16, f16, f16, f16);
+pub struct f16x8([f16; 8]);
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 #[repr(simd)]
-pub struct f64x2(f64, f64);
+pub struct f64x2([f64; 2]);
 
 #[repr(simd)]
-pub struct i8x32(
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-);
+pub struct i8x32([i8; 32]);
 #[repr(simd)]
-pub struct i16x16(i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x16([i16; 16]);
 #[repr(simd)]
-pub struct i32x8(i32, i32, i32, i32, i32, i32, i32, i32);
+pub struct i32x8([i32; 8]);
 #[repr(simd)]
-pub struct i64x4(i64, i64, i64, i64);
+pub struct i64x4([i64; 4]);
 #[repr(simd)]
-pub struct f16x16(f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16);
+pub struct f16x16([f16; 16]);
 #[repr(simd)]
-pub struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
+pub struct f32x8([f32; 8]);
 #[repr(simd)]
-pub struct f64x4(f64, f64, f64, f64);
+pub struct f64x4([f64; 4]);
 
 #[repr(simd)]
-pub struct i8x64(
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-);
+pub struct i8x64([i8; 64]);
 #[repr(simd)]
-pub struct i16x32(
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-);
+pub struct i16x32([i16; 32]);
 #[repr(simd)]
-pub struct i32x16(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32);
+pub struct i32x16([i32; 16]);
 #[repr(simd)]
-pub struct i64x8(i64, i64, i64, i64, i64, i64, i64, i64);
+pub struct i64x8([i64; 8]);
 #[repr(simd)]
-pub struct f16x32(
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-);
+pub struct f16x32([f16; 32]);
 #[repr(simd)]
-pub struct f32x16(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32);
+pub struct f32x16([f32; 16]);
 #[repr(simd)]
-pub struct f64x8(f64, f64, f64, f64, f64, f64, f64, f64);
+pub struct f64x8([f64; 8]);
 
 macro_rules! impl_copy {
     ($($ty:ident)*) => {
