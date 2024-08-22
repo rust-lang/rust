@@ -579,12 +579,14 @@ pub(crate) fn build_index<'tcx>(
             let mut names = Vec::with_capacity(self.items.len());
             let mut types = String::with_capacity(self.items.len());
             let mut full_paths = Vec::with_capacity(self.items.len());
-            let mut parents = Vec::with_capacity(self.items.len());
+            let mut parents = String::with_capacity(self.items.len());
+            let mut parents_backref_queue = VecDeque::new();
             let mut functions = String::with_capacity(self.items.len());
             let mut deprecated = Vec::with_capacity(self.items.len());
 
-            let mut backref_queue = VecDeque::new();
+            let mut type_backref_queue = VecDeque::new();
 
+            let mut last_name = None;
             for (index, item) in self.items.iter().enumerate() {
                 let n = item.ty as u8;
                 let c = char::try_from(n + b'A').expect("item types must fit in ASCII");
@@ -597,17 +599,39 @@ pub(crate) fn build_index<'tcx>(
                     "`{}` is missing idx",
                     item.name
                 );
-                // 0 is a sentinel, everything else is one-indexed
-                parents.push(item.parent_idx.map(|x| x + 1).unwrap_or(0));
+                assert!(
+                    parents_backref_queue.len() <= 16,
+                    "the string encoding only supports 16 slots of lookback"
+                );
+                let parent: i32 = item.parent_idx.map(|x| x + 1).unwrap_or(0).try_into().unwrap();
+                if let Some(idx) = parents_backref_queue.iter().position(|p: &i32| *p == parent) {
+                    parents.push(
+                        char::try_from('0' as u32 + u32::try_from(idx).unwrap())
+                            .expect("last possible value is '?'"),
+                    );
+                } else if parent == 0 {
+                    write_vlqhex_to_string(parent, &mut parents);
+                } else {
+                    parents_backref_queue.push_front(parent);
+                    write_vlqhex_to_string(parent, &mut parents);
+                    if parents_backref_queue.len() > 16 {
+                        parents_backref_queue.pop_back();
+                    }
+                }
 
-                names.push(item.name.as_str());
+                if Some(item.name.as_str()) == last_name {
+                    names.push("");
+                } else {
+                    names.push(item.name.as_str());
+                    last_name = Some(item.name.as_str());
+                }
 
                 if !item.path.is_empty() {
                     full_paths.push((index, &item.path));
                 }
 
                 match &item.search_type {
-                    Some(ty) => ty.write_to_string(&mut functions, &mut backref_queue),
+                    Some(ty) => ty.write_to_string(&mut functions, &mut type_backref_queue),
                     None => functions.push('`'),
                 }
 
