@@ -124,16 +124,6 @@ config_data! {
         /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
         procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = FxHashMap::default(),
 
-        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
-        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
-        /// is installed.
-        ///
-        /// Any project which uses rust-analyzer with the rustcPrivate
-        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
-        ///
-        /// This option does not take effect until rust-analyzer is restarted.
-        rustc_source: Option<String> = None,
-
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
         ///
@@ -432,6 +422,16 @@ config_data! {
         /// they will end up being interpreted as options to
         /// [`rustc`’s built-in test harness (“libtest”)](https://doc.rust-lang.org/rustc/tests/index.html#cli-arguments).
         runnables_extraTestBinaryArgs: Vec<String> = vec!["--show-output".to_owned()],
+
+        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
+        /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
+        /// is installed.
+        ///
+        /// Any project which uses rust-analyzer with the rustcPrivate
+        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        rustc_source: Option<String> = None,
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = vec![],
@@ -1799,7 +1799,7 @@ impl Config {
     }
 
     pub fn cargo(&self, source_root: Option<SourceRootId>) -> CargoConfig {
-        let rustc_source = self.rustc_source().as_ref().map(|rustc_src| {
+        let rustc_source = self.rustc_source(source_root).as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustLibSource::Discover
             } else {
