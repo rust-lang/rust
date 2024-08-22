@@ -988,7 +988,8 @@ impl DirBuilderExt for fs::DirBuilder {
 /// 
 /// Be aware that changing owner clears the `suid` and `sgid` permission bits in most cases
 /// according to POSIX, usually even if the user is root. The sgid is not cleared when
-/// the file is non-group-executable.
+/// the file is non-group-executable. See: <https://www.man7.org/linux/man-pages/man2/chown.2.html>
+/// This call may also clear file capabilities, if there was any.
 ///
 /// If called on a symbolic link, this will change the owner and group of the link target. To
 /// change the owner and group of the link itself, see [`lchown`].
