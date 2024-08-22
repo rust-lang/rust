@@ -77,72 +77,6 @@ config_data! {
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
 
-        /// Check all targets and tests (`--all-targets`). Defaults to
-        /// `#rust-analyzer.cargo.allTargets#`.
-        check_allTargets | checkOnSave_allTargets: Option<bool>          = None,
-        /// Cargo command to use for `cargo check`.
-        check_command | checkOnSave_command: String                      = "check".to_owned(),
-        /// Extra arguments for `cargo check`.
-        check_extraArgs | checkOnSave_extraArgs: Vec<String>             = vec![],
-        /// Extra environment variables that will be set when running `cargo check`.
-        /// Extends `#rust-analyzer.cargo.extraEnv#`.
-        check_extraEnv | checkOnSave_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
-        /// List of features to activate. Defaults to
-        /// `#rust-analyzer.cargo.features#`.
-        ///
-        /// Set to `"all"` to pass `--all-features` to Cargo.
-        check_features | checkOnSave_features: Option<CargoFeaturesDef>  = None,
-        /// List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
-        ///
-        /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
-        check_ignore: FxHashSet<String> = FxHashSet::default(),
-        /// Specifies the invocation strategy to use when running the check command.
-        /// If `per_workspace` is set, the command will be executed for each workspace.
-        /// If `once` is set, the command will be executed once.
-        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
-        /// is set.
-        check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
-        /// Whether to pass `--no-default-features` to Cargo. Defaults to
-        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
-        check_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = None,
-        /// Override the command rust-analyzer uses instead of `cargo check` for
-        /// diagnostics on save. The command is required to output json and
-        /// should therefore include `--message-format=json` or a similar option
-        /// (if your client supports the `colorDiagnosticOutput` experimental
-        /// capability, you can use `--message-format=json-diagnostic-rendered-ansi`).
-        ///
-        /// If you're changing this because you're using some tool wrapping
-        /// Cargo, you might also want to change
-        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
-        ///
-        /// If there are multiple linked projects/workspaces, this command is invoked for
-        /// each of them, with the working directory being the workspace root
-        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.check.invocationStrategy#`.
-        ///
-        /// If `$saved_file` is part of the command, rust-analyzer will pass
-        /// the absolute path of the saved file to the provided command. This is
-        /// intended to be used with non-Cargo build systems.
-        /// Note that `$saved_file` is experimental and may be removed in the future.
-        ///
-        /// An example command would be:
-        ///
-        /// ```bash
-        /// cargo check --workspace --message-format=json --all-targets
-        /// ```
-        /// .
-        check_overrideCommand | checkOnSave_overrideCommand: Option<Vec<String>>             = None,
-        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
-        ///
-        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
-        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
-        ///
-        /// Aliased as `"checkOnSave.targets"`.
-        check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = None,
-        /// Whether `--workspace` should be passed to `cargo check`.
-        /// If false, `-p <package>` will be passed instead.
-        check_workspace: bool = true,
-
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
         /// Whether to show native rust-analyzer diagnostics.
@@ -431,6 +365,73 @@ config_data! {
 
         /// Run the check command for diagnostics on save.
         checkOnSave | checkOnSave_enable: bool                         = true,
+
+
+/// Check all targets and tests (`--all-targets`). Defaults to
+        /// `#rust-analyzer.cargo.allTargets#`.
+        check_allTargets | checkOnSave_allTargets: Option<bool>          = None,
+        /// Cargo command to use for `cargo check`.
+        check_command | checkOnSave_command: String                      = "check".to_owned(),
+        /// Extra arguments for `cargo check`.
+        check_extraArgs | checkOnSave_extraArgs: Vec<String>             = vec![],
+        /// Extra environment variables that will be set when running `cargo check`.
+        /// Extends `#rust-analyzer.cargo.extraEnv#`.
+        check_extraEnv | checkOnSave_extraEnv: FxHashMap<String, String> = FxHashMap::default(),
+        /// List of features to activate. Defaults to
+        /// `#rust-analyzer.cargo.features#`.
+        ///
+        /// Set to `"all"` to pass `--all-features` to Cargo.
+        check_features | checkOnSave_features: Option<CargoFeaturesDef>  = None,
+        /// List of `cargo check` (or other command specified in `check.command`) diagnostics to ignore.
+        ///
+        /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
+        check_ignore: FxHashSet<String> = FxHashSet::default(),
+        /// Specifies the invocation strategy to use when running the check command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
+        /// is set.
+        check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
+        /// Whether to pass `--no-default-features` to Cargo. Defaults to
+        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
+        check_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = None,
+        /// Override the command rust-analyzer uses instead of `cargo check` for
+        /// diagnostics on save. The command is required to output json and
+        /// should therefore include `--message-format=json` or a similar option
+        /// (if your client supports the `colorDiagnosticOutput` experimental
+        /// capability, you can use `--message-format=json-diagnostic-rendered-ansi`).
+        ///
+        /// If you're changing this because you're using some tool wrapping
+        /// Cargo, you might also want to change
+        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
+        ///
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.check.invocationStrategy#`.
+        ///
+        /// If `$saved_file` is part of the command, rust-analyzer will pass
+        /// the absolute path of the saved file to the provided command. This is
+        /// intended to be used with non-Cargo build systems.
+        /// Note that `$saved_file` is experimental and may be removed in the future.
+        ///
+        /// An example command would be:
+        ///
+        /// ```bash
+        /// cargo check --workspace --message-format=json --all-targets
+        /// ```
+        /// .
+        check_overrideCommand | checkOnSave_overrideCommand: Option<Vec<String>>             = None,
+        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+        ///
+        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+        ///
+        /// Aliased as `"checkOnSave.targets"`.
+        check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = None,
+        /// Whether `--workspace` should be passed to `cargo check`.
+        /// If false, `-p <package>` will be passed instead.
+        check_workspace: bool = true,
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = vec![],
@@ -1018,7 +1019,7 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
-        if config.check_command().is_empty() {
+        if config.check_command(None).is_empty() {
             config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
                 config_key: "/check/command".to_owned(),
                 error: serde_json::Error::custom("expected a non-empty string"),
@@ -1721,12 +1722,12 @@ impl Config {
         self.diagnostics_enable().to_owned()
     }
 
-    pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
+    pub fn diagnostics_map(&self, source_root: Option<SourceRootId>) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
             remap_prefix: self.diagnostics_remapPrefix().clone(),
             warnings_as_info: self.diagnostics_warningsAsInfo().clone(),
             warnings_as_hint: self.diagnostics_warningsAsHint().clone(),
-            check_ignore: self.check_ignore().clone(),
+            check_ignore: self.check_ignore(source_root).clone(),
         }
     }
 
@@ -1740,13 +1741,13 @@ impl Config {
 
     pub fn check_extra_args(&self, source_root: Option<SourceRootId>) -> Vec<String> {
         let mut extra_args = self.extra_args(source_root).clone();
-        extra_args.extend_from_slice(self.check_extraArgs());
+        extra_args.extend_from_slice(self.check_extraArgs(source_root));
         extra_args
     }
 
     pub fn check_extra_env(&self, source_root: Option<SourceRootId>) -> FxHashMap<String, String> {
         let mut extra_env = self.cargo_extraEnv(source_root).clone();
-        extra_env.extend(self.check_extraEnv().clone());
+        extra_env.extend(self.check_extraEnv(source_root).clone());
         extra_env
     }
 
@@ -1871,8 +1872,8 @@ impl Config {
         }
     }
 
-    pub fn flycheck_workspace(&self) -> bool {
-        *self.check_workspace()
+    pub fn flycheck_workspace(&self, source_root: Option<SourceRootId>) -> bool {
+        *self.check_workspace(source_root)
     }
 
     pub(crate) fn cargo_test_options(&self, source_root: Option<SourceRootId>) -> CargoOptions {
@@ -1893,7 +1894,7 @@ impl Config {
     }
 
     pub(crate) fn flycheck(&self, source_root: Option<SourceRootId>) -> FlycheckConfig {
-        match &self.check_overrideCommand() {
+        match &self.check_overrideCommand(source_root) {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
@@ -1901,7 +1902,7 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_extra_env(source_root),
-                    invocation_strategy: match self.check_invocationStrategy() {
+                    invocation_strategy: match self.check_invocationStrategy(source_root) {
                         InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
                             crate::flycheck::InvocationStrategy::PerWorkspace
@@ -1910,10 +1911,10 @@ impl Config {
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.check_command().clone(),
+                command: self.check_command(source_root).clone(),
                 options: CargoOptions {
                     target_triples: self
-                        .check_targets()
+                        .check_targets(source_root)
                         .clone()
                         .and_then(|targets| match &targets.0[..] {
                             [] => None,
@@ -1923,17 +1924,19 @@ impl Config {
                             self.cargo_target(source_root).clone().into_iter().collect()
                         }),
                     all_targets: self
-                        .check_allTargets()
+                        .check_allTargets(source_root)
                         .unwrap_or(*self.cargo_allTargets(source_root)),
                     no_default_features: self
-                        .check_noDefaultFeatures()
+                        .check_noDefaultFeatures(source_root)
                         .unwrap_or(*self.cargo_noDefaultFeatures(source_root)),
                     all_features: matches!(
-                        self.check_features().as_ref().unwrap_or(self.cargo_features(source_root)),
+                        self.check_features(source_root)
+                            .as_ref()
+                            .unwrap_or(self.cargo_features(source_root)),
                         CargoFeaturesDef::All
                     ),
                     features: match self
-                        .check_features()
+                        .check_features(source_root)
                         .clone()
                         .unwrap_or_else(|| self.cargo_features(source_root).clone())
                     {
