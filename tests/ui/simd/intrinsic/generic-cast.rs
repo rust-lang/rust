@@ -5,22 +5,20 @@
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct i32x4(i32, i32, i32, i32);
+struct i32x4([i32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct i32x8(i32, i32, i32, i32,
-             i32, i32, i32, i32);
+struct i32x8([i32; 8]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct f32x4(f32, f32, f32, f32);
+struct f32x4([f32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct f32x8(f32, f32, f32, f32,
-             f32, f32, f32, f32);
+struct f32x8([f32; 8]);
 
 
 extern "rust-intrinsic" {
@@ -28,7 +26,7 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    let x = i32x4(0, 0, 0, 0);
+    let x = i32x4([0, 0, 0, 0]);
 
     unsafe {
         simd_cast::<i32, i32>(0);

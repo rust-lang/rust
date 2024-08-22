@@ -49,7 +49,7 @@ union P2 { x: (u32, u32) } //~ ERROR: layout_of
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-struct F32x4(f32, f32, f32, f32);
+struct F32x4([f32; 4]);
 
 #[rustc_layout(debug)]
 #[repr(packed(1))]

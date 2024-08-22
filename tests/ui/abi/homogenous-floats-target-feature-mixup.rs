@@ -65,13 +65,13 @@ fn is_sigill(status: ExitStatus) -> bool {
 #[allow(nonstandard_style)]
 mod test {
     #[derive(PartialEq, Debug, Clone, Copy)]
-    struct f32x2(f32, f32);
+    struct f32x2([f32; 2]);
 
     #[derive(PartialEq, Debug, Clone, Copy)]
-    struct f32x4(f32, f32, f32, f32);
+    struct f32x4([f32; 4]);
 
     #[derive(PartialEq, Debug, Clone, Copy)]
-    struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
+    struct f32x8([f32; 8]);
 
     pub fn main(level: &str) {
         unsafe {
@@ -97,9 +97,9 @@ mod test {
         )*) => ($(
             $(#[$attr])*
             unsafe fn $main(level: &str) {
-                let m128 = f32x2(1., 2.);
-                let m256 = f32x4(3., 4., 5., 6.);
-                let m512 = f32x8(7., 8., 9., 10., 11., 12., 13., 14.);
+                let m128 = f32x2([1., 2.]);
+                let m256 = f32x4([3., 4., 5., 6.]);
+                let m512 = f32x8([7., 8., 9., 10., 11., 12., 13., 14.]);
                 assert_eq!(id_sse_128(m128), m128);
                 assert_eq!(id_sse_256(m256), m256);
                 assert_eq!(id_sse_512(m512), m512);
@@ -133,55 +133,55 @@ mod test {
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_128(a: f32x2) -> f32x2 {
-        assert_eq!(a, f32x2(1., 2.));
+        assert_eq!(a, f32x2([1., 2.]));
         a.clone()
     }
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_256(a: f32x4) -> f32x4 {
-        assert_eq!(a, f32x4(3., 4., 5., 6.));
+        assert_eq!(a, f32x4([3., 4., 5., 6.]));
         a.clone()
     }
 
     #[target_feature(enable = "sse2")]
     unsafe fn id_sse_512(a: f32x8) -> f32x8 {
-        assert_eq!(a, f32x8(7., 8., 9., 10., 11., 12., 13., 14.));
+        assert_eq!(a, f32x8([7., 8., 9., 10., 11., 12., 13., 14.]));
         a.clone()
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn id_avx_128(a: f32x2) -> f32x2 {
-        assert_eq!(a, f32x2(1., 2.));
+        assert_eq!(a, f32x2([1., 2.]));
         a.clone()
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn id_avx_256(a: f32x4) -> f32x4 {
-        assert_eq!(a, f32x4(3., 4., 5., 6.));
+        assert_eq!(a, f32x4([3., 4., 5., 6.]));
         a.clone()
     }
 
     #[target_feature(enable = "avx")]
     unsafe fn id_avx_512(a: f32x8) -> f32x8 {
-        assert_eq!(a, f32x8(7., 8., 9., 10., 11., 12., 13., 14.));
+        assert_eq!(a, f32x8([7., 8., 9., 10., 11., 12., 13., 14.]));
         a.clone()
     }
 
     #[target_feature(enable = "avx512bw")]
     unsafe fn id_avx512_128(a: f32x2) -> f32x2 {
-        assert_eq!(a, f32x2(1., 2.));
+        assert_eq!(a, f32x2([1., 2.]));
         a.clone()
     }
 
     #[target_feature(enable = "avx512bw")]
     unsafe fn id_avx512_256(a: f32x4) -> f32x4 {
-        assert_eq!(a, f32x4(3., 4., 5., 6.));
+        assert_eq!(a, f32x4([3., 4., 5., 6.]));
         a.clone()
     }
 
     #[target_feature(enable = "avx512bw")]
     unsafe fn id_avx512_512(a: f32x8) -> f32x8 {
-        assert_eq!(a, f32x8(7., 8., 9., 10., 11., 12., 13., 14.));
+        assert_eq!(a, f32x8([7., 8., 9., 10., 11., 12., 13., 14.]));
         a.clone()
     }
 }

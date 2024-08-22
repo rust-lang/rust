@@ -336,10 +336,10 @@ reverse!(reverse_u32, u32, |x| x as u32);
 reverse!(reverse_u64, u64, |x| x as u64);
 reverse!(reverse_u128, u128, |x| x as u128);
 #[repr(simd)]
-struct F64x4(f64, f64, f64, f64);
+struct F64x4([f64; 4]);
 reverse!(reverse_simd_f64x4, F64x4, |x| {
     let x = x as f64;
-    F64x4(x, x, x, x)
+    F64x4([x, x, x, x])
 });
 
 macro_rules! rotate {

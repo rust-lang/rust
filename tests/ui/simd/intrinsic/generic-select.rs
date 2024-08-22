@@ -8,19 +8,19 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+pub struct f32x4(pub [f32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
+pub struct u32x4(pub [u32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq)]
-struct b8x4(pub i8, pub i8, pub i8, pub i8);
+struct b8x4(pub [i8; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq)]
-struct b8x8(pub i8, pub i8, pub i8, pub i8, pub i8, pub i8, pub i8, pub i8);
+struct b8x8(pub [i8; 8]);
 
 extern "rust-intrinsic" {
     fn simd_select<T, U>(x: T, a: U, b: U) -> U;
@@ -28,10 +28,10 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    let m4 = b8x4(0, 0, 0, 0);
-    let m8 = b8x8(0, 0, 0, 0, 0, 0, 0, 0);
-    let x = u32x4(0, 0, 0, 0);
-    let z = f32x4(0.0, 0.0, 0.0, 0.0);
+    let m4 = b8x4([0, 0, 0, 0]);
+    let m8 = b8x8([0, 0, 0, 0, 0, 0, 0, 0]);
+    let x = u32x4([0, 0, 0, 0]);
+    let z = f32x4([0.0, 0.0, 0.0, 0.0]);
 
     unsafe {
         simd_select(m4, x, x);

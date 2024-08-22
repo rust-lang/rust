@@ -8,7 +8,7 @@
 
 #[derive(Copy)]
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 
 extern "C" {
     #[link_name = "llvm.sqrt.v4f32"]
@@ -21,7 +21,7 @@ pub fn foo(x: f32x4) -> f32x4 {
 
 #[derive(Copy)]
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4([i32; 4]);
 
 extern "C" {
     // _mm_sll_epi32
@@ -62,6 +62,8 @@ pub trait Copy {}
 
 impl Copy for f32 {}
 impl Copy for i32 {}
+impl Copy for [f32; 4] {}
+impl Copy for [i32; 4] {}
 
 pub mod marker {
     pub use Copy;

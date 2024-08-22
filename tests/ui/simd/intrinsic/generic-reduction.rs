@@ -9,11 +9,11 @@
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+pub struct f32x4(pub [f32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
+pub struct u32x4(pub [u32; 4]);
 
 
 extern "rust-intrinsic" {
@@ -27,8 +27,8 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    let x = u32x4(0, 0, 0, 0);
-    let z = f32x4(0.0, 0.0, 0.0, 0.0);
+    let x = u32x4([0, 0, 0, 0]);
+    let z = f32x4([0.0, 0.0, 0.0, 0.0]);
 
     unsafe {
         simd_reduce_add_ordered(z, 0);
