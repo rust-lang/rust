@@ -308,7 +308,6 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Local), visit_local, walk_local}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
-            make_visit!{P!(Ty), visit_ty, walk_ty}
             make_visit!{P!(Block), visit_block, walk_block}
             make_visit!{P!(FnDecl), visit_fn_decl, walk_fn_decl}
 
@@ -321,6 +320,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Param, visit_param, walk_param, flat_map_param, walk_flat_map_param}
             make_visit!{PatField, visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
             make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
+            make_visit!{P!(Ty), visit_ty, walk_ty, flat_map_ty, walk_flat_map_ty}
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
                 walk_param_bound(self, tpb)
@@ -640,6 +640,18 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_parenthesized_parameter_data<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            args: ref_t!(ParenthesizedArgs)
+        ) -> result!(V) {
+            let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
+            visit_list!(vis, visit_ty, flat_map_ty, inputs);
+            try_v!(vis.visit_fn_ret_ty(output));
+            try_v!(visit_span!(vis, span));
+            try_v!(visit_span!(vis, inputs_span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -648,6 +660,7 @@ macro_rules! make_ast_visitor {
         make_walk_flat_map!{Param, walk_flat_map_param, visit_param}
         make_walk_flat_map!{PatField, walk_flat_map_pat_field, visit_pat_field}
         make_walk_flat_map!{Variant, walk_flat_map_variant, visit_variant}
+        make_walk_flat_map!{P!(Ty), walk_flat_map_ty, visit_ty}
     }
 }
 
@@ -1619,16 +1632,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    fn walk_parenthesized_parameter_data<'a, V: Visitor<'a>>(
-        vis: &mut V,
-        data: &'a ParenthesizedArgs,
-    ) -> V::Result {
-        let ParenthesizedArgs { span: _, inputs, inputs_span: _, output } = data;
-        walk_list!(vis, visit_ty, inputs);
-        try_visit!(vis.visit_fn_ret_ty(output));
-        V::Result::output()
-    }
-
     fn walk_foreign_mod<'a, V: Visitor<'a>>(vis: &mut V, foreign_mod: &'a ForeignMod) -> V::Result {
         let ForeignMod { safety: _, abi: _, items } = foreign_mod;
         walk_list!(vis, visit_foreign_item, items);
@@ -1929,14 +1932,6 @@ pub mod mut_visit {
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
-    }
-
-    fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut ParenthesizedArgs) {
-        let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
-        visit_thin_vec(inputs, |input| vis.visit_ty(input));
-        vis.visit_fn_ret_ty(output);
-        vis.visit_span(span);
-        vis.visit_span(inputs_span);
     }
 
     fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
