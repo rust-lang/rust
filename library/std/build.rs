@@ -103,9 +103,6 @@ fn main() {
         ("arm64ec", _) => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") => false,
-        // x86 has ABI bugs that show up with optimizations. This should be partially fixed with
-        // the compiler-builtins update. <https://github.com/rust-lang/rust/issues/123885>
-        ("x86" | "x86_64", _) => false,
         // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
         ("powerpc" | "powerpc64", _) => false,
         // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
