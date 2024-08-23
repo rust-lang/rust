@@ -52,15 +52,6 @@ By default, if rustc encounters an Internal Compiler Error (ICE) it will dump th
 ICE file within the current working directory named `rustc-ice-<timestamp>-<pid>.txt`. If this is
 not desirable, you can prevent the ICE file from being created with `RUSTC_ICE=0`.
 
-## `-Z` flags
-
-The compiler has a bunch of `-Z` flags. These are unstable flags that are only
-enabled on nightly. Many of them are useful for debugging. To get a full listing
-of `-Z` flags, use `-Z help`.
-
-One useful flag is `-Z verbose-internals`, which generally enables printing more
-info that could be useful for debugging.
-
 ## Getting a backtrace
 [getting-a-backtrace]: #getting-a-backtrace
 
@@ -109,7 +100,18 @@ stack backtrace:
              at /home/user/rust/compiler/rustc_driver/src/lib.rs:253
 ```
 
-## Getting a backtrace for errors
+## `-Z` flags
+
+The compiler has a bunch of `-Z *` flags. These are unstable flags that are only
+enabled on nightly. Many of them are useful for debugging. To get a full listing
+of `-Z` flags, use `-Z help`.
+
+One useful flag is `-Z verbose-internals`, which generally enables printing more
+info that could be useful for debugging.
+
+Right below you can find elaborate explainers on a selected few.
+
+### Getting a backtrace for errors
 [getting-a-backtrace-for-errors]: #getting-a-backtrace-for-errors
 
 If you want to get a backtrace to the point where the compiler emits an
@@ -186,14 +188,14 @@ stack backtrace:
 
 Cool, now I have a backtrace for the error!
 
-## Debugging delayed bugs
+### Debugging delayed bugs
 
 The `-Z eagerly-emit-delayed-bugs` option makes it easy to debug delayed bugs.
 It turns them into normal errors, i.e. makes them visible. This can be used in
 combination with `-Z treat-err-as-bug` to stop at a particular delayed bug and
 get a backtrace.
 
-## Getting the error creation location
+### Getting the error creation location
 
 `-Z track-diagnostics` can help figure out where errors are emitted. It uses `#[track_caller]`
 for this and prints its location alongside the error:
@@ -235,21 +237,6 @@ The compiler uses the [`tracing`] crate for logging.
 
 For details see [the guide section on tracing](./tracing.md)
 
-## Formatting Graphviz output (.dot files)
-[formatting-graphviz-output]: #formatting-graphviz-output
-
-Some compiler options for debugging specific features yield graphviz graphs -
-e.g. the `#[rustc_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
-dumps various borrow-checker dataflow graphs.
-
-These all produce `.dot` files. To view these files, install graphviz (e.g.
-`apt-get install graphviz`) and then run the following commands:
-
-```bash
-$ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
-$ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
-```
-
 ## Narrowing (Bisecting) Regressions
 
 The [cargo-bisect-rustc][bisect] tool can be used as a quick and easy way to
@@ -273,10 +260,61 @@ without doing the build yourself.
 
 [rtim]: https://github.com/kennytm/rustup-toolchain-install-master
 
-## Debugging type layouts
+## `#[rustc_*]` TEST attributes
 
-The (permanently) unstable `#[rustc_layout]` attribute can be used to dump
-the [`Layout`] of the type it is attached to. For example:
+The compiler defines a whole lot of internal (perma-unstable) attributes some of which are useful
+for debugging by dumping extra compiler-internal information. These are prefixed with `rustc_` and
+are gated behind the internal feature `rustc_attrs` (enabled via e.g. `#![feature(rustc_attrs)]`).
+
+For a complete and up to date list, see [`builtin_attrs`]. More specifically, the ones marked `TEST`.
+Here are some notable ones:
+
+| Attribute | Description |
+|----------------|-------------|
+| `rustc_def_path` | Dumps the [`def_path_str`] of an item. |
+| `rustc_dump_def_parents` | Dumps the chain of `DefId` parents of certain definitions. |
+| `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
+| `rustc_dump_predicates` | Dumps the [`predicates_of`] an item. |
+| `rustc_dump_vtable` |  |
+| `rustc_hidden_type_of_opaques` | Dumps the [hidden type of all opaque types][opaq] in the crate. |
+| `rustc_layout` | [See this section](#debugging-type-layouts). |
+| `rustc_object_lifetime_default` | Dumps the [object lifetime defaults] of an item. |
+| `rustc_outlives` | Dumps implied bounds of an item. More precisely, the [`inferred_outlives_of`] an item. |
+| `rustc_regions` | Dumps NLL closure region requirements. |
+| `rustc_symbol_name` | Dumps the mangled & demangled [`symbol_name`] of an item. |
+| `rustc_variances` | Dumps the [variances] of an item. |
+
+Right below you can find elaborate explainers on a selected few.
+
+[`builtin_attrs`]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_feature/src/builtin_attrs.rs
+[`def_path_str`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.def_path_str
+[`inferred_outlives_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.inferred_outlives_of
+[`item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.item_bounds
+[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.predicates_of
+[`symbol_name`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.symbol_name
+[object lifetime defaults]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
+[opaq]: ./opaque-types-impl-trait-inference.md
+[variances]: ./variance.md
+
+### Formatting Graphviz output (.dot files)
+[formatting-graphviz-output]: #formatting-graphviz-output
+
+Some compiler options for debugging specific features yield graphviz graphs -
+e.g. the `#[rustc_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
+dumps various borrow-checker dataflow graphs.
+
+These all produce `.dot` files. To view these files, install graphviz (e.g.
+`apt-get install graphviz`) and then run the following commands:
+
+```bash
+$ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
+$ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
+```
+
+### Debugging type layouts
+
+The internal attribute `#[rustc_layout]` can be used to dump the [`Layout`] of
+the type it is attached to. For example:
 
 ```rust
 #![feature(rustc_attrs)]
