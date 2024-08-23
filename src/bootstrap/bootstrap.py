@@ -80,7 +80,10 @@ def get(base, url, path, checksums, verbose=False):
             os.unlink(temp_path)
 
 def curl_version():
-    return float(re.match(bytes("^curl ([0-9]+\\.[0-9]+)", "utf8"), require(["curl", "-V"]))[1])
+    m = re.match(bytes("^curl ([0-9]+)\\.([0-9]+)", "utf8"), require(["curl", "-V"]))
+    if m is None:
+        return (0, 0)
+    return (int(m[1]), int(m[2]))
 
 def download(path, url, probably_big, verbose):
     for _ in range(4):
@@ -110,7 +113,7 @@ def _download(path, url, probably_big, verbose, exception):
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32())
         extra_flags = []
-        if curl_version() > 7.70:
+        if curl_version() > (7, 70):
             extra_flags = [ "--retry-all-errors" ]
         run(["curl", option] + extra_flags + [
             "-L", # Follow redirect.

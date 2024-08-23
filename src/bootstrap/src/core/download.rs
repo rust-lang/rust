@@ -21,19 +21,23 @@ fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
     config.try_run(cmd)
 }
 
-fn extract_curl_version(out: &[u8]) -> f32 {
+fn extract_curl_version(out: &[u8]) -> (u16, u16) {
     let out = &out[5..];
-    let Some(i) = out.iter().position(|&x| x == b' ') else { return 0.0 };
+    let Some(i) = out.iter().position(|&x| x == b' ') else { return (0, 0) };
     let out = &out[..i];
-    let Some(k) = out.iter().rev().position(|&x| x == b'.') else { return 0.0 };
+    let Some(k) = out.iter().rev().position(|&x| x == b'.') else { return (0, 0) };
     let out = &out[..out.len() - k - 1];
-    std::str::from_utf8(out).unwrap().parse().unwrap_or(0.0)
+    let Ok(s) = std::str::from_utf8(out) else { return (0, 0) };
+    let parts = s.split('.').collect::<Vec<_>>();
+    let [s_major, s_minor] = &parts[..] else { return (0, 0) };
+    let (Ok(major), Ok(minor)) = (s_major.parse(), s_minor.parse()) else { return (0, 0) };
+    (major, minor)
 }
 
-fn curl_version() -> f32 {
+fn curl_version() -> (u16, u16) {
     let mut curl = Command::new("curl");
     curl.arg("-V");
-    let Ok(out) = curl.output() else { return 0.0 };
+    let Ok(out) = curl.output() else { return (0, 0) };
     let out = out.stdout;
     extract_curl_version(&out)
 }
@@ -249,7 +253,7 @@ impl Config {
             curl.arg("--progress-bar");
         }
         // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
-        if curl_version() > 7.70 {
+        if curl_version() > (7, 70) {
             curl.arg("--retry-all-errors");
         }
         curl.arg(url);
