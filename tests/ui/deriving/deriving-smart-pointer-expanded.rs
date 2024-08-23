@@ -20,3 +20,9 @@ where
     data: &'a mut T,
     x: core::marker::PhantomData<X>,
 }
+
+#[derive(SmartPointer)]
+#[repr(transparent)]
+struct MyPointerWithoutPointee<'a, T: ?Sized> {
+    ptr: &'a T,
+}

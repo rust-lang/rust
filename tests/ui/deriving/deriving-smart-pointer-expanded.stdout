@@ -42,3 +42,18 @@ impl<'a, Y, Z: MyTrait<T> + MyTrait<__S>, T: ?Sized + MyTrait<T> +
     MyTrait<__S>> ::core::ops::CoerceUnsized<MyPointer2<'a, Y, Z, __S, X>> for
     MyPointer2<'a, Y, Z, T, X> where Y: MyTrait<T>, Y: MyTrait<__S> {
 }
+
+#[repr(transparent)]
+struct MyPointerWithoutPointee<'a, T: ?Sized> {
+    ptr: &'a T,
+}
+#[automatically_derived]
+impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
+    ::core::ops::DispatchFromDyn<MyPointerWithoutPointee<'a, __S>> for
+    MyPointerWithoutPointee<'a, T> {
+}
+#[automatically_derived]
+impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
+    ::core::ops::CoerceUnsized<MyPointerWithoutPointee<'a, __S>> for
+    MyPointerWithoutPointee<'a, T> {
+}
