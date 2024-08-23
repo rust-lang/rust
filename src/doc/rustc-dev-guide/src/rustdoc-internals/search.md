@@ -369,14 +369,16 @@ The `rustdoc-js-std` tests are the same, but don't require an `.rs`
 file, since they use the standard library.
 
 The `.js` file is like a module (except the loader takes care of
-`exports` for you). It expects you to set these variables in the
-module's scope:
+`exports` for you). It uses these variables:
 
 |      Name      |              Type              | Description
 | -------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------
 | `FILTER_CRATE` | `string`                       | Only include results from the given crate. In the GUI, this is the "Results in <kbd>crate</kbd>" drop-down menu.
 | `EXPECTED`     | `[ResultsTable]\|ResultsTable` | List of tests to run, specifying what the hypothetical user types into the search box and sees in the tabs
 | `PARSED`       | `[ParsedQuery]\|ParsedQuery`   | List of parser tests to run, without running an actual search
+
+`FILTER_CRATE` can be left out (equivalent to searching "all crates"), but you
+have to specify `EXPECTED` or `PARSED`.
 
 Additionally, the following magic comments are supported.
 Put them on their own line, without indenting.
@@ -390,12 +392,9 @@ Put them on their own line, without indenting.
   to minor scoring changes.
 * `// should-fail`: Used to write negative tests.
 
-Standard library tests probably shouldn't specify any of these (we want the
-libs team to be able to add new stuff without causing our tests to fail), but
-standalone tests will often want `// exact-check`.
-
-`FILTER_CRATE` can be left out (equivalent to searching "all crates"), but you
-have to specify `EXPECTED` or `PARSED`.
+Standard library tests usually shouldn't specify `// exact-check`, since we
+want the libs team to be able to add new items without causing unrelated
+tests to fail, but standalone tests will use it more often.
 
 The `ResultsTable` and `ParsedQuery` types are specified in
 [`externs.js`](https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/static/js/externs.js).
