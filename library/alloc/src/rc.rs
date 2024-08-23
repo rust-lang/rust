@@ -539,6 +539,7 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(new_zeroed_alloc)]
     /// #![feature(new_uninit)]
     ///
     /// use std::rc::Rc;
@@ -551,7 +552,7 @@ impl<T> Rc<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
@@ -1000,6 +1001,7 @@ impl<T> Rc<[T]> {
     ///
     /// ```
     /// #![feature(new_uninit)]
+    /// #![feature(new_zeroed_alloc)]
     ///
     /// use std::rc::Rc;
     ///
@@ -1011,7 +1013,7 @@ impl<T> Rc<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         unsafe {

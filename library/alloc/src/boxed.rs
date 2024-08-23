@@ -293,6 +293,7 @@ impl<T> Box<T> {
     ///
     /// ```
     /// #![feature(new_uninit)]
+    /// #![feature(new_zeroed_alloc)]
     ///
     /// let zero = Box::<u32>::new_zeroed();
     /// let zero = unsafe { zero.assume_init() };
@@ -303,7 +304,7 @@ impl<T> Box<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
@@ -684,6 +685,7 @@ impl<T> Box<[T]> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(new_zeroed_alloc)]
     /// #![feature(new_uninit)]
     ///
     /// let values = Box::<[u32]>::new_zeroed_slice(3);
@@ -694,7 +696,7 @@ impl<T> Box<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
@@ -955,6 +957,7 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(box_uninit_write)]
     /// #![feature(new_uninit)]
     ///
     /// let big_box = Box::<[usize; 1024]>::new_uninit();
@@ -972,7 +975,7 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     ///     assert_eq!(*x, i);
     /// }
     /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[unstable(feature = "box_uninit_write", issue = "129397")]
     #[inline]
     pub fn write(mut boxed: Self, value: T) -> Box<T, A> {
         unsafe {

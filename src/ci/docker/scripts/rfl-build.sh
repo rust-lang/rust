@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-LINUX_VERSION=v6.11-rc1
+LINUX_VERSION=4c7864e81d8bbd51036dacf92fb0a400e13aaeee
 
 # Build rustc, rustdoc and cargo
 ../x.py build --stage 1 library rustdoc
@@ -28,7 +28,7 @@ rm -rf linux || true
 # Download Linux at a specific commit
 mkdir -p linux
 git -C linux init
-git -C linux remote add origin https://github.com/torvalds/linux.git
+git -C linux remote add origin https://github.com/Rust-for-Linux/linux.git
 git -C linux fetch --depth 1 origin ${LINUX_VERSION}
 git -C linux checkout FETCH_HEAD
 
