@@ -81,6 +81,7 @@
     - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasip1-threads](platform-support/wasm32-wasip1-threads.md)
     - [wasm32-wasip2](platform-support/wasm32-wasip2.md)
+    - [wasm32-unknown-unknown](platform-support/wasm32-unknown-unknown.md)
     - [wasm64-unknown-unknown](platform-support/wasm64-unknown-unknown.md)
     - [\*-win7-windows-msvc](platform-support/win7-windows-msvc.md)
     - [x86_64-fortanix-unknown-sgx](platform-support/x86_64-fortanix-unknown-sgx.md)
