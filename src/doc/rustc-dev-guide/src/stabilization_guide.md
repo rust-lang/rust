@@ -101,8 +101,8 @@ should appear in the documentation.
 
 ### Updating the feature-gate listing
 
-There is a central listing of feature-gates in
-[`compiler/rustc_feature`]. Search for the `declare_features!`
+There is a central listing of unstable feature-gates in
+[`compiler/rustc_feature/src/unstable.rs`]. Search for the `declare_features!`
 macro. There should be an entry for the feature you are aiming
 to stabilize, something like (this example is taken from
 [rust-lang/rust#32409]:
@@ -112,8 +112,8 @@ to stabilize, something like (this example is taken from
 (unstable, pub_restricted, "CURRENT_RUSTC_VERSION", Some(32409)),
 ```
 
-The above line should be moved down to the area for "accepted"
-features, declared below in a separate call to `declare_features!`.
+The above line should be moved to [`compiler/rustc_feature/src/accepted.rs`].
+Entries in the `declare_features!` call are sorted, so find the correct place.
 When it is done, it should look like:
 
 ```rust,ignore
@@ -131,12 +131,12 @@ but instead `CURRENT_RUSTC_VERSION`)
 Next search for the feature string (in this case, `pub_restricted`)
 in the codebase to find where it appears. Change uses of
 `#![feature(XXX)]` from the `std` and any rustc crates (this includes test folders
-under `library/` and `compiler/` but not the toplevel `test/` one) to be
+under `library/` and `compiler/` but not the toplevel `tests/` one) to be
 `#![cfg_attr(bootstrap, feature(XXX))]`. This includes the feature-gate
 only for stage0, which is built using the current beta (this is
 needed because the feature is still unstable in the current beta).
 
-Also, remove those strings from any tests. If there are tests
+Also, remove those strings from any tests (e.g. under `tests/`). If there are tests
 specifically targeting the feature-gate (i.e., testing that the
 feature-gate is required to use the feature, but nothing else),
 simply remove the test.
