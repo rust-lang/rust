@@ -380,16 +380,15 @@ The `.js` file is like a module (except the loader takes care of
 `FILTER_CRATE` can be left out (equivalent to searching "all crates"), but you
 have to specify `EXPECTED` or `PARSED`.
 
-Additionally, the following magic comments are supported.
+By default, the test fails if any of the expected results are missing,
+or if the results don't appear in the specified order.
+The actual search results may, however, include results that aren't in the test.
+To override this, specify any of the following magic comments.
 Put them on their own line, without indenting.
 
 * `// exact-check`: If search results appear that aren't part of the test case,
-  then fail. By default, the test case will tolerate the engine returning more
-  results than specified.
-* `// ignore-order`: By default, the entries in the test case must have a
-  matching order in the results. Setting this option allows you to test
-  filtering without also testing ranking, if you expect a test to be sensitive
-  to minor scoring changes.
+  then fail.
+* `// ignore-order`: Allow search results to appear in any order.
 * `// should-fail`: Used to write negative tests.
 
 Standard library tests usually shouldn't specify `// exact-check`, since we
