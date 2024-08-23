@@ -2630,7 +2630,7 @@ impl<'a> Parser<'a> {
         };
         self.bump(); // Eat `let` token
         let lo = self.prev_token.span;
-        let pat = self.parse_pat_allow_top_alt(
+        let pat = self.parse_pat_no_top_guard(
             None,
             RecoverComma::Yes,
             RecoverColon::Yes,
@@ -2767,7 +2767,7 @@ impl<'a> Parser<'a> {
         };
         // Try to parse the pattern `for ($PAT) in $EXPR`.
         let pat = match (
-            self.parse_pat_allow_top_alt(
+            self.parse_pat_no_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
@@ -3230,7 +3230,7 @@ impl<'a> Parser<'a> {
                     // then we should recover.
                     let mut snapshot = this.create_snapshot_for_diagnostic();
                     let pattern_follows = snapshot
-                        .parse_pat_allow_top_alt(
+                        .parse_pat_no_top_guard(
                             None,
                             RecoverComma::Yes,
                             RecoverColon::Yes,
@@ -3306,7 +3306,7 @@ impl<'a> Parser<'a> {
         if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             // Detect and recover from `($pat if $cond) => $arm`.
             let left = self.token.span;
-            match self.parse_pat_allow_top_alt(
+            match self.parse_pat_no_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
@@ -3340,7 +3340,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             // Regular parser flow:
-            let pat = self.parse_pat_allow_top_alt(
+            let pat = self.parse_pat_no_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
