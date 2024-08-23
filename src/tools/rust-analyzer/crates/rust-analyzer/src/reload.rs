@@ -564,6 +564,23 @@ impl GlobalState {
                         .collect()
                 };
 
+            // Also explicitly watch any build files configured in JSON project files.
+            for ws in self.workspaces.iter() {
+                if let ProjectWorkspaceKind::Json(project_json) = &ws.kind {
+                    for (_, krate) in project_json.crates() {
+                        let Some(build) = &krate.build else {
+                            continue;
+                        };
+                        watchers.push(lsp_types::FileSystemWatcher {
+                            glob_pattern: lsp_types::GlobPattern::String(
+                                build.build_file.to_string(),
+                            ),
+                            kind: None,
+                        });
+                    }
+                }
+            }
+
             watchers.extend(
                 iter::once(Config::user_config_path())
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
