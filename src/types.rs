@@ -480,8 +480,8 @@ impl Rewrite for ast::WherePredicate {
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,
-                ..
-            }) => rewrite_bounded_lifetime(lifetime, bounds, context, shape)?,
+                span,
+            }) => rewrite_bounded_lifetime(lifetime, bounds, span, context, shape).ok()?,
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
@@ -553,23 +553,27 @@ fn rewrite_generic_args(
 fn rewrite_bounded_lifetime(
     lt: &ast::Lifetime,
     bounds: &[ast::GenericBound],
+    span: Span,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
-    let result = lt.rewrite(context, shape)?;
+) -> RewriteResult {
+    let result = lt.rewrite_result(context, shape)?;
 
     if bounds.is_empty() {
-        Some(result)
+        Ok(result)
     } else {
         let colon = type_bound_colon(context);
         let overhead = last_line_width(&result) + colon.len();
+        let shape = shape
+            .sub_width(overhead)
+            .max_width_error(shape.width, span)?;
         let result = format!(
             "{}{}{}",
             result,
             colon,
-            join_bounds(context, shape.sub_width(overhead)?, bounds, true).ok()?
+            join_bounds(context, shape, bounds, true)?
         );
-        Some(result)
+        Ok(result)
     }
 }
 
@@ -580,8 +584,12 @@ impl Rewrite for ast::AnonConst {
 }
 
 impl Rewrite for ast::Lifetime {
-    fn rewrite(&self, context: &RewriteContext<'_>, _: Shape) -> Option<String> {
-        Some(rewrite_ident(context, self.ident).to_owned())
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, _: Shape) -> RewriteResult {
+        Ok(rewrite_ident(context, self.ident).to_owned())
     }
 }
 

@@ -4,7 +4,7 @@ use rustc_span::Span;
 use crate::comment::recover_comment_removed;
 use crate::config::StyleEdition;
 use crate::expr::{format_expr, is_simple_block, ExprType};
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
 use crate::spanned::Spanned;
@@ -90,6 +90,14 @@ impl<'a> Stmt<'a> {
 
 impl<'a> Rewrite for Stmt<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(
+        &self,
+        context: &RewriteContext<'_>,
+        shape: Shape,
+    ) -> crate::rewrite::RewriteResult {
         let expr_type =
             if context.config.style_edition() >= StyleEdition::Edition2024 && self.is_last_expr() {
                 ExprType::SubExpression
@@ -112,11 +120,11 @@ fn format_stmt(
     stmt: &ast::Stmt,
     expr_type: ExprType,
     is_last_expr: bool,
-) -> Option<String> {
-    skip_out_of_file_lines_range!(context, stmt.span());
+) -> RewriteResult {
+    skip_out_of_file_lines_range_err!(context, stmt.span());
 
     let result = match stmt.kind {
-        ast::StmtKind::Let(ref local) => local.rewrite(context, shape),
+        ast::StmtKind::Let(ref local) => local.rewrite_result(context, shape),
         ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
             let suffix = if semicolon_for_stmt(context, stmt, is_last_expr) {
                 ";"
@@ -124,10 +132,16 @@ fn format_stmt(
                 ""
             };
 
-            let shape = shape.sub_width(suffix.len())?;
-            format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
+            let shape = shape
+                .sub_width(suffix.len())
+                .max_width_error(shape.width, ex.span())?;
+            format_expr(ex, expr_type, context, shape)
+                .map(|s| s + suffix)
+                .unknown_error()
         }
-        ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => None,
+        ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => {
+            Err(RewriteError::Unknown)
+        }
     };
-    result.and_then(|res| recover_comment_removed(res, stmt.span(), context))
+    result.map(|res| recover_comment_removed(res, stmt.span(), context))
 }

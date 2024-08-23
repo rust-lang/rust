@@ -278,7 +278,7 @@ pub(crate) fn format_expr(
         )
         .ok(),
         ast::ExprKind::Index(ref expr, ref index, _) => {
-            rewrite_index(&**expr, &**index, context, shape)
+            rewrite_index(&**expr, &**index, context, shape).ok()
         }
         ast::ExprKind::Repeat(ref expr, ref repeats) => rewrite_pair(
             &**expr,
@@ -435,7 +435,7 @@ pub(crate) fn format_expr(
     };
 
     expr_rw
-        .and_then(|expr_str| recover_comment_removed(expr_str, expr.span, context))
+        .map(|expr_str| recover_comment_removed(expr_str, expr.span, context))
         .and_then(|expr_str| {
             let attrs = outer_attributes(&expr.attrs);
             let attrs_str = attrs.rewrite(context, shape)?;
@@ -672,6 +672,7 @@ pub(crate) fn rewrite_cond(
                 String::from("\n") + &shape.indent.block_only().to_string(context.config);
             control_flow
                 .rewrite_cond(context, shape, &alt_block_sep)
+                .ok()
                 .map(|rw| rw.0)
         }),
     }
@@ -896,10 +897,12 @@ impl<'a> ControlFlow<'a> {
         expr: &ast::Expr,
         shape: Shape,
         offset: usize,
-    ) -> Option<String> {
+    ) -> RewriteResult {
         debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, self.pat, expr);
 
-        let cond_shape = shape.offset_left(offset)?;
+        let cond_shape = shape
+            .offset_left(offset)
+            .max_width_error(shape.width, expr.span)?;
         if let Some(pat) = self.pat {
             let matcher = if self.matcher.is_empty() {
                 self.matcher.to_owned()
@@ -907,9 +910,10 @@ impl<'a> ControlFlow<'a> {
                 format!("{} ", self.matcher)
             };
             let pat_shape = cond_shape
-                .offset_left(matcher.len())?
-                .sub_width(self.connector.len())?;
-            let pat_string = pat.rewrite(context, pat_shape)?;
+                .offset_left(matcher.len())
+                .and_then(|s| s.sub_width(self.connector.len()))
+                .max_width_error(cond_shape.width, pat.span)?;
+            let pat_string = pat.rewrite_result(context, pat_shape)?;
             let comments_lo = context
                 .snippet_provider
                 .span_after(self.span.with_lo(pat.span.hi()), self.connector.trim());
@@ -923,14 +927,13 @@ impl<'a> ControlFlow<'a> {
                 RhsTactics::Default,
                 comments_span,
                 true,
-            )
-            .ok();
+            );
         }
 
-        let expr_rw = expr.rewrite(context, cond_shape);
+        let expr_rw = expr.rewrite_result(context, cond_shape);
         // The expression may (partially) fit on the current line.
         // We do not allow splitting between `if` and condition.
-        if self.keyword == "if" || expr_rw.is_some() {
+        if self.keyword == "if" || expr_rw.is_ok() {
             return expr_rw;
         }
 
@@ -939,7 +942,7 @@ impl<'a> ControlFlow<'a> {
             .block_indent(context.config.tab_spaces())
             .with_max_width(context.config);
         let nested_indent_str = nested_shape.indent.to_string_with_newline(context.config);
-        expr.rewrite(context, nested_shape)
+        expr.rewrite_result(context, nested_shape)
             .map(|expr_rw| format!("{}{}", nested_indent_str, expr_rw))
     }
 
@@ -948,7 +951,7 @@ impl<'a> ControlFlow<'a> {
         context: &RewriteContext<'_>,
         shape: Shape,
         alt_block_sep: &str,
-    ) -> Option<(String, usize)> {
+    ) -> Result<(String, usize), RewriteError> {
         // Do not take the rhs overhead from the upper expressions into account
         // when rewriting pattern.
         let new_width = context.budget(shape.used_width());
@@ -959,7 +962,9 @@ impl<'a> ControlFlow<'a> {
         let constr_shape = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()
-            fresh_shape.offset_left(7)?
+            fresh_shape
+                .offset_left(7)
+                .max_width_error(fresh_shape.width, self.span)?
         } else {
             fresh_shape
         };
@@ -995,7 +1000,7 @@ impl<'a> ControlFlow<'a> {
 
             if let Some(cond_str) = trial {
                 if cond_str.len() <= context.config.single_line_if_else_max_width() {
-                    return Some((cond_str, 0));
+                    return Ok((cond_str, 0));
                 }
             }
         }
@@ -1048,7 +1053,7 @@ impl<'a> ControlFlow<'a> {
             label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
         };
 
-        Some((
+        Ok((
             format!(
                 "{}{}{}{}{}",
                 label_string,
@@ -1114,13 +1119,17 @@ pub(crate) fn rewrite_else_kw_with_comments(
 
 impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
         let alt_block_sep = &shape.indent.to_string_with_newline(context.config);
         let (cond_str, used_width) = self.rewrite_cond(context, shape, alt_block_sep)?;
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
-            return Some(cond_str);
+            return Ok(cond_str);
         }
 
         let block_width = shape.width.saturating_sub(used_width);
@@ -1138,8 +1147,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let block_str = {
             let old_val = context.is_if_else_block.replace(self.else_block.is_some());
             let result =
-                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true)
-                    .ok();
+                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true);
             context.is_if_else_block.replace(old_val);
             result?
         };
@@ -1165,7 +1173,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         true,
                         mk_sp(else_block.span.lo(), self.span.hi()),
                     )
-                    .rewrite(context, shape)
+                    .rewrite_result(context, shape)
                 }
                 _ => {
                     last_in_chain = true;
@@ -1176,6 +1184,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         ..shape
                     };
                     format_expr(else_block, ExprType::Statement, context, else_shape)
+                        .unknown_error()
                 }
             };
 
@@ -1190,7 +1199,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
             result.push_str(&rewrite?);
         }
 
-        Some(result)
+        Ok(result)
     }
 }
 
@@ -1567,8 +1576,8 @@ fn rewrite_index(
     index: &ast::Expr,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
-    let expr_str = expr.rewrite(context, shape)?;
+) -> RewriteResult {
+    let expr_str = expr.rewrite_result(context, shape)?;
 
     let offset = last_line_width(&expr_str) + 1;
     let rhs_overhead = shape.rhs_overhead(context.config);
@@ -1583,37 +1592,45 @@ fn rewrite_index(
                 .and_then(|shape| shape.sub_width(1)),
             IndentStyle::Visual => shape.visual_indent(offset).sub_width(offset + 1),
         }
-    };
-    let orig_index_rw = index_shape.and_then(|s| index.rewrite(context, s));
+    }
+    .max_width_error(shape.width, index.span());
+    let orig_index_rw = index_shape.and_then(|s| index.rewrite_result(context, s));
 
     // Return if index fits in a single line.
     match orig_index_rw {
-        Some(ref index_str) if !index_str.contains('\n') => {
-            return Some(format!("{expr_str}[{index_str}]"));
+        Ok(ref index_str) if !index_str.contains('\n') => {
+            return Ok(format!("{expr_str}[{index_str}]"));
         }
         _ => (),
     }
 
     // Try putting index on the next line and see if it fits in a single line.
     let indent = shape.indent.block_indent(context.config);
-    let index_shape = Shape::indented(indent, context.config).offset_left(1)?;
-    let index_shape = index_shape.sub_width(1 + rhs_overhead)?;
-    let new_index_rw = index.rewrite(context, index_shape);
+    let index_shape = Shape::indented(indent, context.config)
+        .offset_left(1)
+        .max_width_error(shape.width, index.span())?;
+    let index_shape = index_shape
+        .sub_width(1 + rhs_overhead)
+        .max_width_error(index_shape.width, index.span())?;
+    let new_index_rw = index.rewrite_result(context, index_shape);
     match (orig_index_rw, new_index_rw) {
-        (_, Some(ref new_index_str)) if !new_index_str.contains('\n') => Some(format!(
+        (_, Ok(ref new_index_str)) if !new_index_str.contains('\n') => Ok(format!(
             "{}{}[{}]",
             expr_str,
             indent.to_string_with_newline(context.config),
             new_index_str,
         )),
-        (None, Some(ref new_index_str)) => Some(format!(
+        (Err(_), Ok(ref new_index_str)) => Ok(format!(
             "{}{}[{}]",
             expr_str,
             indent.to_string_with_newline(context.config),
             new_index_str,
         )),
-        (Some(ref index_str), _) => Some(format!("{expr_str}[{index_str}]")),
-        _ => None,
+        (Ok(ref index_str), _) => Ok(format!("{expr_str}[{index_str}]")),
+        // When both orig_index_rw and new_index_rw result in errors, we currently propagate the
+        // error from the second attempt since it is more generous with width constraints.
+        // This decision is somewhat arbitrary and is open to change.
+        (Err(_), Err(new_index_rw_err)) => Err(new_index_rw_err),
     }
 }
 

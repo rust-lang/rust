@@ -19,7 +19,7 @@ use crate::lists::{
 };
 use crate::macros::MacroArg;
 use crate::patterns::{can_be_overflowed_pat, TuplePatField};
-use crate::rewrite::{Rewrite, RewriteContext, RewriteErrorExt, RewriteResult};
+use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
@@ -89,6 +89,10 @@ pub(crate) enum OverflowableItem<'a> {
 impl<'a> Rewrite for OverflowableItem<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         self.map(|item| item.rewrite(context, shape))
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        self.map(|item| item.rewrite_result(context, shape))
     }
 }
 
@@ -617,7 +621,7 @@ impl<'a> Context<'a> {
         tactic
     }
 
-    fn rewrite_items(&self) -> Option<(bool, String)> {
+    fn rewrite_items(&self) -> Result<(bool, String), RewriteError> {
         let span = self.items_span();
         debug!("items: {:?}", self.items);
 
@@ -661,7 +665,6 @@ impl<'a> Context<'a> {
             .ends_with_newline(ends_with_newline);
 
         write_list(&list_items, &fmt)
-            .ok()
             .map(|items_str| (tactic == DefinitiveListTactic::Horizontal, items_str))
     }
 
@@ -718,7 +721,7 @@ impl<'a> Context<'a> {
     }
 
     fn rewrite(&self, shape: Shape) -> RewriteResult {
-        let (extendable, items_str) = self.rewrite_items().unknown_error()?;
+        let (extendable, items_str) = self.rewrite_items()?;
 
         // If we are using visual indent style and failed to format, retry with block indent.
         if !self.context.use_block_indent()

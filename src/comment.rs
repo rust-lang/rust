@@ -1703,12 +1703,11 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
 }
 
 /// Checks is `new` didn't miss any comment from `span`, if it removed any, return previous text
-/// (if it fits in the width/offset, else return `None`), else return `new`
 pub(crate) fn recover_comment_removed(
     new: String,
     span: Span,
     context: &RewriteContext<'_>,
-) -> Option<String> {
+) -> String {
     let snippet = context.snippet(span);
     if snippet != new && changed_comment_content(snippet, &new) {
         // We missed some comments. Warn and keep the original text.
@@ -1722,9 +1721,9 @@ pub(crate) fn recover_comment_removed(
                 )],
             );
         }
-        Some(snippet.to_owned())
+        snippet.to_owned()
     } else {
-        Some(new)
+        new
     }
 }
 

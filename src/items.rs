@@ -2077,7 +2077,7 @@ fn rewrite_static(
             true,
         )
         .ok()
-        .and_then(|res| recover_comment_removed(res, static_parts.span, context))
+        .map(|res| recover_comment_removed(res, static_parts.span, context))
         .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{prefix}{ty_str};"))
