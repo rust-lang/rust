@@ -21,6 +21,7 @@ fn main() {
     test_socketpair_epollerr();
     test_epoll_lost_events();
     test_ready_list_fetching_logic();
+    test_epoll_ctl_epfd_equal_fd();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -629,4 +630,17 @@ fn test_ready_list_fetching_logic() {
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value1 = fd1 as u64;
     check_epoll_wait::<1>(epfd, &[(expected_event1, expected_value1)]);
+}
+
+// In epoll_ctl, if the value of epfd equals to fd, EINVAL should be returned.
+fn test_epoll_ctl_epfd_equal_fd() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    let array_ptr = std::ptr::without_provenance_mut::<libc::epoll_event>(0x100);
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, epfd, array_ptr) };
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
+    assert_eq!(res, -1);
 }
