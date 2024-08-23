@@ -440,22 +440,10 @@ impl Session {
     }
 
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(
-            &self.sysroot,
-            self.opts.target_triple.triple(),
-            &self.opts.search_paths,
-            &self.target_tlib_path,
-            kind,
-        )
+        filesearch::FileSearch::new(&self.opts.search_paths, &self.target_tlib_path, kind)
     }
     pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(
-            &self.sysroot,
-            config::host_triple(),
-            &self.opts.search_paths,
-            &self.host_tlib_path,
-            kind,
-        )
+        filesearch::FileSearch::new(&self.opts.search_paths, &self.host_tlib_path, kind)
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
