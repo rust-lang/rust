@@ -128,7 +128,7 @@ macro_rules! quote_impl__ {
         }
     };
 }
-pub(super) use quote_impl__ as __quote;
+pub(crate) use quote_impl__ as __quote;
 
 /// FIXME:
 /// It probably should implement in proc-macro
@@ -137,7 +137,7 @@ macro_rules! quote_impl {
         $crate::builtin::quote::IntoTt::to_subtree($crate::builtin::quote::__quote!($span $($tt)*), $span)
     }
 }
-pub(super) use quote_impl as quote;
+pub(crate) use quote_impl as quote;
 
 pub(crate) trait IntoTt {
     fn to_subtree(self, span: Span) -> crate::tt::Subtree;

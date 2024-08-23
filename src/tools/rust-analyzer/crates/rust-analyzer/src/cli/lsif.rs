@@ -22,7 +22,7 @@ use crate::{
 };
 
 struct LsifManager<'a> {
-    count: i32,
+    id_counter: i32,
     token_map: FxHashMap<TokenId, Id>,
     range_map: FxHashMap<FileRange, Id>,
     file_map: FxHashMap<FileId, Id>,
@@ -44,7 +44,7 @@ impl From<Id> for lsp_types::NumberOrString {
 impl LsifManager<'_> {
     fn new<'a>(analysis: &'a Analysis, db: &'a RootDatabase, vfs: &'a Vfs) -> LsifManager<'a> {
         LsifManager {
-            count: 0,
+            id_counter: 0,
             token_map: FxHashMap::default(),
             range_map: FxHashMap::default(),
             file_map: FxHashMap::default(),
@@ -56,9 +56,9 @@ impl LsifManager<'_> {
     }
 
     fn add(&mut self, data: lsif::Element) -> Id {
-        let id = Id(self.count);
+        let id = Id(self.id_counter);
         self.emit(&serde_json::to_string(&lsif::Entry { id: id.into(), data }).unwrap());
-        self.count += 1;
+        self.id_counter += 1;
         id
     }
 

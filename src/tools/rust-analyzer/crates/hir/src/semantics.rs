@@ -365,7 +365,6 @@ impl<'db> SemanticsImpl<'db> {
                 _,
                 BuiltinFnLikeExpander::Column
                     | BuiltinFnLikeExpander::File
-                    | BuiltinFnLikeExpander::ModulePath
                     | BuiltinFnLikeExpander::Asm
                     | BuiltinFnLikeExpander::LlvmAsm
                     | BuiltinFnLikeExpander::GlobalAsm
@@ -483,10 +482,26 @@ impl<'db> SemanticsImpl<'db> {
         let SourceAnalyzer { file_id, resolver, .. } =
             self.analyze_no_infer(actual_macro_call.syntax())?;
         let macro_call = InFile::new(file_id, actual_macro_call);
-        let krate = resolver.krate();
-        let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
-            resolver.resolve_path_as_macro_def(self.db.upcast(), path, Some(MacroSubNs::Bang))
-        })?;
+        let macro_call_id = macro_call
+            .as_call_id(
+                self.db.upcast(),
+                resolver.module(),
+                |path| {
+                    resolver.resolve_path_as_macro_def(
+                        self.db.upcast(),
+                        path,
+                        Some(MacroSubNs::Bang),
+                    )
+                },
+                |module| {
+                    resolver
+                        .module()
+                        .def_map(self.db.upcast())
+                        .path_for_module(self.db.upcast(), module)
+                },
+            )
+            .ok()?
+            .value?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_call_id,

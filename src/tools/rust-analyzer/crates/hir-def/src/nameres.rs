@@ -63,7 +63,7 @@ use base_db::CrateId;
 use hir_expand::{
     name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
-use intern::Symbol;
+use intern::{sym, Symbol};
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -139,6 +139,7 @@ pub struct DefMap {
 /// Data that belongs to a crate which is shared between a crate's def map and all its block def maps.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
+    crate_name: Option<Symbol>,
     /// The extern prelude which contains all root modules of external crates that are in scope.
     extern_prelude: FxIndexMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
 
@@ -164,6 +165,7 @@ struct DefMapCrateData {
 impl DefMapCrateData {
     fn new(edition: Edition) -> Self {
         Self {
+            crate_name: None,
             extern_prelude: FxIndexMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
@@ -186,6 +188,7 @@ impl DefMapCrateData {
             registered_attrs,
             registered_tools,
             unstable_features,
+            crate_name: _,
             rustc_coherence_is_core: _,
             no_core: _,
             no_std: _,
@@ -441,6 +444,28 @@ impl DefMap {
 
     pub fn modules(&self) -> impl Iterator<Item = (LocalModuleId, &ModuleData)> + '_ {
         self.modules.iter()
+    }
+
+    pub fn path_for_module(&self, db: &dyn DefDatabase, mut module: ModuleId) -> String {
+        debug_assert!(module.krate == self.krate && module.block == self.block.map(|b| b.block));
+        let mut parts = vec![];
+        if let Some(name) = module.name(db) {
+            parts.push(name.symbol().clone());
+        }
+        while let Some(parent) = module.def_map(db).containing_module(module.local_id) {
+            module = parent;
+            if let Some(name) = module.name(db) {
+                parts.push(name.symbol().clone());
+            }
+            if parts.len() > 10 {
+                break;
+            }
+        }
+        parts.push(match &self.data.crate_name {
+            Some(name) => name.clone(),
+            None => sym::crate_.clone(),
+        });
+        parts.into_iter().rev().format("::").to_string()
     }
 
     pub fn derive_helpers_in_scope(
