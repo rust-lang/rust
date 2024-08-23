@@ -337,6 +337,7 @@
 #    "analysis",
 #    "src",
 #    "wasm-component-ld",
+#    "miri", "cargo-miri" # for dev/nightly channels
 #]
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose, 3 == print environment variables on each rustc invocation

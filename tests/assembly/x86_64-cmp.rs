@@ -1,6 +1,9 @@
-//@ revisions: DEBUG OPTIM
+//@ revisions: DEBUG LLVM-PRE-20-OPTIM LLVM-20-OPTIM
 //@ [DEBUG] compile-flags: -C opt-level=0
-//@ [OPTIM] compile-flags: -C opt-level=3
+//@ [LLVM-PRE-20-OPTIM] compile-flags: -C opt-level=3
+//@ [LLVM-PRE-20-OPTIM] ignore-llvm-version: 20 - 99
+//@ [LLVM-20-OPTIM] compile-flags: -C opt-level=3
+//@ [LLVM-20-OPTIM] min-llvm-version: 20
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -C llvm-args=-x86-asm-syntax=intel
 //@ only-x86_64
@@ -21,12 +24,18 @@ pub fn signed_cmp(a: i16, b: i16) -> std::cmp::Ordering {
     // DEBUG: and
     // DEBUG: sub
 
-    // OPTIM: xor
-    // OPTIM: cmp
-    // OPTIM: setne
-    // OPTIM: mov
-    // OPTIM: cmovge
-    // OPTIM: ret
+    // LLVM-PRE-20-OPTIM: xor
+    // LLVM-PRE-20-OPTIM: cmp
+    // LLVM-PRE-20-OPTIM: setne
+    // LLVM-PRE-20-OPTIM: mov
+    // LLVM-PRE-20-OPTIM: cmovge
+    // LLVM-PRE-20-OPTIM: ret
+    //
+    // LLVM-20-OPTIM: cmp
+    // LLVM-20-OPTIM: setl
+    // LLVM-20-OPTIM: setg
+    // LLVM-20-OPTIM: sub
+    // LLVM-20-OPTIM: ret
     three_way_compare(a, b)
 }
 
@@ -41,11 +50,16 @@ pub fn unsigned_cmp(a: u16, b: u16) -> std::cmp::Ordering {
     // DEBUG: and
     // DEBUG: sub
 
-    // OPTIM: xor
-    // OPTIM: cmp
-    // OPTIM: setne
-    // OPTIM: mov
-    // OPTIM: cmovae
-    // OPTIM: ret
+    // LLVM-PRE-20-OPTIM: xor
+    // LLVM-PRE-20-OPTIM: cmp
+    // LLVM-PRE-20-OPTIM: setne
+    // LLVM-PRE-20-OPTIM: mov
+    // LLVM-PRE-20-OPTIM: cmovae
+    // LLVM-PRE-20-OPTIM: ret
+    //
+    // LLVM-20-OPTIM: cmp
+    // LLVM-20-OPTIM: seta
+    // LLVM-20-OPTIM: sbb
+    // LLVM-20-OPTIM: ret
     three_way_compare(a, b)
 }
