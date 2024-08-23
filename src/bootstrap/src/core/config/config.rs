@@ -2781,7 +2781,8 @@ impl Config {
                     );
                 }
 
-                b
+                // If download-ci-llvm=true we also want to check that CI llvm is available
+                b && llvm::is_ci_llvm_available(self, asserts)
             }
             Some(StringOrBool::String(s)) if s == "if-unchanged" => if_unchanged(),
             Some(StringOrBool::String(other)) => {
