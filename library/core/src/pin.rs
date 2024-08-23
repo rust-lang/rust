@@ -1356,31 +1356,6 @@ impl<Ptr: Deref> Pin<Ptr> {
         Pin { __pointer: pointer }
     }
 
-    /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe. You must guarantee that you will continue to
-    /// treat the pointer `Ptr` as pinned after you call this function, so that
-    /// the invariants on the `Pin` type can be upheld. If the code using the
-    /// resulting `Ptr` does not continue to maintain the pinning invariants that
-    /// is a violation of the API contract and may lead to undefined behavior in
-    /// later (safe) operations.
-    ///
-    /// Note that you must be able to guarantee that the data pointed to by `Ptr`
-    /// will be treated as pinned all the way until its `drop` handler is complete!
-    ///
-    /// *For more information, see the [`pin` module docs][self]*
-    ///
-    /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
-    /// instead.
-    #[inline(always)]
-    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
-    #[stable(feature = "pin_into_inner", since = "1.39.0")]
-    pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
-        pin.__pointer
-    }
-
     /// Gets a shared reference to the pinned value this [`Pin`] points to.
     ///
     /// This is a generic method to go from `&Pin<Pointer<T>>` to `Pin<&T>`.
@@ -1503,6 +1478,31 @@ impl<Ptr: Deref> Pin<Ptr> {
         Ptr::Target: Sized,
     {
         *(self.__pointer) = value;
+    }
+
+    /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe. You must guarantee that you will continue to
+    /// treat the pointer `Ptr` as pinned after you call this function, so that
+    /// the invariants on the `Pin` type can be upheld. If the code using the
+    /// resulting `Ptr` does not continue to maintain the pinning invariants that
+    /// is a violation of the API contract and may lead to undefined behavior in
+    /// later (safe) operations.
+    ///
+    /// Note that you must be able to guarantee that the data pointed to by `Ptr`
+    /// will be treated as pinned all the way until its `drop` handler is complete!
+    ///
+    /// *For more information, see the [`pin` module docs][self]*
+    ///
+    /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
+    /// instead.
+    #[inline(always)]
+    #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
+    pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
+        pin.__pointer
     }
 }
 
