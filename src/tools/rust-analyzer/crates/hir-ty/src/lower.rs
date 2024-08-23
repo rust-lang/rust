@@ -1743,15 +1743,39 @@ fn implicitly_sized_clauses<'a, 'subst: 'a>(
     substitution: &'subst Substitution,
     resolver: &Resolver,
 ) -> Option<impl Iterator<Item = WhereClause> + Captures<'a> + Captures<'subst>> {
-    let is_trait_def = matches!(def, GenericDefId::TraitId(..));
-    let generic_args = &substitution.as_slice(Interner)[is_trait_def as usize..];
     let sized_trait = db
         .lang_item(resolver.krate(), LangItem::Sized)
-        .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+        .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id))?;
 
-    sized_trait.map(move |sized_trait| {
-        generic_args
-            .iter()
+    let get_trait_self_idx = |container: ItemContainerId| {
+        if matches!(container, ItemContainerId::TraitId(_)) {
+            let generics = generics(db.upcast(), def);
+            Some(generics.len_self())
+        } else {
+            None
+        }
+    };
+    let trait_self_idx = match def {
+        GenericDefId::TraitId(_) => Some(0),
+        GenericDefId::FunctionId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
+        GenericDefId::ConstId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
+        GenericDefId::TypeAliasId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
+        _ => None,
+    };
+
+    Some(
+        substitution
+            .iter(Interner)
+            .enumerate()
+            .filter_map(
+                move |(idx, generic_arg)| {
+                    if Some(idx) == trait_self_idx {
+                        None
+                    } else {
+                        Some(generic_arg)
+                    }
+                },
+            )
             .filter_map(|generic_arg| generic_arg.ty(Interner))
             .filter(move |&self_ty| !explicitly_unsized_tys.contains(self_ty))
             .map(move |self_ty| {
@@ -1759,8 +1783,8 @@ fn implicitly_sized_clauses<'a, 'subst: 'a>(
                     trait_id: sized_trait,
                     substitution: Substitution::from1(Interner, self_ty.clone()),
                 })
-            })
-    })
+            }),
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
