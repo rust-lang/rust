@@ -465,10 +465,20 @@ impl Location {
     }
 }
 
-impl From<Span> for Location {
-    fn from(span: Span) -> Self {
-        Location(span)
-    }
+/// Location of the statement at the given index for a given basic block. Assumes that `stmt_idx`
+/// and `bb_idx` are valid for a given body.
+pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) -> Location {
+    let bb = &body.blocks[*bb_idx];
+    let stmt = &bb.statements[stmt_idx];
+    Location(stmt.span)
+}
+
+/// Location of the terminator for a given basic block. Assumes that `bb_idx` is valid for a given
+/// body.
+pub fn terminator_location(body: &Body, bb_idx: &BasicBlockIdx) -> Location {
+    let bb = &body.blocks[*bb_idx];
+    let terminator = &bb.terminator;
+    Location(terminator.span)
 }
 
 /// Reference to a place used to represent a partial projection.
