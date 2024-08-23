@@ -1693,7 +1693,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     StringPart::highlighted("multiple different versions".to_string()),
                     StringPart::normal(" of crate `".to_string()),
                     StringPart::highlighted(format!("{name}")),
-                    StringPart::normal("` the your dependency graph".to_string()),
+                    StringPart::normal("` in the dependency graph".to_string()),
                 ],
             );
             let candidates = if impl_candidates.is_empty() {
