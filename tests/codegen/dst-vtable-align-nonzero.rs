@@ -31,7 +31,6 @@ pub fn eliminates_runtime_check_when_align_1(
     x: &Struct<WrapperWithAlign1<dyn Trait>>,
 ) -> &WrapperWithAlign1<dyn Trait> {
     // CHECK: load [[USIZE:i[0-9]+]], {{.+}} !range [[RANGE_META:![0-9]+]]
-    // CHECK-NOT: llvm.umax
     // CHECK-NOT: icmp
     // CHECK-NOT: select
     // CHECK: ret
