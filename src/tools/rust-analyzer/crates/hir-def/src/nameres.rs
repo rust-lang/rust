@@ -461,7 +461,6 @@ impl DefMap {
                 break;
             }
         }
-        // FIXME: crate_name should be non-optional but we don't pass the name through yet
         parts.push(match &self.data.crate_name {
             Some(name) => name.clone(),
             None => sym::crate_.clone(),
