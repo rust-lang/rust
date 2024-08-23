@@ -64,7 +64,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     }
 
     let pi = PanicInfo::new(
-        fmt,
+        &fmt,
         Location::caller(),
         /* can_unwind */ true,
         /* force_no_backtrace */ false,
@@ -102,7 +102,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 
         // PanicInfo with the `can_unwind` flag set to false forces an abort.
         let pi = PanicInfo::new(
-            fmt,
+            &fmt,
             Location::caller(),
             /* can_unwind */ false,
             force_no_backtrace,
