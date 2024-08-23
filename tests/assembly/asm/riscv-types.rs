@@ -27,6 +27,7 @@
 //@[riscv32-zfh] filecheck-flags: --check-prefix zfhmin
 
 //@ compile-flags: -C target-feature=+d
+//@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, lang_items, rustc_attrs, f16)]
 #![crate_type = "rlib"]
@@ -90,12 +91,6 @@ macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -107,12 +102,6 @@ macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y

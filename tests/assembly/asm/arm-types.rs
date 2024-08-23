@@ -2,6 +2,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ compile-flags: -C opt-level=0
+//@ compile-flags: -Zmerge-functions=disabled
 //@[d32] compile-flags: -C target-feature=+d32
 //@[neon] compile-flags: -C target-feature=+neon --cfg d32
 //@[neon] filecheck-flags: --check-prefix d32
@@ -114,12 +115,6 @@ macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {}, {}"), out($class) y, in($class) x);
             y
@@ -131,12 +126,6 @@ macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y
