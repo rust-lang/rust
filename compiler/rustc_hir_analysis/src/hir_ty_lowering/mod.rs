@@ -296,25 +296,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(rbv::ResolvedArg::StaticLifetime) => tcx.lifetimes.re_static,
 
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
-                let name = lifetime_name(def_id.expect_local());
+                let name = lifetime_name(def_id);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BrNamed(def_id, name),
+                    kind: ty::BrNamed(def_id.to_def_id(), name),
                 };
                 ty::Region::new_bound(tcx, debruijn, br)
             }
 
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
-                let name = tcx.hir().ty_param_name(def_id.expect_local());
-                let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
+                let name = tcx.hir().ty_param_name(def_id);
+                let item_def_id = tcx.hir().ty_param_owner(def_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
+                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
                 ty::Region::new_early_param(tcx, ty::EarlyParamRegion { index, name })
             }
 
             Some(rbv::ResolvedArg::Free(scope, id)) => {
-                let name = lifetime_name(id.expect_local());
-                ty::Region::new_late_param(tcx, scope, ty::BrNamed(id, name))
+                let name = lifetime_name(id);
+                ty::Region::new_late_param(
+                    tcx,
+                    scope.to_def_id(),
+                    ty::BrNamed(id.to_def_id(), name),
+                )
 
                 // (*) -- not late-bound, won't change
             }
@@ -1953,15 +1957,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         match tcx.named_bound_var(hir_id) {
             Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
-                let name = tcx.item_name(def_id);
+                let name = tcx.item_name(def_id.to_def_id());
                 let br = ty::BoundTy {
                     var: ty::BoundVar::from_u32(index),
-                    kind: ty::BoundTyKind::Param(def_id, name),
+                    kind: ty::BoundTyKind::Param(def_id.to_def_id(), name),
                 };
                 Ty::new_bound(tcx, debruijn, br)
             }
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
-                let def_id = def_id.expect_local();
                 let item_def_id = tcx.hir().ty_param_owner(def_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id.to_def_id()];
@@ -1982,10 +1985,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
                 // Find the name and index of the const parameter by indexing the generics of
                 // the parent item and construct a `ParamConst`.
-                let item_def_id = tcx.parent(def_id);
+                let item_def_id = tcx.local_parent(def_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.item_name(def_id);
+                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+                let name = tcx.item_name(def_id.to_def_id());
                 ty::Const::new_param(tcx, ty::ParamConst::new(index, name))
             }
             Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
