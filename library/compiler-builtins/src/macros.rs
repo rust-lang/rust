@@ -276,6 +276,106 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
+    // `arm_aeabi_alias` would conflict with `f16_apple_{arg,ret}_abi` not handled here. Avoid macro ambiguity by combining in a
+    // single `#[]`.
+    (
+        #[apple_f16_arg_abi]
+        #[arm_aeabi_alias = $alias:ident]
+        $($t:tt)*
+    ) => {
+        intrinsics! {
+            #[apple_f16_arg_abi, arm_aeabi_alias = $alias]
+            $($t)*
+        }
+    };
+    (
+        #[apple_f16_ret_abi]
+        #[arm_aeabi_alias = $alias:ident]
+        $($t:tt)*
+    ) => {
+        intrinsics! {
+            #[apple_f16_ret_abi, arm_aeabi_alias = $alias]
+            $($t)*
+        }
+    };
+
+    // On x86 (32-bit and 64-bit) Apple platforms, `f16` is passed and returned like a `u16` unless
+    // the builtin involves `f128`.
+    (
+        // `arm_aeabi_alias` would conflict if not handled here. Avoid macro ambiguity by combining
+        // in a single `#[]`.
+        #[apple_f16_arg_abi $(, arm_aeabi_alias = $alias:ident)?]
+        $(#[$($attr:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64")))]
+        $(#[$($attr)*])*
+        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            $($body)*
+        }
+
+        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
+        mod $name {
+            #[no_mangle]
+            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            $(#[$($attr)*])*
+            extern $abi fn $name( $($argname: u16),* ) $(-> $ret)? {
+                super::$name($(f16::from_bits($argname)),*)
+            }
+        }
+
+        #[cfg(not(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"))))]
+        intrinsics! {
+            $(#[arm_aeabi_alias = $alias])?
+            $(#[$($attr)*])*
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+    (
+        #[apple_f16_ret_abi $(, arm_aeabi_alias = $alias:ident)?]
+        $(#[$($attr:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64")))]
+        $(#[$($attr)*])*
+        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            $($body)*
+        }
+
+        #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
+        mod $name {
+            #[no_mangle]
+            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            $(#[$($attr)*])*
+            extern $abi fn $name( $($argname: $ty),* ) -> u16 {
+                super::$name($($argname),*).to_bits()
+            }
+        }
+
+        #[cfg(not(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"))))]
+        intrinsics! {
+            $(#[arm_aeabi_alias = $alias])?
+            $(#[$($attr)*])*
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
     // A bunch of intrinsics on ARM are aliased in the standard compiler-rt
     // build under `__aeabi_*` aliases, and LLVM will call these instead of the
     // original function. The aliasing here is used to generate these symbols in

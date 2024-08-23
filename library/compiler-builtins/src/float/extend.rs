@@ -86,6 +86,7 @@ intrinsics! {
 intrinsics! {
     #[avr_skip]
     #[aapcs_on_arm]
+    #[apple_f16_arg_abi]
     #[arm_aeabi_alias = __aeabi_h2f]
     #[cfg(f16_enabled)]
     pub extern "C" fn __extendhfsf2(a: f16) -> f32 {
@@ -94,6 +95,7 @@ intrinsics! {
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[apple_f16_arg_abi]
     #[cfg(f16_enabled)]
     pub extern "C" fn __gnu_h2f_ieee(a: f16) -> f32 {
         extend(a)
