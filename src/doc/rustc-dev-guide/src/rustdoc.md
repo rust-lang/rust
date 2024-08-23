@@ -81,9 +81,8 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 ## Tests
 
 * All paths in this section are relative to `tests` in the rust-lang/rust repository.
-* Tests on search index generation are located in `rustdoc-js`, as a
-  series of JavaScript files that encode queries on the standard library search
-  index and expected results. The format is specified
+* Tests on search engine and index are located in `rustdoc-js` and `rustdoc-js-std`.
+  The format is specified
   [in the search guide](rustdoc-internals/search.md#testing-the-search-engine).
 * Tests on the "UI" of rustdoc (the terminal output it produces when run) are in
   `rustdoc-ui`
