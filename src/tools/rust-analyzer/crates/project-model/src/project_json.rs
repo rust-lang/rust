@@ -52,7 +52,7 @@
 use base_db::{CrateDisplayName, CrateName};
 use cfg::CfgAtom;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de, Deserialize, Serialize};
 use span::Edition;
 
@@ -122,6 +122,25 @@ impl ProjectJson {
                         None => None,
                     };
 
+                    let cfg = crate_data
+                        .cfg_groups
+                        .iter()
+                        .flat_map(|cfg_extend| {
+                            let cfg_group = data.cfg_groups.get(cfg_extend);
+                            match cfg_group {
+                                Some(cfg_group) => cfg_group.0.iter().cloned(),
+                                None => {
+                                    tracing::error!(
+                                        "Unknown cfg group `{cfg_extend}` in crate `{}`",
+                                        crate_data.display_name.as_deref().unwrap_or("<unknown>"),
+                                    );
+                                    [].iter().cloned()
+                                }
+                            }
+                        })
+                        .chain(crate_data.cfg.0)
+                        .collect();
+
                     Crate {
                         display_name: crate_data
                             .display_name
@@ -131,7 +150,7 @@ impl ProjectJson {
                         edition: crate_data.edition.into(),
                         version: crate_data.version.as_ref().map(ToString::to_string),
                         deps: crate_data.deps,
-                        cfg: crate_data.cfg,
+                        cfg,
                         target: crate_data.target,
                         env: crate_data.env,
                         proc_macro_dylib_path: crate_data
@@ -306,10 +325,16 @@ pub enum RunnableKind {
 pub struct ProjectJsonData {
     sysroot: Option<Utf8PathBuf>,
     sysroot_src: Option<Utf8PathBuf>,
+    #[serde(default)]
+    cfg_groups: FxHashMap<String, CfgList>,
     crates: Vec<CrateData>,
     #[serde(default)]
     runnables: Vec<RunnableData>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Default)]
+#[serde(transparent)]
+struct CfgList(#[serde(with = "cfg_")] Vec<CfgAtom>);
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 struct CrateData {
@@ -320,8 +345,9 @@ struct CrateData {
     version: Option<semver::Version>,
     deps: Vec<Dep>,
     #[serde(default)]
-    #[serde(with = "cfg_")]
-    cfg: Vec<CfgAtom>,
+    cfg_groups: FxHashSet<String>,
+    #[serde(default)]
+    cfg: CfgList,
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
