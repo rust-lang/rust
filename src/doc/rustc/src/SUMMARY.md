@@ -49,6 +49,7 @@
     - [aarch64-unknown-teeos](platform-support/aarch64-unknown-teeos.md)
     - [\*-espidf](platform-support/esp-idf.md)
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
+    - [\*-unknown-trusty](platform-support/trusty.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [csky-unknown-linux-gnuabiv2\*](platform-support/csky-unknown-linux-gnuabiv2.md)
     - [hexagon-unknown-linux-musl](platform-support/hexagon-unknown-linux-musl.md)
