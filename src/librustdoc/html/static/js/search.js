@@ -3546,7 +3546,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // Used to de-duplicate inlined and re-exported stuff
             const itemReexports = new Map(crateCorpus.r);
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
-            const itemParentIdxs = crateCorpus.i;
+            const itemParentIdxDecoder = new VlqHexDecoder(crateCorpus.i, noop => noop);
             // a map Number, string for impl disambiguators
             const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
@@ -3593,6 +3593,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // faster analysis operations
             lastPath = "";
             len = itemTypes.length;
+            let lastName = "";
+            let lastWord = "";
             for (let i = 0; i < len; ++i) {
                 const bitIndex = i + 1;
                 if (descIndex >= descShard.len &&
@@ -3608,10 +3610,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     descIndex = 0;
                     descShardList.push(descShard);
                 }
-                let word = "";
-                if (typeof itemNames[i] === "string") {
-                    word = itemNames[i].toLowerCase();
-                }
+                const name = itemNames[i] === "" ? lastName : itemNames[i];
+                const word = itemNames[i] === "" ? lastWord : itemNames[i].toLowerCase();
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
                 const type = itemFunctionDecoder.next();
                 if (type !== null) {
@@ -3633,15 +3633,16 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 }
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
+                const itemParentIdx = itemParentIdxDecoder.next();
                 const row = {
                     crate,
                     ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"
-                    name: itemNames[i],
+                    name,
                     path,
                     descShard,
                     descIndex,
                     exactPath: itemReexports.has(i) ? itemPaths.get(itemReexports.get(i)) : path,
-                    parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
+                    parent: itemParentIdx > 0 ? paths[itemParentIdx - 1] : undefined,
                     type,
                     id,
                     word,
@@ -3655,6 +3656,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 if (!searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descIndex += 1;
                 }
+                lastName = name;
+                lastWord = word;
             }
 
             if (aliases) {
