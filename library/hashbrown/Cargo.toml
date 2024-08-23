@@ -67,9 +67,6 @@ rustc-dep-of-std = [
     "raw-entry",
 ]
 
-# Enables the experimental and unsafe RawTable API.
-raw = []
-
 # Enables the deprecated RawEntry API.
 raw-entry = []
 
@@ -84,5 +81,5 @@ default-hasher = ["dep:ahash"]
 inline-more = []
 
 [package.metadata.docs.rs]
-features = ["nightly", "rayon", "serde", "raw"]
+features = ["nightly", "rayon", "serde", "raw-entry"]
 rustdoc-args = ["--generate-link-to-definition"]

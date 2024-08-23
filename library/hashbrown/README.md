@@ -105,7 +105,6 @@ This crate has the following Cargo features:
 - `rkyv`: Enables rkyv serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 - `equivalent`: Allows comparisons to be customized with the `Equivalent` trait.
-- `raw`: Enables access to the experimental and unsafe `RawTable` API.
 - `raw-entry`: Enables access to the deprecated `RawEntry` API.
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
   of compilation time. (enabled by default)

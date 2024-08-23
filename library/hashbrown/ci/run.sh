@@ -33,7 +33,7 @@ if [ "${NO_STD}" = "1" ]; then
     FEATURES="rustc-internal-api"
     OP="build"
 else
-    FEATURES="rustc-internal-api,serde,rayon,raw"
+    FEATURES="rustc-internal-api,serde,rayon"
     OP="test"
 fi
 
