@@ -27,7 +27,7 @@ fn main() {
    |     |
    |     required by a bound introduced by this call
    |
-help: there are multiple different versions of crate `dependency` the your dependency graph
+help: there are multiple different versions of crate `dependency` in the dependency graph
   --> multiple-dep-versions.rs:1:1
    |
 1  | extern crate dep_2_reexport;
