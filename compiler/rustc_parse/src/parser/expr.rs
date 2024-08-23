@@ -2767,7 +2767,7 @@ impl<'a> Parser<'a> {
         };
         // Try to parse the pattern `for ($PAT) in $EXPR`.
         let pat = match (
-            self.parse_pat_no_top_guard(
+            self.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
