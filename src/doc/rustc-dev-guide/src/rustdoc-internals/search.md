@@ -354,3 +354,102 @@ The unification filter ensures that:
 The bloom filter checks none of these things,
 and, on top of that, can have false positives.
 But it's fast and uses very little memory, so the bloom filter helps.
+
+## Testing the search engine
+
+While the DOM UI code itself is tested using `rustdoc-gui` tests, the
+primary way the search engine is tested is the `rustdoc-js` and
+`rustdoc-js-std` tests. They run in NodeJS.
+
+A `rustdoc-js` test has a `.rs` and `.js` file, with the same name.
+The `.rs` file specifies the hypothetical library crate to run
+the searches on (make sure you mark anything you need to find as `pub`).
+The `.js` file specifies the actual searches.
+The `rustdoc-js-std` tests are the same, but don't require an `.rs`
+file, since they use the standard library.
+
+The `.js` file is like a module (except the loader takes care of
+`exports` for you). It expects you to set these variables in the
+module's scope:
+
+|      Name      |              Type              | Description
+| -------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------
+| `FILTER_CRATE` | `string`                       | Only include results from the given crate. In the GUI, this is the "Results in <kbd>crate</kbd>" drop-down menu.
+| `EXPECTED`     | `[ResultsTable]\|ResultsTable` | List of tests to run, specifying what the hypothetical user types into the search box and sees in the tabs
+| `PARSED`       | `[ParsedQuery]\|ParsedQuery`   | List of parser tests to run, without running an actual search
+
+Additionally, the following magic comments are supported.
+Put them on their own line, without indenting.
+
+* `// exact-check`: If search results appear that aren't part of the test case,
+  then fail. By default, the test case will tolerate the engine returning more
+  results than specified.
+* `// ignore-order`: By default, the entries in the test case must have a
+  matching order in the results. Setting this option allows you to test
+  filtering without also testing ranking, if you expect a test to be sensitive
+  to minor scoring changes.
+* `// should-fail`: Used to write negative tests.
+
+Standard library tests probably shouldn't specify any of these (we want the
+libs team to be able to add new stuff without causing our tests to fail), but
+standalone tests will often want `// exact-check`.
+
+`FILTER_CRATE` can be left out (equivalent to searching "all crates"), but you
+have to specify `EXPECTED` or `PARSED`.
+
+The `ResultsTable` and `ParsedQuery` types are specified in
+[`externs.js`](https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/static/js/externs.js).
+
+For example, imagine we needed to fix a bug where a function named
+`constructor` couldn't be found. To do this, write two files:
+
+```rust
+// tests/rustdoc-js/constructor_search.rs
+// The test case needs to find this result.
+pub fn constructor(_input: &str) -> i32 { 1 }
+```
+
+```js
+// tests/rustdoc-js/constructor_search.js
+// exact-check
+// Since this test runs against its own crate,
+// new items should not appear in the search results.
+const EXPECTED = [
+  // This first test targets name-based search.
+  {
+    query: "constructor",
+    others: [
+      { path: "constructor_search", name: "constructor" },
+    ],
+    in_args: [],
+    returned: [],
+  },
+  // This test targets the second tab.
+  {
+    query: "str",
+    others: [],
+    in_args: [
+      { path: "constructor_search", name: "constructor" },
+    ],
+    returned: [],
+  },
+  // This test targets the third tab.
+  {
+    query: "i32",
+    others: [],
+    in_args: [],
+    returned: [
+      { path: "constructor_search", name: "constructor" },
+    ],
+  },
+  // This test targets advanced type-driven search.
+  {
+    query: "str -> i32",
+    others: [
+      { path: "constructor_search", name: "constructor" },
+    ],
+    in_args: [],
+    returned: [],
+  },
+]
+```
