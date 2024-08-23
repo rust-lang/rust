@@ -357,7 +357,7 @@ But it's fast and uses very little memory, so the bloom filter helps.
 
 ## Testing the search engine
 
-While the DOM UI code itself is tested using `rustdoc-gui` tests, the
+While the generated UI is tested using `rustdoc-gui` tests, the
 primary way the search engine is tested is the `rustdoc-js` and
 `rustdoc-js-std` tests. They run in NodeJS.
 
