@@ -23,9 +23,11 @@ use hir_expand::{
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::InRealFile,
+    inert_attr_macro::find_builtin_attr_idx,
     name::AsName,
     FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
+use intern::Symbol;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
@@ -672,6 +674,35 @@ impl<'db> SemanticsImpl<'db> {
             );
         }
         res
+    }
+
+    fn is_inside_macro_call(token: &SyntaxToken) -> bool {
+        token.parent_ancestors().any(|ancestor| {
+            if ast::MacroCall::can_cast(ancestor.kind()) {
+                return true;
+            }
+            // Check if it is an item (only items can have macro attributes) that has a non-builtin attribute.
+            let Some(item) = ast::Item::cast(ancestor) else { return false };
+            item.attrs().any(|attr| {
+                let Some(meta) = attr.meta() else { return false };
+                let Some(path) = meta.path() else { return false };
+                let Some(attr_name) = path.as_single_name_ref() else { return true };
+                let attr_name = attr_name.text();
+                let attr_name = attr_name.as_str();
+                attr_name == "derive" || find_builtin_attr_idx(&Symbol::intern(attr_name)).is_none()
+            })
+        })
+    }
+
+    pub fn descend_into_macros_exact_if_in_macro(
+        &self,
+        token: SyntaxToken,
+    ) -> SmallVec<[SyntaxToken; 1]> {
+        if Self::is_inside_macro_call(&token) {
+            self.descend_into_macros_exact(token)
+        } else {
+            smallvec![token]
+        }
     }
 
     pub fn descend_into_macros_cb(
