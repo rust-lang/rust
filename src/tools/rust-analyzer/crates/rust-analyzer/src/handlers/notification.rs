@@ -10,6 +10,7 @@ use lsp_types::{
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, WorkDoneProgressCancelParams,
 };
 use paths::Utf8PathBuf;
+use stdx::TupleExt;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
@@ -290,11 +291,11 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
             // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
-            let target = TargetSpec::for_file(&world, file_id)?.and_then(|x| {
-                let tgt_kind = x.target_kind();
-                let tgt_name = match x {
-                    TargetSpec::Cargo(c) => c.target,
-                    TargetSpec::ProjectJson(p) => p.label,
+            let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
+                let tgt_kind = it.target_kind();
+                let (tgt_name, crate_id) = match it {
+                    TargetSpec::Cargo(c) => (c.target, c.crate_id),
+                    TargetSpec::ProjectJson(p) => (p.label, p.crate_id),
                 };
 
                 let tgt = match tgt_kind {
@@ -305,25 +306,25 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                     _ => return None,
                 };
 
-                Some(tgt)
+                Some((tgt, crate_id))
             });
 
-            let crate_ids = if target.is_some() {
-                // Trigger flychecks for the only workspace which the binary crate belongs to
-                world.analysis.crates_for(file_id)?.into_iter().unique().collect::<Vec<_>>()
-            } else {
-                // Trigger flychecks for all workspaces that depend on the saved file
-                // Crates containing or depending on the saved file
-                world
-                    .analysis
-                    .crates_for(file_id)?
-                    .into_iter()
-                    .flat_map(|id| world.analysis.transitive_rev_deps(id))
-                    .flatten()
-                    .unique()
-                    .collect::<Vec<_>>()
+            let crate_ids = match target {
+                // Trigger flychecks for the only crate which the target belongs to
+                Some((_, krate)) => vec![krate],
+                None => {
+                    // Trigger flychecks for all workspaces that depend on the saved file
+                    // Crates containing or depending on the saved file
+                    world
+                        .analysis
+                        .crates_for(file_id)?
+                        .into_iter()
+                        .flat_map(|id| world.analysis.transitive_rev_deps(id))
+                        .flatten()
+                        .unique()
+                        .collect::<Vec<_>>()
+                }
             };
-
             let crate_root_paths: Vec<_> = crate_ids
                 .iter()
                 .filter_map(|&crate_id| {
@@ -375,7 +376,8 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         match package
                             .filter(|_| !world.config.flycheck_workspace() || target.is_some())
                         {
-                            Some(package) => flycheck.restart_for_package(package, target.clone()),
+                            Some(package) => flycheck
+                                .restart_for_package(package, target.clone().map(TupleExt::head)),
                             None => flycheck.restart_workspace(saved_file.clone()),
                         }
                         continue;
