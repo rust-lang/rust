@@ -303,10 +303,11 @@ fn invoke_rustdoc(
         .arg(&out)
         .arg(&path)
         .arg("--markdown-css")
-        .arg("../rust.css");
+        .arg("../rust.css")
+        .arg("-Zunstable-options");
 
     if !builder.config.docs_minification {
-        cmd.arg("-Z").arg("unstable-options").arg("--disable-minification");
+        cmd.arg("--disable-minification");
     }
 
     cmd.run(builder);
@@ -376,8 +377,6 @@ impl Step for Standalone {
             }
 
             let mut cmd = builder.rustdoc_cmd(compiler);
-            // Needed for --index-page flag
-            cmd.arg("-Z").arg("unstable-options");
 
             cmd.arg("--html-after-content")
                 .arg(&footer)
@@ -386,6 +385,7 @@ impl Step for Standalone {
                 .arg("--html-in-header")
                 .arg(&favicon)
                 .arg("--markdown-no-toc")
+                .arg("-Zunstable-options")
                 .arg("--index-page")
                 .arg(builder.src.join("src/doc/index.md"))
                 .arg("--markdown-playground-url")
@@ -478,9 +478,6 @@ impl Step for Releases {
             mem::drop(tmpfile);
             let mut cmd = builder.rustdoc_cmd(compiler);
 
-            // Needed for --index-page flag
-            cmd.arg("-Z").arg("unstable-options");
-
             cmd.arg("--html-after-content")
                 .arg(&footer)
                 .arg("--html-before-content")
@@ -490,6 +487,7 @@ impl Step for Releases {
                 .arg("--markdown-no-toc")
                 .arg("--markdown-css")
                 .arg("rust.css")
+                .arg("-Zunstable-options")
                 .arg("--index-page")
                 .arg(builder.src.join("src/doc/index.md"))
                 .arg("--markdown-playground-url")
@@ -636,6 +634,8 @@ impl Step for Std {
         if !builder.config.docs_minification {
             extra_args.push("--disable-minification");
         }
+        // For `--index-page` and `--output-format=json`.
+        extra_args.push("-Zunstable-options");
 
         doc_std(builder, self.format, stage, target, &out, &extra_args, &crates);
 
@@ -715,8 +715,6 @@ fn doc_std(
         .arg("--target-dir")
         .arg(&*target_dir.to_string_lossy())
         .arg("-Zskip-rustdoc-fingerprint")
-        .rustdocflag("-Z")
-        .rustdocflag("unstable-options")
         .rustdocflag("--resource-suffix")
         .rustdocflag(&builder.version);
     for arg in extra_args {
@@ -822,7 +820,6 @@ impl Step for Rustc {
         // Since we always pass --document-private-items, there's no need to warn about linking to private items.
         cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
         cargo.rustdocflag("--enable-index-page");
-        cargo.rustdocflag("-Zunstable-options");
         cargo.rustdocflag("-Znormalize-docs");
         cargo.rustdocflag("--show-type-layout");
         // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
@@ -830,7 +827,6 @@ impl Step for Rustc {
         // cargo.rustdocflag("--generate-link-to-definition");
 
         compile::rustc_cargo(builder, &mut cargo, target, &compiler);
-        cargo.arg("-Zunstable-options");
         cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -986,7 +982,6 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");
-                cargo.rustdocflag("-Zunstable-options");
                 // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
                 // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
                 // cargo.rustdocflag("--generate-link-to-definition");
