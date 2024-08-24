@@ -524,7 +524,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         epfd_value: i32,
         weak_epfd: WeakFileDescriptionRef,
         dest: &MPlaceTy<'tcx>,
-        event: &MPlaceTy<'tcx>,
+        events: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -539,7 +539,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ready_list = epoll_file_description.get_ready_list();
         let mut ready_list = ready_list.borrow_mut();
         let mut num_of_events: i32 = 0;
-        let mut array_iter = this.project_array_fields(event)?;
+        let mut array_iter = this.project_array_fields(events)?;
 
         while let Some(des) = array_iter.next(this)? {
             if let Some(epoll_event_instance) = ready_list_next(this, &mut ready_list) {
