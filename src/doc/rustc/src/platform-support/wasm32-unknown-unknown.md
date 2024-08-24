@@ -29,11 +29,10 @@ that not all uses of `wasm32-unknown-unknown` are using JavaScript and the web.
 
 ## Target maintainers
 
-When this target was added to the compiler platform-specific documentation here
+When this target was added to the compiler, platform-specific documentation here
 was not maintained at that time. This means that the list below is not
-exhaustive and there are more interested parties in this target. That being
-said since when this document was last updated those interested in maintaining
-this target are:
+exhaustive, and there are more interested parties in this target. That being
+said, those interested in maintaining this target are:
 
 - Alex Crichton, https://github.com/alexcrichton
 
