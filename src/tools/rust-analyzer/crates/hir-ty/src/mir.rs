@@ -636,6 +636,7 @@ pub enum TerminatorKind {
     },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -666,15 +667,16 @@ pub enum BorrowKind {
     Mut { kind: MutBorrowKind },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum MutBorrowKind {
+    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
+    /// be expressed by the user and is used only in implicit closure bindings.
+    ClosureCapture,
     Default,
     /// This borrow arose from method-call auto-ref
     /// (i.e., adjustment::Adjust::Borrow).
     TwoPhasedBorrow,
-    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
-    /// be expressed by the user and is used only in implicit closure bindings.
-    ClosureCapture,
 }
 
 impl BorrowKind {

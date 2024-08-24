@@ -1,3 +1,4 @@
+mod closure_captures;
 mod coercion;
 mod diagnostics;
 mod display_source_code;
