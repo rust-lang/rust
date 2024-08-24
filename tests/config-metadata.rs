@@ -1,3 +1,5 @@
+#![feature(rustc_private)]
+
 use clippy_config::{get_configuration_metadata, ClippyConfiguration};
 use itertools::Itertools;
 use regex::Regex;

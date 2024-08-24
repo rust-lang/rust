@@ -109,7 +109,7 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             check_place(tcx, *place, span, body, msrv)
         },
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
@@ -141,7 +141,7 @@ fn check_rvalue<'tcx>(
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
-            let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
+            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, tcx.param_env(def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(tcx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.
