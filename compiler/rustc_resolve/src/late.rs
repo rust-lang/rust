@@ -699,11 +699,6 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Count the number of places a lifetime is used.
     lifetime_uses: FxHashMap<LocalDefId, LifetimeUseSet>,
-
-    /// We need some "real" `NodeId` to emit
-    /// [`elided_named_lifetimes`](lint::builtin::ELIDED_NAMED_LIFETIMES).
-    /// See comments in [`MissingLifetime::id_if_exists_in_source_or`].
-    crate_node_id: NodeId,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1322,10 +1317,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
 }
 
 impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
-    fn new(
-        resolver: &'b mut Resolver<'a, 'tcx>,
-        krate: &Crate,
-    ) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
+    fn new(resolver: &'b mut Resolver<'a, 'tcx>) -> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
@@ -1348,7 +1340,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // errors at module scope should always be reported
             in_func_body: false,
             lifetime_uses: Default::default(),
-            crate_node_id: krate.id,
         }
     }
 
@@ -1573,7 +1564,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         if ident.name == kw::UnderscoreLifetime {
-            return self.resolve_anonymous_lifetime(lifetime, false);
+            return self.resolve_anonymous_lifetime(lifetime, lifetime.id, false);
         }
 
         let mut lifetime_rib_iter = self.lifetime_ribs.iter().rev();
@@ -1676,13 +1667,23 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn resolve_anonymous_lifetime(&mut self, lifetime: &Lifetime, elided: bool) {
+    fn resolve_anonymous_lifetime(
+        &mut self,
+        lifetime: &Lifetime,
+        id_for_lint: NodeId,
+        elided: bool,
+    ) {
         debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
 
         let kind =
             if elided { MissingLifetimeKind::Ampersand } else { MissingLifetimeKind::Underscore };
-        let missing_lifetime =
-            MissingLifetime { id: lifetime.id, span: lifetime.ident.span, kind, count: 1 };
+        let missing_lifetime = MissingLifetime {
+            id: lifetime.id,
+            span: lifetime.ident.span,
+            kind,
+            count: 1,
+            id_for_lint,
+        };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
         for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
             debug!(?rib.kind);
@@ -1810,7 +1811,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             LifetimeRes::ElidedAnchor { start: id, end: NodeId::from_u32(id.as_u32() + 1) },
             LifetimeElisionCandidate::Ignore,
         );
-        self.resolve_anonymous_lifetime(&lt, true);
+        self.resolve_anonymous_lifetime(&lt, anchor_id, true);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1926,6 +1927,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             };
             let missing_lifetime = MissingLifetime {
                 id: node_ids.start,
+                id_for_lint: segment_id,
                 span: elided_lifetime_span,
                 kind,
                 count: expected_lifetimes,
@@ -2051,32 +2053,27 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         match candidate {
-            LifetimeElisionCandidate::Missing(missing @ MissingLifetime { span: elided, .. }) => {
+            LifetimeElisionCandidate::Missing(missing @ MissingLifetime { .. }) => {
                 debug_assert_eq!(id, missing.id);
                 match res {
                     LifetimeRes::Static { suppress_elision_warning } => {
                         if !suppress_elision_warning {
                             self.r.lint_buffer.buffer_lint(
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
-                                missing.id_if_exists_in_source_or(self.crate_node_id),
+                                missing.id_for_lint,
                                 missing.span,
-                                BuiltinLintDiag::ElidedIsStatic { elided },
+                                BuiltinLintDiag::ElidedIsStatic { elided: missing.span },
                             );
                         }
                     }
-                    LifetimeRes::Param { param, binder } => {
+                    LifetimeRes::Param { param, binder: _ } => {
                         let tcx = self.r.tcx();
                         self.r.lint_buffer.buffer_lint(
                             lint::builtin::ELIDED_NAMED_LIFETIMES,
-                            // It should be possible to use `self.crate_node_id`
-                            // or `param`'s `NodeId` here as a fallback instead of the `binder`,
-                            // but `binder` sounds like a more appropriate place than the crate,
-                            // and to convert `param` from `LocalDefId` to `NodeId`,
-                            // we would have to do some additional work.
-                            missing.id_if_exists_in_source_or(binder),
+                            missing.id_for_lint,
                             missing.span,
                             BuiltinLintDiag::ElidedIsParam {
-                                elided,
+                                elided: missing.span,
                                 param: (tcx.item_name(param.into()), tcx.source_span(param)),
                             },
                         );
@@ -4990,7 +4987,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
-        let mut late_resolution_visitor = LateResolutionVisitor::new(self, krate);
+        let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
