@@ -2727,6 +2727,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         let predicate = predicate.upcast(tcx);
+        let suggest_remove_deref = |err: &mut Diag<'_, G>, expr: &hir::Expr<'_>| {
+            if let Some(pred) = predicate.as_trait_clause()
+                && tcx.is_lang_item(pred.def_id(), LangItem::Sized)
+                && let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
+            {
+                err.span_suggestion_verbose(
+                    expr.span.until(inner.span),
+                    "references are always `Sized`, even if they point to unsized data; consider \
+                     not dereferencing the expression",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        };
         match *cause_code {
             ObligationCauseCode::ExprAssignable
             | ObligationCauseCode::MatchExpressionArm { .. }
@@ -2773,6 +2787,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)
                 if !span.is_dummy() =>
             {
+                if let ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, pos) = &cause_code {
+                    if let Node::Expr(expr) = tcx.parent_hir_node(*hir_id)
+                        && let hir::ExprKind::Call(_, args) = expr.kind
+                        && let Some(expr) = args.get(*pos)
+                    {
+                        suggest_remove_deref(err, &expr);
+                    } else if let Node::Expr(expr) = self.tcx.hir_node(*hir_id)
+                        && let hir::ExprKind::MethodCall(_, _, args, _) = expr.kind
+                        && let Some(expr) = args.get(*pos)
+                    {
+                        suggest_remove_deref(err, &expr);
+                    }
+                }
                 let item_name = tcx.def_path_str(item_def_id);
                 let short_item_name = with_forced_trimmed_paths!(tcx.def_path_str(item_def_id));
                 let mut multispan = MultiSpan::from(span);
@@ -2970,6 +2997,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ));
                     err.downgrade_to_delayed_bug();
                 }
+                let mut local = true;
                 match tcx.parent_hir_node(hir_id) {
                     Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
@@ -2978,7 +3006,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
                     }
                     Node::LetStmt(hir::LetStmt {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(..), span, .. }),
@@ -2993,7 +3020,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "&",
                             Applicability::MachineApplicable,
                         );
-                        err.note("all local variables must have a statically known size");
+                    }
+                    Node::LetStmt(hir::LetStmt { init: Some(expr), .. }) => {
+                        // When encountering an assignment of an unsized trait, like `let x = *"";`,
+                        // we check if the RHS is a deref operation, to suggest removing it.
+                        suggest_remove_deref(err, &expr);
                     }
                     Node::Param(param) => {
                         err.span_suggestion_verbose(
@@ -3003,10 +3034,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             "&",
                             Applicability::MachineApplicable,
                         );
+                        local = false;
                     }
-                    _ => {
-                        err.note("all local variables must have a statically known size");
-                    }
+                    _ => {}
+                }
+                if local {
+                    err.note("all local variables must have a statically known size");
                 }
                 if !tcx.features().unsized_locals {
                     err.help("unsized locals are gated as an unstable feature");
@@ -3529,14 +3562,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 );
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
-                if let Some((expr_ty, expr_span)) = expr_info {
+                if let Some((expr_ty, hir_id)) = expr_info {
                     let expr_ty = self.tcx.short_ty_string(expr_ty, &mut long_ty_file);
+                    let expr = self.infcx.tcx.hir().expect_expr(hir_id);
                     err.span_label(
-                        expr_span,
+                        expr.span,
                         with_forced_trimmed_paths!(format!(
                             "return type was inferred to be `{expr_ty}` here",
                         )),
                     );
+                    suggest_remove_deref(err, &expr);
                 }
             }
         }
