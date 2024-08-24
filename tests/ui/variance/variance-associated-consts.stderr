@@ -9,7 +9,7 @@ help: try adding a `where` bound
 LL | struct Foo<T: Trait> where [(); <T as Trait>::Const]: {
    |                      ++++++++++++++++++++++++++++++++
 
-error: [o]
+error: [T: o]
   --> $DIR/variance-associated-consts.rs:13:1
    |
 LL | struct Foo<T: Trait> {
