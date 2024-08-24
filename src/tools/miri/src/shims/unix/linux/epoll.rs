@@ -577,17 +577,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some(epoll_interests) = this.machine.epoll_interests.get_epoll_interest(id) {
             for weak_epoll_interest in epoll_interests {
                 if let Some(epoll_interest) = weak_epoll_interest.upgrade() {
-                    let is_updated = check_and_update_one_event_interest(fd_ref, epoll_interest, id, this)?;
+                    let is_updated = check_and_update_one_event_interest(
+                        fd_ref,
+                        epoll_interest.clone(),
+                        id,
+                        this,
+                    )?;
                     if is_updated {
                         // Edge-triggered notification only notify one thread even if there are
                         // multiple threads block on the same epfd.
-                        let epfd = this.machine.fds.get(epoll_event_interest.epfd).unwrap();
-                        // FIXME: We can randomly pick a thread to unblock.
+                        let epfd = this.machine.fds.get(epoll_interest.borrow().epfd).unwrap();
 
                         // This unwrap can never fail because if the current epoll instance were
                         // closed and its epfd value reused, the upgrade of weak_epoll_interest
                         // above would fail. This guarantee holds because only the epoll instance
                         // holds a strong ref to epoll_interest.
+                        // FIXME: We can randomly pick a thread to unblock.
                         if let Some(thread_id) =
                             epfd.downcast::<Epoll>().unwrap().thread_id.borrow_mut().pop()
                         {
@@ -628,7 +633,7 @@ fn ready_list_next(
 
 /// This helper function checks whether an epoll notification should be triggered for a specific
 /// epoll_interest and, if necessary, triggers the notification, and returns whether the
-/// event interest was updated. Unlike check_and_update_readiness, this function sends a
+/// notification was added/updated. Unlike check_and_update_readiness, this function sends a
 /// notification to only one epoll instance.
 fn check_and_update_one_event_interest<'tcx>(
     fd_ref: &FileDescriptionRef,
