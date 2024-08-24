@@ -4,8 +4,6 @@
 // known to be `1` after inlining).
 
 //@ compile-flags: -C no-prepopulate-passes -Zinline-mir=no
-//@ ignore-std-debug-assertions
-// Reason: precondition checks in ptr::read make them a bad candidate for MIR inlining
 //@ needs-deterministic-layouts
 
 #![crate_type = "lib"]
