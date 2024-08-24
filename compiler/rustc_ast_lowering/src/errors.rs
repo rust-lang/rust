@@ -14,6 +14,7 @@ pub struct GenericTypeWithParentheses {
     pub sub: Option<UseAngleBrackets>,
 }
 
+/// Suggests using angle brackets instead of parentheses for generic types.
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(ast_lowering_use_angle_brackets, applicability = "maybe-incorrect")]
 pub struct UseAngleBrackets {
@@ -38,6 +39,7 @@ pub struct InvalidAbi {
     pub suggestion: Option<InvalidAbiSuggestion>,
 }
 
+/// Provides an explanation for why an ABI is invalid.
 pub struct InvalidAbiReason(pub &'static str);
 
 impl Subdiagnostic for InvalidAbiReason {
