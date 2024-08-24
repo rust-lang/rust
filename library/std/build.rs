@@ -63,7 +63,7 @@ fn main() {
         // the minimum Android API level change from 19 to 21. And Android supports
         // `dl_iterate_phdr` since API level 21. Please see
         // <https://android.googlesource.com/platform/bionic/+/HEAD/docs/status.md>
-        // for details. So we can enable `dl_iterate_phdr` feature for Android witout
+        // for details. So we can enable `dl_iterate_phdr` feature for Android without
         // checking the Android API level.
         //
         // Note: after <https://github.com/rust-lang/backtrace-rs/pull/656>, backtrace-rs
@@ -155,7 +155,7 @@ fn main() {
     // These are currently empty, but will fill up as some platforms move from completely
     // unreliable to reliable basics but unreliable math.
 
-    // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
+    // LLVM is currently adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
     let has_reliable_f16_math = has_reliable_f16
         && match (target_arch.as_str(), target_os.as_str()) {
             // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
