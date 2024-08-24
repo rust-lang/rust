@@ -29,6 +29,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let def_id = body.source.def_id();
         let ctx = InstSimplifyContext {
             tcx,
             local_decls: &body.local_decls,
@@ -36,14 +37,21 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         };
         let preserve_ub_checks =
             attr::contains_name(tcx.hir_krate_attrs(), sym::rustc_preserve_ub_checks);
+        let remove_ub_checks = if tcx.is_coroutine(def_id) {
+            false
+        } else {
+            tcx.has_attr(def_id, sym::rustc_no_ubchecks)
+        };
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 let StatementKind::Assign(box (.., rvalue)) = &mut statement.kind else {
                     continue;
                 };
 
-                if !preserve_ub_checks {
-                    ctx.simplify_ub_check(rvalue);
+                if remove_ub_checks {
+                    ctx.simplify_ub_check(rvalue, false);
+                } else if !preserve_ub_checks {
+                    ctx.simplify_ub_check(rvalue, tcx.sess.ub_checks());
                 }
                 ctx.simplify_bool_cmp(rvalue);
                 ctx.simplify_ref_deref(rvalue);
@@ -168,13 +176,13 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         }
     }
 
-    fn simplify_ub_check(&self, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_ub_check(&self, rvalue: &mut Rvalue<'tcx>, ub_checks: bool) {
         // FIXME: Should we do the same for overflow checks?
         let Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks)) = *rvalue else {
             return;
         };
 
-        let const_ = Const::from_bool(self.tcx, self.tcx.sess.ub_checks());
+        let const_ = Const::from_bool(self.tcx, ub_checks);
         let constant = ConstOperand { span: DUMMY_SP, const_, user_ty: None };
         *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
     }
