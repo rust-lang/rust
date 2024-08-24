@@ -265,8 +265,6 @@ fn structurally_same_type_impl<'tcx>(
     } else {
         // Do a full, depth-first comparison between the two.
         use rustc_type_ir::TyKind::*;
-        let a_kind = a.kind();
-        let b_kind = b.kind();
 
         let compare_layouts = |a, b| -> Result<bool, &'tcx LayoutError<'tcx>> {
             debug!("compare_layouts({:?}, {:?})", a, b);
@@ -281,12 +279,11 @@ fn structurally_same_type_impl<'tcx>(
             Ok(a_layout == b_layout)
         };
 
-        #[allow(rustc::usage_of_ty_tykind)]
         let is_primitive_or_pointer =
-            |kind: &ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..) | Ref(..));
+            |ty: Ty<'tcx>| ty.is_primitive() || matches!(ty.kind(), RawPtr(..) | Ref(..));
 
         ensure_sufficient_stack(|| {
-            match (a_kind, b_kind) {
+            match (a.kind(), b.kind()) {
                 (Adt(a_def, _), Adt(b_def, _)) => {
                     // We can immediately rule out these types as structurally same if
                     // their layouts differ.
@@ -382,17 +379,21 @@ fn structurally_same_type_impl<'tcx>(
 
                 // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
                 // enum layout optimisation is being applied.
-                (Adt(..), other_kind) | (other_kind, Adt(..))
-                    if is_primitive_or_pointer(other_kind) =>
-                {
-                    let (primitive, adt) =
-                        if is_primitive_or_pointer(a.kind()) { (a, b) } else { (b, a) };
-                    if let Some(ty) = types::repr_nullable_ptr(tcx, param_env, adt, ckind) {
-                        ty == primitive
+                (Adt(..), _) if is_primitive_or_pointer(b) => {
+                    if let Some(ty) = types::repr_nullable_ptr(tcx, param_env, a, ckind) {
+                        ty == b
                     } else {
                         compare_layouts(a, b).unwrap_or(false)
                     }
                 }
+                (_, Adt(..)) if is_primitive_or_pointer(a) => {
+                    if let Some(ty) = types::repr_nullable_ptr(tcx, param_env, b, ckind) {
+                        ty == a
+                    } else {
+                        compare_layouts(a, b).unwrap_or(false)
+                    }
+                }
+
                 // Otherwise, just compare the layouts. This may fail to lint for some
                 // incompatible types, but at the very least, will stop reads into
                 // uninitialised memory.
