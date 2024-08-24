@@ -604,7 +604,7 @@ fn gen_declared_lints<'a>(
     details.sort_unstable();
 
     let mut output = GENERATED_FILE_COMMENT.to_string();
-    output.push_str("pub(crate) static LINTS: &[&crate::LintInfo] = &[\n");
+    output.push_str("pub static LINTS: &[&crate::LintInfo] = &[\n");
 
     for (is_public, module_name, lint_name) in details {
         if !is_public {

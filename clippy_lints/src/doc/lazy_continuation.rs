@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use itertools::Itertools;
-use rustc_errors::{Applicability, SuggestionStyle};
+use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, Span};
 use std::ops::Range;
@@ -59,12 +59,11 @@ pub(super) fn check(
                 && (doc_comment == "///" || doc_comment == "//!")
             {
                 // suggest filling in a blank line
-                diag.span_suggestion_with_style(
+                diag.span_suggestion_verbose(
                     line_break_span.shrink_to_lo(),
                     "if this should be its own paragraph, add a blank doc comment line",
                     format!("\n{doc_comment}"),
                     Applicability::MaybeIncorrect,
-                    SuggestionStyle::ShowAlways,
                 );
                 if ccount > 0 || blockquote_level > 0 {
                     diag.help("if this not intended to be a quote at all, escape it with `\\>`");
@@ -79,12 +78,11 @@ pub(super) fn check(
             if ccount == 0 && blockquote_level == 0 {
                 // simpler suggestion style for indentation
                 let indent = list_indentation - lcount;
-                diag.span_suggestion_with_style(
+                diag.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "indent this line",
                     std::iter::repeat(" ").take(indent).join(""),
                     Applicability::MaybeIncorrect,
-                    SuggestionStyle::ShowAlways,
                 );
                 diag.help("if this is supposed to be its own paragraph, add a blank line");
                 return;
@@ -107,12 +105,11 @@ pub(super) fn check(
                     suggested.push_str(text);
                 }
             }
-            diag.span_suggestion_with_style(
+            diag.span_suggestion_verbose(
                 span,
                 "add markers to start of line",
                 suggested,
                 Applicability::MachineApplicable,
-                SuggestionStyle::ShowAlways,
             );
             diag.help("if this not intended to be a quote at all, escape it with `\\>`");
         });

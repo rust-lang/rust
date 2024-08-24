@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 }
             },
             ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
+                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
                 if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,

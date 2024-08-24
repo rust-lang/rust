@@ -2,7 +2,7 @@
 // Use that command to update this file and do not edit by hand.
 // Manual edits will be overwritten.
 
-pub(crate) static LINTS: &[&crate::LintInfo] = &[
+pub static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
     #[cfg(feature = "internal")]
@@ -21,8 +21,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::metadata_collector::METADATA_COLLECTOR_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
     #[cfg(feature = "internal")]
@@ -146,6 +144,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::doc::NEEDLESS_DOCTEST_MAIN_INFO,
     crate::doc::SUSPICIOUS_DOC_COMMENTS_INFO,
     crate::doc::TEST_ATTR_IN_DOCTEST_INFO,
+    crate::doc::TOO_LONG_FIRST_DOC_PARAGRAPH_INFO,
     crate::doc::UNNECESSARY_SAFETY_DOC_INFO,
     crate::double_parens::DOUBLE_PARENS_INFO,
     crate::drop_forget_ref::DROP_NON_DROP_INFO,
