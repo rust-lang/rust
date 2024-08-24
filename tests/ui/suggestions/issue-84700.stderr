@@ -12,6 +12,11 @@ error[E0164]: expected tuple struct or tuple variant, found struct variant `Farm
    |
 LL |         FarmAnimal::Chicken(_) => "cluck, cluck!".to_string(),
    |         ^^^^^^^^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: the struct variant's field is being ignored
+   |
+LL |         FarmAnimal::Chicken { num_eggs: _ } => "cluck, cluck!".to_string(),
+   |                             ~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 
