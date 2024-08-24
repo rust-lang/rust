@@ -125,7 +125,7 @@ pub trait ArchiveBuilderBuilder {
         rlib: &'a Path,
         outdir: &Path,
         bundled_lib_file_names: &FxIndexSet<Symbol>,
-    ) -> Result<(), ExtractBundledLibsError<'_>> {
+    ) -> Result<(), ExtractBundledLibsError<'a>> {
         let archive_map = unsafe {
             Mmap::map(
                 File::open(rlib)
