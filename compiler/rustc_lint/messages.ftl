@@ -211,6 +211,10 @@ lint_dangling_pointers_from_temporaries = a dangling pointer will be produced be
     .note = pointers do not have a lifetime; when calling `{$callee}` the `{$ty}` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
     .help = for more information, see <https://doc.rust-lang.org/reference/destructors.html>
 
+lint_default_field_always_invalid_const = default field fails const-evaluation
+    .label = this field's constant fails const-evaluation, as seen in the previous error
+    .help = you can skip const-evaluation of default fields by enabling this lint
+
 lint_default_hash_types = prefer `{$preferred}` over `{$used}`, it has better performance
     .note = a `use rustc_data_structures::fx::{$preferred}` may be necessary
 

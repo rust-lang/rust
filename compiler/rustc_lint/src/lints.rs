@@ -730,6 +730,15 @@ pub(crate) struct UndroppedManuallyDropsSuggestion {
     pub end_span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_default_field_always_invalid_const)]
+pub(crate) struct DefaultFieldAlwaysInvalidConst {
+    #[label]
+    pub span: Span,
+    #[help]
+    pub help: (),
+}
+
 // invalid_from_utf8.rs
 #[derive(LintDiagnostic)]
 pub(crate) enum InvalidFromUtf8Diag {

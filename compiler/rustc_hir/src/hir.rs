@@ -1857,7 +1857,12 @@ impl Expr<'_> {
                 base.can_have_side_effects()
             }
             ExprKind::Struct(_, fields, init) => {
-                fields.iter().map(|field| field.expr).chain(init).any(|e| e.can_have_side_effects())
+                let init_side_effects = match init {
+                    StructTailExpr::Base(init) => init.can_have_side_effects(),
+                    StructTailExpr::DefaultFields(_) | StructTailExpr::None => false,
+                };
+                fields.iter().map(|field| field.expr).any(|e| e.can_have_side_effects())
+                    || init_side_effects
             }
 
             ExprKind::Array(args)
@@ -1926,20 +1931,52 @@ impl Expr<'_> {
                 ExprKind::Path(QPath::Resolved(None, path2)),
             ) => path1.res == path2.res,
             (
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val1], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val2], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeTo, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeTo, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             )
             | (
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val1], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val2], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusive, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusive, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             )
             | (
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val1], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val2], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFrom, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFrom, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
-                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val1, val3], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val2, val4], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::Range, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::Range, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
             ) => {
                 val1.expr.equivalent_for_indexing(val2.expr)
                     && val3.expr.equivalent_for_indexing(val4.expr)
@@ -2096,7 +2133,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
     /// where `base` is the `Option<Expr>`.
-    Struct(&'hir QPath<'hir>, &'hir [ExprField<'hir>], Option<&'hir Expr<'hir>>),
+    Struct(&'hir QPath<'hir>, &'hir [ExprField<'hir>], StructTailExpr<'hir>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -2109,6 +2146,19 @@ pub enum ExprKind<'hir> {
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum StructTailExpr<'hir> {
+    /// A struct expression where all the fields are explicitly enumerated: `Foo { a, b }`.
+    None,
+    /// A struct expression with a "base", an expression of the same type as the outer struct that
+    /// will be used to populate any fields not explicitly mentioned: `Foo { ..base }`
+    Base(&'hir Expr<'hir>),
+    /// A struct expression with a `..` tail but no "base" expression. The values from the struct
+    /// fields' default values will be used to populate any fields not explicitly mentioned:
+    /// `Foo { .. }`.
+    DefaultFields(Span),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
@@ -3172,6 +3222,7 @@ pub struct FieldDef<'hir> {
     pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
     pub safety: Safety,
+    pub default: Option<&'hir AnonConst>,
 }
 
 impl FieldDef<'_> {

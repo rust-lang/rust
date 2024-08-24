@@ -259,10 +259,10 @@ impl Into<DataTypeKind> for AdtKind {
     }
 }
 
-impl AdtDefData {
+impl<'tcx> AdtDefData {
     /// Creates a new `AdtDefData`.
     pub(super) fn new(
-        tcx: TyCtxt<'_>,
+        tcx: TyCtxt<'tcx>,
         did: DefId,
         kind: AdtKind,
         variants: IndexVec<VariantIdx, VariantDef>,

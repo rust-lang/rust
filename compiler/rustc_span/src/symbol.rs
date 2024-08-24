@@ -728,6 +728,7 @@ symbols! {
         declare_lint_pass,
         decode,
         default_alloc_error_handler,
+        default_field_values,
         default_fn,
         default_lib_allocator,
         default_method_body_is_const,

@@ -115,14 +115,6 @@ pub(crate) struct UnderscoreExprLhsAssign {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_base_expression_double_dot, code = E0797)]
-pub(crate) struct BaseExpressionDoubleDot {
-    #[primary_span]
-    #[suggestion(code = "/* expr */", applicability = "has-placeholders", style = "verbose")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_lowering_await_only_in_async_fn_and_blocks, code = E0728)]
 pub(crate) struct AwaitOnlyInAsyncFnAndBlocks {
     #[primary_span]

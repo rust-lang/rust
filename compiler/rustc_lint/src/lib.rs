@@ -41,6 +41,7 @@ mod async_fn_in_trait;
 pub mod builtin;
 mod context;
 mod dangling;
+mod default_field_always_invalid;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
 mod early;
@@ -85,6 +86,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use dangling::*;
+use default_field_always_invalid::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -193,6 +195,7 @@ late_lint_methods!(
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            DefaultFieldAlwaysInvalid: DefaultFieldAlwaysInvalid,
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             PathStatements: PathStatements,

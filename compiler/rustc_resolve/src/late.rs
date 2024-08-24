@@ -13,7 +13,9 @@ use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, visit_opt, walk_list};
+use rustc_ast::visit::{
+    AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
+};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
@@ -749,8 +751,8 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         self.resolve_block(block);
         self.parent_scope.macro_rules = old_macro_rules;
     }
-    fn visit_anon_const(&mut self, _constant: &'ast AnonConst) {
-        bug!("encountered anon const without a manual call to `resolve_anon_const`");
+    fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
+        bug!("encountered anon const without a manual call to `resolve_anon_const` {constant:#?}");
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
@@ -1346,7 +1348,24 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
 
     fn visit_field_def(&mut self, f: &'ast FieldDef) {
         self.resolve_doc_links(&f.attrs, MaybeExported::Ok(f.id));
-        visit::walk_field_def(self, f)
+        let FieldDef {
+            attrs,
+            id: _,
+            span: _,
+            vis,
+            ident,
+            ty,
+            is_placeholder: _,
+            default,
+            safety: _,
+        } = f;
+        walk_list!(self, visit_attribute, attrs);
+        try_visit!(self.visit_vis(vis));
+        visit_opt!(self, visit_ident, ident);
+        try_visit!(self.visit_ty(ty));
+        if let Some(v) = &default {
+            self.resolve_anon_const(v, AnonConstKind::ConstArg(IsRepeatExpr::No));
+        }
     }
 }
 

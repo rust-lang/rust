@@ -125,6 +125,12 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             return ty;
         }
 
+        Node::Field(&hir::FieldDef { default: Some(c), def_id: field_def_id, .. })
+            if c.hir_id == hir_id =>
+        {
+            tcx.type_of(field_def_id).instantiate_identity()
+        }
+
         _ => Ty::new_error_with_message(
             tcx,
             span,

@@ -54,26 +54,38 @@ pub(crate) fn expand_deriving_default(
     trait_def.expand(cx, mitem, item, push)
 }
 
+fn default_call(cx: &ExtCtxt<'_>, span: Span) -> ast::ptr::P<ast::Expr> {
+    // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
+    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
+    cx.expr_call_global(span, default_ident, ThinVec::new())
+}
+
 fn default_struct_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
     summary: &StaticFields,
 ) -> BlockOrExpr {
-    // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
-    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
-    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), ThinVec::new());
-
     let expr = match summary {
         Unnamed(_, IsTuple::No) => cx.expr_ident(trait_span, substr.type_ident),
         Unnamed(fields, IsTuple::Yes) => {
-            let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
+            let exprs = fields.iter().map(|sp| default_call(cx, *sp)).collect();
             cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }
         Named(fields) => {
             let default_fields = fields
                 .iter()
-                .map(|&(ident, span)| cx.field_imm(span, ident, default_call(span)))
+                .map(|(ident, span, default_val)| {
+                    let value = match default_val {
+                        // We use `Default::default()`.
+                        None => default_call(cx, *span),
+                        // We use the field default const expression.
+                        Some(val) => {
+                            cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
+                        }
+                    };
+                    cx.field_imm(*span, *ident, value)
+                })
                 .collect();
             cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
         }
@@ -93,10 +105,38 @@ fn default_enum_substructure(
     } {
         Ok(default_variant) => {
             // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
-            cx.expr_path(cx.path(default_variant.span, vec![
-                Ident::new(kw::SelfUpper, default_variant.span),
-                default_variant.ident,
-            ]))
+            match &default_variant.data {
+                VariantData::Unit(_) => cx.expr_path(cx.path(default_variant.span, vec![
+                    Ident::new(kw::SelfUpper, default_variant.span),
+                    default_variant.ident,
+                ])),
+                VariantData::Struct { fields, .. } => {
+                    // This only happens if `#![feature(default_field_values)]`. We have validated
+                    // all fields have default values in the definition.
+                    let default_fields = fields
+                        .iter()
+                        .map(|field| {
+                            cx.field_imm(field.span, field.ident.unwrap(), match &field.default {
+                                // We use `Default::default()`.
+                                None => default_call(cx, field.span),
+                                // We use the field default const expression.
+                                Some(val) => {
+                                    cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
+                                }
+                            })
+                        })
+                        .collect();
+                    let path = cx.path(default_variant.span, vec![
+                        Ident::new(kw::SelfUpper, default_variant.span),
+                        default_variant.ident,
+                    ]);
+                    cx.expr_struct(default_variant.span, path, default_fields)
+                }
+                // Logic error in `extract_default_variant`.
+                VariantData::Tuple(..) => {
+                    cx.dcx().bug("encountered tuple variant annotated with `#[default]`")
+                }
+            }
         }
         Err(guar) => DummyResult::raw_expr(trait_span, Some(guar)),
     };
@@ -156,7 +196,12 @@ fn extract_default_variant<'a>(
         }
     };
 
-    if !matches!(variant.data, VariantData::Unit(..)) {
+    if cx.ecfg.features.default_field_values()
+        && let VariantData::Struct { fields, .. } = &variant.data
+        && fields.iter().all(|f| f.default.is_some())
+    {
+        // Allowed
+    } else if !matches!(variant.data, VariantData::Unit(..)) {
         let guar = cx.dcx().emit_err(errors::NonUnitDefault { span: variant.ident.span });
         return Err(guar);
     }

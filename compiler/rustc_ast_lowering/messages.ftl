@@ -45,10 +45,6 @@ ast_lowering_bad_return_type_notation_output =
 
 ast_lowering_bad_return_type_notation_position = return type notation not allowed in this position yet
 
-ast_lowering_base_expression_double_dot =
-    base expression required after `..`
-    .suggestion = add a base expression here
-
 ast_lowering_clobber_abi_not_supported =
     `clobber_abi` is not supported on this target
 

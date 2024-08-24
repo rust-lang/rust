@@ -1104,6 +1104,7 @@ impl<'a> CrateMetadataRef<'a> {
                         name: self.item_name(did.index),
                         vis: self.get_visibility(did.index),
                         safety: self.get_safety(did.index),
+                        value: None,
                     })
                     .collect(),
                 adt_kind,

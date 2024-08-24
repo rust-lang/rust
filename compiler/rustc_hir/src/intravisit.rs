@@ -748,7 +748,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::Struct(ref qpath, fields, ref optional_base) => {
             try_visit!(visitor.visit_qpath(qpath, expression.hir_id, expression.span));
             walk_list!(visitor, visit_expr_field, fields);
-            visit_opt!(visitor, visit_expr, optional_base);
+            match optional_base {
+                StructTailExpr::Base(base) => try_visit!(visitor.visit_expr(base)),
+                StructTailExpr::None | StructTailExpr::DefaultFields(_) => {}
+            }
         }
         ExprKind::Tup(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
@@ -1190,10 +1193,14 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
     V::Result::output()
 }
 
-pub fn walk_field_def<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v FieldDef<'v>) -> V::Result {
-    try_visit!(visitor.visit_id(field.hir_id));
-    try_visit!(visitor.visit_ident(field.ident));
-    visitor.visit_ty(field.ty)
+pub fn walk_field_def<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    FieldDef { hir_id, ident, ty, default, span: _, vis_span: _, def_id: _, safety: _ }: &'v FieldDef<'v>,
+) -> V::Result {
+    try_visit!(visitor.visit_id(*hir_id));
+    try_visit!(visitor.visit_ident(*ident));
+    visit_opt!(visitor, visit_anon_const, default);
+    visitor.visit_ty(*ty)
 }
 
 pub fn walk_enum_def<'v, V: Visitor<'v>>(
