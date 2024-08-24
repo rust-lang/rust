@@ -9,6 +9,7 @@ fn main() {
         // This is required to allow using nightly cargo features (public-dependency) with beta
         // cargo
         .env("RUSTC_BOOTSTRAP", "1")
+        .env("RUSTC_STAGE", "0") // Ensure `proc-macro2`'s nightly detection is disabled
         .env("RUSTC", rustc_path())
         .arg("build")
         .arg("--manifest-path")
