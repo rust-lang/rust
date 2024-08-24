@@ -275,7 +275,7 @@ fn default_hook(info: &PanicHookInfo<'_>) {
                     if cfg!(miri) {
                         let _ = writeln!(
                             err,
-                            "note: in Miri, you may have to set `-Zmiri-env-forward=RUST_BACKTRACE` \
+                            "note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` \
                                 for the environment variable to have an effect"
                         );
                     }
