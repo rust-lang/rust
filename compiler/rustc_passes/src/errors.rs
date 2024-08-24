@@ -623,6 +623,15 @@ pub struct RustcStdInternalSymbol {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_pub_transparent)]
+pub struct RustcPubTransparent {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_link_ordinal)]
 pub struct LinkOrdinal {
     #[primary_span]
