@@ -240,7 +240,7 @@ impl<'tcx> Const<'tcx> {
 
         let ty = tcx.type_of(def).no_bound_vars().expect("const parameter types cannot be generic");
 
-        match Self::try_from_lit(tcx, ty, expr) {
+        match Self::try_from_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
             None => ty::Const::new_unevaluated(
                 tcx,
@@ -281,7 +281,11 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[instrument(skip(tcx), level = "debug")]
-    fn try_from_lit(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, expr: &'tcx hir::Expr<'tcx>) -> Option<Self> {
+    fn try_from_lit_or_param(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Option<Self> {
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = match &expr.kind {
@@ -289,6 +293,22 @@ impl<'tcx> Const<'tcx> {
                 block.expr.as_ref().unwrap()
             }
             _ => expr,
+        };
+
+        if let hir::ExprKind::Path(
+            qpath @ hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
+            ),
+        ) = expr.kind
+        {
+            if tcx.features().const_arg_path {
+                span_bug!(
+                    expr.span,
+                    "try_from_lit: received const param which shouldn't be possible"
+                );
+            }
+            return Some(Const::from_param(tcx, qpath, expr.hir_id));
         };
 
         let lit_input = match expr.kind {
@@ -316,14 +336,6 @@ impl<'tcx> Const<'tcx> {
                     );
                 }
             }
-        }
-
-        if let hir::ExprKind::Path(hir::QPath::Resolved(
-            _,
-            &hir::Path { res: Res::Def(DefKind::ConstParam, _), .. },
-        )) = expr.kind
-        {
-            span_bug!(expr.span, "try_from_lit: received const param which shouldn't be possible")
         }
 
         None

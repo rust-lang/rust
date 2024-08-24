@@ -3,14 +3,21 @@ error[E0107]: trait takes at most 2 generic arguments but 5 generic arguments we
    |
 LL |           Dst: BikeshedIntrinsicFrom<
    |                ^^^^^^^^^^^^^^^^^^^^^ expected at most 2 generic arguments
-LL |               Src,
-LL |               ASSUME_ALIGNMENT,
-   |  _____________________________-
-LL | |             ASSUME_LIFETIMES,
-LL | |             ASSUME_VALIDITY,
-LL | |             ASSUME_VISIBILITY,
-   | |_____________________________- help: remove the unnecessary generic arguments
+...
+LL |                   ASSUME_ALIGNMENT,
+   |  _________________________________-
+LL | |                 ASSUME_LIFETIMES,
+LL | |                 ASSUME_VALIDITY,
+LL | |                 ASSUME_VISIBILITY,
+   | |_________________________________- help: remove the unnecessary generic arguments
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/issue-101739-2.rs:20:17
+   |
+LL |                 ASSUME_ALIGNMENT,
+   |                 ^^^^^^^^^^^^^^^^ expected `Assume`, found `bool`
 
-For more information about this error, try `rustc --explain E0107`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.
