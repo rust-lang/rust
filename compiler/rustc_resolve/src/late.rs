@@ -1598,7 +1598,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             if let Some(&(_, res)) = rib.bindings.get(&normalized_ident) {
                 self.record_lifetime_res(lifetime.id, res, LifetimeElisionCandidate::Named);
 
-                if let LifetimeRes::Param { param: (param, _), binder } = res {
+                if let LifetimeRes::Param { param, binder } = res {
                     match self.lifetime_uses.entry(param) {
                         Entry::Vacant(v) => {
                             debug!("First use of {:?} at {:?}", res, ident.span);
@@ -2079,7 +2079,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             );
                         }
                     }
-                    LifetimeRes::Param { param: (_, param), binder } => {
+                    LifetimeRes::Param { param, binder } => {
+                        let tcx = self.r.tcx();
                         self.r.lint_buffer.buffer_lint(
                             lint::builtin::ELIDED_NAMED_LIFETIMES,
                             // It should be possible to use `self.crate_node_id`
@@ -2089,7 +2090,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                             // we would have to do some additional work.
                             missing.id_if_exists_in_source_or(binder),
                             missing.span,
-                            BuiltinLintDiag::ElidedIsParam { elided, param },
+                            BuiltinLintDiag::ElidedIsParam {
+                                elided,
+                                param: (tcx.item_name(param.into()), tcx.source_span(param)),
+                            },
                         );
                     }
                     LifetimeRes::Fresh { .. }
@@ -2824,7 +2828,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         (&mut function_value_rib, DefKind::ConstParam)
                     }
                     GenericParamKind::Lifetime => {
-                        let res = LifetimeRes::Param { param: (def_id, param.ident), binder };
+                        let res = LifetimeRes::Param { param: def_id, binder };
                         self.record_lifetime_param(param.id, res);
                         function_lifetime_rib.bindings.insert(ident, (param.id, res));
                         continue;

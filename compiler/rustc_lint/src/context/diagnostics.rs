@@ -446,11 +446,13 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             lints::ElidedNamedLifetime { elided, name: kw::StaticLifetime, named_declaration: None }
                 .decorate_lint(diag)
         }
-        BuiltinLintDiag::ElidedIsParam { elided, param } => lints::ElidedNamedLifetime {
-            elided,
-            name: param.name,
-            named_declaration: Some(param.span),
+        BuiltinLintDiag::ElidedIsParam { elided, param: (param_name, param_span) } => {
+            lints::ElidedNamedLifetime {
+                elided,
+                name: param_name,
+                named_declaration: Some(param_span),
+            }
+            .decorate_lint(diag)
         }
-        .decorate_lint(diag),
     }
 }

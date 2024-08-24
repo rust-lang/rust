@@ -1643,7 +1643,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         for lifetime in captured_lifetimes_to_duplicate {
             let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
             let (old_def_id, missing_kind) = match res {
-                LifetimeRes::Param { param: (old_def_id, _), binder: _ } => (old_def_id, None),
+                LifetimeRes::Param { param: old_def_id, binder: _ } => (old_def_id, None),
 
                 LifetimeRes::Fresh { param, kind, .. } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
@@ -2061,7 +2061,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         res: LifetimeRes,
     ) -> &'hir hir::Lifetime {
         let res = match res {
-            LifetimeRes::Param { param: (param, _), .. } => {
+            LifetimeRes::Param { param, .. } => {
                 let param = self.get_remapped_def_id(param);
                 hir::LifetimeName::Param(param)
             }
