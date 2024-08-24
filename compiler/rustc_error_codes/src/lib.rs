@@ -679,3 +679,4 @@ E0798: 0798,
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
 //  E0744, // merged into E0728
+//  E0796, // unused error code. We use `static_mut_refs` lint instead.
