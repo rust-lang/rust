@@ -1,8 +1,8 @@
 #![allow(dead_code, clippy::char_lit_as_u8, clippy::needless_bool)]
 
-/// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
-///
-/// Issue: https://github.com/rust-lang/rust-clippy/issues/2499
+// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
+//
+// Issue: https://github.com/rust-lang/rust-clippy/issues/2499
 
 fn f(s: &[u8]) -> bool {
     let t = s[0] as char;

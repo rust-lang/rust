@@ -1,5 +1,4 @@
 #![warn(clippy::tabs_in_doc_comments)]
-#[allow(dead_code)]
 
 ///
 /// Struct to hold two strings:
