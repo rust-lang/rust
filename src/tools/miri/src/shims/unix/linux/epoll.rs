@@ -528,7 +528,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let Some(epfd) = weak_epfd.upgrade() else {
-            throw_unsup_format!("epoll FD {epfd_value} is closed while blocking.")
+            throw_unsup_format!("epoll FD {epfd_value} got closed while blocking.")
         };
 
         let epoll_file_description = epfd
