@@ -1,6 +1,6 @@
 use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
-use crate::source::{snippet_opt, walk_span_to_context, SpanRange, SpanRangeExt};
+use crate::source::{walk_span_to_context, SpanRange, SpanRangeExt};
 use crate::tokenize_with_text;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
@@ -588,10 +588,9 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
             // block with an empty span.
             ([], None) if block.span.is_empty() => &ExprKind::Tup(&[]),
             // `{}` => `()`
-            ([], None) => match snippet_opt(cx, block.span) {
-                // Don't reduce if there are any tokens contained in the braces
-                Some(snip)
-                    if tokenize(&snip)
+            ([], None)
+                if block.span.check_source_text(cx, |src| {
+                    tokenize(src)
                         .map(|t| t.kind)
                         .filter(|t| {
                             !matches!(
@@ -599,11 +598,10 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
                                 TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
                             )
                         })
-                        .ne([TokenKind::OpenBrace, TokenKind::CloseBrace].iter().copied()) =>
-                {
-                    kind
-                },
-                _ => &ExprKind::Tup(&[]),
+                        .eq([TokenKind::OpenBrace, TokenKind::CloseBrace].iter().copied())
+                }) =>
+            {
+                &ExprKind::Tup(&[])
             },
             ([], Some(expr)) => match expr.kind {
                 // `{ return .. }` => `return ..`
@@ -1191,9 +1189,9 @@ fn eq_span_tokens(
     pred: impl Fn(TokenKind) -> bool,
 ) -> bool {
     fn f(cx: &LateContext<'_>, left: Range<BytePos>, right: Range<BytePos>, pred: impl Fn(TokenKind) -> bool) -> bool {
-        if let Some(lsrc) = left.get_source_text(cx)
+        if let Some(lsrc) = left.get_source_range(cx)
             && let Some(lsrc) = lsrc.as_str()
-            && let Some(rsrc) = right.get_source_text(cx)
+            && let Some(rsrc) = right.get_source_range(cx)
             && let Some(rsrc) = rsrc.as_str()
         {
             let pred = |t: &(_, _)| pred(t.0);

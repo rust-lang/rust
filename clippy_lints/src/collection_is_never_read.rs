@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
 use clippy_utils::visitors::{for_each_expr, Visitable};
 use clippy_utils::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
@@ -7,7 +7,6 @@ use rustc_hir::{Body, ExprKind, HirId, LangItem, LetStmt, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -44,24 +43,11 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(CollectionIsNeverRead => [COLLECTION_IS_NEVER_READ]);
 
-// Add `String` here when it is added to diagnostic items
-static COLLECTIONS: [Symbol; 9] = [
-    sym::BTreeMap,
-    sym::BTreeSet,
-    sym::BinaryHeap,
-    sym::HashMap,
-    sym::HashSet,
-    sym::LinkedList,
-    sym::Option,
-    sym::Vec,
-    sym::VecDeque,
-];
-
 impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         // Look for local variables whose type is a container. Search surrounding block for read access.
         if let PatKind::Binding(_, local_id, _, _) = local.pat.kind
-            && match_acceptable_type(cx, local, &COLLECTIONS)
+            && match_acceptable_type(cx, local)
             && let Some(enclosing_block) = get_enclosing_block(cx, local.hir_id)
             && has_no_read_access(cx, local_id, enclosing_block)
         {
@@ -70,11 +56,22 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
     }
 }
 
-fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>, collections: &[Symbol]) -> bool {
+fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
     let ty = cx.typeck_results().pat_ty(local.pat);
-    collections.iter().any(|&sym| is_type_diagnostic_item(cx, ty, sym))
-    // String type is a lang item but not a diagnostic item for now so we need a separate check
-        || is_type_lang_item(cx, ty, LangItem::String)
+    matches!(
+        get_type_diagnostic_name(cx, ty),
+        Some(
+            sym::BTreeMap
+                | sym::BTreeSet
+                | sym::BinaryHeap
+                | sym::HashMap
+                | sym::HashSet
+                | sym::LinkedList
+                | sym::Option
+                | sym::Vec
+                | sym::VecDeque
+        )
+    ) || is_type_lang_item(cx, ty, LangItem::String)
 }
 
 fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirId, block: T) -> bool {

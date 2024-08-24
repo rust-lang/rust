@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{def_path_def_ids, path_def_id, paths};
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
@@ -122,7 +122,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
     };
 
     if let Some((primary, auxiliary, kind)) = parts
-        && let Some(literal_snippet) = snippet_opt(cx, base)
+        && let Some(literal_snippet) = base.get_source_text(cx)
         && let Some(inner) = literal_snippet.get(offset as usize..)
         // Only convert to native rustc spans if the parsed regex matches the
         // source snippet exactly, to ensure the span offsets are correct

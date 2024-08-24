@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::fulfill_or_allowed;
 use clippy_utils::source::snippet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -71,6 +72,8 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             && let ty = cx.typeck_results().expr_ty(expr)
             && let Some(adt_def) = ty.ty_adt_def()
             && adt_def.is_struct()
+            && let Some(local_def_id) = adt_def.did().as_local()
+            && let ty_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id)
             && let Some(variant) = adt_def.variants().iter().next()
         {
             let mut def_order_map = FxHashMap::default();
@@ -103,15 +106,17 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                 snippet(cx, qpath.span(), ".."),
             );
 
-            span_lint_and_sugg(
-                cx,
-                INCONSISTENT_STRUCT_CONSTRUCTOR,
-                expr.span,
-                "struct constructor field order is inconsistent with struct definition field order",
-                "try",
-                sugg,
-                Applicability::MachineApplicable,
-            );
+            if !fulfill_or_allowed(cx, INCONSISTENT_STRUCT_CONSTRUCTOR, Some(ty_hir_id)) {
+                span_lint_and_sugg(
+                    cx,
+                    INCONSISTENT_STRUCT_CONSTRUCTOR,
+                    expr.span,
+                    "struct constructor field order is inconsistent with struct definition field order",
+                    "try",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 }

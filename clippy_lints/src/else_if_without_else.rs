@@ -1,5 +1,3 @@
-//! Lint on if expressions with an else if, but without a final else branch.
-
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};

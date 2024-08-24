@@ -1,5 +1,3 @@
-//! Lint for `c.is_digit(10)`
-
 use super::IS_DIGIT_ASCII_RADIX;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, FullInt};

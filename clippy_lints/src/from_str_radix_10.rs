@@ -22,8 +22,8 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     ///
-    /// This lint may suggest using (&<expression>).parse() instead of <expression>.parse() directly
-    /// in some cases, which is correct but adds unnecessary complexity to the code.
+    /// This lint may suggest using `(&<expression>).parse()` instead of `<expression>.parse()`
+    /// directly in some cases, which is correct but adds unnecessary complexity to the code.
     ///
     /// ### Example
     /// ```ignore
