@@ -30,7 +30,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_id: hir::HirId,
         hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
         lifetime: &hir::Lifetime,
-        _borrowed: bool,
         representation: DynKind,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
