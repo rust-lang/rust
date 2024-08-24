@@ -1,4 +1,6 @@
 //@only-target-linux
+// test_epoll_block_then_unblock depends on a deterministic schedule.
+//@compile-flags: -Zmiri-preemption-rate=0
 
 use std::convert::TryInto;
 use std::thread;
