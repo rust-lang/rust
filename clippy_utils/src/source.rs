@@ -207,6 +207,7 @@ fn get_source_range(sm: &SourceMap, sp: Range<BytePos>) -> Option<SourceFileRang
     if !Lrc::ptr_eq(&start.sf, &end.sf) || start.pos > end.pos {
         return None;
     }
+    sm.ensure_source_file_source_present(&start.sf);
     let range = start.pos.to_usize()..end.pos.to_usize();
     Some(SourceFileRange { sf: start.sf, range })
 }
@@ -283,7 +284,11 @@ impl SourceFileRange {
     /// Attempts to get the text from the source file. This can fail if the source text isn't
     /// loaded.
     pub fn as_str(&self) -> Option<&str> {
-        self.sf.src.as_ref().and_then(|x| x.get(self.range.clone()))
+        self.sf
+            .src
+            .as_ref()
+            .or_else(|| self.sf.external_src.get().and_then(|src| src.get_source()))
+            .and_then(|x| x.get(self.range.clone()))
     }
 }
 
