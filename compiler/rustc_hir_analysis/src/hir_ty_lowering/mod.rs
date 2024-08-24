@@ -85,10 +85,9 @@ pub enum PredicateFilter {
 
 #[derive(Debug)]
 pub enum RegionInferReason<'a> {
-    /// Lifetime on a trait object behind a reference.
-    /// This allows inferring information from the reference.
-    BorrowedObjectLifetimeDefault,
-    /// A trait object's lifetime.
+    /// Lifetime on a trait object that is spelled explicitly, e.g. `+ 'a` or `+ '_`.
+    ExplicitObjectLifetime,
+    /// A trait object's lifetime when it is elided, e.g. `dyn Any`.
     ObjectLifetimeDefault,
     /// Generic lifetime parameter
     Param(&'a ty::GenericParamDef),

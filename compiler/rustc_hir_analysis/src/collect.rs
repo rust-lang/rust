@@ -392,7 +392,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {
-        if let RegionInferReason::BorrowedObjectLifetimeDefault = reason {
+        if let RegionInferReason::ObjectLifetimeDefault = reason {
             let e = struct_span_code_err!(
                 self.dcx(),
                 span,
