@@ -32,8 +32,7 @@ that not all uses of `wasm32-unknown-unknown` are using JavaScript and the web.
 When this target was added to the compiler, platform-specific documentation here
 was not maintained at that time. This means that the list below is not
 exhaustive, and there are more interested parties in this target. That being
-said, when this document was last updated, those interested in maintaining
-this target are:
+said, those interested in maintaining this target are:
 
 - Alex Crichton, https://github.com/alexcrichton
 
