@@ -51,10 +51,7 @@ mod test_db;
 #[cfg(test)]
 mod tests;
 
-use std::{
-    collections::hash_map::Entry,
-    hash::{BuildHasherDefault, Hash},
-};
+use std::{collections::hash_map::Entry, hash::Hash};
 
 use base_db::ra_salsa::InternValueTrivial;
 use chalk_ir::{
@@ -245,7 +242,7 @@ impl MemoryMap {
         match self {
             MemoryMap::Empty => Ok(Default::default()),
             MemoryMap::Simple(m) => transform((&0, m)).map(|(addr, val)| {
-                let mut map = FxHashMap::with_capacity_and_hasher(1, BuildHasherDefault::default());
+                let mut map = FxHashMap::with_capacity_and_hasher(1, rustc_hash::FxBuildHasher);
                 map.insert(addr, val);
                 map
             }),
