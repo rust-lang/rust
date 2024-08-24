@@ -600,7 +600,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         waiter.sort();
         waiter.dedup();
         for thread_id in waiter {
-            this.unblock_thread(thread_id, BlockReason::Epoll)?;
+            if this.has_blocked_on_epoll(thread_id) {
+                this.unblock_thread(thread_id, BlockReason::Epoll)?;
+            }
         }
         Ok(())
     }

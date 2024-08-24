@@ -578,6 +578,10 @@ impl<'tcx> ThreadManager<'tcx> {
         self.threads[thread_id].state.is_terminated()
     }
 
+    fn has_blocked_on_epoll(&self, thread_id: ThreadId) -> bool {
+        self.threads[thread_id].state.is_blocked_on(BlockReason::Epoll)
+    }
+
     /// Have all threads terminated?
     fn have_all_terminated(&self) -> bool {
         self.threads.iter().all(|thread| thread.state.is_terminated())
@@ -1135,6 +1139,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn enable_thread(&mut self, thread_id: ThreadId) {
         let this = self.eval_context_mut();
         this.machine.threads.enable_thread(thread_id);
+    }
+
+    #[inline]
+    fn has_blocked_on_epoll(&self, thread_id: ThreadId) -> bool {
+        let this = self.eval_context_ref();
+        this.machine.threads.has_blocked_on_epoll(thread_id)
     }
 
     #[inline]
