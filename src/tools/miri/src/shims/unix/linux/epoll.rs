@@ -251,6 +251,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("epoll_ctl: encountered unknown unsupported operation {:#x}", op);
         }
 
+        // Throw EINVAL if epfd and fd have the same value.
+        if epfd_value == fd {
+            let einval = this.eval_libc("EINVAL");
+            this.set_last_error(einval)?;
+            return Ok(Scalar::from_i32(-1));
+        }
+
         // Check if epfd is a valid epoll file descriptor.
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
