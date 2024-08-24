@@ -269,10 +269,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut interest_list = epoll_file_description.interest_list.borrow_mut();
         let ready_list = &epoll_file_description.ready_list;
 
-        let Some(file_descriptor) = this.machine.fds.get(fd) else {
+        let Some(fd_ref) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let id = file_descriptor.get_id();
+        let id = fd_ref.get_id();
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
             // Read event bitmask and data from epoll_event passed by caller.
@@ -332,7 +332,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            let id = file_descriptor.get_id();
             // Create an epoll_interest.
             let interest = Rc::new(RefCell::new(EpollEventInterest {
                 file_descriptor: fd,
@@ -344,7 +343,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if op == epoll_ctl_add {
                 // Insert an epoll_interest to global epoll_interest list.
                 this.machine.epoll_interests.insert_epoll_interest(id, Rc::downgrade(&interest));
-                interest_list.insert(epoll_key, interest);
+                interest_list.insert(epoll_key, Rc::clone(&interest));
             } else {
                 // Directly modify the epoll_interest so the global epoll_event_interest table
                 // will be updated too.
@@ -353,9 +352,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 epoll_interest.data = data;
             }
 
-            // Readiness will be updated immediately when the epoll_event_interest is added or modified.
-            this.check_and_update_readiness(&file_descriptor)?;
-
+            // Notification will be returned for current epfd if there is event in the file
+            // descriptor we registered.
+            check_and_update_one_event_interest(&fd_ref, interest, id, this)?;
             return Ok(Scalar::from_i32(0));
         } else if op == epoll_ctl_del {
             let epoll_key = (id, fd);
@@ -489,25 +488,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let id = fd_ref.get_id();
         // Get a list of EpollEventInterest that is associated to a specific file description.
         if let Some(epoll_interests) = this.machine.epoll_interests.get_epoll_interest(id) {
-            let epoll_ready_events = fd_ref.get_epoll_ready_events()?;
-            // Get the bitmask of ready events.
-            let ready_events = epoll_ready_events.get_event_bitmask(this);
-
             for weak_epoll_interest in epoll_interests {
                 if let Some(epoll_interest) = weak_epoll_interest.upgrade() {
-                    // This checks if any of the events specified in epoll_event_interest.events
-                    // match those in ready_events.
-                    let epoll_event_interest = epoll_interest.borrow();
-                    let flags = epoll_event_interest.events & ready_events;
-                    // If there is any event that we are interested in being specified as ready,
-                    // insert an epoll_return to the ready list.
-                    if flags != 0 {
-                        let epoll_key = (id, epoll_event_interest.file_descriptor);
-                        let ready_list = &mut epoll_event_interest.ready_list.borrow_mut();
-                        let event_instance =
-                            EpollEventInstance::new(flags, epoll_event_interest.data);
-                        ready_list.insert(epoll_key, event_instance);
-                    }
+                    check_and_update_one_event_interest(fd_ref, epoll_interest, id, this)?;
                 }
             }
         }
@@ -531,4 +514,31 @@ fn ready_list_next(
         }
     }
     return None;
+}
+
+/// This helper function checks whether an epoll notification should be triggered for a specific
+/// epoll_interest and, if necessary, triggers the notification. Unlike check_and_update_readiness,
+/// this function sends a notification to only one epoll instance.
+fn check_and_update_one_event_interest<'tcx>(
+    fd_ref: &FileDescriptionRef,
+    interest: Rc<RefCell<EpollEventInterest>>,
+    id: FdId,
+    ecx: &MiriInterpCx<'tcx>,
+) -> InterpResult<'tcx> {
+    // Get the bitmask of ready events for a file description.
+    let ready_events_bitmask = fd_ref.get_epoll_ready_events()?.get_event_bitmask(ecx);
+    let epoll_event_interest = interest.borrow();
+    // This checks if any of the events specified in epoll_event_interest.events
+    // match those in ready_events.
+    let flags = epoll_event_interest.events & ready_events_bitmask;
+    // If there is any event that we are interested in being specified as ready,
+    // insert an epoll_return to the ready list.
+    if flags != 0 {
+        let epoll_key = (id, epoll_event_interest.file_descriptor);
+        let ready_list = &mut epoll_event_interest.ready_list.borrow_mut();
+        let event_instance = EpollEventInstance::new(flags, epoll_event_interest.data);
+        // Triggers the notification by inserting it to the ready list.
+        ready_list.insert(epoll_key, event_instance);
+    }
+    Ok(())
 }
