@@ -913,8 +913,10 @@ fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> &'ll Ty
         Primitive::Int(Integer::I16, _) => cx.type_i16(),
         Primitive::Int(Integer::I32, _) => cx.type_i32(),
         Primitive::Int(Integer::I64, _) => cx.type_i64(),
+        Primitive::Float(Float::F16) => cx.type_f16(),
         Primitive::Float(Float::F32) => cx.type_f32(),
         Primitive::Float(Float::F64) => cx.type_f64(),
+        Primitive::Float(Float::F128) => cx.type_f128(),
         // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
         Primitive::Pointer(_) => cx.type_from_integer(dl.ptr_sized_integer()),
         _ => unreachable!(),
@@ -948,7 +950,9 @@ fn llvm_fixup_input<'ll, 'tcx>(
                 value
             }
         }
-        (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s)) => {
+        (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s))
+            if s.primitive() != Primitive::Float(Float::F128) =>
+        {
             let elem_ty = llvm_asm_scalar_type(bx.cx, s);
             let count = 16 / layout.size.bytes();
             let vec_ty = bx.cx.type_vector(elem_ty, count);
@@ -1090,7 +1094,9 @@ fn llvm_fixup_output<'ll, 'tcx>(
                 value
             }
         }
-        (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s)) => {
+        (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s))
+            if s.primitive() != Primitive::Float(Float::F128) =>
+        {
             value = bx.extract_element(value, bx.const_i32(0));
             if let Primitive::Pointer(_) = s.primitive() {
                 value = bx.inttoptr(value, layout.llvm_type(bx.cx));
@@ -1222,7 +1228,9 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 layout.llvm_type(cx)
             }
         }
-        (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s)) => {
+        (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s))
+            if s.primitive() != Primitive::Float(Float::F128) =>
+        {
             let elem_ty = llvm_asm_scalar_type(cx, s);
             let count = 16 / layout.size.bytes();
             cx.type_vector(elem_ty, count)
