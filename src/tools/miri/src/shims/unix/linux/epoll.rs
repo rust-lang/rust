@@ -487,7 +487,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 -1 => None,
                 ..-1 => {
                     throw_unsup_format!(
-                        "epoll_wait: Only timeout values greater than -1 are supported."
+                        "epoll_wait: Only timeout values greater than or equal to -1 are supported."
                     );
                 }
             };
