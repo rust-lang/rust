@@ -6,7 +6,7 @@ use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{Expr, ExprKind, LangItem, QPath, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use std::fmt::{self, Display, Formatter};
@@ -86,7 +86,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             return;
         };
 
-        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], None) = inner_expr.kind else {
+        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], StructTailExpr::None) = inner_expr.kind else {
             return;
         };
 
