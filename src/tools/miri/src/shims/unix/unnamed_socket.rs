@@ -339,7 +339,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let pipefd = this.deref_pointer(pipefd)?;
+        let pipefd = this.deref_pointer_as(pipefd, this.machine.layouts.i32)?;
         let flags = match flags {
             Some(flags) => this.read_scalar(flags)?.to_i32()?,
             None => 0,
