@@ -1667,8 +1667,15 @@ Executed at: {executed_at}"#,
             if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
                 // workaround for https://github.com/rust-lang/rust/issues/127126
                 // if removing the file fails, attempt to rename it instead.
+                eprintln!("failed to remove file `{}`, {e}", dst.display());
+
                 let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
+                let tmp_filename = PathBuf::from(format!("{}-{}", dst.display(), now.as_nanos()));
+                let res = fs::rename(dst, &tmp_filename);
+
+                if let Err(e) = res {
+                    eprintln!("renaming to `{}` also failed, gg: {e}", tmp_filename.display());
+                }
             }
         }
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
@@ -1685,6 +1692,7 @@ Executed at: {executed_at}"#,
         if let Ok(()) = fs::hard_link(&src, dst) {
             // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
             // but if that fails just fall back to a slow `copy` operation.
+            println!("ok, created hard link `{}` -> `{}`", src.display(), dst.display());
         } else {
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
