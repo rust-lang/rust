@@ -2358,7 +2358,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
     ) -> &'hir hir::ConstArg<'hir> {
         let ct_kind = match res {
-            Res::Def(DefKind::ConstParam, _) => {
+            Res::Def(DefKind::ConstParam, _) if self.tcx.features().const_arg_path => {
                 let qpath = self.lower_qpath(
                     ty_id,
                     &None,
@@ -2433,7 +2433,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
         debug!("res={:?}", maybe_res);
         // FIXME(min_generic_const_args): for now we only lower params to ConstArgKind::Path
-        if let Some(res) = maybe_res
+        if self.tcx.features().const_arg_path
+            && let Some(res) = maybe_res
             && let Res::Def(DefKind::ConstParam, _) = res
             && let ExprKind::Path(qself, path) = &expr.kind
         {
@@ -2464,7 +2465,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_const_arg`].
     fn lower_anon_const_to_anon_const(&mut self, c: &AnonConst) -> &'hir hir::AnonConst {
-        if c.value.is_potential_trivial_const_arg() {
+        if self.tcx.features().const_arg_path && c.value.is_potential_trivial_const_arg() {
             // HACK(min_generic_const_args): see DefCollector::visit_anon_const
             // Over there, we guess if this is a bare param and only create a def if
             // we think it's not. However we may can guess wrong (see there for example)
