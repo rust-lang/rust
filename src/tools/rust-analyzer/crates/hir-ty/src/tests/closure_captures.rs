@@ -1,11 +1,15 @@
 use base_db::salsa::InternKey;
 use expect_test::{expect, Expect};
 use hir_def::db::DefDatabase;
+use hir_expand::files::InFileWrapper;
 use itertools::Itertools;
+use span::{HirFileId, TextRange};
+use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
 use crate::db::{HirDatabase, InternedClosureId};
 use crate::display::HirDisplay;
+use crate::mir::MirSpan;
 use crate::test_db::TestDB;
 
 use super::visit_module;
@@ -30,45 +34,69 @@ fn check_closure_captures(ra_fixture: &str, expect: Expect) {
                 .expect("failed to map closure to SyntaxNode")
                 .value
                 .text_range();
-            captures.iter().flat_map(move |capture| {
+            captures.iter().map(move |capture| {
+                fn text_range<N: AstNode>(
+                    db: &TestDB,
+                    syntax: InFileWrapper<HirFileId, AstPtr<N>>,
+                ) -> TextRange {
+                    let root = syntax.file_syntax(db);
+                    syntax.value.to_node(&root).syntax().text_range()
+                }
+
                 // FIXME: Deduplicate this with hir::Local::sources().
                 let (body, source_map) = db.body_with_source_map(closure.0);
-                let local_text_ranges = match body.self_param.zip(source_map.self_param_syntax()) {
+                let local_text_range = match body.self_param.zip(source_map.self_param_syntax()) {
                     Some((param, source)) if param == capture.local() => {
-                        vec![source.file_syntax(db).text_range()]
+                        format!("{:?}", text_range(db, source))
                     }
                     _ => source_map
                         .patterns_for_binding(capture.local())
                         .iter()
                         .map(|&definition| {
-                            let src = source_map.pat_syntax(definition).unwrap();
-                            src.file_syntax(db).text_range()
+                            text_range(db, source_map.pat_syntax(definition).unwrap())
                         })
-                        .collect(),
+                        .map(|it| format!("{it:?}"))
+                        .join(", "),
                 };
                 let place = capture.display_place(closure.0, db);
                 let capture_ty = capture.ty.skip_binders().display_test(db).to_string();
-                local_text_ranges.into_iter().map(move |local_text_range| {
-                    (
-                        closure_text_range,
-                        local_text_range,
-                        place.clone(),
-                        capture_ty.clone(),
-                        capture.kind(),
-                    )
-                })
+                let spans = capture
+                    .spans()
+                    .iter()
+                    .flat_map(|span| match *span {
+                        MirSpan::ExprId(expr) => {
+                            vec![text_range(db, source_map.expr_syntax(expr).unwrap())]
+                        }
+                        MirSpan::PatId(pat) => {
+                            vec![text_range(db, source_map.pat_syntax(pat).unwrap())]
+                        }
+                        MirSpan::BindingId(binding) => source_map
+                            .patterns_for_binding(binding)
+                            .iter()
+                            .map(|pat| text_range(db, source_map.pat_syntax(*pat).unwrap()))
+                            .collect(),
+                        MirSpan::SelfParam => {
+                            vec![text_range(db, source_map.self_param_syntax().unwrap())]
+                        }
+                        MirSpan::Unknown => Vec::new(),
+                    })
+                    .sorted_by_key(|it| it.start())
+                    .map(|it| format!("{it:?}"))
+                    .join(",");
+
+                (closure_text_range, local_text_range, spans, place, capture_ty, capture.kind())
             })
         }));
     }
     captures_info.sort_unstable_by_key(|(closure_text_range, local_text_range, ..)| {
-        (closure_text_range.start(), local_text_range.start())
+        (closure_text_range.start(), local_text_range.clone())
     });
 
     let rendered = captures_info
         .iter()
-        .map(|(closure_text_range, local_text_range, place, capture_ty, capture_kind)| {
+        .map(|(closure_text_range, local_text_range, spans, place, capture_ty, capture_kind)| {
             format!(
-                "{closure_text_range:?};{local_text_range:?} {capture_kind:?} {place} {capture_ty}"
+                "{closure_text_range:?};{local_text_range};{spans} {capture_kind:?} {place} {capture_ty}"
             )
         })
         .join("\n");
@@ -86,7 +114,7 @@ fn main() {
     let closure = || { let b = *a; };
 }
 "#,
-        expect!["53..71;0..75 ByRef(Shared) *a &'? bool"],
+        expect!["53..71;20..21;66..68 ByRef(Shared) *a &'? bool"],
     );
 }
 
@@ -100,7 +128,7 @@ fn main() {
     let closure = || { let &mut ref b = a; };
 }
 "#,
-        expect!["53..79;0..83 ByRef(Shared) *a &'? bool"],
+        expect!["53..79;20..21;67..72 ByRef(Shared) *a &'? bool"],
     );
     check_closure_captures(
         r#"
@@ -110,7 +138,7 @@ fn main() {
     let closure = || { let &mut ref mut b = a; };
 }
 "#,
-        expect!["53..83;0..87 ByRef(Mut { kind: Default }) *a &'? mut bool"],
+        expect!["53..83;20..21;67..76 ByRef(Mut { kind: Default }) *a &'? mut bool"],
     );
 }
 
@@ -124,7 +152,7 @@ fn main() {
     let closure = || { *a = false; };
 }
 "#,
-        expect!["53..71;0..75 ByRef(Mut { kind: Default }) *a &'? mut bool"],
+        expect!["53..71;20..21;58..60 ByRef(Mut { kind: Default }) *a &'? mut bool"],
     );
 }
 
@@ -138,7 +166,7 @@ fn main() {
     let closure = || { let ref mut b = *a; };
 }
 "#,
-        expect!["53..79;0..83 ByRef(Mut { kind: Default }) *a &'? mut bool"],
+        expect!["53..79;20..21;62..71 ByRef(Mut { kind: Default }) *a &'? mut bool"],
     );
 }
 
@@ -152,7 +180,7 @@ fn main() {
     let closure = || { let _ = *a else { return; }; };
 }
 "#,
-        expect!["53..88;0..92 ByRef(Shared) *a &'? bool"],
+        expect!["53..88;20..21;66..68 ByRef(Shared) *a &'? bool"],
     );
 }
 
@@ -167,7 +195,7 @@ fn main() {
     let closure = || { let b = a; };
 }
 "#,
-        expect!["67..84;0..88 ByValue a NonCopy"],
+        expect!["67..84;36..37;80..81 ByValue a NonCopy"],
     );
 }
 
@@ -184,8 +212,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            71..89;0..135 ByRef(Shared) a &'? NonCopy
-            109..131;0..135 ByRef(Mut { kind: Default }) a &'? mut NonCopy"#]],
+            71..89;36..41;84..86 ByRef(Shared) a &'? NonCopy
+            109..131;36..41;122..128 ByRef(Mut { kind: Default }) a &'? mut NonCopy"#]],
     );
 }
 
@@ -200,7 +228,7 @@ fn main() {
     let closure = || { let b = a.a; };
 }
 "#,
-        expect!["92..111;0..115 ByRef(Shared) a.a &'? i32"],
+        expect!["92..111;50..51;105..108 ByRef(Shared) a.a &'? i32"],
     );
 }
 
@@ -221,9 +249,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            133..212;0..216 ByRef(Shared) a.a &'? i32
-            133..212;0..216 ByRef(Mut { kind: Default }) a.b &'? mut i32
-            133..212;0..216 ByValue a.c NonCopy"#]],
+            133..212;87..92;154..158 ByRef(Shared) a.a &'? i32
+            133..212;87..92;176..184 ByRef(Mut { kind: Default }) a.b &'? mut i32
+            133..212;87..92;202..205 ByValue a.c NonCopy"#]],
     );
 }
 
@@ -244,8 +272,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            123..133;0..168 ByRef(Shared) a &'? Foo
-            153..164;0..168 ByRef(Mut { kind: Default }) a &'? mut Foo"#]],
+            123..133;92..97;126..127 ByRef(Shared) a &'? Foo
+            153..164;92..97;156..157 ByRef(Mut { kind: Default }) a &'? mut Foo"#]],
     );
 }
 
@@ -262,11 +290,6 @@ fn main() {
         *a = false;
         let b = &mut a;
     };
-    // Max ByRef(Mut { kind: ClosureCapture })
-    let closure = || {
-        let b = *a;
-        let c = &mut *a;
-    };
     // Max ByValue
     let mut a = NonCopy;
     let closure = || {
@@ -277,8 +300,134 @@ fn main() {
 }
 "#,
         expect![[r#"
-            113..167;0..430 ByRef(Mut { kind: Default }) a &'? mut &'? mut bool
-            234..289;0..430 ByRef(Mut { kind: Default }) *a &'? mut bool
-            353..426;0..430 ByValue a NonCopy"#]],
+            113..167;36..41;127..128,154..160 ByRef(Mut { kind: Default }) a &'? mut &'? mut bool
+            231..304;196..201;252..253,276..277,296..297 ByValue a NonCopy"#]],
+    );
+}
+
+#[test]
+fn let_underscore() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+fn main() {
+    let mut a = true;
+    let closure = || { let _ = a; };
+}
+"#,
+        expect![""],
+    );
+}
+
+#[test]
+fn match_wildcard() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+struct NonCopy;
+fn main() {
+    let mut a = NonCopy;
+    let closure = || match a {
+        _ => {}
+    };
+    let closure = || match a {
+        ref b => {}
+    };
+    let closure = || match a {
+        ref mut b => {}
+    };
+}
+"#,
+        expect![[r#"
+            125..163;36..41;134..135 ByRef(Shared) a &'? NonCopy
+            183..225;36..41;192..193 ByRef(Mut { kind: Default }) a &'? mut NonCopy"#]],
+    );
+}
+
+#[test]
+fn multiple_bindings() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+fn main() {
+    let mut a = false;
+    let mut closure = || { let (b | b) = a; };
+}
+"#,
+        expect!["57..80;20..25;76..77,76..77 ByRef(Shared) a &'? bool"],
+    );
+}
+
+#[test]
+fn multiple_usages() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+fn main() {
+    let mut a = false;
+    let mut closure = || {
+        let b = &a;
+        let c = &a;
+        let d = &mut a;
+        a = true;
+    };
+}
+"#,
+        expect!["57..149;20..25;78..80,98..100,118..124,134..135 ByRef(Mut { kind: Default }) a &'? mut bool"],
+    );
+}
+
+#[test]
+fn ref_then_deref() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+fn main() {
+    let mut a = false;
+    let mut closure = || { let b = *&mut a; };
+}
+"#,
+        expect!["57..80;20..25;71..77 ByRef(Mut { kind: Default }) a &'? mut bool"],
+    );
+}
+
+#[test]
+fn ref_of_ref() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+fn main() {
+    let mut a = &false;
+    let closure = || { let b = &a; };
+    let closure = || { let b = &mut a; };
+    let a = &mut false;
+    let closure = || { let b = &a; };
+    let closure = || { let b = &mut a; };
+}
+"#,
+        expect![[r#"
+            54..72;20..25;67..69 ByRef(Shared) a &'? &'? bool
+            92..114;20..25;105..111 ByRef(Mut { kind: Default }) a &'? mut &'? bool
+            158..176;124..125;171..173 ByRef(Shared) a &'? &'? mut bool
+            196..218;124..125;209..215 ByRef(Mut { kind: Default }) a &'? mut &'? mut bool"#]],
+    );
+}
+
+#[test]
+fn multiple_capture_usages() {
+    check_closure_captures(
+        r#"
+//- minicore:copy
+struct A { a: i32, b: bool }
+fn main() {
+    let mut a = A { a: 123, b: false };
+    let closure = |$0| {
+        let b = a.b;
+        a = A { a: 456, b: true };
+    };
+    closure();
+}
+"#,
+        expect!["99..165;49..54;120..121,133..134 ByRef(Mut { kind: Default }) a &'? mut A"],
     );
 }

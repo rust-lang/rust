@@ -59,6 +59,7 @@ use crate::{
     generics::Generics,
     infer::{coerce::CoerceMany, unify::InferenceTable},
     lower::ImplTraitLoweringMode,
+    mir::MirSpan,
     to_assoc_type_id,
     traits::FnTrait,
     utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
@@ -553,6 +554,12 @@ pub(crate) struct InferenceContext<'a> {
 
     // fields related to closure capture
     current_captures: Vec<CapturedItemWithoutTy>,
+    /// A stack that has an entry for each projection in the current capture.
+    ///
+    /// For example, in `a.b.c`, we capture the spans of `a`, `a.b`, and `a.b.c`.
+    /// We do that because sometimes we truncate projections (when a closure captures
+    /// both `a.b` and `a.b.c`), and we want to provide accurate spans in this case.
+    current_capture_span_stack: Vec<MirSpan>,
     current_closure: Option<ClosureId>,
     /// Stores the list of closure ids that need to be analyzed before this closure. See the
     /// comment on `InferenceContext::sort_closures`
@@ -634,6 +641,7 @@ impl<'a> InferenceContext<'a> {
             breakables: Vec::new(),
             deferred_cast_checks: Vec::new(),
             current_captures: Vec::new(),
+            current_capture_span_stack: Vec::new(),
             current_closure: None,
             deferred_closures: FxHashMap::default(),
             closure_dependencies: FxHashMap::default(),
