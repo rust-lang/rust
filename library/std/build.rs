@@ -58,6 +58,18 @@ fn main() {
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {
         // These platforms don't have any special requirements.
+    } else if target_os == "android" {
+        // Since rust-lang/rust#120593 <https://github.com/rust-lang/rust/pull/120593>,
+        // the minimum Android API level change from 19 to 21. And Android supports
+        // `dl_iterate_phdr` since API level 21. Please see
+        // <https://android.googlesource.com/platform/bionic/+/HEAD/docs/status.md>
+        // for details. So we can enable `dl_iterate_phdr` feature for Android witout
+        // checking the Android API level.
+        //
+        // Note: after <https://github.com/rust-lang/backtrace-rs/pull/656>, backtrace-rs
+        // removed the special build logic for Android. So We can remove the next line,
+        // once backtrace-rs in std is updated to the version that includes the change.
+        println!("cargo:rustc-cfg=feature=\"dl_iterate_phdr\"");
     } else {
         // This is for Cargo's build-std support, to mark std as unstable for
         // typically no_std platforms.
