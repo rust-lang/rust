@@ -1097,7 +1097,6 @@ pub mod effects {
     pub trait TyCompat<T: ?Sized> {}
 
     impl<T: ?Sized> TyCompat<T> for T {}
-    impl<T: ?Sized> TyCompat<T> for Maybe {}
     impl<T: ?Sized> TyCompat<Maybe> for T {}
 
     #[lang = "EffectsIntersection"]
