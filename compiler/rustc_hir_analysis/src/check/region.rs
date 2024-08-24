@@ -472,7 +472,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, Some(otherwise)) => {
             let expr_cx = visitor.cx;
-            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope {
+            let data = if expr.span.at_least_rust_2024() {
                 ScopeData::IfThenRescope
             } else {
                 ScopeData::IfThen
@@ -487,7 +487,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
         hir::ExprKind::If(cond, then, None) => {
             let expr_cx = visitor.cx;
-            let data = if expr.span.at_least_rust_2024() && visitor.tcx.features().if_let_rescope {
+            let data = if expr.span.at_least_rust_2024() {
                 ScopeData::IfThenRescope
             } else {
                 ScopeData::IfThen
