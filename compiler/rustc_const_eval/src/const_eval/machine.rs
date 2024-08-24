@@ -12,7 +12,6 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
@@ -732,8 +731,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     }
 
     fn before_memory_write(
-        tcx: TyCtxtAt<'tcx>,
-        machine: &mut Self,
+        _tcx: TyCtxtAt<'tcx>,
+        _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         (_alloc_id, immutable): (AllocId, bool),
         range: AllocRange,
@@ -744,9 +743,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         }
         // Reject writes through immutable pointers.
         if immutable {
-            super::lint(tcx, machine, WRITES_THROUGH_IMMUTABLE_POINTER, |frames| {
-                crate::errors::WriteThroughImmutablePointer { frames }
-            });
+            return Err(ConstEvalErrKind::WriteThroughImmutablePointer.into());
         }
         // Everything else is fine.
         Ok(())

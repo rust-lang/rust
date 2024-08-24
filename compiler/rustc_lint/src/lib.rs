@@ -572,7 +572,8 @@ fn register_builtins(store: &mut LintStore) {
         "byte_slice_in_packed_struct_with_derive",
         "converted into hard error, see issue #107457 \
          <https://github.com/rust-lang/rust/issues/107457> for more information",
-    )
+    );
+    store.register_removed("writes_through_immutable_pointer", "converted into hard error");
 }
 
 fn register_internals(store: &mut LintStore) {
