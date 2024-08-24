@@ -400,8 +400,6 @@ declare_features! (
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (unstable, const_extern_fn, "1.40.0", Some(64926)),
-    /// Allows basic arithmetic on floating point types in a `const fn`.
-    (unstable, const_fn_floating_point_arithmetic, "1.48.0", Some(57241)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Allows using `&mut` in constant functions.
