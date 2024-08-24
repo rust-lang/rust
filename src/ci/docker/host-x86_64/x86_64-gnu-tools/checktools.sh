@@ -55,6 +55,17 @@ case $HOST_TARGET in
     python3 "$X_PY" test --stage 2 src/tools/miri --target s390x-unknown-linux-gnu --test-args pass
     ;;
   x86_64-pc-windows-msvc)
+    # FIXME: This will rebuild miri because it's being built without the miri flags above.
+    # However, for some reason rebuilding is very likely to fail at the final stage when
+    # Cargo overwrites the existing hardlinks.
+    # So we introduce a pause here in the hope it fixes itself and display a list of process for
+    # diagnotistic purposes.
+    ps -W || true
+    echo "HACK: sleeping for 5 minutes"
+    sleep 5m
+    # Show the process list again in case the changes are interesting.
+    ps -W || true
+
     # Strangely, Linux targets do not work here. cargo always says
     # "error: cannot produce cdylib for ... as the target ... does not support these crate types".
     # Only run "pass" tests, which is quite a bit faster.
