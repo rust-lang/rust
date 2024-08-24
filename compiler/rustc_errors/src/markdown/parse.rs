@@ -80,7 +80,7 @@ pub fn entrypoint(txt: &str) -> MdStream<'_> {
 }
 
 /// Parse a buffer with specified context
-fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'_> {
+fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'a> {
     use ParseOpt as Po;
     use Prev::{Escape, Newline, Whitespace};
 

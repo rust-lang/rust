@@ -366,7 +366,7 @@ fn adt_consider_insignificant_dtor<'tcx>(
 fn adt_drop_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> Result<&ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
     // This is for the "adt_drop_tys" query, that considers all `Drop` impls, therefore all dtors are
     // significant.
     let adt_has_dtor =
