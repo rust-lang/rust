@@ -27,7 +27,7 @@ impl<'ast> LifetimeCollectVisitor<'ast> {
                     self.collected_lifetimes.insert(lifetime);
                 }
             }
-            LifetimeRes::Static | LifetimeRes::Error => {
+            LifetimeRes::Static { .. } | LifetimeRes::Error => {
                 self.collected_lifetimes.insert(lifetime);
             }
             LifetimeRes::Infer => {}

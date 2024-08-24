@@ -704,14 +704,6 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// [`elided_named_lifetimes`](lint::builtin::ELIDED_NAMED_LIFETIMES).
     /// See comments in [`MissingLifetime::id_if_exists_in_source_or`].
     crate_node_id: NodeId,
-
-    /// Don't emit [`elided_named_lifetimes`](lint::builtin::ELIDED_NAMED_LIFETIMES)
-    /// when we are in a type annotation for a `const` or `static`.
-    /// ```rust
-    /// const HELLO_WORLD: &str = "Hello, world!";
-    /// static ZEROES: &[u8] = &[0, 0, 0];
-    /// ```
-    warn_elided_static: bool,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
@@ -1357,7 +1349,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             in_func_body: false,
             lifetime_uses: Default::default(),
             crate_node_id: krate.id,
-            warn_elided_static: true,
         }
     }
 
@@ -1569,20 +1560,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_ty_do_not_warn_elided_static(&mut self, ty: &'ast Ty) {
-        self.warn_elided_static = false;
-        self.visit_ty(ty);
-        self.warn_elided_static = true;
-    }
-
-    #[instrument(level = "debug", skip(self))]
     fn resolve_lifetime(&mut self, lifetime: &'ast Lifetime, use_ctxt: visit::LifetimeCtxt) {
         let ident = lifetime.ident;
 
         if ident.name == kw::StaticLifetime {
             self.record_lifetime_res(
                 lifetime.id,
-                LifetimeRes::Static,
+                LifetimeRes::Static { suppress_elision_warning: false },
                 LifetimeElisionCandidate::Named,
             );
             return;
@@ -1722,7 +1706,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     if lifetimes_in_scope.is_empty() {
                         self.record_lifetime_res(
                             lifetime.id,
-                            LifetimeRes::Static,
+                            // We are inside a const item, so do not warn.
+                            LifetimeRes::Static { suppress_elision_warning: true },
                             elision_candidate,
                         );
                         return;
@@ -2069,8 +2054,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             LifetimeElisionCandidate::Missing(missing @ MissingLifetime { span: elided, .. }) => {
                 debug_assert_eq!(id, missing.id);
                 match res {
-                    LifetimeRes::Static => {
-                        if self.warn_elided_static {
+                    LifetimeRes::Static { suppress_elision_warning } => {
+                        if !suppress_elision_warning {
                             self.r.lint_buffer.buffer_lint(
                                 lint::builtin::ELIDED_NAMED_LIFETIMES,
                                 missing.id_if_exists_in_source_or(self.crate_node_id),
@@ -2106,7 +2091,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         match res {
-            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
+            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static { .. } => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
                     candidates.push((res, candidate));
                 }
@@ -2624,9 +2609,14 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. }) => {
                 self.with_static_rib(def_kind, |this| {
-                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
-                        this.visit_ty_do_not_warn_elided_static(ty);
-                    });
+                    this.with_lifetime_rib(
+                        LifetimeRibKind::Elided(LifetimeRes::Static {
+                            suppress_elision_warning: true,
+                        }),
+                        |this| {
+                            this.visit_ty(ty);
+                        },
+                    );
                     if let Some(expr) = expr {
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
@@ -2655,8 +2645,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         this.visit_generics(generics);
 
                         this.with_lifetime_rib(
-                            LifetimeRibKind::Elided(LifetimeRes::Static),
-                            |this| this.visit_ty_do_not_warn_elided_static(ty),
+                            LifetimeRibKind::Elided(LifetimeRes::Static {
+                                suppress_elision_warning: true,
+                            }),
+                            |this| this.visit_ty(ty),
                         );
 
                         if let Some(expr) = expr {
@@ -2983,7 +2975,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 },
                                 |this| {
                                     this.visit_generics(generics);
-                                    this.visit_ty_do_not_warn_elided_static(ty);
+                                    this.visit_ty(ty);
 
                                     // Only impose the restrictions of `ConstRibKind` for an
                                     // actual constant expression in a provided default.
@@ -3196,7 +3188,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                                 );
 
                                 this.visit_generics(generics);
-                                this.visit_ty_do_not_warn_elided_static(ty);
+                                this.visit_ty(ty);
                                 if let Some(expr) = expr {
                                     // We allow arbitrary const expressions inside of associated consts,
                                     // even if they are potentially not const evaluatable.

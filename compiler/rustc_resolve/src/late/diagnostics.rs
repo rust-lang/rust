@@ -3045,7 +3045,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
-                        (DUMMY_NODE_ID, LifetimeRes::Static),
+                        (DUMMY_NODE_ID, LifetimeRes::Static { suppress_elision_warning: false }),
                     )];
                 }
             } else if elided_len == 0 {
@@ -3057,7 +3057,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
-                        (DUMMY_NODE_ID, LifetimeRes::Static),
+                        (DUMMY_NODE_ID, LifetimeRes::Static { suppress_elision_warning: false }),
                     )];
                 }
             } else if num_params == 1 {
