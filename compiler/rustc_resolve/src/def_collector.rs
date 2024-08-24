@@ -2,6 +2,7 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
+use rustc_ast_pretty::pprust;
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -120,8 +121,6 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
 
 impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     fn visit_item(&mut self, i: &'a Item) {
-        debug!("visit_item: {:?}", i);
-
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into, the better
         let mut opt_macro_data = None;
@@ -183,38 +182,51 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
-        if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
-            match sig.header.coroutine_kind {
-                Some(coroutine_kind) => {
-                    self.visit_generics(generics);
+        match fn_kind {
+            FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span: _ }, _vis, generics, body)
+                if let Some(coroutine_kind) = header.coroutine_kind =>
+            {
+                self.visit_fn_header(header);
+                self.visit_generics(generics);
 
-                    // For async functions, we need to create their inner defs inside of a
-                    // closure to match their desugared representation. Besides that,
-                    // we must mirror everything that `visit::walk_fn` below does.
-                    self.visit_fn_header(&sig.header);
-                    for param in &sig.decl.inputs {
-                        self.visit_param(param);
-                    }
-                    self.visit_fn_ret_ty(&sig.decl.output);
-                    // If this async fn has no body (i.e. it's an async fn signature in a trait)
-                    // then the closure_def will never be used, and we should avoid generating a
-                    // def-id for it.
-                    if let Some(body) = body {
-                        let closure_def = self.create_def(
-                            coroutine_kind.closure_id(),
-                            kw::Empty,
-                            DefKind::Closure,
-                            span,
-                        );
-                        self.with_parent(closure_def, |this| this.visit_block(body));
-                    }
-                    return;
+                // For async functions, we need to create their inner defs inside of a
+                // closure to match their desugared representation. Besides that,
+                // we must mirror everything that `visit::walk_fn` below does.
+                let FnDecl { inputs, output } = &**decl;
+                for param in inputs {
+                    self.visit_param(param);
                 }
-                None => {}
-            }
-        }
 
-        visit::walk_fn(self, fn_kind);
+                let (return_id, return_span) = coroutine_kind.return_id();
+                let return_def =
+                    self.create_def(return_id, kw::Empty, DefKind::OpaqueTy, return_span);
+                self.with_parent(return_def, |this| this.visit_fn_ret_ty(output));
+
+                // If this async fn has no body (i.e. it's an async fn signature in a trait)
+                // then the closure_def will never be used, and we should avoid generating a
+                // def-id for it.
+                if let Some(body) = body {
+                    let closure_def = self.create_def(
+                        coroutine_kind.closure_id(),
+                        kw::Empty,
+                        DefKind::Closure,
+                        span,
+                    );
+                    self.with_parent(closure_def, |this| this.visit_block(body));
+                }
+            }
+            FnKind::Closure(binder, Some(coroutine_kind), decl, body) => {
+                self.visit_closure_binder(binder);
+                visit::walk_fn_decl(self, decl);
+
+                // Async closures desugar to closures inside of closures, so
+                // we must create two defs.
+                let coroutine_def =
+                    self.create_def(coroutine_kind.closure_id(), kw::Empty, DefKind::Closure, span);
+                self.with_parent(coroutine_def, |this| visit::walk_expr(this, body));
+            }
+            _ => visit::walk_fn(self, fn_kind),
+        }
     }
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
@@ -334,27 +346,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = match expr.kind {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(ref closure) => {
-                // Async closures desugar to closures inside of closures, so
-                // we must create two defs.
-                let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
-                match closure.coroutine_kind {
-                    Some(coroutine_kind) => {
-                        self.with_parent(closure_def, |this| {
-                            let coroutine_def = this.create_def(
-                                coroutine_kind.closure_id(),
-                                kw::Empty,
-                                DefKind::Closure,
-                                expr.span,
-                            );
-                            this.with_parent(coroutine_def, |this| visit::walk_expr(this, expr));
-                        });
-                        return;
-                    }
-                    None => closure_def,
-                }
-            }
-            ExprKind::Gen(_, _, _, _) => {
+            ExprKind::Closure(..) | ExprKind::Gen(..) => {
                 self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span)
             }
             ExprKind::ConstBlock(ref constant) => {
@@ -381,6 +373,26 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
             // Anonymous structs or unions are visited later after defined.
             TyKind::AnonStruct(..) | TyKind::AnonUnion(..) => {}
+            TyKind::ImplTrait(id, _) => {
+                // HACK: pprust breaks strings with newlines when the type
+                // gets too long. We don't want these to show up in compiler
+                // output or built artifacts, so replace them here...
+                // Perhaps we should instead format APITs more robustly.
+                let name = Symbol::intern(&pprust::ty_to_string(ty).replace('\n', " "));
+                let kind = match self.impl_trait_context {
+                    ImplTraitContext::Universal => DefKind::TyParam,
+                    ImplTraitContext::Existential => DefKind::OpaqueTy,
+                };
+                let id = self.create_def(*id, name, kind, ty.span);
+                match self.impl_trait_context {
+                    // Do not nest APIT, as we desugar them as `impl_trait: bounds`,
+                    // so the `impl_trait` node is not a parent to `bounds`.
+                    ImplTraitContext::Universal => visit::walk_ty(self, ty),
+                    ImplTraitContext::Existential => {
+                        self.with_parent(id, |this| visit::walk_ty(this, ty))
+                    }
+                };
+            }
             _ => visit::walk_ty(self, ty),
         }
     }
