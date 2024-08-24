@@ -9,6 +9,9 @@
 //! Consider the following code, operating on some global static variables:
 //!
 //! ```rust
+//! // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+//! #![allow(static_mut_refs)]
+//!
 //! static mut A: u32 = 0;
 //! static mut B: u32 = 0;
 //! static mut C: u32 = 0;

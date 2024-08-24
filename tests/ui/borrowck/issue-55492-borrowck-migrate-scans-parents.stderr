@@ -1,46 +1,3 @@
-warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:12:16
-   |
-LL |             c1(&mut Y);
-   |                ^^^^^^ mutable reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-   = note: `#[warn(static_mut_refs)]` on by default
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |             c1(addr_of_mut!(Y));
-   |                ~~~~~~~~~~~~~ +
-
-warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:27:16
-   |
-LL |             c1(&mut Z);
-   |                ^^^^^^ mutable reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |             c1(addr_of_mut!(Z));
-   |                ~~~~~~~~~~~~~ +
-
-warning: creating a mutable reference to mutable static is discouraged
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:64:37
-   |
-LL |         borrowck_closures_unique::e(&mut X);
-   |                                     ^^^^^^ mutable reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
-help: use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |         borrowck_closures_unique::e(addr_of_mut!(X));
-   |                                     ~~~~~~~~~~~~~ +
-
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:9:46
    |
@@ -53,7 +10,7 @@ LL |     pub fn e(mut x: &'static mut isize) {
    |              +++
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:22:50
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:21:50
    |
 LL |             let mut c2 = |y: &'static mut isize| x = y;
    |                                                  ^^^^^ cannot assign
@@ -64,7 +21,7 @@ LL |     pub fn ee(mut x: &'static mut isize) {
    |               +++
 
 error[E0594]: cannot assign to `x`, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:37:13
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:35:13
    |
 LL |             x = (1,);
    |             ^^^^^^^^ cannot assign
@@ -75,7 +32,7 @@ LL |     pub fn capture_assign_whole(mut x: (i32,)) {
    |                                 +++
 
 error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:43:13
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:41:13
    |
 LL |             x.0 = 1;
    |             ^^^^^^^ cannot assign
@@ -86,7 +43,7 @@ LL |     pub fn capture_assign_part(mut x: (i32,)) {
    |                                +++
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:49:13
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:47:13
    |
 LL |             &mut x;
    |             ^^^^^^ cannot borrow as mutable
@@ -97,7 +54,7 @@ LL |     pub fn capture_reborrow_whole(mut x: (i32,)) {
    |                                   +++
 
 error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
-  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:55:13
+  --> $DIR/issue-55492-borrowck-migrate-scans-parents.rs:53:13
    |
 LL |             &mut x.0;
    |             ^^^^^^^^ cannot borrow as mutable
@@ -107,7 +64,7 @@ help: consider changing this to be mutable
 LL |     pub fn capture_reborrow_part(mut x: (i32,)) {
    |                                  +++
 
-error: aborting due to 6 previous errors; 3 warnings emitted
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.

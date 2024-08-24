@@ -5,6 +5,9 @@
 //! the fallback path in `guard::key::enable`, which uses a *single* pthread_key
 //! to manage a thread-local list of dtors to call.
 
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 use std::mem;
 use std::ptr;
 
