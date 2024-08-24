@@ -17,7 +17,7 @@ mod multiple {
     //~^ ERROR: `clippy::msrv` is defined multiple times
 
     mod foo {
-        #![clippy::msrv = "1"]
+        #![clippy::msrv = "1.0"]
         #![clippy::msrv = "1.0.0"]
         //~^ ERROR: `clippy::msrv` is defined multiple times
     }

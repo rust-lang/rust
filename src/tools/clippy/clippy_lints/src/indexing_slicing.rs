@@ -1,5 +1,3 @@
-//! lint on indexing and slicing operations
-
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
