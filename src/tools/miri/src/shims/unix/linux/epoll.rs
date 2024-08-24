@@ -509,6 +509,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     @timeout = |this| {
                         // No notification after blocking timeout.
+                        let Some(epfd) = weak_epfd.upgrade() else {
+                            throw_unsup_format!("epoll FD {epfd_value} got closed while blocking.")
+                        };
+                        // Remove the current active thread_id from the blocked thread_id list.
+                        epfd.downcast::<Epoll>()
+                            .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?
+                            .thread_id.borrow_mut()
+                            .retain(|&id| id != this.active_thread());
                         this.write_int(0, &dest)?;
                         Ok(())
                     }
@@ -605,9 +613,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         waiter.sort();
         waiter.dedup();
         for thread_id in waiter {
-            if this.has_blocked_on_epoll(thread_id) {
-                this.unblock_thread(thread_id, BlockReason::Epoll)?;
-            }
+            this.unblock_thread(thread_id, BlockReason::Epoll)?;
         }
         Ok(())
     }
