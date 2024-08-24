@@ -1,4 +1,4 @@
-error: [o]
+error: ['a: o]
   --> $DIR/variance-object-types.rs:7:1
    |
 LL | struct Foo<'a> {
