@@ -55,6 +55,7 @@ case $HOST_TARGET in
     python3 "$X_PY" test --stage 2 src/tools/miri --target s390x-unknown-linux-gnu --test-args pass
     ;;
   x86_64-pc-windows-msvc)
+    ps -W | grep miri
     # Strangely, Linux targets do not work here. cargo always says
     # "error: cannot produce cdylib for ... as the target ... does not support these crate types".
     # Only run "pass" tests, which is quite a bit faster.
