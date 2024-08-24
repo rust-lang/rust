@@ -430,7 +430,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         events_op: &OpTy<'tcx>,
         maxevents: &OpTy<'tcx>,
         timeout: &OpTy<'tcx>,
-        dest: MPlaceTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -442,7 +442,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if epfd_value <= 0 || maxevents <= 0 {
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
-            this.write_int(-1, &dest)?;
+            this.write_int(-1, dest)?;
             return Ok(());
         }
 
@@ -455,7 +455,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
             let result_value: i32 = this.fd_not_found()?;
-            this.write_int(result_value, &dest)?;
+            this.write_int(result_value, dest)?;
             return Ok(());
         };
         // Create a weak ref of epfd and pass it to callback so we will make sure that epfd
@@ -476,7 +476,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if timeout == 0 || !ready_list_empty {
             // If the ready list is not empty, or the timeout is 0, we can return immediately.
-            this.blocking_epoll_callback(epfd_value, weak_epfd, &dest, &event)?;
+            this.blocking_epoll_callback(epfd_value, weak_epfd, dest, &event)?;
         } else {
             // Blocking
             let timeout = match timeout {
@@ -492,6 +492,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             };
             thread_ids.push(this.active_thread());
+            let dest = dest.clone();
             this.block_thread(
                 BlockReason::Epoll,
                 timeout,
