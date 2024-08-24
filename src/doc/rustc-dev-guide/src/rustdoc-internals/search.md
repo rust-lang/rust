@@ -380,8 +380,11 @@ The `.js` file is like a module (except the loader takes care of
 `FILTER_CRATE` can be left out (equivalent to searching "all crates"), but you
 have to specify `EXPECTED` or `PARSED`.
 
-By default, the test fails if any of the expected results are missing,
-or if the results don't appear in the specified order.
+
+
+By default, the test fails if any of the results specified in the test case are
+not found after running the search, or if the results found after running the
+search don't appear in the same order that they do in the test.
 The actual search results may, however, include results that aren't in the test.
 To override this, specify any of the following magic comments.
 Put them on their own line, without indenting.
