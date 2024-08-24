@@ -476,7 +476,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         if timeout == 0 || !ready_list_empty {
             // If the ready list is not empty, or the timeout is 0, we can return immediately.
-            this.blocking_epoll_callback(epfd_value, weak_epfd, dest, &event)?;
+            blocking_epoll_callback(epfd_value, weak_epfd, dest, &event, this)?;
         } else {
             // Blocking
             let timeout = match timeout {
@@ -504,7 +504,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         event: MPlaceTy<'tcx>,
                     }
                     @unblock = |this| {
-                        this.blocking_epoll_callback(epfd_value, weak_epfd, &dest, &event)?;
+                        blocking_epoll_callback(epfd_value, weak_epfd, &dest, &event, this)?;
                         Ok(())
                     }
                     @timeout = |this| {
@@ -523,47 +523,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ),
             );
         }
-        Ok(())
-    }
-
-    /// Callback function after epoll_wait unblocks
-    fn blocking_epoll_callback(
-        &mut self,
-        epfd_value: i32,
-        weak_epfd: WeakFileDescriptionRef,
-        dest: &MPlaceTy<'tcx>,
-        events: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-
-        let Some(epfd) = weak_epfd.upgrade() else {
-            throw_unsup_format!("epoll FD {epfd_value} got closed while blocking.")
-        };
-
-        let epoll_file_description = epfd
-            .downcast::<Epoll>()
-            .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
-
-        let ready_list = epoll_file_description.get_ready_list();
-        let mut ready_list = ready_list.borrow_mut();
-        let mut num_of_events: i32 = 0;
-        let mut array_iter = this.project_array_fields(events)?;
-
-        while let Some(des) = array_iter.next(this)? {
-            if let Some(epoll_event_instance) = ready_list_next(this, &mut ready_list) {
-                this.write_int_fields_named(
-                    &[
-                        ("events", epoll_event_instance.events.into()),
-                        ("u64", epoll_event_instance.data.into()),
-                    ],
-                    &des.1,
-                )?;
-                num_of_events = num_of_events.strict_add(1);
-            } else {
-                break;
-            }
-        }
-        this.write_int(num_of_events, dest)?;
         Ok(())
     }
 
@@ -664,4 +623,43 @@ fn check_and_update_one_event_interest<'tcx>(
         return Ok(true);
     }
     return Ok(false);
+}
+
+/// Callback function after epoll_wait unblocks
+fn blocking_epoll_callback<'tcx>(
+    epfd_value: i32,
+    weak_epfd: WeakFileDescriptionRef,
+    dest: &MPlaceTy<'tcx>,
+    events: &MPlaceTy<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
+) -> InterpResult<'tcx> {
+    let Some(epfd) = weak_epfd.upgrade() else {
+        throw_unsup_format!("epoll FD {epfd_value} got closed while blocking.")
+    };
+
+    let epoll_file_description = epfd
+        .downcast::<Epoll>()
+        .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
+
+    let ready_list = epoll_file_description.get_ready_list();
+    let mut ready_list = ready_list.borrow_mut();
+    let mut num_of_events: i32 = 0;
+    let mut array_iter = ecx.project_array_fields(events)?;
+
+    while let Some(des) = array_iter.next(ecx)? {
+        if let Some(epoll_event_instance) = ready_list_next(ecx, &mut ready_list) {
+            ecx.write_int_fields_named(
+                &[
+                    ("events", epoll_event_instance.events.into()),
+                    ("u64", epoll_event_instance.data.into()),
+                ],
+                &des.1,
+            )?;
+            num_of_events = num_of_events.strict_add(1);
+        } else {
+            break;
+        }
+    }
+    ecx.write_int(num_of_events, dest)?;
+    Ok(())
 }
