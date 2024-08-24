@@ -80,7 +80,7 @@ jobs:
           os: ubuntu-latest
           rust: nightly
         - target: x86_64-apple-darwin
-          os: macos-latest
+          os: macos-13
           rust: nightly
         - target: i686-pc-windows-msvc
           os: windows-latest
