@@ -1,7 +1,7 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
-/* global addClass, removeClass, onEach, onEachLazy, blurHandler */
-/* global MAIN_ID, getVar, getSettingsButton */
+/* global addClass, removeClass, onEach, onEachLazy */
+/* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
 
 "use strict";
 
@@ -267,15 +267,16 @@
     }
 
     function settingsBlurHandler(event) {
-        blurHandler(event, getSettingsButton(), window.hidePopoverMenus);
+        if (!getHelpButton().contains(document.activeElement) &&
+            !getHelpButton().contains(event.relatedTarget) &&
+            !getSettingsButton().contains(document.activeElement) &&
+            !getSettingsButton().contains(event.relatedTarget)
+        ) {
+            window.hidePopoverMenus();
+        }
     }
 
-    if (isSettingsPage) {
-        // We replace the existing "onclick" callback to do nothing if clicked.
-        getSettingsButton().onclick = event => {
-            event.preventDefault();
-        };
-    } else {
+    if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");

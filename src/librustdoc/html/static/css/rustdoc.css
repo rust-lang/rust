@@ -165,7 +165,7 @@ h1, h2, h3, h4 {
 .main-heading h1 {
 	margin: 0;
 	padding: 0;
-	flex-grow: 1;
+	grid-area: main-heading-h1;
 	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
 	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
 	overflow-wrap: break-word;
@@ -174,8 +174,12 @@ h1, h2, h3, h4 {
 	overflow-wrap: anywhere;
 }
 .main-heading {
-	display: flex;
-	flex-wrap: wrap;
+	position: relative;
+	display: grid;
+	grid-template-areas:
+		"main-heading-h1 main-heading-toolbar"
+		"main-heading-sub-heading main-heading-toolbar";
+	grid-template-columns: 1fr max-content;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
@@ -218,9 +222,10 @@ h1, h2, h3, h4, h5, h6,
 .search-results .result-name,
 .item-name > a,
 .out-of-band,
+.sub-heading,
 span.since,
 a.src,
-#help-button > a,
+rustdoc-toolbar,
 summary.hideme,
 .scraped-example-list,
 /* This selector is for the items listed in the "all items" page. */
@@ -884,9 +889,19 @@ both the code example and the line numbers, so we need to remove the radius in t
 	overflow-x: auto;
 }
 
-.out-of-band {
+.sub-heading {
 	flex-grow: 0;
 	font-size: 1.125rem;
+	grid-area: main-heading-sub-heading;
+}
+
+.main-heading rustdoc-toolbar, .main-heading .out-of-band {
+	grid-area: main-heading-toolbar;
+}
+rustdoc-toolbar {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
 }
 
 .docblock code, .docblock-short code,
@@ -1282,10 +1297,16 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	border-color: var(--settings-input-color) !important;
 }
 
+#settings.popover {
+	--popover-arrow-offset: 118px;
+	top: 26px;
+}
+
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-	--popover-arrow-offset: 48px;
+	--popover-arrow-offset: 36px;
+	top: 26px;
 }
 
 #help dt {
@@ -1293,10 +1314,15 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	clear: left;
 	margin-right: 0.5rem;
 }
+#help dd {
+	margin-bottom: 0.5rem;
+}
 #help span.top, #help span.bottom {
 	text-align: center;
 	display: block;
 	font-size: 1.125rem;
+	padding: 0 0.5rem;
+	text-wrap-style: balance;
 }
 #help span.top {
 	margin: 10px 0;
@@ -1308,10 +1334,13 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	clear: both;
 	border-top: 1px solid var(--border-color);
 }
+.side-by-side {
+	display: flex;
+	margin-bottom: 20px;
+}
 .side-by-side > div {
 	width: 50%;
-	float: left;
-	padding: 0 20px 20px 17px;
+	padding: 0 20px 0 17px;
 }
 
 .item-info .stab {
@@ -1374,7 +1403,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .rightside:not(a),
-.out-of-band {
+.out-of-band,
+.sub-heading,
+rustdoc-toolbar {
 	color: var(--right-side-color);
 }
 
@@ -1588,8 +1619,8 @@ instead, we check that it's not a "finger" cursor.
 	display: block;
 }
 
-.out-of-band > span.since {
-	font-size: 1.25rem;
+.main-heading span.since::before {
+	content: "Since ";
 }
 
 .sub-variant h4 {
@@ -1691,6 +1722,8 @@ a.tooltip:hover::after {
 }
 
 #search-tabs {
+	grid-area: main-heading-sub-heading;
+	margin-top: 0.25rem;
 	display: flex;
 	flex-direction: row;
 	gap: 1px;
@@ -1752,9 +1785,10 @@ a.tooltip:hover::after {
 	border-bottom: 1px solid var(--border-color);
 }
 
-#settings-menu, #help-button {
+#settings-menu, #help-button, button#toggle-all-docs {
 	margin-left: var(--button-left-margin);
 	display: flex;
+	line-height: initial;
 }
 #sidebar-button {
 	display: none;
@@ -1778,33 +1812,35 @@ a.tooltip:hover::after {
 .hide-sidebar .src #sidebar-button {
 	position: static;
 }
-#settings-menu > a, #help-button > a, #sidebar-button > a {
+#settings-menu > a, #help-button > a, #sidebar-button > a, button#toggle-all-docs {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: var(--button-background-color);
-	border: 1px solid var(--border-color);
+	flex-direction: column;
+	border: 1px solid transparent;
 	border-radius: var(--button-border-radius);
-	color: var(--settings-button-color);
-	/* Rare exception to specifying font sizes in rem. Since this is acting
-	   as an icon, it's okay to specify their sizes in pixels. */
-	font-size: 20px;
+	color: var(--main-color);
+}
+#settings-menu > a, #help-button > a, button#toggle-all-docs {
+	width: 80px;
+}
+#sidebar-button > a {
+	background-color: var(--button-background-color);
+	border-color: var(--border-color);
 	width: 33px;
 }
 
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus,
-#sidebar-button > a:hover, #sidebar-button > a:focus {
+#settings-menu > a:hover, #settings-menu > a:focus-visible,
+#help-button > a:hover, #help-button > a:focus-visible,
+#sidebar-button > a:hover, #sidebar-button > a:focus-visible,
+button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	border-color: var(--settings-button-border-focus);
+	text-decoration: none;
 }
 
-#settings-menu > a {
-	line-height: 0;
-	font-size: 0;
-}
 #settings-menu > a:before {
 	/* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
-	content: url('data:image/svg+xml,<svg width="22" height="22" viewBox="0 0 12 12" \
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="M10.25,6c0-0.1243286-0.0261841-0.241333-0.0366211-0.362915l1.6077881-1.5545654l\
 	-1.25-2.1650391  c0,0-1.2674561,0.3625488-2.1323853,0.6099854c-0.2034912-0.1431885-0.421875\
@@ -1817,16 +1853,59 @@ a.tooltip:hover::after {
 	-0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
 	10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
 	,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
-	width: 22px;
-	height: 22px;
+	width: 18px;
+	height: 18px;
 	filter: var(--settings-menu-filter);
+}
+
+button#toggle-all-docs:before {
+	/* Custom arrow icon */
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M2,2l4,4l4,-4M2,6l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
+	width: 18px;
+	height: 18px;
+	filter: var(--settings-menu-filter);
+}
+
+#help-button > a:before {
+	/* Question mark with circle */
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg" fill="none">\
+	<circle r="5.25" cx="6" cy="6" stroke-width="1.25" stroke="black"/>\
+	<text x="4.25" y="9" style="font:8px sans-serif;font-weight:1000" fill="black">?</text></svg>');
+	width: 18px;
+	height: 18px;
+	filter: var(--settings-menu-filter);
+}
+
+button#toggle-all-docs:before,
+#help-button > a:before,
+#settings-menu > a:before {
+	filter: var(--settings-menu-filter);
+	margin: 8px;
+}
+
+@media not (pointer: coarse) {
+	button#toggle-all-docs:hover:before,
+	#help-button > a:hover:before,
+	#settings-menu > a:hover:before {
+		filter: var(--settings-menu-hover-filter);
+	}
+}
+
+rustdoc-toolbar span.label {
+	font-size: initial;
+	font-variant-caps: small-caps;
+	text-transform: lowercase;
+	flex-grow: 1;
 }
 
 #sidebar-button > a:before {
 	/* sidebar resizer image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
-		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
 		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
 		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
 	width: 22px;
@@ -1941,10 +2020,10 @@ details.toggle > summary.hideme > span {
 }
 
 details.toggle > summary::before {
-	/* toggle plus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7M8.5 12V8.625v0V5"/></svg>') no-repeat top left;
+	/* arrow pointing left */
+	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M4,2l4,4l-4,4" stroke="black" fill="none" stroke-width="1px"/></svg>');
 	content: "";
 	cursor: pointer;
 	width: 16px;
@@ -2027,10 +2106,10 @@ details.toggle[open] > summary.hideme > span {
 }
 
 details.toggle[open] > summary::before {
-	/* toggle minus */
-	background: url('data:image/svg+xml,<svg width="17" height="17" \
-shape-rendering="crispEdges" stroke="black" fill="none" xmlns="http://www.w3.org/2000/svg"><path \
-d="M5 2.5H2.5v12H5m7-12h2.5v12H12M5 8.5h7"/></svg>') no-repeat top left;
+	/* arrow pointing down */
+	background: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M2,4l4,4l4,-4" stroke="black" fill="none" stroke-width="1px"/></svg>');
 }
 
 details.toggle[open] > summary::after {
@@ -2076,12 +2155,27 @@ However, it's not needed with smaller screen width because the doc/code block is
 	opacity: 0.75;
 }
 
+/* help button is mostly for search */
+#help-button:not(.help-open),
+#alternative-display #toggle-all-docs {
+	display: none;
+}
+#alternative-display #help-button {
+	display: flex;
+}
+
 /* Media Queries */
 
 /* Make sure all the buttons line wrap at the same time */
 @media (max-width: 850px) {
 	#search-tabs .count {
 		display: block;
+	}
+	.side-by-side {
+		flex-direction: column-reverse;
+	}
+	.side-by-side > div {
+		width: auto;
 	}
 }
 
@@ -2099,6 +2193,27 @@ in src-script.js and main.js
 		scroll-margin-top: 45px;
 	}
 
+	/* We don't display this button on mobile devices. */
+	#copy-path {
+		display: none;
+	}
+
+	/* Text label takes up too much space at this size. */
+	rustdoc-toolbar span.label {
+		display: none;
+	}
+	#settings-menu > a, #help-button > a, button#toggle-all-docs {
+		width: 33px;
+	}
+	#settings.popover {
+		--popover-arrow-offset: 48px;
+		top: calc(100% - 8px);
+	}
+	#help.popover {
+		--popover-arrow-offset: 12px;
+		top: calc(100% - 8px);
+	}
+
 	.rustdoc {
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
@@ -2108,20 +2223,6 @@ in src-script.js and main.js
 	main {
 		padding-left: 15px;
 		padding-top: 0px;
-	}
-
-	.main-heading {
-		flex-direction: column;
-	}
-
-	.out-of-band {
-		text-align: left;
-		margin-left: initial;
-		padding: initial;
-	}
-
-	.out-of-band .since::before {
-		content: "Since ";
 	}
 
 	/* Hide the logo and item name from the sidebar. Those are displayed
@@ -2227,16 +2328,11 @@ in src-script.js and main.js
 		left: -11px;
 	}
 
-	/* We don't display these buttons on mobile devices. */
-	#copy-path, #help-button {
-		display: none;
-	}
-
 	/* sidebar button becomes topbar button */
 	#sidebar-button > a:before {
 		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
-			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
 			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
 			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
 		width: 22px;
@@ -2536,6 +2632,8 @@ by default.
 	--copy-path-img-hover-filter: invert(35%);
 	--code-example-button-color: #7f7f7f;
 	--code-example-button-hover-color: #595959;
+	--settings-menu-filter: invert(50%);
+	--settings-menu-hover-filter: invert(35%);
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2562,7 +2660,6 @@ by default.
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
-	--settings-menu-filter: none;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -2666,7 +2763,8 @@ by default.
 	--search-tab-button-not-selected-background: #252525;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #353535;
-	--settings-menu-filter: none;
+	--settings-menu-filter: invert(50%);
+	--settings-menu-hover-filter: invert(65%);
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ab8ac1;
@@ -2777,7 +2875,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-tab-button-not-selected-background: transparent !important;
 	--search-tab-button-selected-border-top-color: none;
 	--search-tab-button-selected-background: #141920 !important;
-	--settings-menu-filter: invert(100%);
+	--settings-menu-filter: invert(70%);
+	--settings-menu-hover-filter: invert(100%);
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;

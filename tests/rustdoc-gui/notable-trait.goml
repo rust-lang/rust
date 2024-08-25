@@ -248,12 +248,13 @@ click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 assert-count: ("//*[@class='tooltip popover']", 1)
 assert-false: "//*[@class='sidebar shown']"
 
-// Also check the focus handling for the help button.
+// Also check the focus handling for the settings button.
 set-window-size: (1100, 600)
 reload:
 assert-count: ("//*[@class='tooltip popover']", 0)
 click: "//*[@id='method.create_an_iterator_from_read']//*[@class='tooltip']"
 assert-count: ("//*[@class='tooltip popover']", 1)
-click: "#help-button a"
+click: "#settings-menu a"
+wait-for: "#settings"
 assert-count: ("//*[@class='tooltip popover']", 0)
 assert-false: "#method\.create_an_iterator_from_read .tooltip:focus"

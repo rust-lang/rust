@@ -3605,7 +3605,8 @@ async function showResults(results, go_to_first, filterCrates) {
         crates += "</select></div>";
     }
 
-    let output = `<h1 class="search-results-title">Results${crates}</h1>`;
+    let output = `<div class="main-heading">\
+        <h1 class="search-results-title">Results${crates}</h1></div>`;
     if (results.query.error !== null) {
         const error = results.query.error;
         error.forEach((value, index) => {
@@ -3662,6 +3663,9 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_returned[0]);
 
     search.innerHTML = output;
+    if (searchState.rustdocToolbar) {
+        search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
+    }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);

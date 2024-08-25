@@ -72,8 +72,8 @@ click: ".scraped-example .button-holder .expand"
 store-value: (offset_y, 4)
 
 // First with desktop
-assert-position: (".scraped-example", {"y": 226})
-assert-position: (".scraped-example .prev", {"y": 226 + |offset_y|})
+assert-position: (".scraped-example", {"y": 253})
+assert-position: (".scraped-example .prev", {"y": 253 + |offset_y|})
 
 // Gradient background should be at the top of the code block.
 assert-css: (".scraped-example .example-wrap::before", {"top": "0px"})

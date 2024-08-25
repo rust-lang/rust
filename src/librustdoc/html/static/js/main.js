@@ -22,14 +22,14 @@ function hideMain() {
 }
 
 function showMain() {
-    removeClass(document.getElementById(MAIN_ID), "hidden");
-}
-
-function blurHandler(event, parentElem, hideCallback) {
-    if (!parentElem.contains(document.activeElement) &&
-        !parentElem.contains(event.relatedTarget)
-    ) {
-        hideCallback();
+    const main = document.getElementById(MAIN_ID);
+    removeClass(main, "hidden");
+    const mainHeading = main.querySelector(".main-heading");
+    if (mainHeading && searchState.rustdocToolbar) {
+        if (searchState.rustdocToolbar.parentElement) {
+            searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
+        }
+        mainHeading.appendChild(searchState.rustdocToolbar);
     }
 }
 
@@ -167,6 +167,14 @@ function switchDisplayedElement(elemToDisplay) {
     el.appendChild(elemToDisplay);
     hideMain();
     removeClass(el, "hidden");
+
+    const mainHeading = elemToDisplay.querySelector(".main-heading");
+    if (mainHeading && searchState.rustdocToolbar) {
+        if (searchState.rustdocToolbar.parentElement) {
+            searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
+        }
+        mainHeading.appendChild(searchState.rustdocToolbar);
+    }
 }
 
 function browserSupportsHistoryApi() {
@@ -194,33 +202,36 @@ function preLoadCss(cssUrl) {
         document.head.append(script);
     }
 
-    getSettingsButton().onclick = event => {
-        if (event.ctrlKey || event.altKey || event.metaKey) {
-            return;
-        }
-        window.hideAllModals(false);
-        addClass(getSettingsButton(), "rotate");
-        event.preventDefault();
-        // Sending request for the CSS and the JS files at the same time so it will
-        // hopefully be loaded when the JS will generate the settings content.
-        loadScript(getVar("static-root-path") + getVar("settings-js"));
-        // Pre-load all theme CSS files, so that switching feels seamless.
-        //
-        // When loading settings.html as a standalone page, the equivalent HTML is
-        // generated in context.rs.
-        setTimeout(() => {
-            const themes = getVar("themes").split(",");
-            for (const theme of themes) {
-                // if there are no themes, do nothing
-                // "".split(",") == [""]
-                if (theme !== "") {
-                    preLoadCss(getVar("root-path") + theme + ".css");
-                }
+    if (getSettingsButton()) {
+        getSettingsButton().onclick = event => {
+            if (event.ctrlKey || event.altKey || event.metaKey) {
+                return;
             }
-        }, 0);
-    };
+            window.hideAllModals(false);
+            addClass(getSettingsButton(), "rotate");
+            event.preventDefault();
+            // Sending request for the CSS and the JS files at the same time so it will
+            // hopefully be loaded when the JS will generate the settings content.
+            loadScript(getVar("static-root-path") + getVar("settings-js"));
+            // Pre-load all theme CSS files, so that switching feels seamless.
+            //
+            // When loading settings.html as a standalone page, the equivalent HTML is
+            // generated in context.rs.
+            setTimeout(() => {
+                const themes = getVar("themes").split(",");
+                for (const theme of themes) {
+                    // if there are no themes, do nothing
+                    // "".split(",") == [""]
+                    if (theme !== "") {
+                        preLoadCss(getVar("root-path") + theme + ".css");
+                    }
+                }
+            }, 0);
+        };
+    }
 
     window.searchState = {
+        rustdocToolbar: document.querySelector("rustdoc-toolbar"),
         loadingText: "Loading search results...",
         input: document.getElementsByClassName("search-input")[0],
         outputElement: () => {
@@ -919,8 +930,7 @@ function preLoadCss(cssUrl) {
                 e.open = true;
             }
         });
-        innerToggle.title = "collapse all docs";
-        innerToggle.children[0].innerText = "\u2212"; // "\u2212" is "−" minus sign
+        innerToggle.children[0].innerText = "Summary";
     }
 
     function collapseAllDocs() {
@@ -934,8 +944,7 @@ function preLoadCss(cssUrl) {
                 e.open = false;
             }
         });
-        innerToggle.title = "expand all docs";
-        innerToggle.children[0].innerText = "+";
+        innerToggle.children[0].innerText = "Show all";
     }
 
     function toggleAllDocs() {
@@ -1328,7 +1337,13 @@ function preLoadCss(cssUrl) {
     }
 
     function helpBlurHandler(event) {
-        blurHandler(event, getHelpButton(), window.hidePopoverMenus);
+        if (!getHelpButton().contains(document.activeElement) &&
+            !getHelpButton().contains(event.relatedTarget) &&
+            !getSettingsButton().contains(document.activeElement) &&
+            !getSettingsButton().contains(event.relatedTarget)
+        ) {
+            window.hidePopoverMenus();
+        }
     }
 
     function buildHelpMenu() {
@@ -1431,9 +1446,13 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
      * Hide all the popover menus.
      */
     window.hidePopoverMenus = () => {
-        onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
+        onEachLazy(document.querySelectorAll("rustdoc-toolbar .popover"), elem => {
             elem.style.display = "none";
         });
+        const button = getHelpButton();
+        if (button) {
+            removeClass(button, "help-open");
+        }
     };
 
     /**
@@ -1458,7 +1477,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     function showHelp() {
         // Prevent `blur` events from being dispatched as a result of closing
         // other modals.
-        getHelpButton().querySelector("a").focus();
+        const button = getHelpButton();
+        addClass(button, "help-open");
+        button.querySelector("a").focus();
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
             window.hideAllModals();
@@ -1466,28 +1487,15 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         }
     }
 
+    const helpLink = document.querySelector(`#${HELP_BUTTON_ID} > a`);
     if (isHelpPage) {
-        showHelp();
-        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
-            // Already on the help page, make help button a no-op.
-            const target = event.target;
-            if (target.tagName !== "A" ||
-                target.parentElement.id !== HELP_BUTTON_ID ||
-                event.ctrlKey ||
-                event.altKey ||
-                event.metaKey) {
-                return;
-            }
-            event.preventDefault();
-        });
-    } else {
-        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+        buildHelpMenu();
+    } else if (helpLink) {
+        helpLink.addEventListener("click", event => {
             // By default, have help button open docs in a popover.
             // If user clicks with a moderator, though, use default browser behavior,
             // probably opening in a new window or tab.
-            const target = event.target;
-            if (target.tagName !== "A" ||
-                target.parentElement.id !== HELP_BUTTON_ID ||
+            if (!helpLink.contains(helpLink) ||
                 event.ctrlKey ||
                 event.altKey ||
                 event.metaKey) {
