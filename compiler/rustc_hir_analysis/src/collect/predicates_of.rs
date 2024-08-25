@@ -18,10 +18,26 @@ use crate::delegation::inherit_predicates_for_delegation_item;
 use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter, RegionInferReason};
 
 /// Returns a list of all type predicates (explicit and implicit) for the definition with
-/// ID `def_id`. This includes all predicates returned by `predicates_defined_on`, plus
-/// `Self: Trait` predicates for traits.
+/// ID `def_id`. This includes all predicates returned by `explicit_predicates_of`, plus
+/// inferred constraints concerning which regions outlive other regions.
+#[instrument(level = "debug", skip(tcx))]
 pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    let mut result = tcx.predicates_defined_on(def_id);
+    let mut result = tcx.explicit_predicates_of(def_id);
+    debug!("predicates_of: explicit_predicates_of({:?}) = {:?}", def_id, result);
+
+    let inferred_outlives = tcx.inferred_outlives_of(def_id);
+    if !inferred_outlives.is_empty() {
+        debug!("predicates_of: inferred_outlives_of({:?}) = {:?}", def_id, inferred_outlives,);
+        let inferred_outlives_iter =
+            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), *span));
+        if result.predicates.is_empty() {
+            result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
+        } else {
+            result.predicates = tcx.arena.alloc_from_iter(
+                result.predicates.into_iter().copied().chain(inferred_outlives_iter),
+            );
+        }
+    }
 
     if tcx.is_trait(def_id) {
         // For traits, add `Self: Trait` predicate. This is
@@ -51,7 +67,8 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
                 .chain(std::iter::once((ty::TraitRef::identity(tcx, def_id).upcast(tcx), span))),
         );
     }
-    debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
+
+    debug!("predicates_of({:?}) = {:?}", def_id, result);
     result
 }
 
