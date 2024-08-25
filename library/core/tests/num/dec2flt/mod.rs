@@ -5,6 +5,7 @@ mod decimal_seq;
 mod float;
 mod lemire;
 mod parse;
+mod slow;
 
 // Take a float literal, turn it into a string in various ways (that are all trusted
 // to be correct) and see if those strings are parsed back to the value of the literal.
