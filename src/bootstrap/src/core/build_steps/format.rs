@@ -7,7 +7,7 @@ use std::sync::mpsc::SyncSender;
 use std::sync::Mutex;
 
 use build_helper::ci::CiEnv;
-use build_helper::git::get_git_modified_files;
+use build_helper::git::{get_git_modified_files, warn_old_master_branch};
 use ignore::WalkBuilder;
 
 use crate::core::builder::Builder;
@@ -93,7 +93,8 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
     if !verify_rustfmt_version(build) {
         return Ok(None);
     }
-
+    warn_old_master_branch(&build.config.git_config(), &build.config.src)
+        .map_err(|e| e.to_string())?;
     get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &["rs"])
 }
 
