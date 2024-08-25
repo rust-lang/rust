@@ -492,13 +492,13 @@ impl f64 {
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
     /// Sign bit
-    const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
+    pub(crate) const SIGN_MASK: u64 = 0x8000_0000_0000_0000;
 
     /// Exponent mask
-    const EXP_MASK: u64 = 0x7ff0_0000_0000_0000;
+    pub(crate) const EXP_MASK: u64 = 0x7ff0_0000_0000_0000;
 
     /// Mantissa mask
-    const MAN_MASK: u64 = 0x000f_ffff_ffff_ffff;
+    pub(crate) const MAN_MASK: u64 = 0x000f_ffff_ffff_ffff;
 
     /// Minimum representable positive value (min subnormal)
     const TINY_BITS: u64 = 0x1;
