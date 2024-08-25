@@ -11,6 +11,7 @@ use std::thread::spawn;
 fn main() {
     test_epoll_block_without_notification();
     test_epoll_block_then_unblock();
+    test_notification_after_timeout();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -43,6 +44,8 @@ fn check_epoll_wait<const N: usize>(
         assert_eq!(data, expected_event.1, "got wrong data");
     }
 }
+
+// This test allows epoll_wait to block, then unblock without notification.
 fn test_epoll_block_without_notification() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
@@ -62,10 +65,11 @@ fn test_epoll_block_without_notification() {
     let expected_value = fd as u64;
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 0);
 
-    // epoll_wait before triggering notification so it will block then unblock.
+    // This epoll wait blocks, and timeout without notification.
     check_epoll_wait::<1>(epfd, &[], 5);
 }
 
+// This test triggers notification and unblocks the epoll_wait before timeout.
 fn test_epoll_block_then_unblock() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
@@ -97,4 +101,39 @@ fn test_epoll_block_then_unblock() {
     });
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 10);
     thread1.join().unwrap();
+}
+
+// This test triggers a notification after epoll_wait times out.
+fn test_notification_after_timeout() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Register one side of the socketpair with epoll.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
+    assert_eq!(res, 0);
+
+    // epoll_wait to clear notification.
+    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
+    let expected_value = fds[0] as u64;
+    check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 0);
+
+    // epoll_wait timeouts without notification.
+    check_epoll_wait::<1>(epfd, &[], 10);
+
+    // Trigger epoll notification after timeout.
+    let data = "abcde".as_bytes().as_ptr();
+    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    assert_eq!(res, 5);
+
+    // Check the result of the notification.
+    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
+    let expected_value = fds[0] as u64;
+    check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 10);
 }
