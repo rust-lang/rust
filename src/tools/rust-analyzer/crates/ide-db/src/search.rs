@@ -528,6 +528,10 @@ impl<'a> FindUsages<'a> {
         search_scope: &SearchScope,
         name: &str,
     ) -> bool {
+        if self.scope.is_some() {
+            return false;
+        }
+
         let _p = tracing::info_span!("short_associated_function_fast_search").entered();
 
         let container = (|| {
