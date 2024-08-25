@@ -575,10 +575,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                if is_int_bool_or_char(ty) {
-                    // Int, bool, and char operations are fine.
-                } else if ty.is_floating_point() {
-                    self.check_op(ops::FloatingPointOp);
+                if is_int_bool_float_or_char(ty) {
+                    // Int, bool, float, and char operations are fine.
                 } else {
                     span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
@@ -588,8 +586,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
-                if is_int_bool_or_char(lhs_ty) && is_int_bool_or_char(rhs_ty) {
-                    // Int, bool, and char operations are fine.
+                if is_int_bool_float_or_char(lhs_ty) && is_int_bool_float_or_char(rhs_ty) {
+                    // Int, bool, float, and char operations are fine.
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_matches!(
                         op,
@@ -603,8 +601,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     );
 
                     self.check_op(ops::RawPtrComparison);
-                } else if lhs_ty.is_floating_point() || rhs_ty.is_floating_point() {
-                    self.check_op(ops::FloatingPointOp);
                 } else {
                     span_bug!(
                         self.span,
@@ -1009,8 +1005,8 @@ fn place_as_reborrow<'tcx>(
     }
 }
 
-fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
-    ty.is_bool() || ty.is_integral() || ty.is_char()
+fn is_int_bool_float_or_char(ty: Ty<'_>) -> bool {
+    ty.is_bool() || ty.is_integral() || ty.is_char() || ty.is_floating_point()
 }
 
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {

@@ -193,6 +193,8 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
+    /// Gating for a new desugaring of const arguments of usages of const parameters
+    (internal, const_arg_path, "1.81.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
@@ -400,8 +402,6 @@ declare_features! (
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (unstable, const_extern_fn, "1.40.0", Some(64926)),
-    /// Allows basic arithmetic on floating point types in a `const fn`.
-    (unstable, const_fn_floating_point_arithmetic, "1.48.0", Some(57241)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Allows using `&mut` in constant functions.

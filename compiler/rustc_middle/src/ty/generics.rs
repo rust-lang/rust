@@ -269,7 +269,7 @@ impl<'tcx> Generics {
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamConst`.
-    pub fn const_param(&'tcx self, param: ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
+    pub fn const_param(&'tcx self, param: ParamConst, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Const { .. } => param,

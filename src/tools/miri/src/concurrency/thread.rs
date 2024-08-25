@@ -1157,7 +1157,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     #[inline]
-    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&[u8]>
+    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> Option<&'c [u8]>
     where
         'tcx: 'c,
     {
