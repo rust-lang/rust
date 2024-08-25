@@ -1,3 +1,5 @@
+// Regression test for #129021.
+
 static UNIT: &'static &'static () = &&();
 
 fn foo<'a: 'a, 'b: 'b, T>(_: &'a &'b (), v: &'b T) -> &'a T { v }

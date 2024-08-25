@@ -1,3 +1,5 @@
+// Regression test for #129021.
+
 trait ToArg<T> {
     type Arg;
 }

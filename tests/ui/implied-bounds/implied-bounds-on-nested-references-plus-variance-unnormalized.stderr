@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/implied-bounds-on-nested-references-plus-variance-unnormalized.rs:10:5
+  --> $DIR/implied-bounds-on-nested-references-plus-variance-unnormalized.rs:12:5
    |
 LL | fn extend<'a, 'b>(x: &'a str) -> &'b str {
    |           --  -- lifetime `'b` defined here
