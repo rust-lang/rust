@@ -25,7 +25,9 @@ fn main() {
                 // folder
                 "--target-dir",
                 ".",
-                // Check that these crates can be compiled on "stable"
+            ])
+            // Check that these crates can be compiled on "stable"
+            .args(&[
                 "-p",
                 "rustc_type_ir",
                 "-p",
