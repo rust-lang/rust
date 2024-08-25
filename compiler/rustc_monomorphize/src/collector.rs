@@ -1035,9 +1035,9 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.kind(), &target_ty.kind()) {
+    match (source_ty.kind(), target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
-        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(*a, *b),
+        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(a, b),
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }
