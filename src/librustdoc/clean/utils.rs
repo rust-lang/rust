@@ -327,6 +327,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             );
             return Symbol::intern("()");
         }
+        PatKind::Guard(p, _) => return name_from_pat(&*p),
         PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(begin, ref mid, end) => {
             let begin = begin.iter().map(|p| name_from_pat(p).to_string());

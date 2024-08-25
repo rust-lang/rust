@@ -422,6 +422,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 subpats.iter().all(|pat| self.pat_guaranteed_to_constitute_read_for_never(pat))
             }
 
+            // Passes through to the sub-pattern.
+            hir::PatKind::Guard(subpat, _) => {
+                self.pat_guaranteed_to_constitute_read_for_never(subpat)
+            }
+
             // Does constitute a read, since it is equivalent to a discriminant read.
             hir::PatKind::Never => true,
 

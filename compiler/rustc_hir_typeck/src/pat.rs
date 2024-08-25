@@ -259,6 +259,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                 self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
             }
+            PatKind::Guard(pat, _) => {
+                self.check_pat(pat, expected, pat_info);
+                expected
+            }
             PatKind::Or(pats) => {
                 for pat in pats {
                     self.check_pat(pat, expected, pat_info);
@@ -397,7 +401,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // An OR-pattern just propagates to each individual alternative.
             // This is maximally flexible, allowing e.g., `Some(mut x) | &Some(mut x)`.
             // In that example, `Some(mut x)` results in `Peel` whereas `&Some(mut x)` in `Reset`.
-            | PatKind::Or(_) => AdjustMode::Pass,
+            | PatKind::Or(_)
+            // Like or-patterns, guard patterns just propogate to their subpatterns.
+            | PatKind::Guard(..) => AdjustMode::Pass,
         }
     }
 
@@ -876,6 +882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         PatKind::Struct(..)
                         | PatKind::TupleStruct(..)
                         | PatKind::Or(..)
+                        | PatKind::Guard(..)
                         | PatKind::Tuple(..)
                         | PatKind::Slice(..) => "binding",
 

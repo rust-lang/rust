@@ -678,7 +678,9 @@ fn resolve_local<'tcx>(
             | PatKind::TupleStruct(_, subpats, _)
             | PatKind::Tuple(subpats, _) => subpats.iter().any(|p| is_binding_pat(p)),
 
-            PatKind::Box(subpat) | PatKind::Deref(subpat) => is_binding_pat(subpat),
+            PatKind::Box(subpat) | PatKind::Deref(subpat) | PatKind::Guard(subpat, _) => {
+                is_binding_pat(subpat)
+            }
 
             PatKind::Ref(_, _)
             | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)

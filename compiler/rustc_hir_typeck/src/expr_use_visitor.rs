@@ -612,6 +612,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     | PatKind::Box(_)
                     | PatKind::Deref(_)
                     | PatKind::Ref(..)
+                    | PatKind::Guard(..)
                     | PatKind::Wild
                     | PatKind::Err(_) => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
@@ -1722,7 +1723,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            PatKind::Binding(.., Some(subpat)) => {
+            PatKind::Binding(.., Some(subpat)) | PatKind::Guard(subpat, _) => {
                 self.cat_pattern(place_with_id, subpat, op)?;
             }
 

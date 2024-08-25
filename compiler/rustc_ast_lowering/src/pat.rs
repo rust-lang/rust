@@ -114,7 +114,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    PatKind::Guard(_, _) => todo!("implement lowering to HIR"),
+                    PatKind::Guard(inner, cond) => {
+                        break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
+                    }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {
                         // If we reach here the `..` pattern is not semantically allowed.
