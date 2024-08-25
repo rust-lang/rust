@@ -22,6 +22,24 @@ fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
     config.try_run(cmd)
 }
 
+fn extract_curl_version(out: &[u8]) -> semver::Version {
+    let out = String::from_utf8_lossy(out);
+    // The output should look like this: "curl <major>.<minor>.<patch> ..."
+    out.lines()
+        .next()
+        .and_then(|line| line.split(" ").nth(1))
+        .and_then(|version| semver::Version::parse(version).ok())
+        .unwrap_or(semver::Version::new(1, 0, 0))
+}
+
+fn curl_version() -> semver::Version {
+    let mut curl = Command::new("curl");
+    curl.arg("-V");
+    let Ok(out) = curl.output() else { return semver::Version::new(1, 0, 0) };
+    let out = out.stdout;
+    extract_curl_version(&out)
+}
+
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
     pub fn is_verbose(&self) -> bool {
@@ -220,6 +238,8 @@ impl Config {
             "30", // timeout if cannot connect within 30 seconds
             "-o",
             tempfile.to_str().unwrap(),
+            "--continue-at",
+            "-",
             "--retry",
             "3",
             "-SRf",
@@ -229,6 +249,10 @@ impl Config {
             curl.arg("-s");
         } else {
             curl.arg("--progress-bar");
+        }
+        // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
+        if curl_version() >= semver::Version::new(7, 71, 0) {
+            curl.arg("--retry-all-errors");
         }
         curl.arg(url);
         if !self.check_run(&mut curl) {
