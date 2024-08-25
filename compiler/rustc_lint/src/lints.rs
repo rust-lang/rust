@@ -2612,6 +2612,16 @@ pub struct ElidedLifetimesInPaths {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_elided_named_lifetime)]
+pub struct ElidedNamedLifetime {
+    #[label(lint_label_elided)]
+    pub elided: Span,
+    pub name: Symbol,
+    #[label(lint_label_named)]
+    pub named_declaration: Option<Span>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]
 pub struct UnknownCrateTypes {
     #[subdiagnostic]
