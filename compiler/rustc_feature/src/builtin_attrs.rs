@@ -641,6 +641,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing, EncodeCrossCrate::Yes,
         "rustc_deprecated_safe_2024 is supposed to be used in libstd only",
     ),
+    rustc_attr!(
+        rustc_pub_transparent, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes,
+        "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
+    ),
 
 
     // ==========================================================================
