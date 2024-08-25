@@ -367,14 +367,6 @@ macro_rules! out_of_file_lines_range {
     };
 }
 
-macro_rules! skip_out_of_file_lines_range {
-    ($self:ident, $span:expr) => {
-        if out_of_file_lines_range!($self, $span) {
-            return None;
-        }
-    };
-}
-
 macro_rules! skip_out_of_file_lines_range_err {
     ($self:ident, $span:expr) => {
         if out_of_file_lines_range!($self, $span) {

@@ -135,9 +135,7 @@ fn format_stmt(
             let shape = shape
                 .sub_width(suffix.len())
                 .max_width_error(shape.width, ex.span())?;
-            format_expr(ex, expr_type, context, shape)
-                .map(|s| s + suffix)
-                .unknown_error()
+            format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
         }
         ast::StmtKind::MacCall(..) | ast::StmtKind::Item(..) | ast::StmtKind::Empty => {
             Err(RewriteError::Unknown)

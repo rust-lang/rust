@@ -39,6 +39,10 @@ use crate::visitor::FmtVisitor;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         format_expr(self, ExprType::SubExpression, context, shape)
     }
 }
@@ -58,14 +62,14 @@ pub(crate) fn format_expr(
     expr_type: ExprType,
     context: &RewriteContext<'_>,
     shape: Shape,
-) -> Option<String> {
-    skip_out_of_file_lines_range!(context, expr.span);
+) -> RewriteResult {
+    skip_out_of_file_lines_range_err!(context, expr.span);
 
     if contains_skip(&*expr.attrs) {
-        return Some(context.snippet(expr.span()).to_owned());
+        return Ok(context.snippet(expr.span()).to_owned());
     }
     let shape = if expr_type == ExprType::Statement && semicolon_for_expr(context, expr) {
-        shape.sub_width(1)?
+        shape.sub_width(1).max_width_error(shape.width, expr.span)?
     } else {
         shape
     };
@@ -79,41 +83,38 @@ pub(crate) fn format_expr(
             shape,
             choose_separator_tactic(context, expr.span),
             None,
-        )
-        .ok(),
+        ),
         ast::ExprKind::Lit(token_lit) => {
             if let Ok(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
-                Some(expr_rw)
+                Ok(expr_rw)
             } else {
                 if let LitKind::StrRaw(_) = token_lit.kind {
-                    Some(context.snippet(expr.span).trim().into())
+                    Ok(context.snippet(expr.span).trim().into())
                 } else {
-                    None
+                    Err(RewriteError::Unknown)
                 }
             }
         }
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
-            let callee_str = callee.rewrite(context, shape)?;
-            rewrite_call(context, &callee_str, args, inner_span, shape).ok()
+            let callee_str = callee.rewrite_result(context, shape)?;
+            rewrite_call(context, &callee_str, args, inner_span, shape)
         }
-        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span).ok(),
+        ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
-            rewrite_all_pairs(expr, shape, context)
-                .or_else(|_| {
-                    rewrite_pair(
-                        &**lhs,
-                        &**rhs,
-                        PairParts::infix(&format!(" {} ", context.snippet(op.span))),
-                        context,
-                        shape,
-                        context.config.binop_separator(),
-                    )
-                })
-                .ok()
+            rewrite_all_pairs(expr, shape, context).or_else(|_| {
+                rewrite_pair(
+                    &**lhs,
+                    &**rhs,
+                    PairParts::infix(&format!(" {} ", context.snippet(op.span))),
+                    context,
+                    shape,
+                    context.config.binop_separator(),
+                )
+            })
         }
-        ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape).ok(),
+        ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref struct_expr) => {
             let ast::StructExpr {
                 qself,
@@ -131,19 +132,17 @@ pub(crate) fn format_expr(
                 expr.span,
                 shape,
             )
-            .ok()
         }
         ast::ExprKind::Tup(ref items) => {
-            rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1).ok()
+            rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
-        ast::ExprKind::Let(ref pat, ref expr, _span, _) => {
-            rewrite_let(context, shape, pat, expr).ok()
-        }
+        ast::ExprKind::Let(ref pat, ref expr, _span, _) => rewrite_let(context, shape, pat, expr),
         ast::ExprKind::If(..)
         | ast::ExprKind::ForLoop { .. }
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::While(..) => to_control_flow(expr, expr_type)
-            .and_then(|control_flow| control_flow.rewrite(context, shape)),
+            .unknown_error()
+            .and_then(|control_flow| control_flow.rewrite_result(context, shape)),
         ast::ExprKind::ConstBlock(ref anon_const) => {
             let rewrite = match anon_const.value.kind {
                 ast::ExprKind::Block(ref block, opt_label) => {
@@ -151,24 +150,24 @@ pub(crate) fn format_expr(
                     // not the `ast::Block` node we're about to rewrite. To prevent dropping inner
                     // attributes call `rewrite_block` directly.
                     // See https://github.com/rust-lang/rustfmt/issues/6158
-                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape).ok()?
+                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)?
                 }
-                _ => anon_const.rewrite(context, shape)?,
+                _ => anon_const.rewrite_result(context, shape)?,
             };
-            Some(format!("const {}", rewrite))
+            Ok(format!("const {}", rewrite))
         }
         ast::ExprKind::Block(ref block, opt_label) => {
             match expr_type {
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
-                        rewrite_block(block, Some(&expr.attrs), opt_label, context, shape).ok()
-                    } else if let rw @ Some(_) =
+                        rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
+                    } else if let Some(rw) =
                         rewrite_empty_block(context, block, Some(&expr.attrs), opt_label, "", shape)
                     {
                         // Rewrite block without trying to put it in a single line.
-                        rw
+                        Ok(rw)
                     } else {
-                        let prefix = block_prefix(context, block, shape).ok()?;
+                        let prefix = block_prefix(context, block, shape)?;
 
                         rewrite_block_with_visitor(
                             context,
@@ -179,32 +178,31 @@ pub(crate) fn format_expr(
                             shape,
                             true,
                         )
-                        .ok()
                     }
                 }
                 ExprType::SubExpression => {
-                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape).ok()
+                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
                 }
             }
         }
         ast::ExprKind::Match(ref cond, ref arms, kind) => {
-            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs, kind).ok()
+            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs, kind)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, PathContext::Expr, qself, path, shape).ok()
+            rewrite_path(context, PathContext::Expr, qself, path, shape)
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
-            rewrite_assignment(context, lhs, rhs, None, shape).ok()
+            rewrite_assignment(context, lhs, rhs, None, shape)
         }
         ast::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
-            rewrite_assignment(context, lhs, rhs, Some(op), shape).ok()
+            rewrite_assignment(context, lhs, rhs, Some(op), shape)
         }
         ast::ExprKind::Continue(ref opt_label) => {
             let id_str = match *opt_label {
                 Some(label) => format!(" {}", label.ident),
                 None => String::new(),
             };
-            Some(format!("continue{id_str}"))
+            Ok(format!("continue{id_str}"))
         }
         ast::ExprKind::Break(ref opt_label, ref opt_expr) => {
             let id_str = match *opt_label {
@@ -213,16 +211,16 @@ pub(crate) fn format_expr(
             };
 
             if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, &format!("break{id_str} "), &**expr, shape).ok()
+                rewrite_unary_prefix(context, &format!("break{id_str} "), &**expr, shape)
             } else {
-                Some(format!("break{id_str}"))
+                Ok(format!("break{id_str}"))
             }
         }
         ast::ExprKind::Yield(ref opt_expr) => {
             if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, "yield ", &**expr, shape).ok()
+                rewrite_unary_prefix(context, "yield ", &**expr, shape)
             } else {
-                Some("yield".to_string())
+                Ok("yield".to_string())
             }
         }
         ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
@@ -236,37 +234,32 @@ pub(crate) fn format_expr(
             expr.span,
             context,
             shape,
-        )
-        .ok(),
+        ),
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Await(_, _) => rewrite_chain(expr, context, shape).ok(),
+        | ast::ExprKind::Await(_, _) => rewrite_chain(expr, context, shape),
         ast::ExprKind::MacCall(ref mac) => {
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
-                .or_else(|_| {
-                    wrap_str(
-                        context.snippet(expr.span).to_owned(),
-                        context.config.max_width(),
-                        shape,
-                    )
-                    .max_width_error(shape.width, expr.span)
-                })
-                .ok()
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|_| {
+                wrap_str(
+                    context.snippet(expr.span).to_owned(),
+                    context.config.max_width(),
+                    shape,
+                )
+                .max_width_error(shape.width, expr.span)
+            })
         }
-        ast::ExprKind::Ret(None) => Some("return".to_owned()),
+        ast::ExprKind::Ret(None) => Ok("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
-            rewrite_unary_prefix(context, "return ", &**expr, shape).ok()
+            rewrite_unary_prefix(context, "return ", &**expr, shape)
         }
-        ast::ExprKind::Become(ref expr) => {
-            rewrite_unary_prefix(context, "become ", &**expr, shape).ok()
-        }
-        ast::ExprKind::Yeet(None) => Some("do yeet".to_owned()),
+        ast::ExprKind::Become(ref expr) => rewrite_unary_prefix(context, "become ", &**expr, shape),
+        ast::ExprKind::Yeet(None) => Ok("do yeet".to_owned()),
         ast::ExprKind::Yeet(Some(ref expr)) => {
-            rewrite_unary_prefix(context, "do yeet ", &**expr, shape).ok()
+            rewrite_unary_prefix(context, "do yeet ", &**expr, shape)
         }
         ast::ExprKind::AddrOf(borrow_kind, mutability, ref expr) => {
-            rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape).ok()
+            rewrite_expr_addrof(context, borrow_kind, mutability, expr, shape)
         }
         ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
             &**expr,
@@ -275,10 +268,9 @@ pub(crate) fn format_expr(
             context,
             shape,
             SeparatorPlace::Front,
-        )
-        .ok(),
+        ),
         ast::ExprKind::Index(ref expr, ref index, _) => {
-            rewrite_index(&**expr, &**index, context, shape).ok()
+            rewrite_index(&**expr, &**index, context, shape)
         }
         ast::ExprKind::Repeat(ref expr, ref repeats) => rewrite_pair(
             &**expr,
@@ -287,8 +279,7 @@ pub(crate) fn format_expr(
             context,
             shape,
             SeparatorPlace::Back,
-        )
-        .ok(),
+        ),
         ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
             let delim = match limits {
                 ast::RangeLimits::HalfOpen => "..",
@@ -341,7 +332,6 @@ pub(crate) fn format_expr(
                         shape,
                         context.config.binop_separator(),
                     )
-                    .ok()
                 }
                 (None, Some(rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
@@ -349,7 +339,7 @@ pub(crate) fn format_expr(
                     } else {
                         default_sp_delim(None, Some(rhs))
                     };
-                    rewrite_unary_prefix(context, &sp_delim, &*rhs, shape).ok()
+                    rewrite_unary_prefix(context, &sp_delim, &*rhs, shape)
                 }
                 (Some(lhs), None) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
@@ -357,25 +347,25 @@ pub(crate) fn format_expr(
                     } else {
                         default_sp_delim(Some(lhs), None)
                     };
-                    rewrite_unary_suffix(context, &sp_delim, &*lhs, shape).ok()
+                    rewrite_unary_suffix(context, &sp_delim, &*lhs, shape)
                 }
-                (None, None) => Some(delim.to_owned()),
+                (None, None) => Ok(delim.to_owned()),
             }
         }
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
         // Style Guide RFC for InlineAsm variant pending
         // https://github.com/rust-dev-tools/fmt-rfcs/issues/152
-        ast::ExprKind::InlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
+        ast::ExprKind::InlineAsm(..) => Ok(context.snippet(expr.span).to_owned()),
         ast::ExprKind::TryBlock(ref block) => {
             if let rw @ Ok(_) =
                 rewrite_single_line_block(context, "try ", block, Some(&expr.attrs), None, shape)
             {
-                rw.ok()
+                rw
             } else {
                 // 9 = `try `
                 let budget = shape.width.saturating_sub(9);
-                Some(format!(
+                Ok(format!(
                     "{}{}",
                     "try ",
                     rewrite_block(
@@ -384,8 +374,7 @@ pub(crate) fn format_expr(
                         None,
                         context,
                         Shape::legacy(budget, shape.indent)
-                    )
-                    .ok()?
+                    )?
                 ))
             }
         }
@@ -403,11 +392,11 @@ pub(crate) fn format_expr(
                 None,
                 shape,
             ) {
-                rw.ok()
+                rw
             } else {
                 // 6 = `async `
                 let budget = shape.width.saturating_sub(6);
-                Some(format!(
+                Ok(format!(
                     "{kind} {mover}{}",
                     rewrite_block(
                         block,
@@ -415,12 +404,11 @@ pub(crate) fn format_expr(
                         None,
                         context,
                         Shape::legacy(budget, shape.indent)
-                    )
-                    .ok()?
+                    )?
                 ))
             }
         }
-        ast::ExprKind::Underscore => Some("_".to_owned()),
+        ast::ExprKind::Underscore => Ok("_".to_owned()),
         ast::ExprKind::FormatArgs(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::IncludedBytes(..)
@@ -429,22 +417,21 @@ pub(crate) fn format_expr(
             // rustfmt tries to parse macro arguments when formatting macros, so it's not totally
             // impossible for rustfmt to come across one of these nodes when formatting a file.
             // Also, rustfmt might get passed the output from `-Zunpretty=expanded`.
-            None
+            Err(RewriteError::Unknown)
         }
-        ast::ExprKind::Err(_) | ast::ExprKind::Dummy => None,
+        ast::ExprKind::Err(_) | ast::ExprKind::Dummy => Err(RewriteError::Unknown),
     };
 
     expr_rw
         .map(|expr_str| recover_comment_removed(expr_str, expr.span, context))
         .and_then(|expr_str| {
             let attrs = outer_attributes(&expr.attrs);
-            let attrs_str = attrs.rewrite(context, shape)?;
+            let attrs_str = attrs.rewrite_result(context, shape)?;
             let span = mk_sp(
                 attrs.last().map_or(expr.span.lo(), |attr| attr.span.hi()),
                 expr.span.lo(),
             );
             combine_strs_with_missing_comments(context, &attrs_str, &expr_str, span, shape, false)
-                .ok()
         })
 }
 
@@ -1184,7 +1171,6 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         ..shape
                     };
                     format_expr(else_block, ExprType::Statement, context, else_shape)
-                        .unknown_error()
                 }
             };
 

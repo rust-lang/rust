@@ -516,7 +516,7 @@ fn rewrite_match_body(
         .offset_left(extra_offset(pats_str, shape) + 4)
         .and_then(|shape| shape.sub_width(comma.len()));
     let orig_body = if forbid_same_line || !arrow_comment.is_empty() {
-        None
+        Err(RewriteError::Unknown)
     } else if let Some(body_shape) = orig_body_shape {
         let rewrite = nop_block_collapse(
             format_expr(body, ExprType::Statement, context, body_shape),
@@ -524,7 +524,7 @@ fn rewrite_match_body(
         );
 
         match rewrite {
-            Some(ref body_str)
+            Ok(ref body_str)
                 if is_block
                     || (!body_str.contains('\n')
                         && unicode_str_width(body_str) <= body_shape.width) =>
@@ -534,7 +534,7 @@ fn rewrite_match_body(
             _ => rewrite,
         }
     } else {
-        None
+        Err(RewriteError::Unknown)
     };
     let orig_budget = orig_body_shape.map_or(0, |shape| shape.width);
 
@@ -545,20 +545,23 @@ fn rewrite_match_body(
         next_line_body_shape.width,
     );
     match (orig_body, next_line_body) {
-        (Some(ref orig_str), Some(ref next_line_str))
+        (Ok(ref orig_str), Ok(ref next_line_str))
             if prefer_next_line(orig_str, next_line_str, RhsTactics::Default) =>
         {
             combine_next_line_body(next_line_str)
         }
-        (Some(ref orig_str), _) if extend && first_line_width(orig_str) <= orig_budget => {
+        (Ok(ref orig_str), _) if extend && first_line_width(orig_str) <= orig_budget => {
             combine_orig_body(orig_str)
         }
-        (Some(ref orig_str), Some(ref next_line_str)) if orig_str.contains('\n') => {
+        (Ok(ref orig_str), Ok(ref next_line_str)) if orig_str.contains('\n') => {
             combine_next_line_body(next_line_str)
         }
-        (None, Some(ref next_line_str)) => combine_next_line_body(next_line_str),
-        (None, None) => Err(RewriteError::Unknown),
-        (Some(ref orig_str), _) => combine_orig_body(orig_str),
+        (Err(_), Ok(ref next_line_str)) => combine_next_line_body(next_line_str),
+        // When both orig_body and next_line_body result in errors, we currently propagate the
+        // error from the second attempt since it is more generous with width constraints.
+        // This decision is somewhat arbitrary and is open to change.
+        (Err(_), Err(next_line_err)) => Err(next_line_err),
+        (Ok(ref orig_str), _) => combine_orig_body(orig_str),
     }
 }
 
@@ -605,7 +608,7 @@ fn rewrite_guard(
     }
 }
 
-fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
+fn nop_block_collapse(block_str: RewriteResult, budget: usize) -> RewriteResult {
     debug!("nop_block_collapse {:?} {}", block_str, budget);
     block_str.map(|block_str| {
         if block_str.starts_with('{')
