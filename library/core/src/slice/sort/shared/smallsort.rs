@@ -378,7 +378,7 @@ where
 
 /// Swap two values in the slice pointed to by `v_base` at the position `a_pos` and `b_pos` if the
 /// value at position `b_pos` is less than the one at position `a_pos`.
-pub unsafe fn swap_if_less<T, F>(v_base: *mut T, a_pos: usize, b_pos: usize, is_less: &mut F)
+unsafe fn swap_if_less<T, F>(v_base: *mut T, a_pos: usize, b_pos: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {

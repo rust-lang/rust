@@ -6,9 +6,13 @@
 //! for pivot selection. Using this as a fallback ensures O(n) worst case running time with
 //! better performance than one would get using heapsort as fallback.
 
+use crate::intrinsics;
 use crate::mem::{self, SizedTypeProperties};
+#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
+#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
+#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::unstable::quicksort::partition;
 
 /// Reorders the slice such that the element at `index` is at its final sorted position.
@@ -40,7 +44,15 @@ where
         let min_idx = min_index(v, &mut is_less).unwrap();
         v.swap(min_idx, index);
     } else {
-        partition_at_index_loop(v, index, None, &mut is_less);
+        #[cfg(not(feature = "optimize_for_size"))]
+        {
+            partition_at_index_loop(v, index, None, &mut is_less);
+        }
+
+        #[cfg(feature = "optimize_for_size")]
+        {
+            median_of_medians(v, &mut is_less, index);
+        }
     }
 
     let (left, right) = v.split_at_mut(index);
@@ -53,6 +65,7 @@ where
 // most once, it doesn't make sense to use something more sophisticated than insertion-sort.
 const INSERTION_SORT_THRESHOLD: usize = 16;
 
+#[cfg(not(feature = "optimize_for_size"))]
 fn partition_at_index_loop<'a, T, F>(
     mut v: &'a mut [T],
     mut index: usize,
@@ -167,8 +180,17 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
     loop {
         if v.len() <= INSERTION_SORT_THRESHOLD {
             if v.len() >= 2 {
-                insertion_sort_shift_left(v, 1, is_less);
+                #[cfg(not(feature = "optimize_for_size"))]
+                {
+                    insertion_sort_shift_left(v, 1, is_less);
+                }
+
+                #[cfg(feature = "optimize_for_size")]
+                {
+                    bubble_sort(v, is_less);
+                }
             }
+
             return;
         }
 
@@ -230,7 +252,15 @@ fn median_of_ninthers<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F)
 
     median_of_medians(&mut v[lo..lo + frac], is_less, pivot);
 
-    partition(v, lo + pivot, is_less)
+    #[cfg(not(feature = "optimize_for_size"))]
+    {
+        partition(v, lo + pivot, is_less)
+    }
+
+    #[cfg(feature = "optimize_for_size")]
+    {
+        partition_size_opt(v, lo + pivot, is_less)
+    }
 }
 
 /// Moves around the 9 elements at the indices a..i, such that
@@ -297,4 +327,93 @@ fn median_idx<T, F: FnMut(&T, &T) -> bool>(
         return a;
     }
     b
+}
+
+// It's possible to re-use the insertion sort in the smallsort module, but with optimize_for_size it
+// would clutter that module with cfg statements and make it generally harder to read and develop.
+// So to decouple things and simplify it, we use a an even smaller bubble sort.
+#[cfg(feature = "optimize_for_size")]
+fn bubble_sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
+    let mut n = v.len();
+    let mut did_swap = true;
+
+    while did_swap && n > 1 {
+        did_swap = false;
+        for i in 1..n {
+            // SAFETY: The loop construction implies that `i` and `i - 1` will always be in-bounds.
+            unsafe {
+                if is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
+                    v.swap_unchecked(i - 1, i);
+                    did_swap = true;
+                }
+            }
+        }
+        n -= 1;
+    }
+}
+
+#[cfg(feature = "optimize_for_size")]
+fn partition_size_opt<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    let len = v.len();
+
+    // Allows for panic-free code-gen by proving this property to the compiler.
+    if len == 0 {
+        return 0;
+    }
+
+    if pivot >= len {
+        intrinsics::abort();
+    }
+
+    // SAFETY: We checked that `pivot` is in-bounds.
+    unsafe {
+        // Place the pivot at the beginning of slice.
+        v.swap_unchecked(0, pivot);
+    }
+    let (pivot, v_without_pivot) = v.split_at_mut(1);
+
+    // Assuming that Rust generates noalias LLVM IR we can be sure that a partition function
+    // signature of the form `(v: &mut [T], pivot: &T)` guarantees that pivot and v can't alias.
+    // Having this guarantee is crucial for optimizations. It's possible to copy the pivot value
+    // into a stack value, but this creates issues for types with interior mutability mandating
+    // a drop guard.
+    let pivot = &mut pivot[0];
+
+    let num_lt = partition_lomuto_branchless_simple(v_without_pivot, pivot, is_less);
+
+    if num_lt >= len {
+        intrinsics::abort();
+    }
+
+    // SAFETY: We checked that `num_lt` is in-bounds.
+    unsafe {
+        // Place the pivot between the two partitions.
+        v.swap_unchecked(0, num_lt);
+    }
+
+    num_lt
+}
+
+#[cfg(feature = "optimize_for_size")]
+fn partition_lomuto_branchless_simple<T, F: FnMut(&T, &T) -> bool>(
+    v: &mut [T],
+    pivot: &T,
+    is_less: &mut F,
+) -> usize {
+    let mut left = 0;
+
+    for right in 0..v.len() {
+        // SAFETY: `left` can at max be incremented by 1 each loop iteration, which implies that
+        // left <= right and that both are in-bounds.
+        unsafe {
+            let right_is_lt = is_less(v.get_unchecked(right), pivot);
+            v.swap_unchecked(left, right);
+            left += right_is_lt as usize;
+        }
+    }
+
+    left
 }

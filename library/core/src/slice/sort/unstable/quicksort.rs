@@ -98,13 +98,15 @@ where
         return 0;
     }
 
-    // Allows for panic-free code-gen by proving this property to the compiler.
     if pivot >= len {
         intrinsics::abort();
     }
 
-    // Place the pivot at the beginning of slice.
-    v.swap(0, pivot);
+    // SAFETY: We checked that `pivot` is in-bounds.
+    unsafe {
+        // Place the pivot at the beginning of slice.
+        v.swap_unchecked(0, pivot);
+    }
     let (pivot, v_without_pivot) = v.split_at_mut(1);
 
     // Assuming that Rust generates noalias LLVM IR we can be sure that a partition function
@@ -118,8 +120,15 @@ where
     // compile-time by only instantiating the code that is needed. Idea by Frank Steffahn.
     let num_lt = (const { inst_partition::<T, F>() })(v_without_pivot, pivot, is_less);
 
-    // Place the pivot between the two partitions.
-    v.swap(0, num_lt);
+    if num_lt >= len {
+        intrinsics::abort();
+    }
+
+    // SAFETY: We checked that `num_lt` is in-bounds.
+    unsafe {
+        // Place the pivot between the two partitions.
+        v.swap_unchecked(0, num_lt);
+    }
 
     num_lt
 }
