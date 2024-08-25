@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::fmt::Write;
 use std::ops::RangeInclusive;
 
@@ -83,7 +82,13 @@ where
     }
 
     fn new() -> Self {
-        Self { iter: F::Int::ZERO..=min(F::Int::ONE << 22, F::MAN_BITS.try_into().unwrap()) }
+        let upper_lim = if F::MAN_BITS >= 22 {
+            F::Int::ONE << 22
+        } else {
+            (F::Int::ONE << F::MAN_BITS) - F::Int::ONE
+        };
+
+        Self { iter: F::Int::ZERO..=upper_lim }
     }
 
     fn write_string(s: &mut String, ctx: Self::WriteCtx) {
