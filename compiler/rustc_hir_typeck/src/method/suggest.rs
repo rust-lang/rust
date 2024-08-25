@@ -1012,7 +1012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
                 let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
-                match &self_ty.kind() {
+                match self_ty.kind() {
                     // Point at the type that couldn't satisfy the bound.
                     ty::Adt(def, _) => {
                         bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
