@@ -23,7 +23,7 @@ pub(crate) fn unused_variables(
         return None;
     }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
-    // The range for the Actual Name. We don't want to replace the entire declarition. Using the diagnostic range causes issues within in Array Destructuring.
+    // The range for the Actual Name. We don't want to replace the entire declaration. Using the diagnostic range causes issues within in Array Destructuring.
     let name_range = d
         .local
         .primary_source(ctx.sema.db)
