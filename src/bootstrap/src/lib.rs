@@ -1656,6 +1656,7 @@ Executed at: {executed_at}"#,
     }
 
     fn copy_link_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
+        println!("[DEBUG] copy_link_internal: src=`{}`, dst=`{}`", src.display(), dst.display());
         if self.config.dry_run() {
             return;
         }
@@ -1667,36 +1668,77 @@ Executed at: {executed_at}"#,
             if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
                 // workaround for https://github.com/rust-lang/rust/issues/127126
                 // if removing the file fails, attempt to rename it instead.
-                eprintln!("failed to remove file `{}`, {e}", dst.display());
+                eprintln!(
+                    "[DEBUG] copy_link_internal: failed to remove file dst=`{}`: {e}",
+                    dst.display()
+                );
 
                 let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
                 let tmp_filename = PathBuf::from(format!("{}-{}", dst.display(), now.as_nanos()));
-                let res = fs::rename(dst, &tmp_filename);
+                let res = fs::rename(&dst, &tmp_filename);
 
                 if let Err(e) = res {
-                    eprintln!("renaming to `{}` also failed, gg: {e}", tmp_filename.display());
+                    eprintln!(
+                        "[DEBUG] copy_link_internal: renaming to tmp_filename=`{}` also failed: {e}",
+                        tmp_filename.display()
+                    );
+                } else {
+                    println!(
+                        "[DEBUG] copy_link_internal: can't delete, so renamed dst=`{}` to tmp_filename=`{}`",
+                        dst.display(),
+                        tmp_filename.display()
+                    );
                 }
             }
+        } else {
+            println!("[DEBUG] copy_link_internal: removed file dst=`{}`", dst.display());
         }
+
+        println!(
+            "[DEBUG] copy_link_internal: saving symlink metadata from src=`{}`",
+            src.display()
+        );
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
             if dereference_symlinks {
+                println!(
+                    "[DEBUG] copy_link_internal(dereference_symlinks=true): trying to canonicalize src=`{}`",
+                    src.display()
+                );
                 src = t!(fs::canonicalize(src));
             } else {
-                let link = t!(fs::read_link(src));
-                t!(self.symlink_file(link, dst));
+                println!(
+                    "[DEBUG] copy_link_internal(dereference_symlinks=false): trying to read_link src=`{}`",
+                    src.display()
+                );
+                let linked_at = t!(fs::read_link(src));
+                println!(
+                    "[DEBUG] copy_link_internal(dereference_symlinks=false): found linked_at=`{}`",
+                    linked_at.display(),
+                );
+                println!(
+                    "[DEBUG] copy_link_internal(dereference_symlinks=false): trying to symlink file linked_at=`{}` with link=`{}`",
+                    linked_at.display(),
+                    dst.display()
+                );
+                t!(self.symlink_file(linked_at, dst));
                 return;
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
             // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
             // but if that fails just fall back to a slow `copy` operation.
-            println!("ok, created hard link `{}` -> `{}`", src.display(), dst.display());
+            println!(
+                "[DEBUG] copy_link_internal: created hard link src=`{}` with dst=`{}`",
+                src.display(),
+                dst.display()
+            );
         } else {
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
+
             t!(fs::set_permissions(dst, metadata.permissions()));
 
             // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
