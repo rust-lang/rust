@@ -1104,7 +1104,7 @@ where
     }
 
     fn is_never(this: TyAndLayout<'tcx>) -> bool {
-        this.ty.kind() == &ty::Never
+        matches!(this.ty.kind(), ty::Never)
     }
 
     fn is_tuple(this: TyAndLayout<'tcx>) -> bool {

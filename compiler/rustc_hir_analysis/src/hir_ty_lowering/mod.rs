@@ -1057,7 +1057,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
-        let bound = match (&qself_ty.kind(), qself_res) {
+        let bound = match (qself_ty.kind(), qself_res) {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
