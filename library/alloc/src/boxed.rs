@@ -1254,6 +1254,95 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         unsafe { (Unique::from(&mut *ptr), alloc) }
     }
 
+    /// Returns a raw mutable pointer to the `Box`'s contents.
+    ///
+    /// The caller must ensure that the `Box` outlives the pointer this
+    /// function returns, or else it will end up dangling.
+    ///
+    /// This method guarantees that for the purpose of the aliasing model, this method
+    /// does not materialize a reference to the underlying memory, and thus the returned pointer
+    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
+    /// Note that calling other methods that materialize references to the memory
+    /// may still invalidate this pointer.
+    /// See the example below for how this guarantee can be used.
+    ///
+    /// # Examples
+    ///
+    /// Due to the aliasing guarantee, the following code is legal:
+    ///
+    /// ```rust
+    /// #![feature(box_as_ptr)]
+    ///
+    /// unsafe {
+    ///     let mut b = Box::new(0);
+    ///     let ptr1 = Box::as_mut_ptr(&mut b);
+    ///     ptr1.write(1);
+    ///     let ptr2 = Box::as_mut_ptr(&mut b);
+    ///     ptr2.write(2);
+    ///     // Notably, the write to `ptr2` did *not* invalidate `ptr1`:
+    ///     ptr1.write(3);
+    /// }
+    /// ```
+    ///
+    /// [`as_mut_ptr`]: Self::as_mut_ptr
+    /// [`as_ptr`]: Self::as_ptr
+    #[unstable(feature = "box_as_ptr", issue = "129090")]
+    #[rustc_never_returns_null_ptr]
+    #[inline]
+    pub fn as_mut_ptr(b: &mut Self) -> *mut T {
+        // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
+        // any references.
+        ptr::addr_of_mut!(**b)
+    }
+
+    /// Returns a raw pointer to the `Box`'s contents.
+    ///
+    /// The caller must ensure that the `Box` outlives the pointer this
+    /// function returns, or else it will end up dangling.
+    ///
+    /// The caller must also ensure that the memory the pointer (non-transitively) points to
+    /// is never written to (except inside an `UnsafeCell`) using this pointer or any pointer
+    /// derived from it. If you need to mutate the contents of the `Box`, use [`as_mut_ptr`].
+    ///
+    /// This method guarantees that for the purpose of the aliasing model, this method
+    /// does not materialize a reference to the underlying memory, and thus the returned pointer
+    /// will remain valid when mixed with other calls to [`as_ptr`] and [`as_mut_ptr`].
+    /// Note that calling other methods that materialize mutable references to the memory,
+    /// as well as writing to this memory, may still invalidate this pointer.
+    /// See the example below for how this guarantee can be used.
+    ///
+    /// # Examples
+    ///
+    /// Due to the aliasing guarantee, the following code is legal:
+    ///
+    /// ```rust
+    /// #![feature(box_as_ptr)]
+    ///
+    /// unsafe {
+    ///     let mut v = Box::new(0);
+    ///     let ptr1 = Box::as_ptr(&v);
+    ///     let ptr2 = Box::as_mut_ptr(&mut v);
+    ///     let _val = ptr2.read();
+    ///     // No write to this memory has happened yet, so `ptr1` is still valid.
+    ///     let _val = ptr1.read();
+    ///     // However, once we do a write...
+    ///     ptr2.write(1);
+    ///     // ... `ptr1` is no longer valid.
+    ///     // This would be UB: let _val = ptr1.read();
+    /// }
+    /// ```
+    ///
+    /// [`as_mut_ptr`]: Self::as_mut_ptr
+    /// [`as_ptr`]: Self::as_ptr
+    #[unstable(feature = "box_as_ptr", issue = "129090")]
+    #[rustc_never_returns_null_ptr]
+    #[inline]
+    pub fn as_ptr(b: &Self) -> *const T {
+        // This is a primitive deref, not going through `DerefMut`, and therefore not materializing
+        // any references.
+        ptr::addr_of!(**b)
+    }
+
     /// Returns a reference to the underlying allocator.
     ///
     /// Note: this is an associated function, which means that you have

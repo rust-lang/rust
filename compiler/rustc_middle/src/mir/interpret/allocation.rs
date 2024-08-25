@@ -62,13 +62,11 @@ impl AllocBytes for Box<[u8]> {
     }
 
     fn as_mut_ptr(&mut self) -> *mut u8 {
-        // Carefully avoiding any intermediate references.
-        ptr::addr_of_mut!(**self).cast()
+        Box::as_mut_ptr(self).cast()
     }
 
     fn as_ptr(&self) -> *const u8 {
-        // Carefully avoiding any intermediate references.
-        ptr::addr_of!(**self).cast()
+        Box::as_ptr(self).cast()
     }
 }
 
