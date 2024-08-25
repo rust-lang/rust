@@ -481,10 +481,6 @@ passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
 
-passes_must_use_async =
-    `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
-    .label = this attribute does nothing, the `Future`s returned by async functions are already `must_use`
-
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
