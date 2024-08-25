@@ -325,7 +325,7 @@ impl Sysroot {
             "nightly".to_owned(),
         );
 
-        let mut res = match CargoWorkspace::fetch_metadata(
+        let (mut res, _) = match CargoWorkspace::fetch_metadata(
             &library_manifest,
             sysroot_src_dir,
             &cargo_config,
