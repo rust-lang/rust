@@ -3,7 +3,6 @@
 use crate::num::dec2flt::float::RawFloat;
 use crate::num::dec2flt::fpu::set_precision;
 
-#[rustfmt::skip]
 const INT_POW10: [u64; 16] = [
     1,
     10,
@@ -23,15 +22,16 @@ const INT_POW10: [u64; 16] = [
     1000000000000000,
 ];
 
+/// A floating point number with up to 64 bits of mantissa and an `i64` exponent.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Number {
+pub struct Decimal {
     pub exponent: i64,
     pub mantissa: u64,
     pub negative: bool,
     pub many_digits: bool,
 }
 
-impl Number {
+impl Decimal {
     /// Detect if the float can be accurately reconstructed from native floats.
     #[inline]
     fn is_fast_path<F: RawFloat>(&self) -> bool {
