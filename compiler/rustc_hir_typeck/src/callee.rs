@@ -503,18 +503,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = self.instantiate_binder_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig);
         let fn_sig = self.normalize(call_expr.span, fn_sig);
 
-        // Call the generic checker.
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
-            call_expr.span,
-            expected,
-            fn_sig.output(),
-            fn_sig.inputs(),
-        );
         self.check_argument_types(
             call_expr.span,
             call_expr,
             fn_sig.inputs(),
-            expected_arg_tys,
+            fn_sig.output(),
+            expected,
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::DontTupleArguments,
@@ -866,19 +860,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
         // do know the types expected for each argument and the return
         // type.
-
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
-            call_expr.span,
-            expected,
-            fn_sig.output(),
-            fn_sig.inputs(),
-        );
-
         self.check_argument_types(
             call_expr.span,
             call_expr,
             fn_sig.inputs(),
-            expected_arg_tys,
+            fn_sig.output(),
+            expected,
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,
