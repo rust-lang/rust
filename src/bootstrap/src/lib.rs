@@ -23,7 +23,6 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
-use std::time::SystemTime;
 use std::{env, io, str};
 
 use build_helper::ci::gha;
@@ -41,6 +40,8 @@ use crate::utils::helpers::{
     self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
 };
 
+#[cfg(windows)]
+mod chrisdenton;
 mod core;
 mod utils;
 
@@ -1663,14 +1664,11 @@ Executed at: {executed_at}"#,
         if src == dst {
             return;
         }
-        if let Err(e) = fs::remove_file(dst) {
-            if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
-                // workaround for https://github.com/rust-lang/rust/issues/127126
-                // if removing the file fails, attempt to rename it instead.
-                let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
-            }
-        }
+        #[cfg(not(windows))]
+        let _ = fs::remove_file(dst);
+        #[cfg(windows)]
+        let _ = chrisdenton::delete_with_info(dst);
+
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
@@ -1689,6 +1687,7 @@ Executed at: {executed_at}"#,
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
+            println!("bootstrap: src metadata perms = {:#?}", metadata.permissions());
             t!(fs::set_permissions(dst, metadata.permissions()));
 
             // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
