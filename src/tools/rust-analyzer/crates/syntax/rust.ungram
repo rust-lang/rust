@@ -38,7 +38,11 @@ PathSegment =
   '::'? NameRef
 | NameRef GenericArgList?
 | NameRef ParamList RetType?
+| NameRef ReturnTypeSyntax
 | '<' Type ('as' PathType)? '>'
+
+ReturnTypeSyntax =
+  '(' '..' ')'
 
 
 //*************************//
@@ -59,7 +63,7 @@ TypeArg =
 
 AssocTypeArg =
   NameRef
-  (GenericArgList | ParamList RetType?)?
+  (GenericArgList | ParamList RetType? | ReturnTypeSyntax)?
   (':' TypeBoundList | ('=' Type | ConstArg))
 
 LifetimeArg =
