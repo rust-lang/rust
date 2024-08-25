@@ -34,7 +34,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -70,7 +70,6 @@ pub fn provide(providers: &mut Providers) {
         impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
-        predicates_defined_on,
         explicit_predicates_of: predicates_of::explicit_predicates_of,
         explicit_super_predicates_of: predicates_of::explicit_super_predicates_of,
         explicit_implied_predicates_of: predicates_of::explicit_implied_predicates_of,
@@ -1773,34 +1772,6 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
         GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
         _ => false,
     })
-}
-
-/// Returns a list of type predicates for the definition with ID `def_id`, including inferred
-/// lifetime constraints. This includes all predicates returned by `explicit_predicates_of`, plus
-/// inferred constraints concerning which regions outlive other regions.
-#[instrument(level = "debug", skip(tcx))]
-fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
-    let mut result = tcx.explicit_predicates_of(def_id);
-    debug!("predicates_defined_on: explicit_predicates_of({:?}) = {:?}", def_id, result);
-    let inferred_outlives = tcx.inferred_outlives_of(def_id);
-    if !inferred_outlives.is_empty() {
-        debug!(
-            "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
-            def_id, inferred_outlives,
-        );
-        let inferred_outlives_iter =
-            inferred_outlives.iter().map(|(clause, span)| ((*clause).upcast(tcx), *span));
-        if result.predicates.is_empty() {
-            result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
-        } else {
-            result.predicates = tcx.arena.alloc_from_iter(
-                result.predicates.into_iter().copied().chain(inferred_outlives_iter),
-            );
-        }
-    }
-
-    debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
-    result
 }
 
 fn compute_sig_of_foreign_fn_decl<'tcx>(
