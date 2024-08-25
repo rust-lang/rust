@@ -180,16 +180,17 @@ impl GlobalState {
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
             for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
-                if matches!(
-                    &ws.kind,
-                    ProjectWorkspaceKind::Cargo { cargo, .. } | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. }
-                    if cargo.no_deps()
-                ) {
+                if let ProjectWorkspaceKind::Cargo { error: Some(error), .. }
+                | ProjectWorkspaceKind::DetachedFile {
+                    cargo: Some((_, _, Some(error))), ..
+                } = &ws.kind
+                {
                     status.health |= lsp_ext::Health::Warning;
                     format_to!(
                         message,
-                        "Failed to read Cargo metadata for `{}`, the `Cargo.toml` might be invalid or you have no internet connection.\n\n",
-                        ws.manifest_or_root()
+                        "Failed to read Cargo metadata with dependencies for `{}`: {:#}\n\n",
+                        ws.manifest_or_root(),
+                        error
                     );
                 }
                 if let Some(err) = ws.sysroot.error() {
@@ -805,7 +806,7 @@ impl GlobalState {
                             match &ws.kind {
                                 ProjectWorkspaceKind::Cargo { cargo, .. }
                                 | ProjectWorkspaceKind::DetachedFile {
-                                    cargo: Some((cargo, _)),
+                                    cargo: Some((cargo, _, _)),
                                     ..
                                 } => (cargo.workspace_root(), Some(cargo.manifest_path())),
                                 ProjectWorkspaceKind::Json(project) => {

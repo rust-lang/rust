@@ -20,6 +20,7 @@ fn load_cargo_with_fake_sysroot(file: &str) -> ProjectWorkspace {
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),

@@ -33,8 +33,6 @@ pub struct CargoWorkspace {
     workspace_root: AbsPathBuf,
     target_directory: AbsPathBuf,
     manifest_path: ManifestPath,
-    // Whether this workspace was queried with `--no-deps`.
-    no_deps: bool,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -253,6 +251,9 @@ struct PackageMetadata {
 }
 
 impl CargoWorkspace {
+    /// Fetches the metadata for the given `cargo_toml` manifest.
+    /// A successful result may contain another metadata error if the initial fetching failed but
+    /// the `--no-deps` retry succeeded.
     pub fn fetch_metadata(
         cargo_toml: &ManifestPath,
         current_dir: &AbsPath,
@@ -260,7 +261,7 @@ impl CargoWorkspace {
         sysroot: &Sysroot,
         locked: bool,
         progress: &dyn Fn(String),
-    ) -> anyhow::Result<cargo_metadata::Metadata> {
+    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
         Self::fetch_metadata_(cargo_toml, current_dir, config, sysroot, locked, false, progress)
     }
 
@@ -272,7 +273,7 @@ impl CargoWorkspace {
         locked: bool,
         no_deps: bool,
         progress: &dyn Fn(String),
-    ) -> anyhow::Result<cargo_metadata::Metadata> {
+    ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
         let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
 
         let cargo = sysroot.tool(Tool::Cargo);
@@ -337,13 +338,17 @@ impl CargoWorkspace {
         // unclear whether cargo itself supports it.
         progress("metadata".to_owned());
 
-        (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
+        (|| -> anyhow::Result<(_, _)> {
             let output = meta.cargo_command().output()?;
             if !output.status.success() {
+                let error = cargo_metadata::Error::CargoMetadata {
+                    stderr: String::from_utf8(output.stderr)?,
+                }
+                .into();
                 if !no_deps {
                     // If we failed to fetch metadata with deps, try again without them.
                     // This makes r-a still work partially when offline.
-                    if let Ok(metadata) = Self::fetch_metadata_(
+                    if let Ok((metadata, _)) = Self::fetch_metadata_(
                         cargo_toml,
                         current_dir,
                         config,
@@ -352,20 +357,23 @@ impl CargoWorkspace {
                         true,
                         progress,
                     ) {
-                        return Ok(metadata);
+                        return Ok((metadata, Some(error)));
                     }
                 }
-
-                return Err(cargo_metadata::Error::CargoMetadata {
-                    stderr: String::from_utf8(output.stderr)?,
-                });
+                return Err(error);
             }
             let stdout = from_utf8(&output.stdout)?
                 .lines()
                 .find(|line| line.starts_with('{'))
                 .ok_or(cargo_metadata::Error::NoJson)?;
-            cargo_metadata::MetadataCommand::parse(stdout)
+            Ok((cargo_metadata::MetadataCommand::parse(stdout)?, None))
         })()
+        .map(|(metadata, error)| {
+            (
+                metadata,
+                error.map(|e| e.context(format!("Failed to run `{:?}`", meta.cargo_command()))),
+            )
+        })
         .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
     }
 
@@ -463,7 +471,6 @@ impl CargoWorkspace {
                 pkg_data.targets.push(tgt);
             }
         }
-        let no_deps = meta.resolve.is_none();
         for mut node in meta.resolve.map_or_else(Vec::new, |it| it.nodes) {
             let &source = pkg_by_id.get(&node.id).unwrap();
             node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
@@ -483,14 +490,7 @@ impl CargoWorkspace {
 
         let target_directory = AbsPathBuf::assert(meta.target_directory);
 
-        CargoWorkspace {
-            packages,
-            targets,
-            workspace_root,
-            target_directory,
-            manifest_path,
-            no_deps,
-        }
+        CargoWorkspace { packages, targets, workspace_root, target_directory, manifest_path }
     }
 
     pub fn packages(&self) -> impl ExactSizeIterator<Item = Package> + '_ {
@@ -571,10 +571,6 @@ impl CargoWorkspace {
 
     fn is_unique(&self, name: &str) -> bool {
         self.packages.iter().filter(|(_, v)| v.name == name).count() == 1
-    }
-
-    pub fn no_deps(&self) -> bool {
-        self.no_deps
     }
 }
 

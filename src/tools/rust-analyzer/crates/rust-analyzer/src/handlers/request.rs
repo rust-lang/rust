@@ -799,7 +799,7 @@ pub(crate) fn handle_parent_module(
                 .iter()
                 .filter_map(|ws| match &ws.kind {
                     ProjectWorkspaceKind::Cargo { cargo, .. }
-                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
                         cargo.parent_manifests(&manifest_path)
                     }
                     _ => None,
@@ -1839,7 +1839,7 @@ pub(crate) fn handle_open_docs(
 
     let ws_and_sysroot = snap.workspaces.iter().find_map(|ws| match &ws.kind {
         ProjectWorkspaceKind::Cargo { cargo, .. }
-        | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+        | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
             Some((cargo, &ws.sysroot))
         }
         ProjectWorkspaceKind::Json { .. } => None,
