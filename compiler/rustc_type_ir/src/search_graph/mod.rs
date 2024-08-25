@@ -287,7 +287,7 @@ impl<X: Cx> NestedGoals<X> {
         }
     }
 
-    #[rustc_lint_query_instability]
+    #[cfg_attr(feature = "nightly", rustc_lint_query_instability)]
     #[allow(rustc::potential_query_instability)]
     fn iter(&self) -> impl Iterator<Item = (X::Input, UsageKind)> + '_ {
         self.nested_goals.iter().map(|(i, p)| (*i, *p))
