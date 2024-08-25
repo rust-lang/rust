@@ -30,6 +30,7 @@ pub(crate) struct CargoOptions {
     pub(crate) all_features: bool,
     pub(crate) features: Vec<String>,
     pub(crate) extra_args: Vec<String>,
+    pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, String>,
     pub(crate) target_dir: Option<Utf8PathBuf>,
 }
