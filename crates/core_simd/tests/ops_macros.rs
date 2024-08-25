@@ -307,6 +307,14 @@ macro_rules! impl_signed_tests {
                     assert_eq!(a % b, Vector::<LANES>::splat(0));
                 }
 
+                fn abs_diff<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise(
+                        &Vector::<LANES>::abs_diff,
+                        &Scalar::abs_diff,
+                        &|_, _| true,
+                    )
+                }
+
                 fn simd_min<const LANES: usize>() {
                     use core_simd::simd::cmp::SimdOrd;
                     let a = Vector::<LANES>::splat(Scalar::MIN);
@@ -418,6 +426,14 @@ macro_rules! impl_unsigned_tests {
                         &Scalar::wrapping_neg,
                         &|_| true,
                     );
+                }
+
+                fn abs_diff<const LANES: usize>() {
+                    test_helpers::test_binary_elementwise(
+                        &Vector::<LANES>::abs_diff,
+                        &Scalar::abs_diff,
+                        &|_, _| true,
+                    )
                 }
             }
 

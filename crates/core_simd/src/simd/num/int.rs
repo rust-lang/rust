@@ -1,6 +1,6 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    cmp::SimdPartialOrd, num::SimdUint, LaneCount, Mask, Simd, SimdCast, SimdElement,
+    cmp::SimdOrd, cmp::SimdPartialOrd, num::SimdUint, LaneCount, Mask, Simd, SimdCast, SimdElement,
     SupportedLaneCount,
 };
 
@@ -70,10 +70,26 @@ pub trait SimdInt: Copy + Sealed {
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::prelude::*;
     /// use core::i32::{MIN, MAX};
-    /// let xs = Simd::from_array([MIN, MIN +1, -5, 0]);
+    /// let xs = Simd::from_array([MIN, MIN + 1, -5, 0]);
     /// assert_eq!(xs.abs(), Simd::from_array([MIN, MAX, 5, 0]));
     /// ```
     fn abs(self) -> Self;
+
+    /// Lanewise absolute difference.
+    /// Every element becomes the absolute difference of `self` and `second`.
+    ///
+    /// # Examples
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::prelude::*;
+    /// use core::i32::{MIN, MAX};
+    /// let a = Simd::from_array([MIN, MAX, 100, -100]);
+    /// let b = Simd::from_array([MAX, MIN, -80, -120]);
+    /// assert_eq!(a.abs_diff(b), Simd::from_array([u32::MAX, u32::MAX, 180, 20]));
+    /// ```
+    fn abs_diff(self, second: Self) -> Self::Unsigned;
 
     /// Lanewise saturating absolute value, implemented in Rust.
     /// As abs(), except the MIN value becomes MAX instead of itself.
@@ -257,6 +273,13 @@ macro_rules! impl_trait {
                 const SHR: $ty = <$ty>::BITS as $ty - 1;
                 let m = self >> Simd::splat(SHR);
                 (self^m) - m
+            }
+
+            #[inline]
+            fn abs_diff(self, second: Self) -> Self::Unsigned {
+                let max = self.simd_max(second);
+                let min = self.simd_min(second);
+                (max - min).cast()
             }
 
             #[inline]
