@@ -115,6 +115,10 @@ def _download(path, url, probably_big, verbose, exception):
         extra_flags = []
         if curl_version() > (7, 70):
             extra_flags = [ "--retry-all-errors" ]
+        # options should be kept in sync with
+        # src/bootstrap/src/core/download.rs
+        # for consistency.
+        # they are also more compreprensivly explained in that file.
         run(["curl", option] + extra_flags + [
             "-L", # Follow redirect.
             "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
