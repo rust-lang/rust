@@ -289,10 +289,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     if matches!(data.terminator().kind, TerminatorKind::Return) {
                         let location = ccx.body.terminator_loc(bb);
                         maybe_storage_live.seek_after_primary_effect(location);
-                        for local in maybe_storage_live.get().iter() {
-                            // If a local may be live here, it is definitely not transient.
-                            transient.remove(local);
-                        }
+                        // If a local may be live here, it is definitely not transient.
+                        transient.subtract(maybe_storage_live.get());
                     }
                 }
 
