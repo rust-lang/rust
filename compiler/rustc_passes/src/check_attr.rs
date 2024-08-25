@@ -952,6 +952,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         bare_fn_ty.decl.inputs.len() == 1
                     } else {
                         false
+                    }
+                    || if let Some(&[hir::GenericArg::Type(ty)]) = i
+                        .of_trait
+                        .as_ref()
+                        .and_then(|trait_ref| trait_ref.path.segments.last())
+                        .map(|last_segment| last_segment.args().args)
+                    {
+                        matches!(&ty.kind, hir::TyKind::Tup([_]))
+                    } else {
+                        false
                     };
                 if !is_valid {
                     self.dcx().emit_err(errors::DocFakeVariadicNotValid { span: meta.span() });
