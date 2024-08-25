@@ -804,22 +804,14 @@ impl std::ops::Deref for Config {
 }
 
 impl Config {
-    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
-    /// This path is equal to:
-    ///
-    /// |Platform | Value                                 | Example                                  |
-    /// | ------- | ------------------------------------- | ---------------------------------------- |
-    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
-    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
-    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
-    pub fn user_config_path() -> Option<&'static AbsPath> {
+    /// Path to the user configuration dir. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer` in Linux.
+    pub fn user_config_dir_path() -> Option<&'static AbsPath> {
         static USER_CONFIG_PATH: LazyLock<Option<AbsPathBuf>> = LazyLock::new(|| {
             let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
                 std::path::PathBuf::from(path)
             } else {
                 dirs::config_dir()?.join("rust-analyzer")
-            }
-            .join("rust-analyzer.toml");
+            };
             Some(AbsPathBuf::assert_utf8(user_config_path))
         });
         USER_CONFIG_PATH.as_deref()
