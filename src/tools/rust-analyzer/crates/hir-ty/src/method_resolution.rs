@@ -35,7 +35,7 @@ use crate::{
 };
 
 /// This is used as a key for indexing impls.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TyFingerprint {
     // These are lang item impls:
     Str,
