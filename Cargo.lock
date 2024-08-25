@@ -4536,6 +4536,7 @@ dependencies = [
  "bitflags 2.6.0",
  "derive-where",
  "indexmap",
+ "rustc-hash",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",
