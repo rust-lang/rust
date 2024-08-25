@@ -564,7 +564,7 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
-    pub fn todevice(&self) -> io::Result<crate::ffi::CString> {
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
         let buf: [libc::c_char; libc::IFNAMSIZ] =
             getsockopt(self, libc::SOL_SOCKET, libc::SO_BINDTODEVICE)?;
         let s: &[u8] = unsafe { core::slice::from_raw_parts(buf.as_ptr() as *const u8, buf.len()) };
@@ -573,8 +573,8 @@ impl Socket {
     }
 
     #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
-    pub fn set_todevice(&self, ifrname: &CStr) -> io::Result<()> {
-        let istr = ifrname.to_bytes();
+    pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
+        let istr = ifrname.as_bytes();
 
         if istr.len() >= libc::IFNAMSIZ {
             return Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG));

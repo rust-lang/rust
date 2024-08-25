@@ -13,7 +13,7 @@ use super::{peer_cred, UCred};
 use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
 use super::{sockaddr_un, SocketAddr};
 #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
-use crate::ffi::{CStr, CString};
+use crate::ffi::CString;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
@@ -417,19 +417,19 @@ impl UnixStream {
         not(any(target_os = "linux", target_os = "haiku", target_os = "vxworks")),
         doc = "```ignore"
     )]
-    /// #![feature(unix_set_todevice)]
+    /// #![feature(unix_set_device)]
     /// use std::os::unix::net::UnixStream;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_todevice(c"eth0")?;
+    ///     socket.set_device("eth0")?;
     ///     Ok(())
     /// }
     /// ```
     #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
-    #[unstable(feature = "unix_set_todevice", issue = "129182")]
-    pub fn set_todevice(&self, ifrname: &CStr) -> io::Result<()> {
-        self.0.set_todevice(ifrname)
+    #[unstable(feature = "unix_set_device", issue = "129182")]
+    pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
+        self.0.set_device(ifrname)
     }
 
     /// Get the interface this socket is bound to
@@ -442,21 +442,21 @@ impl UnixStream {
         not(any(target_os = "linux", target_os = "haiku", target_os = "vxworks")),
         doc = "```ignore"
     )]
-    /// #![feature(unix_set_todevice)]
+    /// #![feature(unix_set_device)]
     /// use std::os::unix::net::UnixStream;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_todevice(c"eth0")?;
-    ///     let name = socket.todevice()?;
+    ///     socket.set_device("eth0")?;
+    ///     let name = socket.device()?;
     ///     assert_eq!(Ok("eth0"), name.to_str());
     ///     Ok(())
     /// }
     /// ```
     #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
-    #[unstable(feature = "unix_set_todevice", issue = "129182")]
-    pub fn todevice(&self) -> io::Result<CString> {
-        self.0.todevice()
+    #[unstable(feature = "unix_set_device", issue = "129182")]
+    pub fn device(&self) -> io::Result<CString> {
+        self.0.device()
     }
 
     /// Returns the value of the `SO_ERROR` option.
