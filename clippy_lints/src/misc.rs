@@ -7,6 +7,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BinOpKind, BindingMode, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind,
@@ -281,9 +282,14 @@ fn used_underscore_items<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         },
         _ => return,
     };
+
     let name = ident.name.as_str();
     let definition_span = cx.tcx.def_span(def_id);
-    if name.starts_with('_') && !name.starts_with("__") && !definition_span.from_expansion() {
+    if name.starts_with('_')
+        && !name.starts_with("__")
+        && !definition_span.from_expansion()
+        && def_id.krate == LOCAL_CRATE
+    {
         span_lint_and_then(
             cx,
             USED_UNDERSCORE_ITEMS,
