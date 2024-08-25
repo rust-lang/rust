@@ -12,8 +12,8 @@ fn test_f32_integer_decode() {
 
     // Ignore the "sign" (quiet / signalling flag) of NAN.
     // It can vary between runtime operations and LLVM folding.
-    let (nan_m, nan_e, _nan_s) = f32::NAN.integer_decode();
-    assert_eq!((nan_m, nan_e), (12582912, 105));
+    let (nan_m, nan_p, _nan_s) = f32::NAN.integer_decode();
+    assert_eq!((nan_m, nan_p), (12582912, 105));
 }
 
 #[test]
@@ -28,6 +28,6 @@ fn test_f64_integer_decode() {
 
     // Ignore the "sign" (quiet / signalling flag) of NAN.
     // It can vary between runtime operations and LLVM folding.
-    let (nan_m, nan_e, _nan_s) = f64::NAN.integer_decode();
-    assert_eq!((nan_m, nan_e), (6755399441055744, 972));
+    let (nan_m, nan_p, _nan_s) = f64::NAN.integer_decode();
+    assert_eq!((nan_m, nan_p), (6755399441055744, 972));
 }
