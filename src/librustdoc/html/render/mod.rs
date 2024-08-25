@@ -1796,24 +1796,24 @@ fn render_impl(
 
     // Impl items are grouped by kinds:
     //
-    // 1. Types
-    // 2. Constants
+    // 1. Constants
+    // 2. Types
     // 3. Functions
     //
-    // This order is because you can have associated types in associated constants, and both in
-    // associcated functions. So with this order, when reading from top to bottom, you should always
-    // see all items definitions before they're actually used.
-    let mut assoc_consts = Vec::new();
+    // This order is because you can have associated constants used in associated types (like array
+    // length), and both in associcated functions. So with this order, when reading from top to
+    // bottom, you should see items definitions before they're actually used most of the time.
+    let mut assoc_types = Vec::new();
     let mut methods = Vec::new();
 
     if !impl_.is_negative_trait_impl() {
         for trait_item in &impl_.items {
             match *trait_item.kind {
                 clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
-                clean::TyAssocConstItem(..) | clean::AssocConstItem(_) => {
-                    assoc_consts.push(trait_item)
-                }
                 clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
+                    assoc_types.push(trait_item)
+                }
+                clean::TyAssocConstItem(..) | clean::AssocConstItem(_) => {
                     // We render it directly since they're supposed to come first.
                     doc_impl_item(
                         &mut default_impl_items,
@@ -1832,12 +1832,12 @@ fn render_impl(
             }
         }
 
-        for assoc_const in assoc_consts {
+        for assoc_type in assoc_types {
             doc_impl_item(
                 &mut default_impl_items,
                 &mut impl_items,
                 cx,
-                assoc_const,
+                assoc_type,
                 if trait_.is_some() { &i.impl_item } else { parent },
                 link,
                 render_mode,
