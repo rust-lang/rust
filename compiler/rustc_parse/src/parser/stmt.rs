@@ -459,11 +459,16 @@ impl<'a> Parser<'a> {
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         let (attrs, block) = self.parse_inner_attrs_and_block()?;
         if let [.., last] = &*attrs {
+            let suggest_to_outer = match &last.kind {
+                ast::AttrKind::Normal(attr) => attr.item.is_valid_for_outer_style(),
+                _ => false,
+            };
             self.error_on_forbidden_inner_attr(
                 last.span,
                 super::attr::InnerAttrPolicy::Forbidden(Some(
                     InnerAttrForbiddenReason::InCodeBlock,
                 )),
+                suggest_to_outer,
             );
         }
         Ok(block)

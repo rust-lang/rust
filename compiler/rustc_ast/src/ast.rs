@@ -2902,6 +2902,17 @@ pub struct AttrItem {
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
+impl AttrItem {
+    pub fn is_valid_for_outer_style(&self) -> bool {
+        self.path == sym::cfg_attr
+            || self.path == sym::cfg
+            || self.path == sym::forbid
+            || self.path == sym::warn
+            || self.path == sym::allow
+            || self.path == sym::deny
+    }
+}
+
 /// `TraitRef`s appear in impls.
 ///
 /// Resolution maps each `TraitRef`'s `ref_id` to its defining trait; that's all
