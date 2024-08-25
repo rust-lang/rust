@@ -454,6 +454,10 @@ impl Miri {
         let _guard =
             builder.msg(Kind::Build, compiler.stage, "miri sysroot", compiler.host, target);
         cargo.run(builder);
+        println!(
+            "[DEBUG] Miri::build_miri_sysroot: established miri sysroot at `{}`",
+            miri_sysroot.display()
+        );
 
         // # Determine where Miri put its sysroot.
         // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
@@ -507,12 +511,15 @@ impl Step for Miri {
             target: host,
             extra_features: Vec::new(),
         });
+        println!("[DEBUG] Miri::run: ran tool::Miri");
+
         // the ui tests also assume cargo-miri has been built
         builder.ensure(tool::CargoMiri {
             compiler: host_compiler,
             target: host,
             extra_features: Vec::new(),
         });
+        println!("[DEBUG] Miri::run: ran tool::CargoMiri");
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.

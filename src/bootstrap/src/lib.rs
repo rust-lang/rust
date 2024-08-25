@@ -623,11 +623,25 @@ impl Build {
     ///
     /// After this executes, it will also ensure that `dir` exists.
     fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
+        println!(
+            "[DEBUG] Build::clear_if_dirty: dir=`{}`, input=`{}`",
+            dir.display(),
+            input.display()
+        );
+
         let stamp = dir.join(".stamp");
         let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
             self.verbose(|| println!("Dirty - {}", dir.display()));
-            let _ = fs::remove_dir_all(dir);
+            let res = fs::remove_dir_all(dir);
+
+            if let Err(e) = res {
+                println!(
+                    "[DEBUG] Build::clear_if_dirty: failed to remove_dir_all `{}`: {e}",
+                    dir.display()
+                );
+            }
+
             cleared = true;
         } else if stamp.exists() {
             return cleared;
