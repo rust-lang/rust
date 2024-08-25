@@ -97,11 +97,11 @@ use crate::fmt;
 use crate::str::FromStr;
 
 mod common;
-mod decimal;
 mod fpu;
 mod slow;
 mod table;
 // float is used in flt2dec, and all are used in unit tests.
+pub mod decimal_seq;
 pub mod float;
 pub mod lemire;
 pub mod number;

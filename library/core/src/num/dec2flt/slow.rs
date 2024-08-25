@@ -1,7 +1,7 @@
 //! Slow, fallback algorithm for cases the Eisel-Lemire algorithm cannot round.
 
 use crate::num::dec2flt::common::BiasedFp;
-use crate::num::dec2flt::decimal::{Decimal, parse_decimal};
+use crate::num::dec2flt::decimal_seq::{DecimalSeq, parse_decimal_seq};
 use crate::num::dec2flt::float::RawFloat;
 
 /// Parse the significant digits and biased, binary exponent of a float.
@@ -36,7 +36,7 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
     let fp_zero = BiasedFp::zero_pow2(0);
     let fp_inf = BiasedFp::zero_pow2(F::INFINITE_POWER);
 
-    let mut d = parse_decimal(s);
+    let mut d = parse_decimal_seq(s);
 
     // Short-circuit if the value can only be a literal 0 or infinity.
     if d.num_digits == 0 || d.decimal_point < -324 {
@@ -50,7 +50,7 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
         let n = d.decimal_point as usize;
         let shift = get_shift(n);
         d.right_shift(shift);
-        if d.decimal_point < -Decimal::DECIMAL_POINT_RANGE {
+        if d.decimal_point < -DecimalSeq::DECIMAL_POINT_RANGE {
             return fp_zero;
         }
         exp2 += shift as i32;
@@ -67,7 +67,7 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
             get_shift((-d.decimal_point) as _)
         };
         d.left_shift(shift);
-        if d.decimal_point > Decimal::DECIMAL_POINT_RANGE {
+        if d.decimal_point > DecimalSeq::DECIMAL_POINT_RANGE {
             return fp_inf;
         }
         exp2 -= shift as i32;
