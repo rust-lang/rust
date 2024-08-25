@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
+use crate::simd::{cmp::SimdOrd, LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
 
 /// Operations on SIMD vectors of unsigned integers.
 pub trait SimdUint: Copy + Sealed {
@@ -56,6 +56,22 @@ pub trait SimdUint: Copy + Sealed {
     /// assert_eq!(unsat, Simd::from_array([3, 2, 1, 0]));
     /// assert_eq!(sat, Simd::splat(0));
     fn saturating_sub(self, second: Self) -> Self;
+
+    /// Lanewise absolute difference.
+    /// Every element becomes the absolute difference of `self` and `second`.
+    ///
+    /// # Examples
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::prelude::*;
+    /// use core::u32::MAX;
+    /// let a = Simd::from_array([0, MAX, 100, 20]);
+    /// let b = Simd::from_array([MAX, 0, 80, 200]);
+    /// assert_eq!(a.abs_diff(b), Simd::from_array([MAX, MAX, 20, 180]));
+    /// ```
+    fn abs_diff(self, second: Self) -> Self;
 
     /// Returns the sum of the elements of the vector, with wrapping addition.
     fn reduce_sum(self) -> Self::Scalar;
@@ -136,6 +152,13 @@ macro_rules! impl_trait {
             fn saturating_sub(self, second: Self) -> Self {
                 // Safety: `self` is a vector
                 unsafe { core::intrinsics::simd::simd_saturating_sub(self, second) }
+            }
+
+            #[inline]
+            fn abs_diff(self, second: Self) -> Self {
+                let max = self.simd_max(second);
+                let min = self.simd_min(second);
+                max - min
             }
 
             #[inline]
