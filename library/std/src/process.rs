@@ -2296,6 +2296,15 @@ impl Child {
 /// }
 /// ```
 ///
+/// In its current implementation, this function will execute exit handlers registered with `atexit`
+/// as well as other platform-specific exit handlers (e.g. `fini` sections of ELF shared objects).
+/// This means that Rust requires that all exit handlers are safe to execute at any time. In
+/// particular, if an exit handler cleans up some state that might be concurrently accessed by other
+/// threads, it is required that the exit handler performs suitable synchronization with those
+/// threads. (The alternative to this requirement would be to not run exit handlers at all, which is
+/// considered undesirable. Note that returning from `main` also calls `exit`, so making `exit` an
+/// unsafe operation is not an option.)
+///
 /// ## Platform-specific behavior
 ///
 /// **Unix**: On Unix-like platforms, it is unlikely that all 32 bits of `exit`
