@@ -223,10 +223,10 @@ fn sidebar_trait<'a>(
     }
 
     let mut blocks: Vec<LinkBlock<'_>> = [
-        ("required-associated-types", "Required Associated Types", req_assoc),
-        ("provided-associated-types", "Provided Associated Types", prov_assoc),
         ("required-associated-consts", "Required Associated Constants", req_assoc_const),
         ("provided-associated-consts", "Provided Associated Constants", prov_assoc_const),
+        ("required-associated-types", "Required Associated Types", req_assoc),
+        ("provided-associated-types", "Provided Associated Types", prov_assoc),
         ("required-methods", "Required Methods", req_method),
         ("provided-methods", "Provided Methods", prov_method),
         ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
