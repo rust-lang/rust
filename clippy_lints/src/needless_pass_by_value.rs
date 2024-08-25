@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             })
             .collect::<Vec<_>>();
 
-        // Collect moved variables and spans which will need dereferencings from the
+        // Collect moved variables and spans which will need dereferencing from the
         // function body.
         let MovedVariablesCtxt { moved_vars } = {
             let mut ctx = MovedVariablesCtxt::default();
@@ -148,12 +148,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 return;
             }
 
-            // Ignore `self`s.
-            if idx == 0 {
-                if let PatKind::Binding(.., ident, _) = arg.pat.kind {
-                    if ident.name == kw::SelfLower {
-                        continue;
-                    }
+            // Ignore `self`s and params whose variable name starts with an underscore
+            if let PatKind::Binding(.., ident, _) = arg.pat.kind {
+                if idx == 0 && ident.name == kw::SelfLower {
+                    continue;
+                }
+                if ident.name.as_str().starts_with('_') {
+                    continue;
                 }
             }
 
