@@ -3667,8 +3667,8 @@ impl<T> [T] {
     {
         // The panic code path was put into a cold function to not bloat the
         // call site.
-        #[inline(never)]
-        #[cold]
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+        #[cfg_attr(feature = "panic_immediate_abort", inline)]
         #[track_caller]
         fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
             panic!(
