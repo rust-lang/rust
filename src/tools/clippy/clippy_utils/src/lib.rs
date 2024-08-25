@@ -149,6 +149,7 @@ macro_rules! extract_msrv_attr {
 
 /// If the given expression is a local binding, find the initializer expression.
 /// If that initializer expression is another local binding, find its initializer again.
+///
 /// This process repeats as long as possible (but usually no more than once). Initializer
 /// expressions with adjustments are ignored. If this is not desired, use [`find_binding_init`]
 /// instead.
@@ -179,6 +180,7 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 }
 
 /// Finds the initializer expression for a local binding. Returns `None` if the binding is mutable.
+///
 /// By only considering immutable bindings, we guarantee that the returned expression represents the
 /// value of the binding wherever it is referenced.
 ///
@@ -431,11 +433,11 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// THIS METHOD IS DEPRECATED. Matches a `QPath` against a slice of segment string literals.
+///
+/// This method is deprecated and will eventually be removed since it does not match against the
 /// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
 /// `QPath::Resolved.1.res.opt_def_id()`.
-///
-/// Matches a `QPath` against a slice of segment string literals.
 ///
 /// There is also `match_path` if you are dealing with a `rustc_hir::Path` instead of a
 /// `rustc_hir::QPath`.
@@ -485,11 +487,11 @@ pub fn is_path_diagnostic_item<'tcx>(
     path_def_id(cx, maybe_path).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
-/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// THIS METHOD IS DEPRECATED. Matches a `Path` against a slice of segment string literals.
+///
+/// This method is deprecated and will eventually be removed since it does not match against the
 /// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
 /// `QPath::Resolved.1.res.opt_def_id()`.
-///
-/// Matches a `Path` against a slice of segment string literals.
 ///
 /// There is also `match_qpath` if you are dealing with a `rustc_hir::QPath` instead of a
 /// `rustc_hir::Path`.
@@ -905,6 +907,7 @@ pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) ->
 }
 
 /// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
+///
 /// It doesn't cover all cases, for example indirect function calls (some of std
 /// functions are supported) but it is the best we have.
 pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
@@ -1061,6 +1064,7 @@ impl std::ops::BitOrAssign for CaptureKind {
 }
 
 /// Given an expression referencing a local, determines how it would be captured in a closure.
+///
 /// Note as this will walk up to parent expressions until the capture can be determined it should
 /// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
 /// function argument (other than a receiver).
@@ -2365,8 +2369,9 @@ pub fn fn_def_id_with_node_args<'tcx>(
 }
 
 /// Returns `Option<String>` where String is a textual representation of the type encapsulated in
-/// the slice iff the given expression is a slice of primitives (as defined in the
-/// `is_recursively_primitive_type` function) and `None` otherwise.
+/// the slice iff the given expression is a slice of primitives.
+///
+/// (As defined in the `is_recursively_primitive_type` function.) Returns `None` otherwise.
 pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();

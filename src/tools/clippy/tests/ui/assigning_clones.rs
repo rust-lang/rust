@@ -396,3 +396,23 @@ impl<T: Clone> Clone for DerefWrapperWithClone<T> {
         *self = Self(source.0.clone());
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[derive(Default)]
+    struct Data {
+        field: String,
+    }
+
+    fn test_data() -> Data {
+        Data {
+            field: "default_value".to_string(),
+        }
+    }
+
+    #[test]
+    fn test() {
+        let mut data = test_data();
+        data.field = "override_value".to_owned();
+    }
+}

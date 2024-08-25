@@ -536,6 +536,7 @@ name = "clippy"
 version = "0.1.82"
 dependencies = [
  "anstream",
+ "cargo_metadata 0.18.1",
  "clippy_config",
  "clippy_lints",
  "clippy_utils",
@@ -549,6 +550,7 @@ dependencies = [
  "regex",
  "rustc_tools_util",
  "serde",
+ "serde_json",
  "syn 2.0.75",
  "tempfile",
  "termize",
@@ -563,7 +565,6 @@ name = "clippy_config"
 version = "0.1.82"
 dependencies = [
  "itertools",
- "rustc-semver",
  "serde",
  "toml 0.7.8",
  "walkdir",
@@ -595,7 +596,6 @@ dependencies = [
  "quine-mc_cluskey",
  "regex",
  "regex-syntax 0.8.4",
- "rustc-semver",
  "semver",
  "serde",
  "serde_json",
@@ -614,7 +614,6 @@ dependencies = [
  "arrayvec",
  "clippy_config",
  "itertools",
- "rustc-semver",
  "rustc_apfloat",
 ]
 
@@ -3198,12 +3197,6 @@ dependencies = [
  "crossbeam-utils",
  "num_cpus",
 ]
-
-[[package]]
-name = "rustc-semver"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5be1bdc7edf596692617627bbfeaba522131b18e06ca4df2b6b689e3c5d5ce84"
 
 [[package]]
 name = "rustc-stable-hash"

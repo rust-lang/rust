@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -143,8 +143,8 @@ impl LateLintPass<'_> for ManualRangePatterns {
                 pat.span,
                 "this OR pattern can be rewritten using a range",
                 |diag| {
-                    if let Some(min) = snippet_opt(cx, min.span)
-                        && let Some(max) = snippet_opt(cx, max.span)
+                    if let Some(min) = min.span.get_source_text(cx)
+                        && let Some(max) = max.span.get_source_text(cx)
                     {
                         diag.span_suggestion(
                             pat.span,

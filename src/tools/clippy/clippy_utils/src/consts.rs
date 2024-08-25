@@ -687,7 +687,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 if let Some(expr_span) = walk_span_to_context(expr.span, span.ctxt)
                     && let expr_lo = expr_span.lo()
                     && expr_lo >= span.lo
-                    && let Some(src) = (span.lo..expr_lo).get_source_text(&self.tcx)
+                    && let Some(src) = (span.lo..expr_lo).get_source_range(&self.tcx)
                     && let Some(src) = src.as_str()
                 {
                     use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};

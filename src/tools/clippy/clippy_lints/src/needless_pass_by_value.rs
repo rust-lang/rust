@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_self;
 use clippy_utils::ptr::get_spans;
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{snippet, SpanRangeExt};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
@@ -242,8 +242,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         for (span, suggestion) in clone_spans {
                             diag.span_suggestion(
                                 span,
-                                snippet_opt(cx, span)
-                                    .map_or("change the call to".into(), |x| format!("change `{x}` to")),
+                                span.get_source_text(cx)
+                                    .map_or("change the call to".to_owned(), |src| format!("change `{src}` to")),
                                 suggestion,
                                 Applicability::Unspecified,
                             );
@@ -267,8 +267,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             for (span, suggestion) in clone_spans {
                                 diag.span_suggestion(
                                     span,
-                                    snippet_opt(cx, span)
-                                        .map_or("change the call to".into(), |x| format!("change `{x}` to")),
+                                    span.get_source_text(cx)
+                                        .map_or("change the call to".to_owned(), |src| format!("change `{src}` to")),
                                     suggestion,
                                     Applicability::Unspecified,
                                 );

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
@@ -46,8 +46,8 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     "manual implementation of an assign operation",
                     |diag| {
-                        if let (Some(snip_a), Some(snip_r)) =
-                            (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
+                        if let Some(snip_a) = assignee.span.get_source_text(cx)
+                            && let Some(snip_r) = rhs.span.get_source_text(cx)
                         {
                             diag.span_suggestion(
                                 expr.span,

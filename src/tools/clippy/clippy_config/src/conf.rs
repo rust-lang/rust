@@ -1,7 +1,6 @@
 use crate::msrvs::Msrv;
 use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename};
 use crate::ClippyConfiguration;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;
@@ -218,7 +217,7 @@ macro_rules! define_Conf {
 define_Conf! {
     /// Which crates to allow absolute paths from
     #[lints(absolute_paths)]
-    absolute_paths_allowed_crates: FxHashSet<String> = FxHashSet::default(),
+    absolute_paths_allowed_crates: Vec<String> = Vec::new(),
     /// The maximum number of segments a path can have before being linted, anything above this will
     /// be linted.
     #[lints(absolute_paths)]
@@ -280,12 +279,12 @@ define_Conf! {
     allowed_dotfiles: Vec<String> = Vec::default(),
     /// A list of crate names to allow duplicates of
     #[lints(multiple_crate_versions)]
-    allowed_duplicate_crates: FxHashSet<String> = FxHashSet::default(),
+    allowed_duplicate_crates: Vec<String> = Vec::new(),
     /// Allowed names below the minimum allowed characters. The value `".."` can be used as part of
     /// the list to indicate, that the configured values should be appended to the default
     /// configuration of Clippy. By default, any configuration will replace the default value.
     #[lints(min_ident_chars)]
-    allowed_idents_below_min_chars: FxHashSet<String> =
+    allowed_idents_below_min_chars: Vec<String> =
         DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string).collect(),
     /// List of prefixes to allow when determining whether an item's name ends with the module's name.
     /// If the rest of an item's name is an allowed prefix (e.g. item `ToFoo` or `to_foo` in module `foo`),
@@ -323,7 +322,7 @@ define_Conf! {
     /// 2. Paths with any segment that containing the word 'prelude'
     /// are already allowed by default.
     #[lints(wildcard_imports)]
-    allowed_wildcard_imports: FxHashSet<String> = FxHashSet::default(),
+    allowed_wildcard_imports: Vec<String> = Vec::new(),
     /// Suppress checking of the passed type names in all types of operations.
     ///
     /// If a specific operation is desired, consider using `arithmetic_side_effects_allowed_binary` or `arithmetic_side_effects_allowed_unary` instead.
@@ -355,7 +354,7 @@ define_Conf! {
     /// arithmetic-side-effects-allowed-binary = [["SomeType" , "f32"], ["AnotherType", "*"]]
     /// ```
     #[lints(arithmetic_side_effects)]
-    arithmetic_side_effects_allowed_binary: Vec<[String; 2]> = <_>::default(),
+    arithmetic_side_effects_allowed_binary: Vec<(String, String)> = <_>::default(),
     /// Suppress checking of the passed type names in unary operations like "negation" (`-`).
     ///
     /// #### Example
@@ -431,7 +430,7 @@ define_Conf! {
     /// * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
     /// * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
     #[lints(doc_markdown)]
-    doc_valid_idents: FxHashSet<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect(),
+    doc_valid_idents: Vec<String> = DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string).collect(),
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
     #[lints(non_send_fields_in_send_ty)]
     enable_raw_pointer_heuristic_for_send: bool = true,
@@ -706,12 +705,12 @@ fn deserialize(file: &SourceFile) -> TryConf {
                 DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS,
             );
             // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
-            if conf.conf.allowed_idents_below_min_chars.contains("..") {
+            if conf.conf.allowed_idents_below_min_chars.iter().any(|e| e == "..") {
                 conf.conf
                     .allowed_idents_below_min_chars
                     .extend(DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string));
             }
-            if conf.conf.doc_valid_idents.contains("..") {
+            if conf.conf.doc_valid_idents.iter().any(|e| e == "..") {
                 conf.conf
                     .doc_valid_idents
                     .extend(DEFAULT_DOC_VALID_IDENTS.iter().map(ToString::to_string));
@@ -890,14 +889,14 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
 
 #[cfg(test)]
 mod tests {
-    use rustc_data_structures::fx::{FxHashMap, FxHashSet};
     use serde::de::IgnoredAny;
+    use std::collections::{HashMap, HashSet};
     use std::fs;
     use walkdir::WalkDir;
 
     #[test]
     fn configs_are_tested() {
-        let mut names: FxHashSet<String> = crate::get_configuration_metadata()
+        let mut names: HashSet<String> = crate::get_configuration_metadata()
             .into_iter()
             .map(|meta| meta.name.replace('_', "-"))
             .collect();
@@ -910,7 +909,7 @@ mod tests {
         for entry in toml_files {
             let file = fs::read_to_string(entry.path()).unwrap();
             #[allow(clippy::zero_sized_map_values)]
-            if let Ok(map) = toml::from_str::<FxHashMap<String, IgnoredAny>>(&file) {
+            if let Ok(map) = toml::from_str::<HashMap<String, IgnoredAny>>(&file) {
                 for name in map.keys() {
                     names.remove(name.as_str());
                 }

@@ -3,7 +3,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{enclosing_mir, PossibleBorrowerMap};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_diag_trait_item, last_path_segment, local_is_initialized, path_to_local};
+use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -118,6 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
                 }
             )
             && !clone_source_borrows_from_dest(cx, lhs, rhs.span)
+            && !is_in_test(cx.tcx, e.hir_id)
         {
             span_lint_and_then(
                 cx,

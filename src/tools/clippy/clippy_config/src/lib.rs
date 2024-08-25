@@ -14,7 +14,7 @@
 )]
 
 extern crate rustc_ast;
-extern crate rustc_data_structures;
+extern crate rustc_attr;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 extern crate rustc_errors;
