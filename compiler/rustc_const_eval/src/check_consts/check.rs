@@ -18,7 +18,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::Analysis;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
@@ -275,40 +275,28 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // A local is "transient" if it is guaranteed dead at all `Return`.
                 // So first compute the say of "maybe live" locals at each program point.
                 let always_live_locals = &always_storage_live_locals(&ccx.body);
-                let maybe_storage_live = MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
-                    .into_engine(ccx.tcx, &ccx.body)
-                    .iterate_to_fixpoint()
-                    .into_results_cursor(&ccx.body);
+                let mut maybe_storage_live =
+                    MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
+                        .into_engine(ccx.tcx, &ccx.body)
+                        .iterate_to_fixpoint()
+                        .into_results_cursor(&ccx.body);
 
                 // And then check all `Return` in the MIR, and if a local is "maybe live" at a
                 // `Return` then it is definitely not transient.
-                struct TransientLocalVisitor<'a, 'tcx> {
-                    maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
-                    transient: BitSet<Local>,
-                }
-                impl<'a, 'tcx> Visitor<'tcx> for TransientLocalVisitor<'a, 'tcx> {
-                    fn visit_terminator(
-                        &mut self,
-                        terminator: &Terminator<'tcx>,
-                        location: Location,
-                    ) {
-                        if matches!(terminator.kind, TerminatorKind::Return) {
-                            self.maybe_storage_live.seek_after_primary_effect(location);
-                            for local in self.maybe_storage_live.get().iter() {
-                                // If a local may be live here, it is definitely not transient.
-                                self.transient.remove(local);
-                            }
+                let mut transient = BitSet::new_filled(ccx.body.local_decls.len());
+                // Make sure to only visit reachable blocks, the dataflow engine can ICE otherwise.
+                for (bb, data) in traversal::reachable(&ccx.body) {
+                    if matches!(data.terminator().kind, TerminatorKind::Return) {
+                        let location = ccx.body.terminator_loc(bb);
+                        maybe_storage_live.seek_after_primary_effect(location);
+                        for local in maybe_storage_live.get().iter() {
+                            // If a local may be live here, it is definitely not transient.
+                            transient.remove(local);
                         }
                     }
                 }
 
-                let mut v = TransientLocalVisitor {
-                    maybe_storage_live,
-                    transient: BitSet::new_filled(ccx.body.local_decls.len()),
-                };
-                v.visit_body(&ccx.body);
-
-                v.transient
+                transient
             })
             .contains(local)
     }
