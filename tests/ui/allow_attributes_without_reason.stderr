@@ -36,7 +36,7 @@ LL | #[expect(dead_code)]
    = help: try adding a reason at the end with `, reason = ".."`
 
 error: `allow` attribute without specifying a reason
-  --> tests/ui/allow_attributes_without_reason.rs:47:5
+  --> tests/ui/allow_attributes_without_reason.rs:46:5
    |
 LL |     #[allow(unused)]
    |     ^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     #[allow(unused)]
    = help: try adding a reason at the end with `, reason = ".."`
 
 error: `allow` attribute without specifying a reason
-  --> tests/ui/allow_attributes_without_reason.rs:47:5
+  --> tests/ui/allow_attributes_without_reason.rs:46:5
    |
 LL |     #[allow(unused)]
    |     ^^^^^^^^^^^^^^^^
