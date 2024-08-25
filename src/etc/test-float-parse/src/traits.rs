@@ -98,7 +98,7 @@ macro_rules! impl_int {
     }
 }
 
-impl_int!(u32, i32; u64, i64);
+impl_int!(u16, i16; u32, i32; u64, i64);
 
 /// Floating point types.
 pub trait Float:
@@ -169,6 +169,9 @@ macro_rules! impl_float {
 }
 
 impl_float!(f32, u32; f64, u64);
+
+#[cfg(target_has_reliable_f16)]
+impl_float!(f16, u16);
 
 /// A test generator. Should provide an iterator that produces unique patterns to parse.
 ///
