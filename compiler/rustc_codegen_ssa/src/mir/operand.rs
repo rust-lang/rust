@@ -320,7 +320,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, '_, 'tcx, Bx>,
         bx: &mut Bx,
         i: usize,
     ) -> Self {
@@ -406,7 +406,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
     #[instrument(level = "trace", skip(fx, bx))]
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &mut FunctionCx<'a, '_, 'tcx, Bx>,
         bx: &mut Bx,
         cast_to: Ty<'tcx>,
     ) -> V {
@@ -839,7 +839,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, '_, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
         &mut self,
         bx: &mut Bx,
@@ -927,7 +927,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let constant_ty = self.monomorphize(constant.ty());
+                let constant_ty = constant.ty();
                 // Most SIMD vector constants should be passed as immediates.
                 // (In particular, some intrinsics really rely on this.)
                 if constant_ty.is_simd() {

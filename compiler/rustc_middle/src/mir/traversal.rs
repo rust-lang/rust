@@ -98,21 +98,17 @@ pub struct Postorder<'a, 'tcx> {
     basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: DenseBitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
-    /// A non-empty `extra` allows for a precise calculation of the successors.
-    extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(
         basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         root: BasicBlock,
-        extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
     ) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             basic_blocks,
             visited: DenseBitSet::new_empty(basic_blocks.len()),
             visit_stack: Vec::new(),
-            extra,
         };
 
         po.visit(root);
@@ -126,11 +122,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             return;
         }
         let data = &self.basic_blocks[bb];
-        let successors = if let Some(extra) = self.extra {
-            data.mono_successors(extra.0, extra.1)
-        } else {
-            data.terminator().successors()
-        };
+        let successors = data.terminator().successors();
         self.visit_stack.push((bb, successors));
     }
 
@@ -223,20 +215,6 @@ pub fn postorder<'a, 'tcx>(
 ) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
 {
     reverse_postorder(body).rev()
-}
-
-pub fn mono_reachable_reverse_postorder<'a, 'tcx>(
-    body: &'a Body<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
-) -> Vec<BasicBlock> {
-    let mut iter = Postorder::new(&body.basic_blocks, START_BLOCK, Some((tcx, instance)));
-    let mut items = Vec::with_capacity(body.basic_blocks.len());
-    while let Some(block) = iter.next() {
-        items.push(block);
-    }
-    items.reverse();
-    items
 }
 
 /// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular

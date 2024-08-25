@@ -303,7 +303,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 }
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, '_, 'tcx, Bx> {
     #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_place(
         &mut self,
@@ -347,10 +347,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::OpaqueCast(ty) => {
                     bug!("encountered OpaqueCast({ty}) in codegen")
                 }
-                mir::ProjectionElem::Subtype(ty) => cg_base.project_type(bx, self.monomorphize(ty)),
-                mir::ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                    cg_base.project_type(bx, self.monomorphize(ty))
-                }
+                mir::ProjectionElem::Subtype(ty) => cg_base.project_type(bx, ty),
+                mir::ProjectionElem::UnwrapUnsafeBinder(ty) => cg_base.project_type(bx, ty),
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);
@@ -371,7 +369,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let mut subslice = cg_base.project_index(bx, bx.cx().const_usize(from));
                     let projected_ty =
                         PlaceTy::from_ty(cg_base.layout.ty).projection_ty(tcx, *elem).ty;
-                    subslice.layout = bx.cx().layout_of(self.monomorphize(projected_ty));
+                    subslice.layout = bx.cx().layout_of(projected_ty);
 
                     if subslice.layout.is_unsized() {
                         assert!(from_end, "slice subslices should be `from_end`");
@@ -392,7 +390,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphized_place_ty(&self, place_ref: mir::PlaceRef<'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
         let place_ty = place_ref.ty(self.mir, tcx);
-        self.monomorphize(place_ty.ty)
+        place_ty.ty
     }
 }
 

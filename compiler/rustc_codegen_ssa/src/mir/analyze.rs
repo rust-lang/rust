@@ -14,8 +14,7 @@ use super::FunctionCx;
 use crate::traits::*;
 
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    fx: &FunctionCx<'a, 'tcx, Bx>,
-    traversal_order: &[mir::BasicBlock],
+    fx: &FunctionCx<'a, '_, 'tcx, Bx>,
 ) -> DenseBitSet<mir::Local> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
@@ -23,8 +22,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         .local_decls
         .iter()
         .map(|decl| {
-            let ty = fx.monomorphize(decl.ty);
-            let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+            let layout = fx.cx.spanned_layout_of(decl.ty, decl.source_info.span);
             if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
         })
         .collect();
@@ -39,8 +37,7 @@ pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // If there exists a local definition that dominates all uses of that local,
     // the definition should be visited first. Traverse blocks in an order that
     // is a topological sort of dominance partial order.
-    for bb in traversal_order.iter().copied() {
-        let data = &mir.basic_blocks[bb];
+    for (bb, data) in traversal::reverse_postorder(mir) {
         analyzer.visit_basic_block_data(bb, data);
     }
 
@@ -65,9 +62,9 @@ enum LocalKind {
     SSA(DefLocation),
 }
 
-struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
-    fx: &'a FunctionCx<'b, 'tcx, Bx>,
-    dominators: &'a Dominators<mir::BasicBlock>,
+struct LocalAnalyzer<'mir, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
+    fx: &'mir FunctionCx<'b, 'mir, 'tcx, Bx>,
+    dominators: &'mir Dominators<mir::BasicBlock>,
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
@@ -80,8 +77,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             LocalKind::ZST => {}
             LocalKind::Memory => {}
             LocalKind::Unused => {
-                let ty = fx.monomorphize(decl.ty);
-                let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+                let layout = fx.cx.spanned_layout_of(decl.ty, decl.source_info.span);
                 *kind =
                     if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
                         LocalKind::SSA(location)
@@ -117,10 +113,9 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             );
             if is_consume {
                 let base_ty = place_base.ty(self.fx.mir, cx.tcx());
-                let base_ty = self.fx.monomorphize(base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx(), self.fx.monomorphize(elem)).ty;
+                let elem_ty = base_ty.projection_ty(cx.tcx(), elem).ty;
                 let span = self.fx.mir.local_decls[place_ref.local].source_info.span;
                 if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;
@@ -246,7 +241,6 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> Visitor<'tcx> for LocalAnalyzer
                 let kind = &mut self.locals[local];
                 if *kind != LocalKind::Memory {
                     let ty = self.fx.mir.local_decls[local].ty;
-                    let ty = self.fx.monomorphize(ty);
                     if self.fx.cx.type_needs_drop(ty) {
                         // Only need the place if we're actually dropping it.
                         *kind = LocalKind::Memory;
