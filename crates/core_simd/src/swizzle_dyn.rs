@@ -60,12 +60,30 @@ where
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
                 32 => transize(avx2_pshufb, self, idxs),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
-                32 => transize(x86::_mm256_permutexvar_epi8, zeroing_idxs(idxs), self),
-                // Notable absence: avx512bw shuffle
-                // If avx512bw is available, odds of avx512vbmi are good
-                // FIXME: initial AVX512VBMI variant didn't actually pass muster
-                // #[cfg(target_feature = "avx512vbmi")]
-                // 64 => transize(x86::_mm512_permutexvar_epi8, self, idxs),
+                32 => {
+                    // Unlike vpshufb, vpermb doesn't zero out values in the result based on the index high bit
+                    let swizzler = |bytes, idxs| {
+                        let mask = x86::_mm256_cmp_epu8_mask::<{ x86::_MM_CMPINT_LT }>(
+                            idxs,
+                            Simd::<u8, 32>::splat(N as u8).into(),
+                        );
+                        x86::_mm256_maskz_permutexvar_epi8(mask, idxs, bytes)
+                    };
+                    transize(swizzler, self, idxs)
+                }
+                // Notable absence: avx512bw pshufb shuffle
+                #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
+                64 => {
+                    // Unlike vpshufb, vpermb doesn't zero out values in the result based on the index high bit
+                    let swizzler = |bytes, idxs| {
+                        let mask = x86::_mm512_cmp_epu8_mask::<{ x86::_MM_CMPINT_LT }>(
+                            idxs,
+                            Simd::<u8, 64>::splat(N as u8).into(),
+                        );
+                        x86::_mm512_maskz_permutexvar_epi8(mask, idxs, bytes)
+                    };
+                    transize(swizzler, self, idxs)
+                }
                 _ => {
                     let mut array = [0; N];
                     for (i, k) in idxs.to_array().into_iter().enumerate() {
