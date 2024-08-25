@@ -87,7 +87,7 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
     }
     // Shift the decimal to the hidden bit, and then round the value
     // to get the high mantissa+1 bits.
-    d.left_shift(F::MANTISSA_EXPLICIT_BITS + 1);
+    d.left_shift(F::MANTISSA_EXPLICIT_BITS as usize + 1);
     let mut mantissa = d.round();
     if mantissa >= (1_u64 << (F::MANTISSA_EXPLICIT_BITS + 1)) {
         // Rounding up overflowed to the carry bit, need to
