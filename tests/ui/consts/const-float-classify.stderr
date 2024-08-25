@@ -1,5 +1,5 @@
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
-  --> $DIR/const-float-classify.rs:13:12
+  --> $DIR/const-float-classify.rs:12:12
    |
 LL | impl const PartialEq<NonDet> for bool {
    |            ^^^^^^^^^^^^^^^^^

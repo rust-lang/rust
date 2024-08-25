@@ -2,7 +2,6 @@
 //@ known-bug: #110395
 // FIXME(effects) run-pass
 
-#![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_trait_impl, effects)]
 #![allow(incomplete_features)]

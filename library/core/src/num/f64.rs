@@ -1111,7 +1111,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_bits(self) -> u64 {
         // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
@@ -1155,7 +1155,7 @@ impl f64 {
     /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_bits(v: u64) -> Self {
@@ -1179,7 +1179,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_be_bytes(self) -> [u8; 8] {
         self.to_bits().to_be_bytes()
@@ -1200,7 +1200,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_le_bytes(self) -> [u8; 8] {
         self.to_bits().to_le_bytes()
@@ -1234,7 +1234,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn to_ne_bytes(self) -> [u8; 8] {
         self.to_bits().to_ne_bytes()
@@ -1252,7 +1252,7 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_be_bytes(bytes: [u8; 8]) -> Self {
@@ -1271,7 +1271,7 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_le_bytes(bytes: [u8; 8]) -> Self {
@@ -1301,7 +1301,7 @@ impl f64 {
     /// assert_eq!(value, 12.5);
     /// ```
     #[stable(feature = "float_to_from_bytes", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_float_bits_conv", issue = "72447")]
+    #[rustc_const_stable(feature = "const_float_bits_conv", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_ne_bytes(bytes: [u8; 8]) -> Self {
