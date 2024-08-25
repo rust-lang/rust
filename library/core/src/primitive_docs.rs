@@ -1190,6 +1190,11 @@ mod prim_f16 {}
 ///     portable or even fully deterministic! This means that there may be some
 ///     surprising results upon inspecting the bit patterns,
 ///     as the same calculations might produce NaNs with different bit patterns.
+///     This also affects the sign of the NaN: checking `is_sign_positive` or `is_sign_negative` on
+///     a NaN is the most common way to run into these surprising results.
+///     (Checking `x >= 0.0` or `x <= 0.0` avoids those surprises, but also how negative/positive
+///     zero are treated.)
+///     See the section below for what exactly is guaranteed about the bit pattern of a NaN.
 ///
 /// When a primitive operation (addition, subtraction, multiplication, or
 /// division) is performed on this type, the result is rounded according to the
@@ -1211,6 +1216,72 @@ mod prim_f16 {}
 /// *[See also the `std::f32::consts` module](crate::f32::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+///
+/// # NaN bit patterns
+///
+/// This section defines the possible NaN bit patterns returned by non-"bitwise" floating point
+/// operations. The bitwise operations are unary `-`, `abs`, `copysign`; those are guaranteed to
+/// exactly preserve the bit pattern of their input except for possibly changing the sign bit.
+///
+/// A floating-point NaN value consists of:
+/// - a sign bit
+/// - a quiet/signaling bit
+/// - a payload, which makes up the rest of the significand (i.e., the mantissa) except for the
+///   quiet/signaling bit.
+///
+/// Rust assumes that the quiet/signaling bit being set to `1` indicates a quiet NaN (QNaN), and a
+/// value of `0` indicates a signaling NaN (SNaN). In the following we will hence just call it the
+/// "quiet bit".
+///
+/// The following rules apply when a NaN value is returned: the result has a non-deterministic sign.
+/// The quiet bit and payload are non-deterministically chosen from the following set of options:
+///
+/// - **Preferred NaN**: The quiet bit is set and the payload is all-zero.
+/// - **Quieting NaN propagation**: The quiet bit is set and the payload is copied from any input
+///   operand that is a NaN. If the inputs and outputs do not have the same payload size (i.e., for
+///   `as` casts), then
+///   - If the output is smaller than the input, low-order bits of the payload get dropped.
+///   - If the output is larger than the input, the payload gets filled up with 0s in the low-order
+///     bits.
+/// - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
+///   that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
+///   same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
+///   than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
+///   possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
+///   propagation cannot occur with some inputs.
+/// - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
+///   set of "extra" possible NaN payloads. The set can depend on the input operand values. This set
+///   is empty on x86, ARM, and RISC-V (32bit and 64bit), but can be non-empty on other
+///   architectures. Targets where this set is non-empty should document this in a suitable
+///   location, e.g. their platform support page. (For instance, on wasm, if any input NaN does not
+///   have the preferred all-zero payload or any input NaN is an SNaN, then this set contains all
+///   possible payloads; otherwise, it is empty. On SPARC, this set consists of the all-one
+///   payload.)
+///
+/// In particular, if all input NaNs are quiet (or if there are no input NaNs), then the output NaN
+/// is definitely quiet. Signaling NaN outputs can only occur if they are provided as an input
+/// value. Similarly, if all input NaNs are preferred (or if there are no input NaNs) and the target
+/// does not have any "extra" NaN payloads, then the output NaN is guaranteed to be preferred.
+///
+/// The non-deterministic choice happens when the operation is executed; i.e., the result of a
+/// NaN-producing floating point operation is a stable bit pattern (looking at these bits multiple
+/// times will yield consistent results), but running the same operation twice with the same inputs
+/// can produce different results.
+///
+/// These guarantees are neither stronger nor weaker than those of IEEE 754: IEEE 754 guarantees
+/// that an operation never returns a signaling NaN, whereas it is possible for operations like
+/// `SNAN * 1.0` to return a signaling NaN in Rust. Conversely, IEEE 754 makes no statement at all
+/// about which quiet NaN is returned, whereas Rust restricts the set of possible results to the
+/// ones listed above.
+///
+/// Unless noted otherwise, the same rules also apply to NaNs returned by other library functions
+/// (e.g. `min`, `minimum`, `max`, `maximum`); other aspects of their semantics and which IEEE 754
+/// operation they correspond to are documented with the respective functions.
+///
+/// When a floating-point operation is executed in `const` context, the same rules apply: no
+/// guarantee is made about which of the NaN bit patterns described above will be returned. The
+/// result does not have to match what happens when executing the same code at runtime, and the
+/// result can vary depending on factors such as compiler version and flags.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
 
