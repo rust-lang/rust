@@ -1884,6 +1884,7 @@ impl Config {
                 CargoFeaturesDef::Selected(it) => it,
             },
             extra_args: self.extra_args().clone(),
+            extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
             extra_env: self.extra_env().clone(),
             target_dir: self.target_dir_from_config(),
         }
@@ -1934,6 +1935,7 @@ impl Config {
                         CargoFeaturesDef::Selected(it) => it,
                     },
                     extra_args: self.check_extra_args(),
+                    extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
                     extra_env: self.check_extra_env(),
                     target_dir: self.target_dir_from_config(),
                 },
