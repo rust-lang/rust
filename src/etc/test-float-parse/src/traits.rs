@@ -98,7 +98,7 @@ macro_rules! impl_int {
     }
 }
 
-impl_int!(u32, i32; u64, i64);
+impl_int!(u16, i16; u32, i32; u64, i64);
 
 /// Floating point types.
 pub trait Float:
@@ -147,12 +147,12 @@ pub trait Float:
 }
 
 macro_rules! impl_float {
-    ($($fty:ty, $ity:ty, $bits:literal);+) => {
+    ($($fty:ty, $ity:ty);+) => {
         $(
             impl Float for $fty {
                 type Int = $ity;
                 type SInt = <Self::Int as Int>::Signed;
-                const BITS: u32 = $bits;
+                const BITS: u32 = <$ity>::BITS;
                 const MAN_BITS: u32 = Self::MANTISSA_DIGITS - 1;
                 const MAN_MASK: Self::Int = (Self::Int::ONE << Self::MAN_BITS) - Self::Int::ONE;
                 const SIGN_MASK: Self::Int = Self::Int::ONE << (Self::BITS-1);
