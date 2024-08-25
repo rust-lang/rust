@@ -14,16 +14,10 @@ pub(super) fn check<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
-    const_context: bool,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Int(_) | ty::Uint(_) | ty::Float(_), ty::Array(arr_ty, _)) => {
             if !matches!(arr_ty.kind(), ty::Uint(UintTy::U8)) {
-                return false;
-            }
-            if matches!(from_ty.kind(), ty::Float(_)) && const_context {
-                // TODO: Remove when const_float_bits_conv is stabilized
-                // rust#72447
                 return false;
             }
 
