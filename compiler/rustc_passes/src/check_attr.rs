@@ -245,6 +245,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_coroutine(attr, target);
                 }
                 [sym::linkage, ..] => self.check_linkage(attr, span, target),
+                [sym::rustc_pub_transparent, ..] => self.check_rustc_pub_transparent( attr.span, span, attrs),
                 [
                     // ok
                     sym::allow
@@ -2379,6 +2380,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => {
                 self.dcx().emit_err(errors::Linkage { attr_span: attr.span, span });
             }
+        }
+    }
+
+    fn check_rustc_pub_transparent(&self, attr_span: Span, span: Span, attrs: &[Attribute]) {
+        if !attrs
+            .iter()
+            .filter(|attr| attr.has_name(sym::repr))
+            .filter_map(|attr| attr.meta_item_list())
+            .flatten()
+            .any(|nmi| nmi.has_name(sym::transparent))
+        {
+            self.dcx().emit_err(errors::RustcPubTransparent { span, attr_span });
         }
     }
 }
