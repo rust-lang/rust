@@ -1259,6 +1259,10 @@ pub struct TestFloatParse {
     pub host: TargetSelection,
 }
 
+impl TestFloatParse {
+    pub const ALLOW_FEATURES: &'static str = "f16,cfg_target_has_reliable_f16_f128";
+}
+
 impl Step for TestFloatParse {
     type Output = ToolBuildResult;
     const ONLY_HOSTS: bool = true;
@@ -1280,7 +1284,7 @@ impl Step for TestFloatParse {
             path: "src/etc/test-float-parse",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
-            allow_features: "",
+            allow_features: Self::ALLOW_FEATURES,
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })
