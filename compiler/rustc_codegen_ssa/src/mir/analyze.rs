@@ -16,26 +16,16 @@ use crate::traits::*;
 pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
     traversal_order: &[mir::BasicBlock],
-    reachable_locals: &BitSet<mir::Local>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
     let dominators = mir.basic_blocks.dominators();
     let locals = mir
         .local_decls
-        .iter_enumerated()
-        .map(|(local, decl)| {
-            if !reachable_locals.contains(local) {
-                return LocalKind::Unused;
-            }
+        .iter()
+        .map(|decl| {
             let ty = fx.monomorphize(decl.ty);
             let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-            if layout.is_zst() {
-                LocalKind::ZST
-            } else if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
-                LocalKind::Unused
-            } else {
-                LocalKind::Memory
-            }
+            if layout.is_zst() { LocalKind::ZST } else { LocalKind::Unused }
         })
         .collect();
 
@@ -83,11 +73,22 @@ struct LocalAnalyzer<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> {
 
 impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx> {
     fn define(&mut self, local: mir::Local, location: DefLocation) {
+        let fx = self.fx;
         let kind = &mut self.locals[local];
+        let decl = &fx.mir.local_decls[local];
         match *kind {
             LocalKind::ZST => {}
             LocalKind::Memory => {}
-            LocalKind::Unused => *kind = LocalKind::SSA(location),
+            LocalKind::Unused => {
+                let ty = fx.monomorphize(decl.ty);
+                let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
+                *kind =
+                    if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
+                        LocalKind::SSA(location)
+                    } else {
+                        LocalKind::Memory
+                    };
+            }
             LocalKind::SSA(_) => *kind = LocalKind::Memory,
         }
     }

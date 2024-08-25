@@ -192,9 +192,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             })
             .collect();
 
-    let (traversal_order, reachable_locals) =
-        traversal::mono_reachable_reverse_postorder(mir, cx.tcx(), instance);
-
     let mut fx = FunctionCx {
         instance,
         mir,
@@ -221,7 +218,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut start_bx);
 
-    let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order, &reachable_locals);
+    let traversal_order = traversal::mono_reachable_reverse_postorder(mir, cx.tcx(), instance);
+    let memory_locals = analyze::non_ssa_locals(&fx, &traversal_order);
 
     // Allocate variable and temp allocas
     let local_values = {
@@ -286,6 +284,12 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fx.codegen_block(bb);
         unreached_blocks.remove(bb);
     }
+
+    // FIXME: These empty unreachable blocks are *mostly* a waste. They are occasionally
+    // targets for a SwitchInt terminator, but the reimplementation of the mono-reachable
+    // simplification in SwitchInt lowering sometimes misses cases that
+    // mono_reachable_reverse_postorder manages to figure out.
+    // The solution is to do something like post-mono GVN. But for now we have this hack.
     for bb in unreached_blocks.iter() {
         fx.codegen_block_as_unreachable(bb);
     }
