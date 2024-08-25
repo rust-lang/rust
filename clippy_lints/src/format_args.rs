@@ -7,7 +7,7 @@ use clippy_utils::macros::{
     find_format_arg_expr, format_arg_removal_span, format_placeholder_format_span, is_assert_macro, is_format_macro,
     is_panic, matching_root_macro_call, root_macro_call_first_node, FormatArgsStorage, FormatParamUsage, MacroCall,
 };
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use itertools::Itertools;
 use rustc_ast::{
@@ -224,13 +224,11 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
             if let FormatArgsPiece::Placeholder(placeholder) = piece
                 && let Ok(index) = placeholder.argument.index
                 && let Some(arg) = self.format_args.arguments.all_args().get(index)
+                && let Some(arg_expr) = find_format_arg_expr(self.expr, arg)
             {
-                let arg_expr = find_format_arg_expr(self.expr, arg);
-
                 self.check_unused_format_specifier(placeholder, arg_expr);
 
-                if let Ok(arg_expr) = arg_expr
-                    && placeholder.format_trait == FormatTrait::Display
+                if placeholder.format_trait == FormatTrait::Display
                     && placeholder.format_options == FormatOptions::default()
                     && !self.is_aliased(index)
                 {
@@ -242,28 +240,13 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
         }
     }
 
-    fn check_unused_format_specifier(
-        &self,
-        placeholder: &FormatPlaceholder,
-        arg_expr: Result<&Expr<'_>, &rustc_ast::Expr>,
-    ) {
-        let ty_or_ast_expr = arg_expr.map(|expr| self.cx.typeck_results().expr_ty(expr).peel_refs());
-
-        let is_format_args = match ty_or_ast_expr {
-            Ok(ty) => is_type_lang_item(self.cx, ty, LangItem::FormatArguments),
-            Err(expr) => matches!(expr.peel_parens_and_refs().kind, rustc_ast::ExprKind::FormatArgs(_)),
-        };
-
+    fn check_unused_format_specifier(&self, placeholder: &FormatPlaceholder, arg: &Expr<'_>) {
         let options = &placeholder.format_options;
 
-        let arg_span = match arg_expr {
-            Ok(expr) => expr.span,
-            Err(expr) => expr.span,
-        };
-
         if let Some(placeholder_span) = placeholder.span
-            && is_format_args
             && *options != FormatOptions::default()
+            && let ty = self.cx.typeck_results().expr_ty(arg).peel_refs()
+            && is_type_lang_item(self.cx, ty, LangItem::FormatArguments)
         {
             span_lint_and_then(
                 self.cx,
@@ -274,7 +257,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                     let mut suggest_format = |spec| {
                         let message = format!("for the {spec} to apply consider using `format!()`");
 
-                        if let Some(mac_call) = matching_root_macro_call(self.cx, arg_span, sym::format_args_macro) {
+                        if let Some(mac_call) = matching_root_macro_call(self.cx, arg.span, sym::format_args_macro) {
                             diag.span_suggestion(
                                 self.cx.sess().source_map().span_until_char(mac_call.span, '!'),
                                 message,
@@ -424,7 +407,7 @@ impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
                 count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
             && implements_trait(cx, target, display_trait_id, &[])
             && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-            && let Some(receiver_snippet) = snippet_opt(cx, receiver.span.source_callsite())
+            && let Some(receiver_snippet) = receiver.span.source_callsite().get_source_text(cx)
         {
             let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
             if n_needed_derefs == 0 && !needs_ref {

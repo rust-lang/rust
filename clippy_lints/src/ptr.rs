@@ -1,7 +1,5 @@
-//! Checks for usage of  `&Vec[_]` and `&String`.
-
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::expr_sig;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local};
@@ -243,7 +241,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                         .chain(result.replacements.iter().map(|r| {
                             (
                                 r.expr_span,
-                                format!("{}{}", snippet_opt(cx, r.self_span).unwrap(), r.replacement),
+                                format!("{}{}", r.self_span.get_source_text(cx).unwrap(), r.replacement),
                             )
                         }))
                         .collect(),
@@ -372,7 +370,7 @@ impl fmt::Display for DerefTyDisplay<'_, '_> {
             DerefTy::Path => f.write_str("Path"),
             DerefTy::Slice(hir_ty, ty) => {
                 f.write_char('[')?;
-                match hir_ty.and_then(|s| snippet_opt(self.0, s)) {
+                match hir_ty.and_then(|s| s.get_source_text(self.0)) {
                     Some(s) => f.write_str(&s)?,
                     None => ty.fmt(f)?,
                 }
@@ -413,6 +411,7 @@ impl<'tcx> DerefTy<'tcx> {
     }
 }
 
+#[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
@@ -488,8 +487,6 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 return None;
                             }
 
-                            let ty_name = snippet_opt(cx, ty.span()).unwrap_or_else(|| args.type_at(1).to_string());
-
                             span_lint_hir_and_then(
                                 cx,
                                 PTR_ARG,
@@ -500,7 +497,10 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     diag.span_suggestion(
                                         hir_ty.span,
                                         "change this to",
-                                        format!("&{}{ty_name}", mutability.prefix_str()),
+                                        match ty.span().get_source_text(cx) {
+                                            Some(s) => format!("&{}{s}", mutability.prefix_str()),
+                                            None => format!("&{}{}", mutability.prefix_str(), args.type_at(1)),
+                                        },
                                         Applicability::Unspecified,
                                     );
                                 },

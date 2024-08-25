@@ -25,7 +25,6 @@ regex = { version = "1.5", optional = true }
 unicode-normalization = "0.1"
 unicode-script = { version = "0.5", default-features = false }
 semver = "1.0"
-rustc-semver = "1.1"
 url = "2.2"
 
 [dev-dependencies]

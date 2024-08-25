@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::{snippet, SpanRangeExt};
 use clippy_utils::{expr_or_init, is_trait_method, pat_is_wild};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, FnDecl, PatKind, TyKind};
@@ -81,8 +81,14 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         let new_closure_param = match find_elem_explicit_type_span(closure.fn_decl) {
             // We have an explicit type. Get its snippet, that of the binding name, and do `binding: ty`.
             // Fallback to `..` if we fail getting either snippet.
-            Some(ty_span) => snippet_opt(cx, elem.span)
-                .and_then(|binding_name| snippet_opt(cx, ty_span).map(|ty_name| format!("{binding_name}: {ty_name}")))
+            Some(ty_span) => elem
+                .span
+                .get_source_text(cx)
+                .and_then(|binding_name| {
+                    ty_span
+                        .get_source_text(cx)
+                        .map(|ty_name| format!("{binding_name}: {ty_name}"))
+                })
                 .unwrap_or_else(|| "..".to_string()),
             // Otherwise, we have no explicit type. We can replace with the binding name of the element.
             None => snippet(cx, elem.span, "..").into_owned(),

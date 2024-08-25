@@ -1,6 +1,6 @@
 use rustc_ast::Attribute;
-use rustc_semver::RustcVersion;
-use rustc_session::Session;
+use rustc_attr::parse_version;
+use rustc_session::{RustcVersion, Session};
 use rustc_span::{sym, Symbol};
 use serde::Deserialize;
 use std::fmt;
@@ -10,7 +10,7 @@ macro_rules! msrv_aliases {
         $($name:ident),* $(,)?
     })*) => {
         $($(
-        pub const $name: RustcVersion = RustcVersion::new($major, $minor, $patch);
+        pub const $name: RustcVersion = RustcVersion { major: $major, minor :$minor, patch: $patch };
         )*)*
     };
 }
@@ -18,6 +18,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,81,0  { LINT_REASONS_STABILIZATION }
+    1,80,0 { BOX_INTO_ITER}
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
@@ -81,9 +82,9 @@ impl<'de> Deserialize<'de> for Msrv {
         D: serde::Deserializer<'de>,
     {
         let v = String::deserialize(deserializer)?;
-        RustcVersion::parse(&v)
+        parse_version(Symbol::intern(&v))
             .map(|v| Msrv { stack: vec![v] })
-            .map_err(|_| serde::de::Error::custom("not a valid Rust version"))
+            .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
     }
 }
 
@@ -95,7 +96,7 @@ impl Msrv {
     pub fn read_cargo(&mut self, sess: &Session) {
         let cargo_msrv = std::env::var("CARGO_PKG_RUST_VERSION")
             .ok()
-            .and_then(|v| RustcVersion::parse(&v).ok());
+            .and_then(|v| parse_version(Symbol::intern(&v)));
 
         match (self.current(), cargo_msrv) {
             (None, Some(cargo_msrv)) => self.stack = vec![cargo_msrv],
@@ -115,7 +116,7 @@ impl Msrv {
     }
 
     pub fn meets(&self, required: RustcVersion) -> bool {
-        self.current().map_or(true, |version| version.meets(required))
+        self.current().map_or(true, |msrv| msrv >= required)
     }
 
     fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {
@@ -131,7 +132,7 @@ impl Msrv {
             }
 
             if let Some(msrv) = msrv_attr.value_str() {
-                if let Ok(version) = RustcVersion::parse(msrv.as_str()) {
+                if let Some(version) = parse_version(msrv) {
                     return Some(version);
                 }
 

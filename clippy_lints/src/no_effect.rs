@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::has_drop;
 use clippy_utils::{
     in_automatically_derived, is_inside_always_const_context, is_lint_allowed, path_to_local, peel_blocks,
@@ -268,34 +268,31 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && reduced.iter().all(|e| e.span.ctxt() == ctxt)
     {
         if let ExprKind::Index(..) = &expr.kind {
-            if is_inside_always_const_context(cx.tcx, expr.hir_id) {
-                return;
+            if !is_inside_always_const_context(cx.tcx, expr.hir_id)
+                && let [arr, func] = &*reduced
+                && let Some(arr) = arr.span.get_source_text(cx)
+                && let Some(func) = func.span.get_source_text(cx)
+            {
+                span_lint_hir_and_then(
+                    cx,
+                    UNNECESSARY_OPERATION,
+                    expr.hir_id,
+                    stmt.span,
+                    "unnecessary operation",
+                    |diag| {
+                        diag.span_suggestion(
+                            stmt.span,
+                            "statement can be written as",
+                            format!("assert!({arr}.len() > {func});"),
+                            Applicability::MaybeIncorrect,
+                        );
+                    },
+                );
             }
-            let snippet =
-                if let (Some(arr), Some(func)) = (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span)) {
-                    format!("assert!({arr}.len() > {func});")
-                } else {
-                    return;
-                };
-            span_lint_hir_and_then(
-                cx,
-                UNNECESSARY_OPERATION,
-                expr.hir_id,
-                stmt.span,
-                "unnecessary operation",
-                |diag| {
-                    diag.span_suggestion(
-                        stmt.span,
-                        "statement can be written as",
-                        snippet,
-                        Applicability::MaybeIncorrect,
-                    );
-                },
-            );
         } else {
             let mut snippet = String::new();
             for e in reduced {
-                if let Some(snip) = snippet_opt(cx, e.span) {
+                if let Some(snip) = e.span.get_source_text(cx) {
                     snippet.push_str(&snip);
                     snippet.push(';');
                 } else {

@@ -9,7 +9,6 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Item, MutTy, Mutability, Path, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
@@ -92,7 +91,12 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Symbol>,
 }
 
-impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE, MISSING_CLIPPY_VERSION_ATTRIBUTE]);
+impl_lint_pass!(LintWithoutLintPass => [
+    DEFAULT_LINT,
+    LINT_WITHOUT_LINT_PASS,
+    INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    MISSING_CLIPPY_VERSION_ATTRIBUTE,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -220,7 +224,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
             return;
         }
 
-        if RustcVersion::parse(value.as_str()).is_err() {
+        if rustc_attr::parse_version(value).is_none() {
             span_lint_and_help(
                 cx,
                 INVALID_CLIPPY_VERSION_ATTRIBUTE,
