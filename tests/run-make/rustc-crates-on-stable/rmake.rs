@@ -8,20 +8,17 @@ fn main() {
         // Use the stage0 beta cargo for the compilation (it shouldn't really matter which cargo we
         // use)
         let cargo = cargo()
-            // This is required to allow using nightly cargo features (public-dependency) with beta
-            // cargo
-            .env("RUSTC_BOOTSTRAP", "1")
-            .env("RUSTC_STAGE", "0") // Ensure `proc-macro2`'s nightly detection is disabled
+            // Ensure `proc-macro2`'s nightly detection is disabled
+            .env("RUSTC_STAGE", "0")
             .env("RUSTC", rustc_path())
+            // We want to disallow all nightly features to simulate a stable build
+            .env("RUSTFLAGS", "-Zallow-features=")
             .arg("build")
             .arg("--manifest-path")
             .arg(source_root().join("Cargo.toml"))
             .args(&[
                 "--config",
                 r#"workspace.exclude=["library/core"]"#,
-                // We want to disallow all nightly features, to simulate a stable build
-                // public-dependency needs to be enabled for cargo to work
-                "-Zallow-features=public-dependency",
                 // Avoid depending on transitive rustc crates
                 "--no-default-features",
                 // Emit artifacts in this temporary directory, not in the source_root's `target`
