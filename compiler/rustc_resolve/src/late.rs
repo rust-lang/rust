@@ -758,7 +758,14 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     fn visit_pat(&mut self, p: &'ast Pat) {
         let prev = self.diag_metadata.current_pat;
         self.diag_metadata.current_pat = Some(p);
-        visit::walk_pat(self, p);
+
+        match p.kind {
+            // We visit only the subpattern, allowing the condition to be resolved later in `resolve_pat`.
+            PatKind::Guard(ref subpat, _) => self.visit_pat(subpat),
+            // Otherwise, we just walk the pattern.
+            _ => visit::walk_pat(self, p),
+        }
+
         self.diag_metadata.current_pat = prev;
     }
     fn visit_local(&mut self, local: &'ast Local) {
@@ -3751,7 +3758,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// See the implementation and `fresh_binding` for more details.
     fn resolve_pattern_inner(
         &mut self,
-        pat: &Pat,
+        pat: &'ast Pat,
         pat_src: PatternSource,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
@@ -3809,6 +3816,15 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     bindings.last_mut().unwrap().1.extend(collected);
 
                     // Prevent visiting `ps` as we've already done so above.
+                    return false;
+                }
+                PatKind::Guard(ref subpat, ref cond) => {
+                    self.with_rib(ValueNS, RibKind::Normal, |this| {
+                        this.resolve_pattern_inner(subpat, pat_src, bindings);
+                        this.resolve_expr(cond, None);
+                    });
+
+                    // Prevent visiting `pat` as we've already done so above.
                     return false;
                 }
                 _ => {}

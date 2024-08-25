@@ -607,7 +607,7 @@ impl Pat {
     /// Walk top-down and call `it` in each place where a pattern occurs
     /// starting with the root pattern `walk` is called on. If `it` returns
     /// false then we will descend no further but siblings will be processed.
-    pub fn walk(&self, it: &mut impl FnMut(&Pat) -> bool) {
+    pub fn walk<'s>(&'s self, it: &mut impl FnMut(&'s Pat) -> bool) {
         if !it(self) {
             return;
         }
