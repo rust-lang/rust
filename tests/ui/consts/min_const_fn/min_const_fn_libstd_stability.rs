@@ -28,9 +28,11 @@ const fn bar2() -> u32 { foo2() } //~ ERROR not yet stable as a const fn
 // conformity is required
 const fn bar3() -> u32 {
     let x = std::cell::Cell::new(0u32);
-    x.get()
+    x.get();
     //~^ ERROR const-stable function cannot use `#[feature(const_refs_to_cell)]`
     //~| ERROR cannot call non-const fn
+    foo()
+    //~^ ERROR is not yet stable as a const fn
 }
 
 // check whether this function cannot be called even with the feature gate active
