@@ -171,6 +171,8 @@ macro_rules! from_str_float_impl {
         }
     };
 }
+
+from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
