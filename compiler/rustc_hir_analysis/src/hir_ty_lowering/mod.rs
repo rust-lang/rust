@@ -2069,6 +2069,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 };
                 self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
             }
+            // If we encounter a fully qualified path with RTN generics, then it must have
+            // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore
+            // it's certainly in an illegal position.
+            hir::TyKind::Path(hir::QPath::Resolved(_, path))
+                if path.segments.last().and_then(|segment| segment.args).is_some_and(|args| {
+                    matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
+                }) =>
+            {
+                let guar = self.dcx().emit_err(BadReturnTypeNotation { span: hir_ty.span });
+                Ty::new_error(tcx, guar)
+            }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
@@ -2093,7 +2104,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
             }
-            // TODO:
+            // If we encounter a type relative path with RTN generics, then it must have
+            // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore
+            // it's certainly in an illegal position.
             hir::TyKind::Path(hir::QPath::TypeRelative(_, segment))
                 if segment.args.is_some_and(|args| {
                     matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)

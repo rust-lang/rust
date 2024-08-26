@@ -787,7 +787,8 @@ pub(crate) struct AssociatedTypeTraitUninferredGenericParams {
     pub inferred_sugg: Option<Span>,
     pub bound: String,
     #[subdiagnostic]
-    pub mpart_sugg: Option<AssociatedTypeTraitUninferredGenericParamsMultipartSuggestion>,
+    pub mpart_sugg: Option<AssociatedItemTraitUninferredGenericParamsMultipartSuggestion>,
+    pub what: &'static str,
 }
 
 #[derive(Subdiagnostic)]

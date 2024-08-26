@@ -1845,19 +1845,38 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         assert_eq!(old_value, Some(bad_def));
     }
 
-    // TODO:
+    // When we have a return type notation type in a where clause, like
+    // `where <T as Trait>::method(..): Send`, we need to introduce new bound
+    // vars to the existing where clause's binder, to represent the lifetimes
+    // elided by the return-type-notation syntax.
+    //
+    // For example, given
+    // ```
+    // trait Foo {
+    //     async fn x<'r, T>();
+    // }
+    // ```
+    // and a bound that looks like:
+    //    `for<'a, 'b> <T as Trait<'a>>::x(): Other<'b>`
+    // this is going to expand to something like:
+    //    `for<'a, 'b, 'r, T> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: Other<'b>`.
+    //
+    // We handle this similarly for associated-type-bound style return-type-notation
+    // in `visit_segment_args`.
     fn try_append_return_type_notation_params(
         &mut self,
         hir_id: HirId,
         hir_ty: &'tcx hir::Ty<'tcx>,
     ) {
         let hir::TyKind::Path(qpath) = hir_ty.kind else {
-            // TODO:
+            // We only care about path types here. All other self types
+            // (including nesting the RTN type in another type) don't do
+            // anything.
             return;
         };
 
         let (mut bound_vars, item_def_id, item_segment) = match qpath {
-            // TODO:
+            // If we have a fully qualified method, then we don't need to do any special lookup.
             hir::QPath::Resolved(_, path)
                 if let [.., item_segment] = &path.segments[..]
                     && item_segment.args.is_some_and(|args| {
@@ -1873,23 +1892,32 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 (vec![], item_def_id, item_segment)
             }
 
-            // TODO:
+            // If we have a type-dependent path, then we do need to do some lookup.
             hir::QPath::TypeRelative(qself, item_segment)
                 if item_segment.args.is_some_and(|args| {
                     matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
                 }) =>
             {
+                // First, ignore a qself that isn't a type or `Self` param. Those are the
+                // only ones that support `T::Assoc` anyways in HIR lowering.
                 let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = qself.kind else {
                     return;
                 };
-
                 match path.res {
                     Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { trait_: _ } => {
+                        // Get the generics of this type's hir owner. This is *different*
+                        // from the generics of the parameter's definition, since we want
+                        // to be able to resolve an RTN path on a nested body (e.g. method
+                        // inside an impl) using the where clauses on the method.
                         let Some(generics) = self.tcx.hir_owner_node(hir_id.owner).generics()
                         else {
                             return;
                         };
 
+                        // Look for the first bound that contains an associated type that
+                        // matches the segment that we're looking for. We ignore any subsequent
+                        // bounds since we'll be emitting a hard error in HIR lowering, so this
+                        // is purely speculative.
                         let one_bound = generics.predicates.iter().find_map(|predicate| {
                             let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
                                 return None;
@@ -1927,7 +1955,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             _ => return,
         };
 
-        // TODO:
+        // Append the early-bound vars on the function, and then the late-bound ones.
+        // We actually turn type parameters into higher-ranked types here, but we
+        // deny them later in HIR lowering.
         bound_vars.extend(self.tcx.generics_of(item_def_id).own_params.iter().map(|param| {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
@@ -1941,11 +1971,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         }));
         bound_vars.extend(self.tcx.fn_sig(item_def_id).instantiate_identity().bound_vars());
 
-        // TODO:
+        // SUBTLE: Stash the old bound vars onto the *item segment* before appending
+        // the new bound vars. We do this because we need to know how many bound vars
+        // are present on the binder explicitly (i.e. not return-type-notation vars)
+        // to do bound var shifting correctly in HIR lowering.
         let existing_bound_vars = self.map.late_bound_vars.get_mut(&hir_id).unwrap();
         let existing_bound_vars_saved = existing_bound_vars.clone();
         existing_bound_vars.extend(bound_vars);
-        // TODO: subtle
         self.record_late_bound_vars(item_segment.hir_id, existing_bound_vars_saved);
     }
 }

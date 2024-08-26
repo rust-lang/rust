@@ -465,7 +465,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         Ok(())
     }
 
-    // TODO:
+    /// Lower a type, possibly specially handling the type if it's a return type notation
+    /// which we otherwise deny in other positions.
     pub fn lower_ty_maybe_return_type_notation(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let hir::TyKind::Path(qpath) = hir_ty.kind else {
             return self.lower_ty(hir_ty);
@@ -482,14 +483,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         )
                     }) =>
             {
+                // We don't allow generics on the module segments.
                 let _ =
                     self.prohibit_generic_args(mod_segments.iter(), GenericsArgsErrExtend::None);
 
                 let Res::Def(DefKind::AssocFn, item_def_id) = path.res else {
-                    bug!();
+                    bug!("expected RTN to resolve to associated fn");
                 };
                 let trait_def_id = tcx.parent(item_def_id);
 
+                // Good error for `where Trait::method(..): Send`.
                 let Some(self_ty) = opt_self_ty else {
                     return self.error_missing_qpath_self_ty(
                         trait_def_id,
@@ -508,6 +511,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::BoundConstness::NotConst,
                 );
 
+                // SUBTLE: As noted at the end of `try_append_return_type_notation_params`
+                // in `resolve_bound_vars`, we stash the explicit bound vars of the where
+                // clause onto the item segment of the RTN type. This allows us to know
+                // how many bound vars are *not* coming from the signature of the function
+                // from lowering RTN itself.
+                //
+                // For example, in `where for<'a> <T as Trait<'a>>::method(..): Other`,
+                // the `late_bound_vars` of the where clause predicate (i.e. this HIR ty's
+                // parent) will include `'a` AND all the early- and late-bound vars of the
+                // method. But when lowering the RTN type, we just want the list of vars
+                // we used to resolve the trait ref. We explicitly stored those back onto
+                // the item segment, since there's no other good place to put them.
                 let candidate =
                     ty::Binder::bind_with_vars(trait_ref, tcx.late_bound_vars(item_segment.hir_id));
 
@@ -539,7 +554,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    // TODO:
+    /// Perform type-dependent lookup for a *method* for return type notation.
+    /// This generally mirrors `<dyn HirTyLowerer>::lower_assoc_path`.
     fn resolve_type_relative_return_type_notation(
         &self,
         qself: &'tcx hir::Ty<'tcx>,
@@ -592,12 +608,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             _ => todo!(),
         };
 
-        // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`.
+        // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,
+        // which may happen via a higher-ranked where clause or supertrait.
         // This is the same restrictions as associated types; even though we could
         // support it, it just makes things a lot more difficult to support in
-        // `resolve_bound_vars`.
+        // `resolve_bound_vars`, since we'd need to introduce those as elided
+        // bound vars on the where clause too.
         if bound.has_bound_vars() {
-            todo!();
+            return Err(self.tcx().dcx().emit_err(
+                errors::AssociatedItemTraitUninferredGenericParams {
+                    span,
+                    inferred_sugg: Some(span.with_hi(item_segment.ident.span.lo())),
+                    bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder(),),
+                    mpart_sugg: None,
+                    what: "function",
+                },
+            ));
         }
 
         let trait_def_id = bound.def_id();
@@ -608,7 +634,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         Ok((bound, assoc_ty.def_id))
     }
 
-    // TODO:
+    /// Do the common parts of lowering an RTN type. This involves extending the
+    /// candidate binder to include all of the early- and late-bound vars that are
+    /// defined on the function itself, and constructing a projection to the RPITIT
+    /// return type of that function.
     fn lower_return_type_notation_ty(
         &self,
         candidate: ty::PolyTraitRef<'tcx>,
