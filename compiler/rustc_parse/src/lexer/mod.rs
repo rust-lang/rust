@@ -205,6 +205,16 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.report_unknown_prefix(start);
                     self.ident(start)
                 }
+                rustc_lexer::TokenKind::UnknownPrefixLifetime => {
+                    self.report_unknown_prefix(start);
+                    // Include the leading `'` in the real identifier, for macro
+                    // expansion purposes. See #12512 for the gory details of why
+                    // this is necessary.
+                    let lifetime_name = self.str_from(start);
+                    self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
+                    let ident = Symbol::intern(lifetime_name);
+                    token::Lifetime(ident, IdentIsRaw::No)
+                }
                 rustc_lexer::TokenKind::InvalidIdent
                 | rustc_lexer::TokenKind::InvalidPrefix
                     // Do not recover an identifier with emoji if the codepoint is a confusable
