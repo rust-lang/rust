@@ -363,6 +363,11 @@ fn resolve_associated_item<'tcx>(
                         tcx.item_name(trait_item_id)
                     ),
                 }
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::TransmuteTrait) {
+                let name = tcx.item_name(trait_item_id);
+                assert_eq!(name, sym::transmute);
+                let args = tcx.erase_regions(rcvr_args);
+                Some(ty::Instance::new(trait_item_id, args))
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
             }

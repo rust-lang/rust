@@ -11,7 +11,7 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = transmute::<usize, Box<Never>>(const 1_usize) -> [return: bb1, unwind unreachable];
+-         _1 = std::intrinsics::transmute::<usize, Box<Never>>(const 1_usize) -> [return: bb1, unwind unreachable];
 +         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
 +         goto -> bb1;
       }
