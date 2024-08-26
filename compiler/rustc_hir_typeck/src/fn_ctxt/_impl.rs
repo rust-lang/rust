@@ -798,7 +798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to be object-safe.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
-                let ty = self.lowerer().lower_ty_in_path(qself);
+                let ty = self.lowerer().lower_ty(qself);
                 (LoweredTy::from_raw(self, span, ty), qself, segment)
             }
             QPath::LangItem(..) => {

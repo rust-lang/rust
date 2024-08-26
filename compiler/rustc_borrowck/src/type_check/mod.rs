@@ -2043,9 +2043,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {

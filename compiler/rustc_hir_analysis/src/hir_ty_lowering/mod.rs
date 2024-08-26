@@ -85,10 +85,9 @@ pub enum PredicateFilter {
 
 #[derive(Debug)]
 pub enum RegionInferReason<'a> {
-    /// Lifetime on a trait object behind a reference.
-    /// This allows inferring information from the reference.
-    BorrowedObjectLifetimeDefault,
-    /// A trait object's lifetime.
+    /// Lifetime on a trait object that is spelled explicitly, e.g. `+ 'a` or `+ '_`.
+    ExplicitObjectLifetime,
+    /// A trait object's lifetime when it is elided, e.g. `dyn Any`.
     ObjectLifetimeDefault,
     /// Generic lifetime parameter
     Param(&'a ty::GenericParamDef),
@@ -1057,7 +1056,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
-        let bound = match (&qself_ty.kind(), qself_res) {
+        let bound = match (qself_ty.kind(), qself_res) {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
@@ -1999,16 +1998,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    /// Lower a type from the HIR to our internal notion of a type.
-    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        self.lower_ty_common(hir_ty, false, false)
-    }
-
-    /// Lower a type inside of a path from the HIR to our internal notion of a type.
-    pub fn lower_ty_in_path(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        self.lower_ty_common(hir_ty, false, true)
-    }
-
     fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
         let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
         match idx {
@@ -2026,7 +2015,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// 2. `in_path`: Whether the type appears inside of a path.
     ///    Used to provide correct diagnostics for bare trait object types.
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_ty_common(&self, hir_ty: &hir::Ty<'tcx>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
+    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         let result_ty = match &hir_ty.kind {
@@ -2036,7 +2025,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Ref(region, mt) => {
                 let r = self.lower_lifetime(region, RegionInferReason::Reference);
                 debug!(?r);
-                let t = self.lower_ty_common(mt.ty, true, false);
+                let t = self.lower_ty(mt.ty);
                 Ty::new_ref(tcx, r, t, mt.mutbl)
             }
             hir::TyKind::Never => tcx.types.never,
@@ -2065,20 +2054,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
-                self.prohibit_or_lint_bare_trait_object_ty(hir_ty, in_path);
+                self.prohibit_or_lint_bare_trait_object_ty(hir_ty);
 
                 let repr = match repr {
                     TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
-                self.lower_trait_object_ty(
-                    hir_ty.span,
-                    hir_ty.hir_id,
-                    bounds,
-                    lifetime,
-                    borrowed,
-                    repr,
-                )
+                self.lower_trait_object_ty(hir_ty.span, hir_ty.hir_id, bounds, lifetime, repr)
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
@@ -2106,7 +2088,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(qself, segment)) => {
                 debug!(?qself, ?segment);
-                let ty = self.lower_ty_common(qself, false, true);
+                let ty = self.lower_ty(qself);
                 self.lower_assoc_path(hir_ty.hir_id, hir_ty.span, ty, qself, segment, false)
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(tcx, guar))

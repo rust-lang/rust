@@ -4702,10 +4702,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let hir::ExprKind::Block(b, _) = body.value.kind
                 && b.expr.is_none()
             {
+                // The span of '}' in the end of block.
+                let span = self.tcx.sess.source_map().end_point(b.span);
                 sugg_spans.push((
-                    // The span will point to the closing curly brace `}` of the block.
-                    b.span.shrink_to_hi().with_lo(b.span.hi() - BytePos(1)),
-                    "\n    Ok(())\n}".to_string(),
+                    span.shrink_to_lo(),
+                    format!(
+                        "{}{}",
+                        "    Ok(())\n",
+                        self.tcx.sess.source_map().indentation_before(span).unwrap_or_default(),
+                    ),
                 ));
             }
             err.multipart_suggestion_verbose(

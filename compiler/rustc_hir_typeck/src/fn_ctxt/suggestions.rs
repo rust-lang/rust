@@ -2975,7 +2975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut suffix_suggestion = sugg.clone();
         suffix_suggestion.push((
             if matches!(
-                (&expected_ty.kind(), &checked_ty.kind()),
+                (expected_ty.kind(), checked_ty.kind()),
                 (ty::Int(_) | ty::Uint(_), ty::Float(_))
             ) {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
@@ -3077,7 +3077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
             };
 
-        match (&expected_ty.kind(), &checked_ty.kind()) {
+        match (expected_ty.kind(), checked_ty.kind()) {
             (ty::Int(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
