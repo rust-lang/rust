@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(unsafe_attributes, unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
@@ -28,7 +29,7 @@ impl RustString {
 }
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn LLVMRustStringWriteImpl(
     sr: &RustString,
     ptr: *const c_char,
@@ -46,7 +47,7 @@ pub fn initialize_available_targets() {
         ($cfg:meta, $($method:ident),*) => { {
             #[cfg($cfg)]
             fn init() {
-                extern "C" {
+                unsafe extern "C" {
                     $(fn $method();)*
                 }
                 unsafe {
