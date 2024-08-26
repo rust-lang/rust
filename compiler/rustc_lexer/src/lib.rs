@@ -92,7 +92,7 @@ pub enum TokenKind {
     UnknownPrefix,
 
     /// An unknown prefix in a lifetime, like `'foo#`.
-    /// 
+    ///
     /// Note that like above, only the `'` and prefix are included in the token
     /// and not the separator.
     UnknownPrefixLifetime,

@@ -188,9 +188,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     preceded_by_whitespace = true;
                     continue;
                 }
-                rustc_lexer::TokenKind::Ident => {
-                    self.ident(start)
-                }
+                rustc_lexer::TokenKind::Ident => self.ident(start),
                 rustc_lexer::TokenKind::RawIdent => {
                     let sym = nfc_normalize(self.str_from(start + BytePos(2)));
                     let span = self.mk_sp(start, self.pos);
@@ -215,20 +213,21 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let ident = Symbol::intern(lifetime_name);
                     token::Lifetime(ident, IdentIsRaw::No)
                 }
-                rustc_lexer::TokenKind::InvalidIdent
-                | rustc_lexer::TokenKind::InvalidPrefix
+                rustc_lexer::TokenKind::InvalidIdent | rustc_lexer::TokenKind::InvalidPrefix
                     // Do not recover an identifier with emoji if the codepoint is a confusable
                     // with a recoverable substitution token, like `➖`.
-                    if !UNICODE_ARRAY
-                        .iter()
-                        .any(|&(c, _, _)| {
-                            let sym = self.str_from(start);
-                            sym.chars().count() == 1 && c == sym.chars().next().unwrap()
-                        }) =>
+                    if !UNICODE_ARRAY.iter().any(|&(c, _, _)| {
+                        let sym = self.str_from(start);
+                        sym.chars().count() == 1 && c == sym.chars().next().unwrap()
+                    }) =>
                 {
                     let sym = nfc_normalize(self.str_from(start));
                     let span = self.mk_sp(start, self.pos);
-                    self.psess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
+                    self.psess
+                        .bad_unicode_identifiers
+                        .borrow_mut()
+                        .entry(sym)
+                        .or_default()
                         .push(span);
                     token::Ident(sym, IdentIsRaw::No)
                 }
@@ -259,9 +258,9 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
-                            self
-                                .dcx()
-                                .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
+                            self.dcx().emit_err(errors::UnderscoreLiteralSuffix {
+                                span: self.mk_sp(suffix_start, self.pos),
+                            });
                             None
                         } else {
                             Some(Symbol::intern(string))
@@ -279,7 +278,8 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     self.last_lifetime = Some(self.mk_sp(start, start + BytePos(1)));
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
-                        self.dcx().struct_err("lifetimes cannot start with a number")
+                        self.dcx()
+                            .struct_err("lifetimes cannot start with a number")
                             .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
                     }
@@ -341,16 +341,19 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     // first remove compound tokens like `<<` from `rustc_lexer`, and then add
                     // fancier error recovery to it, as there will be less overall work to do this
                     // way.
-                    let (token, sugg) = unicode_chars::check_for_substitution(self, start, c, repeats+1);
+                    let (token, sugg) =
+                        unicode_chars::check_for_substitution(self, start, c, repeats + 1);
                     self.dcx().emit_err(errors::UnknownTokenStart {
                         span: self.mk_sp(start, self.pos + Pos::from_usize(repeats * c.len_utf8())),
                         escaped: escaped_char(c),
                         sugg,
-                        null: if c == '\x00' {Some(errors::UnknownTokenNull)} else {None},
+                        null: if c == '\x00' { Some(errors::UnknownTokenNull) } else { None },
                         repeat: if repeats > 0 {
                             swallow_next_invalid = repeats;
                             Some(errors::UnknownTokenRepeat { repeats })
-                        } else {None}
+                        } else {
+                            None
+                        },
                     });
 
                     if let Some(token) = token {
