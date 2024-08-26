@@ -9,6 +9,7 @@ use crate::concurrency::data_race::NaReadType;
 use crate::*;
 
 pub mod diagnostics;
+mod foreign_access_skipping;
 mod perms;
 mod tree;
 mod unimap;
@@ -296,7 +297,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.machine.current_span(),
         )?;
         // Record the parent-child pair in the tree.
-        tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
+        tree_borrows.new_child(
+            orig_tag,
+            new_tag,
+            new_perm.initial_state,
+            range,
+            span,
+            new_perm.protector.is_some(),
+        )?;
         drop(tree_borrows);
 
         // Also inform the data race model (but only if any bytes are actually affected).

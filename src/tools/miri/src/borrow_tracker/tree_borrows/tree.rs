@@ -21,6 +21,7 @@ use crate::borrow_tracker::tree_borrows::Permission;
 use crate::borrow_tracker::tree_borrows::diagnostics::{
     self, NodeDebugInfo, TbError, TransitionError,
 };
+use crate::borrow_tracker::tree_borrows::foreign_access_skipping::IdempotentForeignAccess;
 use crate::borrow_tracker::tree_borrows::perms::PermTransition;
 use crate::borrow_tracker::tree_borrows::unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap};
 use crate::borrow_tracker::{GlobalState, ProtectorKind};
@@ -45,28 +46,28 @@ pub(super) struct LocationState {
     initialized: bool,
     /// This pointer's current permission / future initial permission.
     permission: Permission,
-    /// Strongest foreign access whose effects have already been applied to
-    /// this node and all its children since the last child access.
-    /// This is `None` if the most recent access is a child access,
-    /// `Some(Write)` if at least one foreign write access has been applied
-    /// since the previous child access, and `Some(Read)` if at least one
-    /// foreign read and no foreign write have occurred since the last child access.
-    latest_foreign_access: Option<AccessKind>,
+    /// See `foreign_access_skipping.rs`.
+    /// Stores an idempotent foreign access for this location and its children.
+    /// For correctness, this must not be too strong, and the recorded idempotent foreign access
+    /// of all children must be at least as strong as this. For performance, it should be as strong as possible.
+    idempotent_foreign_access: IdempotentForeignAccess,
 }
 
 impl LocationState {
     /// Constructs a new initial state. It has neither been accessed, nor been subjected
     /// to any foreign access yet.
     /// The permission is not allowed to be `Active`.
-    fn new_uninit(permission: Permission) -> Self {
+    /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
+    fn new_uninit(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
         assert!(permission.is_initial() || permission.is_disabled());
-        Self { permission, initialized: false, latest_foreign_access: None }
+        Self { permission, initialized: false, idempotent_foreign_access: sifa }
     }
 
     /// Constructs a new initial state. It has not yet been subjected
     /// to any foreign access. However, it is already marked as having been accessed.
-    fn new_init(permission: Permission) -> Self {
-        Self { permission, initialized: true, latest_foreign_access: None }
+    /// `sifa` is the (strongest) idempotent foreign access, see `foreign_access_skipping.rs`
+    fn new_init(permission: Permission, sifa: IdempotentForeignAccess) -> Self {
+        Self { permission, initialized: true, idempotent_foreign_access: sifa }
     }
 
     /// Check if the location has been initialized, i.e. if it has
@@ -143,52 +144,21 @@ impl LocationState {
         }
     }
 
-    // Helper to optimize the tree traversal.
-    // The optimization here consists of observing thanks to the tests
-    // `foreign_read_is_noop_after_foreign_write` and `all_transitions_idempotent`,
-    // that there are actually just three possible sequences of events that can occur
-    // in between two child accesses that produce different results.
-    //
-    // Indeed,
-    // - applying any number of foreign read accesses is the same as applying
-    //   exactly one foreign read,
-    // - applying any number of foreign read or write accesses is the same
-    //   as applying exactly one foreign write.
-    // therefore the three sequences of events that can produce different
-    // outcomes are
-    // - an empty sequence (`self.latest_foreign_access = None`)
-    // - a nonempty read-only sequence (`self.latest_foreign_access = Some(Read)`)
-    // - a nonempty sequence with at least one write (`self.latest_foreign_access = Some(Write)`)
-    //
-    // This function not only determines if skipping the propagation right now
-    // is possible, it also updates the internal state to keep track of whether
-    // the propagation can be skipped next time.
-    // It is a performance loss not to call this function when a foreign access occurs.
-    // FIXME: This optimization is wrong, and is currently disabled (by ignoring the
-    // result returned here). Since we presumably want an optimization like this,
-    // we should add it back. See #3864 for more information.
+    /// Tree traversal optimizations. See `foreign_access_skipping.rs`.
+    /// This checks if such a foreign access can be skipped.
     fn skip_if_known_noop(
         &self,
         access_kind: AccessKind,
         rel_pos: AccessRelatedness,
     ) -> ContinueTraversal {
         if rel_pos.is_foreign() {
-            let new_access_noop = match (self.latest_foreign_access, access_kind) {
-                // Previously applied transition makes the new one a guaranteed
-                // noop in the two following cases:
-                // (1) justified by `foreign_read_is_noop_after_foreign_write`
-                (Some(AccessKind::Write), AccessKind::Read) => true,
-                // (2) justified by `all_transitions_idempotent`
-                (Some(old), new) if old == new => true,
-                // In all other cases there has been a recent enough
-                // child access that the effects of the new foreign access
-                // need to be applied to this subtree.
-                _ => false,
-            };
+            let happening_now = IdempotentForeignAccess::from_foreign(access_kind);
+            let new_access_noop =
+                self.idempotent_foreign_access.can_skip_foreign_access(happening_now);
             if new_access_noop {
-                // Abort traversal if the new transition is indeed guaranteed
+                // Abort traversal if the new access is indeed guaranteed
                 // to be noop.
-                // No need to update `self.latest_foreign_access`,
+                // No need to update `self.idempotent_foreign_access`,
                 // the type of the current streak among nonempty read-only
                 // or nonempty with at least one write has not changed.
                 ContinueTraversal::SkipSelfAndChildren
@@ -207,20 +177,17 @@ impl LocationState {
     }
 
     /// Records a new access, so that future access can potentially be skipped
-    /// by `skip_if_known_noop`.
-    /// The invariants for this function are closely coupled to the function above:
-    /// It MUST be called on child accesses, and on foreign accesses MUST be called
-    /// when `skip_if_know_noop` returns `Recurse`, and MUST NOT be called otherwise.
-    /// FIXME: This optimization is wrong, and is currently disabled (by ignoring the
-    /// result returned here). Since we presumably want an optimization like this,
-    /// we should add it back. See #3864 for more information.
-    #[allow(unused)]
+    /// by `skip_if_known_noop`. This must be called on child accesses, and otherwise
+    /// shoud be called on foreign accesses for increased performance. It should not be called
+    /// when `skip_if_known_noop` indicated skipping, since it then is a no-op.
+    /// See `foreign_access_skipping.rs`
     fn record_new_access(&mut self, access_kind: AccessKind, rel_pos: AccessRelatedness) {
-        if rel_pos.is_foreign() {
-            self.latest_foreign_access = Some(access_kind);
-        } else {
-            self.latest_foreign_access = None;
-        }
+        debug_assert!(matches!(
+            self.skip_if_known_noop(access_kind, rel_pos),
+            ContinueTraversal::Recurse
+        ));
+        self.idempotent_foreign_access
+            .record_new(IdempotentForeignAccess::from_acc_and_rel(access_kind, rel_pos));
     }
 }
 
@@ -277,6 +244,11 @@ pub(super) struct Node {
     /// It is only ever `Disabled` for a tree root, since the root is initialized to `Active` by
     /// its own separate mechanism.
     default_initial_perm: Permission,
+    /// The default initial (strongest) idempotent foreign access.
+    /// This participates in the invariant for `LocationState::idempotent_foreign_access`
+    /// in cases where there is no location state yet. See `foreign_access_skipping.rs`,
+    /// and `LocationState::idempotent_foreign_access` for more information
+    default_initial_idempotent_foreign_access: IdempotentForeignAccess,
     /// Some extra information useful only for debugging purposes
     pub debug_info: NodeDebugInfo,
 }
@@ -430,7 +402,7 @@ where
                 }
                 self.stack.push((
                     child,
-                    AccessRelatedness::DistantAccess,
+                    AccessRelatedness::CousinAccess,
                     RecursionState::BeforeChildren,
                 ));
             }
@@ -591,6 +563,8 @@ impl Tree {
                 parent: None,
                 children: SmallVec::default(),
                 default_initial_perm: root_default_perm,
+                // The root may never be skipped, all accesses will be local.
+                default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
                 debug_info,
             });
             nodes
@@ -601,7 +575,10 @@ impl Tree {
             // We also ensure that it is initialized, so that no `Active` but
             // not yet initialized nodes exist. Essentially, we pretend there
             // was a write that initialized these to `Active`.
-            perms.insert(root_idx, LocationState::new_init(Permission::new_active()));
+            perms.insert(
+                root_idx,
+                LocationState::new_init(Permission::new_active(), IdempotentForeignAccess::None),
+            );
             RangeMap::new(size, perms)
         };
         Self { root: root_idx, nodes, rperms, tag_mapping }
@@ -617,27 +594,77 @@ impl<'tcx> Tree {
         default_initial_perm: Permission,
         reborrow_range: AllocRange,
         span: Span,
+        prot: bool,
     ) -> InterpResult<'tcx> {
         assert!(!self.tag_mapping.contains_key(&new_tag));
         let idx = self.tag_mapping.insert(new_tag);
         let parent_idx = self.tag_mapping.get(&parent_tag).unwrap();
+        let strongest_idempotent = default_initial_perm.strongest_idempotent_foreign_access(prot);
         // Create the node
         self.nodes.insert(idx, Node {
             tag: new_tag,
             parent: Some(parent_idx),
             children: SmallVec::default(),
             default_initial_perm,
+            default_initial_idempotent_foreign_access: strongest_idempotent,
             debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
         });
         // Register new_tag as a child of parent_tag
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
         // Initialize perms
-        let perm = LocationState::new_init(default_initial_perm);
+        let perm = LocationState::new_init(default_initial_perm, strongest_idempotent);
         for (_perms_range, perms) in self.rperms.iter_mut(reborrow_range.start, reborrow_range.size)
         {
             perms.insert(idx, perm);
         }
+
+        // Inserting the new perms might have broken the SIFA invariant (see `foreign_access_skipping.rs`).
+        // We now weaken the recorded SIFA for our parents, until the invariant is restored.
+        // We could weaken them all to `LocalAccess`, but it is more efficient to compute the SIFA
+        // for the new permission statically, and use that.
+        self.update_last_accessed_after_retag(parent_idx, strongest_idempotent);
+
         interp_ok(())
+    }
+
+    /// Restores the SIFA "children are stronger" invariant after a retag.
+    /// See `foreign_access_skipping` and `new_child`.
+    fn update_last_accessed_after_retag(
+        &mut self,
+        mut current: UniIndex,
+        strongest_allowed: IdempotentForeignAccess,
+    ) {
+        // We walk the tree upwards, until the invariant is restored
+        loop {
+            let current_node = self.nodes.get_mut(current).unwrap();
+            // Call `ensure_no_stronger_than` on all SIFAs for this node: the per-location SIFA, as well
+            // as the default SIFA for not-yet-initialized locations.
+            // Record whether we did any change; if not, the invariant is restored and we can stop the traversal.
+            let mut any_change = false;
+            for (_, map) in self.rperms.iter_mut_all() {
+                // Check if this node has a state for this location (or range of locations).
+                if let Some(perm) = map.get_mut(current) {
+                    // Update the per-location SIFA, recording if it changed.
+                    any_change |=
+                        perm.idempotent_foreign_access.ensure_no_stronger_than(strongest_allowed);
+                }
+            }
+            // Now update `default_initial_idempotent_foreign_access`, which stores the default SIFA for not-yet-initialized locations.
+            any_change |= current_node
+                .default_initial_idempotent_foreign_access
+                .ensure_no_stronger_than(strongest_allowed);
+
+            if any_change {
+                let Some(next) = self.nodes.get(current).unwrap().parent else {
+                    // We have arrived at the root.
+                    break;
+                };
+                current = next;
+                continue;
+            } else {
+                break;
+            }
+        }
     }
 
     /// Deallocation requires
@@ -731,13 +758,8 @@ impl<'tcx> Tree {
         let node_skipper = |access_kind: AccessKind, args: &NodeAppArgs<'_>| -> ContinueTraversal {
             let NodeAppArgs { node, perm, rel_pos } = args;
 
-            let old_state = perm
-                .get()
-                .copied()
-                .unwrap_or_else(|| LocationState::new_uninit(node.default_initial_perm));
-            // FIXME: See #3684
-            let _would_skip_if_not_for_fixme = old_state.skip_if_known_noop(access_kind, *rel_pos);
-            ContinueTraversal::Recurse
+            let old_state = perm.get().copied().unwrap_or_else(|| node.default_location_state());
+            old_state.skip_if_known_noop(access_kind, *rel_pos)
         };
         let node_app = |perms_range: Range<u64>,
                         access_kind: AccessKind,
@@ -746,10 +768,12 @@ impl<'tcx> Tree {
          -> Result<(), TransitionError> {
             let NodeAppArgs { node, mut perm, rel_pos } = args;
 
-            let old_state = perm.or_insert(LocationState::new_uninit(node.default_initial_perm));
+            let old_state = perm.or_insert(node.default_location_state());
 
-            // FIXME: See #3684
-            // old_state.record_new_access(access_kind, rel_pos);
+            // Call this function now, which ensures it is only called when
+            // `skip_if_known_noop` returns `Recurse`, due to the contract of
+            // `traverse_this_parents_children_other`.
+            old_state.record_new_access(access_kind, rel_pos);
 
             let protected = global.borrow().protected_tags.contains_key(&node.tag);
             let transition = old_state.perform_access(access_kind, rel_pos, protected)?;
@@ -976,6 +1000,15 @@ impl Tree {
     }
 }
 
+impl Node {
+    pub fn default_location_state(&self) -> LocationState {
+        LocationState::new_uninit(
+            self.default_initial_perm,
+            self.default_initial_idempotent_foreign_access,
+        )
+    }
+}
+
 impl VisitProvenance for Tree {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         // To ensure that the root never gets removed, we visit it
@@ -998,15 +1031,14 @@ pub enum AccessRelatedness {
     AncestorAccess,
     /// The accessed pointer is neither of the above.
     // It's a cousin/uncle/etc., something in a side branch.
-    // FIXME: find a better name ?
-    DistantAccess,
+    CousinAccess,
 }
 
 impl AccessRelatedness {
     /// Check that access is either Ancestor or Distant, i.e. not
     /// a transitive child (initial pointer included).
     pub fn is_foreign(self) -> bool {
-        matches!(self, AccessRelatedness::AncestorAccess | AccessRelatedness::DistantAccess)
+        matches!(self, AccessRelatedness::AncestorAccess | AccessRelatedness::CousinAccess)
     }
 
     /// Given the AccessRelatedness for the parent node, compute the AccessRelatedness
@@ -1016,7 +1048,7 @@ impl AccessRelatedness {
         use AccessRelatedness::*;
         match self {
             AncestorAccess | This => AncestorAccess,
-            StrictChildAccess | DistantAccess => DistantAccess,
+            StrictChildAccess | CousinAccess => CousinAccess,
         }
     }
 }

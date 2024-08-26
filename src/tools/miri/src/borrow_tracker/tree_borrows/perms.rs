@@ -48,6 +48,7 @@ enum PermissionPriv {
     Disabled,
 }
 use self::PermissionPriv::*;
+use super::foreign_access_skipping::IdempotentForeignAccess;
 
 impl PartialOrd for PermissionPriv {
     /// PermissionPriv is ordered by the reflexive transitive closure of
@@ -86,6 +87,28 @@ impl PermissionPriv {
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
     fn compatible_with_protector(&self) -> bool {
         !matches!(self, ReservedIM)
+    }
+
+    /// See `foreign_access_skipping.rs`. Computes the SIFA of a permission.
+    fn strongest_idempotent_foreign_access(&self, prot: bool) -> IdempotentForeignAccess {
+        match self {
+            // A protected non-conflicted Reserved will become conflicted under a foreign read,
+            // and is hence not idempotent under it.
+            ReservedFrz { conflicted } if prot && !conflicted => IdempotentForeignAccess::None,
+            // Otherwise, foreign reads do not affect Reserved
+            ReservedFrz { .. } => IdempotentForeignAccess::Read,
+            // Famously, ReservedIM survives foreign writes. It is never protected.
+            ReservedIM if prot => unreachable!("Protected ReservedIM should not exist!"),
+            ReservedIM => IdempotentForeignAccess::Write,
+            // Active changes on any foreign access (becomes Frozen/Disabled).
+            Active => IdempotentForeignAccess::None,
+            // Frozen survives foreign reads, but not writes.
+            Frozen => IdempotentForeignAccess::Read,
+            // Disabled survives foreign reads and writes. It survives them
+            // even if protected, because a protected `Disabled` is not initialized
+            // and does therefore not trigger UB.
+            Disabled => IdempotentForeignAccess::Write,
+        }
     }
 }
 
@@ -304,6 +327,13 @@ impl Permission {
             (Disabled, Disabled) => true,
             (Disabled, _) => false,
         }
+    }
+
+    /// Returns the strongest foreign action this node survives (without change),
+    /// where `prot` indicates if it is protected.
+    /// See `foreign_access_skipping`
+    pub fn strongest_idempotent_foreign_access(&self, prot: bool) -> IdempotentForeignAccess {
+        self.inner.strongest_idempotent_foreign_access(prot)
     }
 }
 
@@ -575,7 +605,7 @@ mod propagation_optimization_checks {
     impl Exhaustive for AccessRelatedness {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
             use AccessRelatedness::*;
-            Box::new(vec![This, StrictChildAccess, AncestorAccess, DistantAccess].into_iter())
+            Box::new(vec![This, StrictChildAccess, AncestorAccess, CousinAccess].into_iter())
         }
     }
 
@@ -629,6 +659,35 @@ mod propagation_optimization_checks {
                             perform_access(new_access, rel_pos, new, new_protected).unwrap()
                         );
                     }
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn permission_sifa_is_correct() {
+        // Tests that `strongest_idempotent_foreign_access` is correct. See `foreign_access_skipping.rs`.
+        for perm in PermissionPriv::exhaustive() {
+            // Assert that adding a protector makes it less idempotent.
+            if perm.compatible_with_protector() {
+                assert!(perm.strongest_idempotent_foreign_access(true) <= perm.strongest_idempotent_foreign_access(false));
+            }
+            for prot in bool::exhaustive() {
+                if prot {
+                    precondition!(perm.compatible_with_protector());
+                }
+                let access = perm.strongest_idempotent_foreign_access(prot);
+                // We now assert it is idempotent, and never causes UB.
+                // First, if the SIFA includes foreign reads, assert it is idempotent under foreign reads.
+                if access >= IdempotentForeignAccess::Read {
+                    // We use `CousinAccess` here. We could also use `AncestorAccess`, since `transition::perform_access` treats these the same.
+                    // The only place they are treated differently is in protector end accesses, but these are not handled here.
+                    assert_eq!(perm, transition::perform_access(AccessKind::Read, AccessRelatedness::CousinAccess, perm, prot).unwrap());
+                }
+                // Then, if the SIFA includes foreign writes, assert it is idempotent under foreign writes.
+                if access >= IdempotentForeignAccess::Write {
+                    assert_eq!(perm, transition::perform_access(AccessKind::Write, AccessRelatedness::CousinAccess, perm, prot).unwrap());
                 }
             }
         }
