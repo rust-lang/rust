@@ -494,6 +494,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
             AssertKind::ResumedAfterPanic(coroutine) => {
                 stable_mir::mir::AssertMessage::ResumedAfterPanic(coroutine.stable(tables))
             }
+            AssertKind::ResumedAfterDrop(coroutine) => {
+                stable_mir::mir::AssertMessage::ResumedAfterDrop(coroutine.stable(tables))
+            }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 stable_mir::mir::AssertMessage::MisalignedPointerDereference {
                     required: required.stable(tables),
