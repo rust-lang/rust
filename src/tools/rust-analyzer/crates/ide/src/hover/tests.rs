@@ -182,13 +182,26 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
 
 fn check_actions(ra_fixture: &str, expect: Expect) {
     let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
-    let hover = analysis
+    let mut hover = analysis
         .hover(
             &HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG },
             FileRange { file_id, range: position.range_or_empty() },
         )
         .unwrap()
         .unwrap();
+    // stub out ranges into minicore as they can change every now and then
+    hover.info.actions.iter_mut().for_each(|action| match action {
+        super::HoverAction::GoToType(act) => act.iter_mut().for_each(|data| {
+            if data.nav.file_id == file_id {
+                return;
+            }
+            data.nav.full_range = TextRange::empty(span::TextSize::new(!0));
+            if let Some(range) = &mut data.nav.focus_range {
+                *range = TextRange::empty(span::TextSize::new(!0));
+            }
+        }),
+        _ => (),
+    });
     expect.assert_debug_eq(&hover.info.actions)
 }
 
@@ -200,10 +213,23 @@ fn check_hover_range(ra_fixture: &str, expect: Expect) {
 
 fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
-    let hover = analysis
+    let mut hover = analysis
         .hover(&HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG }, range)
         .unwrap()
         .unwrap();
+    // stub out ranges into minicore as they can change every now and then
+    hover.info.actions.iter_mut().for_each(|action| match action {
+        super::HoverAction::GoToType(act) => act.iter_mut().for_each(|data| {
+            if data.nav.file_id == range.file_id {
+                return;
+            }
+            data.nav.full_range = TextRange::empty(span::TextSize::new(!0));
+            if let Some(range) = &mut data.nav.focus_range {
+                *range = TextRange::empty(span::TextSize::new(!0));
+            }
+        }),
+        _ => (),
+    });
     expect.assert_debug_eq(&hover.info.actions);
 }
 
@@ -483,8 +509,13 @@ fn main() {
                                 file_id: FileId(
                                     1,
                                 ),
+<<<<<<< HEAD
                                 full_range: 633..868,
                                 focus_range: 694..700,
+=======
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
+>>>>>>> 33e4a08d5b (minor: Reduce friction for updating minicore)
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",
@@ -3104,26 +3135,26 @@ struct S{ f1: u32 }
 fn main() { let s$0t = S{ f1:0 }; }
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..19,
-                                    focus_range: 7..8,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..19,
+                                focus_range: 7..8,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3616,8 +3647,8 @@ pub mod future {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 21..69,
-                                focus_range: 60..66,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -8479,8 +8510,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7802..8044,
-                                focus_range: 7867..7873,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -8493,8 +8524,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 8674..9173,
-                                focus_range: 8751..8759,
+                                full_range: 4294967295..4294967295,
+                                focus_range: 4294967295..4294967295,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
