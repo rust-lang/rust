@@ -1124,9 +1124,25 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p_u16s = maybe_verbatim(p)?;
-    cvt(unsafe { c::DeleteFileW(p_u16s.as_ptr()) })?;
-    Ok(())
+    let mut opts = OpenOptions::new();
+    opts.access_mode(c::DELETE);
+    opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
+    let f = File::open(p, &opts)?;
+    if let Err(e) = f.posix_delete() {
+        // If posix delete isn't supported, fallback to win32 delete.
+        if matches!(
+            e.raw_os_error().map(|c| c as u32),
+            Some(c::ERROR_NOT_SUPPORTED)
+                | Some(c::ERROR_INVALID_FUNCTION)
+                | Some(c::ERROR_INVALID_PARAMETER)
+        ) {
+            f.win32_delete()
+        } else {
+            Err(e)
+        }
+    } else {
+        Ok(())
+    }
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
