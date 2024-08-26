@@ -13,12 +13,10 @@ Environment (TEE) for Android.
 
 ## Requirements
 
-This target is cross-compiled. It has no special requirements for the host.
+These targets are cross-compiled. They have no special requirements for the host.
 
-It fully supports alloc with the default allocator, and partially supports std.
-Notably, most I/O functionality is not supported, e.g. filesystem support and
-networking support are not present and any APIs that rely on them will panic at
-runtime.
+Support for the standard library is work-in-progress. It is expected that
+they will support alloc with the default allocator, and partially support std.
 
 Trusty uses the ELF file format.
 
