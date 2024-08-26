@@ -394,6 +394,7 @@ fn sidebar_assoc_items<'a>(
     let cache = cx.cache();
 
     let mut assoc_consts = Vec::new();
+    let mut assoc_types = Vec::new();
     let mut methods = Vec::new();
     if let Some(v) = cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
@@ -401,22 +402,14 @@ fn sidebar_assoc_items<'a>(
 
         {
             let used_links_bor = &mut used_links;
-            assoc_consts.extend(
-                v.iter()
-                    .filter(|i| i.inner_impl().trait_.is_none())
-                    .flat_map(|i| get_associated_constants(i.inner_impl(), used_links_bor)),
-            );
+            for impl_ in v.iter().map(|i| i.inner_impl()).filter(|i| i.trait_.is_none()) {
+                assoc_consts.extend(get_associated_constants(impl_, used_links_bor));
+                assoc_types.extend(get_associated_types(impl_, used_links_bor));
+                methods.extend(get_methods(impl_, false, used_links_bor, false, cx.tcx()));
+            }
             // We want links' order to be reproducible so we don't use unstable sort.
             assoc_consts.sort();
-
-            #[rustfmt::skip] // rustfmt makes the pipeline less readable
-            methods.extend(
-                v.iter()
-                    .filter(|i| i.inner_impl().trait_.is_none())
-                    .flat_map(|i| get_methods(i.inner_impl(), false, used_links_bor, false, cx.tcx())),
-            );
-
-            // We want links' order to be reproducible so we don't use unstable sort.
+            assoc_types.sort();
             methods.sort();
         }
 
@@ -443,15 +436,24 @@ fn sidebar_assoc_items<'a>(
             let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
-            sidebar_render_assoc_items(
-                cx,
-                &mut id_map,
-                concrete,
-                synthetic,
-                blanket_impl,
-                &mut blocks,
-            );
+            sidebar_render_assoc_items(cx, &mut id_map, concrete, synthetic, blanket_impl, &mut blocks);
         }
+
+        blocks.extend([
+            LinkBlock::new(
+                Link::new("implementations", "Associated Constants"),
+                "associatedconstant",
+                assoc_consts,
+            ),
+            LinkBlock::new(
+                Link::new("implementations", "Associated Types"),
+                "associatedtype",
+                assoc_types,
+            ),
+            LinkBlock::new(Link::new("implementations", "Methods"), "method", methods),
+        ]);
+        blocks.append(&mut deref_methods);
+        blocks.extend([concrete, synthetic, blanket]);
         links.append(&mut blocks);
     }
 }
@@ -709,6 +711,22 @@ fn get_associated_constants<'a>(
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(Link::new(
                 get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
+                name.as_str(),
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+}
+
+fn get_associated_types<'a>(
+    i: &'a clean::Impl,
+    used_links: &mut FxHashSet<String>,
+) -> Vec<Link<'a>> {
+    i.items
+        .iter()
+        .filter_map(|item| match item.name {
+            Some(ref name) if !name.is_empty() && item.is_associated_type() => Some(Link::new(
+                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
                 name.as_str(),
             )),
             _ => None,
