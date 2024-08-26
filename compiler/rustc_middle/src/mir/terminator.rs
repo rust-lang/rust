@@ -457,7 +457,7 @@ mod helper {
         #[cfg_attr(not(bootstrap), define_opaque(Successors))]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
-            (&[]).into_iter().copied().chain(Some(target))
+            (&[]).into_iter().copied().chain(Some(target).into_iter().chain(None))
         }
     }
 
@@ -467,13 +467,23 @@ mod helper {
         pub fn successors(&self) -> Successors<'_> {
             use self::TerminatorKind::*;
             match *self {
+                // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
+                Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
+                    slice::from_ref(t)
+                        .into_iter()
+                        .copied()
+                        .chain(Some(u).into_iter().chain(Some(d)))
+                }
+                // 2-successors
                 Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
                 | Yield { resume: ref t, drop: Some(u), .. }
-                | Drop { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
+                | Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: None, .. }
+                | Drop { target: ref t, unwind: _, drop: Some(u), .. }
                 | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
                 | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
-                    slice::from_ref(t).into_iter().copied().chain(Some(u))
+                    slice::from_ref(t).into_iter().copied().chain(Some(u).into_iter().chain(None))
                 }
+                // single successor
                 Goto { target: ref t }
                 | Call { target: None, unwind: UnwindAction::Cleanup(ref t), .. }
                 | Call { target: Some(ref t), unwind: _, .. }
@@ -481,23 +491,33 @@ mod helper {
                 | Drop { target: ref t, unwind: _, .. }
                 | Assert { target: ref t, unwind: _, .. }
                 | FalseUnwind { real_target: ref t, unwind: _ } => {
-                    slice::from_ref(t).into_iter().copied().chain(None)
+                    slice::from_ref(t).into_iter().copied().chain(None.into_iter().chain(None))
                 }
+                // No successors
                 UnwindResume
                 | UnwindTerminate(_)
                 | CoroutineDrop
                 | Return
                 | Unreachable
                 | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => (&[]).into_iter().copied().chain(None),
+                | Call { target: None, unwind: _, .. } => {
+                    (&[]).into_iter().copied().chain(None.into_iter().chain(None))
+                }
+                // Multiple successors
                 InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
-                    targets.iter().copied().chain(Some(u))
+                    targets.iter().copied().chain(Some(u).into_iter().chain(None))
                 }
-                InlineAsm { ref targets, unwind: _, .. } => targets.iter().copied().chain(None),
-                SwitchInt { ref targets, .. } => targets.targets.iter().copied().chain(None),
-                FalseEdge { ref real_target, imaginary_target } => {
-                    slice::from_ref(real_target).into_iter().copied().chain(Some(imaginary_target))
+                InlineAsm { ref targets, unwind: _, .. } => {
+                    targets.iter().copied().chain(None.into_iter().chain(None))
                 }
+                SwitchInt { ref targets, .. } => {
+                    targets.targets.iter().copied().chain(None.into_iter().chain(None))
+                }
+                // FalseEdge
+                FalseEdge { ref real_target, imaginary_target } => slice::from_ref(real_target)
+                    .into_iter()
+                    .copied()
+                    .chain(Some(imaginary_target).into_iter().chain(None)),
             }
         }
 
@@ -506,16 +526,31 @@ mod helper {
         pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
             use self::TerminatorKind::*;
             match *self {
+                // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
+                Drop {
+                    target: ref mut t,
+                    unwind: UnwindAction::Cleanup(ref mut u),
+                    drop: Some(ref mut d),
+                    ..
+                } => slice::from_mut(t).into_iter().chain(Some(u).into_iter().chain(Some(d))),
+                // 2-successors
                 Call {
                     target: Some(ref mut t), unwind: UnwindAction::Cleanup(ref mut u), ..
                 }
                 | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
-                | Drop { target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u), .. }
+                | Drop {
+                    target: ref mut t,
+                    unwind: UnwindAction::Cleanup(ref mut u),
+                    drop: None,
+                    ..
+                }
+                | Drop { target: ref mut t, unwind: _, drop: Some(ref mut u), .. }
                 | Assert { target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u), .. }
                 | FalseUnwind {
                     real_target: ref mut t,
                     unwind: UnwindAction::Cleanup(ref mut u),
-                } => slice::from_mut(t).into_iter().chain(Some(u)),
+                } => slice::from_mut(t).into_iter().chain(Some(u).into_iter().chain(None)),
+                // single successor
                 Goto { target: ref mut t }
                 | Call { target: None, unwind: UnwindAction::Cleanup(ref mut t), .. }
                 | Call { target: Some(ref mut t), unwind: _, .. }
@@ -523,22 +558,33 @@ mod helper {
                 | Drop { target: ref mut t, unwind: _, .. }
                 | Assert { target: ref mut t, unwind: _, .. }
                 | FalseUnwind { real_target: ref mut t, unwind: _ } => {
-                    slice::from_mut(t).into_iter().chain(None)
+                    slice::from_mut(t).into_iter().chain(None.into_iter().chain(None))
                 }
+                // No successors
                 UnwindResume
                 | UnwindTerminate(_)
                 | CoroutineDrop
                 | Return
                 | Unreachable
                 | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => (&mut []).into_iter().chain(None),
-                InlineAsm { ref mut targets, unwind: UnwindAction::Cleanup(ref mut u), .. } => {
-                    targets.iter_mut().chain(Some(u))
+                | Call { target: None, unwind: _, .. } => {
+                    (&mut []).into_iter().chain(None.into_iter().chain(None))
                 }
-                InlineAsm { ref mut targets, unwind: _, .. } => targets.iter_mut().chain(None),
-                SwitchInt { ref mut targets, .. } => targets.targets.iter_mut().chain(None),
+                // Multiple successors
+                InlineAsm { ref mut targets, unwind: UnwindAction::Cleanup(ref mut u), .. } => {
+                    targets.iter_mut().chain(Some(u).into_iter().chain(None))
+                }
+                InlineAsm { ref mut targets, unwind: _, .. } => {
+                    targets.iter_mut().chain(None.into_iter().chain(None))
+                }
+                SwitchInt { ref mut targets, .. } => {
+                    targets.targets.iter_mut().chain(None.into_iter().chain(None))
+                }
+                // FalseEdge
                 FalseEdge { ref mut real_target, ref mut imaginary_target } => {
-                    slice::from_mut(real_target).into_iter().chain(Some(imaginary_target))
+                    slice::from_mut(real_target)
+                        .into_iter()
+                        .chain(Some(imaginary_target).into_iter().chain(None))
                 }
             }
         }
@@ -671,8 +717,10 @@ impl<'tcx> TerminatorKind<'tcx> {
 
             Goto { target } => TerminatorEdges::Single(target),
 
+            // FIXME: Maybe we need also TerminatorEdges::Trio for async drop
+            // (target + unwind + dropline)
             Assert { target, unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, place: _, replace: _ }
+            | Drop { target, unwind, place: _, replace: _, drop: _, async_fut: _ }
             | FalseUnwind { real_target: target, unwind } => match unwind {
                 UnwindAction::Cleanup(unwind) => TerminatorEdges::Double(target, unwind),
                 UnwindAction::Continue | UnwindAction::Terminate(_) | UnwindAction::Unreachable => {
