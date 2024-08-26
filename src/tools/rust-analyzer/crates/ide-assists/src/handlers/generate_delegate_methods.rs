@@ -122,6 +122,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let is_async = method_source.async_token().is_some();
                 let is_const = method_source.const_token().is_some();
                 let is_unsafe = method_source.unsafe_token().is_some();
+                let is_gen = method_source.gen_token().is_some();
 
                 let fn_name = make::name(&name);
 
@@ -154,6 +155,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     is_async,
                     is_const,
                     is_unsafe,
+                    is_gen,
                 )
                 .clone_for_update();
 

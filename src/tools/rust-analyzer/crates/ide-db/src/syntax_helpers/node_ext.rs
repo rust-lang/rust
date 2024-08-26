@@ -477,10 +477,12 @@ pub fn parse_tt_as_comma_sep_paths(
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
         .filter_map(|mut tokens| {
-            syntax::hacks::parse_expr_from_str(&tokens.join("")).and_then(|expr| match expr {
-                ast::Expr::PathExpr(it) => it.path(),
-                _ => None,
-            })
+            syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT).and_then(
+                |expr| match expr {
+                    ast::Expr::PathExpr(it) => it.path(),
+                    _ => None,
+                },
+            )
         })
         .collect();
     Some(paths)

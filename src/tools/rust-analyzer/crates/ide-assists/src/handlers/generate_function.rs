@@ -365,6 +365,7 @@ impl FunctionBuilder {
             self.is_async,
             false, // FIXME : const and unsafe are not handled yet.
             false,
+            false,
         )
         .clone_for_update();
 

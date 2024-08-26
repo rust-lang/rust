@@ -1617,6 +1617,7 @@ fn format_function(
         fun.control_flow.is_async,
         fun.mods.is_const,
         fun.control_flow.is_unsafe,
+        false,
     )
 }
 

@@ -1180,8 +1180,15 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             let placeholder_subst = self.placeholder_subst();
                             let tmp_ty =
                                 capture.ty.clone().substitute(Interner, &placeholder_subst);
-                            let tmp: Place = self.temp(tmp_ty, current, capture.span)?.into();
-                            self.push_assignment(current, tmp, Rvalue::Ref(*bk, p), capture.span);
+                            // FIXME: Handle more than one span.
+                            let capture_spans = capture.spans();
+                            let tmp: Place = self.temp(tmp_ty, current, capture_spans[0])?.into();
+                            self.push_assignment(
+                                current,
+                                tmp,
+                                Rvalue::Ref(*bk, p),
+                                capture_spans[0],
+                            );
                             operands.push(Operand::Move(tmp));
                         }
                         CaptureKind::ByValue => operands.push(Operand::Move(p)),

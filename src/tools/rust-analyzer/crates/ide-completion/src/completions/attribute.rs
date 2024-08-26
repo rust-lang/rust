@@ -14,7 +14,7 @@ use ide_db::{
 use itertools::Itertools;
 use syntax::{
     ast::{self, AttrKind},
-    AstNode, SyntaxKind, T,
+    AstNode, Edition, SyntaxKind, T,
 };
 
 use crate::{
@@ -373,7 +373,9 @@ fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
         input_expressions
             .into_iter()
             .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
-            .filter_map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
+            .filter_map(|mut tokens| {
+                syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT)
+            })
             .collect::<Vec<ast::Expr>>(),
     )
 }

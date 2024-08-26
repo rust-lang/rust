@@ -115,6 +115,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             false,
             false,
             false,
+            false,
         )
         .clone_for_update();
         fn_.indent(1.into());

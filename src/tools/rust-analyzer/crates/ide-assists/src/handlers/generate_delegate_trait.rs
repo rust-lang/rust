@@ -740,6 +740,7 @@ fn func_assoc_item(
         item.async_token().is_some(),
         item.const_token().is_some(),
         item.unsafe_token().is_some(),
+        item.gen_token().is_some(),
     )
     .clone_for_update();
 

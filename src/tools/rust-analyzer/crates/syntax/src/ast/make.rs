@@ -1035,6 +1035,7 @@ pub fn fn_(
     is_async: bool,
     is_const: bool,
     is_unsafe: bool,
+    is_gen: bool,
 ) -> ast::Fn {
     let type_params = match type_params {
         Some(type_params) => format!("{type_params}"),
@@ -1056,9 +1057,10 @@ pub fn fn_(
     let async_literal = if is_async { "async " } else { "" };
     let const_literal = if is_const { "const " } else { "" };
     let unsafe_literal = if is_unsafe { "unsafe " } else { "" };
+    let gen_literal = if is_gen { "gen " } else { "" };
 
     ast_from_text(&format!(
-        "{visibility}{async_literal}{const_literal}{unsafe_literal}fn {fn_name}{type_params}{params} {ret_type}{where_clause}{body}",
+        "{visibility}{const_literal}{async_literal}{gen_literal}{unsafe_literal}fn {fn_name}{type_params}{params} {ret_type}{where_clause}{body}",
     ))
 }
 pub fn struct_(
