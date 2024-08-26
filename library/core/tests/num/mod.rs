@@ -27,6 +27,7 @@ mod const_from;
 mod dec2flt;
 mod flt2dec;
 mod int_log;
+mod int_sqrt;
 mod ops;
 mod wrapping;
 
