@@ -8,7 +8,6 @@ use crate::slice::sort::shared::find_existing_run;
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
 
 pub(crate) mod heapsort;
-#[cfg(not(feature = "optimize_for_size"))]
 pub(crate) mod quicksort;
 
 /// Unstable sort called ipnsort by Lukas Bergdoll and Orson Peters.
