@@ -98,6 +98,8 @@ session_sanitizer_cfi_requires_single_codegen_unit = `-Zsanitizer=cfi` with `-Cl
 
 session_sanitizer_kcfi_requires_panic_abort = `-Z sanitizer=kcfi` requires `-C panic=abort`
 
+session_sanitizer_leak_requires_export_executable_symbols = `-Zsanitizer=leak` requires `-Zexport-executable-symbols`
+
 session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
 
 session_sanitizers_not_supported = {$us} sanitizers are not supported for this target

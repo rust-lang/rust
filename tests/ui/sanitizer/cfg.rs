@@ -13,7 +13,7 @@
 //@[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi --target x86_64-unknown-none
 //@[kcfi]compile-flags:    -C panic=abort
 //@[leak]needs-sanitizer-leak
-//@[leak]compile-flags:    -Zsanitizer=leak    --cfg leak
+//@[leak]compile-flags:    -Zsanitizer=leak    --cfg leak -Zexport-executable-symbols
 //@[memory]needs-sanitizer-memory
 //@[memory]compile-flags:  -Zsanitizer=memory  --cfg memory
 //@[thread]needs-sanitizer-thread

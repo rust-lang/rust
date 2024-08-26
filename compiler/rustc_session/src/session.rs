@@ -390,6 +390,10 @@ impl Session {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
     }
 
+    pub fn is_sanitizer_leak_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::LEAK)
+    }
+
     pub fn is_split_lto_unit_enabled(&self) -> bool {
         self.opts.unstable_opts.split_lto_unit == Some(true)
     }
@@ -1221,6 +1225,11 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         && !sess.target.is_like_msvc
     {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
+    }
+
+    // LeakSanitizer requires export_executable_symbols.
+    if sess.is_sanitizer_leak_enabled() && !sess.opts.unstable_opts.export_executable_symbols {
+        sess.dcx().emit_err(errors::SanitizerLeakRequiresExportExecutableSymbols);
     }
 
     // LLVM CFI requires LTO.

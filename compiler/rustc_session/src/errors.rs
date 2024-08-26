@@ -128,6 +128,10 @@ pub(crate) struct CannotMixAndMatchSanitizers {
 pub(crate) struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
+#[diag(session_sanitizer_leak_requires_export_executable_symbols)]
+pub(crate) struct SanitizerLeakRequiresExportExecutableSymbols;
+
+#[derive(Diagnostic)]
 #[diag(session_sanitizer_cfi_requires_lto)]
 pub(crate) struct SanitizerCfiRequiresLto;
 

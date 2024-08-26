@@ -6,7 +6,7 @@
 //@ revisions: ASAN LSAN
 //@       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
 //@[ASAN] compile-flags: -Zsanitizer=address
-//@[LSAN] compile-flags: -Zsanitizer=leak
+//@[LSAN] compile-flags: -Zsanitizer=leak -Zexport-executable-symbols
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
