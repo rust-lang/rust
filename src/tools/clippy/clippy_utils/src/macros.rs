@@ -150,10 +150,11 @@ pub fn first_node_macro_backtrace(cx: &LateContext<'_>, node: &impl HirNode) -> 
 }
 
 /// If `node` is the "first node" in a macro expansion, returns `Some` with the `ExpnId` of the
-/// macro call site (i.e. the parent of the macro expansion). This generally means that `node`
-/// is the outermost node of an entire macro expansion, but there are some caveats noted below.
-/// This is useful for finding macro calls while visiting the HIR without processing the macro call
-/// at every node within its expansion.
+/// macro call site (i.e. the parent of the macro expansion).
+///
+/// This generally means that `node` is the outermost node of an entire macro expansion, but there
+/// are some caveats noted below. This is useful for finding macro calls while visiting the HIR
+/// without processing the macro call at every node within its expansion.
 ///
 /// If you already have immediate access to the parent node, it is simpler to
 /// just check the context of that span directly (e.g. `parent.span.from_expansion()`).
@@ -426,12 +427,8 @@ impl FormatArgsStorage {
     }
 }
 
-/// Attempt to find the [`rustc_hir::Expr`] that corresponds to the [`FormatArgument`]'s value, if
-/// it cannot be found it will return the [`rustc_ast::Expr`].
-pub fn find_format_arg_expr<'hir, 'ast>(
-    start: &'hir Expr<'hir>,
-    target: &'ast FormatArgument,
-) -> Result<&'hir Expr<'hir>, &'ast rustc_ast::Expr> {
+/// Attempt to find the [`rustc_hir::Expr`] that corresponds to the [`FormatArgument`]'s value
+pub fn find_format_arg_expr<'hir>(start: &'hir Expr<'hir>, target: &FormatArgument) -> Option<&'hir Expr<'hir>> {
     let SpanData {
         lo,
         hi,
@@ -449,7 +446,6 @@ pub fn find_format_arg_expr<'hir, 'ast>(
             ControlFlow::Continue(())
         }
     })
-    .ok_or(&target.expr)
 }
 
 /// Span of the `:` and format specifiers

@@ -361,6 +361,11 @@ lint_improper_ctypes_box = box cannot be represented as a single pointer
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
+
+lint_improper_ctypes_cstr_help =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
+
 lint_improper_ctypes_dyn = trait objects have no C equivalent
 
 lint_improper_ctypes_enum_repr_help =
@@ -757,6 +762,9 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
+
+lint_tail_expr_drop_order = these values and local bindings have significant drop implementation that will have a different drop order from that of Edition 2021
+    .label = these values have significant drop implementation and will observe changes in drop order under Edition 2024
 
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions

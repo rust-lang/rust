@@ -372,13 +372,6 @@ pub struct FfiConstInvalidTarget {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_must_use_async)]
-pub struct MustUseAsync {
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(passes_must_use_no_effect)]
 pub struct MustUseNoEffect {
     pub article: &'static str,
@@ -623,6 +616,15 @@ pub struct RustcStdInternalSymbol {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_pub_transparent)]
+pub struct RustcPubTransparent {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_link_ordinal)]
 pub struct LinkOrdinal {
     #[primary_span]
@@ -752,7 +754,7 @@ pub struct UnusedDuplicate {
     #[note]
     pub other: Span,
     #[warning]
-    pub warning: Option<()>,
+    pub warning: bool,
 }
 
 #[derive(Diagnostic)]
@@ -911,7 +913,7 @@ pub struct DuplicateDiagnosticItemInCrate {
     #[note(passes_diagnostic_item_first_defined)]
     pub orig_span: Option<Span>,
     #[note]
-    pub different_crates: Option<()>,
+    pub different_crates: bool,
     pub crate_name: Symbol,
     pub orig_crate_name: Symbol,
     pub name: Symbol,

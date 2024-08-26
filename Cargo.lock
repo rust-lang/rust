@@ -96,16 +96,6 @@ dependencies = [
 
 [[package]]
 name = "annotate-snippets"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d9b665789884a7e8fb06c84b295e923b03ca51edbb7d08f91a6a50322ecbfe6"
-dependencies = [
- "anstyle",
- "unicode-width",
-]
-
-[[package]]
-name = "annotate-snippets"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24e35ed54e5ea7997c14ed4c70ba043478db1112e98263b3b035907aa197d991"
@@ -205,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.4.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de11a9d32db3327f981143bdf699ade4d637c6887b13b97e6e91a9154666963c"
+checksum = "01667f6f40216b9a0b2945e05fed5f1ad0ab6470e69cb9378001e37b1c0668e4"
 dependencies = [
  "object 0.36.3",
 ]
@@ -420,12 +410,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.1.13"
+version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72db2f7947ecee9b03b510377e8bb9077afa27176fdbff55c51027e976fdcc48"
-dependencies = [
- "shlex",
-]
+checksum = "5208975e568d83b6b05cc0a063c8e7e9acc2b43bee6da15616a5b73e109d7437"
 
 [[package]]
 name = "cfg-if"
@@ -549,6 +536,7 @@ name = "clippy"
 version = "0.1.82"
 dependencies = [
  "anstream",
+ "cargo_metadata 0.18.1",
  "clippy_config",
  "clippy_lints",
  "clippy_utils",
@@ -562,6 +550,7 @@ dependencies = [
  "regex",
  "rustc_tools_util",
  "serde",
+ "serde_json",
  "syn 2.0.75",
  "tempfile",
  "termize",
@@ -576,7 +565,6 @@ name = "clippy_config"
 version = "0.1.82"
 dependencies = [
  "itertools",
- "rustc-semver",
  "serde",
  "toml 0.7.8",
  "walkdir",
@@ -608,7 +596,6 @@ dependencies = [
  "quine-mc_cluskey",
  "regex",
  "regex-syntax 0.8.4",
- "rustc-semver",
  "semver",
  "serde",
  "serde_json",
@@ -627,7 +614,6 @@ dependencies = [
  "arrayvec",
  "clippy_config",
  "itertools",
- "rustc-semver",
  "rustc_apfloat",
 ]
 
@@ -2240,9 +2226,12 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95bbbf96b9ac3482c2a25450b67a15ed851319bc5fabf3b40742ea9066e84282"
+checksum = "9aa3f302fe0f8de065d4a2d1ed64f60204623cac58b80cd3c2a83a25d5a7d437"
+dependencies = [
+ "clap",
+]
 
 [[package]]
 name = "minimal-lexical"
@@ -3139,6 +3128,7 @@ dependencies = [
  "bstr",
  "build_helper",
  "gimli 0.31.0",
+ "libc",
  "object 0.36.3",
  "regex",
  "serde_json",
@@ -3210,12 +3200,6 @@ dependencies = [
  "crossbeam-utils",
  "num_cpus",
 ]
-
-[[package]]
-name = "rustc-semver"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5be1bdc7edf596692617627bbfeaba522131b18e06ca4df2b6b689e3c5d5ce84"
 
 [[package]]
 name = "rustc-stable-hash"
@@ -3642,7 +3626,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.10.2",
+ "annotate-snippets 0.11.4",
  "derive_setters",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3702,7 +3686,7 @@ dependencies = [
 name = "rustc_fluent_macro"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.10.2",
+ "annotate-snippets 0.11.4",
  "fluent-bundle",
  "fluent-syntax",
  "proc-macro2",
@@ -4552,6 +4536,7 @@ dependencies = [
  "bitflags 2.6.0",
  "derive-where",
  "indexmap",
+ "rustc-hash",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",

@@ -1248,8 +1248,8 @@ impl<'a> Parser<'a> {
         let span = self.psess.source_map().guess_head_span(span);
         let descr = kind.descr();
         let help = match kind {
-            ItemKind::DelegationMac(deleg) if deleg.suffixes.is_none() => None,
-            _ => Some(()),
+            ItemKind::DelegationMac(deleg) if deleg.suffixes.is_none() => false,
+            _ => true,
         };
         self.dcx().emit_err(errors::BadItemKind { span, descr, ctx, help });
         None

@@ -1,5 +1,3 @@
-#![feature(precise_capturing)]
-
 fn missing() -> impl Sized + use<T> {}
 //~^ ERROR cannot find type `T` in this scope
 

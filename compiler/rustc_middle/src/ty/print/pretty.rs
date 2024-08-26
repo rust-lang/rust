@@ -3119,7 +3119,10 @@ define_print! {
 
     ty::ExistentialProjection<'tcx> {
         let name = cx.tcx().associated_item(self.def_id).name;
-        p!(write("{} = ", name), print(self.term))
+        // The args don't contain the self ty (as it has been erased) but the corresp.
+        // generics do as the trait always has a self ty param. We need to offset.
+        let args = &self.args[cx.tcx().generics_of(self.def_id).parent_count - 1..];
+        p!(path_generic_args(|cx| write!(cx, "{name}"), args), " = ", print(self.term))
     }
 
     ty::ProjectionPredicate<'tcx> {

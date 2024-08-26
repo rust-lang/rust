@@ -382,7 +382,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if !expected_inner.is_fn() || !found_inner.is_fn() {
             return;
         }
-        match (&expected_inner.kind(), &found_inner.kind()) {
+        match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let sig = sig_tys.with(*hdr);
                 let expected_sig = &(self.normalize_fn_sig)(sig);

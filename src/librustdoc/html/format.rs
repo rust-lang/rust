@@ -1288,55 +1288,89 @@ impl clean::Impl {
                 if self.is_negative_trait_impl() {
                     write!(f, "!")?;
                 }
-                ty.print(cx).fmt(f)?;
+                if self.kind.is_fake_variadic()
+                    && let generics = ty.generics()
+                    && let &[inner_type] = generics.as_ref().map_or(&[][..], |v| &v[..])
+                {
+                    let last = ty.last();
+                    if f.alternate() {
+                        write!(f, "{}<", last)?;
+                        self.print_type(inner_type, f, use_absolute, cx)?;
+                        write!(f, ">")?;
+                    } else {
+                        write!(f, "{}&lt;", anchor(ty.def_id(), last, cx).to_string())?;
+                        self.print_type(inner_type, f, use_absolute, cx)?;
+                        write!(f, "&gt;")?;
+                    }
+                } else {
+                    ty.print(cx).fmt(f)?;
+                }
                 write!(f, " for ")?;
             }
 
-            if let clean::Type::Tuple(types) = &self.for_
-                && let [clean::Type::Generic(name)] = &types[..]
-                && (self.kind.is_fake_variadic() || self.kind.is_auto())
-            {
-                // Hardcoded anchor library/core/src/primitive_docs.rs
-                // Link should match `# Trait implementations`
-                primitive_link_fragment(
-                    f,
-                    PrimitiveType::Tuple,
-                    format_args!("({name}₁, {name}₂, …, {name}ₙ)"),
-                    "#trait-implementations-1",
-                    cx,
-                )?;
-            } else if let clean::BareFunction(bare_fn) = &self.for_
-                && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
-                    &bare_fn.decl.inputs.values[..]
-                && (self.kind.is_fake_variadic() || self.kind.is_auto())
-            {
-                // Hardcoded anchor library/core/src/primitive_docs.rs
-                // Link should match `# Trait implementations`
-
-                print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
-                bare_fn.safety.print_with_space().fmt(f)?;
-                print_abi_with_space(bare_fn.abi).fmt(f)?;
-                let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
-                primitive_link_fragment(
-                    f,
-                    PrimitiveType::Tuple,
-                    format_args!("fn({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
-                    "#trait-implementations-1",
-                    cx,
-                )?;
-                // Write output.
-                if !bare_fn.decl.output.is_unit() {
-                    write!(f, " -> ")?;
-                    fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
-                }
-            } else if let Some(ty) = self.kind.as_blanket_ty() {
+            if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
-                fmt_type(&self.for_, f, use_absolute, cx)?;
+                self.print_type(&self.for_, f, use_absolute, cx)?;
             }
 
             print_where_clause(&self.generics, cx, 0, Ending::Newline).fmt(f)
         })
+    }
+    fn print_type<'a, 'tcx: 'a>(
+        &self,
+        type_: &clean::Type,
+        f: &mut fmt::Formatter<'_>,
+        use_absolute: bool,
+        cx: &'a Context<'tcx>,
+    ) -> Result<(), fmt::Error> {
+        if let clean::Type::Tuple(types) = type_
+            && let [clean::Type::Generic(name)] = &types[..]
+            && (self.kind.is_fake_variadic() || self.kind.is_auto())
+        {
+            // Hardcoded anchor library/core/src/primitive_docs.rs
+            // Link should match `# Trait implementations`
+            primitive_link_fragment(
+                f,
+                PrimitiveType::Tuple,
+                format_args!("({name}₁, {name}₂, …, {name}ₙ)"),
+                "#trait-implementations-1",
+                cx,
+            )?;
+        } else if let clean::Type::Array(ty, len) = type_
+            && let clean::Type::Generic(name) = &**ty
+            && &len[..] == "1"
+            && (self.kind.is_fake_variadic() || self.kind.is_auto())
+        {
+            primitive_link(f, PrimitiveType::Array, format_args!("[{name}; N]"), cx)?;
+        } else if let clean::BareFunction(bare_fn) = &type_
+            && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
+                &bare_fn.decl.inputs.values[..]
+            && (self.kind.is_fake_variadic() || self.kind.is_auto())
+        {
+            // Hardcoded anchor library/core/src/primitive_docs.rs
+            // Link should match `# Trait implementations`
+
+            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
+            bare_fn.safety.print_with_space().fmt(f)?;
+            print_abi_with_space(bare_fn.abi).fmt(f)?;
+            let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
+            primitive_link_fragment(
+                f,
+                PrimitiveType::Tuple,
+                format_args!("fn({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
+                "#trait-implementations-1",
+                cx,
+            )?;
+            // Write output.
+            if !bare_fn.decl.output.is_unit() {
+                write!(f, " -> ")?;
+                fmt_type(&bare_fn.decl.output, f, use_absolute, cx)?;
+            }
+        } else {
+            fmt_type(&type_, f, use_absolute, cx)?;
+        }
+        Ok(())
     }
 }
 

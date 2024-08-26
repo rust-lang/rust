@@ -16,7 +16,7 @@ use rustc_span::{
 };
 use std::borrow::Cow;
 use std::fmt;
-use std::ops::Range;
+use std::ops::{Deref, Index, Range};
 
 pub trait HasSession {
     fn sess(&self) -> &Session;
@@ -94,10 +94,16 @@ impl IntoSpan for Range<BytePos> {
 }
 
 pub trait SpanRangeExt: SpanRange {
+    /// Attempts to get a handle to the source text. Returns `None` if either the span is malformed,
+    /// or the source text is not accessible.
+    fn get_source_text(self, cx: &impl HasSession) -> Option<SourceText> {
+        get_source_range(cx.sess().source_map(), self.into_range()).and_then(SourceText::new)
+    }
+
     /// Gets the source file, and range in the file, of the given span. Returns `None` if the span
     /// extends through multiple files, or is malformed.
-    fn get_source_text(self, cx: &impl HasSession) -> Option<SourceFileRange> {
-        get_source_text(cx.sess().source_map(), self.into_range())
+    fn get_source_range(self, cx: &impl HasSession) -> Option<SourceFileRange> {
+        get_source_range(cx.sess().source_map(), self.into_range())
     }
 
     /// Calls the given function with the source text referenced and returns the value. Returns
@@ -144,32 +150,70 @@ pub trait SpanRangeExt: SpanRange {
     fn trim_start(self, cx: &impl HasSession) -> Range<BytePos> {
         trim_start(cx.sess().source_map(), self.into_range())
     }
-
-    /// Writes the referenced source text to the given writer. Will return `Err` if the source text
-    /// could not be retrieved.
-    fn write_source_text_to(self, cx: &impl HasSession, dst: &mut impl fmt::Write) -> fmt::Result {
-        write_source_text_to(cx.sess().source_map(), self.into_range(), dst)
-    }
-
-    /// Extracts the referenced source text as an owned string.
-    fn source_text_to_string(self, cx: &impl HasSession) -> Option<String> {
-        self.with_source_text(cx, ToOwned::to_owned)
-    }
 }
 impl<T: SpanRange> SpanRangeExt for T {}
 
-fn get_source_text(sm: &SourceMap, sp: Range<BytePos>) -> Option<SourceFileRange> {
+/// Handle to a range of text in a source file.
+pub struct SourceText(SourceFileRange);
+impl SourceText {
+    /// Takes ownership of the source file handle if the source text is accessible.
+    pub fn new(text: SourceFileRange) -> Option<Self> {
+        if text.as_str().is_some() {
+            Some(Self(text))
+        } else {
+            None
+        }
+    }
+
+    /// Gets the source text.
+    pub fn as_str(&self) -> &str {
+        self.0.as_str().unwrap()
+    }
+
+    /// Converts this into an owned string.
+    pub fn to_owned(&self) -> String {
+        self.as_str().to_owned()
+    }
+}
+impl Deref for SourceText {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
+    }
+}
+impl AsRef<str> for SourceText {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+impl<T> Index<T> for SourceText
+where
+    str: Index<T>,
+{
+    type Output = <str as Index<T>>::Output;
+    fn index(&self, idx: T) -> &Self::Output {
+        &self.as_str()[idx]
+    }
+}
+impl fmt::Display for SourceText {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+
+fn get_source_range(sm: &SourceMap, sp: Range<BytePos>) -> Option<SourceFileRange> {
     let start = sm.lookup_byte_offset(sp.start);
     let end = sm.lookup_byte_offset(sp.end);
     if !Lrc::ptr_eq(&start.sf, &end.sf) || start.pos > end.pos {
         return None;
     }
+    sm.ensure_source_file_source_present(&start.sf);
     let range = start.pos.to_usize()..end.pos.to_usize();
     Some(SourceFileRange { sf: start.sf, range })
 }
 
 fn with_source_text<T>(sm: &SourceMap, sp: Range<BytePos>, f: impl for<'a> FnOnce(&'a str) -> T) -> Option<T> {
-    if let Some(src) = get_source_text(sm, sp)
+    if let Some(src) = get_source_range(sm, sp)
         && let Some(src) = src.as_str()
     {
         Some(f(src))
@@ -183,7 +227,7 @@ fn with_source_text_and_range<T>(
     sp: Range<BytePos>,
     f: impl for<'a> FnOnce(&'a str, Range<usize>) -> T,
 ) -> Option<T> {
-    if let Some(src) = get_source_text(sm, sp)
+    if let Some(src) = get_source_range(sm, sp)
         && let Some(text) = &src.sf.src
     {
         Some(f(text, src.range))
@@ -198,7 +242,7 @@ fn map_range(
     sp: Range<BytePos>,
     f: impl for<'a> FnOnce(&'a str, Range<usize>) -> Option<Range<usize>>,
 ) -> Option<Range<BytePos>> {
-    if let Some(src) = get_source_text(sm, sp.clone())
+    if let Some(src) = get_source_range(sm, sp.clone())
         && let Some(text) = &src.sf.src
         && let Some(range) = f(text, src.range.clone())
     {
@@ -232,13 +276,6 @@ fn trim_start(sm: &SourceMap, sp: Range<BytePos>) -> Range<BytePos> {
     .unwrap_or(sp)
 }
 
-fn write_source_text_to(sm: &SourceMap, sp: Range<BytePos>, dst: &mut impl fmt::Write) -> fmt::Result {
-    match with_source_text(sm, sp, |src| dst.write_str(src)) {
-        Some(x) => x,
-        None => Err(fmt::Error),
-    }
-}
-
 pub struct SourceFileRange {
     pub sf: Lrc<SourceFile>,
     pub range: Range<usize>,
@@ -247,7 +284,11 @@ impl SourceFileRange {
     /// Attempts to get the text from the source file. This can fail if the source text isn't
     /// loaded.
     pub fn as_str(&self) -> Option<&str> {
-        self.sf.src.as_ref().and_then(|x| x.get(self.range.clone()))
+        self.sf
+            .src
+            .as_ref()
+            .or_else(|| self.sf.external_src.get().and_then(|src| src.get_source()))
+            .and_then(|x| x.get(self.range.clone()))
     }
 }
 
@@ -548,9 +589,10 @@ pub fn snippet_block_with_context<'a>(
     (reindent_multiline(snip, true, indent), from_macro)
 }
 
-/// Same as `snippet_with_applicability`, but first walks the span up to the given context. This
-/// will result in the macro call, rather than the expansion, if the span is from a child context.
-/// If the span is not from a child context, it will be used directly instead.
+/// Same as `snippet_with_applicability`, but first walks the span up to the given context.
+///
+/// This will result in the macro call, rather than the expansion, if the span is from a child
+/// context. If the span is not from a child context, it will be used directly instead.
 ///
 /// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node
 /// would result in `box []`. If given the context of the address of expression, this function will
@@ -593,9 +635,10 @@ fn snippet_with_context_sess<'a>(
 }
 
 /// Walks the span up to the target context, thereby returning the macro call site if the span is
-/// inside a macro expansion, or the original span if it is not. Note this will return `None` in the
-/// case of the span being in a macro expansion, but the target context is from expanding a macro
-/// argument.
+/// inside a macro expansion, or the original span if it is not.
+///
+/// Note this will return `None` in the case of the span being in a macro expansion, but the target
+/// context is from expanding a macro argument.
 ///
 /// Given the following
 ///

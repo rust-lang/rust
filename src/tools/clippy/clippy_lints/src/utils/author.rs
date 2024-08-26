@@ -1,6 +1,3 @@
-//! A group of attributes that can be attached to Rust code in order
-//! to generate a clippy lint detecting said code automatically.
-
 use clippy_utils::{get_attr, higher};
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_ast::LitIntType;

@@ -131,7 +131,6 @@
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
-#![feature(iter_repeat_n)]
 #![feature(layout_for_ptr)]
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]

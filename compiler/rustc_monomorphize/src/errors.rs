@@ -16,7 +16,7 @@ pub struct RecursionLimit {
     pub def_span: Span,
     pub def_path_str: String,
     #[note(monomorphize_written_to_path)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
 }
 

@@ -153,3 +153,15 @@ fn main() {
     let r = &x;
     for _ in r.iter() {}
 }
+
+#[clippy::msrv = "1.79"]
+pub fn issue_13184() {
+    // https://github.com/rust-lang/rust-clippy/issues/13184
+    // No need to fix, as IntoIterator for Box is valid starting from 1.80
+    let mut values: Box<[u32]> = Box::new([1, 2]);
+    for _ in values.iter() {}
+    for _ in values.iter_mut() {}
+
+    let rvalues = &values;
+    for _ in rvalues.iter() {}
+}

@@ -342,7 +342,7 @@ pub(crate) struct DeprecatedItemSuggestion {
     pub span: Span,
 
     #[help]
-    pub is_nightly: Option<()>,
+    pub is_nightly: bool,
 
     #[note]
     pub details: (),

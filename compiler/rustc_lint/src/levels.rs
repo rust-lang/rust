@@ -936,7 +936,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             span: tool_ident.map(|ident| ident.span),
                             tool_name: tool_name.unwrap(),
                             lint_name: pprust::path_to_string(&meta_item.path),
-                            is_nightly_build: sess.is_nightly_build().then_some(()),
+                            is_nightly_build: sess.is_nightly_build(),
                         });
                         continue;
                     }

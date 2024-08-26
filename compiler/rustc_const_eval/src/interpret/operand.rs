@@ -319,6 +319,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             // some fieldless enum variants can have non-zero size but still `Aggregate` ABI... try
             // to detect those here and also give them no data
             _ if matches!(layout.abi, Abi::Aggregate { .. })
+                && matches!(layout.variants, abi::Variants::Single { .. })
                 && matches!(&layout.fields, abi::FieldsShape::Arbitrary { offsets, .. } if offsets.len() == 0) =>
             {
                 Immediate::Uninit
@@ -328,8 +329,9 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
                 assert_eq!(offset.bytes(), 0);
                 assert!(
                     match (self.layout.abi, layout.abi) {
-                        (Abi::Scalar(..), Abi::Scalar(..)) => true,
-                        (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                        (Abi::Scalar(l), Abi::Scalar(r)) => l.size(cx) == r.size(cx),
+                        (Abi::ScalarPair(l1, l2), Abi::ScalarPair(r1, r2)) =>
+                            l1.size(cx) == r1.size(cx) && l2.size(cx) == r2.size(cx),
                         _ => false,
                     },
                     "cannot project into {} immediate with equally-sized field {}\nouter ABI: {:#?}\nfield ABI: {:#?}",
@@ -344,16 +346,23 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
                 assert_matches!(layout.abi, Abi::Scalar(..));
                 Immediate::from(if offset.bytes() == 0 {
-                    debug_assert_eq!(layout.size, a.size(cx));
+                    // It is "okay" to transmute from `usize` to a pointer (GVN relies on that).
+                    // So only compare the size.
+                    assert_eq!(layout.size, a.size(cx));
                     a_val
                 } else {
-                    debug_assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
-                    debug_assert_eq!(layout.size, b.size(cx));
+                    assert_eq!(offset, a.size(cx).align_to(b.align(cx).abi));
+                    assert_eq!(layout.size, b.size(cx));
                     b_val
                 })
             }
             // everything else is a bug
-            _ => bug!("invalid field access on immediate {}, layout {:#?}", self, self.layout),
+            _ => bug!(
+                "invalid field access on immediate {} at offset {}, original layout {:#?}",
+                self,
+                offset.bytes(),
+                self.layout
+            ),
         };
 
         ImmTy::from_immediate(inner_val, layout)

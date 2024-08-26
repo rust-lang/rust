@@ -1,6 +1,6 @@
 use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed};
 use rustc_errors::Applicability;
@@ -73,6 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                 }
             })
             && !is_from_proc_macro(cx, e)
+            && let Some(deref_text) = deref_target.span.get_source_text(cx)
         {
             span_lint_and_then(
                 cx,
@@ -83,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                     diag.span_suggestion(
                         e.span,
                         "if you would like to reborrow, try removing `&*`",
-                        snippet_opt(cx, deref_target.span).unwrap(),
+                        deref_text.as_str(),
                         Applicability::MachineApplicable,
                     );
 
@@ -98,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                     diag.span_suggestion(
                         e.span,
                         "if you would like to deref, try using `&**`",
-                        format!("&**{}", &snippet_opt(cx, deref_target.span).unwrap()),
+                        format!("&**{deref_text}"),
                         Applicability::MaybeIncorrect,
                     );
                 },

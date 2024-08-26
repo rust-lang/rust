@@ -179,7 +179,7 @@ pub(crate) mod rustc {
     };
 
     use super::Tree;
-    use crate::layout::rustc::{Def, Ref};
+    use crate::layout::rustc::{layout_of, Def, Ref};
 
     #[derive(Debug, Copy, Clone)]
     pub(crate) enum Err {
@@ -206,7 +206,7 @@ pub(crate) mod rustc {
     impl<'tcx> Tree<Def<'tcx>, Ref<'tcx>> {
         pub fn from_ty(ty: Ty<'tcx>, cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, Err> {
             use rustc_target::abi::HasDataLayout;
-            let layout = ty_layout(cx, ty);
+            let layout = layout_of(cx, ty)?;
 
             if let Err(e) = ty.error_reported() {
                 return Err(Err::TypeError(e));
@@ -239,7 +239,7 @@ pub(crate) mod rustc {
                     let FieldsShape::Array { stride, count } = &layout.fields else {
                         return Err(Err::NotYetSupported);
                     };
-                    let inner_layout = ty_layout(cx, *inner_ty);
+                    let inner_layout = layout_of(cx, *inner_ty)?;
                     assert_eq!(*stride, inner_layout.size);
                     let elt = Tree::from_ty(*inner_ty, cx)?;
                     Ok(std::iter::repeat(elt)
@@ -254,7 +254,7 @@ pub(crate) mod rustc {
                 },
 
                 ty::Ref(lifetime, ty, mutability) => {
-                    let layout = ty_layout(cx, *ty);
+                    let layout = layout_of(cx, *ty)?;
                     let align = layout.align.abi.bytes_usize();
                     let size = layout.size.bytes_usize();
                     Ok(Tree::Ref(Ref {
@@ -280,7 +280,7 @@ pub(crate) mod rustc {
                 FieldsShape::Primitive => {
                     assert_eq!(members.len(), 1);
                     let inner_ty = members[0];
-                    let inner_layout = ty_layout(cx, inner_ty);
+                    let inner_layout = layout_of(cx, inner_ty)?;
                     Self::from_ty(inner_ty, cx)
                 }
                 FieldsShape::Arbitrary { offsets, .. } => {
@@ -413,7 +413,7 @@ pub(crate) mod rustc {
                 let padding = Self::padding(padding_needed.bytes_usize());
 
                 let field_ty = ty_field(cx, (ty, layout), field_idx);
-                let field_layout = ty_layout(cx, field_ty);
+                let field_layout = layout_of(cx, field_ty)?;
                 let field_tree = Self::from_ty(field_ty, cx)?;
 
                 struct_tree = struct_tree.then(padding).then(field_tree);
@@ -471,7 +471,7 @@ pub(crate) mod rustc {
                 |fields, (idx, field_def)| {
                     let field_def = Def::Field(field_def);
                     let field_ty = ty_field(cx, (ty, layout), idx);
-                    let field_layout = ty_layout(cx, field_ty);
+                    let field_layout = layout_of(cx, field_ty)?;
                     let field = Self::from_ty(field_ty, cx)?;
                     let trailing_padding_needed = layout.size - field_layout.size;
                     let trailing_padding = Self::padding(trailing_padding_needed.bytes_usize());
@@ -482,10 +482,6 @@ pub(crate) mod rustc {
 
             Ok(Self::def(Def::Adt(def)).then(fields))
         }
-    }
-
-    pub(crate) fn ty_layout<'tcx>(cx: LayoutCx<'tcx, TyCtxt<'tcx>>, ty: Ty<'tcx>) -> Layout<'tcx> {
-        crate::layout::rustc::layout_of(cx, ty).unwrap()
     }
 
     fn ty_field<'tcx>(

@@ -99,6 +99,4 @@ incremental_unrecognized_depnode = unrecognized `DepNode` variant: {$name}
 
 incremental_unrecognized_depnode_label = dep-node label `{$label}` not recognized
 
-incremental_write_dep_graph = failed to write dependency graph to `{$path}`: {$err}
-
 incremental_write_new = failed to write {$name} to `{$path}`: {$err}

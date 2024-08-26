@@ -12,7 +12,7 @@ use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableS
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
@@ -86,6 +86,11 @@ impl ItemId {
             ItemId::DefId(id) => Some(id),
             _ => None,
         }
+    }
+
+    #[inline]
+    pub(crate) fn as_local_def_id(self) -> Option<LocalDefId> {
+        self.as_def_id().and_then(|id| id.as_local())
     }
 
     #[inline]

@@ -108,7 +108,11 @@ pub trait ArchiveBuilderBuilder {
                 &exports,
                 machine,
                 !sess.target.is_like_msvc,
-                /*comdat=*/ false,
+                // Enable compatibility with MSVC's `/WHOLEARCHIVE` flag.
+                // Without this flag a duplicate symbol error would be emitted
+                // when linking a rust staticlib using `/WHOLEARCHIVE`.
+                // See #129020
+                true,
             ) {
                 sess.dcx()
                     .emit_fatal(ErrorCreatingImportLibrary { lib_name, error: error.to_string() });
@@ -121,7 +125,7 @@ pub trait ArchiveBuilderBuilder {
         rlib: &'a Path,
         outdir: &Path,
         bundled_lib_file_names: &FxIndexSet<Symbol>,
-    ) -> Result<(), ExtractBundledLibsError<'_>> {
+    ) -> Result<(), ExtractBundledLibsError<'a>> {
         let archive_map = unsafe {
             Mmap::map(
                 File::open(rlib)

@@ -184,7 +184,7 @@ pub struct AbiSpecifiedMultipleTimes {
     #[label]
     pub prev_span: Span,
     #[note]
-    pub equivalent: Option<()>,
+    pub equivalent: bool,
 }
 
 #[derive(Diagnostic)]

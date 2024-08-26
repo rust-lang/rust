@@ -110,7 +110,6 @@
 #![cfg_attr(bootstrap, feature(offset_of_nested))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
-#![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
 #![feature(const_align_offset)]
@@ -194,6 +193,7 @@
 // Language features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(asm_const))]
+#![cfg_attr(bootstrap, feature(const_fn_floating_point_arithmetic))]
 #![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
@@ -203,7 +203,6 @@
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
-#![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_for)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]

@@ -216,7 +216,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                     }
                     if sig.header.asyncness.is_async() {
                         let span = tcx.def_span(it.owner_id);
-                        tcx.dcx().emit_err(errors::StartAsync { span: span });
+                        tcx.dcx().emit_err(errors::StartAsync { span });
                         error = true;
                     }
 

@@ -256,7 +256,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     RangeEnd::Included => {
                         self.tcx.dcx().emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
                             span,
-                            teach: self.tcx.sess.teach(E0030).then_some(()),
+                            teach: self.tcx.sess.teach(E0030),
                         })
                     }
                     RangeEnd::Excluded => {

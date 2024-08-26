@@ -22,7 +22,7 @@ use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 /// span, e.g. a string literal `"//"`, but we know that this isn't the case for empty
 /// match arms.
 fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
-    if let Some(ff) = span.get_source_text(cx)
+    if let Some(ff) = span.get_source_range(cx)
         && let Some(text) = ff.as_str()
     {
         text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*")

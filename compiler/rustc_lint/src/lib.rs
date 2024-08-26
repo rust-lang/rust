@@ -78,6 +78,7 @@ mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
 mod shadowed_into_iter;
+mod tail_expr_drop_order;
 mod traits;
 mod types;
 mod unit_bindings;
@@ -115,6 +116,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use shadowed_into_iter::ShadowedIntoIter;
 pub use shadowed_into_iter::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
+use tail_expr_drop_order::TailExprDropOrder;
 use traits::*;
 use types::*;
 use unit_bindings::*;
@@ -238,6 +240,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
+            TailExprDropOrder: TailExprDropOrder,
         ]
     ]
 );
@@ -569,7 +572,8 @@ fn register_builtins(store: &mut LintStore) {
         "byte_slice_in_packed_struct_with_derive",
         "converted into hard error, see issue #107457 \
          <https://github.com/rust-lang/rust/issues/107457> for more information",
-    )
+    );
+    store.register_removed("writes_through_immutable_pointer", "converted into hard error");
 }
 
 fn register_internals(store: &mut LintStore) {

@@ -2130,6 +2130,33 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
     (p as *const ()) == (q as *const ())
 }
 
+/// Compares the *addresses* of the two function pointers for equality.
+///
+/// Function pointers comparisons can have surprising results since
+/// they are never guaranteed to be unique and could vary between different
+/// code generation units. Furthermore, different functions could have the
+/// same address after being merged together.
+///
+/// This is the same as `f == g` but using this function makes clear
+/// that you are aware of these potentially surprising semantics.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(ptr_fn_addr_eq)]
+/// use std::ptr;
+///
+/// fn a() { println!("a"); }
+/// fn b() { println!("b"); }
+/// assert!(!ptr::fn_addr_eq(a as fn(), b as fn()));
+/// ```
+#[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
+#[inline(always)]
+#[must_use = "function pointer comparison produces a value"]
+pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {
+    f.addr() == g.addr()
+}
+
 /// Hash a raw pointer.
 ///
 /// This can be used to hash a `&T` reference (which coerces to `*const T` implicitly)

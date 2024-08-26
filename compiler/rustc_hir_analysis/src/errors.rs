@@ -1606,7 +1606,7 @@ pub(crate) struct UnusedGenericParameter {
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,
     #[help(hir_analysis_const_param_help)]
-    pub const_param_help: Option<()>,
+    pub const_param_help: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1643,9 +1643,9 @@ pub(crate) struct UnconstrainedGenericParameter {
     pub param_name: Symbol,
     pub param_def_kind: &'static str,
     #[note(hir_analysis_const_param_note)]
-    pub const_param_note: Option<()>,
+    pub const_param_note: bool,
     #[note(hir_analysis_const_param_note2)]
-    pub const_param_note2: Option<()>,
+    pub const_param_note2: bool,
 }
 
 #[derive(Diagnostic)]

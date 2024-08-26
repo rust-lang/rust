@@ -21,6 +21,7 @@ pub fn cwd() -> PathBuf {
 /// # Example
 ///
 /// ```rust
+/// # use run_make_support::path;
 /// let p = path("support_file.txt");
 /// ```
 pub fn path<P: AsRef<Path>>(p: P) -> PathBuf {

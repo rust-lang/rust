@@ -747,7 +747,7 @@ fn region_known_to_outlive<'tcx>(
     region_b: ty::Region<'tcx>,
 ) -> bool {
     test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP), region_b, region_a);
+        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP, None), region_b, region_a);
     })
 }
 
@@ -1972,8 +1972,7 @@ fn report_bivariance<'tcx>(
     }
 
     let const_param_help =
-        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
-            .then_some(());
+        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds);
 
     let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
         span: param.span,

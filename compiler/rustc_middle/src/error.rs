@@ -160,7 +160,7 @@ pub struct TypeLengthLimit {
     pub span: Span,
     pub shrunk: String,
     #[note(middle_written_to_path)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
     pub type_length: usize,
 }

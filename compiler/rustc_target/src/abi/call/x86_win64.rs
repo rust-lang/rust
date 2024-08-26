@@ -43,7 +43,7 @@ pub fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>)
                 && cx.target_spec().env == "gnu"
                 && arg.layout.is_zst()
             {
-                arg.make_indirect_force();
+                arg.make_indirect_from_ignore();
             }
             continue;
         }

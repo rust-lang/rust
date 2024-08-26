@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
+use clippy_utils::source::{indent_of, reindent_multiline, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 use rustc_errors::Applicability;
@@ -23,11 +23,11 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Call(err_path, [err_arg]) = or_expr.kind
         && is_res_lang_ctor(cx, path_res(cx, err_path), ResultErr)
         && is_ok_wrapping(cx, map_expr)
-        && let Some(recv_snippet) = snippet_opt(cx, recv.span)
-        && let Some(err_arg_snippet) = snippet_opt(cx, err_arg.span)
+        && let Some(recv_snippet) = recv.span.get_source_text(cx)
+        && let Some(err_arg_snippet) = err_arg.span.get_source_text(cx)
         && let Some(indent) = indent_of(cx, expr.span)
     {
-        let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.into(), true, Some(indent + 4));
+        let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.as_str().into(), true, Some(indent + 4));
         span_lint_and_sugg(
             cx,
             MANUAL_OK_OR,
