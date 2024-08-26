@@ -36,8 +36,8 @@ struct RevisionInfo<'a> {
     llvm_components: Option<Vec<&'a str>>,
 }
 
-pub fn check(path: &Path, bad: &mut bool) {
-    crate::walk::walk(path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
+pub fn check(tests_path: &Path, bad: &mut bool) {
+    crate::walk::walk(tests_path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         let file = entry.path().display();
         let mut header_map = BTreeMap::new();
         iter_header(content, &mut |HeaderLine { revision, directive, .. }| {
@@ -65,6 +65,12 @@ pub fn check(path: &Path, bad: &mut bool) {
                 }
             }
         });
+
+        // Skip run-make tests as revisions are not supported.
+        if entry.path().strip_prefix(tests_path).is_ok_and(|rest| rest.starts_with("run-make")) {
+            return;
+        }
+
         for (rev, RevisionInfo { target_arch, llvm_components }) in &header_map {
             let rev = rev.unwrap_or("[unspecified]");
             match (target_arch, llvm_components) {
