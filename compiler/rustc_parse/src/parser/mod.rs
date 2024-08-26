@@ -1666,7 +1666,7 @@ enum FlatToken {
 pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
-    Lifetime(Ident),
+    Lifetime(Ident, IdentIsRaw),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.
     Nt(Lrc<Nonterminal>),

@@ -2050,7 +2050,7 @@ impl<'a> Parser<'a> {
         };
         // On an error path, eagerly consider a lifetime to be an unclosed character lit, if that
         // makes sense.
-        if let Some(ident) = self.token.lifetime()
+        if let Some((ident, IdentIsRaw::No)) = self.token.lifetime()
             && could_be_unclosed_char_literal(ident)
         {
             let lt = self.expect_lifetime();
@@ -2925,9 +2925,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_label(&mut self) -> Option<Label> {
-        if let Some(ident) = self.token.lifetime() {
+        if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
-            if ident.without_first_quote().is_reserved() {
+            if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
                 self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
             }
 
