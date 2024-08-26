@@ -1523,18 +1523,6 @@ fn hir_fmt_generic_arguments(
         None => (parameters, &[][..]),
     };
     for generic_arg in lifetimes.iter().chain(ty_or_const) {
-        // FIXME: Remove this
-        // most of our lifetimes will be errors as we lack elision and inference
-        // so don't render them for now
-        if !cfg!(test)
-            && matches!(
-                generic_arg.lifetime(Interner),
-                Some(l) if ***l.interned() == LifetimeData::Error
-            )
-        {
-            continue;
-        }
-
         if !mem::take(&mut first) {
             write!(f, ", ")?;
         }
@@ -1872,7 +1860,13 @@ impl HirDisplay for LifetimeData {
             LifetimeData::BoundVar(idx) => idx.hir_fmt(f),
             LifetimeData::InferenceVar(_) => write!(f, "_"),
             LifetimeData::Static => write!(f, "'static"),
-            LifetimeData::Error => write!(f, "'?"),
+            LifetimeData::Error => {
+                if cfg!(test) {
+                    write!(f, "'?")
+                } else {
+                    write!(f, "'_")
+                }
+            }
             LifetimeData::Erased => write!(f, "'<erased>"),
             LifetimeData::Phantom(void, _) => match *void {},
         }

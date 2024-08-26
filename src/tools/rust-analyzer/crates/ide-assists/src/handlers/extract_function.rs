@@ -5649,7 +5649,7 @@ fn func<T: Debug>(i: Struct<'_, T>) {
     fun_name(i);
 }
 
-fn $0fun_name(i: Struct<T>) {
+fn $0fun_name(i: Struct<'_, T>) {
     foo(i);
 }
 "#,

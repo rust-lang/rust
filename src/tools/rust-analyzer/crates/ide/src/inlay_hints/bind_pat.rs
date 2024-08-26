@@ -342,7 +342,7 @@ fn f<'a>() {
     let x = S::<'static>;
       //^ S<'static>
     let y = S::<'_>;
-      //^ S
+      //^ S<'_>
     let z = S::<'a>;
       //^ S<'a>
 
