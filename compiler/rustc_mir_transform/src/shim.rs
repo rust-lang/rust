@@ -6,13 +6,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::source_map::Spanned;
+use rustc_span::source_map::{Spanned, dummy_spanned};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -20,13 +21,48 @@ use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, ela
 use crate::patch::MirPatch;
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, inline,
-    instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
+    instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads,
+    run_optimization_passes, simplify,
 };
 
 mod async_destructor_ctor;
 
 pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
+}
+
+// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> acceses
+struct FixProxyFutureDropVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    replace_to: Local,
+}
+
+impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        _context: PlaceContext,
+        _location: Location,
+    ) {
+        if place.local == Local::from_u32(1) {
+            if place.projection.len() == 1 {
+                assert!(matches!(
+                    place.projection.first(),
+                    Some(ProjectionElem::Field(FieldIdx::ZERO, _))
+                ));
+                *place = Place::from(self.replace_to);
+            } else if place.projection.len() == 2 {
+                assert!(matches!(place.projection[0], ProjectionElem::Field(FieldIdx::ZERO, _)));
+                assert!(matches!(place.projection[1], ProjectionElem::Deref));
+                *place =
+                    Place::from(self.replace_to).project_deeper(&[ProjectionElem::Deref], self.tcx);
+            }
+        }
+    }
 }
 
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<'tcx> {
@@ -129,8 +165,53 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceKind::FutureDropPollShim(def_id, proxy_ty, impl_ty) => {
+            let mut body =
+                async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
+
+            pm::run_passes(
+                tcx,
+                &mut body,
+                &[
+                    &mentioned_items::MentionedItems,
+                    &abort_unwinding_calls::AbortUnwindingCalls,
+                    &add_call_guards::CriticalCallEdges,
+                ],
+                Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
+                pm::Optimizations::Allowed,
+            );
+            run_optimization_passes(tcx, &mut body);
+            debug!("make_shim({:?}) = {:?}", instance, body);
+            return body;
+        }
+        ty::InstanceKind::AsyncDropGlue(def_id, ty) => {
+            let mut body = async_destructor_ctor::build_async_drop_shim(tcx, def_id, ty);
+
+            // Main pass required here is StateTransform to convert sync drop ladder
+            // into coroutine.
+            // Others are minimal passes as for sync drop glue shim
+            pm::run_passes(
+                tcx,
+                &mut body,
+                &[
+                    &mentioned_items::MentionedItems,
+                    &abort_unwinding_calls::AbortUnwindingCalls,
+                    &add_call_guards::CriticalCallEdges,
+                    &simplify::SimplifyCfg::MakeShim,
+                    &crate::coroutine::StateTransform,
+                ],
+                Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
+                pm::Optimizations::Allowed,
+            );
+            run_optimization_passes(tcx, &mut body);
+            debug!("make_shim({:?}) = {:?}", instance, body);
+            return body;
+        }
+
         ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty) => {
-            async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty)
+            let body = async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty);
+            debug!("make_shim({:?}) = {:?}", instance, body);
+            return body;
         }
         ty::InstanceKind::Virtual(..) => {
             bug!("InstanceKind::Virtual ({:?}) is for direct calls only", instance)
@@ -290,8 +371,13 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     if ty.is_some() {
         let patch = {
             let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
-            let mut elaborator =
-                DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, typing_env };
+            let mut elaborator = DropShimElaborator {
+                body: &body,
+                patch: MirPatch::new(&body),
+                tcx,
+                typing_env,
+                produce_async_drops: false,
+            };
             let dropee = tcx.mk_place_deref(dropee_ptr);
             let resume_block = elaborator.patch.resume_block();
             elaborate_drop(
@@ -302,6 +388,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
                 return_block,
                 Unwind::To(resume_block),
                 START_BLOCK,
+                None,
             );
             elaborator.patch
         };
@@ -350,6 +437,7 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
     pub patch: MirPatch<'tcx>,
     pub tcx: TyCtxt<'tcx>,
     pub typing_env: ty::TypingEnv<'tcx>,
+    pub produce_async_drops: bool,
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
@@ -375,6 +463,13 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         self.typing_env
+    }
+
+    fn terminator_loc(&self, bb: BasicBlock) -> Location {
+        self.patch.terminator_loc(self.body, bb)
+    }
+    fn allow_async_drops(&self) -> bool {
+        self.produce_async_drops
     }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -633,6 +728,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     target: unwind,
                     unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                     replace: false,
+                    drop: None,
+                    async_fut: None,
                 },
                 /* is_cleanup */ true,
             );
@@ -898,6 +995,8 @@ fn build_call_shim<'tcx>(
                 target: BasicBlock::new(2),
                 unwind: UnwindAction::Continue,
                 replace: false,
+                drop: None,
+                async_fut: None,
             },
             false,
         );
@@ -915,6 +1014,8 @@ fn build_call_shim<'tcx>(
                 target: BasicBlock::new(4),
                 unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                 replace: false,
+                drop: None,
+                async_fut: None,
             },
             /* is_cleanup */ true,
         );

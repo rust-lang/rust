@@ -184,6 +184,10 @@ fn layout_of_uncached<'tcx>(
     }
 
     let tcx = cx.tcx();
+
+    // layout of `async_drop_in_place<T>::{closure}` in case,
+    // when T is a coroutine, contains this internal coroutine's ref
+
     let dl = cx.data_layout();
     let map_layout = |result: Result<_, _>| match result {
         Ok(layout) => Ok(tcx.mk_layout(layout)),
@@ -406,7 +410,7 @@ fn layout_of_uncached<'tcx>(
         ty::Coroutine(def_id, args) => {
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
-            let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
+            let Some(info) = tcx.coroutine_layout(def_id, args) else {
                 return Err(error(cx, LayoutError::Unknown(ty)));
             };
 
@@ -770,7 +774,7 @@ fn variant_info_for_coroutine<'tcx>(
         return (vec![], None);
     };
 
-    let coroutine = cx.tcx().coroutine_layout(def_id, args.as_coroutine().kind_ty()).unwrap();
+    let coroutine = cx.tcx().coroutine_layout(def_id, args).unwrap();
     let upvar_names = cx.tcx().closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;

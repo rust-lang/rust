@@ -59,6 +59,11 @@ fn trivially_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
         | ty::RawPtr(..)
         | ty::Ref(..)
         | ty::FnPtr(..) => Some(false),
+        ty::Coroutine(def_id, _) => {
+            // For async_drop_in_place::{closure} this is load bearing, not just a perf fix,
+            // because we don't want to compute the layout before mir analysis is done
+            if tcx.is_async_drop_in_place_coroutine(*def_id) { Some(false) } else { None }
+        }
         // check `layout_of` to see (including unreachable things we won't actually see)
         _ => None,
     }
