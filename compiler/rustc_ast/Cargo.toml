@@ -4,10 +4,9 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-# FIXME: bumping memchr to 2.7.1 causes linker errors in MSVC thin-lto
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-memchr = "=2.5.0"
+memchr = "2.7.4"
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
