@@ -485,8 +485,16 @@ enum ParamMode {
     Optional,
 }
 
+#[derive(Copy, Clone, Debug)]
+enum AllowReturnTypeNotation {
+    Yes,
+    No,
+}
+
+#[derive(Copy, Clone, Debug)]
 enum GenericArgsMode {
     ParenSugar,
+    ReturnTypeNotation,
     Err,
 }
 
@@ -1226,7 +1234,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let id = self.lower_node_id(t.id);
-        let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx, None);
+        let qpath = self.lower_qpath(
+            t.id,
+            qself,
+            path,
+            param_mode,
+            // We deny these after the fact in HIR->middle type lowering.
+            AllowReturnTypeNotation::Yes,
+            itctx,
+            None,
+        );
         self.ty_path(id, t.span, qpath)
     }
 
@@ -2203,6 +2220,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             &None,
             &p.path,
             ParamMode::Explicit,
+            AllowReturnTypeNotation::No,
             itctx,
             Some(modifiers),
         ) {
@@ -2341,6 +2359,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &None,
                     path,
                     ParamMode::Optional,
+                    AllowReturnTypeNotation::No,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 );
@@ -2419,6 +2438,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 qself,
                 path,
                 ParamMode::Optional,
+                AllowReturnTypeNotation::No,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

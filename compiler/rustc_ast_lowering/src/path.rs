@@ -5,6 +5,7 @@ use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_middle::span_bug;
+use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, DesugaringKind, Span, Symbol, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
@@ -15,8 +16,8 @@ use super::errors::{
     GenericTypeWithParentheses, UseAngleBrackets,
 };
 use super::{
-    GenericArgsCtor, GenericArgsMode, ImplTraitContext, LifetimeRes, LoweringContext, ParamMode,
-    ResolverAstLoweringExt,
+    AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, LifetimeRes,
+    LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 use crate::ImplTraitPosition;
 
@@ -28,6 +29,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         qself: &Option<ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
+        allow_return_type_notation: AllowReturnTypeNotation,
         itctx: ImplTraitContext,
         // modifiers of the impl/bound if this is a trait path
         modifiers: Option<ast::TraitBoundModifiers>,
@@ -103,6 +105,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         {
                             GenericArgsMode::ParenSugar
                         }
+                        Res::Def(DefKind::AssocFn, _) if i + 1 == proj_start => {
+                            match allow_return_type_notation {
+                                AllowReturnTypeNotation::Yes => GenericArgsMode::ReturnTypeNotation,
+                                AllowReturnTypeNotation::No => GenericArgsMode::Err,
+                            }
+                        }
                         // Avoid duplicated errors.
                         Res::Err => GenericArgsMode::ParenSugar,
                         // An error
@@ -164,11 +172,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
         for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
+            // If this is a type-dependent `T::method(..)`.
+            let generic_args_mode = if i + 1 == p.segments.len()
+                && matches!(allow_return_type_notation, AllowReturnTypeNotation::Yes)
+            {
+                GenericArgsMode::ReturnTypeNotation
+            } else {
+                GenericArgsMode::Err
+            };
+
             let hir_segment = self.arena.alloc(self.lower_path_segment(
                 p.span,
                 segment,
                 param_mode,
-                GenericArgsMode::Err,
+                generic_args_mode,
                 itctx,
                 None,
             ));
@@ -238,6 +255,40 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
                 GenericArgs::Parenthesized(data) => match generic_args_mode {
+                    GenericArgsMode::ReturnTypeNotation => {
+                        let mut err = if !data.inputs.is_empty() {
+                            self.dcx().create_err(BadReturnTypeNotation::Inputs {
+                                span: data.inputs_span,
+                            })
+                        } else if let FnRetTy::Ty(ty) = &data.output {
+                            self.dcx().create_err(BadReturnTypeNotation::Output {
+                                span: data.inputs_span.shrink_to_hi().to(ty.span),
+                            })
+                        } else {
+                            self.dcx().create_err(BadReturnTypeNotation::NeedsDots {
+                                span: data.inputs_span,
+                            })
+                        };
+                        if !self.tcx.features().return_type_notation
+                            && self.tcx.sess.is_nightly_build()
+                        {
+                            add_feature_diagnostics(
+                                &mut err,
+                                &self.tcx.sess,
+                                sym::return_type_notation,
+                            );
+                        }
+                        err.emit();
+                        (
+                            GenericArgsCtor {
+                                args: Default::default(),
+                                constraints: &[],
+                                parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
+                                span: path_span,
+                            },
+                            false,
+                        )
+                    }
                     GenericArgsMode::ParenSugar => self.lower_parenthesized_parameter_data(
                         data,
                         itctx,
@@ -279,7 +330,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 },
                 GenericArgs::ParenthesizedElided(span) => {
-                    self.dcx().emit_err(BadReturnTypeNotation::Position { span: *span });
+                    match generic_args_mode {
+                        GenericArgsMode::ReturnTypeNotation => {
+                            // Ok
+                        }
+                        GenericArgsMode::ParenSugar | GenericArgsMode::Err => {
+                            self.dcx().emit_err(BadReturnTypeNotation::Position { span: *span });
+                        }
+                    }
                     (
                         GenericArgsCtor {
                             args: Default::default(),

@@ -20,8 +20,8 @@ use super::errors::{
 };
 use super::LoweringContext;
 use crate::{
-    fluent_generated as fluent, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt,
+    fluent_generated as fluent, AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition,
+    ParamMode, ResolverAstLoweringExt,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -201,6 +201,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 &sym.qself,
                                 &sym.path,
                                 ParamMode::Optional,
+                                AllowReturnTypeNotation::No,
                                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                                 None,
                             );

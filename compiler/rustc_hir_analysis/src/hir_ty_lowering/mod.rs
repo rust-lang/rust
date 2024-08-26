@@ -53,7 +53,7 @@ use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::{debug, debug_span, instrument};
 
 use crate::bounds::Bounds;
-use crate::errors::{AmbiguousLifetimeBound, WildPatTy};
+use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, WildPatTy};
 use crate::hir_ty_lowering::errors::{prohibit_assoc_item_constraint, GenericsArgsErrExtend};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -1909,6 +1909,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     path.segments.last().unwrap(),
                     ty::BoundConstness::NotConst,
                 )
+            }
+            // Deny any qpath types that were successfully lowered in AST lowering.
+            Res::Def(DefKind::AssocFn, _)
+                if let [.., _trait_segment, item_segment] = &path.segments[..]
+                    && item_segment.args.is_some_and(|args| {
+                        matches!(
+                            args.parenthesized,
+                            hir::GenericArgsParentheses::ReturnTypeNotation
+                        )
+                    }) =>
+            {
+                let guar = self.dcx().emit_err(BadReturnTypeNotation { span: path.span });
+                Ty::new_error(tcx, guar)
             }
             Res::PrimTy(prim_ty) => {
                 assert_eq!(opt_self_ty, None);

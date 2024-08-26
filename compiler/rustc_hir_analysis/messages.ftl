@@ -48,6 +48,8 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
 
 hir_analysis_bad_precise_capture = expected {$kind} parameter in `use<...>` precise captures list, found {$found}
 
+hir_analysis_bad_return_type_notation_position = return type notation not allowed in this position yet
+
 hir_analysis_cannot_capture_late_bound_const =
     cannot capture late-bound const parameter in {$what}
     .label = parameter defined here
