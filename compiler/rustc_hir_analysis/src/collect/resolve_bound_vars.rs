@@ -1910,6 +1910,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         // from the generics of the parameter's definition, since we want
                         // to be able to resolve an RTN path on a nested body (e.g. method
                         // inside an impl) using the where clauses on the method.
+                        // FIXME(return_type_notation): Think of some better way of doing this.
                         let Some(generics) = self.tcx.hir_owner_node(hir_id.owner).generics()
                         else {
                             return;
@@ -1948,7 +1949,30 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         };
                         (bound_vars, assoc_item.def_id, item_segment)
                     }
-                    Res::SelfTyAlias { is_trait_impl: true, .. } => todo!(),
+                    // If we have a self type alias (in an impl), try to resolve an
+                    // associated item from one of the supertraits of the impl's trait.
+                    Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. } => {
+                        let hir::ItemKind::Impl(hir::Impl { of_trait: Some(trait_ref), .. }) = self
+                            .tcx
+                            .hir_node_by_def_id(impl_def_id.expect_local())
+                            .expect_item()
+                            .kind
+                        else {
+                            return;
+                        };
+                        let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                            return;
+                        };
+                        let Some((bound_vars, assoc_item)) = BoundVarContext::supertrait_hrtb_vars(
+                            self.tcx,
+                            trait_def_id,
+                            item_segment.ident,
+                            ty::AssocKind::Fn,
+                        ) else {
+                            return;
+                        };
+                        (bound_vars, assoc_item.def_id, item_segment)
+                    }
                     _ => return,
                 }
             }

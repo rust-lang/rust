@@ -3,24 +3,21 @@
 #![feature(return_type_notation)]
 //~^ WARN the feature `return_type_notation` is incomplete
 
-trait Foo {
+trait Trait {
     fn method() -> impl Sized;
-}
-
-trait Bar: Foo {
-    fn other()
-    where
-        Self::method(..): Send;
 }
 
 fn is_send(_: impl Send) {}
 
-impl<T: Foo> Bar for T {
-    fn other()
+struct W<T>(T);
+
+impl<T> W<T> {
+    fn test()
     where
-        Self::method(..): Send,
+        T: Trait,
+        T::method(..): Send,
     {
-        is_send(Self::method());
+        is_send(T::method());
     }
 }
 
