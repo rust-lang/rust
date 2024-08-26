@@ -280,6 +280,9 @@ pub trait Machine<'tcx>: Sized {
         Ok(())
     }
 
+    /// Determines the result of a `NullaryOp::UbChecks` invocation.
+    fn ub_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
+
     /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
     /// You can use this to detect long or endlessly running programs.
     #[inline]
@@ -625,6 +628,13 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
         match fn_val {}
+    }
+
+    #[inline(always)]
+    fn ub_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        Ok(true)
     }
 
     #[inline(always)]
