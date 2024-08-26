@@ -10,7 +10,9 @@ use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
+use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
+use rustc_span::edition::Edition;
 use rustc_span::Span;
 
 use crate::{fluent_generated as fluent, LateContext, LateLintPass};
@@ -54,10 +56,10 @@ declare_lint! {
     pub IMPL_TRAIT_OVERCAPTURES,
     Allow,
     "`impl Trait` will capture more lifetimes than possibly intended in edition 2024",
-    //@future_incompatible = FutureIncompatibleInfo {
-    //    reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-    //    reference: "<FIXME>",
-    //};
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/rpit-lifetime-capture.html>",
+    };
 }
 
 declare_lint! {
