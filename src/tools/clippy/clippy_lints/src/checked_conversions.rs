@@ -1,5 +1,3 @@
-//! lint on manually implemented checked conversions that could be transformed into `try_from`
-
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;

@@ -5,9 +5,9 @@ LL |     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'s` as defined here...
-  --> $DIR/impl-implied-bounds-compatibility-unnormalized.rs:11:12
+  --> $DIR/impl-implied-bounds-compatibility-unnormalized.rs:8:12
    |
-LL |     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {
+LL |     fn get<'s>(s: &'s str, _: ()) -> &'static str;
    |            ^^
 note: ...so that the method type is compatible with trait
   --> $DIR/impl-implied-bounds-compatibility-unnormalized.rs:11:5

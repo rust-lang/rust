@@ -146,7 +146,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                         !is_zst
                     });
                     if let Some(field) = field {
-                        let ty0 = self.tcx.type_of(field.did).instantiate(self.tcx, args);
+                        let ty0 = self.tcx.erase_regions(field.ty(self.tcx, args));
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that
                         // contains or references itself, to avoid a reference cycle.
@@ -316,7 +316,7 @@ pub fn transform_instance<'tcx>(
             .drop_trait()
             .unwrap_or_else(|| bug!("typeid_for_instance: couldn't get drop_trait lang item"));
         let predicate = ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef {
-            def_id: def_id,
+            def_id,
             args: List::empty(),
         });
         let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);

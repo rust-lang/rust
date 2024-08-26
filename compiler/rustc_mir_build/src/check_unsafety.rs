@@ -793,7 +793,7 @@ impl UnsafeOpKind {
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
-                    note: if build_enabled.is_empty() { None } else { Some(()) },
+                    note: !build_enabled.is_empty(),
                     build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
@@ -958,7 +958,7 @@ impl UnsafeOpKind {
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
-                    note: if build_enabled.is_empty() { None } else { Some(()) },
+                    note: !build_enabled.is_empty(),
                     build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
@@ -977,7 +977,7 @@ impl UnsafeOpKind {
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
-                    note: if build_enabled.is_empty() { None } else { Some(()) },
+                    note: !build_enabled.is_empty(),
                     build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()

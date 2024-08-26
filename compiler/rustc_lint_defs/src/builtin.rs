@@ -142,7 +142,6 @@ declare_lint_pass! {
         USELESS_DEPRECATED,
         WARNINGS,
         WASM_C_ABI,
-        WRITES_THROUGH_IMMUTABLE_POINTER,
         // tidy-alphabetical-end
     ]
 }
@@ -251,7 +250,7 @@ declare_lint! {
     Deny,
     "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #68585 <https://github.com/rust-lang/rust/issues/68585>",
     };
 }
@@ -4693,40 +4692,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #115010 <https://github.com/rust-lang/rust/issues/115010>",
-    };
-}
-
-declare_lint! {
-    /// The `writes_through_immutable_pointer` lint detects writes through pointers derived from
-    /// shared references.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![feature(const_mut_refs)]
-    /// const WRITE_AFTER_CAST: () = unsafe {
-    ///     let mut x = 0;
-    ///     let ptr = &x as *const i32 as *mut i32;
-    ///     *ptr = 0;
-    /// };
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Shared references are immutable (when there is no `UnsafeCell` involved),
-    /// and writing through them or through pointers derived from them is Undefined Behavior.
-    /// The compiler recently learned to detect such Undefined Behavior during compile-time
-    /// evaluation, and in the future this will raise a hard error.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub WRITES_THROUGH_IMMUTABLE_POINTER,
-    Warn,
-    "shared references are immutable, and pointers derived from them must not be written to",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #X <https://github.com/rust-lang/rust/issues/X>",
     };
 }
 

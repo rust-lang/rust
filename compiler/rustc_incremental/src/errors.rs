@@ -189,10 +189,10 @@ pub struct CreateLock<'a> {
     pub lock_err: std::io::Error,
     pub session_dir: &'a Path,
     #[note(incremental_lock_unsupported)]
-    pub is_unsupported_lock: Option<()>,
+    pub is_unsupported_lock: bool,
     #[help(incremental_cargo_help_1)]
     #[help(incremental_cargo_help_2)]
-    pub is_cargo: Option<()>,
+    pub is_cargo: bool,
 }
 
 #[derive(Diagnostic)]
@@ -269,13 +269,6 @@ pub struct DeleteIncompatible {
 #[diag(incremental_load_dep_graph)]
 pub struct LoadDepGraph {
     pub path: PathBuf,
-    pub err: std::io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag(incremental_write_dep_graph)]
-pub struct WriteDepGraph<'a> {
-    pub path: &'a Path,
     pub err: std::io::Error,
 }
 

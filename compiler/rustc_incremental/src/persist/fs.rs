@@ -486,12 +486,12 @@ fn lock_directory(
         // the lock should be exclusive
         Ok(lock) => Ok((lock, lock_file_path)),
         Err(lock_err) => {
-            let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err).then_some(());
+            let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err);
             Err(sess.dcx().emit_err(errors::CreateLock {
                 lock_err,
                 session_dir,
                 is_unsupported_lock,
-                is_cargo: rustc_session::utils::was_invoked_from_cargo().then_some(()),
+                is_cargo: rustc_session::utils::was_invoked_from_cargo(),
             }))
         }
     }
@@ -851,7 +851,7 @@ fn delete_old(sess: &Session, path: &Path) {
     debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
     if let Err(err) = safe_remove_dir_all(path) {
-        sess.dcx().emit_warn(errors::SessionGcFailed { path: path, err });
+        sess.dcx().emit_warn(errors::SessionGcFailed { path, err });
     } else {
         delete_session_dir_lock_file(sess, &lock_file_path(path));
     }

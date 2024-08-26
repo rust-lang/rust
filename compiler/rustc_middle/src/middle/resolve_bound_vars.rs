@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{ItemLocalId, OwnerId};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
@@ -11,9 +11,9 @@ use crate::ty;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum ResolvedArg {
     StaticLifetime,
-    EarlyBound(/* decl */ DefId),
-    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ DefId),
-    Free(DefId, /* lifetime decl */ DefId),
+    EarlyBound(/* decl */ LocalDefId),
+    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ LocalDefId),
+    Free(LocalDefId, /* lifetime decl */ LocalDefId),
     Error(ErrorGuaranteed),
 }
 

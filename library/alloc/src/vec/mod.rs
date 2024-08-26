@@ -1334,7 +1334,7 @@ impl<T, A: Allocator> Vec<T, A> {
         self.buf.ptr()
     }
 
-    /// Returns an unsafe mutable pointer to the vector's buffer, or a dangling
+    /// Returns a raw mutable pointer to the vector's buffer, or a dangling
     /// raw pointer valid for zero sized reads if the vector didn't allocate.
     ///
     /// The caller must ensure that the vector outlives the pointer this
@@ -1349,7 +1349,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// or references to specific elements you are planning on accessing through this pointer,
     /// may still invalidate this pointer.
     /// See the second example below for how this guarantee can be used.
-    ///
     ///
     /// # Examples
     ///

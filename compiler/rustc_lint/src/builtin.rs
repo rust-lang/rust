@@ -1330,7 +1330,7 @@ impl UnreachablePub {
                 BuiltinUnreachablePub {
                     what,
                     suggestion: (vis_span, applicability),
-                    help: exportable.then_some(()),
+                    help: exportable,
                 },
             );
         }
@@ -1925,8 +1925,8 @@ impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
         tcx: TyCtxt<'tcx>,
         inferred_outlives: impl Iterator<Item = &'tcx (ty::Clause<'tcx>, Span)>,
-        item: DefId,
-        lifetime: DefId,
+        item: LocalDefId,
+        lifetime: LocalDefId,
     ) -> Vec<ty::Region<'tcx>> {
         let item_generics = tcx.generics_of(item);
 
@@ -1934,7 +1934,7 @@ impl ExplicitOutlivesRequirements {
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyParam(ebr)
-                        if item_generics.region_param(ebr, tcx).def_id == lifetime =>
+                        if item_generics.region_param(ebr, tcx).def_id == lifetime.to_def_id() =>
                     {
                         Some(b)
                     }
@@ -1982,7 +1982,7 @@ impl ExplicitOutlivesRequirements {
                 let is_inferred = match tcx.named_bound_var(lifetime.hir_id) {
                     Some(ResolvedArg::EarlyBound(def_id)) => inferred_outlives
                         .iter()
-                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { item_generics.region_param(ebr, tcx).def_id == def_id })),
+                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { item_generics.region_param(ebr, tcx).def_id == def_id.to_def_id() })),
                     _ => false,
                 };
 
@@ -2097,7 +2097,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                         inferred_outlives
                                             .iter()
                                             .filter(|(_, span)| !predicate.span.contains(*span)),
-                                        item.owner_id.to_def_id(),
+                                        item.owner_id.def_id,
                                         region_def_id,
                                     ),
                                     &predicate.bounds,

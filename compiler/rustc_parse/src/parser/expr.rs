@@ -2162,13 +2162,13 @@ impl<'a> Parser<'a> {
             self.dcx().emit_warn(errors::InvalidLiteralSuffixOnTupleIndex {
                 span,
                 suffix,
-                exception: Some(()),
+                exception: true,
             });
         } else {
             self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
                 span,
                 suffix,
-                exception: None,
+                exception: false,
             });
         }
     }

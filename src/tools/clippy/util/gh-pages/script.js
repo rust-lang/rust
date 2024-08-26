@@ -50,24 +50,6 @@
                 );
             };
         })
-        .directive('themeDropdown', function ($document) {
-            return {
-                restrict: 'A',
-                link: function ($scope, $element, $attr) {
-                    $element.bind('click', function () {
-                        $element.toggleClass('open');
-                        $element.addClass('open-recent');
-                    });
-
-                    $document.bind('click', function () {
-                        if (!$element.hasClass('open-recent')) {
-                            $element.removeClass('open');
-                        }
-                        $element.removeClass('open-recent');
-                    })
-                }
-            }
-        })
         .directive('filterDropdown', function ($document) {
             return {
                 restrict: 'A',
@@ -114,27 +96,18 @@
                 cargo: true,
                 complexity: true,
                 correctness: true,
-                deprecated: false,
                 nursery: true,
                 pedantic: true,
                 perf: true,
                 restriction: true,
                 style: true,
                 suspicious: true,
+                deprecated: false,
             }
 
             $scope.groups = {
                 ...GROUPS_FILTER_DEFAULT
             };
-
-            const THEMES_DEFAULT = {
-                light: "Light",
-                rust: "Rust",
-                coal: "Coal",
-                navy: "Navy",
-                ayu: "Ayu"
-            };
-            $scope.themes = THEMES_DEFAULT;
 
             $scope.versionFilters = {
                 "≥": {enabled: false, minorVersion: null },
@@ -153,11 +126,10 @@
             );
 
             const APPLICABILITIES_FILTER_DEFAULT = {
-                Unspecified: true,
-                Unresolved: true,
                 MachineApplicable: true,
                 MaybeIncorrect: true,
-                HasPlaceholders: true
+                HasPlaceholders: true,
+                Unspecified: true,
             };
 
             $scope.applicabilities = {
@@ -321,10 +293,6 @@
                 $location.path($scope.search);
             }
 
-            $scope.selectTheme = function (theme) {
-                setTheme(theme, true);
-            }
-
             $scope.toggleLevels = function (value) {
                 const levels = $scope.levels;
                 for (const key in levels) {
@@ -456,7 +424,7 @@
             }
 
             $scope.byApplicabilities = function (lint) {
-                return $scope.applicabilities[lint.applicability.applicability];
+                return $scope.applicabilities[lint.applicability];
             };
 
             // Show details for one lint
@@ -537,6 +505,16 @@ function getQueryVariable(variable) {
     }
 }
 
+function storeValue(settingName, value) {
+    try {
+        localStorage.setItem(`clippy-lint-list-${settingName}`, value);
+    } catch (e) { }
+}
+
+function loadValue(settingName) {
+    return localStorage.getItem(`clippy-lint-list-${settingName}`);
+}
+
 function setTheme(theme, store) {
     let enableHighlight = false;
     let enableNight = false;
@@ -569,14 +547,14 @@ function setTheme(theme, store) {
     document.getElementById("styleAyu").disabled = !enableAyu;
 
     if (store) {
-        try {
-            localStorage.setItem('clippy-lint-list-theme', theme);
-        } catch (e) { }
+        storeValue("theme", theme);
+    } else {
+        document.getElementById(`theme-choice`).value = theme;
     }
 }
 
 function handleShortcut(ev) {
-    if (ev.ctrlKey || ev.altKey || ev.metaKey) {
+    if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
         return;
     }
 
@@ -601,11 +579,51 @@ function handleShortcut(ev) {
 document.addEventListener("keypress", handleShortcut);
 document.addEventListener("keydown", handleShortcut);
 
+function changeSetting(elem) {
+    if (elem.id === "disable-shortcuts") {
+        disableShortcuts = elem.checked;
+        storeValue(elem.id, elem.checked);
+    }
+}
+
+function onEachLazy(lazyArray, func) {
+    const arr = Array.prototype.slice.call(lazyArray);
+    for (const el of arr) {
+        func(el);
+    }
+}
+
+function handleBlur(event) {
+    const parent = document.getElementById("settings-dropdown");
+    if (!parent.contains(document.activeElement) &&
+        !parent.contains(event.relatedTarget)
+    ) {
+        parent.classList.remove("open");
+    }
+}
+
+function generateSettings() {
+    const settings = document.getElementById("settings-dropdown");
+    const settingsButton = settings.querySelector(".settings-icon")
+    settingsButton.onclick = () => settings.classList.toggle("open");
+    settingsButton.onblur = handleBlur;
+    const settingsMenu = settings.querySelector(".settings-menu");
+    settingsMenu.onblur = handleBlur;
+    onEachLazy(
+        settingsMenu.querySelectorAll("input"),
+        el => el.onblur = handleBlur,
+    );
+}
+
+generateSettings();
+
 // loading the theme after the initial load
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-const theme = localStorage.getItem('clippy-lint-list-theme');
+const theme = loadValue('theme');
 if (prefersDark.matches && !theme) {
     setTheme("coal", false);
 } else {
     setTheme(theme, false);
 }
+let disableShortcuts = loadValue('disable-shortcuts') === "true";
+document.getElementById("disable-shortcuts").checked = disableShortcuts;

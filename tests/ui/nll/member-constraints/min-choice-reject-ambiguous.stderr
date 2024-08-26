@@ -37,10 +37,10 @@ LL | fn test_ambiguous<'a, 'b, 'c>(s: &'a u8) -> impl Cap<'b> + Cap<'c>
 LL |     s
    |     ^
    |
-help: to declare that `impl Cap<'b> + Cap<'c>` captures `'a`, you can add an explicit `'a` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'a`
    |
-LL | fn test_ambiguous<'a, 'b, 'c>(s: &'a u8) -> impl Cap<'b> + Cap<'c> + 'a
-   |                                                                    ++++
+LL | fn test_ambiguous<'a, 'b, 'c>(s: &'a u8) -> impl Cap<'b> + Cap<'c> + use<'b, 'c, 'a>
+   |                                                                    +++++++++++++++++
 
 error: aborting due to 3 previous errors
 

@@ -53,7 +53,7 @@ fn filter_assoc_items_by_name_and_namespace<'a>(
     assoc_items_of: DefId,
     ident: Ident,
     ns: Namespace,
-) -> impl Iterator<Item = &ty::AssocItem> + 'a {
+) -> impl Iterator<Item = &'a ty::AssocItem> + 'a {
     tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
         item.kind.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })

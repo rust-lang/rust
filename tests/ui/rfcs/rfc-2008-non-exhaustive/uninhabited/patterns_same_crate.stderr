@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/patterns_same_crate.rs:51:9
    |
 LL |         Some(_x) => (),
-   |         ^^^^^^^^
+   |         ^^^^^^^^ matches no values because `UninhabitedEnum` is uninhabited
    |
-   = note: this pattern matches no values because `UninhabitedEnum` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/patterns_same_crate.rs:1:9
    |
@@ -15,33 +15,33 @@ error: unreachable pattern
   --> $DIR/patterns_same_crate.rs:56:9
    |
 LL |         Some(_x) => (),
-   |         ^^^^^^^^
+   |         ^^^^^^^^ matches no values because `UninhabitedVariants` is uninhabited
    |
-   = note: this pattern matches no values because `UninhabitedVariants` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/patterns_same_crate.rs:60:15
    |
 LL |     while let PartiallyInhabitedVariants::Struct { x } = partially_inhabited_variant() {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ matches no values because `!` is uninhabited
    |
-   = note: this pattern matches no values because `!` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/patterns_same_crate.rs:64:15
    |
 LL |     while let Some(_x) = uninhabited_struct() {
-   |               ^^^^^^^^
+   |               ^^^^^^^^ matches no values because `UninhabitedStruct` is uninhabited
    |
-   = note: this pattern matches no values because `UninhabitedStruct` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
   --> $DIR/patterns_same_crate.rs:67:15
    |
 LL |     while let Some(_x) = uninhabited_tuple_struct() {
-   |               ^^^^^^^^
+   |               ^^^^^^^^ matches no values because `UninhabitedTupleStruct` is uninhabited
    |
-   = note: this pattern matches no values because `UninhabitedTupleStruct` is uninhabited
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: aborting due to 5 previous errors
 

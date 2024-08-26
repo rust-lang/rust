@@ -1002,11 +1002,7 @@ impl CrateError {
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        dcx.emit_err(errors::CrateLocationUnknownType {
-                            span,
-                            path: path,
-                            crate_name,
-                        });
+                        dcx.emit_err(errors::CrateLocationUnknownType { span, path, crate_name });
                         dcx.emit_err(errors::LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,
@@ -1035,7 +1031,7 @@ impl CrateError {
                     }
                     dcx.emit_err(errors::NewerCrateVersion {
                         span,
-                        crate_name: crate_name,
+                        crate_name,
                         add_info,
                         found_crates,
                     });

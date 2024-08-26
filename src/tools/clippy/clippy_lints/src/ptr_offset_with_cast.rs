@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -120,8 +120,8 @@ fn build_suggestion(
     receiver_expr: &Expr<'_>,
     cast_lhs_expr: &Expr<'_>,
 ) -> Option<String> {
-    let receiver = snippet_opt(cx, receiver_expr.span)?;
-    let cast_lhs = snippet_opt(cx, cast_lhs_expr.span)?;
+    let receiver = receiver_expr.span.get_source_text(cx)?;
+    let cast_lhs = cast_lhs_expr.span.get_source_text(cx)?;
     Some(format!("{receiver}.{}({cast_lhs})", method.suggestion()))
 }
 

@@ -20,10 +20,10 @@ LL | |         *dest = g.get();
 LL | |     }
    | |_____^
    |
-help: to declare that `impl FnOnce()` captures `'_`, you can add an explicit `'_` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'_`
    |
-LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
-   |                                                   ++++
+LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce() + use<'_, G, T>
+   |                                                   +++++++++++++++
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:30:5

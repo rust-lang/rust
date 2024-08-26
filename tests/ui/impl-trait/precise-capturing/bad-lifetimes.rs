@@ -1,5 +1,3 @@
-#![feature(precise_capturing)]
-
 fn no_elided_lt() -> impl Sized + use<'_> {}
 //~^ ERROR missing lifetime specifier
 //~| ERROR expected lifetime parameter in `use<...>` precise captures list, found `'_`

@@ -36,6 +36,7 @@ pub mod rfs {
 // Re-exports of third-party library crates.
 pub use bstr;
 pub use gimli;
+pub use libc;
 pub use object;
 pub use regex;
 pub use serde_json;
@@ -64,7 +65,7 @@ pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 pub use diff::{diff, Diff};
 
 /// Panic-on-fail [`std::env::var`] and [`std::env::var_os`] wrappers.
-pub use env::{env_var, env_var_os};
+pub use env::{env_var, env_var_os, set_current_dir};
 
 /// Convenience helpers for running binaries and other commands.
 pub use run::{cmd, run, run_fail, run_with_args};

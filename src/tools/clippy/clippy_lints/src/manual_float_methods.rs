@@ -1,6 +1,6 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{is_from_proc_macro, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             // case somebody does that for some reason
             && (is_infinity(&const_1) && is_neg_infinity(&const_2)
                 || is_neg_infinity(&const_1) && is_infinity(&const_2))
-            && let Some(local_snippet) = snippet_opt(cx, first.span)
+            && let Some(local_snippet) = first.span.get_source_text(cx)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
                 (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Eq) => Variant::ManualIsInfinite,

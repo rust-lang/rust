@@ -203,7 +203,7 @@ pub struct AnnotationRequired<'a> {
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
     #[note(trait_selection_full_type_written)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
 }
 
@@ -224,7 +224,7 @@ pub struct AmbiguousImpl<'a> {
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
     #[note(trait_selection_full_type_written)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
 }
 
@@ -245,7 +245,7 @@ pub struct AmbiguousReturn<'a> {
     #[subdiagnostic]
     pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
     #[note(trait_selection_full_type_written)]
-    pub was_written: Option<()>,
+    pub was_written: bool,
     pub path: PathBuf,
 }
 

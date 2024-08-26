@@ -161,7 +161,7 @@ pub(crate) struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -413,7 +413,7 @@ pub(crate) struct CallToFunctionWithRequiresUnsafe {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -431,7 +431,7 @@ pub(crate) struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) missing_target_features: DiagArgValue,
     pub(crate) missing_target_features_count: usize,
     #[note]
-    pub(crate) note: Option<()>,
+    pub(crate) note: bool,
     pub(crate) build_target_features: DiagArgValue,
     pub(crate) build_target_features_count: usize,
     #[subdiagnostic]
@@ -493,7 +493,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut diag =
             Diag::new(dcx, level, fluent::mir_build_non_exhaustive_patterns_type_not_empty);
         diag.span(self.scrut_span);
@@ -586,20 +586,18 @@ pub(crate) struct NonConstPath {
 pub(crate) struct UnreachablePattern<'tcx> {
     #[label]
     pub(crate) span: Option<Span>,
-    #[subdiagnostic]
-    pub(crate) matches_no_values: Option<UnreachableMatchesNoValues<'tcx>>,
+    #[label(mir_build_unreachable_matches_no_values)]
+    pub(crate) matches_no_values: Option<Span>,
+    pub(crate) matches_no_values_ty: Ty<'tcx>,
+    #[note(mir_build_unreachable_uninhabited_note)]
+    pub(crate) uninhabited_note: Option<()>,
     #[label(mir_build_unreachable_covered_by_catchall)]
     pub(crate) covered_by_catchall: Option<Span>,
     #[label(mir_build_unreachable_covered_by_one)]
     pub(crate) covered_by_one: Option<Span>,
     #[note(mir_build_unreachable_covered_by_many)]
     pub(crate) covered_by_many: Option<MultiSpan>,
-}
-
-#[derive(Subdiagnostic)]
-#[note(mir_build_unreachable_matches_no_values)]
-pub(crate) struct UnreachableMatchesNoValues<'tcx> {
-    pub(crate) ty: Ty<'tcx>,
+    pub(crate) covered_by_many_n_more_count: usize,
 }
 
 #[derive(Diagnostic)]
@@ -623,7 +621,7 @@ pub(crate) struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
     #[label]
     pub(crate) span: Span,
     #[note(mir_build_teach_note)]
-    pub(crate) teach: Option<()>,
+    pub(crate) teach: bool,
 }
 
 #[derive(Diagnostic)]
@@ -865,7 +863,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
-    pub(crate) witness_1_is_privately_uninhabited: Option<()>,
+    pub(crate) witness_1_is_privately_uninhabited: bool,
     #[note(mir_build_pattern_ty)]
     pub(crate) _p: (),
     pub(crate) pattern_ty: Ty<'tcx>,

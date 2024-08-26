@@ -718,7 +718,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
             interpreted_as_const,
-            witness_1_is_privately_uninhabited: witness_1_is_privately_uninhabited.then_some(()),
+            witness_1_is_privately_uninhabited,
             _p: (),
             pattern_ty,
             let_suggestion,
@@ -917,22 +917,28 @@ fn report_unreachable_pattern<'p, 'tcx>(
     pat: &DeconstructedPat<'p, 'tcx>,
     explanation: &RedundancyExplanation<'p, 'tcx>,
 ) {
+    static CAP_COVERED_BY_MANY: usize = 4;
     let pat_span = pat.data().span;
     let mut lint = UnreachablePattern {
         span: Some(pat_span),
         matches_no_values: None,
+        matches_no_values_ty: **pat.ty(),
+        uninhabited_note: None,
         covered_by_catchall: None,
         covered_by_one: None,
         covered_by_many: None,
+        covered_by_many_n_more_count: 0,
     };
     match explanation.covered_by.as_slice() {
         [] => {
             // Empty pattern; we report the uninhabited type that caused the emptiness.
             lint.span = None; // Don't label the pattern itself
+            lint.uninhabited_note = Some(()); // Give a link about empty types
+            lint.matches_no_values = Some(pat_span);
             pat.walk(&mut |subpat| {
                 let ty = **subpat.ty();
                 if cx.is_uninhabited(ty) {
-                    lint.matches_no_values = Some(UnreachableMatchesNoValues { ty });
+                    lint.matches_no_values_ty = ty;
                     false // No need to dig further.
                 } else if matches!(subpat.ctor(), Constructor::Ref | Constructor::UnionField) {
                     false // Don't explore further since they are not by-value.
@@ -948,15 +954,27 @@ fn report_unreachable_pattern<'p, 'tcx>(
             lint.covered_by_one = Some(covering_pat.data().span);
         }
         covering_pats => {
+            let mut iter = covering_pats.iter();
             let mut multispan = MultiSpan::from_span(pat_span);
-            for p in covering_pats {
+            for p in iter.by_ref().take(CAP_COVERED_BY_MANY) {
                 multispan.push_span_label(
                     p.data().span,
                     fluent::mir_build_unreachable_matches_same_values,
                 );
             }
-            multispan
-                .push_span_label(pat_span, fluent::mir_build_unreachable_making_this_unreachable);
+            let remain = iter.count();
+            if remain == 0 {
+                multispan.push_span_label(
+                    pat_span,
+                    fluent::mir_build_unreachable_making_this_unreachable,
+                );
+            } else {
+                lint.covered_by_many_n_more_count = remain;
+                multispan.push_span_label(
+                    pat_span,
+                    fluent::mir_build_unreachable_making_this_unreachable_n_more,
+                );
+            }
             lint.covered_by_many = Some(multispan);
         }
     }

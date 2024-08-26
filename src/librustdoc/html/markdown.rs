@@ -40,7 +40,7 @@ use pulldown_cmark::{
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagMessage};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;
@@ -818,27 +818,25 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
 }
 
 pub(crate) struct ExtraInfo<'tcx> {
-    def_id: DefId,
+    def_id: LocalDefId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> ExtraInfo<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: DefId, sp: Span) -> ExtraInfo<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, sp: Span) -> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
-        if let Some(def_id) = self.def_id.as_local() {
-            self.tcx.node_span_lint(
-                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.local_def_id_to_hir_id(def_id),
-                self.sp,
-                |lint| {
-                    lint.primary_message(msg);
-                },
-            );
-        }
+        self.tcx.node_span_lint(
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+            self.tcx.local_def_id_to_hir_id(self.def_id),
+            self.sp,
+            |lint| {
+                lint.primary_message(msg);
+            },
+        );
     }
 
     fn error_invalid_codeblock_attr_with_help(
@@ -846,17 +844,15 @@ impl<'tcx> ExtraInfo<'tcx> {
         msg: impl Into<DiagMessage>,
         f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        if let Some(def_id) = self.def_id.as_local() {
-            self.tcx.node_span_lint(
-                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.local_def_id_to_hir_id(def_id),
-                self.sp,
-                |lint| {
-                    lint.primary_message(msg);
-                    f(lint);
-                },
-            );
-        }
+        self.tcx.node_span_lint(
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+            self.tcx.local_def_id_to_hir_id(self.def_id),
+            self.sp,
+            |lint| {
+                lint.primary_message(msg);
+                f(lint);
+            },
+        );
     }
 }
 

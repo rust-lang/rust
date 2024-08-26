@@ -896,7 +896,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
         if parent == self.r.graph_root {
-            if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
+            let ident = ident.normalize_to_macros_2_0();
+            if let Some(entry) = self.r.extern_prelude.get(&ident) {
                 if expansion != LocalExpnId::ROOT && orig_name.is_some() && !entry.is_import() {
                     self.r.dcx().emit_err(
                         errors::MacroExpandedExternCrateCannotShadowExternArguments {
@@ -913,13 +914,20 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let entry = self
                 .r
                 .extern_prelude
-                .entry(ident.normalize_to_macros_2_0())
+                .entry(ident)
                 .or_insert(ExternPreludeEntry { binding: None, introduced_by_item: true });
-            // Binding from `extern crate` item in source code can replace
-            // a binding from `--extern` on command line here.
-            entry.binding = Some(imported_binding);
             if orig_name.is_some() {
                 entry.introduced_by_item = true;
+            }
+            // Binding from `extern crate` item in source code can replace
+            // a binding from `--extern` on command line here.
+            if !entry.is_import() {
+                entry.binding = Some(imported_binding)
+            } else if ident.name != kw::Underscore {
+                self.r.dcx().span_delayed_bug(
+                    item.span,
+                    format!("it had been define the external module '{ident}' multiple times"),
+                );
             }
         }
         self.r.define(parent, ident, TypeNS, imported_binding);
@@ -1150,7 +1158,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
-                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner).then_some(());
+                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
                 self.r
                     .dcx()
                     .emit_warn(errors::MacroExternDeprecated { span: attr.span, inner_attribute });

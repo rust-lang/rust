@@ -2702,10 +2702,10 @@ declare_clippy_lint! {
     ///             }
     ///         })
     /// }
-    ///  ```
+    /// ```
     ///
-    ///  After:
-    ///  ```rust
+    /// After:
+    /// ```rust
     /// use std::{fmt, num::ParseIntError};
     ///
     /// #[derive(Debug)]

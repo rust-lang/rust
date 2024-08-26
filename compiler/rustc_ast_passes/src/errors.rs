@@ -484,7 +484,7 @@ pub struct InherentImplCannot<'a> {
     #[label(ast_passes_type)]
     pub self_ty: Span,
     #[note(ast_passes_only_trait)]
-    pub only_trait: Option<()>,
+    pub only_trait: bool,
 }
 
 #[derive(Diagnostic)]
@@ -528,7 +528,7 @@ pub struct WhereClauseAfterTypeAlias {
     #[primary_span]
     pub span: Span,
     #[help]
-    pub help: Option<()>,
+    pub help: bool,
 }
 
 #[derive(Diagnostic)]

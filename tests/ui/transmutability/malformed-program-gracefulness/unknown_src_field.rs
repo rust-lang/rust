@@ -13,8 +13,14 @@ mod assert {
     {}
 }
 
-fn should_gracefully_handle_unknown_dst_field() {
-    #[repr(C)] struct Src;
-    #[repr(C)] struct Dst(Missing); //~ cannot find type
+fn should_gracefully_handle_unknown_src_field() {
+    #[repr(C)] struct Src(Missing); //~ cannot find type
+    #[repr(C)] struct Dst();
+    assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot be safely transmuted
+}
+
+fn should_gracefully_handle_unknown_src_ref_field() {
+    #[repr(C)] struct Src(&'static Missing); //~ cannot find type
+    #[repr(C)] struct Dst(&'static Dst);
     assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot be safely transmuted
 }

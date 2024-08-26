@@ -290,7 +290,7 @@ impl<'infcx, 'tcx> crate::MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         ty: Ty<'_>,
         is_index: Option<bool>,
     ) -> Diag<'infcx> {
-        let type_name = match (&ty.kind(), is_index) {
+        let type_name = match (ty.kind(), is_index) {
             (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
             (&ty::Slice(_), _) => "slice",
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),

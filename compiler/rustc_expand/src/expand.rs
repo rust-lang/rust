@@ -1031,7 +1031,7 @@ pub(crate) fn ensure_complete_parse<'a>(
             label_span: span,
             macro_path,
             kind_name,
-            expands_to_match_arm: expands_to_match_arm.then_some(()),
+            expands_to_match_arm,
             add_semicolon,
         });
     }

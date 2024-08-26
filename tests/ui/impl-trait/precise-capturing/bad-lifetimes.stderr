@@ -1,5 +1,5 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/bad-lifetimes.rs:3:39
+  --> $DIR/bad-lifetimes.rs:1:39
    |
 LL | fn no_elided_lt() -> impl Sized + use<'_> {}
    |                                       ^^ expected named lifetime parameter
@@ -11,7 +11,7 @@ LL | fn no_elided_lt() -> impl Sized + use<'static> {}
    |                                       ~~~~~~~
 
 error[E0261]: use of undeclared lifetime name `'missing`
-  --> $DIR/bad-lifetimes.rs:10:37
+  --> $DIR/bad-lifetimes.rs:8:37
    |
 LL | fn missing_lt() -> impl Sized + use<'missing> {}
    |              -                      ^^^^^^^^ undeclared lifetime
@@ -19,13 +19,13 @@ LL | fn missing_lt() -> impl Sized + use<'missing> {}
    |              help: consider introducing lifetime `'missing` here: `<'missing>`
 
 error: expected lifetime parameter in `use<...>` precise captures list, found `'_`
-  --> $DIR/bad-lifetimes.rs:3:39
+  --> $DIR/bad-lifetimes.rs:1:39
    |
 LL | fn no_elided_lt() -> impl Sized + use<'_> {}
    |                                       ^^
 
 error: expected lifetime parameter in `use<...>` precise captures list, found `'static`
-  --> $DIR/bad-lifetimes.rs:7:36
+  --> $DIR/bad-lifetimes.rs:5:36
    |
 LL | fn static_lt() -> impl Sized + use<'static> {}
    |                                    ^^^^^^^

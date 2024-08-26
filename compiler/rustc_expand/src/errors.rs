@@ -281,7 +281,7 @@ pub(crate) struct IncompleteParse<'a> {
     pub macro_path: &'a ast::Path,
     pub kind_name: &'a str,
     #[note(expand_macro_expands_to_match_arm)]
-    pub expands_to_match_arm: Option<()>,
+    pub expands_to_match_arm: bool,
 
     #[suggestion(
         expand_suggestion_add_semi,
