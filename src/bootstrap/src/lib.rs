@@ -23,7 +23,6 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
-use std::time::SystemTime;
 use std::{env, io, str};
 
 use build_helper::ci::gha;
@@ -1687,22 +1686,47 @@ Executed at: {executed_at}"#,
                     dst.display()
                 );
 
-                let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                let tmp_filename = PathBuf::from(format!("{}-{}", dst.display(), now.as_nanos()));
-                let res = fs::rename(&dst, &tmp_filename);
+                // HACK(jieyouxu): okay hear me out, what if we seized the means of production?
+                {
+                    eprintln!("[DEBUG] copy_link_internal: seizing the means of production");
+                    let mut cmd = Command::new("powershell.exe");
+                    cmd.args([
+                        "-NoLogo",
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-ExecutionPolicy",
+                        "Bypass",
+                        "-Command",
+                    ]);
+                    cmd.arg(format!(r#"& {{takeown /f {}}}"#, dst.display()));
+                    let output = t!(cmd.output(), "failed to execute powershell process");
 
-                if let Err(e) = res {
-                    eprintln!(
-                        "[DEBUG] copy_link_internal: renaming to tmp_filename=`{}` also failed: {e}",
-                        tmp_filename.display()
-                    );
-                } else {
-                    println!(
-                        "[DEBUG] copy_link_internal: can't delete, so renamed dst=`{}` to tmp_filename=`{}`",
-                        dst.display(),
-                        tmp_filename.display()
-                    );
+                    if !output.status.success() {
+                        eprintln!("[DEBUG] powershell_hack: exit_status=`{}`", output.status);
+                        eprintln!("[DEBUG] powershell_hack: printing stdout:");
+                        eprintln!("{}", String::from_utf8_lossy(&output.stdout));
+                        eprintln!("[DEBUG] powershell_hack: printing stderr:");
+                        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+                    }
                 }
+
+                // use std::time::SystemTime;
+                // let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
+                // let tmp_filename = PathBuf::from(format!("{}-{}", dst.display(), now.as_nanos()));
+                // let res = fs::rename(&dst, &tmp_filename);
+
+                // if let Err(e) = res {
+                //     eprintln!(
+                //         "[DEBUG] copy_link_internal: renaming to tmp_filename=`{}` also failed: {e}",
+                //         tmp_filename.display()
+                //     );
+                // } else {
+                //     println!(
+                //         "[DEBUG] copy_link_internal: can't delete, so renamed dst=`{}` to tmp_filename=`{}`",
+                //         dst.display(),
+                //         tmp_filename.display()
+                //     );
+                // }
             }
         } else {
             println!("[DEBUG] copy_link_internal: removed file dst=`{}`", dst.display());
