@@ -1,7 +1,5 @@
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
-#![feature(allow_internal_unstable)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
