@@ -281,12 +281,11 @@ pub macro PartialEq($item:item) {
 /// - symmetric: `a == b` implies `b == a`
 /// - transitive: `a == b` and `b == c` implies `a == c`
 ///
-/// `Eq` which builds on top of [`PartialEq`] also implies:
+/// `Eq`, which builds on top of [`PartialEq`] also implies:
 ///
 /// - reflexive: `a == a`
 ///
-/// This property cannot be checked by the compiler, and therefore `Eq` is a marker trait without
-/// methods.
+/// This property cannot be checked by the compiler, and therefore `Eq` is a trait without methods.
 ///
 /// Violating this property is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
@@ -778,18 +777,17 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// ## How can I implement `Ord`?
 ///
-/// `Ord` requires that the type also be [`PartialOrd`] and [`Eq`] which itself requires
-/// [`PartialEq`].
+/// `Ord` requires that the type also be [`PartialOrd`], [`PartialEq`] and [`Eq`].
 ///
-/// Non `derive`d implementations of `Ord` require that the [`cmp`] function is implemented
-/// manually. It's a logic error to have [`PartialOrd`] and `Ord` disagree, so it's best practice to
-/// have the logic in `Ord` and implement [`PartialOrd`] as `Some(self.cmp(other))`.
+/// If you manually implement `Ord`, you should also implement [`PartialOrd`]. It is a logic error
+/// to have [`PartialOrd`] and `Ord` disagree, so it is best to have the logic in `Ord` and
+/// implement [`PartialOrd`] as `Some(self.cmp(other))`.
 ///
 /// Conceptually [`PartialOrd`] and `Ord` form a similar relationship to [`PartialEq`] and [`Eq`].
-/// [`PartialEq`] implements and implies an equality relationship between types, and [`Eq`] implies
-/// an additional property on top of the properties implied by [`PartialOrd`], namely reflexivity.
-/// In a similar fashion `Ord` builds on top of [`PartialOrd`] and implies further properties, such
-/// as totality, which means all values must be comparable.
+/// [`PartialEq`] defines an equality relationship between types, and [`Eq`] defines an additional
+/// property on top of the properties implied by [`PartialEq`], namely reflexivity. In a similar
+/// fashion `Ord` builds on top of [`PartialOrd`] and adds further properties, such as totality,
+/// which means all values must be comparable.
 ///
 /// Because of different signatures, `Ord` cannot be a simple marker trait like `Eq`. So it can't be
 /// `derive`d automatically when `PartialOrd` is implemented. The recommended best practice for a
@@ -811,9 +809,9 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// impl Ord for Character {
 ///     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-///         self.health
-///             .cmp(&other.health)
-///             .then(self.experience.cmp(&other.experience))
+///         self.experience
+///             .cmp(&other.experience)
+///             .then(self.health.cmp(&other.health))
 ///     }
 /// }
 ///
@@ -1075,7 +1073,8 @@ pub macro Ord($item:item) {
 /// 1. `a == b` if and only if `partial_cmp(a, b) == Some(Equal)`.
 /// 2. `a < b` if and only if `partial_cmp(a, b) == Some(Less)`
 /// 3. `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`
-/// 4. `a <= b` if and only if `a < b || a == b` 5. `a >= b` if and only if `a > b || a == b`
+/// 4. `a <= b` if and only if `a < b || a == b`
+/// 5. `a >= b` if and only if `a > b || a == b`
 /// 6. `a != b` if and only if `!(a == b)`.
 ///
 /// Conditions 2–5 above are ensured by the default implementation. Condition 6 is already ensured
