@@ -56,6 +56,52 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Pointer to reference conversion
+//! When converting a pointer to a reference `&T` using `&*`,
+//! there are several rules that must be followed:
+//!
+//! * The pointer must be properly aligned.
+//!
+// some microprocessors may use address 0 for an interrupt vector.
+// users of these microprocessors must always read/write address 0 through
+// a raw pointer, not a reference.
+//! * It must be non-null.
+//!
+//! * It must be "dereferenceable" in the sense defined above.
+//!
+//! * The pointer must point to a valid value of type `T`.
+//!   This means that the created reference can only refer to
+//!   uninitialized memory through careful use of `MaybeUninit`,
+//!   or if the uninitialized memory is entirely contained within
+//!   padding bytes, since
+//!   [padding has the same validity invariant as `MaybeUninit`][ucg-pad].
+//!
+//! * You must enforce Rust's aliasing rules, since the lifetime of the
+//!   created reference is arbitrarily chosen,
+//!   and does not necessarily reflect the actual lifetime of the data.
+//!   In particular, while this reference exists,
+//!   the memory the pointer points to must
+//!   not get accessed (read or written) through any raw pointer,
+//!   except for data inside an `UnsafeCell`.
+//!   Note that aliased writes are always UB for mutable references,
+//!   even if they only modify `UnsafeCell` data.
+//!
+//! If a pointer follows all of these rules, it is said to be
+//! *convertible to a reference*.
+// ^ we use this term instead of saying that the produced reference must
+// be valid, as the validity of a reference is easily confused for the
+// validity of the thing it refers to, and while the two concepts are
+// closly related, they are not identical.
+//!
+//! These apply even if the result is unused!
+//! (The part about being initialized is not yet fully decided, but until
+//! it is, the only safe approach is to ensure that they are indeed initialized.)
+//!
+//! An example of the implications of the above rules is that an expression such
+//! as `unsafe { &*(0 as *const u8) }` is Immediate Undefined Behavior.
+//!
+//! [ucgpad]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#padding
+//!
 //! ## Allocated object
 //!
 //! An *allocated object* is a subset of program memory which is addressable
