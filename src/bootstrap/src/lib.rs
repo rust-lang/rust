@@ -1677,6 +1677,27 @@ Executed at: {executed_at}"#,
         if src == dst {
             return;
         }
+
+        match fs::symlink_metadata(dst) {
+            Ok(meta) => {
+                let mut perms = meta.permissions();
+                perms.set_readonly(false);
+                t!(fs::set_permissions(dst, perms), format!("dst=`{}`", dst.display()));
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                println!(
+                    "[DEBUG] copy_link_internal: symlink_metadata not found for dst=`{}`",
+                    dst.display()
+                );
+            }
+            Err(e) => {
+                println!(
+                    "[DEBUG] copy_link_internal: symlink_metadata failed on dst=`{}`: {e}",
+                    dst.display()
+                );
+            }
+        }
+
         if let Err(e) = fs::remove_file(dst) {
             if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
                 // workaround for https://github.com/rust-lang/rust/issues/127126
@@ -1687,46 +1708,46 @@ Executed at: {executed_at}"#,
                 );
 
                 // HACK(jieyouxu): okay hear me out, what if we seized the means of production?
-                {
-                    eprintln!("[DEBUG] copy_link_internal: seizing the means of production");
-                    let mut cmd = Command::new("powershell.exe");
-                    cmd.args([
-                        "-NoLogo",
-                        "-NoProfile",
-                        "-NonInteractive",
-                        "-ExecutionPolicy",
-                        "Bypass",
-                        "-Command",
-                    ]);
-                    cmd.arg(format!(r#"& {{takeown /f {}}}"#, dst.display()));
-                    let output = t!(cmd.output(), "failed to execute powershell process");
+                // {
+                //     eprintln!("[DEBUG] copy_link_internal: seizing the means of production");
+                //     let mut cmd = Command::new("powershell.exe");
+                //     cmd.args([
+                //         "-NoLogo",
+                //         "-NoProfile",
+                //         "-NonInteractive",
+                //         "-ExecutionPolicy",
+                //         "Bypass",
+                //         "-Command",
+                //     ]);
+                //     cmd.arg(format!(r#"& {{takeown /f {}}}"#, dst.display()));
+                //     let output = t!(cmd.output(), "failed to execute powershell process");
 
-                    if !output.status.success() {
-                        eprintln!("[DEBUG] powershell_hack: exit_status=`{}`", output.status);
-                        eprintln!("[DEBUG] powershell_hack: printing stdout:");
-                        eprintln!("{}", String::from_utf8_lossy(&output.stdout));
-                        eprintln!("[DEBUG] powershell_hack: printing stderr:");
-                        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-                    }
-                }
-
-                // use std::time::SystemTime;
-                // let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
-                // let tmp_filename = PathBuf::from(format!("{}-{}", dst.display(), now.as_nanos()));
-                // let res = fs::rename(&dst, &tmp_filename);
-
-                // if let Err(e) = res {
-                //     eprintln!(
-                //         "[DEBUG] copy_link_internal: renaming to tmp_filename=`{}` also failed: {e}",
-                //         tmp_filename.display()
-                //     );
-                // } else {
-                //     println!(
-                //         "[DEBUG] copy_link_internal: can't delete, so renamed dst=`{}` to tmp_filename=`{}`",
-                //         dst.display(),
-                //         tmp_filename.display()
-                //     );
+                //     if !output.status.success() {
+                //         eprintln!("[DEBUG] powershell_hack: exit_status=`{}`", output.status);
+                //         eprintln!("[DEBUG] powershell_hack: printing stdout:");
+                //         eprintln!("{}", String::from_utf8_lossy(&output.stdout));
+                //         eprintln!("[DEBUG] powershell_hack: printing stderr:");
+                //         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+                //     }
                 // }
+
+                use std::time::SystemTime;
+                let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
+                let tmp_filename = PathBuf::from(format!("{}-{}", dst.display(), now.as_nanos()));
+                let res = fs::rename(&dst, &tmp_filename);
+
+                if let Err(e) = res {
+                    eprintln!(
+                        "[DEBUG] copy_link_internal: renaming to tmp_filename=`{}` also failed: {e}",
+                        tmp_filename.display()
+                    );
+                } else {
+                    println!(
+                        "[DEBUG] copy_link_internal: can't delete, so renamed dst=`{}` to tmp_filename=`{}`",
+                        dst.display(),
+                        tmp_filename.display()
+                    );
+                }
             }
         } else {
             println!("[DEBUG] copy_link_internal: removed file dst=`{}`", dst.display());
@@ -1764,27 +1785,37 @@ Executed at: {executed_at}"#,
                 return;
             }
         }
-        if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
-            // but if that fails just fall back to a slow `copy` operation.
-            println!(
-                "[DEBUG] copy_link_internal: created hard link src=`{}` with dst=`{}`",
-                src.display(),
-                dst.display()
-            );
-        } else {
-            if let Err(e) = fs::copy(&src, dst) {
-                panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
+
+        match fs::hard_link(&src, dst) {
+            Ok(()) => {
+                // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+                // but if that fails just fall back to a slow `copy` operation.
+                println!(
+                    "[DEBUG] copy_link_internal: created hard link src=`{}` with dst=`{}`",
+                    src.display(),
+                    dst.display()
+                );
             }
+            Err(e) => {
+                println!(
+                    "[DEBUG] copy_link_internal: hard link creation failed at src=`{}` dst=`{}`: {e}",
+                    src.display(),
+                    dst.display(),
+                );
 
-            t!(fs::set_permissions(dst, metadata.permissions()));
+                if let Err(e) = fs::copy(&src, dst) {
+                    panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
+                }
 
-            // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
-            // file access time to change.
-            let file_times = fs::FileTimes::new()
-                .set_accessed(t!(metadata.accessed()))
-                .set_modified(t!(metadata.modified()));
-            t!(set_file_times(dst, file_times));
+                t!(fs::set_permissions(dst, metadata.permissions()));
+
+                // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
+                // file access time to change.
+                let file_times = fs::FileTimes::new()
+                    .set_accessed(t!(metadata.accessed()))
+                    .set_modified(t!(metadata.modified()));
+                t!(set_file_times(dst, file_times));
+            }
         }
     }
 
