@@ -134,9 +134,6 @@ const_eval_incompatible_return_types =
 const_eval_incompatible_types =
     calling a function with argument of type {$callee_ty} passing data of type {$caller_ty}
 
-const_eval_interior_mutability_borrow =
-    cannot borrow here, since the borrowed element may contain interior mutability
-
 const_eval_interior_mutable_data_refer =
     {const_eval_const_context}s cannot refer to interior mutable data
     .label = this borrow of an interior mutable value may end up in the final value

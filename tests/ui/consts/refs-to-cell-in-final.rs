@@ -1,8 +1,8 @@
-#![feature(const_refs_to_cell)]
-
 use std::cell::*;
 
-struct SyncPtr<T> { x : *const T }
+struct SyncPtr<T> {
+    x: *const T,
+}
 unsafe impl<T> Sync for SyncPtr<T> {}
 
 // These pass the lifetime checks because of the "tail expression" / "outer scope" rule.
@@ -34,6 +34,15 @@ const NONE: &'static Option<Cell<i32>> = &None;
 // Making it clear that this is promotion, not "outer scope".
 const NONE_EXPLICIT_PROMOTED: &'static Option<Cell<i32>> = {
     let x = &None;
+    x
+};
+
+// Not okay, since we are borrowing something with interior mutability.
+const INTERIOR_MUT_VARIANT: &Option<UnsafeCell<bool>> = &{
+    //~^ERROR: cannot refer to interior mutable data
+    let mut x = None;
+    assert!(x.is_none());
+    x = Some(UnsafeCell::new(false));
     x
 };
 

@@ -392,26 +392,11 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
 }
 
 #[derive(Debug)]
-/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow never escapes to
-/// the final value of the constant.
-pub(crate) struct TransientCellBorrow;
-impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
-    fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-        Status::Unstable(sym::const_refs_to_cell)
-    }
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.tcx
-            .sess
-            .create_feature_err(errors::InteriorMutabilityBorrow { span }, sym::const_refs_to_cell)
-    }
-}
-
-#[derive(Debug)]
 /// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow might escape to
 /// the final value of the constant, and thus we cannot allow this (for now). We may allow
 /// it in the future for static items.
-pub(crate) struct CellBorrow;
-impl<'tcx> NonConstOp<'tcx> for CellBorrow {
+pub(crate) struct EscapingCellBorrow;
+impl<'tcx> NonConstOp<'tcx> for EscapingCellBorrow {
     fn importance(&self) -> DiagImportance {
         // Most likely the code will try to do mutation with these borrows, which
         // triggers its own errors. Only show this one if that does not happen.

@@ -193,13 +193,6 @@ pub(crate) struct InteriorMutableDataRefer {
     pub teach: bool,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_interior_mutability_borrow)]
-pub(crate) struct InteriorMutabilityBorrow {
-    #[primary_span]
-    pub span: Span,
-}
-
 #[derive(LintDiagnostic)]
 #[diag(const_eval_long_running)]
 #[note]

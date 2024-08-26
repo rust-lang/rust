@@ -1,10 +1,10 @@
+//@compile-flags: --edition 2018
 use std::cell::Cell;
 
 const WRITE: () = unsafe {
-    let x = Cell::new(0);
-    let y = &x;
-    //~^ ERROR interior mutability
-    //~| HELP add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
+    let x = async { 13 };
+    //~^ ERROR `async` blocks
+    //~| HELP add `#![feature(const_async_blocks)]` to the crate attributes to enable
 };
 
 fn main() {}

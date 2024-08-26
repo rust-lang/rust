@@ -320,7 +320,10 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         self.check_op_spanned(ops::StaticAccess, span)
     }
 
-    fn check_mut_borrow(&mut self, place: &Place<'_>, kind: hir::BorrowKind) {
+    /// Returns whether this place can possibly escape the evaluation of the current const/static
+    /// initializer. The check assumes that all already existing pointers and references point to
+    /// non-escaping places.
+    fn place_may_escape(&mut self, place: &Place<'_>) -> bool {
         let is_transient = match self.const_kind() {
             // In a const fn all borrows are transient or point to the places given via
             // references in the arguments (so we already checked them with
@@ -341,14 +344,16 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // value of the constant.
                 // Note: This is only sound if every local that has a `StorageDead` has a
                 // `StorageDead` in every control flow path leading to a `return` terminator.
-                // The good news is that interning will detect if any unexpected mutable
-                // pointer slips through.
+                // If anything slips through, there's no safety net -- safe code can create
+                // references to variants of `!Freeze` enums as long as that variant is `Freeze`, so
+                // interning can't protect us here. (There *is* a safety net for mutable references
+                // though, interning will ICE if we miss something here.)
                 place.is_indirect() || self.local_is_transient(place.local)
             }
         };
-        if !is_transient {
-            self.check_op(ops::EscapingMutBorrow(kind));
-        }
+        // Transient places cannot possibly escape because the place doesn't exist any more at the
+        // end of evaluation.
+        !is_transient
     }
 }
 
@@ -406,15 +411,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let is_allowed =
                     self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
-                if !is_allowed {
-                    self.check_mut_borrow(
-                        place,
-                        if matches!(rvalue, Rvalue::Ref(..)) {
-                            hir::BorrowKind::Ref
-                        } else {
-                            hir::BorrowKind::Raw
-                        },
-                    );
+                if !is_allowed && self.place_may_escape(place) {
+                    self.check_op(ops::EscapingMutBorrow(if matches!(rvalue, Rvalue::Ref(..)) {
+                        hir::BorrowKind::Ref
+                    } else {
+                        hir::BorrowKind::Raw
+                    }));
                 }
             }
 
@@ -426,51 +428,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     place.as_ref(),
                 );
 
-                // If the place is indirect, this is basically a reborrow. We have a reborrow
-                // special case above, but for raw pointers and pointers/references to `static` and
-                // when the `*` is not the first projection, `place_as_reborrow` does not recognize
-                // them as such, so we end up here. This should probably be considered a
-                // `TransientCellBorrow` (we consider the equivalent mutable case a
-                // `TransientMutBorrow`), but such reborrows got accidentally stabilized already and
-                // it is too much of a breaking change to take back.
-                // However, we only want to consider places that are obtained by dereferencing
-                // a *shared* reference. Mutable references to interior mutable data are stable,
-                // and we don't want `&*&mut interior_mut` to be accepted.
-                let is_indirect = place.iter_projections().any(|(base, proj)| {
-                    matches!(proj, ProjectionElem::Deref)
-                        && matches!(
-                            base.ty(self.body, self.tcx).ty.kind(),
-                            ty::Ref(_, _, Mutability::Not) | ty::RawPtr(_, Mutability::Not)
-                        )
-                });
-
-                if borrowed_place_has_mut_interior && !is_indirect {
-                    match self.const_kind() {
-                        // In a const fn all borrows are transient or point to the places given via
-                        // references in the arguments (so we already checked them with
-                        // TransientCellBorrow/CellBorrow as appropriate).
-                        // The borrow checker guarantees that no new non-transient borrows are created.
-                        // NOTE: Once we have heap allocations during CTFE we need to figure out
-                        // how to prevent `const fn` to create long-lived allocations that point
-                        // to (interior) mutable memory.
-                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
-                        _ => {
-                            // Locals with StorageDead are definitely not part of the final constant value, and
-                            // it is thus inherently safe to permit such locals to have their
-                            // address taken as we can't end up with a reference to them in the
-                            // final value.
-                            // Note: This is only sound if every local that has a `StorageDead` has a
-                            // `StorageDead` in every control flow path leading to a `return` terminator.
-                            // If anything slips through, there's no safety net -- safe code can create
-                            // references to variants of `!Freeze` enums as long as that variant is `Freeze`,
-                            // so interning can't protect us here.
-                            if self.local_is_transient(place.local) {
-                                self.check_op(ops::TransientCellBorrow);
-                            } else {
-                                self.check_op(ops::CellBorrow);
-                            }
-                        }
-                    }
+                if borrowed_place_has_mut_interior && self.place_may_escape(place) {
+                    self.check_op(ops::EscapingCellBorrow);
                 }
             }
 
