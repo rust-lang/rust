@@ -1207,7 +1207,7 @@ mod win {
 
     /// Get the Windows system OEM code page. This is most notably the code page
     /// used for link.exe's output.
-    pub fn oem_code_page() -> u32 {
+    pub(super) fn oem_code_page() -> u32 {
         unsafe {
             let mut cp: u32 = 0;
             // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
@@ -1230,7 +1230,7 @@ mod win {
     ///
     /// It will fail if the multi-byte string is longer than `i32::MAX` or if it contains
     /// any invalid bytes for the expected encoding.
-    pub fn locale_byte_str_to_string(s: &[u8], code_page: u32) -> Option<String> {
+    pub(super) fn locale_byte_str_to_string(s: &[u8], code_page: u32) -> Option<String> {
         // `MultiByteToWideChar` requires a length to be a "positive integer".
         if s.len() > isize::MAX as usize {
             return None;

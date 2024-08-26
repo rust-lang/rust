@@ -72,22 +72,24 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
 pub(crate) struct RegionErrors<'tcx>(Vec<(RegionErrorKind<'tcx>, ErrorGuaranteed)>, TyCtxt<'tcx>);
 
 impl<'tcx> RegionErrors<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self(vec![], tcx)
     }
     #[track_caller]
-    pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
+    pub(crate) fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
         let guar = self.1.sess.dcx().delayed_bug(format!("{val:?}"));
         self.0.push((val, guar));
     }
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    pub fn into_iter(self) -> impl Iterator<Item = (RegionErrorKind<'tcx>, ErrorGuaranteed)> {
+    pub(crate) fn into_iter(
+        self,
+    ) -> impl Iterator<Item = (RegionErrorKind<'tcx>, ErrorGuaranteed)> {
         self.0.into_iter()
     }
-    pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
+    pub(crate) fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.0.get(0).map(|x| x.1)
     }
 }
@@ -141,7 +143,7 @@ pub(crate) enum RegionErrorKind<'tcx> {
 
 /// Information about the various region constraints involved in a borrow checker error.
 #[derive(Clone, Debug)]
-pub struct ErrorConstraintInfo<'tcx> {
+pub(crate) struct ErrorConstraintInfo<'tcx> {
     // fr: outlived_fr
     pub(super) fr: RegionVid,
     pub(super) fr_is_local: bool,

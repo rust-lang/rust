@@ -27,7 +27,7 @@ use crate::{coverageinfo, llvm};
 /// implementing this Rust version, and though the format documentation is very explicit and
 /// detailed, some undocumented details in Clang's implementation (that may or may not be important)
 /// were also replicated for Rust's Coverage Map.
-pub fn finalize(cx: &CodegenCx<'_, '_>) {
+pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure that LLVM is using a version of the coverage mapping format that

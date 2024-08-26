@@ -12,6 +12,7 @@
 #![feature(rustdoc_internals)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).

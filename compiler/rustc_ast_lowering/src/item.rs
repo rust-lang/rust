@@ -1188,7 +1188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// into the body. This is to make sure that the future actually owns the
     /// arguments that are passed to the function, and to ensure things like
     /// drop order are stable.
-    pub fn lower_coroutine_body_with_moved_arguments(
+    pub(crate) fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
         lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,

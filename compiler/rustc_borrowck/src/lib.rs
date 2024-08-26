@@ -12,6 +12,7 @@
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[macro_use]
@@ -2444,7 +2445,7 @@ mod diags {
         }
     }
 
-    pub struct BorrowckDiags<'infcx, 'tcx> {
+    pub(crate) struct BorrowckDiags<'infcx, 'tcx> {
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
         /// There are situations where many errors can be reported for a single move out (see
@@ -2468,7 +2469,7 @@ mod diags {
     }
 
     impl<'infcx, 'tcx> BorrowckDiags<'infcx, 'tcx> {
-        pub fn new() -> Self {
+        pub(crate) fn new() -> Self {
             BorrowckDiags {
                 buffered_move_errors: BTreeMap::new(),
                 buffered_mut_errors: Default::default(),
@@ -2476,25 +2477,25 @@ mod diags {
             }
         }
 
-        pub fn buffer_error(&mut self, diag: Diag<'infcx>) {
+        pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
             self.buffered_diags.push(BufferedDiag::Error(diag));
         }
 
-        pub fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
+        pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
             self.buffered_diags.push(BufferedDiag::NonError(diag));
         }
     }
 
     impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
-        pub fn buffer_error(&mut self, diag: Diag<'infcx>) {
+        pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
             self.diags.buffer_error(diag);
         }
 
-        pub fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
+        pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
             self.diags.buffer_non_error(diag);
         }
 
-        pub fn buffer_move_error(
+        pub(crate) fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
             place_and_err: (PlaceRef<'tcx>, Diag<'infcx>),
@@ -2510,16 +2511,19 @@ mod diags {
             }
         }
 
-        pub fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'infcx>, usize)> {
+        pub(crate) fn get_buffered_mut_error(
+            &mut self,
+            span: Span,
+        ) -> Option<(Diag<'infcx>, usize)> {
             // FIXME(#120456) - is `swap_remove` correct?
             self.diags.buffered_mut_errors.swap_remove(&span)
         }
 
-        pub fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
+        pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
             self.diags.buffered_mut_errors.insert(span, (diag, count));
         }
 
-        pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
+        pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
             let mut res = None;
 
             // Buffer any move errors that we collected and de-duplicated.
@@ -2553,7 +2557,7 @@ mod diags {
             self.diags.buffered_diags.is_empty()
         }
 
-        pub fn has_move_error(
+        pub(crate) fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
         ) -> Option<&(PlaceRef<'tcx>, Diag<'infcx>)> {

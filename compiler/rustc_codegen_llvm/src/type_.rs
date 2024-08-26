@@ -12,7 +12,7 @@ use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::context::CodegenCx;
-pub use crate::llvm::Type;
+pub(crate) use crate::llvm::Type;
 use crate::llvm::{Bool, False, True};
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;

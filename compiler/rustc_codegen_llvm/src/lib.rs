@@ -16,6 +16,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::any::Any;
@@ -45,11 +46,11 @@ use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
 mod back {
-    pub mod archive;
-    pub mod lto;
-    pub mod owned_target_machine;
+    pub(crate) mod archive;
+    pub(crate) mod lto;
+    pub(crate) mod owned_target_machine;
     mod profiling;
-    pub mod write;
+    pub(crate) mod write;
 }
 
 mod abi;
