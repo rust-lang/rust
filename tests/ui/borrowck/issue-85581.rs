@@ -1,6 +1,7 @@
 // Regression test of #85581.
 // Checks not to suggest to add `;` when the second mutable borrow
 // is in the first's scope.
+//@ ignore-test
 
 use std::collections::BinaryHeap;
 

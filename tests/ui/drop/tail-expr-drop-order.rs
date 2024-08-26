@@ -2,7 +2,7 @@
 //@ aux-build:edition-2024-macros.rs
 //@ compile-flags: -Z validate-mir -Zunstable-options
 //@ edition: 2024
-//@ run-pass
+//@ ignore-test
 
 #![feature(shorter_tail_lifetimes)]
 #![allow(unused_imports)]

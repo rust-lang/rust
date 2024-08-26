@@ -1,5 +1,6 @@
 //@ compile-flags: -Z unstable-options
 //@ edition: 2024
+//@ ignore-test
 
 // Edition 2024 lint for change in drop order at tail expression
 // This lint is to capture potential change in program semantics

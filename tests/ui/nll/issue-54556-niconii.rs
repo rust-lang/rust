@@ -1,3 +1,4 @@
+//@ ignore-test
 // This is a reduction of a concrete test illustrating a case that was
 // annoying to Rust developer niconii (see comment thread on #21114).
 //

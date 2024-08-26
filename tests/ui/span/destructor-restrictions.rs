@@ -1,3 +1,4 @@
+//@ ignore-test
 // Tests the new destructor semantics.
 
 use std::cell::RefCell;

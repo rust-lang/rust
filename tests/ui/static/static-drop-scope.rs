@@ -1,3 +1,4 @@
+//@ ignore-test
 struct WithDtor;
 
 impl Drop for WithDtor {

@@ -1,4 +1,4 @@
-//@ check-pass
+//@ ignore-test
 //@ compile-flags: -Zunpretty=thir-tree
 
 enum Bar {

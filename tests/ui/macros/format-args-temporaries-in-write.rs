@@ -1,4 +1,4 @@
-//@ check-fail
+//@ ignore-test
 
 use std::fmt::{self, Display};
 

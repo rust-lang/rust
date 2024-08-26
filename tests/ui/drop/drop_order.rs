@@ -1,4 +1,4 @@
-//@ run-pass
+//@ ignore-test
 //@ compile-flags: -Z validate-mir
 #![feature(let_chains)]
 

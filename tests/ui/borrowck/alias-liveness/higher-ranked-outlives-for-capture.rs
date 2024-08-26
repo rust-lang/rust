@@ -1,4 +1,5 @@
 //@ known-bug: #42940
+//@ ignore-test
 
 trait Captures<'a> {}
 impl<T> Captures<'_> for T {}

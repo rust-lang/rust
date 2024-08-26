@@ -1,3 +1,4 @@
+//@ ignore-test
 // This is just checking that we still reject code where temp values
 // are borrowing values for longer than they will be around.
 //

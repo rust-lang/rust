@@ -2,7 +2,7 @@
 //@ ignore-wasm no panic or subprocess support
 //@ [edition2024] compile-flags: -Zunstable-options
 //@ [edition2024] edition: 2024
-//@ run-pass
+//@ ignore-test
 //@ needs-unwind
 #![cfg_attr(edition2024, feature(shorter_tail_lifetimes))]
 

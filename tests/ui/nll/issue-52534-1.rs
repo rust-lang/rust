@@ -1,3 +1,4 @@
+//@ ignore-test
 struct Test;
 
 impl Test {

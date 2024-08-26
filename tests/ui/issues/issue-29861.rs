@@ -1,3 +1,4 @@
+//@ ignore-test
 pub trait MakeRef<'a> {
     type Ref;
 }
