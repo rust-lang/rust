@@ -72,6 +72,10 @@ pub fn delete_with_info(path: &Path) -> Result<(), NTSTATUS> {
     Ok(())
 }
 
+pub fn last_nt_status() -> NTSTATUS {
+    unsafe { RtlGetLastNtStatus() }
+}
+
 #[repr(C)]
 pub struct UNICODE_STRING {
     pub Length: u16,
@@ -122,7 +126,7 @@ const FileDispositionInformationEx: i32 = 64;
 const FILE_DISPOSITION_DELETE: u32 = 1;
 const FILE_DISPOSITION_POSIX_SEMANTICS: u32 = 2;
 const FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE: u32 = 0x10;
-const STATUS_OBJECT_NAME_NOT_FOUND: NTSTATUS = 0xC0000034_u32 as _;
+pub const STATUS_OBJECT_NAME_NOT_FOUND: NTSTATUS = 0xC0000034_u32 as _;
 //const STATUS_OBJECT_NAME_INVALID: NTSTATUS = 0xC0000033_u32 as _;
 
 #[link(name = "ntdll", kind = "raw-dylib")]
@@ -149,6 +153,7 @@ extern "system" {
         Length: u32,
         FileInformationClass: i32,
     ) -> NTSTATUS;
+    fn RtlGetLastNtStatus() -> NTSTATUS;
 }
 #[link(name = "kernel32", kind = "raw-dylib")]
 extern "system" {

@@ -1667,7 +1667,13 @@ Executed at: {executed_at}"#,
         #[cfg(not(windows))]
         let _ = fs::remove_file(dst);
         #[cfg(windows)]
-        let _ = chrisdenton::delete_with_info(dst);
+        if fs::remove_file(dst).is_err() {
+            let status = chrisdenton::last_nt_status();
+            if status != chrisdenton::STATUS_OBJECT_NAME_NOT_FOUND {
+                println!("remove_file failed: {status:#X}");
+                let _ = chrisdenton::delete_with_info(dst);
+            }
+        }
 
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
         let mut src = src.to_path_buf();
