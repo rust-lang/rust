@@ -342,7 +342,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion)
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
     /// # Examples
     ///
@@ -379,7 +379,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Safety
     ///
     /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion)
+    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     /// # Examples
     ///
     /// ```

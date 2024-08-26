@@ -72,7 +72,7 @@
 //! * The pointer must point to a valid value of type `T`.
 //!   This means that the created reference can only refer to
 //!   uninitialized memory through careful use of `MaybeUninit`,
-//!   or if the uninitialized memory is entirly contained within
+//!   or if the uninitialized memory is entirely contained within
 //!   padding bytes, since
 //!   [padding has the same validity invariant as `MaybeUninit`][ucg-pad].
 //!
