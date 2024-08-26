@@ -1010,6 +1010,7 @@ pub enum AssertKind<O> {
     RemainderByZero(O),
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
+    ResumedAfterDrop(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
     NullPointerDereference,
 }
