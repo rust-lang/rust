@@ -1250,13 +1250,8 @@ mod prim_f16 {}
 ///   possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
 ///   propagation cannot occur with some inputs.
 /// - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
-///   set of "extra" possible NaN payloads. The set can depend on the input operand values. This set
-///   is empty on x86, ARM, and RISC-V (32bit and 64bit), but can be non-empty on other
-///   architectures. Targets where this set is non-empty should document this in a suitable
-///   location, e.g. their platform support page. (For instance, on wasm, if any input NaN does not
-///   have the preferred all-zero payload or any input NaN is an SNaN, then this set contains all
-///   possible payloads; otherwise, it is empty. On SPARC, this set consists of the all-one
-///   payload.)
+///   set of "extra" possible NaN payloads. The set can depend on the input operand values.
+///   See the table below for the concrete NaNs this set contains on various targets.
 ///
 /// In particular, if all input NaNs are quiet (or if there are no input NaNs), then the output NaN
 /// is definitely quiet. Signaling NaN outputs can only occur if they are provided as an input
@@ -1282,6 +1277,18 @@ mod prim_f16 {}
 /// guarantee is made about which of the NaN bit patterns described above will be returned. The
 /// result does not have to match what happens when executing the same code at runtime, and the
 /// result can vary depending on factors such as compiler version and flags.
+///
+/// ### Target-specific "extra" NaN values
+// FIXME: Is there a better place to put this?
+///
+/// | `target_arch` | Extra payloads possible on this platform |
+/// |---------------|---------|
+/// | `x86`, `x86_64`, `arm`, `aarch64`, `riscv32`, `riscv64` | None |
+/// | `sparc`, `sparc64` | The all-one payload |
+/// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all possible payloads. |
+///
+/// For targets not in this table, all payloads are possible.
+
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
 
