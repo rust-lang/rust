@@ -754,7 +754,7 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
 }
 
 impl<B: WriteBackendMethods> WorkItem<B> {
-    pub fn module_kind(&self) -> ModuleKind {
+    fn module_kind(&self) -> ModuleKind {
         match *self {
             WorkItem::Optimize(ref m) => m.kind,
             WorkItem::CopyPostLtoArtifacts(_) | WorkItem::LTO(_) => ModuleKind::Regular,

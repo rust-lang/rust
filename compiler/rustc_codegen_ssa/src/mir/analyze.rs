@@ -13,7 +13,7 @@ use tracing::debug;
 use super::FunctionCx;
 use crate::traits::*;
 
-pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub(crate) fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
     let mir = fx.mir;
@@ -251,14 +251,14 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum CleanupKind {
+pub(crate) enum CleanupKind {
     NotCleanup,
     Funclet,
     Internal { funclet: mir::BasicBlock },
 }
 
 impl CleanupKind {
-    pub fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
+    pub(crate) fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
         match self {
             CleanupKind::NotCleanup => None,
             CleanupKind::Funclet => Some(for_bb),
@@ -270,7 +270,7 @@ impl CleanupKind {
 /// MSVC requires unwinding code to be split to a tree of *funclets*, where each funclet can only
 /// branch to itself or to its parent. Luckily, the code we generates matches this pattern.
 /// Recover that structure in an analyze pass.
-pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub(crate) fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(
         result: &mut IndexSlice<mir::BasicBlock, CleanupKind>,
         mir: &mir::Body<'tcx>,

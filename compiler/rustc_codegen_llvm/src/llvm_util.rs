@@ -136,14 +136,14 @@ unsafe fn configure_llvm(sess: &Session) {
     unsafe { llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr()) };
 }
 
-pub fn time_trace_profiler_finish(file_name: &Path) {
+pub(crate) fn time_trace_profiler_finish(file_name: &Path) {
     unsafe {
         let file_name = path_to_c_string(file_name);
         llvm::LLVMRustTimeTraceProfilerFinish(file_name.as_ptr());
     }
 }
 
-pub enum TargetFeatureFoldStrength<'a> {
+enum TargetFeatureFoldStrength<'a> {
     // The feature is only tied when enabling the feature, disabling
     // this feature shouldn't disable the tied feature.
     EnableOnly(&'a str),
@@ -160,28 +160,28 @@ impl<'a> TargetFeatureFoldStrength<'a> {
     }
 }
 
-pub struct LLVMFeature<'a> {
-    pub llvm_feature_name: &'a str,
-    pub dependency: Option<TargetFeatureFoldStrength<'a>>,
+pub(crate) struct LLVMFeature<'a> {
+    llvm_feature_name: &'a str,
+    dependency: Option<TargetFeatureFoldStrength<'a>>,
 }
 
 impl<'a> LLVMFeature<'a> {
-    pub fn new(llvm_feature_name: &'a str) -> Self {
+    fn new(llvm_feature_name: &'a str) -> Self {
         Self { llvm_feature_name, dependency: None }
     }
 
-    pub fn with_dependency(
+    fn with_dependency(
         llvm_feature_name: &'a str,
         dependency: TargetFeatureFoldStrength<'a>,
     ) -> Self {
         Self { llvm_feature_name, dependency: Some(dependency) }
     }
 
-    pub fn contains(&self, feat: &str) -> bool {
+    fn contains(&self, feat: &str) -> bool {
         self.iter().any(|dep| dep == feat)
     }
 
-    pub fn iter(&'a self) -> impl Iterator<Item = &'a str> {
+    fn iter(&'a self) -> impl Iterator<Item = &'a str> {
         let dependencies = self.dependency.iter().map(|feat| feat.as_str());
         std::iter::once(self.llvm_feature_name).chain(dependencies)
     }
@@ -209,7 +209,7 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
 // Though note that Rust can also be build with an external precompiled version of LLVM
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics
-pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
+pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
     let arch = if sess.target.arch == "x86_64" {
         "x86"
     } else if sess.target.arch == "arm64ec" {
@@ -257,7 +257,7 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
 
 /// Given a map from target_features to whether they are enabled or disabled,
 /// ensure only valid combinations are allowed.
-pub fn check_tied_features(
+pub(crate) fn check_tied_features(
     sess: &Session,
     features: &FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
@@ -337,19 +337,19 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         .collect()
 }
 
-pub fn print_version() {
+pub(crate) fn print_version() {
     let (major, minor, patch) = get_version();
     println!("LLVM version: {major}.{minor}.{patch}");
 }
 
-pub fn get_version() -> (u32, u32, u32) {
+pub(crate) fn get_version() -> (u32, u32, u32) {
     // Can be called without initializing LLVM
     unsafe {
         (llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor(), llvm::LLVMRustVersionPatch())
     }
 }
 
-pub fn print_passes() {
+pub(crate) fn print_passes() {
     // Can be called without initializing LLVM
     unsafe {
         llvm::LLVMRustPrintPasses();
@@ -479,7 +479,7 @@ fn handle_native(name: &str) -> &str {
     }
 }
 
-pub fn target_cpu(sess: &Session) -> &str {
+pub(crate) fn target_cpu(sess: &Session) -> &str {
     match sess.opts.cg.target_cpu {
         Some(ref name) => handle_native(name),
         None => handle_native(sess.target.cpu.as_ref()),
@@ -699,7 +699,7 @@ fn backend_feature_name<'a>(sess: &Session, s: &'a str) -> Option<&'a str> {
     Some(feature)
 }
 
-pub fn tune_cpu(sess: &Session) -> Option<&str> {
+pub(crate) fn tune_cpu(sess: &Session) -> Option<&str> {
     let name = sess.opts.unstable_opts.tune_cpu.as_ref()?;
     Some(handle_native(name))
 }

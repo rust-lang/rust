@@ -33,9 +33,9 @@ use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
-pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
+const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
-pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
+fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
         CrateType::Executable
         | CrateType::Dylib
@@ -710,7 +710,7 @@ impl Drop for ThinBuffer {
     }
 }
 
-pub unsafe fn optimize_thin_module(
+pub(crate) unsafe fn optimize_thin_module(
     thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
@@ -806,7 +806,7 @@ pub unsafe fn optimize_thin_module(
 
 /// Maps LLVM module identifiers to their corresponding LLVM LTO cache keys
 #[derive(Debug, Default)]
-pub struct ThinLTOKeysMap {
+struct ThinLTOKeysMap {
     // key = llvm name of importing module, value = LLVM cache key
     keys: BTreeMap<String, String>,
 }
@@ -863,7 +863,7 @@ fn module_name_to_str(c_str: &CStr) -> &str {
     })
 }
 
-pub fn parse_module<'a>(
+pub(crate) fn parse_module<'a>(
     cx: &'a llvm::Context,
     name: &CStr,
     data: &[u8],

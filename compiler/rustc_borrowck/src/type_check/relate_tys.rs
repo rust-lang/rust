@@ -57,7 +57,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 }
 
-pub struct NllTypeRelating<'me, 'bccx, 'tcx> {
+struct NllTypeRelating<'me, 'bccx, 'tcx> {
     type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
 
     /// Where (and why) is this relation taking place?
@@ -82,7 +82,7 @@ pub struct NllTypeRelating<'me, 'bccx, 'tcx> {
 }
 
 impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
-    pub fn new(
+    fn new(
         type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,

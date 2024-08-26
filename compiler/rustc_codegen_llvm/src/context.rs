@@ -40,7 +40,7 @@ use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'ll, 'tcx> {
+pub(crate) struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
@@ -111,7 +111,7 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-pub unsafe fn create_module<'ll>(
+pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
@@ -562,7 +562,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     #[inline]
-    pub fn coverage_context(&self) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
+    pub(crate) fn coverage_context(
+        &self,
+    ) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
         self.coverage_cx.as_ref()
     }
 
@@ -1097,7 +1099,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 impl CodegenCx<'_, '_> {
     /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
-    pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
+    pub(crate) fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local_gen_sym_counter.get();
         self.local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
