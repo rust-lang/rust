@@ -508,6 +508,7 @@ symbols! {
         async_drop_either,
         async_drop_fuse,
         async_drop_in_place,
+        async_drop_in_place_poll,
         async_drop_noop,
         async_drop_slice,
         async_drop_surface_drop_in_place,
