@@ -253,6 +253,7 @@ pub enum SyntaxKind {
     RENAME,
     REST_PAT,
     RETURN_EXPR,
+    RETURN_TYPE_SYNTAX,
     RET_TYPE,
     SELF_PARAM,
     SLICE_PAT,
