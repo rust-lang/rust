@@ -694,7 +694,6 @@ macro_rules! bidirectional_lang_item_map {
 
 bidirectional_lang_item_map! {
 // tidy-alphabetical-start
-    AsyncDestruct,
     AsyncFn,
     AsyncFnKindHelper,
     AsyncFnKindUpvars,
@@ -1690,6 +1689,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_coroutine(self, def_id: DefId) -> bool {
         self.coroutine_kind(def_id).is_some()
+    }
+
+    pub fn is_async_drop_in_place_poll_fn(self, def_id: DefId) -> bool {
+        Some(def_id) == self.lang_items().async_drop_in_place_poll_fn()
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics

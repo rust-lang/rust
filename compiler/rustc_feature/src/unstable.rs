@@ -381,6 +381,8 @@ declare_features! (
     (unstable, associated_const_equality, "1.58.0", Some(92827)),
     /// Allows associated type defaults.
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
+    /// Allows implementing `AsyncDrop`.
+    (incomplete, async_drop, "CURRENT_RUSTC_VERSION", Some(126482)),
     /// Allows async functions to be called from `dyn Trait`.
     (incomplete, async_fn_in_dyn_trait, "1.85.0", Some(133119)),
     /// Allows `#[track_caller]` on async functions.

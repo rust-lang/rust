@@ -1,10 +1,12 @@
+use std::ops::Bound;
+
 use hir::def_id::DefId;
-use rustc_abi::Integer::{I8, I32};
+use rustc_abi::Integer::{I8, I32, I128};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantIdx, Variants, WrappingRange,
+    LayoutCalculatorError, LayoutData, Niche, ReprFlags, ReprOptions, Scalar, Size, StructKind,
+    TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
@@ -184,6 +186,43 @@ fn layout_of_uncached<'tcx>(
     }
 
     let tcx = cx.tcx();
+
+    // layout of `async_drop_in_place<T>::{closure}` in case,
+    // when T is a coroutine, contains this internal coroutine's ref
+    if let ty::Coroutine(cor_def, cor_args) = ty.kind()
+        && tcx.is_async_drop_in_place_poll_fn(*cor_def)
+    {
+        let arg_cor_ty = cor_args.first().unwrap().expect_ty();
+        if arg_cor_ty.is_coroutine() {
+            let repr = ReprOptions {
+                int: None,
+                align: None,
+                pack: None,
+                flags: ReprFlags::empty(),
+                field_shuffle_seed: Hash64::new(0),
+            };
+            let impl_cor = arg_cor_ty.find_async_drop_impl_coroutine(tcx);
+            let impl_ref = Ty::new_mut_ptr(tcx, impl_cor);
+            let ref_layout = cx.layout_of(impl_ref)?.layout;
+            let variants: IndexVec<VariantIdx, IndexVec<FieldIdx, Layout<'tcx>>> =
+                [IndexVec::from([ref_layout])].into();
+            let Ok(layout) = cx.calc.layout_of_struct_or_enum(
+                &repr,
+                &variants,
+                false,
+                false,
+                (Bound::Unbounded, Bound::Unbounded),
+                |_, _| (I128, false),
+                None::<(VariantIdx, i128)>.into_iter(),
+                false,
+                true,
+            ) else {
+                return Err(error(cx, LayoutError::SizeOverflow(ty)));
+            };
+            return Ok(tcx.mk_layout(layout));
+        }
+    }
+
     let dl = cx.data_layout();
     let map_layout = |result: Result<_, _>| match result {
         Ok(layout) => Ok(tcx.mk_layout(layout)),
@@ -406,7 +445,7 @@ fn layout_of_uncached<'tcx>(
         ty::Coroutine(def_id, args) => {
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
-            let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
+            let Some(info) = tcx.coroutine_layout(def_id, args) else {
                 return Err(error(cx, LayoutError::Unknown(ty)));
             };
 
@@ -767,7 +806,7 @@ fn variant_info_for_coroutine<'tcx>(
         return (vec![], None);
     };
 
-    let coroutine = cx.tcx().coroutine_layout(def_id, args.as_coroutine().kind_ty()).unwrap();
+    let coroutine = cx.tcx().coroutine_layout(def_id, args).unwrap();
     let upvar_names = cx.tcx().closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;
