@@ -27,8 +27,6 @@
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![feature(try_blocks)]
-#![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
 // tidy-alphabetical-end
 
