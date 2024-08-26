@@ -42,14 +42,12 @@ where
         let min_idx = min_index(v, &mut is_less).unwrap();
         v.swap(min_idx, index);
     } else {
-        #[cfg(not(feature = "optimize_for_size"))]
-        {
-            partition_at_index_loop(v, index, None, &mut is_less);
-        }
-
-        #[cfg(feature = "optimize_for_size")]
-        {
-            median_of_medians(v, &mut is_less, index);
+        cfg_if! {
+            if #[cfg(feature = "optimize_for_size")] {
+                median_of_medians(v, &mut is_less, index);
+            } else {
+                partition_at_index_loop(v, index, None, &mut is_less);
+            }
         }
     }
 
@@ -178,14 +176,12 @@ fn median_of_medians<T, F: FnMut(&T, &T) -> bool>(mut v: &mut [T], is_less: &mut
     loop {
         if v.len() <= INSERTION_SORT_THRESHOLD {
             if v.len() >= 2 {
-                #[cfg(not(feature = "optimize_for_size"))]
-                {
-                    insertion_sort_shift_left(v, 1, is_less);
-                }
-
-                #[cfg(feature = "optimize_for_size")]
-                {
-                    bubble_sort(v, is_less);
+                cfg_if! {
+                    if #[cfg(feature = "optimize_for_size")] {
+                        bubble_sort(v, is_less);
+                    } else {
+                        insertion_sort_shift_left(v, 1, is_less);
+                    }
                 }
             }
 
