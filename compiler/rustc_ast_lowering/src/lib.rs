@@ -482,8 +482,6 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
 enum ParamMode {
     /// Any path in a type context.
     Explicit,
-    /// Path in a type definition, where the anonymous lifetime `'_` is not allowed.
-    ExplicitNamed,
     /// The `module::Type` in `module::Type::method` in an expression.
     Optional,
 }
