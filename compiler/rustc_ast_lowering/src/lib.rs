@@ -494,9 +494,14 @@ enum AllowReturnTypeNotation {
 }
 
 enum GenericArgsMode {
+    /// Allow paren sugar, don't allow RTN.
     ParenSugar,
+    /// Allow RTN, don't allow paren sugar.
     ReturnTypeNotation,
+    // Error if parenthesized generics or RTN are encountered.
     Err,
+    /// Silence errors when lowering generics. Only used with `Res::Err`.
+    Silence,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {

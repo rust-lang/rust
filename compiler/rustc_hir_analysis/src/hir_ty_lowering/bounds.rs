@@ -487,8 +487,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let _ =
                     self.prohibit_generic_args(mod_segments.iter(), GenericsArgsErrExtend::None);
 
-                let Res::Def(DefKind::AssocFn, item_def_id) = path.res else {
-                    bug!("expected RTN to resolve to associated fn");
+                let item_def_id = match path.res {
+                    Res::Def(DefKind::AssocFn, item_def_id) => item_def_id,
+                    Res::Err => {
+                        return Ty::new_error_with_message(
+                            tcx,
+                            hir_ty.span,
+                            "failed to resolve RTN",
+                        );
+                    }
+                    _ => bug!("only expected method resolution for fully qualified RTN"),
                 };
                 let trait_def_id = tcx.parent(item_def_id);
 
@@ -605,7 +613,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_ident,
                 span,
             )?,
-            _ => todo!(),
+            _ => {
+                if let Err(reported) = qself_ty.error_reported() {
+                    return Err(reported);
+                } else {
+                    // FIXME(return_type_notation): Provide some structured suggestion here.
+                    let err = struct_span_code_err!(
+                        self.dcx(),
+                        span,
+                        E0223,
+                        "ambiguous associated function"
+                    );
+                    return Err(err.emit());
+                }
+            }
         };
 
         // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,

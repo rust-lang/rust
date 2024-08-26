@@ -1886,10 +1886,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         )
                     }) =>
             {
-                let Res::Def(DefKind::AssocFn, item_def_id) = path.res else {
-                    bug!();
-                };
-                (vec![], item_def_id, item_segment)
+                match path.res {
+                    Res::Err => return,
+                    Res::Def(DefKind::AssocFn, item_def_id) => (vec![], item_def_id, item_segment),
+                    _ => bug!("only expected method resolution for fully qualified RTN"),
+                }
             }
 
             // If we have a type-dependent path, then we do need to do some lookup.

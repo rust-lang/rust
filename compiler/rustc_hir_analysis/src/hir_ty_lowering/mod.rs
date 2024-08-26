@@ -813,7 +813,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    /// Search for a trait bound on a type parameter whose trait defines the associated type given by `assoc_name`.
+    /// Search for a trait bound on a type parameter whose trait defines the associated item
+    /// given by `assoc_name` and `kind`.
     ///
     /// This fails if there is no such bound in the list of candidates or if there are multiple
     /// candidates in which case it reports ambiguity.

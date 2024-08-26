@@ -111,7 +111,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             }
                         }
                         // Avoid duplicated errors.
-                        Res::Err => GenericArgsMode::ParenSugar,
+                        Res::Err => GenericArgsMode::Silence,
                         // An error
                         _ => GenericArgsMode::Err,
                     };
@@ -288,11 +288,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             false,
                         )
                     }
-                    GenericArgsMode::ParenSugar => self.lower_parenthesized_parameter_data(
-                        data,
-                        itctx,
-                        bound_modifier_allowed_features,
-                    ),
+                    GenericArgsMode::ParenSugar | GenericArgsMode::Silence => self
+                        .lower_parenthesized_parameter_data(
+                            data,
+                            itctx,
+                            bound_modifier_allowed_features,
+                        ),
                     GenericArgsMode::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
                         let sub = if !data.inputs.is_empty() {
@@ -330,7 +331,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 },
                 GenericArgs::ParenthesizedElided(span) => {
                     match generic_args_mode {
-                        GenericArgsMode::ReturnTypeNotation => {
+                        GenericArgsMode::ReturnTypeNotation | GenericArgsMode::Silence => {
                             // Ok
                         }
                         GenericArgsMode::ParenSugar | GenericArgsMode::Err => {
