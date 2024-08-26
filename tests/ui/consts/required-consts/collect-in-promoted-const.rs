@@ -1,7 +1,7 @@
 //@revisions: noopt opt
 //@ build-fail
 //@[noopt] compile-flags: -Copt-level=0
-//@[opt] compile-flags: -O
+//@[opt] compile-flags: -O -Cdebuginfo=full
 //! Make sure we error on erroneous consts even if they get promoted.
 
 struct Fail<T>(T);

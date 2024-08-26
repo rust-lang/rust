@@ -21,6 +21,7 @@ use rustc_mir_dataflow::impls::{
     borrowed_locals, LivenessTransferFunction, MaybeTransitiveLiveLocals,
 };
 use rustc_mir_dataflow::Analysis;
+use rustc_session::config::DebugInfo;
 
 use crate::util::is_within_packed;
 
@@ -31,10 +32,15 @@ use crate::util::is_within_packed;
 pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let borrowed_locals = borrowed_locals(body);
 
-    // If the user requests complete debuginfo, mark the locals that appear in it as live, so
-    // we don't remove assignements to them.
-    let mut always_live = debuginfo_locals(body);
-    always_live.union(&borrowed_locals);
+    let always_live = if tcx.sess.opts.debuginfo == DebugInfo::Full {
+        // If the user requests complete debuginfo, mark the locals that appear in it as live, so
+        // we don't remove assignements to them.
+        let mut always_live = debuginfo_locals(body);
+        always_live.union(&borrowed_locals);
+        always_live
+    } else {
+        borrowed_locals.clone()
+    };
 
     let mut live = MaybeTransitiveLiveLocals::new(&always_live)
         .into_engine(tcx, body)
