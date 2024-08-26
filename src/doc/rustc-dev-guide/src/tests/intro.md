@@ -28,7 +28,7 @@ The [Compiletest chapter][compiletest] goes into detail on how to use this tool.
 
 The standard library and many of the compiler packages include typical Rust `#[test]`
 unit tests, integration tests, and documentation tests.
-You can pass a path to `x.py` to almost any package in the `library` or `compiler` directory,
+You can pass a path to `x` to almost any package in the `library` or `compiler` directory,
 and `x` will essentially run `cargo test` on that package.
 
 Examples:
