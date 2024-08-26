@@ -1438,17 +1438,7 @@ fn hir_fmt_generics(
 
     let parameters_to_write = generic_args_sans_defaults(f, generic_def, parameters);
 
-    // FIXME: Remote this
-    // most of our lifetimes will be errors as we lack elision and inference
-    // so don't render them for now
-    let only_err_lifetimes = !cfg!(test)
-        && parameters_to_write.iter().all(|arg| {
-            matches!(
-                arg.data(Interner),
-                chalk_ir::GenericArgData::Lifetime(it) if *it.data(Interner) == LifetimeData::Error
-            )
-        });
-    if !parameters_to_write.is_empty() && !only_err_lifetimes {
+    if !parameters_to_write.is_empty() {
         write!(f, "<")?;
         hir_fmt_generic_arguments(f, parameters_to_write, self_)?;
         write!(f, ">")?;
@@ -1881,7 +1871,7 @@ impl HirDisplay for DomainGoal {
                 wc.hir_fmt(f)?;
                 write!(f, ")")?;
             }
-            _ => write!(f, "?")?,
+            _ => write!(f, "_")?,
         }
         Ok(())
     }
