@@ -1029,6 +1029,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "cov-mark",
+ "expect-test",
  "intern",
  "parser",
  "rustc-hash",

@@ -509,13 +509,8 @@ fn main() {
                                 file_id: FileId(
                                     1,
                                 ),
-<<<<<<< HEAD
-                                full_range: 633..868,
-                                focus_range: 694..700,
-=======
                                 full_range: 4294967295..4294967295,
                                 focus_range: 4294967295..4294967295,
->>>>>>> 33e4a08d5b (minor: Reduce friction for updating minicore)
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",

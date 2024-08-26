@@ -136,6 +136,7 @@ pub use {
         },
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
+        insert_whitespace_into_node,
         name::Name,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
         tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
