@@ -51,7 +51,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
-use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
+use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
 use crate::{ImplTraitPosition, ResolverAstLoweringExt};
 
 pub(crate) struct DelegationResults<'hir> {
@@ -323,7 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 delegation.path.span,
                 ast_segment,
                 ParamMode::Optional,
-                ParenthesizedGenericArgs::Err,
+                GenericArgsMode::Err,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

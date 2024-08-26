@@ -15,8 +15,8 @@ use super::errors::{
     GenericTypeWithParentheses, UseAngleBrackets,
 };
 use super::{
-    GenericArgsCtor, ImplTraitContext, LifetimeRes, LoweringContext, ParamMode,
-    ParenthesizedGenericArgs, ResolverAstLoweringExt,
+    GenericArgsCtor, GenericArgsMode, ImplTraitContext, LifetimeRes, LoweringContext, ParamMode,
+    ResolverAstLoweringExt,
 };
 use crate::ImplTraitPosition;
 
@@ -90,10 +90,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => param_mode,
                     };
 
-                    let parenthesized_generic_args = match base_res {
+                    let generic_args_mode = match base_res {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            ParenthesizedGenericArgs::ParenSugar
+                            GenericArgsMode::ParenSugar
                         }
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::AssocFn, _)
@@ -101,19 +101,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {
-                            ParenthesizedGenericArgs::ParenSugar
+                            GenericArgsMode::ParenSugar
                         }
                         // Avoid duplicated errors.
-                        Res::Err => ParenthesizedGenericArgs::ParenSugar,
+                        Res::Err => GenericArgsMode::ParenSugar,
                         // An error
-                        _ => ParenthesizedGenericArgs::Err,
+                        _ => GenericArgsMode::Err,
                     };
 
                     self.lower_path_segment(
                         p.span,
                         segment,
                         param_mode,
-                        parenthesized_generic_args,
+                        generic_args_mode,
                         itctx,
                         bound_modifier_allowed_features.clone(),
                     )
@@ -168,7 +168,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 p.span,
                 segment,
                 param_mode,
-                ParenthesizedGenericArgs::Err,
+                GenericArgsMode::Err,
                 itctx,
                 None,
             ));
@@ -210,7 +210,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     p.span,
                     segment,
                     param_mode,
-                    ParenthesizedGenericArgs::Err,
+                    GenericArgsMode::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 )
@@ -224,7 +224,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         path_span: Span,
         segment: &PathSegment,
         param_mode: ParamMode,
-        parenthesized_generic_args: ParenthesizedGenericArgs,
+        generic_args_mode: GenericArgsMode,
         itctx: ImplTraitContext,
         // Additional features ungated with a bound modifier like `async`.
         // This is passed down to the implicit associated type binding in
@@ -237,14 +237,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
-                GenericArgs::Parenthesized(data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::ParenSugar => self
-                        .lower_parenthesized_parameter_data(
-                            data,
-                            itctx,
-                            bound_modifier_allowed_features,
-                        ),
-                    ParenthesizedGenericArgs::Err => {
+                GenericArgs::Parenthesized(data) => match generic_args_mode {
+                    GenericArgsMode::ParenSugar => self.lower_parenthesized_parameter_data(
+                        data,
+                        itctx,
+                        bound_modifier_allowed_features,
+                    ),
+                    GenericArgsMode::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
                         let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument

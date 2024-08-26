@@ -3,6 +3,7 @@
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::fmt;

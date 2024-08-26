@@ -16,6 +16,7 @@
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;

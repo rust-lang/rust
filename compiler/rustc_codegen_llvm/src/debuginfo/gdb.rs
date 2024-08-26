@@ -16,7 +16,7 @@ use crate::value::Value;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
+pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
     if needs_gdb_debug_scripts_section(bx) {
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx);
         // Load just the first byte as that's all that's necessary to force
@@ -30,7 +30,9 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_,
 
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
-pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Value {
+pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> &'ll Value {
     let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
     let section_var_name = c_section_var_name.to_str().unwrap();
 
@@ -82,7 +84,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '
     })
 }
 
-pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
+pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     let omit_gdb_pretty_printer_section =
         attr::contains_name(cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
 
