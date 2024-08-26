@@ -487,11 +487,12 @@ enum ParamMode {
 
 #[derive(Copy, Clone, Debug)]
 enum AllowReturnTypeNotation {
+    /// Only in types, since RTN is denied later during HIR lowering.
     Yes,
+    /// All other positions (path expr, method, use tree).
     No,
 }
 
-#[derive(Copy, Clone, Debug)]
 enum GenericArgsMode {
     ParenSugar,
     ReturnTypeNotation,
@@ -1239,7 +1240,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             qself,
             path,
             param_mode,
-            // We deny these after the fact in HIR->middle type lowering.
             AllowReturnTypeNotation::Yes,
             itctx,
             None,

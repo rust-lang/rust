@@ -889,7 +889,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             (pair, r)
                         })
                         .unzip();
+
                 self.record_late_bound_vars(hir_id, binders);
+
+                // If this is an RTN type in the self type, then append those to the binder.
+                self.try_append_return_type_notation_params(hir_id, bounded_ty);
+
                 // Even if there are no lifetimes defined here, we still wrap it in a binder
                 // scope. If there happens to be a nested poly trait ref (an error), that
                 // will be `Concatenating` anyways, so we don't have to worry about the depth
@@ -1838,6 +1843,110 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // FIXME(#120456) - is `swap_remove` correct?
         let old_value = self.map.defs.swap_remove(&lifetime_ref.hir_id);
         assert_eq!(old_value, Some(bad_def));
+    }
+
+    // TODO:
+    fn try_append_return_type_notation_params(
+        &mut self,
+        hir_id: HirId,
+        hir_ty: &'tcx hir::Ty<'tcx>,
+    ) {
+        let hir::TyKind::Path(qpath) = hir_ty.kind else {
+            // TODO:
+            return;
+        };
+
+        let (mut bound_vars, item_def_id, item_segment) = match qpath {
+            // TODO:
+            hir::QPath::Resolved(_, path)
+                if let [.., item_segment] = &path.segments[..]
+                    && item_segment.args.is_some_and(|args| {
+                        matches!(
+                            args.parenthesized,
+                            hir::GenericArgsParentheses::ReturnTypeNotation
+                        )
+                    }) =>
+            {
+                let Res::Def(DefKind::AssocFn, item_def_id) = path.res else {
+                    bug!();
+                };
+                (vec![], item_def_id, item_segment)
+            }
+
+            // TODO:
+            hir::QPath::TypeRelative(qself, item_segment)
+                if item_segment.args.is_some_and(|args| {
+                    matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
+                }) =>
+            {
+                let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = qself.kind else {
+                    return;
+                };
+
+                match path.res {
+                    Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { trait_: _ } => {
+                        let Some(generics) = self.tcx.hir_owner_node(hir_id.owner).generics()
+                        else {
+                            return;
+                        };
+
+                        let one_bound = generics.predicates.iter().find_map(|predicate| {
+                            let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
+                                return None;
+                            };
+                            let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
+                                predicate.bounded_ty.kind
+                            else {
+                                return None;
+                            };
+                            if bounded_path.res != path.res {
+                                return None;
+                            }
+                            predicate.bounds.iter().find_map(|bound| {
+                                let hir::GenericBound::Trait(trait_, _) = bound else {
+                                    return None;
+                                };
+                                BoundVarContext::supertrait_hrtb_vars(
+                                    self.tcx,
+                                    trait_.trait_ref.trait_def_id()?,
+                                    item_segment.ident,
+                                    ty::AssocKind::Fn,
+                                )
+                            })
+                        });
+                        let Some((bound_vars, assoc_item)) = one_bound else {
+                            return;
+                        };
+                        (bound_vars, assoc_item.def_id, item_segment)
+                    }
+                    Res::SelfTyAlias { is_trait_impl: true, .. } => todo!(),
+                    _ => return,
+                }
+            }
+
+            _ => return,
+        };
+
+        // TODO:
+        bound_vars.extend(self.tcx.generics_of(item_def_id).own_params.iter().map(|param| {
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime => ty::BoundVariableKind::Region(
+                    ty::BoundRegionKind::BrNamed(param.def_id, param.name),
+                ),
+                ty::GenericParamDefKind::Type { .. } => {
+                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
+                }
+                ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
+            }
+        }));
+        bound_vars.extend(self.tcx.fn_sig(item_def_id).instantiate_identity().bound_vars());
+
+        // TODO:
+        let existing_bound_vars = self.map.late_bound_vars.get_mut(&hir_id).unwrap();
+        let existing_bound_vars_saved = existing_bound_vars.clone();
+        existing_bound_vars.extend(bound_vars);
+        // TODO: subtle
+        self.record_late_bound_vars(item_segment.hir_id, existing_bound_vars_saved);
     }
 }
 

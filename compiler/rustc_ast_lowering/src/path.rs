@@ -16,10 +16,9 @@ use super::errors::{
     GenericTypeWithParentheses, UseAngleBrackets,
 };
 use super::{
-    AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, LifetimeRes,
-    LoweringContext, ParamMode, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
+    LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
-use crate::ImplTraitPosition;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]

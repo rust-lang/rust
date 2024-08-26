@@ -16,18 +16,12 @@ LL |     let foo: i32::from_be(num);
    = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0223]: ambiguous associated type
+error: return type notation not allowed in this position yet
   --> $DIR/let-binding-init-expr-as-ty.rs:2:14
    |
 LL |     let foo: i32::from_be(num);
    |              ^^^^^^^^^^^^^^^^^
-   |
-help: if there were a trait named `Example` with associated type `from_be` implemented for `i32`, you could use the fully-qualified path
-   |
-LL |     let foo: <i32 as Example>::from_be;
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0223, E0573.
-For more information about an error, try `rustc --explain E0223`.
+For more information about this error, try `rustc --explain E0573`.

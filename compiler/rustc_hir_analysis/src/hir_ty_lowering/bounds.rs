@@ -6,6 +6,7 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::HirId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
@@ -15,6 +16,7 @@ use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, 
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
+use super::errors::GenericsArgsErrExtend;
 use crate::bounds::Bounds;
 use crate::errors;
 use crate::hir_ty_lowering::{
@@ -332,74 +334,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .or_insert(constraint.span);
 
         let projection_term = if let ty::AssocKind::Fn = assoc_kind {
-            let mut emitted_bad_param_err = None;
-            // If we have an method return type bound, then we need to instantiate
-            // the method's early bound params with suitable late-bound params.
-            let mut num_bound_vars = candidate.bound_vars().len();
-            let args =
-                candidate.skip_binder().args.extend_to(tcx, assoc_item.def_id, |param, _| {
-                    let arg = match param.kind {
-                        ty::GenericParamDefKind::Lifetime => ty::Region::new_bound(
-                            tcx,
-                            ty::INNERMOST,
-                            ty::BoundRegion {
-                                var: ty::BoundVar::from_usize(num_bound_vars),
-                                kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
-                            },
-                        )
-                        .into(),
-                        ty::GenericParamDefKind::Type { .. } => {
-                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                                self.dcx().emit_err(
-                                    crate::errors::ReturnTypeNotationIllegalParam::Type {
-                                        span: path_span,
-                                        param_span: tcx.def_span(param.def_id),
-                                    },
-                                )
-                            });
-                            Ty::new_error(tcx, guar).into()
-                        }
-                        ty::GenericParamDefKind::Const { .. } => {
-                            let guar = *emitted_bad_param_err.get_or_insert_with(|| {
-                                self.dcx().emit_err(
-                                    crate::errors::ReturnTypeNotationIllegalParam::Const {
-                                        span: path_span,
-                                        param_span: tcx.def_span(param.def_id),
-                                    },
-                                )
-                            });
-                            ty::Const::new_error(tcx, guar).into()
-                        }
-                    };
-                    num_bound_vars += 1;
-                    arg
-                });
-
-            // Next, we need to check that the return-type notation is being used on
-            // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
-            let output = tcx.fn_sig(assoc_item.def_id).skip_binder().output();
-            let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
-                && tcx.is_impl_trait_in_trait(alias_ty.def_id)
-            {
-                alias_ty.into()
-            } else {
-                return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
-                    span: constraint.span,
-                    ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
-                    fn_span: tcx.hir().span_if_local(assoc_item.def_id),
-                    note: (),
-                }));
-            };
-
-            // Finally, move the fn return type's bound vars over to account for the early bound
-            // params (and trait ref's late bound params). This logic is very similar to
-            // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
-            // and it's no coincidence why.
-            let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let instantiation_output = ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args);
-
             let bound_vars = tcx.late_bound_vars(constraint.hir_id);
-            ty::Binder::bind_with_vars(instantiation_output, bound_vars)
+            ty::Binder::bind_with_vars(
+                self.lower_return_type_notation_ty(candidate, assoc_item.def_id, path_span)?.into(),
+                bound_vars,
+            )
         } else {
             // Create the generic arguments for the associated type or constant by joining the
             // parent arguments (the arguments of the trait) and the own arguments (the ones of
@@ -524,6 +463,219 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
         Ok(())
+    }
+
+    // TODO:
+    pub fn lower_ty_maybe_return_type_notation(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        let hir::TyKind::Path(qpath) = hir_ty.kind else {
+            return self.lower_ty(hir_ty);
+        };
+
+        let tcx = self.tcx();
+        match qpath {
+            hir::QPath::Resolved(opt_self_ty, path)
+                if let [mod_segments @ .., trait_segment, item_segment] = &path.segments[..]
+                    && item_segment.args.is_some_and(|args| {
+                        matches!(
+                            args.parenthesized,
+                            hir::GenericArgsParentheses::ReturnTypeNotation
+                        )
+                    }) =>
+            {
+                let _ =
+                    self.prohibit_generic_args(mod_segments.iter(), GenericsArgsErrExtend::None);
+
+                let Res::Def(DefKind::AssocFn, item_def_id) = path.res else {
+                    bug!();
+                };
+                let trait_def_id = tcx.parent(item_def_id);
+
+                let Some(self_ty) = opt_self_ty else {
+                    return self.error_missing_qpath_self_ty(
+                        trait_def_id,
+                        hir_ty.span,
+                        item_segment,
+                    );
+                };
+                let self_ty = self.lower_ty(self_ty);
+
+                let trait_ref = self.lower_mono_trait_ref(
+                    hir_ty.span,
+                    trait_def_id,
+                    self_ty,
+                    trait_segment,
+                    false,
+                    ty::BoundConstness::NotConst,
+                );
+
+                let candidate =
+                    ty::Binder::bind_with_vars(trait_ref, tcx.late_bound_vars(item_segment.hir_id));
+
+                match self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span) {
+                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Err(guar) => Ty::new_error(tcx, guar),
+                }
+            }
+            hir::QPath::TypeRelative(qself, item_segment)
+                if item_segment.args.is_some_and(|args| {
+                    matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
+                }) =>
+            {
+                match self
+                    .resolve_type_relative_return_type_notation(
+                        qself,
+                        item_segment,
+                        hir_ty.hir_id,
+                        hir_ty.span,
+                    )
+                    .and_then(|(candidate, item_def_id)| {
+                        self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span)
+                    }) {
+                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Err(guar) => Ty::new_error(tcx, guar),
+                }
+            }
+            _ => self.lower_ty(hir_ty),
+        }
+    }
+
+    // TODO:
+    fn resolve_type_relative_return_type_notation(
+        &self,
+        qself: &'tcx hir::Ty<'tcx>,
+        item_segment: &'tcx hir::PathSegment<'tcx>,
+        qpath_hir_id: HirId,
+        span: Span,
+    ) -> Result<(ty::PolyTraitRef<'tcx>, DefId), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let qself_ty = self.lower_ty(qself);
+        let assoc_ident = item_segment.ident;
+        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
+            path.res
+        } else {
+            Res::Err
+        };
+
+        let bound = match (qself_ty.kind(), qself_res) {
+            (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
+                // `Self` in an impl of a trait -- we have a concrete self type and a
+                // trait reference.
+                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
+                    // A cycle error occurred, most likely.
+                    self.dcx().span_bug(span, "expected cycle error");
+                };
+
+                self.probe_single_bound_for_assoc_item(
+                    || {
+                        traits::supertraits(
+                            tcx,
+                            ty::Binder::dummy(trait_ref.instantiate_identity()),
+                        )
+                    },
+                    AssocItemQSelf::SelfTyAlias,
+                    ty::AssocKind::Fn,
+                    assoc_ident,
+                    span,
+                    None,
+                )?
+            }
+            (
+                &ty::Param(_),
+                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
+            ) => self.probe_single_ty_param_bound_for_assoc_item(
+                param_did.expect_local(),
+                qself.span,
+                ty::AssocKind::Fn,
+                assoc_ident,
+                span,
+            )?,
+            _ => todo!(),
+        };
+
+        // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`.
+        // This is the same restrictions as associated types; even though we could
+        // support it, it just makes things a lot more difficult to support in
+        // `resolve_bound_vars`.
+        if bound.has_bound_vars() {
+            todo!();
+        }
+
+        let trait_def_id = bound.def_id();
+        let assoc_ty = self
+            .probe_assoc_item(assoc_ident, ty::AssocKind::Fn, qpath_hir_id, span, trait_def_id)
+            .expect("failed to find associated type");
+
+        Ok((bound, assoc_ty.def_id))
+    }
+
+    // TODO:
+    fn lower_return_type_notation_ty(
+        &self,
+        candidate: ty::PolyTraitRef<'tcx>,
+        item_def_id: DefId,
+        path_span: Span,
+    ) -> Result<ty::AliasTy<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+        let mut emitted_bad_param_err = None;
+        // If we have an method return type bound, then we need to instantiate
+        // the method's early bound params with suitable late-bound params.
+        let mut num_bound_vars = candidate.bound_vars().len();
+        let args = candidate.skip_binder().args.extend_to(tcx, item_def_id, |param, _| {
+            let arg = match param.kind {
+                ty::GenericParamDefKind::Lifetime => ty::Region::new_bound(
+                    tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion {
+                        var: ty::BoundVar::from_usize(num_bound_vars),
+                        kind: ty::BoundRegionKind::BrNamed(param.def_id, param.name),
+                    },
+                )
+                .into(),
+                ty::GenericParamDefKind::Type { .. } => {
+                    let guar = *emitted_bad_param_err.get_or_insert_with(|| {
+                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Type {
+                            span: path_span,
+                            param_span: tcx.def_span(param.def_id),
+                        })
+                    });
+                    Ty::new_error(tcx, guar).into()
+                }
+                ty::GenericParamDefKind::Const { .. } => {
+                    let guar = *emitted_bad_param_err.get_or_insert_with(|| {
+                        self.dcx().emit_err(crate::errors::ReturnTypeNotationIllegalParam::Const {
+                            span: path_span,
+                            param_span: tcx.def_span(param.def_id),
+                        })
+                    });
+                    ty::Const::new_error(tcx, guar).into()
+                }
+            };
+            num_bound_vars += 1;
+            arg
+        });
+
+        // Next, we need to check that the return-type notation is being used on
+        // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
+        let output = tcx.fn_sig(item_def_id).skip_binder().output();
+        let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
+            && tcx.is_impl_trait_in_trait(alias_ty.def_id)
+        {
+            alias_ty
+        } else {
+            return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
+                span: path_span,
+                ty: tcx.liberate_late_bound_regions(item_def_id, output),
+                fn_span: tcx.hir().span_if_local(item_def_id),
+                note: (),
+            }));
+        };
+
+        // Finally, move the fn return type's bound vars over to account for the early bound
+        // params (and trait ref's late bound params). This logic is very similar to
+        // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
+        // and it's no coincidence why.
+        let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
+        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args))
     }
 }
 
