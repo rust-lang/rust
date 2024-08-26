@@ -9,11 +9,71 @@ use run_make_support::{diff, rfs, rustc};
 
 fn main() {
     rfs::create_dir("out");
-    let tests = ["asm", "llvm-ir", "dep-info", "mir", "llvm-bc", "obj", "metadata", "link"];
-    for test in tests {
-        test_emit(test);
-    }
-    // These two last tests, which combine multiple emit types, should be done separately.
+    test_asm();
+    test_llvm_ir();
+    test_dep_info();
+    test_mir();
+    test_llvm_bc();
+    test_obj();
+    test_metadata();
+    test_link();
+    test_multiple_types();
+    test_multiple_types_option_o();
+}
+
+fn test_asm() {
+    rustc().emit("asm=out/asm").input("test.rs").run();
+    let emit = rustc().emit("asm=-").input("test.rs").run().stdout_utf8();
+    diff().expected_file("out/asm").actual_text("actual", &emit).run();
+}
+
+fn test_llvm_ir() {
+    rustc().emit("llvm-ir=out/llvm-ir").input("test.rs").run();
+    let emit = rustc().emit("llvm-ir=-").input("test.rs").run().stdout_utf8();
+    diff().expected_file("out/llvm-ir").actual_text("actual", &emit).run();
+}
+
+fn test_dep_info() {
+    rustc()
+        .emit("dep-info=out/dep-info")
+        .input("test.rs")
+        .arg("-Zdep-info-omit-d-target=yes")
+        .run();
+    let emit = rustc().emit("dep-info=-").input("test.rs").run().stdout_utf8();
+    diff().expected_file("out/dep-info").actual_text("actual", &emit).run();
+}
+
+fn test_mir() {
+    rustc().emit("mir=out/mir").input("test.rs").run();
+    let emit = rustc().emit("mir=-").input("test.rs").run().stdout_utf8();
+    diff().expected_file("out/mir").actual_text("actual", &emit).run();
+}
+
+// FIXME: ptmx
+fn test_llvm_bc() {
+    let emit = rustc().emit("llvm-bc=-").input("test.rs").run().stderr_utf8();
+    diff().expected_file("emit-llvm-bc.stderr").actual_text("actual", &emit).run();
+}
+
+// FIXME: ptmx
+fn test_obj() {
+    let emit = rustc().emit("obj=-").input("test.rs").run().stderr_utf8();
+    diff().expected_file("emit-obj.stderr").actual_text("actual", &emit).run();
+}
+
+// FIXME: ptmx
+fn test_metadata() {
+    let emit = rustc().emit("metadata=-").input("test.rs").run().stderr_utf8();
+    diff().expected_file("emit-metadata.stderr").actual_text("actual", &emit).run();
+}
+
+// FIXME: ptmx
+fn test_link() {
+    let emit = rustc().emit("link=-").input("test.rs").run().stderr_utf8();
+    diff().expected_file("emit-link.stderr").actual_text("actual", &emit).run();
+}
+
+fn test_multiple_types() {
     diff()
         .expected_file("emit-multiple-types.stderr")
         .actual_text(
@@ -29,6 +89,9 @@ fn main() {
                 .stderr_utf8(),
         )
         .run();
+}
+
+fn test_multiple_types_option_o() {
     diff()
         .expected_file("emit-multiple-types.stderr")
         .actual_text(
@@ -41,39 +104,4 @@ fn main() {
                 .stderr_utf8(),
         )
         .run();
-}
-
-fn test_emit(emit_type: &str) {
-    // Emitting these types will cause a compilation failure, which should be compared to a
-    // blessed stderr file for differences.
-    let stderr_types = ["llvm-bc", "obj", "metadata", "link"];
-    // Successful types (not in stderr_types) should start by outputting one emit file.
-    if !stderr_types.contains(&emit_type) {
-        let mut initial_compile = rustc();
-        initial_compile.emit(&format!("{emit_type}=out/{emit_type}")).input("test.rs");
-        // dep-info requires an extra unstable argument.
-        if emit_type == "dep-info" {
-            initial_compile.arg("-Zdep-info-omit-d-target=yes");
-        }
-        initial_compile.run();
-    }
-    let mut compile = rustc();
-    compile.emit(&format!("{emit_type}=-")).input("test.rs");
-    // Check if compilation should succeed or fail depending on the emit type.
-    let compile =
-        if stderr_types.contains(&emit_type) { compile.run_fail() } else { compile.run() };
-    let emit = if stderr_types.contains(&emit_type) {
-        compile.stderr_utf8()
-    } else {
-        compile.stdout_utf8()
-    };
-    let mut diff = diff();
-    // Compare the output with either an emit file or stderr file, depending on success
-    // or failure.
-    if stderr_types.contains(&emit_type) {
-        diff.expected_file(&format!("emit-{emit_type}.stderr"));
-    } else {
-        diff.expected_file(&format!("out/{emit_type}"));
-    }
-    diff.actual_text("actual", &emit).run();
 }
