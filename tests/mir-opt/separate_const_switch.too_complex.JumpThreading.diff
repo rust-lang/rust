@@ -54,9 +54,7 @@
       }
   
       bb5: {
-          StorageLive(_8);
           _0 = const Option::<i32>::None;
-          StorageDead(_8);
           goto -> bb7;
       }
   

@@ -45,10 +45,10 @@
   
       bb1: {
           StorageDead(_6);
-          StorageLive(_12);
           nop;
           nop;
-          StorageDead(_12);
+          nop;
+          nop;
           StorageDead(_5);
           nop;
           StorageDead(_4);

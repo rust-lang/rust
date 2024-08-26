@@ -102,10 +102,10 @@
           StorageDead(_16);
           StorageDead(_12);
           StorageDead(_6);
-          StorageLive(_17);
           nop;
           nop;
-          StorageDead(_17);
+          nop;
+          nop;
           StorageDead(_5);
           nop;
           StorageDead(_4);
