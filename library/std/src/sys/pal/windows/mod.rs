@@ -15,7 +15,6 @@ pub mod compat;
 
 mod api;
 
-pub mod alloc;
 pub mod args;
 pub mod c;
 pub mod env;

@@ -1,5 +1,5 @@
-use super::abi;
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::sys::pal::abi;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {

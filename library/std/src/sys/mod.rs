@@ -5,6 +5,7 @@
 /// descriptors.
 mod pal;
 
+mod alloc;
 mod personality;
 
 pub mod anonymous_pipe;

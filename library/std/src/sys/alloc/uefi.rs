@@ -3,9 +3,9 @@
 
 use r_efi::protocols::loaded_image;
 
-use super::helpers;
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::sync::OnceLock;
+use crate::sys::pal::helpers;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
