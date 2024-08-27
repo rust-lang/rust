@@ -246,8 +246,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 
     // No need to const-check a non-const `fn`.
     match const_kind {
-        Some(ConstContext::Const { .. } | ConstContext::Static(_))
-        | Some(ConstContext::ConstFn) => {}
+        Some(ConstContext::Const { .. } | ConstContext::Static(_) | ConstContext::ConstFn) => {}
         None => span_bug!(
             tcx.def_span(def),
             "`mir_const_qualif` should only be called on const fns and const items"
