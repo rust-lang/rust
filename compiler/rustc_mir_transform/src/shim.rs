@@ -127,6 +127,12 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceKind::FutureDropPollShim(_def_id, _proxy_ty, _impl_ty) => {
+            todo!()
+        }
+        ty::InstanceKind::AsyncDropGlue(_def_id, _ty) => {
+            todo!()
+        }
         ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, _ty) => {
             bug!("AsyncDropGlueCtorShim in re-working ({:?})", instance)
         }

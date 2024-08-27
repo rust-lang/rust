@@ -1897,6 +1897,13 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    pub fn is_templated_coroutine(self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind() {
+            ty::Coroutine(def, ..) => tcx.is_templated_coroutine(*def),
+            _ => false,
+        }
+    }
+
     /// Returns `true` when the outermost type cannot be further normalized,
     /// resolved, or instantiated. This includes all primitive types, but also
     /// things like ADTs and trait objects, since even if their arguments or

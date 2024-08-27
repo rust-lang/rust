@@ -1052,6 +1052,7 @@ symbols! {
         fundamental,
         fused_iterator,
         future,
+        future_drop_poll,
         future_output,
         future_trait,
         gdb_script_file,

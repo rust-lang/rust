@@ -630,12 +630,6 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         matches!(instance.def, ty::InstanceKind::DropGlue(_, None))
     }
 
-    fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool {
-        let tables = self.0.borrow_mut();
-        let instance = tables.instances[def];
-        matches!(instance.def, ty::InstanceKind::AsyncDropGlueCtorShim(_, None))
-    }
-
     fn mono_instance(&self, def_id: stable_mir::DefId) -> stable_mir::mir::mono::Instance {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[def_id];
