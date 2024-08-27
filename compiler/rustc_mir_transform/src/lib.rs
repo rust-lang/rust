@@ -220,10 +220,8 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
-    let mut set = FxIndexSet::default();
-
     // All body-owners have MIR associated with them.
-    set.extend(tcx.hir().body_owners());
+    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
