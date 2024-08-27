@@ -1051,43 +1051,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(..)
                         | ty::Error(_) => false,
                     }
-                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncDestruct) {
-                    match self_ty.kind() {
-                        ty::Bool
-                        | ty::Char
-                        | ty::Int(_)
-                        | ty::Uint(_)
-                        | ty::Float(_)
-                        | ty::Adt(..)
-                        | ty::Str
-                        | ty::Array(..)
-                        | ty::Slice(_)
-                        | ty::RawPtr(..)
-                        | ty::Ref(..)
-                        | ty::FnDef(..)
-                        | ty::FnPtr(..)
-                        | ty::UnsafeBinder(_)
-                        | ty::Dynamic(..)
-                        | ty::Closure(..)
-                        | ty::CoroutineClosure(..)
-                        | ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
-                        | ty::Pat(..)
-                        | ty::Never
-                        | ty::Tuple(..)
-                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
-
-                        // type parameters, opaques, and unnormalized projections don't have
-                        // a known async destructor and may need to be normalized further or rely
-                        // on param env for async destructor projections
-                        ty::Param(_)
-                        | ty::Foreign(_)
-                        | ty::Alias(..)
-                        | ty::Bound(..)
-                        | ty::Placeholder(..)
-                        | ty::Infer(_)
-                        | ty::Error(_) => false,
-                    }
                 } else if tcx.is_lang_item(trait_ref.def_id, LangItem::PointeeTrait) {
                     let tail = selcx.tcx().struct_tail_raw(
                         self_ty,
@@ -1541,11 +1504,6 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         assert_eq!(discriminant_def_id, item_def_id);
 
         (self_ty.discriminant_ty(tcx).into(), PredicateObligations::new())
-    } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncDestruct) {
-        let destructor_def_id = tcx.associated_item_def_ids(trait_def_id)[0];
-        assert_eq!(destructor_def_id, item_def_id);
-
-        (self_ty.async_destructor_ty(tcx).into(), PredicateObligations::new())
     } else if tcx.is_lang_item(trait_def_id, LangItem::PointeeTrait) {
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, item_def_id);

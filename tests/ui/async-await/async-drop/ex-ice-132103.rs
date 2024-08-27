@@ -1,6 +1,8 @@
-//@ known-bug: #132103
+//! This test used to ICE: rust-lang/rust#132103
+//! Fixed when re-work async drop to templated coroutine scheme.
 //@compile-flags: -Zvalidate-mir --edition=2018 -Zinline-mir=yes
 use core::future::{async_drop_in_place, Future};
+//~^ ERROR unresolved import `core::future::async_drop_in_place` [E0432]
 use core::mem::{self};
 use core::pin::pin;
 use core::task::{Context, Waker};

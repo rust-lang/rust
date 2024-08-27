@@ -23,8 +23,6 @@ use crate::{
     instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 
-mod async_destructor_ctor;
-
 pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
@@ -129,8 +127,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
-        ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty) => {
-            async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty)
+        ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, _ty) => {
+            bug!("AsyncDropGlueCtorShim in re-working ({:?})", instance)
         }
         ty::InstanceKind::Virtual(..) => {
             bug!("InstanceKind::Virtual ({:?}) is for direct calls only", instance)
