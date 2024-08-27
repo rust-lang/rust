@@ -695,8 +695,9 @@ impl f64 {
     /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
     /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
     /// conserved over arithmetic operations, the result of `is_sign_positive` on
-    /// a NaN might produce an unexpected result in some cases. See [explanation
-    /// of NaN as a special value](f32) for more info.
+    /// a NaN might produce an unexpected or non-portable result. See the [specification
+    /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == 1.0`
+    /// if you need fully portable behavior (will return `false` for all NaNs).
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -728,8 +729,9 @@ impl f64 {
     /// Note that IEEE 754 doesn't assign any meaning to the sign bit in case of
     /// a NaN, and as Rust doesn't guarantee that the bit pattern of NaNs are
     /// conserved over arithmetic operations, the result of `is_sign_negative` on
-    /// a NaN might produce an unexpected result in some cases. See [explanation
-    /// of NaN as a special value](f32) for more info.
+    /// a NaN might produce an unexpected or non-portable result. See the [specification
+    /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == -1.0`
+    /// if you need fully portable behavior (will return `false` for all NaNs).
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -968,7 +970,7 @@ impl f64 {
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -1003,7 +1005,7 @@ impl f64 {
     /// Note that this follows the semantics specified in IEEE 754-2019.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
-    /// operand is conserved; see [explanation of NaN as a special value](f32) for more info.
+    /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
