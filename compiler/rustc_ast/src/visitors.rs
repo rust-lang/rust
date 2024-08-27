@@ -352,6 +352,7 @@ macro_rules! make_ast_visitor {
                 self.visit_expr(ex)
             }
 
+            /// Id should be visited by the caller
             fn visit_use_tree(
                 &mut self,
                 use_tree: ref_t!(UseTree),
@@ -844,6 +845,31 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_use_tree<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            use_tree: ref_t!(UseTree),
+            id: NodeId,
+        ) -> result!(V) {
+            let UseTree { prefix, kind, span } = use_tree;
+            try_v!(vis.visit_path(prefix, id));
+            match kind {
+                UseTreeKind::Simple(rename) => {
+                    // The extra IDs are handled during AST lowering.
+                    visit_o!(rename, |rename: ref_t!(Ident)| visit_ident!(vis, rename));
+                }
+                UseTreeKind::Nested { items, span } => {
+                    for (tree, id) in items {
+                        try_v!(visit_id!(vis, id));
+                        vis.visit_use_tree(tree, *id, true);
+                    }
+                    try_v!(visit_span!(vis, span));
+                }
+                UseTreeKind::Glob => {}
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1161,28 +1187,6 @@ pub mod visit {
     pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) -> V::Result {
         let Path { span: _, segments, tokens: _ } = path;
         walk_list!(visitor, visit_path_segment, segments);
-        V::Result::output()
-    }
-
-    pub fn walk_use_tree<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        use_tree: &'a UseTree,
-        id: NodeId,
-    ) -> V::Result {
-        let UseTree { prefix, kind, span: _ } = use_tree;
-        try_visit!(visitor.visit_path(prefix, id));
-        match kind {
-            UseTreeKind::Simple(rename) => {
-                // The extra IDs are handled during AST lowering.
-                visit_opt!(visitor, visit_ident, *rename);
-            }
-            UseTreeKind::Glob => {}
-            UseTreeKind::Nested { ref items, span: _ } => {
-                for &(ref nested_tree, nested_id) in items {
-                    try_visit!(visitor.visit_use_tree(nested_tree, nested_id, true));
-                }
-            }
-        }
         V::Result::output()
     }
 
@@ -1857,23 +1861,6 @@ pub mod mut_visit {
     pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &mut DelimSpan) {
         vis.visit_span(open);
         vis.visit_span(close);
-    }
-
-    fn walk_use_tree<T: MutVisitor>(vis: &mut T, use_tree: &mut UseTree, id: NodeId) {
-        let UseTree { prefix, kind, span } = use_tree;
-        vis.visit_path(prefix, id);
-        match kind {
-            UseTreeKind::Simple(rename) => visit_opt(rename, |rename| vis.visit_ident(rename)),
-            UseTreeKind::Nested { items, span } => {
-                for (tree, id) in items {
-                    vis.visit_id(id);
-                    vis.visit_use_tree(tree, *id, true);
-                }
-                vis.visit_span(span);
-            }
-            UseTreeKind::Glob => {}
-        }
-        vis.visit_span(span);
     }
 
     fn walk_assoc_item_constraint<T: MutVisitor>(
