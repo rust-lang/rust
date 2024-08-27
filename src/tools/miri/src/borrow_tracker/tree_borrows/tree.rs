@@ -150,7 +150,10 @@ impl LocationState {
     // the propagation can be skipped next time.
     // It is a performance loss not to call this function when a foreign access occurs.
     // It is unsound not to call this function when a child access occurs.
-    fn skip_if_known_noop(
+    // FIXME: This optimization is wrong, and is currently disabled (by ignoring the
+    // result returned here). Since we presumably want an optimization like this,
+    // we should add it back. See #3864 for more information.
+    fn update_last_foreign_access(
         &mut self,
         access_kind: AccessKind,
         rel_pos: AccessRelatedness,
@@ -613,10 +616,7 @@ impl<'tcx> Tree {
 
             let old_state = perm.or_insert(LocationState::new_uninit(node.default_initial_perm));
 
-            match old_state.skip_if_known_noop(access_kind, rel_pos) {
-                ContinueTraversal::SkipChildren => return Ok(ContinueTraversal::SkipChildren),
-                _ => {}
-            }
+            old_state.update_last_foreign_access(access_kind, rel_pos);
 
             let protected = global.borrow().protected_tags.contains_key(&node.tag);
             let transition = old_state.perform_access(access_kind, rel_pos, protected)?;
