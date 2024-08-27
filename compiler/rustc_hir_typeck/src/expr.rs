@@ -51,7 +51,7 @@ use crate::{
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_expr_has_type_or_error(
+    pub(crate) fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -977,7 +977,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Check if the expression that could not be assigned to was a typoed expression that
-    pub fn check_for_missing_semi(&self, expr: &'tcx hir::Expr<'tcx>, err: &mut Diag<'_>) -> bool {
+    pub(crate) fn check_for_missing_semi(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        err: &mut Diag<'_>,
+    ) -> bool {
         if let hir::ExprKind::Binary(binop, lhs, rhs) = expr.kind
             && let hir::BinOpKind::Mul = binop.node
             && self.tcx.sess.source_map().is_multiline(lhs.span.between(rhs.span))

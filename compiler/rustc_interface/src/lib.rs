@@ -2,6 +2,7 @@
 #![feature(decl_macro)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod callbacks;

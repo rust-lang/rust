@@ -22,7 +22,7 @@ pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
     MismatchedProjectionTypes, Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry,
-    ProjectionCacheKey, ProjectionCacheStorage, Reveal,
+    ProjectionCacheKey, ProjectionCacheStorage,
 };
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;

@@ -165,7 +165,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct TypeLimits {
+pub(crate) struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: Option<hir::HirId>,
     /// Span of the last visited negated expression
@@ -180,7 +180,7 @@ impl_lint_pass!(TypeLimits => [
 ]);
 
 impl TypeLimits {
-    pub fn new() -> TypeLimits {
+    pub(crate) fn new() -> TypeLimits {
         TypeLimits { negated_expr_id: None, negated_expr_span: None }
     }
 }
@@ -1008,7 +1008,7 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
 
 /// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
 /// field.
-pub fn transparent_newtype_field<'a, 'tcx>(
+pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &'a ty::VariantDef,
 ) -> Option<&'a ty::FieldDef> {

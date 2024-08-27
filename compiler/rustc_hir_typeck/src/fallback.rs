@@ -18,7 +18,7 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use crate::{errors, FnCtxt, TypeckRootCtxt};
 
 #[derive(Copy, Clone)]
-pub enum DivergingFallbackBehavior {
+pub(crate) enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
     ToUnit,
     /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
