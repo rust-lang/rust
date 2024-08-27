@@ -5,7 +5,7 @@ set -euo pipefail
 LINUX_VERSION=4c7864e81d8bbd51036dacf92fb0a400e13aaeee
 
 # Build rustc, rustdoc and cargo
-../x.py build --stage 1 library rustdoc
+../x.py build --stage 2 library rustdoc
 ../x.py build --stage 0 cargo
 
 # Install rustup so that we can use the built toolchain easily, and also
@@ -16,7 +16,7 @@ sh rustup.sh -y --default-toolchain none
 source /cargo/env
 
 BUILD_DIR=$(realpath ./build)
-rustup toolchain link local "${BUILD_DIR}"/x86_64-unknown-linux-gnu/stage1
+rustup toolchain link local "${BUILD_DIR}"/x86_64-unknown-linux-gnu/stage2
 rustup default local
 
 mkdir -p rfl
