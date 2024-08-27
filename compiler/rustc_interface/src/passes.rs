@@ -25,7 +25,7 @@ use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
 };
 use rustc_passes::{abi_test, hir_stats, layout_test};
-use rustc_resolve::Resolver;
+use rustc_resolve::{ExpandResolver, Resolver};
 use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
@@ -126,9 +126,9 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 fn configure_and_expand(
     mut krate: ast::Crate,
     pre_configured_attrs: &[ast::Attribute],
-    resolver: &mut Resolver<'_, '_>,
+    resolver: &mut ExpandResolver<'_, '_>,
 ) -> ast::Crate {
-    let tcx = resolver.tcx();
+    let tcx = resolver.r.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
     let lint_store = unerased_lint_store(tcx.sess);
@@ -154,7 +154,7 @@ fn configure_and_expand(
         )
     });
 
-    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.lint_buffer());
+    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.r.lint_buffer());
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -242,7 +242,7 @@ fn configure_and_expand(
             sess,
             features,
             &krate,
-            resolver.lint_buffer(),
+            resolver.r.lint_buffer(),
         )
     });
 
@@ -279,7 +279,7 @@ fn configure_and_expand(
 
     // Done with macro expansion!
 
-    resolver.resolve_crate(&krate);
+    resolver.r.resolve_crate(&krate);
 
     krate
 }
@@ -544,14 +544,15 @@ fn resolver_for_lowering_raw<'tcx>(
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
-    let mut resolver = Resolver::new(
+    let resolver = Resolver::new(
         tcx,
         &pre_configured_attrs,
         krate.spans.inner_span,
         krate.spans.inject_use_span,
         &arenas,
     );
-    let krate = configure_and_expand(krate, &pre_configured_attrs, &mut resolver);
+    let mut expand_resolver = ExpandResolver::new(resolver);
+    let krate = configure_and_expand(krate, &pre_configured_attrs, &mut expand_resolver);
 
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.freeze();
@@ -559,7 +560,7 @@ fn resolver_for_lowering_raw<'tcx>(
     let ty::ResolverOutputs {
         global_ctxt: untracked_resolutions,
         ast_lowering: untracked_resolver_for_lowering,
-    } = resolver.into_outputs();
+    } = expand_resolver.r.into_outputs();
 
     let resolutions = tcx.arena.alloc(untracked_resolutions);
     (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)

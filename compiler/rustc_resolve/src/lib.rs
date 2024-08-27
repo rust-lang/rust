@@ -981,6 +981,16 @@ impl MacroData {
     }
 }
 
+pub struct ExpandResolver<'a, 'tcx> {
+    pub r: Resolver<'a, 'tcx>,
+}
+
+impl<'a, 'tcx> ExpandResolver<'a, 'tcx> {
+    pub fn new(r: Resolver<'a, 'tcx>) -> Self {
+        ExpandResolver { r }
+    }
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
