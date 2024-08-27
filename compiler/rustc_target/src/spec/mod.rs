@@ -1750,6 +1750,9 @@ supported_targets! {
 
     ("x86_64-unikraft-linux-musl", x86_64_unikraft_linux_musl),
 
+    ("armv7-unknown-trusty", armv7_unknown_trusty),
+    ("aarch64-unknown-trusty", aarch64_unknown_trusty),
+
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-risc0-zkvm-elf", riscv32im_risc0_zkvm_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),

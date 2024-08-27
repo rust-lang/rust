@@ -66,6 +66,9 @@
 //@ revisions: aarch64_unknown_teeos
 //@ [aarch64_unknown_teeos] compile-flags: --target aarch64-unknown-teeos
 //@ [aarch64_unknown_teeos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_trusty
+//@ [aarch64_unknown_trusty] compile-flags: --target aarch64-unknown-trusty
+//@ [aarch64_unknown_trusty] needs-llvm-components: aarch64
 //@ revisions: aarch64_wrs_vxworks
 //@ [aarch64_wrs_vxworks] compile-flags: --target aarch64-wrs-vxworks
 //@ [aarch64_wrs_vxworks] needs-llvm-components: aarch64
@@ -153,6 +156,9 @@
 //@ revisions: armv7_unknown_netbsd_eabihf
 //@ [armv7_unknown_netbsd_eabihf] compile-flags: --target armv7-unknown-netbsd-eabihf
 //@ [armv7_unknown_netbsd_eabihf] needs-llvm-components: arm
+//@ revisions: armv7_unknown_trusty
+//@ [armv7_unknown_trusty] compile-flags: --target armv7-unknown-trusty
+//@ [armv7_unknown_trusty] needs-llvm-components: arm
 //@ revisions: armv7_wrs_vxworks_eabihf
 //@ [armv7_wrs_vxworks_eabihf] compile-flags: --target armv7-wrs-vxworks-eabihf
 //@ [armv7_wrs_vxworks_eabihf] needs-llvm-components: arm
