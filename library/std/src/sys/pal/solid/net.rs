@@ -380,6 +380,14 @@ impl Socket {
     pub fn as_raw(&self) -> c_int {
         self.as_raw_fd()
     }
+
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
+        unimplemented!()
+    }
+
+    pub fn set_device(&self, _: &str) -> io::Result<()> {
+        unimplemented!()
+    }
 }
 
 impl FromInner<OwnedFd> for Socket {

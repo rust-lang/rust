@@ -194,6 +194,14 @@ impl TcpStream {
     pub fn into_socket(self) -> Socket {
         self.inner
     }
+
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
+        unimplemented!()
+    }
+
+    pub fn set_device(&self, _: &str) -> io::Result<()> {
+        unimplemented!()
+    }
 }
 
 impl FromInner<Socket> for TcpStream {

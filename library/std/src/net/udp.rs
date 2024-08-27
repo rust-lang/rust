@@ -1,6 +1,7 @@
 #[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx", target_os = "xous"))))]
 mod tests;
 
+use crate::ffi::CString;
 use crate::fmt;
 use crate::io::{self, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
@@ -805,6 +806,45 @@ impl UdpSocket {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
+    }
+
+    /// Bind the socket to an interface
+    ///
+    /// ```no_run
+    /// #![feature(unix_set_device)]
+    ///
+    /// use std::net::UdpSocket;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:7878").unwrap();
+    ///     socket.set_device("eth0")?;
+    ///     Ok(())
+    /// }
+    ///
+    /// ```
+    #[unstable(feature = "unix_set_device", issue = "129182")]
+    pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
+        self.0.set_device(ifrname)
+    }
+
+    /// Get the interface this socket is bound to
+    ///
+    /// ```no_run
+    /// #![feature(unix_set_device)]
+    ///
+    /// use std::net::UdpSocket;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:7878").unwrap();
+    ///     socket.set_device("eth0")?;
+    ///     let name = socket.device()?;
+    ///     assert_eq!(Ok("eth0"), name.to_str());
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "unix_set_device", issue = "129182")]
+    pub fn device(&self) -> io::Result<CString> {
+        self.0.device()
     }
 }
 

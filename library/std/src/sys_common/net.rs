@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use crate::ffi::{c_int, c_void};
+use crate::ffi::{c_int, c_void, CString};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::common::small_c_string::run_with_cstr;
@@ -352,6 +352,14 @@ impl TcpStream {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
     }
+
+    pub fn device(&self) -> io::Result<CString> {
+        self.inner.device()
+    }
+
+    pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
+        self.inner.set_device(ifrname)
+    }
 }
 
 impl AsInner<Socket> for TcpStream {
@@ -701,6 +709,14 @@ impl UdpSocket {
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
         let (addr, len) = addr?.into_inner();
         cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
+    }
+
+    pub fn device(&self) -> io::Result<CString> {
+        self.inner.device()
+    }
+
+    pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
+        self.inner.set_device(ifrname)
     }
 }
 

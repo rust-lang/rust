@@ -15,7 +15,6 @@ use libc::MSG_NOSIGNAL;
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
 use super::{sockaddr_un, SocketAddr};
-#[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
 use crate::ffi::CString;
 #[cfg(any(doc, target_os = "android", target_os = "linux"))]
 use crate::io::{IoSlice, IoSliceMut};
@@ -840,14 +839,7 @@ impl UnixDatagram {
 
     /// Bind the socket to an interface
     ///
-    #[cfg_attr(
-        any(target_os = "linux", target_os = "haiku", target_os = "vxworks"),
-        doc = "```no_run"
-    )]
-    #[cfg_attr(
-        not(any(target_os = "linux", target_os = "haiku", target_os = "vxworks")),
-        doc = "```ignore"
-    )]
+    /// ```no_run
     /// #![feature(unix_set_device)]
     /// use std::os::unix::net::UnixDatagram;
     ///
@@ -857,7 +849,6 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
     #[unstable(feature = "unix_set_device", issue = "129182")]
     pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
         self.0.set_device(ifrname)
@@ -865,14 +856,7 @@ impl UnixDatagram {
 
     /// Get the interface this socket is bound to
     ///
-    #[cfg_attr(
-        any(target_os = "linux", target_os = "haiku", target_os = "vxworks"),
-        doc = "```no_run"
-    )]
-    #[cfg_attr(
-        not(any(target_os = "linux", target_os = "haiku", target_os = "vxworks")),
-        doc = "```ignore"
-    )]
+    /// ```no_run
     /// #![feature(unix_set_device)]
     /// use std::os::unix::net::UnixDatagram;
     ///
@@ -884,7 +868,6 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(doc, target_os = "linux", target_os = "haiku", target_os = "vxworks",))]
     #[unstable(feature = "unix_set_device", issue = "129182")]
     pub fn device(&self) -> io::Result<CString> {
         self.0.device()

@@ -521,6 +521,14 @@ impl Socket {
         debug_assert_eq!(mem::align_of::<c::SOCKET>(), mem::align_of::<RawSocket>());
         unsafe { Self::from_raw_socket(raw as RawSocket) }
     }
+
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
+        unimplemented!()
+    }
+
+    pub fn set_device(&self, _: &str) -> io::Result<()> {
+        unimplemented!()
+    }
 }
 
 #[unstable(reason = "not public", issue = "none", feature = "fd_read")]

@@ -207,6 +207,14 @@ impl TcpStream {
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
         sgx_ineffective(())
     }
+
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
+        unimplemented!()
+    }
+
+    pub fn set_device(&self, _: &str) -> io::Result<()> {
+        unimplemented!()
+    }
 }
 
 impl AsInner<Socket> for TcpStream {

@@ -572,6 +572,11 @@ impl Socket {
         Ok(crate::ffi::CString::new(name.to_bytes()).unwrap())
     }
 
+    #[cfg(not(any(target_os = "linux", target_os = "haiku", target_os = "vxworks")))]
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
+        unimplemented!()
+    }
+
     #[cfg(any(target_os = "linux", target_os = "haiku", target_os = "vxworks"))]
     pub fn set_device(&self, ifrname: &str) -> io::Result<()> {
         let istr = ifrname.as_bytes();
@@ -585,6 +590,11 @@ impl Socket {
             *dst = *src as libc::c_char;
         }
         setsockopt(self, libc::SOL_SOCKET, libc::SO_BINDTODEVICE, buf)
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "haiku", target_os = "vxworks")))]
+    pub fn set_device(&self, _: &str) -> io::Result<()> {
+        unimplemented!()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

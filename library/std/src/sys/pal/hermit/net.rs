@@ -312,6 +312,14 @@ impl Socket {
     pub fn as_raw(&self) -> RawFd {
         self.0.as_raw_fd()
     }
+
+    pub fn device(&self) -> io::Result<crate::ffi::CString> {
+        unimplemented!()
+    }
+
+    pub fn set_device(&self, _: &str) -> io::Result<()> {
+        unimplemented!()
+    }
 }
 
 impl AsInner<FileDesc> for Socket {
