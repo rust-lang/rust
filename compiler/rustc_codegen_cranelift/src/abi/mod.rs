@@ -441,7 +441,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Err(instance) => Some(instance),
                 }
             }
-            InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) => {
+            // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
+            // it is `func returning noop future`
+            InstanceKind::DropGlue(_, None) => {
                 // empty drop glue - a nop.
                 let dest = target.expect("Non terminating drop_in_place_real???");
                 let ret_block = fx.get_block(dest);
@@ -707,9 +709,8 @@ pub(crate) fn codegen_drop<'tcx>(
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
 
-    if let ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) =
-        drop_instance.def
-    {
+    // AsyncDropGlueCtorShim can't be here
+    if let ty::InstanceKind::DropGlue(_, None) = drop_instance.def {
         // we don't actually need to drop anything
     } else {
         match ty.kind() {
