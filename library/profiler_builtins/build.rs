@@ -17,8 +17,6 @@ fn main() {
     let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("CARGO_CFG_TARGET_ENV was not set");
     let cfg = &mut cc::Build::new();
 
-    // FIXME: `rerun-if-changed` directives are not currently emitted and the build script
-    // will not rerun on changes in these source files or headers included into them.
     let profile_sources = vec![
         // tidy-alphabetical-start
         "GCDAProfiling.c",
@@ -86,6 +84,7 @@ fn main() {
 
     let src_root = root.join("lib").join("profile");
     assert!(src_root.exists(), "profiler runtime source directory not found: {src_root:?}");
+    println!("cargo::rerun-if-changed={}", src_root.display());
     let mut n_sources_found = 0u32;
     for src in profile_sources {
         let path = src_root.join(src);
@@ -96,7 +95,10 @@ fn main() {
     }
     assert!(n_sources_found > 0, "couldn't find any profiler runtime source files in {src_root:?}");
 
-    cfg.include(root.join("include"));
+    let include = root.join("include");
+    println!("cargo::rerun-if-changed={}", include.display());
+    cfg.include(include);
+
     cfg.warnings(false);
     cfg.compile("profiler-rt");
 }
