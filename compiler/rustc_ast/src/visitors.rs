@@ -925,6 +925,22 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_precise_capturing_arg<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            arg: ref_t!(PreciseCapturingArg)
+        ) -> result!(V) {
+            match arg {
+                PreciseCapturingArg::Lifetime(lt) => {
+                    try_v!(vis.visit_lifetime(lt, LifetimeCtxt::GenericArg));
+                }
+                PreciseCapturingArg::Arg(path, id) => {
+                    try_v!(visit_id!(vis, id));
+                    try_v!(vis.visit_path(path, *id));
+                }
+            }
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1333,20 +1349,6 @@ pub mod visit {
                 }
             }
             V::Result::output()
-        }
-    }
-
-    pub fn walk_precise_capturing_arg<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        arg: &'a PreciseCapturingArg,
-    ) {
-        match arg {
-            PreciseCapturingArg::Lifetime(lt) => {
-                visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg);
-            }
-            PreciseCapturingArg::Arg(path, id) => {
-                visitor.visit_path(path, *id);
-            }
         }
     }
 
@@ -2216,18 +2218,6 @@ pub mod mut_visit {
                 vis.visit_closure_binder(binder);
                 vis.visit_fn_decl(decl);
                 vis.visit_expr(body);
-            }
-        }
-    }
-
-    fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCapturingArg) {
-        match arg {
-            PreciseCapturingArg::Lifetime(lt) => {
-                vis.visit_lifetime(lt, LifetimeCtxt::GenericArg);
-            }
-            PreciseCapturingArg::Arg(path, id) => {
-                vis.visit_id(id);
-                vis.visit_path(path, *id);
             }
         }
     }
