@@ -209,6 +209,7 @@ panic_const! {
 
 /// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize on the caller.
 /// If you want `#[track_caller]` for nicer errors, call `panic_nounwind_fmt` directly.
+#[track_caller]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
@@ -219,6 +220,7 @@ pub const fn panic_nounwind(expr: &'static str) -> ! {
 }
 
 /// Like `panic_nounwind`, but also inhibits showing a backtrace.
+#[track_caller]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[rustc_nounwind]
