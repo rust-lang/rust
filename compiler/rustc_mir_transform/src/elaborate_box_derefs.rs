@@ -11,7 +11,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::FieldIdx;
 
 /// Constructs the types used when accessing a Box's pointer
-pub fn build_ptr_tys<'tcx>(
+fn build_ptr_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     pointee: Ty<'tcx>,
     unique_did: DefId,
@@ -26,7 +26,7 @@ pub fn build_ptr_tys<'tcx>(
 }
 
 /// Constructs the projection needed to access a Box's pointer
-pub fn build_projection<'tcx>(
+pub(super) fn build_projection<'tcx>(
     unique_ty: Ty<'tcx>,
     nonnull_ty: Ty<'tcx>,
     ptr_ty: Ty<'tcx>,
@@ -88,7 +88,7 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
     }
 }
 
-pub struct ElaborateBoxDerefs;
+pub(super) struct ElaborateBoxDerefs;
 
 impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

@@ -32,6 +32,8 @@ pub(crate) mod cycle;
 
 const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 
+// Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
+// by custom rustc drivers, running all the steps by themselves. See #114628.
 pub struct Inline;
 
 #[derive(Copy, Clone, Debug)]

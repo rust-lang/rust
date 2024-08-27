@@ -4,7 +4,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
-pub struct RemoveStorageMarkers;
+pub(super) struct RemoveStorageMarkers;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveStorageMarkers {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

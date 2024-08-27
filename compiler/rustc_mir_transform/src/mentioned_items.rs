@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 
-pub struct MentionedItems;
+pub(super) struct MentionedItems;
 
 struct MentionedItemsVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

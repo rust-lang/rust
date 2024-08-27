@@ -7,7 +7,7 @@ use rustc_span::symbol::sym;
 
 use crate::take_array;
 
-pub struct LowerIntrinsics;
+pub(super) struct LowerIntrinsics;
 
 impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

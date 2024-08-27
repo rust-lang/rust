@@ -53,7 +53,7 @@
 mod by_move_body;
 use std::{iter, ops};
 
-pub use by_move_body::coroutine_by_move_body_def_id;
+pub(super) use by_move_body::coroutine_by_move_body_def_id;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -85,7 +85,7 @@ use tracing::{debug, instrument, trace};
 use crate::deref_separator::deref_finder;
 use crate::{abort_unwinding_calls, errors, pass_manager as pm, simplify};
 
-pub struct StateTransform;
+pub(super) struct StateTransform;
 
 struct RenameLocalVisitor<'tcx> {
     from: Local,

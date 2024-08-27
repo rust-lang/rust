@@ -5,9 +5,9 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-pub struct Derefer;
+pub(super) struct Derefer;
 
-pub struct DerefChecker<'a, 'tcx> {
+struct DerefChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     patcher: MirPatch<'tcx>,
     local_decls: &'a IndexVec<Local, LocalDecl<'tcx>>,
@@ -67,7 +67,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
     }
 }
 
-pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub(super) fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let patch = MirPatch::new(body);
     let mut checker = DerefChecker { tcx, patcher: patch, local_decls: &body.local_decls };
 

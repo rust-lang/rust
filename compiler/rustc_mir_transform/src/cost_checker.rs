@@ -12,7 +12,7 @@ const CONST_SWITCH_BONUS: usize = 10;
 
 /// Verify that the callee body is compatible with the caller.
 #[derive(Clone)]
-pub(crate) struct CostChecker<'b, 'tcx> {
+pub(super) struct CostChecker<'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     penalty: usize,
@@ -22,7 +22,7 @@ pub(crate) struct CostChecker<'b, 'tcx> {
 }
 
 impl<'b, 'tcx> CostChecker<'b, 'tcx> {
-    pub fn new(
+    pub(super) fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         instance: Option<ty::Instance<'tcx>>,
@@ -36,7 +36,7 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
     /// Needed because the `CostChecker` is used sometimes for just blocks,
     /// and even the full `Inline` doesn't call `visit_body`, so there's nowhere
     /// to put this logic in the visitor.
-    pub fn add_function_level_costs(&mut self) {
+    pub(super) fn add_function_level_costs(&mut self) {
         fn is_call_like(bbd: &BasicBlockData<'_>) -> bool {
             use TerminatorKind::*;
             match bbd.terminator().kind {
@@ -64,7 +64,7 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
         }
     }
 
-    pub fn cost(&self) -> usize {
+    pub(super) fn cost(&self) -> usize {
         usize::saturating_sub(self.penalty, self.bonus)
     }
 

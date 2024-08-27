@@ -82,7 +82,7 @@ use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::kw;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
-pub fn coroutine_by_move_body_def_id<'tcx>(
+pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,
     coroutine_def_id: LocalDefId,
 ) -> DefId {

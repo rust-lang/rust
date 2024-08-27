@@ -20,7 +20,7 @@ use rustc_target::spec::PanicStrategy;
 /// This forces all unwinds, in panic=abort mode happening in foreign code, to
 /// trigger a process abort.
 #[derive(PartialEq)]
-pub struct AbortUnwindingCalls;
+pub(super) struct AbortUnwindingCalls;
 
 impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

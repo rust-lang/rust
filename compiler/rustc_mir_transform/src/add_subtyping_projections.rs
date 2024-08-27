@@ -4,9 +4,9 @@ use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-pub struct Subtyper;
+pub(super) struct Subtyper;
 
-pub struct SubTypeChecker<'a, 'tcx> {
+struct SubTypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     patcher: MirPatch<'tcx>,
     local_decls: &'a IndexVec<Local, LocalDecl<'tcx>>,
@@ -52,7 +52,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
 // // gets transformed to
 // let temp: rval_ty = rval;
 // let place: place_ty = temp as place_ty;
-pub fn subtype_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn subtype_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let patch = MirPatch::new(body);
     let mut checker = SubTypeChecker { tcx, patcher: patch, local_decls: &body.local_decls };
 

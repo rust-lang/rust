@@ -7,7 +7,7 @@ use rustc_middle::ty::TyCtxt;
 
 use crate::simplify;
 
-pub struct MultipleReturnTerminators;
+pub(super) struct MultipleReturnTerminators;
 
 impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

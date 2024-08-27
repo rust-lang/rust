@@ -8,7 +8,7 @@ use rustc_span::Span;
 
 use crate::errors;
 
-pub struct CheckConstItemMutation;
+pub(super) struct CheckConstItemMutation;
 
 impl<'tcx> crate::MirLint<'tcx> for CheckConstItemMutation {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
