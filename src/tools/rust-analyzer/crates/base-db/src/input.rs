@@ -272,7 +272,6 @@ impl ReleaseChannel {
     }
 }
 
-#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateData {
     pub root_file_id: FileId,

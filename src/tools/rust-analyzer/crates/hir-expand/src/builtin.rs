@@ -1,6 +1,6 @@
 //! Builtin macros and attributes
 #[macro_use]
-pub(crate) mod quote;
+mod quote;
 
 mod attr_macro;
 mod derive_macro;

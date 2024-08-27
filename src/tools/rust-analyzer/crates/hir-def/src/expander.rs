@@ -69,12 +69,9 @@ impl Expander {
 
         let result = self.within_limit(db, |this| {
             let macro_call = this.in_file(&macro_call);
-            match macro_call.as_call_id(
-                db.upcast(),
-                this.module,
-                |path| resolver(path).map(|it| db.macro_def(it)),
-                |module| this.module.def_map(db).path_for_module(db, module),
-            ) {
+            match macro_call.as_call_id_with_errors(db.upcast(), this.module.krate(), |path| {
+                resolver(path).map(|it| db.macro_def(it))
+            }) {
                 Ok(call_id) => call_id,
                 Err(resolve_err) => {
                     unresolved_macro_err = Some(resolve_err);
