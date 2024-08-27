@@ -1103,7 +1103,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
 }
 
-pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
+pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
     match lint_name.split_once("::") {
         Some((tool_name, lint_name)) => {
             let tool_name = Symbol::intern(tool_name);
