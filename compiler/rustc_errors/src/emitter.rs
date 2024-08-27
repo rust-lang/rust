@@ -2387,7 +2387,7 @@ enum DisplaySuggestion {
 impl FileWithAnnotatedLines {
     /// Preprocess all the annotations so that they are grouped by file and by line number
     /// This helps us quickly iterate over the whole message (including secondary file spans)
-    pub fn collect_annotations(
+    pub(crate) fn collect_annotations(
         emitter: &dyn Emitter,
         args: &FluentArgs<'_>,
         msp: &MultiSpan,
