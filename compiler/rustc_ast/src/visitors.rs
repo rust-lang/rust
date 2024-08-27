@@ -362,6 +362,7 @@ macro_rules! make_ast_visitor {
                 walk_use_tree(self, use_tree, id)
             }
 
+            /// Id should be visited by the caller
             fn visit_path(&mut self, path: ref_t!(Path), _id: NodeId) -> result!() {
                 walk_path(self, path)
             }
@@ -388,6 +389,18 @@ macro_rules! make_ast_visitor {
                 )
             }
         }
+
+        macro_rules! visit_lazy_tts {
+            ($vis: expr, $tokens: expr) => {
+                if_mut_expr!(
+                    visit_lazy_tts($vis, $tokens)
+                ,
+                    // assign to _ to prevent unused_variable warnings
+                    { let _ = (&$vis, &$tokens); }
+                );
+            }
+        }
+
 
         // FIXME: should only exist while Visitor::visit_ident
         // doesn't receives a reference
@@ -427,7 +440,12 @@ macro_rules! make_ast_visitor {
                         try_v!($visitor.$visit(elem));
                     }
                 )
-            }
+            };
+            ($visitor: expr, $visit: ident, $list: expr) => {
+                for elem in $list {
+                    try_v!($visitor.$visit(elem));
+                }
+            };
         }
 
         // TODO: temporary name
@@ -838,8 +856,7 @@ macro_rules! make_ast_visitor {
                     try_v!(vis.visit_block(els));
                 }
             }
-            // TODO: Weird
-            if_mut_expr!(visit_lazy_tts(vis, tokens), { let _ = tokens; });
+            visit_lazy_tts!(vis, tokens);
             visit_o!(colon_sp, |sp| try_v!(visit_span!(vis, sp)));
             try_v!(visit_span!(vis, span));
             return_result!(V)
@@ -866,6 +883,17 @@ macro_rules! make_ast_visitor {
                 }
                 UseTreeKind::Glob => {}
             }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
+        pub fn walk_path<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            path: ref_t!(Path)
+        ) -> result!(V) {
+            let Path { span, segments, tokens } = path;
+            visit_list!(vis, visit_path_segment, segments);
+            visit_lazy_tts!(vis, tokens);
             try_v!(visit_span!(vis, span));
             return_result!(V)
         }
@@ -1181,12 +1209,6 @@ pub mod visit {
                 walk_list!(visitor, visit_field_def, fields);
             }
         }
-        V::Result::output()
-    }
-
-    pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) -> V::Result {
-        let Path { span: _, segments, tokens: _ } = path;
-        walk_list!(visitor, visit_path_segment, segments);
         V::Result::output()
     }
 
@@ -1943,14 +1965,6 @@ pub mod mut_visit {
         let ForeignMod { safety, abi: _, items } = foreign_mod;
         visit_safety(vis, safety);
         items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
-    }
-
-    fn walk_path<T: MutVisitor>(vis: &mut T, Path { segments, span, tokens }: &mut Path) {
-        for segment in segments {
-            vis.visit_path_segment(segment);
-        }
-        visit_lazy_tts(vis, tokens);
-        vis.visit_span(span);
     }
 
     fn walk_generic_arg<T: MutVisitor>(vis: &mut T, arg: &mut GenericArg) {
