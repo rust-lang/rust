@@ -139,8 +139,8 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 // Try to get some insight.
                 AssignedValue::Rvalue(rvalue) => {
                     let value = state.simplify_rvalue(rvalue, location);
-                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark `local` as
-                    // reusable if we have an exact type match.
+                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+                    // `local` as reusable if we have an exact type match.
                     if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
                         return;
                     }
@@ -480,7 +480,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let pointer = self.evaluated[local].as_ref()?;
                 let mut mplace = self.ecx.deref_pointer(pointer).ok()?;
                 for proj in place.projection.iter().skip(1) {
-                    // We have no call stack to associate a local with a value, so we cannot interpret indexing.
+                    // We have no call stack to associate a local with a value, so we cannot
+                    // interpret indexing.
                     if matches!(proj, ProjectionElem::Index(_)) {
                         return None;
                     }
@@ -1382,7 +1383,8 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::ZeroSized);
     }
 
-    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to avoid.
+    // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
+    // avoid.
     if !matches!(op.layout.abi, Abi::Scalar(..) | Abi::ScalarPair(..)) {
         return None;
     }

@@ -647,7 +647,8 @@ fn try_write_constant<'tcx>(
         ty::FnDef(..) => {}
 
         // Those are scalars, must be handled above.
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => throw_machine_stop_str!("primitive type with provenance"),
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char =>
+            throw_machine_stop_str!("primitive type with provenance"),
 
         ty::Tuple(elem_tys) => {
             for (i, elem) in elem_tys.iter().enumerate() {

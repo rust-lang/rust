@@ -106,8 +106,9 @@ fn is_needs_drop_and_init<'tcx>(
             // If its projection *is* present in `MoveData`, then the field may have been moved
             // from separate from its parent. Recurse.
             adt.variants().iter_enumerated().any(|(vid, variant)| {
-                // Enums have multiple variants, which are discriminated with a `Downcast` projection.
-                // Structs have a single variant, and don't use a `Downcast` projection.
+                // Enums have multiple variants, which are discriminated with a `Downcast`
+                // projection. Structs have a single variant, and don't use a `Downcast`
+                // projection.
                 let mpi = if adt.is_enum() {
                     let downcast =
                         move_path_children_matching(move_data, mpi, |x| x.is_downcast_to(vid));

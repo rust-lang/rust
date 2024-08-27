@@ -20,8 +20,8 @@ use tracing::{debug, instrument};
 use crate::deref_separator::deref_finder;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
-/// However, in this phase, the presence of these terminators does not guarantee that a destructor will run,
-/// as the target of the drop may be uninitialized.
+/// However, in this phase, the presence of these terminators does not guarantee that a destructor
+/// will run, as the target of the drop may be uninitialized.
 /// In general, the compiler cannot determine at compile time whether a destructor will run or not.
 ///
 /// At a high level, this pass refines Drop to only run the destructor if the
@@ -30,10 +30,10 @@ use crate::deref_separator::deref_finder;
 /// Once this is complete, Drop terminators in the MIR correspond to a call to the "drop glue" or
 /// "drop shim" for the type of the dropped place.
 ///
-/// This pass relies on dropped places having an associated move path, which is then used to determine
-/// the initialization status of the place and its descendants.
-/// It's worth noting that a MIR containing a Drop without an associated move path is probably ill formed,
-/// as it would allow running a destructor on a place behind a reference:
+/// This pass relies on dropped places having an associated move path, which is then used to
+/// determine the initialization status of the place and its descendants.
+/// It's worth noting that a MIR containing a Drop without an associated move path is probably ill
+/// formed, as it would allow running a destructor on a place behind a reference:
 ///
 /// ```text
 /// fn drop_term<T>(t: &mut T) {
@@ -377,8 +377,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                         );
                     }
                     // A drop and replace behind a pointer/array/whatever.
-                    // The borrow checker requires that these locations are initialized before the assignment,
-                    // so we just leave an unconditional drop.
+                    // The borrow checker requires that these locations are initialized before the
+                    // assignment, so we just leave an unconditional drop.
                     assert!(!data.is_cleanup);
                 }
             }

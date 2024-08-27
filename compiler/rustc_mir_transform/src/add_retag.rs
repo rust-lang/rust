@@ -60,7 +60,9 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &body.local_decls;
         let needs_retag = |place: &Place<'tcx>| {
-            !place.is_indirect_first_projection() // we're not really interested in stores to "outside" locations, they are hard to keep track of anyway
+            // We're not really interested in stores to "outside" locations, they are hard to keep
+            // track of anyway.
+            !place.is_indirect_first_projection()
                 && may_contain_reference(place.ty(&*local_decls, tcx).ty, /*depth*/ 3, tcx)
                 && !local_decls[place.local].is_deref_temp()
         };
@@ -129,9 +131,9 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
                     StatementKind::Assign(box (ref place, ref rvalue)) => {
                         let add_retag = match rvalue {
                             // Ptr-creating operations already do their own internal retagging, no
-                            // need to also add a retag statement.
-                            // *Except* if we are deref'ing a Box, because those get desugared to directly working
-                            // with the inner raw pointer! That's relevant for `RawPtr` as Miri otherwise makes it
+                            // need to also add a retag statement. *Except* if we are deref'ing a
+                            // Box, because those get desugared to directly working with the inner
+                            // raw pointer! That's relevant for `RawPtr` as Miri otherwise makes it
                             // a NOP when the original pointer is already raw.
                             Rvalue::RawPtr(_mutbl, place) => {
                                 // Using `is_box_global` here is a bit sketchy: if this code is

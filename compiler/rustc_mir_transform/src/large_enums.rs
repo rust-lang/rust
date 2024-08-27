@@ -16,8 +16,7 @@ use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 ///   Large([u32; 1024]),
 /// }
 /// ```
-/// Instead of emitting moves of the large variant,
-/// Perform a memcpy instead.
+/// Instead of emitting moves of the large variant, perform a memcpy instead.
 /// Based off of [this HackMD](https://hackmd.io/@ft4bxUsFT5CEUBmRKYHr7w/rJM8BBPzD).
 ///
 /// In summary, what this does is at runtime determine which enum variant is active,
@@ -34,6 +33,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
         // https://github.com/rust-lang/rust/pull/85158#issuecomment-1101836457
         sess.opts.unstable_opts.unsound_mir_opts || sess.mir_opt_level() >= 3
     }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // NOTE: This pass may produce different MIR based on the alignment of the target
         // platform, but it will still be valid.
@@ -116,6 +116,7 @@ impl EnumSizeOpt {
         let alloc = tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc));
         Some((*adt_def, num_discrs, *alloc_cache.entry(ty).or_insert(alloc)))
     }
+
     fn optim<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut alloc_cache = FxHashMap::default();
         let body_did = body.source.def_id();

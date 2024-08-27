@@ -82,7 +82,9 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                     source_ty.builtin_deref(true).map(|t| t.kind()),
                     target_ty.builtin_deref(true).map(|t| t.kind()),
                 ) {
-                    (Some(ty::Array(..)), Some(ty::Str | ty::Slice(..))) => false, // &str/&[T] unsizing
+                    // &str/&[T] unsizing
+                    (Some(ty::Array(..)), Some(ty::Str | ty::Slice(..))) => false,
+
                     _ => true,
                 };
                 if may_involve_vtable {

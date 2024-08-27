@@ -261,8 +261,8 @@ fn evaluate_candidate<'tcx>(
         // };
         // ```
         //
-        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
-        // invalid value, which is UB.
+        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant
+        // of an invalid value, which is UB.
         // In order to fix this, **we would either need to show that the discriminant computation of
         // `place` is computed in all branches**.
         // FIXME(#95162) For the moment, we adopt a conservative approach and
