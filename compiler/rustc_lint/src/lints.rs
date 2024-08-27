@@ -2442,14 +2442,6 @@ pub(crate) struct DuplicateMacroAttribute;
 pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_crate_type_in_cfg_attr_deprecated)]
-pub(crate) struct CrateTypeInCfgAttr;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_crate_name_in_cfg_attr_deprecated)]
-pub(crate) struct CrateNameInCfgAttr;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_missing_fragment_specifier)]
 pub(crate) struct MissingFragmentSpecifier;
 

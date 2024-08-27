@@ -21,8 +21,9 @@ use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::errors::{
-    FeatureNotAllowed, FeatureRemoved, FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute,
-    MalformedFeatureAttributeHelp, RemoveExprNotSupported,
+    CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
+    FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
+    RemoveExprNotSupported,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -358,20 +359,10 @@ impl<'a> StripUnconfigured<'a> {
             item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.psess.buffer_lint(
-                rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-                attr.span,
-                ast::CRATE_NODE_ID,
-                BuiltinLintDiag::CrateTypeInCfgAttr,
-            );
+            self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr.span });
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.psess.buffer_lint(
-                rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-                attr.span,
-                ast::CRATE_NODE_ID,
-                BuiltinLintDiag::CrateNameInCfgAttr,
-            );
+            self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr.span });
         }
         attr
     }
