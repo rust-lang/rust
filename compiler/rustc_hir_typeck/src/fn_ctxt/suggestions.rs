@@ -64,7 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Points out the method's return type as the reason for the expected type.
     /// - Possible missing semicolon.
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
-    pub fn suggest_mismatched_types_on_tail(
+    pub(crate) fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut Diag<'_>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
     }
 
-    pub fn suggest_two_fn_call(
+    pub(crate) fn suggest_two_fn_call(
         &self,
         err: &mut Diag<'_>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn suggest_remove_last_method_call(
+    pub(crate) fn suggest_remove_last_method_call(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -280,7 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    pub fn suggest_deref_ref_or_into(
+    pub(crate) fn suggest_deref_ref_or_into(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -747,7 +747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// If the expression is the expression of a closure without block (`|| expr`), a
     /// block is needed to be added too (`|| { expr; }`). This is denoted by `needs_block`.
-    pub fn suggest_missing_semicolon(
+    pub(crate) fn suggest_missing_semicolon(
         &self,
         err: &mut Diag<'_>,
         expression: &'tcx hir::Expr<'tcx>,
@@ -2077,7 +2077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // If the expr is a while or for loop and is the tail expr of its
     // enclosing body suggest returning a value right after it
-    pub fn suggest_returning_value_after_loop(
+    pub(crate) fn suggest_returning_value_after_loop(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,

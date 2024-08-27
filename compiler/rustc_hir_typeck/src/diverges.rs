@@ -8,7 +8,7 @@ use rustc_span::{Span, DUMMY_SP};
 /// as diverging), with some manual adjustments for control-flow
 /// primitives (approximating a CFG).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Diverges {
+pub(crate) enum Diverges {
     /// Potentially unknown, some cases converge,
     /// others require a CFG to determine them.
     Maybe,

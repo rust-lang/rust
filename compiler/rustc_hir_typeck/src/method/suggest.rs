@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    pub fn suggest_use_shadowed_binding_with_method(
+    fn suggest_use_shadowed_binding_with_method(
         &self,
         self_source: SelfSource<'tcx>,
         method_name: Ident,
@@ -4223,19 +4223,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum SelfSource<'a> {
+enum SelfSource<'a> {
     QPath(&'a hir::Ty<'a>),
     MethodCall(&'a hir::Expr<'a> /* rcvr */),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct TraitInfo {
+pub(crate) struct TraitInfo {
     pub def_id: DefId,
 }
 
 /// Retrieves all traits in this crate and any dependent crates,
 /// and wraps them into `TraitInfo` for custom sorting.
-pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
+pub(crate) fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
     tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
 }
 

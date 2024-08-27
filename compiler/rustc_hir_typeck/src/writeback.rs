@@ -35,7 +35,7 @@ use crate::FnCtxt;
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn resolve_type_vars_in_body(
+    pub(crate) fn resolve_type_vars_in_body(
         &self,
         body: &'tcx hir::Body<'tcx>,
     ) -> &'tcx ty::TypeckResults<'tcx> {

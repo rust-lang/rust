@@ -246,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// always know whether a place needs to be mutable or not in the first pass.
     /// This happens whether there is an implicit mutable reborrow, e.g. when the type
     /// is used as the receiver of a method call.
-    pub fn convert_place_derefs_to_mutable(&self, expr: &hir::Expr<'_>) {
+    pub(crate) fn convert_place_derefs_to_mutable(&self, expr: &hir::Expr<'_>) {
         // Gather up expressions we want to munge.
         let mut exprs = vec![expr];
 
