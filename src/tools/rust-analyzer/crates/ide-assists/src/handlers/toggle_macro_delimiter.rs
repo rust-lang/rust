@@ -15,7 +15,7 @@ use crate::{AssistContext, Assists};
 //     () => {};
 // }
 //
-// sth! $0( );
+// sth!$0( );
 // ```
 // ->
 // ```
@@ -23,7 +23,7 @@ use crate::{AssistContext, Assists};
 //     () => {};
 // }
 //
-// sth! { }
+// sth!{ }
 // ```
 pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     #[derive(Debug)]
@@ -36,7 +36,7 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
         RCur,
     }
 
-    let makro = ctx.find_node_at_offset_with_descend::<ast::MacroCall>()?.clone_for_update();
+    let makro = ctx.find_node_at_offset::<ast::MacroCall>()?.clone_for_update();
     let makro_text_range = makro.syntax().text_range();
 
     let cursor_offset = ctx.offset();
@@ -62,7 +62,7 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
     };
 
     acc.add(
-        AssistId("add_braces", AssistKind::Refactor),
+        AssistId("toggle_macro_delimiter", AssistKind::Refactor),
         match token {
             MacroDelims::LPar => "Replace delimiters with braces",
             MacroDelims::RPar => "Replace delimiters with braces",
@@ -110,20 +110,20 @@ macro_rules! sth {
     () => {};
 }
 
-sth! $0( );
+sth!$0( );
             "#,
             r#"
 macro_rules! sth {
     () => {};
 }
 
-sth! { }
+sth!{ }
             "#,
         )
     }
 
     #[test]
-    fn test_braclets() {
+    fn test_braces() {
         check_assist(
             toggle_macro_delimiter,
             r#"
@@ -131,14 +131,14 @@ macro_rules! sth {
     () => {};
 }
 
-sth! $0{ };
+sth!$0{ };
             "#,
             r#"
 macro_rules! sth {
     () => {};
 }
 
-sth! [ ];
+sth![ ];
             "#,
         )
     }
@@ -152,14 +152,14 @@ macro_rules! sth {
     () => {};
 }
 
-sth! $0[ ];
+sth!$0[ ];
             "#,
             r#"
 macro_rules! sth {
     () => {};
 }
 
-sth! ( );
+sth!( );
             "#,
         )
     }
@@ -174,7 +174,7 @@ mod abc {
         () => {};
     }
 
-    sth! $0{ };
+    sth!$0{ };
 }
             "#,
             r#"
@@ -183,7 +183,7 @@ mod abc {
         () => {};
     }
 
-    sth! [ ];
+    sth![ ];
 }
             "#,
         )
@@ -196,7 +196,7 @@ mod abc {
             r#"
 macro_rules! prt {
     ($e:expr) => {{
-        println!("{}", stringify! {$e});
+        println!("{}", stringify!{$e});
     }};
 }
 
@@ -213,20 +213,20 @@ prt!(($03 + 5));
             r#"
 macro_rules! prt {
     ($e:expr) => {{
-        println!("{}", stringify! {$e});
+        println!("{}", stringify!{$e});
     }};
 }
 
-prt! $0((3 + 5));
+prt!$0((3 + 5));
 "#,
             r#"
 macro_rules! prt {
     ($e:expr) => {{
-        println!("{}", stringify! {$e});
+        println!("{}", stringify!{$e});
     }};
 }
 
-prt! {(3 + 5)}
+prt!{(3 + 5)}
 "#,
         )
     }
@@ -239,17 +239,17 @@ prt! {(3 + 5)}
             r#"
 macro_rules! prt {
     ($e:expr) => {{
-        println!("{}", stringify! {$e});
+        println!("{}", stringify!{$e});
     }};
 }
 
 macro_rules! abc {
     ($e:expr) => {{
-        println!("{}", stringify! {$e});
+        println!("{}", stringify!{$e});
     }};
 }
 
-prt! {abc!($03 + 5)};
+prt!{abc!($03 + 5)};
 "#,
         )
     }

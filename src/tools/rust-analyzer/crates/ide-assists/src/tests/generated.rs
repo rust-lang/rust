@@ -3100,14 +3100,14 @@ macro_rules! sth {
     () => {};
 }
 
-sth! $0( );
+sth!$0( );
 "#####,
         r#####"
 macro_rules! sth {
     () => {};
 }
 
-sth! { }
+sth!{ }
 "#####,
     )
 }
