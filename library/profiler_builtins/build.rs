@@ -85,15 +85,9 @@ fn main() {
     let src_root = root.join("lib").join("profile");
     assert!(src_root.exists(), "profiler runtime source directory not found: {src_root:?}");
     println!("cargo::rerun-if-changed={}", src_root.display());
-    let mut n_sources_found = 0u32;
-    for src in profile_sources {
-        let path = src_root.join(src);
-        if path.exists() {
-            cfg.file(path);
-            n_sources_found += 1;
-        }
+    for file in profile_sources {
+        cfg.file(src_root.join(file));
     }
-    assert!(n_sources_found > 0, "couldn't find any profiler runtime source files in {src_root:?}");
 
     let include = root.join("include");
     println!("cargo::rerun-if-changed={}", include.display());
