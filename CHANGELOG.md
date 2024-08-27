@@ -6013,6 +6013,7 @@ Released 2018-09-13
 [`use_debug`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_debug
 [`use_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_self
 [`used_underscore_binding`]: https://rust-lang.github.io/rust-clippy/master/index.html#used_underscore_binding
+[`used_underscore_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#used_underscore_items
 [`useless_asref`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_asref
 [`useless_attribute`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_attribute
 [`useless_conversion`]: https://rust-lang.github.io/rust-clippy/master/index.html#useless_conversion
