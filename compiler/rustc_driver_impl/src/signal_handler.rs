@@ -6,7 +6,7 @@ use std::{fmt, mem, ptr};
 
 use rustc_interface::util::{DEFAULT_STACK_SIZE, STACK_SIZE};
 
-extern "C" {
+unsafe extern "C" {
     fn backtrace_symbols_fd(buffer: *const *mut libc::c_void, size: libc::c_int, fd: libc::c_int);
 }
 

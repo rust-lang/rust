@@ -58,7 +58,7 @@ impl<T> Default for &List<T> {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     /// A dummy type used to force `List` to be unsized while not requiring
     /// references to it be wide pointers.
     type OpaqueListContents;
