@@ -15,7 +15,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
             scope 3 {
                 let _11: usize;
                 scope 4 {
-                    scope 7 (inlined core::num::<impl usize>::unchecked_sub) {
+                    scope 7 (inlined #[track_caller] core::num::<impl usize>::unchecked_sub) {
                         scope 8 (inlined core::ub_checks::check_language_ub) {
                             scope 9 (inlined core::ub_checks::check_language_ub::runtime) {
                             }
