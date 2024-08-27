@@ -1130,7 +1130,7 @@ impl<T> (T,) {}
 /// A 16-bit floating point type (specifically, the "binary16" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] but has decreased precision because it uses half as many
-/// bits. Please see [the documentation for [`prim@f32`] or [Wikipedia on
+/// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on
 /// half-precision values][wikipedia] for more information.
 ///
 /// Note that most common platforms will not support `f16` in hardware without enabling extra target
@@ -1235,12 +1235,12 @@ mod prim_f64 {}
 /// A 128-bit floating point type (specifically, the "binary128" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] and [`prim@f64`], but has increased precision by using twice
-/// as many bits as `f64`. Please see [the documentation for [`prim@f32`] or [Wikipedia on
+/// as many bits as `f64`. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on
 /// quad-precision values][wikipedia] for more information.
 ///
 /// Note that no platforms have hardware support for `f128` without enabling target specific features,
 /// as for all instruction set architectures `f128` is considered an optional feature.
-/// Only Power ISA ("PowerPC") and RISCV specify it, and only certain microarchitectures
+/// Only Power ISA ("PowerPC") and RISC-V specify it, and only certain microarchitectures
 /// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
 /// so it will always be a software implementation significantly slower than `f64`.
 ///
