@@ -941,6 +941,16 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_trait_ref<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            trait_ref: ref_t!(TraitRef)
+        ) -> result!(V) {
+            let TraitRef { path, ref_id } = trait_ref;
+            try_v!(visit_id!(vis, ref_id));
+            try_v!(vis.visit_path(path, *ref_id));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1078,14 +1088,6 @@ pub mod visit {
     }
 
     make_ast_visitor!(Visitor<'ast>);
-
-    pub fn walk_trait_ref<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        trait_ref: &'a TraitRef,
-    ) -> V::Result {
-        let TraitRef { path, ref_id } = trait_ref;
-        visitor.visit_path(path, *ref_id)
-    }
 
     impl WalkItemKind for ItemKind {
         fn walk<'a, V: Visitor<'a>>(
@@ -2273,11 +2275,6 @@ pub mod mut_visit {
                 vis.visit_span(span);
             }
         }
-    }
-
-    fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut TraitRef) {
-        vis.visit_id(ref_id);
-        vis.visit_path(path, *ref_id);
     }
 
     pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
