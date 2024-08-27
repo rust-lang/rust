@@ -10,7 +10,7 @@ note: required by a bound in `test`
 LL |   fn test<'a>()
    |      ---- required by a bound in this function
 LL |   where
-LL |       W<'a>: BikeshedIntrinsicFrom<
+LL |       W<'a>: TransmuteFrom<
    |  ____________^
 LL | |             (),
 LL | |             { Assume { alignment: true, lifetimes: true, safety: true, validity: true } },

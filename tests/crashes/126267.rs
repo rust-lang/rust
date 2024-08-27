@@ -14,11 +14,11 @@ pub enum Error {
 }
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src>, // safety is NOT assumed
+        Dst: TransmuteFrom<Src>, // safety is NOT assumed
     {
     }
 }
