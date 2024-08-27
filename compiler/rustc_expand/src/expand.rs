@@ -2198,7 +2198,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
 
-    fn visit_block(&mut self, node: &mut P<ast::Block>) {
+    fn visit_block(&mut self, node: &mut ast::Block) {
         let orig_dir_ownership = mem::replace(
             &mut self.cx.current_expansion.dir_ownership,
             DirOwnership::UnownedViaBlock,

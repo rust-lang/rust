@@ -286,11 +286,11 @@ macro_rules! make_ast_visitor {
             make_visit!{FnDecl, visit_fn_decl, walk_fn_decl}
             make_visit!{Local, visit_local, walk_local}
             make_visit!{PreciseCapturingArg, visit_precise_capturing_arg, walk_precise_capturing_arg}
+            make_visit!{Block, visit_block, walk_block}
+            // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Ty), visit_ty, walk_ty}
-            // TODO: Remove P! on implementers
-            make_visit!{P!(Block), visit_block, walk_block}
 
             // flat_maps
             make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
