@@ -926,10 +926,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let def = instance.map(|i| i.def);
 
-        if let Some(
-            ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None),
-        ) = def
-        {
+        // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
+        // it is `func returning noop future`
+        if let Some(ty::InstanceKind::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
             return helper.funclet_br(self, bx, target, mergeable_succ);
