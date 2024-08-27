@@ -1017,6 +1017,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_inline_asm_sym<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            asm_sym: ref_t!(InlineAsmSym)
+        ) -> result!(V) {
+            let InlineAsmSym { id, qself, path } = asm_sym;
+            try_v!(visit_id!(vis, id));
+            try_v!(vis.visit_qself(qself));
+            try_v!(vis.visit_path(path, *id));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1553,14 +1564,6 @@ pub mod visit {
     pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) -> V::Result {
         let MacCall { path, args: _ } = mac;
         visitor.visit_path(path, DUMMY_NODE_ID)
-    }
-
-    pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        InlineAsmSym { id, qself, path }: &'a InlineAsmSym,
-    ) -> V::Result {
-        try_visit!(visitor.visit_qself(qself));
-        visitor.visit_path(path, *id)
     }
 
     pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V::Result {
@@ -2554,15 +2557,6 @@ pub mod mut_visit {
                 ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
             }
         }
-    }
-
-    fn walk_inline_asm_sym<T: MutVisitor>(
-        vis: &mut T,
-        InlineAsmSym { id, qself, path }: &mut InlineAsmSym,
-    ) {
-        vis.visit_id(id);
-        vis.visit_qself(qself);
-        vis.visit_path(path, *id);
     }
 
     pub fn walk_expr<T: MutVisitor>(
