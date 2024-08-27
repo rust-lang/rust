@@ -7,7 +7,7 @@
       let mut _0: u16;
       let mut _3: u16;
       let mut _4: u32;
-+     scope 1 (inlined core::num::<impl u16>::unchecked_shl) {
++     scope 1 (inlined #[track_caller] core::num::<impl u16>::unchecked_shl) {
 +         let _5: ();
 +         scope 2 (inlined core::ub_checks::check_language_ub) {
 +             let mut _6: bool;

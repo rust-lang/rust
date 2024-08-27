@@ -58,7 +58,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     scope 30 {
                         let _23: usize;
                         scope 31 {
-                            scope 34 (inlined core::num::<impl usize>::unchecked_sub) {
+                            scope 34 (inlined #[track_caller] core::num::<impl usize>::unchecked_sub) {
                                 scope 35 (inlined core::ub_checks::check_language_ub) {
                                     scope 36 (inlined core::ub_checks::check_language_ub::runtime) {
                                     }
@@ -115,7 +115,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     }
                     scope 13 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 14 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 14 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
                 scope 8 (inlined NonNull::<[T]>::from_ref) {
