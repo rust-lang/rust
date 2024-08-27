@@ -17,7 +17,7 @@ use crate::ssa::SsaLocals;
 /// where each of the locals is only assigned once.
 ///
 /// We want to replace all those locals by `_a`, either copied or moved.
-pub struct CopyProp;
+pub(super) struct CopyProp;
 
 impl<'tcx> crate::MirPass<'tcx> for CopyProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

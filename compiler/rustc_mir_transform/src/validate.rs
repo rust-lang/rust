@@ -26,7 +26,7 @@ enum EdgeKind {
     Normal,
 }
 
-pub struct Validator {
+pub(super) struct Validator {
     /// Describes at which point in the pipeline this validation is happening.
     pub when: String,
     /// The phase for which we are upholding the dialect. If the given phase forbids a specific
@@ -531,7 +531,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 ///
 /// `caller_body` is used to detect cycles in MIR inlining and MIR validation before
 /// `optimized_mir` is available.
-pub fn validate_types<'tcx>(
+pub(super) fn validate_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
     param_env: ty::ParamEnv<'tcx>,

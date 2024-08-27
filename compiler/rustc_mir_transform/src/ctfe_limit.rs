@@ -8,7 +8,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use tracing::instrument;
 
-pub struct CtfeLimit;
+pub(super) struct CtfeLimit;
 
 impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
     #[instrument(skip(self, _tcx, body))]

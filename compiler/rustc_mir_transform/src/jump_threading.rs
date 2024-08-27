@@ -55,7 +55,7 @@ use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;
 
-pub struct JumpThreading;
+pub(super) struct JumpThreading;
 
 const MAX_BACKTRACK: usize = 5;
 const MAX_COST: usize = 100;

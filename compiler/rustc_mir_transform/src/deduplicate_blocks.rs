@@ -13,7 +13,7 @@ use tracing::debug;
 
 use super::simplify::simplify_cfg;
 
-pub struct DeduplicateBlocks;
+pub(super) struct DeduplicateBlocks;
 
 impl<'tcx> crate::MirPass<'tcx> for DeduplicateBlocks {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {

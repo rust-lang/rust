@@ -146,7 +146,7 @@ use rustc_mir_dataflow::points::{save_as_intervals, DenseLocationMap, PointIndex
 use rustc_mir_dataflow::Analysis;
 use tracing::{debug, trace};
 
-pub struct DestinationPropagation;
+pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
