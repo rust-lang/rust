@@ -1,6 +1,8 @@
 //! Compiles the profiler part of the `compiler-rt` library.
 //!
-//! See the build.rs for libcompiler_builtins crate for details.
+//! Loosely based on:
+//! - LLVM's `compiler-rt/lib/profile/CMakeLists.txt`
+//! - <https://github.com/rust-lang/compiler-builtins/blob/master/build.rs>.
 
 use std::env;
 use std::path::PathBuf;
