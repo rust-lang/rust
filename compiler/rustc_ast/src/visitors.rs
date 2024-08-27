@@ -313,7 +313,7 @@ macro_rules! make_ast_visitor {
             make_visit!{CaptureBy, visit_capture_by, walk_capture_by}
             make_visit!{VariantData, visit_variant_data, walk_variant_data}
             make_visit!{FnDecl, visit_fn_decl, walk_fn_decl}
-            make_visit!{P!(Local), visit_local, walk_local}
+            make_visit!{Local, visit_local, walk_local}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Block), visit_block, walk_block}
@@ -827,6 +827,32 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_local<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            local: ref_t!(Local)
+        ) -> result!(V) {
+            let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local;
+            try_v!(visit_id!(vis, id));
+            visit_list!(vis, visit_attribute, flat_map_attribute, attrs);
+            try_v!(vis.visit_pat(pat));
+            visit_o!(ty, |ty| vis.visit_ty(ty));
+            match kind {
+                LocalKind::Decl => {}
+                LocalKind::Init(init) => {
+                    try_v!(vis.visit_expr(init));
+                }
+                LocalKind::InitElse(init, els) => {
+                    try_v!(vis.visit_expr(init));
+                    try_v!(vis.visit_block(els));
+                }
+            }
+            // TODO: Weird
+            if_mut_expr!(visit_lazy_tts(vis, tokens), { let _ = tokens; });
+            visit_o!(colon_sp, |sp| try_v!(visit_span!(vis, sp)));
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -965,18 +991,6 @@ pub mod visit {
     }
 
     make_ast_visitor!(Visitor<'ast>);
-
-    pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) -> V::Result {
-        let Local { id: _, pat, ty, kind, span: _, colon_sp: _, attrs, tokens: _ } = local;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_pat(pat));
-        visit_opt!(visitor, visit_ty, ty);
-        if let Some((init, els)) = kind.init_else_opt() {
-            try_visit!(visitor.visit_expr(init));
-            visit_opt!(visitor, visit_block, els);
-        }
-        V::Result::output()
-    }
 
     pub fn walk_trait_ref<'a, V: Visitor<'a>>(
         visitor: &mut V,
@@ -1967,27 +1981,6 @@ pub mod mut_visit {
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
-    }
-
-    fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
-        let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
-        vis.visit_id(id);
-        visit_attrs(vis, attrs);
-        vis.visit_pat(pat);
-        visit_opt(ty, |ty| vis.visit_ty(ty));
-        match kind {
-            LocalKind::Decl => {}
-            LocalKind::Init(init) => {
-                vis.visit_expr(init);
-            }
-            LocalKind::InitElse(init, els) => {
-                vis.visit_expr(init);
-                vis.visit_block(els);
-            }
-        }
-        visit_lazy_tts(vis, tokens);
-        visit_opt(colon_sp, |sp| vis.visit_span(sp));
-        vis.visit_span(span);
     }
 
     fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
