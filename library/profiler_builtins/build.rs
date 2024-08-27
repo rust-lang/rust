@@ -8,9 +8,8 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=LLVM_PROFILER_RT_LIB");
-    if let Ok(rt) = env::var("LLVM_PROFILER_RT_LIB") {
-        println!("cargo:rustc-link-lib=static:+verbatim={rt}");
+    if let Ok(rt) = tracked_env_var("LLVM_PROFILER_RT_LIB") {
+        println!("cargo::rustc-link-lib=static:+verbatim={rt}");
         return;
     }
 
@@ -82,12 +81,10 @@ fn main() {
     }
 
     // Get the LLVM `compiler-rt` directory from bootstrap.
-    println!("cargo:rerun-if-env-changed=RUST_COMPILER_RT_FOR_PROFILER");
-    let root = PathBuf::from(env::var("RUST_COMPILER_RT_FOR_PROFILER").unwrap_or_else(|_| {
-        let path = "../../src/llvm-project/compiler-rt";
-        println!("RUST_COMPILER_RT_FOR_PROFILER was not set; falling back to {path:?}");
-        path.to_owned()
-    }));
+    let root = PathBuf::from(tracked_env_var_or_fallback(
+        "RUST_COMPILER_RT_FOR_PROFILER",
+        "../../src/llvm-project/compiler-rt",
+    ));
 
     let src_root = root.join("lib").join("profile");
     assert!(src_root.exists(), "profiler runtime source directory not found: {src_root:?}");
@@ -104,4 +101,15 @@ fn main() {
     cfg.include(root.join("include"));
     cfg.warnings(false);
     cfg.compile("profiler-rt");
+}
+
+fn tracked_env_var(key: &str) -> Result<String, env::VarError> {
+    println!("cargo::rerun-if-env-changed={key}");
+    env::var(key)
+}
+fn tracked_env_var_or_fallback(key: &str, fallback: &str) -> String {
+    tracked_env_var(key).unwrap_or_else(|_| {
+        println!("cargo::warning={key} was not set; falling back to {fallback:?}");
+        fallback.to_owned()
+    })
 }
