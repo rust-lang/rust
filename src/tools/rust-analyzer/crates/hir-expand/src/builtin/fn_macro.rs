@@ -116,6 +116,7 @@ register_builtin! {
     (column, Column) => line_expand,
     (file, File) => file_expand,
     (line, Line) => line_expand,
+    (module_path, ModulePath) => module_path_expand,
     (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
     (llvm_asm, LlvmAsm) => asm_expand,
@@ -141,10 +142,7 @@ register_builtin! {
     (include_bytes, IncludeBytes) => include_bytes_expand,
     (include_str, IncludeStr) => include_str_expand,
     (env, Env) => env_expand,
-    (option_env, OptionEnv) => option_env_expand,
-    // This isn't really eager, we have no inputs, but we abuse the fact how eager macros are
-    // handled in r-a to be able to thread the module path through.
-    (module_path, ModulePath) => module_path_expand
+    (option_env, OptionEnv) => option_env_expand
 }
 
 fn mk_pound(span: Span) -> tt::Subtree {
@@ -157,6 +155,18 @@ fn mk_pound(span: Span) -> tt::Subtree {
         .into()],
         span,
     )
+}
+
+fn module_path_expand(
+    _db: &dyn ExpandDatabase,
+    _id: MacroCallId,
+    _tt: &tt::Subtree,
+    span: Span,
+) -> ExpandResult<tt::Subtree> {
+    // Just return a dummy result.
+    ExpandResult::ok(quote! {span =>
+         "module::path"
+    })
 }
 
 fn line_expand(
@@ -892,18 +902,6 @@ fn option_env_expand(
     };
 
     ExpandResult::ok(expanded)
-}
-
-fn module_path_expand(
-    _db: &dyn ExpandDatabase,
-    _id: MacroCallId,
-    tt: &tt::Subtree,
-    span: Span,
-) -> ExpandResult<tt::Subtree> {
-    // Note: The actual implementation of this is in crates\hir-expand\src\eager.rs
-    ExpandResult::ok(quote! {span =>
-         #tt
-    })
 }
 
 fn quote_expand(

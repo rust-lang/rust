@@ -839,25 +839,12 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<MacroFileId> {
+        let krate = self.resolver.krate();
         // FIXME: This causes us to parse, generally this is the wrong approach for resolving a
         // macro call to a macro call id!
-        let macro_call_id = macro_call
-            .as_call_id(
-                db.upcast(),
-                self.resolver.module(),
-                |path| {
-                    self.resolver.resolve_path_as_macro_def(
-                        db.upcast(),
-                        path,
-                        Some(MacroSubNs::Bang),
-                    )
-                },
-                |module| {
-                    self.resolver.module().def_map(db.upcast()).path_for_module(db.upcast(), module)
-                },
-            )
-            .ok()?
-            .value?;
+        let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
+            self.resolver.resolve_path_as_macro_def(db.upcast(), path, Some(MacroSubNs::Bang))
+        })?;
         // why the 64?
         Some(macro_call_id.as_macro_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }

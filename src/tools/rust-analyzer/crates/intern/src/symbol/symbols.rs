@@ -177,7 +177,6 @@ define_symbols! {
     coroutine_state,
     coroutine,
     count,
-    crate_name,
     crate_type,
     CStr,
     debug_assertions,

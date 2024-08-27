@@ -748,9 +748,8 @@ impl<'a> AssocItemCollector<'a> {
                     &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
                     ctxt,
                     expand_to,
-                    self.expander.module,
+                    self.expander.krate(),
                     resolver,
-                    |module| module.def_map(self.db).path_for_module(self.db, module),
                 ) {
                     Ok(Some(call_id)) => {
                         let res =
