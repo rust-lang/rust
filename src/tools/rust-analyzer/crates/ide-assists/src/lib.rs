@@ -213,6 +213,7 @@ mod handlers {
     mod term_search;
     mod toggle_async_sugar;
     mod toggle_ignore;
+    mod toggle_macro_delimiter;
     mod unmerge_match_arm;
     mod unmerge_use;
     mod unnecessary_async;
@@ -343,6 +344,7 @@ mod handlers {
             split_import::split_import,
             term_search::term_search,
             toggle_ignore::toggle_ignore,
+            toggle_macro_delimiter::toggle_macro_delimiter,
             unmerge_match_arm::unmerge_match_arm,
             unmerge_use::unmerge_use,
             unnecessary_async::unnecessary_async,
