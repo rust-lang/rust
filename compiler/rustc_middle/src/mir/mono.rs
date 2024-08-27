@@ -475,6 +475,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)
                             | InstanceKind::FnPtrAddrShim(..)
+                            | InstanceKind::AsyncDropGlue(..)
+                            | InstanceKind::FutureDropPollShim(..)
                             | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
