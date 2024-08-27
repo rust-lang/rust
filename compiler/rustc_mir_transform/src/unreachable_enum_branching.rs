@@ -156,9 +156,9 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                 };
                 true
             }
-            // If and only if there is a variant that does not have a branch set,
-            // change the current of otherwise as the variant branch and set otherwise to unreachable.
-            // It transforms following code
+            // If and only if there is a variant that does not have a branch set, change the
+            // current of otherwise as the variant branch and set otherwise to unreachable. It
+            // transforms following code
             // ```rust
             // match c {
             //     Ordering::Less => 1,

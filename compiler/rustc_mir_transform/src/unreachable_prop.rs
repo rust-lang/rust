@@ -26,7 +26,8 @@ impl crate::MirPass<'_> for UnreachablePropagation {
             let terminator = bb_data.terminator();
             let is_unreachable = match &terminator.kind {
                 TerminatorKind::Unreachable => true,
-                // This will unconditionally run into an unreachable and is therefore unreachable as well.
+                // This will unconditionally run into an unreachable and is therefore unreachable
+                // as well.
                 TerminatorKind::Goto { target } if unreachable_blocks.contains(target) => {
                     patch.patch_terminator(bb, TerminatorKind::Unreachable);
                     true
@@ -85,8 +86,9 @@ fn remove_successors_from_switch<'tcx>(
     //     }
     // }
     //
-    // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or LLVM to
-    // turn it into just `x` later. Without the unreachable, such a transformation would be illegal.
+    // This generates a `switchInt() -> [0: 0, 1: 1, otherwise: unreachable]`, which allows us or
+    // LLVM to turn it into just `x` later. Without the unreachable, such a transformation would be
+    // illegal.
     //
     // In order to preserve this information, we record reachable and unreachable targets as
     // `Assume` statements in MIR.

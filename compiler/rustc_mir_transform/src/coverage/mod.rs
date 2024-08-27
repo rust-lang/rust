@@ -279,7 +279,8 @@ fn inject_mcdc_statements<'tcx>(
     basic_coverage_blocks: &CoverageGraph,
     extracted_mappings: &ExtractedMappings,
 ) {
-    // Inject test vector update first because `inject_statement` always insert new statement at head.
+    // Inject test vector update first because `inject_statement` always insert new statement at
+    // head.
     for &mappings::MCDCDecision {
         span: _,
         ref end_bcbs,
