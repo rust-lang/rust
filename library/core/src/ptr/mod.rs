@@ -2285,6 +2285,10 @@ impl<F: FnPtr> fmt::Debug for F {
 /// `addr_of!(expr)` is equivalent to `&raw const expr`. The macro is *soft-deprecated*;
 /// use `&raw const` instead.
 ///
+/// It is still an open question whether writing through an `addr_of!`-created pointer is permitted
+/// or not. Until that is decided, the same rules as for shared references apply: it is UB to write
+/// through a pointer created with this operation, except for bytes located inside an `UnsafeCell`.
+///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
 /// raw pointers should be used instead. However, `&expr as *const _` creates a reference
