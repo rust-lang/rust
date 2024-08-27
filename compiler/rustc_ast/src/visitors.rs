@@ -894,6 +894,18 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_generic_arg<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            arg: ref_t!(GenericArg)
+        ) -> result!(V) {
+            match arg {
+                GenericArg::Lifetime(lt) => try_v!(vis.visit_lifetime(lt, LifetimeCtxt::GenericArg)),
+                GenericArg::Type(ty) => try_v!(vis.visit_ty(ty)),
+                GenericArg::Const(ct) => try_v!(vis.visit_anon_const(ct)),
+            }
+            return_result!(V)
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1205,17 +1217,6 @@ pub mod visit {
             }
         }
         V::Result::output()
-    }
-
-    pub fn walk_generic_arg<'a, V>(visitor: &mut V, generic_arg: &'a GenericArg) -> V::Result
-    where
-        V: Visitor<'a>,
-    {
-        match generic_arg {
-            GenericArg::Lifetime(lt) => visitor.visit_lifetime(lt, LifetimeCtxt::GenericArg),
-            GenericArg::Type(ty) => visitor.visit_ty(ty),
-            GenericArg::Const(ct) => visitor.visit_anon_const(ct),
-        }
     }
 
     pub fn walk_assoc_item_constraint<'a, V: Visitor<'a>>(
@@ -1960,14 +1961,6 @@ pub mod mut_visit {
         let ForeignMod { safety, abi: _, items } = foreign_mod;
         visit_safety(vis, safety);
         items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
-    }
-
-    fn walk_generic_arg<T: MutVisitor>(vis: &mut T, arg: &mut GenericArg) {
-        match arg {
-            GenericArg::Lifetime(lt) => vis.visit_lifetime(lt, LifetimeCtxt::GenericArg),
-            GenericArg::Type(ty) => vis.visit_ty(ty),
-            GenericArg::Const(ct) => vis.visit_anon_const(ct),
-        }
     }
 
     fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
