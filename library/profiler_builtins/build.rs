@@ -20,10 +20,12 @@ fn main() {
     // FIXME: `rerun-if-changed` directives are not currently emitted and the build script
     // will not rerun on changes in these source files or headers included into them.
     let mut profile_sources = vec![
+        // tidy-alphabetical-start
         "GCDAProfiling.c",
         "InstrProfiling.c",
         "InstrProfilingBuffer.c",
         "InstrProfilingFile.c",
+        "InstrProfilingInternal.c",
         "InstrProfilingMerge.c",
         "InstrProfilingMergeFile.c",
         "InstrProfilingNameVar.c",
@@ -38,8 +40,7 @@ fn main() {
         "InstrProfilingValue.c",
         "InstrProfilingVersionVar.c",
         "InstrProfilingWriter.c",
-        // These files were added in LLVM 11.
-        "InstrProfilingInternal.c",
+        // tidy-alphabetical-end
     ];
 
     if target_env == "msvc" {
