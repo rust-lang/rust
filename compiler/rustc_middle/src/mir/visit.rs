@@ -349,7 +349,6 @@ macro_rules! make_mir_visitor {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
                         } |
-                        ty::InstanceKind::CoroutineKindShim { coroutine_def_id: _def_id } |
                         ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, None) |
                         ty::InstanceKind::DropGlue(_def_id, None) => {}
 
