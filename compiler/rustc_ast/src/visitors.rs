@@ -285,6 +285,7 @@ macro_rules! make_ast_visitor {
             make_visit!{VariantData, visit_variant_data, walk_variant_data}
             make_visit!{FnDecl, visit_fn_decl, walk_fn_decl}
             make_visit!{Local, visit_local, walk_local}
+            make_visit!{PreciseCapturingArg, visit_precise_capturing_arg, walk_precise_capturing_arg}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Ty), visit_ty, walk_ty}
@@ -309,11 +310,6 @@ macro_rules! make_ast_visitor {
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
                 walk_param_bound(self, tpb)
-            }
-
-            // FIXME: for some reason the immutable version doesn't return result!()
-            fn visit_precise_capturing_arg(&mut self, arg: ref_t!(PreciseCapturingArg)) {
-                walk_precise_capturing_arg(self, arg);
             }
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
