@@ -391,13 +391,17 @@ fn run_compiler(
 
         let linker = compiler.enter(|queries| {
             let early_exit = || early_exit().map(|_| None);
+
+            // Parse the crate root source code (doesn't parse submodules yet)
+            // Everything else is parsed during macro expansion.
             queries.parse()?;
 
-            if let Some(ppm) = &sess.opts.pretty {
-                if ppm.needs_ast_map() {
+            // If pretty printing is requested: Figure out the representation, print it and exit
+            if let Some(pp_mode) = sess.opts.pretty {
+                if pp_mode.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
-                        pretty::print(sess, *ppm, pretty::PrintExtra::NeedsAstMap { tcx });
+                        pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
                         Ok(())
                     })?;
 
@@ -408,7 +412,7 @@ fn run_compiler(
                     let krate = queries.parse()?;
                     pretty::print(
                         sess,
-                        *ppm,
+                        pp_mode,
                         pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
                     );
                 }

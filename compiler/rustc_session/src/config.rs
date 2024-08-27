@@ -2893,6 +2893,7 @@ pub enum PpHirMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
+/// Pretty print mode
 pub enum PpMode {
     /// Options that print the source code, i.e.
     /// `-Zunpretty=normal` and `-Zunpretty=expanded`
