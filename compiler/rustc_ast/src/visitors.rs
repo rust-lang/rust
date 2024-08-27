@@ -312,11 +312,11 @@ macro_rules! make_ast_visitor {
             make_visit!{EnumDef, visit_enum_def, walk_enum_def}
             make_visit!{CaptureBy, visit_capture_by, walk_capture_by}
             make_visit!{VariantData, visit_variant_data, walk_variant_data}
+            make_visit!{FnDecl, visit_fn_decl, walk_fn_decl}
             make_visit!{P!(Local), visit_local, walk_local}
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Block), visit_block, walk_block}
-            make_visit!{P!(FnDecl), visit_fn_decl, walk_fn_decl}
 
             // flat_maps
             make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
