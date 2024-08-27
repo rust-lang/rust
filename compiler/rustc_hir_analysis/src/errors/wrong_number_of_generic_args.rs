@@ -8,7 +8,7 @@ use rustc_span::def_id::DefId;
 use GenericArgsInfo::*;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
-pub struct WrongNumberOfGenericArgs<'a, 'tcx> {
+pub(crate) struct WrongNumberOfGenericArgs<'a, 'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
 
     pub(crate) angle_brackets: AngleBrackets,
@@ -49,7 +49,7 @@ pub(crate) enum AngleBrackets {
 
 // Information about the kind of arguments that are either missing or are unexpected
 #[derive(Debug)]
-pub enum GenericArgsInfo {
+pub(crate) enum GenericArgsInfo {
     MissingLifetimes {
         num_missing_args: usize,
     },
@@ -87,7 +87,7 @@ pub enum GenericArgsInfo {
 }
 
 impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         gen_args_info: GenericArgsInfo,
         path_segment: &'a hir::PathSegment<'_>,

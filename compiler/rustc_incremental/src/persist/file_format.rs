@@ -89,7 +89,7 @@ where
 ///   incompatible version of the compiler.
 /// - Returns `Err(..)` if some kind of IO error occurred while reading the
 ///   file.
-pub fn read_file(
+pub(crate) fn read_file(
     path: &Path,
     report_incremental_info: bool,
     is_nightly_build: bool,

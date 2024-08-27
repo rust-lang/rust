@@ -65,7 +65,7 @@ fn record_rvalue_scope(
     }
 }
 
-pub fn resolve_rvalue_scopes<'a, 'tcx>(
+pub(crate) fn resolve_rvalue_scopes<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     scope_tree: &'a ScopeTree,
     def_id: DefId,
