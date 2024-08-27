@@ -74,12 +74,20 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // duplicated plenty of times.)
             let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
+            let const_loc = bx.tcx().span_as_caller_location(rustc_span::DUMMY_SP);
+            let location = crate::mir::operand::OperandRef::from_const(
+                bx,
+                const_loc,
+                bx.tcx().caller_location_ty(),
+            )
+            .immediate();
+
             bx.call(
                 fn_ty,
                 /* fn_attrs */ None,
                 Some(fn_abi),
                 llfn,
-                &[msg.0, msg.1],
+                &[msg.0, msg.1, location],
                 None,
                 None,
             );
