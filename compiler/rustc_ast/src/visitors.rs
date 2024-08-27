@@ -296,6 +296,7 @@ macro_rules! make_ast_visitor {
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
             make_visit!{P!(Block), visit_block, walk_block}
+            make_visit!{P!(Ty), visit_ty, walk_ty}
 
             // flat_maps
             make_visit!{Arm, visit_arm, walk_arm, flat_map_arm, walk_flat_map_arm}
@@ -307,7 +308,6 @@ macro_rules! make_ast_visitor {
             make_visit!{PatField, visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
             make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
             make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
-            make_visit!{P!(Ty), visit_ty, walk_ty, flat_map_ty, walk_flat_map_ty}
 
             /// `MutVisitor`: `Span` and `NodeId` are mutated at the caller site.
             fn visit_fn(&mut self, fk: fn_kind!(), _: Span, _: NodeId) -> result!(){
@@ -668,7 +668,7 @@ macro_rules! make_ast_visitor {
             args: ref_t!(ParenthesizedArgs)
         ) -> result!(V) {
             let ParenthesizedArgs { inputs, output, span, inputs_span } = args;
-            visit_list!(vis, visit_ty, flat_map_ty, inputs);
+            visit_list!(vis, visit_ty, inputs);
             try_v!(vis.visit_fn_ret_ty(output));
             try_v!(visit_span!(vis, span));
             try_v!(visit_span!(vis, inputs_span));
@@ -907,7 +907,6 @@ macro_rules! make_ast_visitor {
         make_walk_flat_map!{PatField, walk_flat_map_pat_field, visit_pat_field}
         make_walk_flat_map!{Variant, walk_flat_map_variant, visit_variant}
         make_walk_flat_map!{WherePredicate, walk_flat_map_where_predicate, visit_where_predicate}
-        make_walk_flat_map!{P!(Ty), walk_flat_map_ty, visit_ty}
     }
 }
 
