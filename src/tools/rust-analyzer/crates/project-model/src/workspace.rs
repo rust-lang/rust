@@ -1027,6 +1027,7 @@ fn cargo_to_crate_graph(
             let crate_id = add_target_crate_root(
                 crate_graph,
                 proc_macros,
+                cargo,
                 pkg_data,
                 build_data,
                 cfg_options.clone(),
@@ -1246,6 +1247,7 @@ fn handle_rustc_crates(
                     let crate_id = add_target_crate_root(
                         crate_graph,
                         proc_macros,
+                        rustc_workspace,
                         &rustc_workspace[pkg],
                         build_scripts.get_output(pkg),
                         cfg_options.clone(),
@@ -1305,6 +1307,7 @@ fn handle_rustc_crates(
 fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
     proc_macros: &mut ProcMacroPaths,
+    cargo: &CargoWorkspace,
     pkg: &PackageData,
     build_data: Option<&BuildScriptOutput>,
     cfg_options: CfgOptions,
@@ -1338,7 +1341,7 @@ fn add_target_crate_root(
     let mut env = Env::default();
     inject_cargo_package_env(&mut env, pkg);
     inject_cargo_env(&mut env);
-    inject_rustc_tool_env(&mut env, cargo_name, kind);
+    inject_rustc_tool_env(&mut env, cargo, cargo_name, kind);
 
     if let Some(envs) = build_data.map(|it| &it.envs) {
         for (k, v) in envs {

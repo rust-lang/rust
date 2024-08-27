@@ -241,6 +241,10 @@ impl TargetKind {
     pub fn is_executable(self) -> bool {
         matches!(self, TargetKind::Bin | TargetKind::Example)
     }
+
+    pub fn is_proc_macro(self) -> bool {
+        matches!(self, TargetKind::Lib { is_proc_macro: true })
+    }
 }
 
 // Deserialize helper for the cargo metadata

@@ -94,7 +94,7 @@ fn test_deduplicate_origin_dev() {
         }
     }
 
-    assert!(crates_named_p2.len() == 1);
+    assert_eq!(crates_named_p2.len(), 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
 }
@@ -120,7 +120,7 @@ fn test_deduplicate_origin_dev_rev() {
         }
     }
 
-    assert!(crates_named_p2.len() == 1);
+    assert_eq!(crates_named_p2.len(), 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
 }
