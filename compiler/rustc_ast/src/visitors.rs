@@ -1173,7 +1173,6 @@ pub mod visit {
         fn walk<'a, V: Visitor<'a>>(
             &'a self,
             item: &'a Item<Self>,
-            ctxt: AssocCtxt,
             visitor: &mut V,
         ) -> V::Result;
     }
@@ -1184,7 +1183,6 @@ pub mod visit {
         fn walk<'a, V: Visitor<'a>>(
             &'a self,
             item: &'a Item<Self>,
-            _ctxt: AssocCtxt,
             visitor: &mut V,
         ) -> V::Result {
             let Item { id, span, vis, ident, .. } = item;
@@ -1296,7 +1294,12 @@ pub mod visit {
         visitor: &mut V,
         item: &'a Item<impl WalkItemKind>,
     ) -> V::Result {
-        walk_assoc_item(visitor, item, AssocCtxt::Trait /*ignored*/)
+        let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
+        walk_list!(visitor, visit_attribute, attrs);
+        try_visit!(visitor.visit_vis(vis));
+        try_visit!(visitor.visit_ident(ident));
+        try_visit!(kind.walk(item, visitor));
+        V::Result::output()
     }
 
     pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
@@ -1370,7 +1373,6 @@ pub mod visit {
         fn walk<'a, V: Visitor<'a>>(
             &'a self,
             item: &'a Item<Self>,
-            _ctxt: AssocCtxt,
             visitor: &mut V,
         ) -> V::Result {
             let &Item { id, span, ident, ref vis, .. } = item;
@@ -1468,85 +1470,72 @@ pub mod visit {
         V::Result::output()
     }
 
-    impl WalkItemKind for AssocItemKind {
-        fn walk<'a, V: Visitor<'a>>(
-            &'a self,
-            item: &'a Item<Self>,
-            ctxt: AssocCtxt,
-            visitor: &mut V,
-        ) -> V::Result {
-            let &Item { id, span, ident, ref vis, .. } = item;
-            match self {
-                AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
-                    try_visit!(visitor.visit_generics(generics));
-                    try_visit!(visitor.visit_ty(ty));
-                    visit_opt!(visitor, visit_expr, expr);
-                }
-                AssocItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                    let kind =
-                        FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body.as_deref());
-                    try_visit!(visitor.visit_fn(kind, span, id));
-                }
-                AssocItemKind::Type(box TyAlias {
-                    generics,
-                    bounds,
-                    ty,
-                    defaultness: _,
-                    where_clauses: _,
-                }) => {
-                    try_visit!(visitor.visit_generics(generics));
-                    walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-                    visit_opt!(visitor, visit_ty, ty);
-                }
-                AssocItemKind::MacCall(mac) => {
-                    try_visit!(visitor.visit_mac_call(mac));
-                }
-                AssocItemKind::Delegation(box Delegation {
-                    id,
-                    qself,
-                    path,
-                    rename,
-                    body,
-                    from_glob: _,
-                }) => {
-                    try_visit!(visitor.visit_qself(qself));
-                    try_visit!(visitor.visit_path(path, *id));
-                    visit_opt!(visitor, visit_ident, *rename);
-                    visit_opt!(visitor, visit_block, body);
-                }
-                AssocItemKind::DelegationMac(box DelegationMac {
-                    qself,
-                    prefix,
-                    suffixes,
-                    body,
-                }) => {
-                    try_visit!(visitor.visit_qself(qself));
-                    try_visit!(visitor.visit_path(prefix, id));
-                    if let Some(suffixes) = suffixes {
-                        for (ident, rename) in suffixes {
-                            visitor.visit_ident(*ident);
-                            if let Some(rename) = rename {
-                                visitor.visit_ident(*rename);
-                            }
-                        }
-                    }
-                    visit_opt!(visitor, visit_block, body);
-                }
-            }
-            V::Result::output()
-        }
-    }
-
     pub fn walk_assoc_item<'a, V: Visitor<'a>>(
         visitor: &mut V,
-        item: &'a Item<impl WalkItemKind>,
+        item: &'a Item<AssocItemKind>,
         ctxt: AssocCtxt,
     ) -> V::Result {
-        let &Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
+        let &Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
         walk_list!(visitor, visit_attribute, attrs);
         try_visit!(visitor.visit_vis(vis));
         try_visit!(visitor.visit_ident(ident));
-        try_visit!(kind.walk(item, ctxt, visitor));
+        match kind {
+            AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
+                try_visit!(visitor.visit_generics(generics));
+                try_visit!(visitor.visit_ty(ty));
+                visit_opt!(visitor, visit_expr, expr);
+            }
+            AssocItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
+                let kind =
+                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body.as_deref());
+                try_visit!(visitor.visit_fn(kind, span, id));
+            }
+            AssocItemKind::Type(box TyAlias {
+                generics,
+                bounds,
+                ty,
+                defaultness: _,
+                where_clauses: _,
+            }) => {
+                try_visit!(visitor.visit_generics(generics));
+                walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
+                visit_opt!(visitor, visit_ty, ty);
+            }
+            AssocItemKind::MacCall(mac) => {
+                try_visit!(visitor.visit_mac_call(mac));
+            }
+            AssocItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
+                try_visit!(visitor.visit_qself(qself));
+                try_visit!(visitor.visit_path(path, *id));
+                visit_opt!(visitor, visit_ident, *rename);
+                visit_opt!(visitor, visit_block, body);
+            }
+            AssocItemKind::DelegationMac(box DelegationMac {
+                qself,
+                prefix,
+                suffixes,
+                body,
+            }) => {
+                try_visit!(visitor.visit_qself(qself));
+                try_visit!(visitor.visit_path(prefix, id));
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(*ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(*rename);
+                        }
+                    }
+                }
+                visit_opt!(visitor, visit_block, body);
+            }
+        }
         V::Result::output()
     }
 
