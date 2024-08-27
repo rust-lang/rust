@@ -19,7 +19,7 @@ use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_interface::interface;
-use rustc_session::config::{self, CrateType, ErrorOutputType};
+use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
@@ -88,7 +88,11 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(
+    dcx: DiagCtxtHandle<'_>,
+    input: Input,
+    options: RustdocOptions,
+) -> Result<(), ErrorGuaranteed> {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.
@@ -135,7 +139,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, options: RustdocOptions) -> Result<()
         opts: sessopts,
         crate_cfg: cfgs,
         crate_check_cfg: options.check_cfgs.clone(),
-        input: options.input.clone(),
+        input: input.clone(),
         output_file: None,
         output_dir: None,
         file_loader: None,
