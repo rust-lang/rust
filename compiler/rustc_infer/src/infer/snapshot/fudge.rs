@@ -170,7 +170,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-pub struct InferenceFudger<'a, 'tcx> {
+struct InferenceFudger<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
