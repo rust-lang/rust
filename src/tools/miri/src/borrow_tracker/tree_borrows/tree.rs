@@ -302,7 +302,20 @@ enum ContinueTraversal {
     SkipSelfAndChildren,
 }
 
+#[derive(Clone, Copy)]
+pub enum ChildrenVisitMode {
+    VisitChildrenOfAccessed,
+    SkipChildrenOfAccessed,
+}
+
+enum RecursionState {
+    BeforeChildren,
+    AfterChildren,
+}
+
 /// Stack of nodes left to explore in a tree traversal.
+/// See the docs of `traverse_this_parents_children_other` for details on the
+/// traversal order.
 struct TreeVisitorStack<NodeContinue, NodeApp, ErrHandler> {
     /// Identifier of the original access.
     initial: UniIndex,
@@ -316,10 +329,12 @@ struct TreeVisitorStack<NodeContinue, NodeApp, ErrHandler> {
     /// Mutable state of the visit: the tags left to handle.
     /// Every tag pushed should eventually be handled,
     /// and the precise order is relevant for diagnostics.
-    /// Since the traversal is bottom-up, we need to remember
-    /// whether we're here initially (false) or after visiting all
-    /// children (true). The bool indicates this.
-    stack: Vec<(UniIndex, AccessRelatedness, bool)>,
+    /// Since the traversal is piecewise bottom-up, we need to
+    /// remember whether we're here initially, or after visiting all children.
+    /// The last element indicates this.
+    /// This is just an artifact of how you hand-roll recursion,
+    /// it does not have a deeper meaning otherwise.
+    stack: Vec<(UniIndex, AccessRelatedness, RecursionState)>,
 }
 
 impl<NodeContinue, NodeApp, InnErr, OutErr, ErrHandler>
@@ -362,64 +377,85 @@ where
         &mut self,
         this: &mut TreeVisitor<'_>,
         accessed_node: UniIndex,
-        push_children_of_accessed: bool,
+        visit_children: ChildrenVisitMode,
     ) -> Result<(), OutErr> {
+        // We want to visit the accessed node's children first.
+        // However, we will below walk up our parents and push their children (our cousins)
+        // onto the stack. To ensure correct iteration order, this method thus finishes
+        // by reversing the stack. This only works if the stack is empty initially.
         assert!(self.stack.is_empty());
         // First, handle accessed node. A bunch of things need to
         // be handled differently here compared to the further parents
         // of `accesssed_node`.
         {
             self.propagate_at(this, accessed_node, AccessRelatedness::This)?;
-            if push_children_of_accessed {
+            if matches!(visit_children, ChildrenVisitMode::VisitChildrenOfAccessed) {
                 let accessed_node = this.nodes.get(accessed_node).unwrap();
+                // We `rev()` here because we reverse the entire stack later.
                 for &child in accessed_node.children.iter().rev() {
-                    self.stack.push((child, AccessRelatedness::AncestorAccess, false));
+                    self.stack.push((
+                        child,
+                        AccessRelatedness::AncestorAccess,
+                        RecursionState::BeforeChildren,
+                    ));
                 }
             }
         }
-        // Then, handle the accessed node's parent. Here, we need to
+        // Then, handle the accessed node's parents. Here, we need to
         // make sure we only mark the "cousin" subtrees for later visitation,
         // not the subtree that contains the accessed node.
         let mut last_node = accessed_node;
         while let Some(current) = this.nodes.get(last_node).unwrap().parent {
             self.propagate_at(this, current, AccessRelatedness::StrictChildAccess)?;
             let node = this.nodes.get(current).unwrap();
+            // We `rev()` here because we reverse the entire stack later.
             for &child in node.children.iter().rev() {
                 if last_node == child {
                     continue;
                 }
-                self.stack.push((child, AccessRelatedness::DistantAccess, false));
+                self.stack.push((
+                    child,
+                    AccessRelatedness::DistantAccess,
+                    RecursionState::BeforeChildren,
+                ));
             }
             last_node = current;
         }
+        // Reverse the stack, as discussed above.
         self.stack.reverse();
         Ok(())
     }
 
     fn finish_foreign_accesses(&mut self, this: &mut TreeVisitor<'_>) -> Result<(), OutErr> {
-        while let Some((idx, rel_pos, is_final)) = self.stack.last_mut() {
+        while let Some((idx, rel_pos, step)) = self.stack.last_mut() {
             let idx = *idx;
             let rel_pos = *rel_pos;
-            if *is_final {
-                self.stack.pop();
-                self.propagate_at(this, idx, rel_pos)?;
-            } else {
-                *is_final = true;
-                let handle_children = self.should_continue_at(this, idx, rel_pos);
-                match handle_children {
-                    ContinueTraversal::Recurse => {
-                        // add all children, and also leave the node itself
-                        // on the stack so that it can be visited later.
-                        let node = this.nodes.get(idx).unwrap();
-                        for &child in node.children.iter() {
-                            self.stack.push((child, rel_pos, false));
+            match *step {
+                // How to do bottom-up traversal, 101: Before you handle a node, you handle all children.
+                // For this, you must first find the children, which is what this code here does.
+                RecursionState::BeforeChildren => {
+                    // Next time we come back will be when all the children are handled.
+                    *step = RecursionState::AfterChildren;
+                    // Now push the children, except if we are told to skip this subtree.
+                    let handle_children = self.should_continue_at(this, idx, rel_pos);
+                    match handle_children {
+                        ContinueTraversal::Recurse => {
+                            let node = this.nodes.get(idx).unwrap();
+                            for &child in node.children.iter() {
+                                self.stack.push((child, rel_pos, RecursionState::BeforeChildren));
+                            }
+                        }
+                        ContinueTraversal::SkipSelfAndChildren => {
+                            // skip self
+                            self.stack.pop();
+                            continue;
                         }
                     }
-                    ContinueTraversal::SkipSelfAndChildren => {
-                        // skip self
-                        self.stack.pop();
-                        continue;
-                    }
+                }
+                // All the children are handled, let's actually visit this node
+                RecursionState::AfterChildren => {
+                    self.stack.pop();
+                    self.propagate_at(this, idx, rel_pos)?;
                 }
             }
         }
@@ -437,19 +473,42 @@ where
 }
 
 impl<'tree> TreeVisitor<'tree> {
-    // Applies `f_propagate` to every vertex of the tree bottom-up in the following order: first
-    // all ancestors of `start` (starting with `start` itself), then children of `start`, then the rest,
-    // always going bottom-up.
-    // This ensures that errors are triggered in the following order
-    // - first invalid accesses with insufficient permissions, closest to the accessed node first,
-    // - then protector violations, bottom-up, starting with the children of the accessed node, and then
-    //   going upwards and outwards.
-    //
-    // `f_propagate` should follow the following format: for a given `Node` it updates its
-    // `Permission` depending on the position relative to `start` (given by an
-    // `AccessRelatedness`).
-    // `f_continue` is called before on foreign nodes, and describes whether to continue
-    // with the subtree at that node.
+    /// Applies `f_propagate` to every vertex of the tree in a piecewise bottom-up way: First, visit
+    /// all ancestors of `start` (starting with `start` itself), then children of `start`, then the rest,
+    /// going bottom-up in each of these two "pieces" / sections.
+    /// This ensures that errors are triggered in the following order
+    /// - first invalid accesses with insufficient permissions, closest to the accessed node first,
+    /// - then protector violations, bottom-up, starting with the children of the accessed node, and then
+    ///   going upwards and outwards.
+    ///
+    /// The following graphic visualizes it, with numbers indicating visitation order and `start` being
+    /// the node that is visited first ("1"):
+    ///
+    /// ```text
+    ///         3
+    ///        /|
+    ///       / |
+    ///      9  2
+    ///      |  |\
+    ///      |  | \
+    ///      8  1  7
+    ///        / \
+    ///       4   6
+    ///           |
+    ///           5
+    /// ```
+    ///
+    /// `f_propagate` should follow the following format: for a given `Node` it updates its
+    /// `Permission` depending on the position relative to `start` (given by an
+    /// `AccessRelatedness`).
+    /// `f_continue` is called earlier on foreign nodes, and describes whether to even start
+    /// visiting the subtree at that node. If it e.g. returns `SkipSelfAndChildren` on node 6
+    /// above, then nodes 5 _and_ 6 would not be visited by `f_propagate`. It is not used for
+    /// notes having a child access (nodes 1, 2, 3).
+    ///
+    /// Finally, remember that the iteration order is not relevant for UB, it only affects
+    /// diagnostics. It also affects tree traversal optimizations built on top of this, so
+    /// those need to be reviewed carefully as well whenever this changes.
     fn traverse_this_parents_children_other<InnErr, OutErr>(
         mut self,
         start: BorTag,
@@ -463,14 +522,18 @@ impl<'tree> TreeVisitor<'tree> {
         // undergoing a child access. Also pushes the children and the other
         // cousin nodes (i.e. all nodes undergoing a foreign access) to the stack
         // to be processed later.
-        stack.go_upwards_from_accessed(&mut self, start_idx, true)?;
+        stack.go_upwards_from_accessed(
+            &mut self,
+            start_idx,
+            ChildrenVisitMode::VisitChildrenOfAccessed,
+        )?;
         // Now visit all the foreign nodes we remembered earlier.
         // For this we go bottom-up, but also allow f_continue to skip entire
         // subtrees from being visited if it would be a NOP.
         stack.finish_foreign_accesses(&mut self)
     }
 
-    // Like `traverse_this_parents_children_other`, but skips the children of `start`.
+    /// Like `traverse_this_parents_children_other`, but skips the children of `start`.
     fn traverse_nonchildren<InnErr, OutErr>(
         mut self,
         start: BorTag,
@@ -483,7 +546,11 @@ impl<'tree> TreeVisitor<'tree> {
         // Visits the accessed node itself, and all its parents, i.e. all nodes
         // undergoing a child access. Also pushes the other cousin nodes to the
         // stack, but not the children of the accessed node.
-        stack.go_upwards_from_accessed(&mut self, start_idx, false)?;
+        stack.go_upwards_from_accessed(
+            &mut self,
+            start_idx,
+            ChildrenVisitMode::SkipChildrenOfAccessed,
+        )?;
         // Now visit all the foreign nodes we remembered earlier.
         // For this we go bottom-up, but also allow f_continue to skip entire
         // subtrees from being visited if it would be a NOP.
