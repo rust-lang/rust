@@ -40,7 +40,6 @@ fn main() {
         "InstrProfilingWriter.c",
         // These files were added in LLVM 11.
         "InstrProfilingInternal.c",
-        "InstrProfilingBiasVar.c",
     ];
 
     if target_env == "msvc" {
