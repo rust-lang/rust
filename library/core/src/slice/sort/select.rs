@@ -317,23 +317,32 @@ fn median_idx<T, F: FnMut(&T, &T) -> bool>(
 
 // It's possible to re-use the insertion sort in the smallsort module, but with optimize_for_size it
 // would clutter that module with cfg statements and make it generally harder to read and develop.
-// So to decouple things and simplify it, we use a an even smaller bubble sort.
+// So to decouple things and simplify it, we use an even smaller bubble sort.
 #[cfg(feature = "optimize_for_size")]
 fn bubble_sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
-    let mut n = v.len();
-    let mut did_swap = true;
+    use crate::ptr;
 
-    while did_swap && n > 1 {
-        did_swap = false;
-        for i in 1..n {
+    let mut n = v.len();
+
+    let v_base = v.as_mut_ptr();
+
+    while n > 1 {
+        let loop_n = n;
+        n = 0;
+        for i in 1..loop_n {
             // SAFETY: The loop construction implies that `i` and `i - 1` will always be in-bounds.
             unsafe {
-                if is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
-                    v.swap_unchecked(i - 1, i);
-                    did_swap = true;
+                // Even if `is_less` erroneously always returns true, we are guaranteed that `n`
+                // reduces by one each out loop iteration, because `1..n` is exclusive. This
+                // guarantees a bounded run-time should `Ord` be implemented incorrectly.
+                let v_i = v_base.add(i);
+                let v_i_minus_one = v_base.add(i - 1);
+
+                if is_less(&*v_i, &*v_i_minus_one) {
+                    ptr::swap_nonoverlapping(v_i, v_i_minus_one, 1);
+                    n = i;
                 }
             }
         }
-        n -= 1;
     }
 }
