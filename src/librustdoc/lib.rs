@@ -727,22 +727,24 @@ fn main_args(
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (options, render_options) = match config::Options::from_matches(early_dcx, &matches, args) {
-        Some(opts) => opts,
-        None => return Ok(()),
-    };
+    let (input, options, render_options) =
+        match config::Options::from_matches(early_dcx, &matches, args) {
+            Some(opts) => opts,
+            None => return Ok(()),
+        };
 
     let dcx =
         core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
     let dcx = dcx.handle();
 
-    match (options.should_test, options.markdown_input()) {
-        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(options)),
-        (true, None) => return doctest::run(dcx, options),
-        (false, Some(input)) => {
-            let input = input.to_owned();
+    match (options.should_test, config::markdown_input(&input)) {
+        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options)),
+        (true, None) => return doctest::run(dcx, input, options),
+        (false, Some(md_input)) => {
+            let md_input = md_input.to_owned();
             let edition = options.edition;
-            let config = core::create_config(options, &render_options, using_internal_features);
+            let config =
+                core::create_config(input, options, &render_options, using_internal_features);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -750,7 +752,7 @@ fn main_args(
             return wrap_return(
                 dcx,
                 interface::run_compiler(config, |_compiler| {
-                    markdown::render(&input, render_options, edition)
+                    markdown::render(&md_input, render_options, edition)
                 }),
             );
         }
@@ -775,7 +777,7 @@ fn main_args(
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(options, &render_options, using_internal_features);
+    let config = core::create_config(input, options, &render_options, using_internal_features);
 
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;

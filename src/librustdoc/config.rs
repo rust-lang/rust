@@ -57,8 +57,6 @@ impl TryFrom<&str> for OutputFormat {
 #[derive(Clone)]
 pub(crate) struct Options {
     // Basic options / Options passed directly to rustc
-    /// The crate root or Markdown file to load.
-    pub(crate) input: Input,
     /// The name of the crate being documented.
     pub(crate) crate_name: Option<String>,
     /// Whether or not this is a bin crate
@@ -179,7 +177,6 @@ impl fmt::Debug for Options {
         }
 
         f.debug_struct("Options")
-            .field("input", &self.input.source_name())
             .field("crate_name", &self.crate_name)
             .field("bin_crate", &self.bin_crate)
             .field("proc_macro_crate", &self.proc_macro_crate)
@@ -348,7 +345,7 @@ impl Options {
         early_dcx: &mut EarlyDiagCtxt,
         matches: &getopts::Matches,
         args: Vec<String>,
-    ) -> Option<(Options, RenderOptions)> {
+    ) -> Option<(Input, Options, RenderOptions)> {
         // Check for unstable options.
         nightly_options::check_nightly_options(early_dcx, matches, &opts());
 
@@ -751,7 +748,6 @@ impl Options {
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
         let options = Options {
-            input,
             bin_crate,
             proc_macro_crate,
             error_format,
@@ -824,15 +820,13 @@ impl Options {
             html_no_source,
             output_to_stdout,
         };
-        Some((options, render_options))
+        Some((input, options, render_options))
     }
+}
 
-    /// Returns `true` if the file given as `self.input` is a Markdown file.
-    pub(crate) fn markdown_input(&self) -> Option<&Path> {
-        self.input
-            .opt_path()
-            .filter(|p| matches!(p.extension(), Some(e) if e == "md" || e == "markdown"))
-    }
+/// Returns `true` if the file given as `self.input` is a Markdown file.
+pub(crate) fn markdown_input(input: &Input) -> Option<&Path> {
+    input.opt_path().filter(|p| matches!(p.extension(), Some(e) if e == "md" || e == "markdown"))
 }
 
 fn parse_remap_path_prefix(

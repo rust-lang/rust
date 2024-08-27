@@ -3,6 +3,7 @@
 use std::fs::read_to_string;
 use std::sync::{Arc, Mutex};
 
+use rustc_session::config::Input;
 use rustc_span::FileName;
 use tempfile::tempdir;
 
@@ -69,9 +70,8 @@ impl DocTestVisitor for MdCollector {
 }
 
 /// Runs any tests/code examples in the markdown file `options.input`.
-pub(crate) fn test(options: Options) -> Result<(), String> {
-    use rustc_session::config::Input;
-    let input_str = match &options.input {
+pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
+    let input_str = match input {
         Input::File(path) => {
             read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?
         }
@@ -79,7 +79,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     };
 
     // Obviously not a real crate name, but close enough for purposes of doctests.
-    let crate_name = options.input.filestem().to_string();
+    let crate_name = input.filestem().to_string();
     let temp_dir =
         tempdir().map_err(|error| format!("failed to create temporary directory: {error:?}"))?;
     let args_file = temp_dir.path().join("rustdoc-cfgs");
@@ -96,8 +96,7 @@ pub(crate) fn test(options: Options) -> Result<(), String> {
     let mut md_collector = MdCollector {
         tests: vec![],
         cur_path: vec![],
-        filename: options
-            .input
+        filename: input
             .opt_path()
             .map(ToOwned::to_owned)
             .map(FileName::from)
