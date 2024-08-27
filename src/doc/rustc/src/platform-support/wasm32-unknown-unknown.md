@@ -280,20 +280,22 @@ unfortunate accident which got relied on. The `wasm-bindgen` project prior to
 seen as not worth the tradeoff of breaking `wasm-bindgen` historically to fix
 this issue in the compiler.
 
-Thanks to the heroic efforts of many involved in this, however, the nightly
-compiler currently supports a `-Zwasm-c-abi` implemented in
+Thanks to the heroic efforts of many involved in this, however, `wasm-bindgen`
+0.2.89 and later are compatible with the correct definition of `extern "C"` and
+the nightly compiler currently supports a `-Zwasm-c-abi` implemented in
 [#117919](https://github.com/rust-lang/rust/pull/117919). This nightly-only flag
 can be used to indicate whether the spec-defined version of `extern "C"` should
 be used instead of the "legacy" version of
 whatever-the-Rust-target-originally-implemented. For example using the above
 code you can see (lightly edited for clarity):
 
-```
+```shell
 $ rustc +nightly -Zwasm-c-abi=spec foo.rs --target wasm32-unknown-unknown --crate-type lib --emit obj -O
 $ wasm-tools print foo.o
 (module
   (import "env" "take_my_pair" (func $take_my_pair (param i32) (result i32)))
   (func $call_c (result i32)
+    ;; ...
   )
   ;; ...
 )
@@ -305,6 +307,8 @@ they should.
 The `-Zwasm-c-abi` compiler flag is tracked in
 [#122532](https://github.com/rust-lang/rust/issues/122532) and a lint was
 implemented in [#117918](https://github.com/rust-lang/rust/issues/117918) to
-help warn users about the transition. The current plan is to, in the future,
-switch `-Zwasm-c-api=spec` to being the default. Some time after that the
-`-Zwasm-c-abi` flag and the "legacy" implementation will all be removed.
+help warn users about the transition if they're using `wasm-bindgen` 0.2.88 or
+prior. The current plan is to, in the future, switch `-Zwasm-c-api=spec` to
+being the default. Some time after that the `-Zwasm-c-abi` flag and the
+"legacy" implementation will all be removed. During this process users on a
+sufficiently updated version of `wasm-bindgen` should not experience breakage.
