@@ -172,6 +172,8 @@ pub enum BlockReason {
     Futex { addr: u64 },
     /// Blocked on an InitOnce.
     InitOnce(InitOnceId),
+    /// Blocked on epoll.
+    Epoll,
 }
 
 /// The state of a thread.
