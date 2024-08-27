@@ -19,7 +19,7 @@ fn main() {
 
     // FIXME: `rerun-if-changed` directives are not currently emitted and the build script
     // will not rerun on changes in these source files or headers included into them.
-    let mut profile_sources = vec![
+    let profile_sources = vec![
         // tidy-alphabetical-start
         "GCDAProfiling.c",
         "InstrProfiling.c",
@@ -40,13 +40,13 @@ fn main() {
         "InstrProfilingValue.c",
         "InstrProfilingVersionVar.c",
         "InstrProfilingWriter.c",
+        "WindowsMMap.c",
         // tidy-alphabetical-end
     ];
 
     if target_env == "msvc" {
         // Don't pull in extra libraries on MSVC
         cfg.flag("/Zl");
-        profile_sources.push("WindowsMMap.c");
         cfg.define("strdup", Some("_strdup"));
         cfg.define("open", Some("_open"));
         cfg.define("fdopen", Some("_fdopen"));
@@ -61,8 +61,6 @@ fn main() {
         if target_os != "windows" {
             cfg.flag("-fvisibility=hidden");
             cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
-        } else {
-            profile_sources.push("WindowsMMap.c");
         }
     }
 
