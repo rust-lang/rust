@@ -234,6 +234,8 @@ macro_rules! make_ast_visitor {
             ($t: ty) => { if_mut_ty!(P<$t>, $t) }
         }
 
+        // TODO: if still unused, remove
+        #[allow(unused)]
         macro_rules! deref_P {
             ($p: expr) => { if_mut_expr!($p.deref_mut(), $p) }
         }
@@ -572,9 +574,9 @@ macro_rules! make_ast_visitor {
 
         pub fn walk_fn_decl<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
-            decl: ref_t!(P!(FnDecl))
+            decl: ref_t!(FnDecl)
         ) -> result!(V) {
-            let FnDecl { inputs, output } = deref_P!(decl);
+            let FnDecl { inputs, output } = decl;
             visit_list!(vis, visit_param, flat_map_param, inputs);
             try_v!(vis.visit_fn_ret_ty(output));
             return_result!(V)
