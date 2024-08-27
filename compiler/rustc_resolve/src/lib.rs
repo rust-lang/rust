@@ -983,11 +983,15 @@ impl MacroData {
 
 pub struct ExpandResolver<'a, 'tcx> {
     pub r: Resolver<'a, 'tcx>,
+    /// `derive(Copy)` marks items they are applied to so they are treated specially later.
+    /// Derive macros cannot modify the item themselves and have to store the markers in the global
+    /// context, so they attach the markers to derive container IDs using this resolver table.
+    containers_deriving_copy: FxHashSet<LocalExpnId>,
 }
 
 impl<'a, 'tcx> ExpandResolver<'a, 'tcx> {
     pub fn new(r: Resolver<'a, 'tcx>) -> Self {
-        ExpandResolver { r }
+        ExpandResolver { r, containers_deriving_copy: Default::default() }
     }
 }
 
@@ -1111,10 +1115,6 @@ pub struct Resolver<'a, 'tcx> {
     multi_segment_macro_resolutions:
         Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>, Namespace)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
-    /// `derive(Copy)` marks items they are applied to so they are treated specially later.
-    /// Derive macros cannot modify the item themselves and have to store the markers in the global
-    /// context, so they attach the markers to derive container IDs using this resolver table.
-    containers_deriving_copy: FxHashSet<LocalExpnId>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'a>>,
@@ -1514,7 +1514,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
-            containers_deriving_copy: Default::default(),
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,

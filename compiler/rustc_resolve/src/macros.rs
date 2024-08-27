@@ -370,7 +370,7 @@ impl<'a, 'tcx> ResolverExpand for ExpandResolver<'a, 'tcx> {
     }
 
     fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool {
-        self.r.containers_deriving_copy.contains(&expn_id)
+        self.containers_deriving_copy.contains(&expn_id)
     }
 
     fn resolve_derives(
@@ -443,7 +443,7 @@ impl<'a, 'tcx> ResolverExpand for ExpandResolver<'a, 'tcx> {
         // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
         // has `Copy`, to support cases like `#[derive(Clone, Copy)] #[derive(Debug)]`.
         if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
-            self.r.containers_deriving_copy.insert(expn_id);
+            self.containers_deriving_copy.insert(expn_id);
         }
         assert!(self.r.derive_data.is_empty());
         self.r.derive_data = derive_data;
