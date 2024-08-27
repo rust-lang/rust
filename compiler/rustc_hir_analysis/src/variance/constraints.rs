@@ -12,7 +12,7 @@ use rustc_middle::{bug, span_bug};
 use super::terms::VarianceTerm::*;
 use super::terms::*;
 
-pub struct ConstraintContext<'a, 'tcx> {
+pub(crate) struct ConstraintContext<'a, 'tcx> {
     pub terms_cx: TermsContext<'a, 'tcx>,
 
     // These are pointers to common `ConstantTerm` instances
@@ -27,7 +27,7 @@ pub struct ConstraintContext<'a, 'tcx> {
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
 #[derive(Copy, Clone)]
-pub struct Constraint<'a> {
+pub(crate) struct Constraint<'a> {
     pub inferred: InferredIndex,
     pub variance: &'a VarianceTerm<'a>,
 }
@@ -41,11 +41,11 @@ pub struct Constraint<'a> {
 /// ```
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
 /// the `DefId` and the start of `Foo`'s inferreds.
-pub struct CurrentItem {
+struct CurrentItem {
     inferred_start: InferredIndex,
 }
 
-pub fn add_constraints_from_crate<'a, 'tcx>(
+pub(crate) fn add_constraints_from_crate<'a, 'tcx>(
     terms_cx: TermsContext<'a, 'tcx>,
 ) -> ConstraintContext<'a, 'tcx> {
     let tcx = terms_cx.tcx;

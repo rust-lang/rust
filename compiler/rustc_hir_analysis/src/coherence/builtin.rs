@@ -332,7 +332,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     }
 }
 
-pub fn coerce_unsized_info<'tcx>(
+pub(crate) fn coerce_unsized_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
 ) -> Result<CoerceUnsizedInfo, ErrorGuaranteed> {

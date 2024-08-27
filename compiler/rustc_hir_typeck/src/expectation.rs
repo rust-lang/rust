@@ -7,7 +7,7 @@ use super::FnCtxt;
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
 #[derive(Copy, Clone, Debug)]
-pub enum Expectation<'tcx> {
+pub(crate) enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
 

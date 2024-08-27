@@ -40,9 +40,10 @@
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
 //@[loongarch64] min-llvm-version: 18
-//@ revisions: wasm
-//@[wasm] compile-flags: --target wasm32-unknown-unknown
-//@[wasm] needs-llvm-components: webassembly
+//FIXME: wasm is disabled due to <https://github.com/rust-lang/rust/issues/115666>.
+//FIXME @ revisions: wasm
+//FIXME @[wasm] compile-flags: --target wasm32-unknown-unknown
+//FIXME @[wasm] needs-llvm-components: webassembly
 //@ revisions: wasip1
 //@[wasip1] compile-flags: --target wasm32-wasip1
 //@[wasip1] needs-llvm-components: webassembly

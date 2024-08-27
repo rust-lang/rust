@@ -2071,7 +2071,7 @@ fn is_late_bound_map(
     }
 }
 
-pub fn deny_non_region_late_bound(
+fn deny_non_region_late_bound(
     tcx: TyCtxt<'_>,
     bound_vars: &mut FxIndexMap<LocalDefId, ResolvedArg>,
     where_: &str,

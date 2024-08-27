@@ -29,7 +29,7 @@ use crate::traits::ObligationCause;
 ///
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
-pub trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
+pub(crate) trait LatticeDir<'f, 'tcx>: PredicateEmittingRelation<InferCtxt<'tcx>> {
     fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;

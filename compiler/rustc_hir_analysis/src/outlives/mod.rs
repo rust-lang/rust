@@ -9,7 +9,7 @@ mod explicit;
 mod implicit_infer;
 mod utils;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
 }
 

@@ -1053,7 +1053,7 @@ fn check_impl_items_against_trait<'tcx>(
     }
 }
 
-pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
+fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     let t = tcx.type_of(def_id).instantiate_identity();
     if let ty::Adt(def, args) = t.kind()
         && def.is_struct()

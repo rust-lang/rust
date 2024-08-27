@@ -7,6 +7,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+#![cfg_attr(bootstrap, feature(unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
@@ -15,6 +16,7 @@
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cmp::max;

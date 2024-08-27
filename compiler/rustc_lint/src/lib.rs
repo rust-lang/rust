@@ -39,6 +39,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(trait_upcasting)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod async_closures;
