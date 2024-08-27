@@ -653,6 +653,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
         I: SliceIndex<Self>,
@@ -695,6 +696,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
         I: SliceIndex<Self>,
@@ -957,6 +959,7 @@ impl<T> [T] {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "slice_swap_unchecked", issue = "88539")]
+    #[track_caller]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -1311,6 +1314,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -1471,6 +1475,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
         assert_unsafe_precondition!(
             check_language_ub,
@@ -1998,6 +2003,7 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_split_at_unchecked", since = "1.77.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
         // FIXME(const-hack): the const function `from_raw_parts` is used to make this
         // function const; previously the implementation used
@@ -2051,6 +2057,7 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_split_at_mut", since = "1.83.0")]
     #[inline]
     #[must_use]
+    #[track_caller]
     pub const unsafe fn split_at_mut_unchecked(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
@@ -4571,6 +4578,7 @@ impl<T> [T] {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
+    #[track_caller]
     pub unsafe fn get_disjoint_unchecked_mut<I, const N: usize>(
         &mut self,
         indices: [I; N],

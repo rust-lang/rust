@@ -186,6 +186,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         let slice = slice as *const [u8];
 
@@ -213,6 +214,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         let slice = slice as *mut [u8];
 
@@ -288,6 +290,7 @@ unsafe impl SliceIndex<str> for range::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         let slice = slice as *const [u8];
 
@@ -315,6 +318,7 @@ unsafe impl SliceIndex<str> for range::Range<usize> {
         }
     }
     #[inline]
+    #[track_caller]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         let slice = slice as *mut [u8];
 

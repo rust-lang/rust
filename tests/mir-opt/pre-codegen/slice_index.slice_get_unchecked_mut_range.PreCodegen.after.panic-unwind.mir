@@ -6,10 +6,10 @@ fn slice_get_unchecked_mut_range(_1: &mut [u32], _2: std::ops::Range<usize>) -> 
     let mut _0: &mut [u32];
     let mut _3: usize;
     let mut _4: usize;
-    scope 1 (inlined core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
+    scope 1 (inlined #[track_caller] core::slice::<impl [u32]>::get_unchecked_mut::<std::ops::Range<usize>>) {
         let mut _5: *mut [u32];
         let mut _11: *mut [u32];
-        scope 2 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked_mut) {
             let mut _6: usize;
             let _7: ();
             let _8: usize;

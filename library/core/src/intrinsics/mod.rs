@@ -4407,7 +4407,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 )]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[track_caller]
 #[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     #[rustc_intrinsic_const_stable_indirect]
@@ -4515,7 +4515,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 )]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[track_caller]
 #[rustc_diagnostic_item = "ptr_copy"]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     #[rustc_intrinsic_const_stable_indirect]
@@ -4602,7 +4602,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 )]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[track_caller]
 #[rustc_diagnostic_item = "ptr_write_bytes"]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     #[rustc_intrinsic_const_stable_indirect]

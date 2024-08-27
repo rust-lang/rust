@@ -63,6 +63,7 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_no_mir_inline]
             #[inline]
             #[rustc_nounwind]
+            #[track_caller]
             const fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(

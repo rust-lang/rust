@@ -65,7 +65,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                     }
                     scope 14 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 15 (inlined #[track_caller] std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
                 scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
