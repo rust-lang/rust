@@ -47,9 +47,16 @@ mod macros;
 pub mod float;
 pub mod int;
 
-// Disabled on x86 without sse2 due to ABI issues
-// <https://github.com/rust-lang/rust/issues/114479>
-#[cfg(not(all(target_arch = "x86", not(target_feature = "sse2"))))]
+// Disable for any of the following:
+// - x86 without sse2 due to ABI issues
+//   - <https://github.com/rust-lang/rust/issues/114479>
+// - All unix targets (linux, macos, freebsd, android, etc)
+// - wasm with known target_os
+#[cfg(not(any(
+    all(target_arch = "x86", not(target_feature = "sse2")),
+    unix,
+    all(target_family = "wasm", not(target_os = "unknown"))
+)))]
 pub mod math;
 pub mod mem;
 
