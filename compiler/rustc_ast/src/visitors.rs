@@ -15,10 +15,6 @@ macro_rules! mutability_dependent {
         fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
             walk_assoc_item(self, i, ctxt)
         }
-        // FIXME: inconsistent
-        fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) -> Self::Result {
-            walk_lifetime(self, lifetime)
-        }
         fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
             Self::Result::output()
         }
@@ -96,10 +92,6 @@ macro_rules! mutability_dependent {
 
         fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
             noop_filter_map_expr(self, e)
-        }
-
-        fn visit_lifetime(&mut self, l: &mut Lifetime) {
-            walk_lifetime(self, l);
         }
 
         fn visit_macro_def(&mut self, def: &mut MacroDef) {
@@ -365,6 +357,10 @@ macro_rules! make_ast_visitor {
             /// Id should be visited by the caller
             fn visit_path(&mut self, path: ref_t!(Path), _id: NodeId) -> result!() {
                 walk_path(self, path)
+            }
+
+            fn visit_lifetime(&mut self, lifetime: ref_t!(Lifetime), _: LifetimeCtxt) -> result!() {
+                walk_lifetime(self, lifetime)
             }
         }
 
@@ -1772,7 +1768,7 @@ pub mod mut_visit {
     use crate::ptr::P;
     use crate::token::{self, Token};
     use crate::tokenstream::*;
-    use crate::visit::{AssocCtxt, BoundKind};
+    use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
     pub trait ExpectOne<A: Array> {
         fn expect_one(self, err: &'static str) -> A::Item;
@@ -1918,7 +1914,7 @@ pub mod mut_visit {
             TyKind::Slice(ty) => vis.visit_ty(ty),
             TyKind::Ptr(mt) => vis.visit_mt(mt),
             TyKind::Ref(lt, mt) => {
-                visit_opt(lt, |lt| vis.visit_lifetime(lt));
+                visit_opt(lt, |lt| vis.visit_lifetime(lt, LifetimeCtxt::Ref));
                 vis.visit_mt(mt);
             }
             TyKind::BareFn(bft) => {
@@ -1968,7 +1964,7 @@ pub mod mut_visit {
 
     fn walk_generic_arg<T: MutVisitor>(vis: &mut T, arg: &mut GenericArg) {
         match arg {
-            GenericArg::Lifetime(lt) => vis.visit_lifetime(lt),
+            GenericArg::Lifetime(lt) => vis.visit_lifetime(lt, LifetimeCtxt::GenericArg),
             GenericArg::Type(ty) => vis.visit_ty(ty),
             GenericArg::Const(ct) => vis.visit_anon_const(ct),
         }
@@ -2244,7 +2240,7 @@ pub mod mut_visit {
     fn walk_precise_capturing_arg<T: MutVisitor>(vis: &mut T, arg: &mut PreciseCapturingArg) {
         match arg {
             PreciseCapturingArg::Lifetime(lt) => {
-                vis.visit_lifetime(lt);
+                vis.visit_lifetime(lt, LifetimeCtxt::GenericArg);
             }
             PreciseCapturingArg::Arg(path, id) => {
                 vis.visit_id(id);
@@ -2293,7 +2289,7 @@ pub mod mut_visit {
             }
             WherePredicate::RegionPredicate(rp) => {
                 let WhereRegionPredicate { span, lifetime, bounds } = rp;
-                vis.visit_lifetime(lifetime);
+                vis.visit_lifetime(lifetime, LifetimeCtxt::Bound);
                 visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Bound));
                 vis.visit_span(span);
             }
