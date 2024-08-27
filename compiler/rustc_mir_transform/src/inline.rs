@@ -734,6 +734,20 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             debug!("still needs substitution");
             return Err("implementation limitation -- HACK for dropping polymorphic type");
         }
+        InstanceKind::AsyncDropGlue(_, ty) | InstanceKind::AsyncDropGlueCtorShim(_, ty) => {
+            return if ty.still_further_specializable() {
+                Err("still needs substitution")
+            } else {
+                Ok(())
+            };
+        }
+        InstanceKind::FutureDropPollShim(_, ty, ty2) => {
+            return if ty.still_further_specializable() || ty2.still_further_specializable() {
+                Err("still needs substitution")
+            } else {
+                Ok(())
+            };
+        }
 
         // This cannot result in an immediate cycle since the callee MIR is a shim, which does
         // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
@@ -747,8 +761,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         | InstanceKind::DropGlue(..)
         | InstanceKind::CloneShim(..)
         | InstanceKind::ThreadLocalShim(..)
-        | InstanceKind::FnPtrAddrShim(..)
-        | InstanceKind::AsyncDropGlueCtorShim(..) => return Ok(()),
+        | InstanceKind::FnPtrAddrShim(..) => return Ok(()),
     }
 
     if inliner.tcx().is_constructor(callee_def_id) {
@@ -1353,8 +1366,8 @@ fn try_instance_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: InstanceKind<'tcx>,
 ) -> Result<&'tcx Body<'tcx>, &'static str> {
-    if let ty::InstanceKind::DropGlue(_, Some(ty))
-    | ty::InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)) = instance
+    if let ty::InstanceKind::DropGlue(_, Some(ty)) | ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) =
+        instance
         && let ty::Adt(def, args) = ty.kind()
     {
         let fields = def.all_fields();

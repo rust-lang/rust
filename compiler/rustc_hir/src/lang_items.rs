@@ -191,6 +191,7 @@ language_item_table! {
     AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::None;
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
     AsyncDropInPlacePoll,    sym::async_drop_in_place_poll, async_drop_in_place_poll_fn, Target::Closure,  GenericRequirement::Exact(1);
+    FutureDropPoll,          sym::future_drop_poll,    future_drop_poll_fn,        Target::Fn,             GenericRequirement::Exact(1);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
