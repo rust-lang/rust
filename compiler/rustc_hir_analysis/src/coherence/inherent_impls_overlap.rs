@@ -11,7 +11,10 @@ use rustc_span::{ErrorGuaranteed, Symbol};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
 
-pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn crate_inherent_impls_overlap_check(
+    tcx: TyCtxt<'_>,
+    (): (),
+) -> Result<(), ErrorGuaranteed> {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
     let mut res = Ok(());
     for id in tcx.hir().items() {

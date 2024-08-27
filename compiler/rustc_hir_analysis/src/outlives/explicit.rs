@@ -5,12 +5,12 @@ use rustc_middle::ty::{self, OutlivesPredicate, TyCtxt};
 use super::utils::*;
 
 #[derive(Debug)]
-pub struct ExplicitPredicatesMap<'tcx> {
+pub(crate) struct ExplicitPredicatesMap<'tcx> {
     map: FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
 }
 
 impl<'tcx> ExplicitPredicatesMap<'tcx> {
-    pub fn new() -> ExplicitPredicatesMap<'tcx> {
+    pub(crate) fn new() -> ExplicitPredicatesMap<'tcx> {
         ExplicitPredicatesMap { map: FxIndexMap::default() }
     }
 
