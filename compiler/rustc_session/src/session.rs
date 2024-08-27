@@ -37,8 +37,9 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, CoverageLevel, CrateType, ErrorOutputType, FunctionReturn, Input, InstrumentCoverage,
-    OptLevel, OutFileName, OutputType, RemapPathScopeComponents, SwitchWithOptPath,
+    self, CoverageLevel, CrateType, DebugInfo, ErrorOutputType, FunctionReturn, Input,
+    InstrumentCoverage, OptLevel, OutFileName, OutputType, RemapPathScopeComponents,
+    SwitchWithOptPath,
 };
 use crate::parse::{add_feature_diagnostics, ParseSess};
 use crate::search_paths::{PathKind, SearchPath};
@@ -439,22 +440,10 @@ impl Session {
     }
 
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(
-            &self.sysroot,
-            self.opts.target_triple.triple(),
-            &self.opts.search_paths,
-            &self.target_tlib_path,
-            kind,
-        )
+        filesearch::FileSearch::new(&self.opts.search_paths, &self.target_tlib_path, kind)
     }
     pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch<'_> {
-        filesearch::FileSearch::new(
-            &self.sysroot,
-            config::host_triple(),
-            &self.opts.search_paths,
-            &self.host_tlib_path,
-            kind,
-        )
+        filesearch::FileSearch::new(&self.opts.search_paths, &self.host_tlib_path, kind)
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
@@ -1304,6 +1293,19 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     {
         sess.dcx()
             .emit_err(errors::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
+    }
+
+    if sess.opts.unstable_opts.embed_source {
+        let dwarf_version =
+            sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+
+        if dwarf_version < 5 {
+            sess.dcx().emit_warn(errors::EmbedSourceInsufficientDwarfVersion { dwarf_version });
+        }
+
+        if sess.opts.debuginfo == DebugInfo::None {
+            sess.dcx().emit_warn(errors::EmbedSourceRequiresDebugInfo);
+        }
     }
 
     if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {

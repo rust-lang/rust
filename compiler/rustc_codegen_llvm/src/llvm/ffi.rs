@@ -1860,6 +1860,8 @@ extern "C" {
         CSKind: ChecksumKind,
         Checksum: *const c_char,
         ChecksumLen: size_t,
+        Source: *const c_char,
+        SourceLen: size_t,
     ) -> &'a DIFile;
 
     pub fn LLVMRustDIBuilderCreateSubroutineType<'a>(

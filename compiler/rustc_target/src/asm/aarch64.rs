@@ -59,11 +59,11 @@ impl AArch64InlineAsmRegClass {
         _arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::reg => types! { _: I8, I16, I32, I64, F32, F64; },
+            Self::reg => types! { _: I8, I16, I32, I64, F16, F32, F64; },
             Self::vreg | Self::vreg_low16 => types! {
-                neon: I8, I16, I32, I64, F32, F64,
-                    VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
-                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+                neon: I8, I16, I32, I64, F16, F32, F64, F128,
+                    VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF16(4), VecF32(2), VecF64(1),
+                    VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF16(8), VecF32(4), VecF64(2);
             },
             Self::preg => &[],
         }

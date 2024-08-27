@@ -5,14 +5,11 @@ use std::{env, fs};
 
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use smallvec::{smallvec, SmallVec};
-use tracing::debug;
 
 use crate::search_paths::{PathKind, SearchPath};
 
 #[derive(Clone)]
 pub struct FileSearch<'a> {
-    sysroot: &'a Path,
-    triple: &'a str,
     cli_search_paths: &'a [SearchPath],
     tlib_path: &'a SearchPath,
     kind: PathKind,
@@ -32,23 +29,12 @@ impl<'a> FileSearch<'a> {
             .chain(std::iter::once(self.tlib_path))
     }
 
-    pub fn get_lib_path(&self) -> PathBuf {
-        make_target_lib_path(self.sysroot, self.triple)
-    }
-
-    pub fn get_self_contained_lib_path(&self) -> PathBuf {
-        self.get_lib_path().join("self-contained")
-    }
-
     pub fn new(
-        sysroot: &'a Path,
-        triple: &'a str,
         cli_search_paths: &'a [SearchPath],
         tlib_path: &'a SearchPath,
         kind: PathKind,
     ) -> FileSearch<'a> {
-        debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
-        FileSearch { sysroot, triple, cli_search_paths, tlib_path, kind }
+        FileSearch { cli_search_paths, tlib_path, kind }
     }
 }
 

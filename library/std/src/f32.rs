@@ -226,11 +226,11 @@ impl f32 {
     /// Returns a number composed of the magnitude of `self` and the sign of
     /// `sign`.
     ///
-    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise
-    /// equal to `-self`. If `self` is a NaN, then a NaN with the sign bit of
-    /// `sign` is returned. Note, however, that conserving the sign bit on NaN
-    /// across arithmetical operations is not generally guaranteed.
-    /// See [explanation of NaN as a special value](primitive@f32) for more info.
+    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise equal to `-self`.
+    /// If `self` is a NaN, then a NaN with the same payload as `self` and the sign bit of `sign` is
+    /// returned. Note, however, that conserving the sign bit on NaN across arithmetical operations
+    /// is not generally guaranteed. See [specification of NaN bit
+    /// patterns](primitive@f32#nan-bit-patterns) for more info.
     ///
     /// # Examples
     ///
