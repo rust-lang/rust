@@ -1071,7 +1071,13 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     // coroutine's resume function.
     let typing_env = body.typing_env(tcx);
 
-    let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, typing_env };
+    let mut elaborator = DropShimElaborator {
+        body,
+        patch: MirPatch::new(body),
+        tcx,
+        typing_env,
+        produce_async_drops: false,
+    };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
@@ -1108,6 +1114,7 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             *target,
             unwind,
             block,
+            None,
         );
     }
     elaborator.patch.apply(body);
