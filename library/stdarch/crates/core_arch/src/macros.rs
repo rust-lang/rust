@@ -115,9 +115,17 @@ macro_rules! types {
 }
 
 #[allow(unused)]
+#[repr(simd)]
+pub(crate) struct SimdShuffleIdx<const LEN: usize>(pub(crate) [u32; LEN]);
+
+#[allow(unused)]
 macro_rules! simd_shuffle {
     ($x:expr, $y:expr, $idx:expr $(,)?) => {{
-        $crate::intrinsics::simd::simd_shuffle::<_, [u32; _], _>($x, $y, const { $idx })
+        $crate::intrinsics::simd::simd_shuffle(
+            $x,
+            $y,
+            const { $crate::core_arch::macros::SimdShuffleIdx($idx) },
+        )
     }};
 }
 
