@@ -58,9 +58,15 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     }
 
     let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
-    let needs_adjust = parent
-        .as_ref()
-        .map_or(false, |it| matches!(it, ast::Expr::FieldExpr(_) | ast::Expr::MethodCallExpr(_)));
+    // Any expression that autoderefs may need adjustment.
+    let needs_adjust = parent.as_ref().map_or(false, |it| match it {
+        ast::Expr::FieldExpr(_)
+        | ast::Expr::MethodCallExpr(_)
+        | ast::Expr::CallExpr(_)
+        | ast::Expr::AwaitExpr(_) => true,
+        ast::Expr::IndexExpr(index) if index.base().as_ref() == Some(&to_extract) => true,
+        _ => false,
+    });
 
     let anchor = Anchor::from(&to_extract)?;
     let target = to_extract.syntax().text_range();
@@ -1216,6 +1222,45 @@ struct S {
 fn foo(s: &S) {
     let $0x = &s.sub;
     x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_index_deref() {
+        check_assist(
+            extract_variable,
+            r#"
+//- minicore: index
+struct X;
+
+impl std::ops::Index<usize> for X {
+    type Output = i32;
+    fn index(&self) -> &Self::Output { 0 }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    $0s.sub$0[0];
+}"#,
+            r#"
+struct X;
+
+impl std::ops::Index<usize> for X {
+    type Output = i32;
+    fn index(&self) -> &Self::Output { 0 }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    let $0sub = &s.sub;
+    sub[0];
 }"#,
         );
     }
