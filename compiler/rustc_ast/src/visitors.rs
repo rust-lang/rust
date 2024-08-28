@@ -304,6 +304,7 @@ macro_rules! make_ast_visitor {
             make_visit!{CoroutineKind, visit_coroutine_kind, walk_coroutine_kind}
             make_visit!{Item, visit_item, walk_item}
             make_visit!{ForeignItem, visit_foreign_item, walk_item}
+            make_visit!{FnHeader, visit_fn_header, walk_fn_header}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
@@ -345,15 +346,6 @@ macro_rules! make_ast_visitor {
             // FIXME: for some reason the immutable version doesn't receive a reference
             fn visit_ident(&mut self, ident: if_mut_ty!(ref_t!(Ident), Ident)) -> result!() {
                 walk_ident(self, ident)
-            }
-
-            // FIXME: remove _ on header if mut
-            fn visit_fn_header(&mut self, _header: ref_t!(FnHeader)) -> result!() {
-                if_mut_expr!(
-                    walk_fn_header(self, _header)
-                ,
-                    Self::Result::output()
-                )
             }
 
             /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
@@ -1342,6 +1334,17 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_fn_header<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            header: ref_t!(FnHeader)
+        ) -> result!(V) {
+            let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
+            visit_constness!(vis, constness);
+            visit_o!(coroutine_kind, |ck| vis.visit_coroutine_kind(ck));
+            visit_safety!(vis, safety);
+            return_result!(V)
+        }
+
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<impl WalkItemKind>),
@@ -2278,13 +2281,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
-        let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
-        visit_constness(vis, constness);
-        coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
-        visit_safety(vis, safety);
     }
 
     pub fn walk_flat_map_item(
