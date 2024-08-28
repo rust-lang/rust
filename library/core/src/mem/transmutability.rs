@@ -11,10 +11,10 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 ///
 /// # Safety
 ///
-/// If `Dst: BikeshedIntrinsicFrom<Src, ASSUMPTIONS>`, the compiler guarantees
-/// that `Src` is soundly *union-transmutable* into a value of type `Dst`,
-/// provided that the programmer has guaranteed that the given
-/// [`ASSUMPTIONS`](Assume) are satisfied.
+/// If `Dst: TransmuteFrom<Src, ASSUMPTIONS>`, the compiler guarantees that
+/// `Src` is soundly *union-transmutable* into a value of type `Dst`, provided
+/// that the programmer has guaranteed that the given [`ASSUMPTIONS`](Assume)
+/// are satisfied.
 ///
 /// A union-transmute is any bit-reinterpretation conversion in the form of:
 ///
@@ -47,7 +47,7 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 #[cfg_attr(not(bootstrap), doc = "```rust")]
 /// #![feature(transmutability)]
 ///
-/// use core::mem::{Assume, BikeshedIntrinsicFrom};
+/// use core::mem::{Assume, TransmuteFrom};
 ///
 /// let src = 42u8; // size = 1
 ///
@@ -55,7 +55,7 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 /// struct Dst(u8); // size = 2
 //
 /// let _ = unsafe {
-///     <Dst as BikeshedIntrinsicFrom<u8, { Assume::SAFETY }>>::transmute(src)
+///     <Dst as TransmuteFrom<u8, { Assume::SAFETY }>>::transmute(src)
 /// };
 /// ```
 ///
@@ -87,7 +87,7 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 #[lang = "transmute_trait"]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
 #[rustc_coinductive]
-pub unsafe trait BikeshedIntrinsicFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
+pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
 where
     Src: ?Sized,
 {
@@ -140,23 +140,21 @@ where
     }
 }
 
-/// Configurable proof assumptions of [`BikeshedIntrinsicFrom`].
+/// Configurable proof assumptions of [`TransmuteFrom`].
 ///
 /// When `false`, the respective proof obligation belongs to the compiler. When
 /// `true`, the onus of the safety proof belongs to the programmer.
-/// [`BikeshedIntrinsicFrom`].
 #[unstable(feature = "transmutability", issue = "99571")]
 #[lang = "transmute_opts"]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Assume {
-    /// When `false`, [`BikeshedIntrinsicFrom`] is not implemented for
-    /// transmutations that might violate the the alignment requirements of
-    /// references; e.g.:
+    /// When `false`, [`TransmuteFrom`] is not implemented for transmutations
+    /// that might violate the the alignment requirements of references; e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
     /// #![feature(transmutability)]
-    /// use core::mem::{align_of, BikeshedIntrinsicFrom};
+    /// use core::mem::{align_of, TransmuteFrom};
     ///
     /// assert_eq!(align_of::<[u8; 2]>(), 1);
     /// assert_eq!(align_of::<u16>(), 2);
@@ -165,18 +163,18 @@ pub struct Assume {
     ///
     /// // SAFETY: No safety obligations.
     /// let dst: &u16 = unsafe {
-    ///     <_ as BikeshedIntrinsicFrom<_>>::transmute(src)
+    ///     <_ as TransmuteFrom<_>>::transmute(src)
     /// };
     /// ```
     ///
-    /// When `true`, [`BikeshedIntrinsicFrom`] assumes that *you* have ensured
+    /// When `true`, [`TransmuteFrom`] assumes that *you* have ensured
     /// that references in the transmuted value satisfy the alignment
     /// requirements of their referent types; e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```rust")]
     /// #![feature(pointer_is_aligned_to, transmutability)]
-    /// use core::mem::{align_of, Assume, BikeshedIntrinsicFrom};
+    /// use core::mem::{align_of, Assume, TransmuteFrom};
     ///
     /// let src: &[u8; 2] = &[0xFF, 0xFF];
     ///
@@ -184,7 +182,7 @@ pub struct Assume {
     ///     // SAFETY: We have checked above that the address of `src` satisfies the
     ///     // alignment requirements of `u16`.
     ///     Some(unsafe {
-    ///         <_ as BikeshedIntrinsicFrom<_, { Assume::ALIGNMENT }>>::transmute(src)
+    ///         <_ as TransmuteFrom<_, { Assume::ALIGNMENT }>>::transmute(src)
     ///     })
     /// } else {
     ///     None
@@ -194,21 +192,21 @@ pub struct Assume {
     /// ```
     pub alignment: bool,
 
-    /// When `false`, [`BikeshedIntrinsicFrom`] is not implemented for
-    /// transmutations that extend the lifetimes of references.
+    /// When `false`, [`TransmuteFrom`] is not implemented for transmutations
+    /// that extend the lifetimes of references.
     ///
-    /// When `true`, [`BikeshedIntrinsicFrom`] assumes that *you* have ensured
-    /// that references in the transmuted value do not outlive their referents.
+    /// When `true`, [`TransmuteFrom`] assumes that *you* have ensured that
+    /// references in the transmuted value do not outlive their referents.
     pub lifetimes: bool,
 
-    /// When `false`, [`BikeshedIntrinsicFrom`] is not implemented for
-    /// transmutations that might violate the library safety invariants of the
-    /// destination type; e.g.:
+    /// When `false`, [`TransmuteFrom`] is not implemented for transmutations
+    /// that might violate the library safety invariants of the destination
+    /// type; e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
     /// #![feature(transmutability)]
-    /// use core::mem::BikeshedIntrinsicFrom;
+    /// use core::mem::TransmuteFrom;
     ///
     /// let src: u8 = 3;
     ///
@@ -219,18 +217,18 @@ pub struct Assume {
     ///
     /// // SAFETY: No safety obligations.
     /// let dst: EvenU8 = unsafe {
-    ///     <_ as BikeshedIntrinsicFrom<_>>::transmute(src)
+    ///     <_ as TransmuteFrom<_>>::transmute(src)
     /// };
     /// ```
     ///
-    /// When `true`, [`BikeshedIntrinsicFrom`] assumes that *you* have ensured
+    /// When `true`, [`TransmuteFrom`] assumes that *you* have ensured
     /// that undefined behavior does not arise from using the transmuted value;
     /// e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```rust")]
     /// #![feature(transmutability)]
-    /// use core::mem::{Assume, BikeshedIntrinsicFrom};
+    /// use core::mem::{Assume, TransmuteFrom};
     ///
     /// let src: u8 = 42;
     ///
@@ -242,7 +240,7 @@ pub struct Assume {
     /// let maybe_dst: Option<EvenU8> = if src % 2 == 0 {
     ///     // SAFETY: We have checked above that the value of `src` is even.
     ///     Some(unsafe {
-    ///         <_ as BikeshedIntrinsicFrom<_, { Assume::SAFETY }>>::transmute(src)
+    ///         <_ as TransmuteFrom<_, { Assume::SAFETY }>>::transmute(src)
     ///     })
     /// } else {
     ///     None
@@ -252,31 +250,31 @@ pub struct Assume {
     /// ```
     pub safety: bool,
 
-    /// When `false`, [`BikeshedIntrinsicFrom`] is not implemented for
-    /// transmutations that might violate the language-level bit-validity
-    /// invariant of the destination type; e.g.:
+    /// When `false`, [`TransmuteFrom`] is not implemented for transmutations
+    /// that might violate the language-level bit-validity invariant of the
+    /// destination type; e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```compile_fail,E0277")]
     /// #![feature(transmutability)]
-    /// use core::mem::BikeshedIntrinsicFrom;
+    /// use core::mem::TransmuteFrom;
     ///
     /// let src: u8 = 3;
     ///
     /// // SAFETY: No safety obligations.
     /// let dst: bool = unsafe {
-    ///     <_ as BikeshedIntrinsicFrom<_>>::transmute(src)
+    ///     <_ as TransmuteFrom<_>>::transmute(src)
     /// };
     /// ```
     ///
-    /// When `true`, [`BikeshedIntrinsicFrom`] assumes that *you* have ensured
+    /// When `true`, [`TransmuteFrom`] assumes that *you* have ensured
     /// that the value being transmuted is a bit-valid instance of the
     /// transmuted value; e.g.:
     ///
     #[cfg_attr(bootstrap, doc = "```rust,ignore not runnable on bootstrap")]
     #[cfg_attr(not(bootstrap), doc = "```rust")]
     /// #![feature(transmutability)]
-    /// use core::mem::{Assume, BikeshedIntrinsicFrom};
+    /// use core::mem::{Assume, TransmuteFrom};
     ///
     /// let src: u8 = 1;
     ///
@@ -284,7 +282,7 @@ pub struct Assume {
     ///     // SAFETY: We have checked above that the value of `src` is a bit-valid
     ///     // instance of `bool`.
     ///     Some(unsafe {
-    ///         <_ as BikeshedIntrinsicFrom<_, { Assume::VALIDITY }>>::transmute(src)
+    ///         <_ as TransmuteFrom<_, { Assume::VALIDITY }>>::transmute(src)
     ///     })
     /// } else {
     ///     None
@@ -301,35 +299,34 @@ impl ConstParamTy_ for Assume {}
 impl UnsizedConstParamTy for Assume {}
 
 impl Assume {
-    /// With this, [`BikeshedIntrinsicFrom`] does not assume you have ensured
-    /// any safety obligations are met, and relies only upon its own analysis to
-    /// (dis)prove transmutability.
+    /// With this, [`TransmuteFrom`] does not assume you have ensured any safety
+    /// obligations are met, and relies only upon its own analysis to (dis)prove
+    /// transmutability.
     #[unstable(feature = "transmutability", issue = "99571")]
     pub const NOTHING: Self =
         Self { alignment: false, lifetimes: false, safety: false, validity: false };
 
-    /// With this, [`BikeshedIntrinsicFrom`] assumes only that you have ensured
-    /// that references in the transmuted value satisfy the alignment
-    /// requirements of their referent types. See [`Assume::alignment`] for
-    /// examples.
+    /// With this, [`TransmuteFrom`] assumes only that you have ensured that
+    /// references in the transmuted value satisfy the alignment requirements of
+    /// their referent types. See [`Assume::alignment`] for examples.
     #[unstable(feature = "transmutability", issue = "99571")]
     pub const ALIGNMENT: Self = Self { alignment: true, ..Self::NOTHING };
 
-    /// With this, [`BikeshedIntrinsicFrom`] assumes only that you have ensured
-    /// that references in the transmuted value do not outlive their referents.
-    /// See [`Assume::lifetimes`] for examples.
+    /// With this, [`TransmuteFrom`] assumes only that you have ensured that
+    /// references in the transmuted value do not outlive their referents. See
+    /// [`Assume::lifetimes`] for examples.
     #[unstable(feature = "transmutability", issue = "99571")]
     pub const LIFETIMES: Self = Self { lifetimes: true, ..Self::NOTHING };
 
-    /// With this, [`BikeshedIntrinsicFrom`] assumes only that you have ensured
-    /// that undefined behavior does not arise from using the transmuted value.
-    /// See [`Assume::safety`] for examples.
+    /// With this, [`TransmuteFrom`] assumes only that you have ensured that
+    /// undefined behavior does not arise from using the transmuted value. See
+    /// [`Assume::safety`] for examples.
     #[unstable(feature = "transmutability", issue = "99571")]
     pub const SAFETY: Self = Self { safety: true, ..Self::NOTHING };
 
-    /// With this, [`BikeshedIntrinsicFrom`] assumes only that you have ensured
-    /// that the value being transmuted is a bit-valid instance of the
-    /// transmuted value. See [`Assume::validity`] for examples.
+    /// With this, [`TransmuteFrom`] assumes only that you have ensured that the
+    /// value being transmuted is a bit-valid instance of the transmuted value.
+    /// See [`Assume::validity`] for examples.
     #[unstable(feature = "transmutability", issue = "99571")]
     pub const VALIDITY: Self = Self { validity: true, ..Self::NOTHING };
 
@@ -348,7 +345,7 @@ impl Assume {
     ///     transmutability,
     /// )]
     /// #![allow(incomplete_features)]
-    /// use core::mem::{align_of, Assume, BikeshedIntrinsicFrom};
+    /// use core::mem::{align_of, Assume, TransmuteFrom};
     ///
     /// /// Attempts to transmute `src` to `&Dst`.
     /// ///
@@ -360,7 +357,7 @@ impl Assume {
     /// /// alignment, are satisfied.
     /// unsafe fn try_transmute_ref<'a, Src, Dst, const ASSUME: Assume>(src: &'a Src) -> Option<&'a Dst>
     /// where
-    ///     &'a Dst: BikeshedIntrinsicFrom<&'a Src, { ASSUME.and(Assume::ALIGNMENT) }>,
+    ///     &'a Dst: TransmuteFrom<&'a Src, { ASSUME.and(Assume::ALIGNMENT) }>,
     /// {
     ///     if <*const _>::is_aligned_to(src, align_of::<Dst>()) {
     ///         // SAFETY: By the above dynamic check, we have ensured that the address
@@ -368,7 +365,7 @@ impl Assume {
     ///         // on the caller, the safety obligations required by `ASSUME` have also
     ///         // been satisfied.
     ///         Some(unsafe {
-    ///             <_ as BikeshedIntrinsicFrom<_, { ASSUME.and(Assume::ALIGNMENT) }>>::transmute(src)
+    ///             <_ as TransmuteFrom<_, { ASSUME.and(Assume::ALIGNMENT) }>>::transmute(src)
     ///         })
     ///     } else {
     ///         None
