@@ -1060,6 +1060,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx.generate_nan(inputs)
     }
 
+    fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
+        Ok(ecx.tcx.sess.ub_checks())
+    }
+
     fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'tcx>,
         def_id: DefId,
