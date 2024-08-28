@@ -59,6 +59,13 @@ fn trivially_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
         | ty::RawPtr(..)
         | ty::Ref(..)
         | ty::FnPtr(..) => Some(false),
+        ty::Coroutine(def_id, _) => {
+            if tcx.is_templated_coroutine(*def_id) {
+                Some(false)
+            } else {
+                None
+            }
+        }
         // check `layout_of` to see (including unreachable things we won't actually see)
         _ => None,
     }
