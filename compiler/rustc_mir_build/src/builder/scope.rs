@@ -884,17 +884,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn is_async_drop_impl(
         tcx: TyCtxt<'tcx>,
         local_decls: &IndexVec<Local, LocalDecl<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         local: Local,
     ) -> bool {
         let ty = local_decls[local].ty;
-        if ty.is_async_drop(tcx, param_env) || ty.is_coroutine() {
+        if ty.is_async_drop(tcx, typing_env) || ty.is_coroutine() {
             return true;
         }
-        ty.needs_async_drop(tcx, param_env)
+        ty.needs_async_drop(tcx, typing_env)
     }
     fn is_async_drop(&self, local: Local) -> bool {
-        Self::is_async_drop_impl(self.tcx, &self.local_decls, self.param_env, local)
+        Self::is_async_drop_impl(self.tcx, &self.local_decls, self.typing_env(), local)
     }
 
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
@@ -909,6 +909,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             && scope.drops.iter().any(|v| v.kind == DropKind::Value && self.is_async_drop(v.local));
         let dropline_to = if has_async_drops { Some(self.diverge_dropline()) } else { None };
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
+        let typing_env = self.typing_env();
         build_scope_drops(
             &mut self.cfg,
             &mut self.scopes.unwind_drops,
@@ -919,7 +920,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             dropline_to,
             is_coroutine && needs_cleanup,
             self.arg_count,
-            |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, self.param_env, v),
+            |v: Local| Self::is_async_drop_impl(self.tcx, &self.local_decls, typing_env, v),
         )
         .into_block()
     }
@@ -1703,7 +1704,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             let mut dropline_indices = IndexVec::from_elem_n(dropline_target, 1);
             for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
                 match drop_data.data.kind {
-                    DropKind::Storage => {
+                    DropKind::Storage | DropKind::ForLint => {
                         let coroutine_drop = self
                             .scopes
                             .coroutine_drops
