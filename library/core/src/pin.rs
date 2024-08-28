@@ -1370,7 +1370,15 @@ impl<Ptr: Deref> Pin<Ptr> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.__pointer) }
     }
+}
 
+// These methods being in a `Ptr: DerefMut` impl block concerns semver stability.
+// Currently, calling e.g. `.set()` on a `Pin<&T>` sees that `Ptr: DerefMut`
+// doesn't hold, and goes to check for a `.set()` method on `T`. But, if the
+// `where Ptr: DerefMut` bound is moved to the method, rustc sees the impl block
+// as a valid candidate, and doesn't go on to check other candidates when it
+// sees that the bound on the method.
+impl<Ptr: DerefMut> Pin<Ptr> {
     /// Gets a mutable reference to the pinned value this `Pin<Ptr>` points to.
     ///
     /// This is a generic method to go from `&mut Pin<Pointer<T>>` to `Pin<&mut T>`.
@@ -1402,10 +1410,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target>
-    where
-        Ptr: DerefMut,
-    {
+    pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target> {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&mut *self.__pointer) }
     }
@@ -1420,10 +1425,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     #[unstable(feature = "pin_deref_mut", issue = "86918")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target>
-    where
-        Ptr: DerefMut,
-    {
+    pub fn as_deref_mut(self: Pin<&mut Pin<Ptr>>) -> Pin<&mut Ptr::Target> {
         // SAFETY: What we're asserting here is that going from
         //
         //     Pin<&mut Pin<Ptr>>
@@ -1475,12 +1477,13 @@ impl<Ptr: Deref> Pin<Ptr> {
     #[inline(always)]
     pub fn set(&mut self, value: Ptr::Target)
     where
-        Ptr: DerefMut,
         Ptr::Target: Sized,
     {
         *(self.__pointer) = value;
     }
+}
 
+impl<Ptr: Deref> Pin<Ptr> {
     /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
     ///
     /// # Safety
