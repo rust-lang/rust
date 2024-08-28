@@ -1,5 +1,6 @@
 //@ aux-build:uninhabited.rs
 //@ build-pass (FIXME(62277): could be check-pass?)
+#![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 
 extern crate uninhabited;

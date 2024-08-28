@@ -951,7 +951,11 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
             self.is_scrutinee && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
         // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
         // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
-        let empty_arms_are_unreachable = self.validity.is_known_valid();
+        // We don't want to warn empty patterns as unreachable by default just yet. We will in a
+        // later version of rust or under a different lint name, see
+        // https://github.com/rust-lang/rust/pull/129103.
+        let empty_arms_are_unreachable = self.validity.is_known_valid()
+            && (is_toplevel_exception || cx.is_exhaustive_patterns_feature_on());
         // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
         // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
         let can_omit_empty_arms = self.validity.is_known_valid()
