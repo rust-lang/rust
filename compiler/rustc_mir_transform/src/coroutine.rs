@@ -156,15 +156,6 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
 
 const SELF_ARG: Local = Local::from_u32(1);
 
-/// Coroutine has not been resumed yet.
-const UNRESUMED: usize = CoroutineArgs::UNRESUMED;
-/// Coroutine has returned / is completed.
-const RETURNED: usize = CoroutineArgs::RETURNED;
-/// Coroutine has panicked and is poisoned.
-const POISONED: usize = CoroutineArgs::POISONED;
-/// Number of reserved variants of coroutine state.
-const RESERVED_VARIANTS: usize = CoroutineArgs::RESERVED_VARIANTS;
-
 /// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
@@ -475,7 +466,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             self.make_state(v, source_info, is_return, &mut data.statements);
             let state = if let Some((resume, mut resume_arg)) = resume {
                 // Yield
-                let state = RESERVED_VARIANTS + self.suspension_points.len();
+                let state = CoroutineArgs::RESERVED_VARIANTS + self.suspension_points.len();
 
                 // The resume arg target location might itself be remapped if its base local is
                 // live across a yield.
@@ -508,7 +499,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 VariantIdx::new(state)
             } else {
                 // Return
-                VariantIdx::new(RETURNED) // state for returned
+                VariantIdx::new(CoroutineArgs::RETURNED) // state for returned
             };
             data.statements.push(self.set_discr(state, source_info));
             data.terminator_mut().kind = TerminatorKind::Return;
@@ -1044,10 +1035,11 @@ fn compute_layout<'tcx>(
     // Build the coroutine variant field list.
     // Create a map from local indices to coroutine struct indices.
     let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
-        iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
+        iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
     let mut remap = IndexVec::from_elem_n(None, saved_locals.domain_size());
     for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
-        let variant_index = VariantIdx::from(RESERVED_VARIANTS + suspension_point_idx);
+        let variant_index =
+            VariantIdx::from(CoroutineArgs::RESERVED_VARIANTS + suspension_point_idx);
         let mut fields = IndexVec::new();
         for (idx, saved_local) in live_locals.iter().enumerate() {
             fields.push(saved_local);
@@ -1194,7 +1186,7 @@ fn create_coroutine_drop_shim<'tcx>(
 
     let mut cases = create_cases(&mut body, transform, Operation::Drop);
 
-    cases.insert(0, (UNRESUMED, drop_clean));
+    cases.insert(0, (CoroutineArgs::UNRESUMED, drop_clean));
 
     // The returned state and the poisoned state fall through to the default
     // case which is just to return
@@ -1344,7 +1336,9 @@ fn create_coroutine_resume_function<'tcx>(
     if can_unwind {
         let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
+            statements: vec![
+                transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info),
+            ],
             terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
             is_cleanup: true,
         });
@@ -1376,13 +1370,16 @@ fn create_coroutine_resume_function<'tcx>(
     use rustc_middle::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
-    cases.insert(0, (UNRESUMED, START_BLOCK));
+    cases.insert(0, (CoroutineArgs::UNRESUMED, START_BLOCK));
 
     // Panic when resumed on the returned or poisoned state
     if can_unwind {
         cases.insert(
             1,
-            (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind))),
+            (
+                CoroutineArgs::POISONED,
+                insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind)),
+            ),
         );
     }
 
@@ -1397,7 +1394,7 @@ fn create_coroutine_resume_function<'tcx>(
                 transform.insert_none_ret_block(body)
             }
         };
-        cases.insert(1, (RETURNED, block));
+        cases.insert(1, (CoroutineArgs::RETURNED, block));
     }
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
