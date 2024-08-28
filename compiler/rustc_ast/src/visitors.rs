@@ -1375,6 +1375,48 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        impl WalkItemKind for ForeignItemKind {
+            fn walk<$($lt,)? V: $trait$(<$lt>)?>(
+                &$($lt)? $($mut)? self,
+                id: NodeId,
+                span: Span,
+                vis: ref_t!(Visibility),
+                ident: ref_t!(Ident),
+                visitor: &mut V,
+            ) -> result!(V) {
+                match self {
+                    ForeignItemKind::Static(box StaticItem { safety, ty, mutability: _, expr }) => {
+                        visit_safety!(visitor, safety);
+                        try_v!(visitor.visit_ty(ty));
+                        visit_o!(expr, |expr| visitor.visit_expr(expr));
+                    }
+                    ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
+                        visit_defaultness!(visitor, defaultness);
+                        let kind =
+                            FnKind::Fn(FnCtxt::Foreign, *ident, sig, vis, generics, body);
+                        visitor.visit_fn(kind, span, id);
+                    }
+                    ForeignItemKind::TyAlias(box TyAlias {
+                        defaultness,
+                        generics,
+                        where_clauses,
+                        bounds,
+                        ty,
+                    }) => {
+                        visit_defaultness!(visitor, defaultness);
+                        try_v!(visitor.visit_generics(generics));
+                        visit_list!(visitor, visit_param_bound, bounds; BoundKind::Bound);
+                        visit_o!(ty, |ty| visitor.visit_ty(ty));
+                        walk_ty_alias_where_clauses!(visitor, where_clauses);
+                    }
+                    ForeignItemKind::MacCall(mac) => {
+                        try_v!(visitor.visit_mac_call(mac));
+                    }
+                }
+                return_result!(V)
+            }
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1525,44 +1567,6 @@ pub mod visit {
             }
         }
         V::Result::output()
-    }
-
-    impl WalkItemKind for ForeignItemKind {
-        fn walk<'a, V: Visitor<'a>>(
-            &'a self,
-            id: NodeId,
-            span: Span,
-            vis: &'a Visibility,
-            ident: &'a Ident,
-            visitor: &mut V,
-        ) -> V::Result {
-            match self {
-                ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
-                    try_visit!(visitor.visit_ty(ty));
-                    visit_opt!(visitor, visit_expr, expr);
-                }
-                ForeignItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                    let kind =
-                        FnKind::Fn(FnCtxt::Foreign, *ident, sig, vis, generics, body);
-                    try_visit!(visitor.visit_fn(kind, span, id));
-                }
-                ForeignItemKind::TyAlias(box TyAlias {
-                    generics,
-                    bounds,
-                    ty,
-                    defaultness: _,
-                    where_clauses: _,
-                }) => {
-                    try_visit!(visitor.visit_generics(generics));
-                    walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-                    visit_opt!(visitor, visit_ty, ty);
-                }
-                ForeignItemKind::MacCall(mac) => {
-                    try_visit!(visitor.visit_mac_call(mac));
-                }
-            }
-            V::Result::output()
-        }
     }
 
     pub fn walk_generic_param<'a, V: Visitor<'a>>(
@@ -2454,45 +2458,6 @@ pub mod mut_visit {
     ) -> SmallVec<[P<Item<AssocItemKind>>; 1]> {
         walk_assoc_item(visitor, item.deref_mut(), ctxt);
         smallvec![item]
-    }
-
-
-    impl WalkItemKind for ForeignItemKind {
-        fn walk<V: MutVisitor>(
-            &mut self,
-            id: NodeId,
-            span: Span,
-            vis: &mut Visibility,
-            ident: &mut Ident,
-            visitor: &mut V
-        ) {
-            match self {
-                ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
-                    visitor.visit_ty(ty);
-                    visit_opt(expr, |expr| visitor.visit_expr(expr));
-                }
-                ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                    visit_defaultness(visitor, defaultness);
-                    let kind =
-                        FnKind::Fn(FnCtxt::Foreign, *ident, sig, vis, generics, body);
-                    visitor.visit_fn(kind, span, id);
-                }
-                ForeignItemKind::TyAlias(box TyAlias {
-                    defaultness,
-                    generics,
-                    where_clauses,
-                    bounds,
-                    ty,
-                }) => {
-                    visit_defaultness(visitor, defaultness);
-                    visitor.visit_generics(generics);
-                    visit_bounds(visitor, bounds, BoundKind::Bound);
-                    visit_opt(ty, |ty| visitor.visit_ty(ty));
-                    walk_ty_alias_where_clauses(visitor, where_clauses);
-                }
-                ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-            }
-        }
     }
 
     pub fn walk_expr<T: MutVisitor>(
