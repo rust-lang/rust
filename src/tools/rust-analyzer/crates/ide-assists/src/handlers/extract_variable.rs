@@ -20,7 +20,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // ->
 // ```
 // fn main() {
-//     let $0var_name = (1 + 2);
+//     let $0var_name = 1 + 2;
 //     var_name * 4;
 // }
 // ```
@@ -59,7 +59,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
     // Any expression that autoderefs may need adjustment.
-    let needs_adjust = parent.as_ref().map_or(false, |it| match it {
+    let mut needs_adjust = parent.as_ref().map_or(false, |it| match it {
         ast::Expr::FieldExpr(_)
         | ast::Expr::MethodCallExpr(_)
         | ast::Expr::CallExpr(_)
@@ -67,15 +67,21 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         ast::Expr::IndexExpr(index) if index.base().as_ref() == Some(&to_extract) => true,
         _ => false,
     });
+    let mut to_extract_no_ref = peel_parens(to_extract.clone());
     let needs_ref = needs_adjust
-        && matches!(
-            to_extract,
+        && match &to_extract_no_ref {
             ast::Expr::FieldExpr(_)
-                | ast::Expr::IndexExpr(_)
-                | ast::Expr::MacroExpr(_)
-                | ast::Expr::ParenExpr(_)
-                | ast::Expr::PathExpr(_)
-        );
+            | ast::Expr::IndexExpr(_)
+            | ast::Expr::MacroExpr(_)
+            | ast::Expr::ParenExpr(_)
+            | ast::Expr::PathExpr(_) => true,
+            ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::UnaryOp::Deref) => {
+                to_extract_no_ref = prefix.expr()?;
+                needs_adjust = false;
+                false
+            }
+            _ => false,
+        };
 
     let anchor = Anchor::from(&to_extract)?;
     let target = to_extract.syntax().text_range();
@@ -111,19 +117,19 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 _ => make::ident_pat(false, false, make::name(&var_name)),
             };
 
-            let to_extract = match ty.as_ref().filter(|_| needs_ref) {
+            let to_extract_no_ref = match ty.as_ref().filter(|_| needs_ref) {
                 Some(receiver_type) if receiver_type.is_mutable_reference() => {
-                    make::expr_ref(to_extract, true)
+                    make::expr_ref(to_extract_no_ref, true)
                 }
                 Some(receiver_type) if receiver_type.is_reference() => {
-                    make::expr_ref(to_extract, false)
+                    make::expr_ref(to_extract_no_ref, false)
                 }
-                _ => to_extract,
+                _ => to_extract_no_ref,
             };
 
             let expr_replace = edit.make_syntax_mut(expr_replace);
             let let_stmt =
-                make::let_stmt(ident_pat.into(), None, Some(to_extract)).clone_for_update();
+                make::let_stmt(ident_pat.into(), None, Some(to_extract_no_ref)).clone_for_update();
             let name_expr = make::expr_path(make::ext::ident_path(&var_name)).clone_for_update();
 
             match anchor {
@@ -221,6 +227,14 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             edit.rename();
         },
     )
+}
+
+fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
+    while let ast::Expr::ParenExpr(parens) = &expr {
+        let Some(expr_inside) = parens.expr() else { break };
+        expr = expr_inside;
+    }
+    expr
 }
 
 /// Check whether the node is a valid expression which can be extracted to a variable.
@@ -1545,6 +1559,36 @@ fn foo() {
     let mut $0bar = bar();
     bar.do_work();
 }"#,
+        );
+    }
+
+    #[test]
+    fn generates_no_ref_for_deref() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    let v = &mut &mut bar();
+    $0(**v)$0.do_work();
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    let v = &mut &mut bar();
+    let $0s = *v;
+    s.do_work();
+}
+"#,
         );
     }
 }
