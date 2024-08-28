@@ -3596,6 +3596,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_ty_utils",
+ "serde",
  "serde_json",
  "shlex",
  "time",
@@ -4012,6 +4013,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_type_ir",
+ "serde",
  "tempfile",
  "tracing",
 ]

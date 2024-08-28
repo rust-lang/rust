@@ -935,6 +935,14 @@ impl MetadataBlob {
 
         Ok(())
     }
+
+    pub(crate) fn dump_crate_features_json(&self) -> Vec<(String, FeatureStability)> {
+        let root = self.get_root();
+        root.lib_features
+            .decode(self)
+            .map(|(symbol, status)| (symbol.to_string(), status))
+            .collect()
+    }
 }
 
 impl CrateRoot {

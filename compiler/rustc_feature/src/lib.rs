@@ -132,6 +132,62 @@ pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u
     }
 }
 
+#[derive(serde::Serialize)]
+enum LangFeature {
+    Unstable {
+        status: &'static str,
+        symbol: String,
+        since: &'static str,
+        issue: Option<NonZero<u32>>,
+    },
+    Accepted {
+        symbol: String,
+        since: &'static str,
+        issue: Option<NonZero<u32>>,
+    },
+    Removed {
+        symbol: String,
+        since: &'static str,
+        issue: Option<NonZero<u32>>,
+        reason: Option<&'static str>,
+    },
+}
+
+#[derive(serde::Serialize)]
+pub struct LangFeaturesStatus {
+    lang_features: Vec<LangFeature>,
+}
+
+/// Extract the status of all lang features as a json serializable struct
+pub fn lang_features_status() -> LangFeaturesStatus {
+    let unstable_lang_features =
+        UNSTABLE_LANG_FEATURES.iter().map(|feature| LangFeature::Unstable {
+            status: Features::feature_status(feature.name),
+            symbol: feature.name.to_string(),
+            since: feature.since,
+            issue: feature.issue,
+        });
+
+    let accepted_lang_features =
+        ACCEPTED_LANG_FEATURES.iter().map(|feature| LangFeature::Accepted {
+            symbol: feature.name.to_string(),
+            since: feature.since,
+            issue: feature.issue,
+        });
+
+    let removed_lang_features = REMOVED_LANG_FEATURES.iter().map(|removed| LangFeature::Removed {
+        symbol: removed.feature.name.to_string(),
+        since: removed.feature.since,
+        issue: removed.feature.issue,
+        reason: removed.reason,
+    });
+
+    let lang_features =
+        unstable_lang_features.chain(accepted_lang_features).chain(removed_lang_features).collect();
+
+    LangFeaturesStatus { lang_features }
+}
+
 pub use accepted::ACCEPTED_LANG_FEATURES;
 pub use builtin_attrs::{
     AttributeDuplicates, AttributeGate, AttributeSafety, AttributeTemplate, AttributeType,

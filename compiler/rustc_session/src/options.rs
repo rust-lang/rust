@@ -1730,6 +1730,8 @@ options! {
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) \
         (default: no)"),
+    dump_features_status: bool = (false, parse_bool, [UNTRACKED],
+        "dump the status of rust language and library features as json"),
     dump_mir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:

@@ -21,10 +21,11 @@
 
 use std::cmp::max;
 use std::collections::BTreeMap;
+use std::error::Error;
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
-use std::io::{self, IsTerminal, Read, Write};
+use std::io::{self, BufWriter, IsTerminal, Read, Write, stdout};
 use std::panic::{self, PanicHookInfo, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -45,7 +46,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{
     ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult, markdown,
 };
-use rustc_feature::find_gated_cfg;
+use rustc_feature::{LangFeaturesStatus, find_gated_cfg};
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, Queries, interface, passes};
 use rustc_lint::unerased_lint_store;
@@ -374,6 +375,11 @@ fn run_compiler(
         }
 
         if print_crate_info(codegen_backend, sess, has_input) == Compilation::Stop {
+            return early_exit();
+        }
+
+        if sess.opts.unstable_opts.dump_features_status {
+            dump_features_status(sess, codegen_backend);
             return early_exit();
         }
 
@@ -1568,6 +1574,30 @@ fn report_ice(
     if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
         // Trigger a debugger if we crashed during bootstrap
         unsafe { windows::Win32::System::Diagnostics::Debug::DebugBreak() };
+    }
+}
+
+fn dump_features_status(sess: &Session, codegen_backend: &dyn CodegenBackend) {
+    #[derive(serde::Serialize)]
+    struct FeaturesStatus {
+        lang_features_status: LangFeaturesStatus,
+        lib_features_status: locator::LibFeaturesStatus,
+    }
+
+    let result: Result<(), Box<dyn Error>> = try {
+        let lang_features_status = rustc_feature::lang_features_status();
+        let lib_features_status =
+            rustc_metadata::lib_features_status(sess, &*codegen_backend.metadata_loader())?;
+        let value = FeaturesStatus { lang_features_status, lib_features_status };
+        let writer = stdout();
+        let writer = BufWriter::new(writer);
+        serde_json::to_writer_pretty(writer, &value)?;
+    };
+
+    // this happens before the global context and more importantly the diagnostic context is setup,
+    // so we can't report with the proper machinery
+    if let Err(error) = result {
+        panic!("cannot emit feature status json: {error}")
     }
 }
 

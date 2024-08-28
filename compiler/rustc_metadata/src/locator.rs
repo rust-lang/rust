@@ -213,6 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use std::borrow::Cow;
+use std::error::Error;
 use std::io::{Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -224,6 +225,7 @@ use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_fs_util::try_canonicalize;
+use rustc_middle::middle::lib_features::FeatureStability;
 use rustc_session::Session;
 use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
@@ -862,6 +864,88 @@ fn get_metadata_section<'p>(
             });
         }
     }
+}
+
+#[derive(serde::Serialize)]
+enum LibFeature {
+    Core { name: String, status: Status },
+    Std { name: String, status: Status },
+}
+
+#[derive(serde::Serialize)]
+enum Status {
+    AcceptedSince(String),
+    Unstable,
+}
+
+#[derive(serde::Serialize)]
+pub struct LibFeaturesStatus {
+    lib_features: Vec<LibFeature>,
+}
+
+pub fn lib_features_status(
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+) -> Result<LibFeaturesStatus, Box<dyn Error>> {
+    let is_rlib = true;
+    let hash = None;
+    let extra_filename = None;
+    let path_kind = PathKind::Crate;
+    let extra_prefix = "";
+
+    let mut core_locator = CrateLocator::new(
+        sess,
+        metadata_loader,
+        rustc_span::sym::core,
+        is_rlib,
+        hash,
+        extra_filename,
+        path_kind,
+    );
+    let Ok(Some(core)) = core_locator.find_library_crate(extra_prefix, &mut FxHashSet::default())
+    else {
+        Err("unable to locate core library")?
+    };
+    let mut std_locator = CrateLocator::new(
+        sess,
+        metadata_loader,
+        rustc_span::sym::std,
+        is_rlib,
+        hash,
+        extra_filename,
+        path_kind,
+    );
+    let Ok(Some(std)) = std_locator.find_library_crate(extra_prefix, &mut FxHashSet::default())
+    else {
+        Err("unable to locate standard library")?
+    };
+
+    let core_features =
+        core.metadata.dump_crate_features_json().into_iter().map(|(name, status)| {
+            LibFeature::Core {
+                name,
+                status: match status {
+                    FeatureStability::AcceptedSince(symbol) => {
+                        Status::AcceptedSince(symbol.to_string())
+                    }
+                    FeatureStability::Unstable => Status::Unstable,
+                },
+            }
+        });
+    let std_features =
+        std.metadata.dump_crate_features_json().into_iter().map(|(name, status)| LibFeature::Std {
+            name,
+            status: match status {
+                FeatureStability::AcceptedSince(symbol) => {
+                    Status::AcceptedSince(symbol.to_string())
+                }
+                FeatureStability::Unstable => Status::Unstable,
+            },
+        });
+
+    let lib_features = core_features.chain(std_features).collect();
+
+    Ok(LibFeaturesStatus { lib_features })
 }
 
 /// A diagnostic function for dumping crate metadata to an output stream.

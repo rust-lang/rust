@@ -5,6 +5,7 @@
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(error_iter)]
+#![feature(error_reporter)]
 #![feature(extract_if)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
@@ -35,6 +36,7 @@ pub mod locator;
 
 pub use creader::{DylibError, load_symbol_from_dylib};
 pub use fs::{METADATA_FILENAME, emit_wrapper_file};
+pub use locator::lib_features_status;
 pub use native_libs::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
     walk_native_lib_search_dirs,
