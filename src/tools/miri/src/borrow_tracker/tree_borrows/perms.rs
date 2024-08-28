@@ -288,18 +288,19 @@ impl Permission {
             (ReservedFrz { .. }, ReservedIM) => false,
             (ReservedFrz { .. }, _) => true,
             // Active can not be replaced by something surviving
-            // foreign reads and then remaining writable
+            // foreign reads and then remaining writable.
             (Active, ReservedIM) => false,
             (Active, ReservedFrz { .. }) => false,
+            // Replacing a state by itself is always okay, even if the child state is protected.
             (Active, Active) => true,
-            // Active can be replaced by Frozen, since it is not protected
+            // Active can be replaced by Frozen, since it is not protected.
             (Active, Frozen) => true,
             (Active, Disabled) => true,
-            // Frozen can only be replaced by Disabled
+            // Frozen can only be replaced by Disabled (and itself).
             (Frozen, Frozen) => true,
             (Frozen, Disabled) => true,
             (Frozen, _) => false,
-            // Disabled can not be replaced by anything else
+            // Disabled can not be replaced by anything else.
             (Disabled, Disabled) => true,
             (Disabled, _) => false,
         }

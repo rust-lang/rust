@@ -71,6 +71,12 @@ pub struct FrameState {
 
 impl VisitProvenance for FrameState {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
+        // Visit all protected tags. At least in Tree Borrows,
+        // protected tags can not be GC'd because they still have
+        // an access coming when the protector ends. Additionally,
+        // the tree compacting mechanism of TB's GC relies on the fact
+        // that all protected tags are marked as live for correctness,
+        // so we _have_ to visit them here.
         for (id, tag) in &self.protected_tags {
             visit(Some(*id), Some(*tag));
         }

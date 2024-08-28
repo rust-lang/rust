@@ -128,10 +128,10 @@ impl LocationState {
         Ok(transition)
     }
 
-    /// Like `perform_access`, but ignores the diagnostics, and also is pure.
-    /// As such, it returns `Some(x)` if the transition succeeded, or `None`
-    /// if there was an error.
-    #[allow(unused)]
+    /// Like `perform_access`, but ignores the concrete error cause and also uses state-passing
+    /// rather than a mutable reference. As such, it returns `Some(x)` if the transition succeeded,
+    /// or `None` if there was an error.
+    #[cfg(test)]
     fn perform_access_no_fluff(
         mut self,
         access_kind: AccessKind,
@@ -865,14 +865,18 @@ impl Tree {
         live: &FxHashSet<BorTag>,
     ) -> Option<UniIndex> {
         let node = self.nodes.get(idx).unwrap();
+
+        // We never want to replace the root node, as it is also kept in `root_ptr_tags`.
         if node.children.len() != 1 || live.contains(&node.tag) || node.parent.is_none() {
             return None;
         }
-        // Since protected nodes are never GC'd (see `borrow_tracker::GlobalStateInner::visit_provenance`),
+        // Since protected nodes are never GC'd (see `borrow_tracker::FrameExtra::visit_provenance`),
         // we know that `node` is not protected because otherwise `live` would
         // have contained `node.tag`.
         let child_idx = node.children[0];
         let child = self.nodes.get(child_idx).unwrap();
+        // Check that for that one child, `can_be_replaced_by_child` holds for the permission
+        // on all locations.
         for (_, data) in self.rperms.iter_all() {
             let parent_perm =
                 data.get(idx).map(|x| x.permission).unwrap_or_else(|| node.default_initial_perm);
@@ -893,7 +897,6 @@ impl Tree {
     /// should have no children, but this is not checked, so that nodes
     /// whose children were rotated somewhere else can be deleted without
     /// having to first modify them to clear that array.
-    /// otherwise (i.e. the GC should have marked it as removable).
     fn remove_useless_node(&mut self, this: UniIndex) {
         // Due to the API of UniMap we must make sure to call
         // `UniValMap::remove` for the key of this node on *all* maps that used it
@@ -950,17 +953,18 @@ impl Tree {
                 // Remove all useless children.
                 children_of_node.retain_mut(|idx| {
                     if self.is_useless(*idx, live) {
-                        // delete it everywhere else
+                        // Delete `idx` node everywhere else.
                         self.remove_useless_node(*idx);
-                        // and delete it from children_of_node
+                        // And delete it from children_of_node.
                         false
                     } else {
                         if let Some(nextchild) = self.can_be_replaced_by_single_child(*idx, live) {
-                            // delete the in-between child
+                            // `nextchild` is our grandchild, and will become our direct child.
+                            // Delete the in-between node, `idx`.
                             self.remove_useless_node(*idx);
-                            // set the new child's parent
+                            // Set the new child's parent.
                             self.nodes.get_mut(nextchild).unwrap().parent = Some(*tag);
-                            // save the new child in children_of_node
+                            // Save the new child in children_of_node.
                             *idx = nextchild;
                         }
                         // retain it
