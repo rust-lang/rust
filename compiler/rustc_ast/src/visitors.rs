@@ -1294,6 +1294,81 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_assoc_item<$($lt,)? V: $trait$(<$lt>)?>(
+            visitor: &mut V,
+            item: ref_t!(Item<AssocItemKind>),
+            ctxt: AssocCtxt
+        ) -> result!(V) {
+            let Item { attrs, id, span, vis, ident, kind, tokens } = item;
+            try_v!(visit_id!(visitor, id));
+            visit_list!(visitor, visit_attribute, flat_map_attribute, attrs);
+            try_v!(visitor.visit_vis(vis));
+            try_v!(visit_ident!(visitor, ident));
+            match kind {
+                AssocItemKind::Const(box ConstItem { defaultness, generics, ty, expr }) => {
+                    visit_defaultness!(visitor, defaultness);
+                    try_v!(visitor.visit_generics(generics));
+                    try_v!(visitor.visit_ty(ty));
+                    visit_o!(expr, |expr| visitor.visit_expr(expr));
+                }
+                AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
+                    visit_defaultness!(visitor, defaultness);
+                    let kind =
+                        FnKind::Fn(FnCtxt::Assoc(ctxt), *ident, sig, vis, generics, body);
+                    try_v!(visitor.visit_fn(kind, *span, *id));
+                }
+                AssocItemKind::Type(box TyAlias {
+                    defaultness,
+                    generics,
+                    where_clauses,
+                    bounds,
+                    ty,
+                }) => {
+                    visit_defaultness!(visitor, defaultness);
+                    try_v!(visitor.visit_generics(generics));
+                    visit_list!(visitor, visit_param_bound, bounds; BoundKind::Bound);
+                    visit_o!(ty, |ty| visitor.visit_ty(ty));
+                    walk_ty_alias_where_clauses!(visitor, where_clauses);
+                }
+                AssocItemKind::MacCall(mac) => {
+                    try_v!(visitor.visit_mac_call(mac));
+                }
+                AssocItemKind::Delegation(box Delegation {
+                    id,
+                    qself,
+                    path,
+                    rename,
+                    body,
+                    from_glob: _,
+                }) => {
+                    try_v!(visit_id!(visitor, id));
+                    try_v!(visitor.visit_qself(qself));
+                    try_v!(visitor.visit_path(path, *id));
+                    visit_o!(rename, |rename: &$($mut)? Ident| visit_ident!(visitor, rename));
+                    visit_o!(body, |body| visitor.visit_block(body));
+                }
+                AssocItemKind::DelegationMac(box DelegationMac {
+                    qself,
+                    prefix,
+                    suffixes,
+                    body,
+                }) => {
+                    try_v!(visitor.visit_qself(qself));
+                    try_v!(visitor.visit_path(prefix, *id));
+                    if let Some(suffixes) = suffixes {
+                        for (ident, rename) in suffixes {
+                            try_v!(visit_ident!(visitor, ident));
+                            visit_o!(rename, |rename: &$($mut)? Ident| visit_ident!(visitor, rename));
+                        }
+                    }
+                    visit_o!(body, |body| visitor.visit_block(body));
+                }
+            }
+            visit_lazy_tts!(visitor, tokens);
+            try_v!(visit_span!(visitor, span));
+            return_result!(V)
+        }
+
         derive_copy_clone!{
             #[derive(Debug)]
             pub enum FnKind<'a> {
@@ -1629,75 +1704,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    pub fn walk_assoc_item<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        item: &'a Item<AssocItemKind>,
-        ctxt: AssocCtxt,
-    ) -> V::Result {
-        let &Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _ } = item;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_vis(vis));
-        try_visit!(visitor.visit_ident(ident));
-        match kind {
-            AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
-                try_visit!(visitor.visit_generics(generics));
-                try_visit!(visitor.visit_ty(ty));
-                visit_opt!(visitor, visit_expr, expr);
-            }
-            AssocItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind =
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body);
-                try_visit!(visitor.visit_fn(kind, span, id));
-            }
-            AssocItemKind::Type(box TyAlias {
-                generics,
-                bounds,
-                ty,
-                defaultness: _,
-                where_clauses: _,
-            }) => {
-                try_visit!(visitor.visit_generics(generics));
-                walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
-                visit_opt!(visitor, visit_ty, ty);
-            }
-            AssocItemKind::MacCall(mac) => {
-                try_visit!(visitor.visit_mac_call(mac));
-            }
-            AssocItemKind::Delegation(box Delegation {
-                id,
-                qself,
-                path,
-                rename,
-                body,
-                from_glob: _,
-            }) => {
-                try_visit!(visitor.visit_qself(qself));
-                try_visit!(visitor.visit_path(path, *id));
-                visit_opt!(visitor, visit_ident, *rename);
-                visit_opt!(visitor, visit_block, body);
-            }
-            AssocItemKind::DelegationMac(box DelegationMac {
-                qself,
-                prefix,
-                suffixes,
-                body,
-            }) => {
-                try_visit!(visitor.visit_qself(qself));
-                try_visit!(visitor.visit_path(prefix, id));
-                if let Some(suffixes) = suffixes {
-                    for (ident, rename) in suffixes {
-                        visitor.visit_ident(*ident);
-                        if let Some(rename) = rename {
-                            visitor.visit_ident(*rename);
-                        }
-                    }
-                }
-                visit_opt!(visitor, visit_block, body);
-            }
-        }
-        V::Result::output()
-    }
-
     // FIXME: Remove this function. Use walk_variant_data
     pub fn walk_struct_def<'a, V: Visitor<'a>>(
         visitor: &mut V,
@@ -2025,11 +2031,6 @@ pub mod mut_visit {
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_bounds<T: MutVisitor>(vis: &mut T, bounds: &mut GenericBounds, ctxt: BoundKind) {
-        visit_vec(bounds, |bound| vis.visit_param_bound(bound, ctxt));
-    }
-
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
     fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
         match args {
             AttrArgs::Empty => {}
@@ -2292,16 +2293,6 @@ pub mod mut_visit {
         vis.visit_span(span_after);
     }
 
-    fn visit_const_item<T: MutVisitor>(
-        ConstItem { defaultness, generics, ty, expr }: &mut ConstItem,
-        visitor: &mut T,
-    ) {
-        visit_defaultness(visitor, defaultness);
-        visitor.visit_generics(generics);
-        visitor.visit_ty(ty);
-        visit_opt(expr, |expr| visitor.visit_expr(expr));
-    }
-
     fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
         let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
         visit_constness(vis, constness);
@@ -2323,79 +2314,6 @@ pub mod mut_visit {
         visit_lazy_tts(visitor, tokens);
         visitor.visit_span(span);
         smallvec![item]
-    }
-
-    pub fn walk_assoc_item(visitor: &mut impl MutVisitor, item: &mut Item<AssocItemKind>, ctxt: AssocCtxt) {
-        let Item { attrs, id, span, vis, ident, kind, tokens } = item;
-        visitor.visit_id(id);
-        visit_attrs(visitor, attrs);
-        visitor.visit_vis(vis);
-        visitor.visit_ident(ident);
-        match kind {
-            AssocItemKind::Const(item) => {
-                visit_const_item(item, visitor);
-            }
-            AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(visitor, defaultness);
-                let kind =
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), *ident, sig, vis, generics, body);
-                visitor.visit_fn(kind, *span, *id);
-            }
-            AssocItemKind::Type(box TyAlias {
-                defaultness,
-                generics,
-                where_clauses,
-                bounds,
-                ty,
-            }) => {
-                visit_defaultness(visitor, defaultness);
-                visitor.visit_generics(generics);
-                visit_bounds(visitor, bounds, BoundKind::Bound);
-                visit_opt(ty, |ty| visitor.visit_ty(ty));
-                walk_ty_alias_where_clauses(visitor, where_clauses);
-            }
-            AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-            AssocItemKind::Delegation(box Delegation {
-                id,
-                qself,
-                path,
-                rename,
-                body,
-                from_glob: _,
-            }) => {
-                visitor.visit_id(id);
-                visitor.visit_qself(qself);
-                visitor.visit_path(path, *id);
-                if let Some(rename) = rename {
-                    visitor.visit_ident(rename);
-                }
-                if let Some(body) = body {
-                    visitor.visit_block(body);
-                }
-            }
-            AssocItemKind::DelegationMac(box DelegationMac {
-                qself,
-                prefix,
-                suffixes,
-                body,
-            }) => {
-                visitor.visit_qself(qself);
-                visitor.visit_path(prefix, *id);
-                if let Some(suffixes) = suffixes {
-                    for (ident, rename) in suffixes {
-                        visitor.visit_ident(ident);
-                        if let Some(rename) = rename {
-                            visitor.visit_ident(rename);
-                        }
-                    }
-                }
-                if let Some(body) = body {
-                    visitor.visit_block(body);
-                }
-            }
-        }
-        visit_lazy_tts(visitor, tokens);
-        visitor.visit_span(span);
     }
 
     pub fn walk_flat_map_assoc_item(
