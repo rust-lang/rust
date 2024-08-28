@@ -2888,8 +2888,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
-        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
+        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN`
+        /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2927,8 +2927,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
-        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
+        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN` and
+        /// `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -2942,6 +2942,11 @@ macro_rules! int_impl {
         /// assert_eq!((-a).rem_euclid(b), 1);
         /// assert_eq!(a.rem_euclid(-b), 3);
         /// assert_eq!((-a).rem_euclid(-b), 1);
+        /// ```
+        ///
+        /// This will panic:
+        /// ```should_panic
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.rem_euclid(-1);")]
         /// ```
         #[doc(alias = "modulo", alias = "mod")]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
@@ -2971,8 +2976,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
-        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
+        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN`
+        /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///
@@ -3007,8 +3012,8 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is -1 and `rhs` is
-        /// `Self::MIN`. This behavior is not affected by the `overflow-checks` flag.
+        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN`
+        /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
         ///

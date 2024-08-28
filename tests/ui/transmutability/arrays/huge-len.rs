@@ -1,11 +1,11 @@
 #![crate_type = "lib"]
 #![feature(transmutability)]
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src>,
+        Dst: TransmuteFrom<Src>,
     {
     }
 }

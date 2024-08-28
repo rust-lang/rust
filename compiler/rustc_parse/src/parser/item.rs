@@ -51,7 +51,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
-    /// We exit once we hit `term`
+    /// We exit once we hit `term` which can be either
+    /// - EOF (for files)
+    /// - `}` for mod items
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,

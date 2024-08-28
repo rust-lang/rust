@@ -512,7 +512,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self.tcx.offset_of_subfield(self.param_env, layout, fields.iter()).bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
-            UbChecks => ImmTy::from_bool(self.tcx.sess.ub_checks(), *self.tcx),
+            UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),
         })
     }
 }

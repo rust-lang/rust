@@ -517,6 +517,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::no_mangle,
             sym::naked,
             sym::instruction_set,
+            sym::repr,
             // code generation
             sym::cold,
             sym::target_feature,

@@ -70,8 +70,8 @@ LL |         unsafe { extend_hrtb(src) }
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
   --> $DIR/reject_lifetime_extension.rs:85:25
    |
-LL |         for<'b> &'b u8: BikeshedIntrinsicFrom<&'a u8>,
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         for<'b> &'b u8: TransmuteFrom<&'a u8>,
+   |                         ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 
