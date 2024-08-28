@@ -457,6 +457,10 @@ fn get_tactics(item_vec: &[ListItem], output: &str, shape: Shape) -> DefinitiveL
 
 impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         // FIXME: dead spans?
         let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
@@ -465,7 +469,7 @@ impl Rewrite for ast::WherePredicate {
                 ref bounds,
                 ..
             }) => {
-                let type_str = bounded_ty.rewrite(context, shape)?;
+                let type_str = bounded_ty.rewrite_result(context, shape)?;
                 let colon = type_bound_colon(context).trim_end();
                 let lhs = if let Some(binder_str) =
                     rewrite_bound_params(context, shape, bound_generic_params)
@@ -475,25 +479,26 @@ impl Rewrite for ast::WherePredicate {
                     format!("{type_str}{colon}")
                 };
 
-                rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape).ok()?
+                rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,
                 span,
-            }) => rewrite_bounded_lifetime(lifetime, bounds, span, context, shape).ok()?,
+            }) => rewrite_bounded_lifetime(lifetime, bounds, span, context, shape)?,
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
                 ..
             }) => {
-                let lhs_ty_str = lhs_ty.rewrite(context, shape).map(|lhs| lhs + " =")?;
-                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)
-                    .ok()?
+                let lhs_ty_str = lhs_ty
+                    .rewrite_result(context, shape)
+                    .map(|lhs| lhs + " =")?;
+                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
             }
         };
 
-        Some(result)
+        Ok(result)
     }
 }
 

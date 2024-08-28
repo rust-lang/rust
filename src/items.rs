@@ -840,7 +840,8 @@ pub(crate) fn format_impl(
         where_span_end,
         self_ty.span.hi(),
         option,
-    )?;
+    )
+    .ok()?;
 
     // If there is no where-clause, we may have missing comments between the trait name and
     // the opening brace.
@@ -1231,7 +1232,8 @@ pub(crate) fn format_trait(
             None,
             pos_before_where,
             option,
-        )?;
+        )
+        .ok()?;
         // If the where-clause cannot fit on the same line,
         // put the where-clause on a new line
         if !where_clause_str.contains('\n')
@@ -1336,7 +1338,11 @@ pub(crate) struct TraitAliasBounds<'a> {
 
 impl<'a> Rewrite for TraitAliasBounds<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        let generic_bounds_str = self.generic_bounds.rewrite(context, shape)?;
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        let generic_bounds_str = self.generic_bounds.rewrite_result(context, shape)?;
 
         let mut option = WhereClauseOption::new(true, WhereClauseSpace::None);
         option.allow_single_line();
@@ -1365,7 +1371,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
             shape.indent.to_string_with_newline(context.config)
         };
 
-        Some(format!("{generic_bounds_str}{space}{where_str}"))
+        Ok(format!("{generic_bounds_str}{space}{where_str}"))
     }
 }
 
@@ -1623,7 +1629,8 @@ fn format_tuple_struct(
                 None,
                 body_hi,
                 option,
-            )?
+            )
+            .ok()?
         }
         None => "".to_owned(),
     };
@@ -1792,7 +1799,8 @@ fn rewrite_ty<R: Rewrite>(
         None,
         generics.span.hi(),
         option,
-    )?;
+    )
+    .ok()?;
     result.push_str(&where_clause_str);
 
     if let Some(ty) = rhs {
@@ -2663,7 +2671,8 @@ fn rewrite_fn_base(
         Some(span.hi()),
         pos_before_where,
         option,
-    )?;
+    )
+    .ok()?;
     // If there are neither where-clause nor return type, we may be missing comments between
     // params and `{`.
     if where_clause_str.is_empty() {
@@ -2939,7 +2948,7 @@ fn rewrite_where_clause_rfc_style(
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
-) -> Option<String> {
+) -> RewriteResult {
     let (where_keyword, allow_single_line) = rewrite_where_keyword(
         context,
         predicates,
@@ -2953,8 +2962,9 @@ fn rewrite_where_clause_rfc_style(
     let clause_shape = shape
         .block()
         .with_max_width(context.config)
-        .block_left(context.config.tab_spaces())?
-        .sub_width(1)?;
+        .block_left(context.config.tab_spaces())
+        .and_then(|s| s.sub_width(1))
+        .max_width_error(shape.width, where_span)?;
     let force_single_line = context.config.where_single_line()
         && predicates.len() == 1
         && !where_clause_option.veto_single_line;
@@ -2979,7 +2989,7 @@ fn rewrite_where_clause_rfc_style(
             clause_shape.indent.to_string_with_newline(context.config)
         };
 
-    Some(format!("{where_keyword}{clause_sep}{preds_str}"))
+    Ok(format!("{where_keyword}{clause_sep}{preds_str}"))
 }
 
 /// Rewrite `where` and comment around it.
@@ -2990,12 +3000,13 @@ fn rewrite_where_keyword(
     shape: Shape,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
-) -> Option<(String, bool)> {
+) -> Result<(String, bool), RewriteError> {
     let block_shape = shape.block().with_max_width(context.config);
     // 1 = `,`
     let clause_shape = block_shape
-        .block_left(context.config.tab_spaces())?
-        .sub_width(1)?;
+        .block_left(context.config.tab_spaces())
+        .and_then(|s| s.sub_width(1))
+        .max_width_error(block_shape.width, where_span)?;
 
     let comment_separator = |comment: &str, shape: Shape| {
         if comment.is_empty() {
@@ -3026,7 +3037,7 @@ fn rewrite_where_keyword(
         && comment_before.is_empty()
         && comment_after.is_empty();
 
-    Some((result, allow_single_line))
+    Ok((result, allow_single_line))
 }
 
 /// Rewrite bounds on a where clause.
@@ -3038,7 +3049,7 @@ fn rewrite_bounds_on_where_clause(
     span_end: Option<BytePos>,
     where_clause_option: WhereClauseOption,
     force_single_line: bool,
-) -> Option<String> {
+) -> RewriteResult {
     let span_start = predicates[0].span().lo();
     // If we don't have the start of the next span, then use the end of the
     // predicates, but that means we miss comments.
@@ -3077,7 +3088,7 @@ fn rewrite_bounds_on_where_clause(
         .tactic(shape_tactic)
         .trailing_separator(comma_tactic)
         .preserve_newline(preserve_newline);
-    write_list(&items.collect::<Vec<_>>(), &fmt).ok()
+    write_list(&items.collect::<Vec<_>>(), &fmt)
 }
 
 fn rewrite_where_clause(
@@ -3091,9 +3102,9 @@ fn rewrite_where_clause(
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
     where_clause_option: WhereClauseOption,
-) -> Option<String> {
+) -> RewriteResult {
     if predicates.is_empty() {
-        return Some(String::new());
+        return Ok(String::new());
     }
 
     if context.config.indent_style() == IndentStyle::Block {
@@ -3153,7 +3164,7 @@ fn rewrite_where_clause(
         .trailing_separator(comma_tactic)
         .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
         .preserve_newline(true);
-    let preds_str = write_list(&item_vec, &fmt).ok()?;
+    let preds_str = write_list(&item_vec, &fmt)?;
 
     let end_length = if terminator == "{" {
         // If the brace is on the next line we don't need to count it otherwise it needs two
@@ -3171,13 +3182,13 @@ fn rewrite_where_clause(
         || preds_str.contains('\n')
         || shape.indent.width() + " where ".len() + preds_str.len() + end_length > shape.width
     {
-        Some(format!(
+        Ok(format!(
             "\n{}where {}",
             (shape.indent + extra_indent).to_string(context.config),
             preds_str
         ))
     } else {
-        Some(format!(" where {preds_str}"))
+        Ok(format!(" where {preds_str}"))
     }
 }
 
@@ -3198,15 +3209,14 @@ fn rewrite_comments_before_after_where(
     span_before_where: Span,
     span_after_where: Span,
     shape: Shape,
-) -> Option<(String, String)> {
-    let before_comment = rewrite_missing_comment(span_before_where, shape, context).ok()?;
+) -> Result<(String, String), RewriteError> {
+    let before_comment = rewrite_missing_comment(span_before_where, shape, context)?;
     let after_comment = rewrite_missing_comment(
         span_after_where,
         shape.block_indent(context.config.tab_spaces()),
         context,
-    )
-    .ok()?;
-    Some((before_comment, after_comment))
+    )?;
+    Ok((before_comment, after_comment))
 }
 
 fn format_header(
@@ -3288,7 +3298,8 @@ fn format_generics(
             Some(span.hi()),
             span_end_before_where,
             option,
-        )?;
+        )
+        .ok()?;
         result.push_str(&where_clause_str);
         (
             brace_pos == BracePos::ForceSameLine || brace_style == BraceStyle::PreferSameLine,
