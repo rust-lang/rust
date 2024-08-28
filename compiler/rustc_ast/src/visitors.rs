@@ -1704,14 +1704,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    // FIXME: Remove this function. Use walk_variant_data
-    pub fn walk_struct_def<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        struct_definition: &'a VariantData,
-    ) -> V::Result {
-        walk_variant_data(visitor, struct_definition)
-    }
-
     pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
         let Stmt { id: _, kind, span: _ } = statement;
         match kind {
