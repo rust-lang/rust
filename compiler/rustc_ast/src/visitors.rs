@@ -1810,7 +1810,14 @@ pub mod mut_visit {
     }
 
     pub trait WalkItemKind {
-        fn walk(&mut self, span: Span, id: NodeId, visitor: &mut impl MutVisitor);
+        fn walk(
+            &mut self,
+            id: NodeId,
+            span: Span,
+            vis: &mut Visibility,
+            ident: &mut Ident,
+            visitor: &mut impl MutVisitor
+        );
     }
 
     make_ast_visitor!(MutVisitor, mut);
@@ -2297,48 +2304,46 @@ pub mod mut_visit {
         }
     }
 
-    pub fn walk_item_kind(
-        kind: &mut impl WalkItemKind,
-        span: Span,
-        id: NodeId,
-        vis: &mut impl MutVisitor,
-    ) {
-        kind.walk(span, id, vis)
-    }
-
     impl WalkItemKind for ItemKind {
-        fn walk(&mut self, span: Span, id: NodeId, vis: &mut impl MutVisitor) {
+        fn walk(
+            &mut self,
+            id: NodeId,
+            span: Span,
+            _vis: &mut Visibility,
+            _ident: &mut Ident,
+            visitor: &mut impl MutVisitor
+        ) {
             match self {
                 ItemKind::ExternCrate(_orig_name) => {}
-                ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree, id, false),
+                ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, id, false),
                 ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
-                    vis.visit_ty(ty);
-                    visit_opt(expr, |expr| vis.visit_expr(expr));
+                    visitor.visit_ty(ty);
+                    visit_opt(expr, |expr| visitor.visit_expr(expr));
                 }
                 ItemKind::Const(item) => {
-                    visit_const_item(item, vis);
+                    visit_const_item(item, visitor);
                 }
                 ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                    visit_defaultness(vis, defaultness);
-                    vis.visit_fn(FnKind::Fn(sig, generics, body), span, id);
+                    visit_defaultness(visitor, defaultness);
+                    visitor.visit_fn(FnKind::Fn(sig, generics, body), span, id);
                 }
                 ItemKind::Mod(safety, mod_kind) => {
-                    visit_safety(vis, safety);
+                    visit_safety(visitor, safety);
                     match mod_kind {
                         ModKind::Loaded(
                             items,
                             _inline,
                             ModSpans { inner_span, inject_use_span },
                         ) => {
-                            items.flat_map_in_place(|item| vis.flat_map_item(item));
-                            vis.visit_span(inner_span);
-                            vis.visit_span(inject_use_span);
+                            items.flat_map_in_place(|item| visitor.flat_map_item(item));
+                            visitor.visit_span(inner_span);
+                            visitor.visit_span(inject_use_span);
                         }
                         ModKind::Unloaded => {}
                     }
                 }
-                ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
-                ItemKind::GlobalAsm(asm) => vis.visit_inline_asm(asm),
+                ItemKind::ForeignMod(nm) => visitor.visit_foreign_mod(nm),
+                ItemKind::GlobalAsm(asm) => visitor.visit_inline_asm(asm),
                 ItemKind::TyAlias(box TyAlias {
                     defaultness,
                     generics,
@@ -2346,20 +2351,20 @@ pub mod mut_visit {
                     bounds,
                     ty,
                 }) => {
-                    visit_defaultness(vis, defaultness);
-                    vis.visit_generics(generics);
-                    visit_bounds(vis, bounds, BoundKind::Bound);
-                    visit_opt(ty, |ty| vis.visit_ty(ty));
-                    walk_ty_alias_where_clauses(vis, where_clauses);
+                    visit_defaultness(visitor, defaultness);
+                    visitor.visit_generics(generics);
+                    visit_bounds(visitor, bounds, BoundKind::Bound);
+                    visit_opt(ty, |ty| visitor.visit_ty(ty));
+                    walk_ty_alias_where_clauses(visitor, where_clauses);
                 }
                 ItemKind::Enum(enum_def, generics) => {
-                    vis.visit_generics(generics);
-                    vis.visit_enum_def(enum_def);
+                    visitor.visit_generics(generics);
+                    visitor.visit_enum_def(enum_def);
                 }
                 ItemKind::Struct(variant_data, generics)
                 | ItemKind::Union(variant_data, generics) => {
-                    vis.visit_generics(generics);
-                    vis.visit_variant_data(variant_data);
+                    visitor.visit_generics(generics);
+                    visitor.visit_variant_data(variant_data);
                 }
                 ItemKind::Impl(box Impl {
                     defaultness,
@@ -2371,27 +2376,27 @@ pub mod mut_visit {
                     self_ty,
                     items,
                 }) => {
-                    visit_defaultness(vis, defaultness);
-                    visit_safety(vis, safety);
-                    vis.visit_generics(generics);
-                    visit_constness(vis, constness);
-                    visit_polarity(vis, polarity);
-                    visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
-                    vis.visit_ty(self_ty);
-                    items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Impl));
+                    visit_defaultness(visitor, defaultness);
+                    visit_safety(visitor, safety);
+                    visitor.visit_generics(generics);
+                    visit_constness(visitor, constness);
+                    visit_polarity(visitor, polarity);
+                    visit_opt(of_trait, |trait_ref| visitor.visit_trait_ref(trait_ref));
+                    visitor.visit_ty(self_ty);
+                    items.flat_map_in_place(|item| visitor.flat_map_assoc_item(item, AssocCtxt::Impl));
                 }
                 ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
-                    visit_safety(vis, safety);
-                    vis.visit_generics(generics);
-                    visit_bounds(vis, bounds, BoundKind::Bound);
-                    items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Trait));
+                    visit_safety(visitor, safety);
+                    visitor.visit_generics(generics);
+                    visit_bounds(visitor, bounds, BoundKind::Bound);
+                    items.flat_map_in_place(|item| visitor.flat_map_assoc_item(item, AssocCtxt::Trait));
                 }
                 ItemKind::TraitAlias(generics, bounds) => {
-                    vis.visit_generics(generics);
-                    visit_bounds(vis, bounds, BoundKind::Bound);
+                    visitor.visit_generics(generics);
+                    visit_bounds(visitor, bounds, BoundKind::Bound);
                 }
-                ItemKind::MacCall(m) => vis.visit_mac_call(m),
-                ItemKind::MacroDef(def) => vis.visit_macro_def(def),
+                ItemKind::MacCall(m) => visitor.visit_mac_call(m),
+                ItemKind::MacroDef(def) => visitor.visit_macro_def(def),
                 ItemKind::Delegation(box Delegation {
                     id,
                     qself,
@@ -2400,29 +2405,29 @@ pub mod mut_visit {
                     body,
                     from_glob: _,
                 }) => {
-                    vis.visit_id(id);
-                    vis.visit_qself(qself);
-                    vis.visit_path(path, *id);
+                    visitor.visit_id(id);
+                    visitor.visit_qself(qself);
+                    visitor.visit_path(path, *id);
                     if let Some(rename) = rename {
-                        vis.visit_ident(rename);
+                        visitor.visit_ident(rename);
                     }
                     if let Some(body) = body {
-                        vis.visit_block(body);
+                        visitor.visit_block(body);
                     }
                 }
                 ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
-                    vis.visit_qself(qself);
-                    vis.visit_path(prefix, id);
+                    visitor.visit_qself(qself);
+                    visitor.visit_path(prefix, id);
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
-                            vis.visit_ident(ident);
+                            visitor.visit_ident(ident);
                             if let Some(rename) = rename {
-                                vis.visit_ident(rename);
+                                visitor.visit_ident(rename);
                             }
                         }
                     }
                     if let Some(body) = body {
-                        vis.visit_block(body);
+                        visitor.visit_block(body);
                     }
                 }
             }
@@ -2430,7 +2435,14 @@ pub mod mut_visit {
     }
 
     impl WalkItemKind for AssocItemKind {
-        fn walk(&mut self, span: Span, id: NodeId, visitor: &mut impl MutVisitor) {
+        fn walk(
+            &mut self,
+            id: NodeId,
+            span: Span,
+            _vis: &mut Visibility,
+            _ident: &mut Ident,
+            visitor: &mut impl MutVisitor
+        ) {
             match self {
                 AssocItemKind::Const(item) => {
                     visit_const_item(item, visitor);
@@ -2522,14 +2534,20 @@ pub mod mut_visit {
         visit_attrs(visitor, attrs);
         visitor.visit_vis(vis);
         visitor.visit_ident(ident);
-        kind.walk(*span, *id, visitor);
+        kind.walk(*id, *span,  vis, ident, visitor);
         visit_lazy_tts(visitor, tokens);
         visitor.visit_span(span);
         smallvec![item]
     }
 
     impl WalkItemKind for ForeignItemKind {
-        fn walk(&mut self, span: Span, id: NodeId, visitor: &mut impl MutVisitor) {
+        fn walk(
+            &mut self,
+            id: NodeId,
+            span: Span,
+            _vis: &mut Visibility,
+            _ident: &mut Ident,
+            visitor: &mut impl MutVisitor) {
             match self {
                 ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                     visitor.visit_ty(ty);
