@@ -1341,6 +1341,27 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        // TODO: Maybe add visit_attr_args
+        pub fn walk_attr_args<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            args: ref_t!(AttrArgs)
+        ) -> result!(V) {
+            match args {
+                AttrArgs::Empty => {}
+                AttrArgs::Delimited(args) => {
+                    visit_delim_args!(vis, args);
+                }
+                AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
+                    try_v!(vis.visit_expr(expr));
+                    try_v!(visit_span!(vis, eq_span));
+                }
+                AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
+                    unreachable!("in literal form when visiting mac args eq: {:?}", lit)
+                }
+            }
+            return_result!(V)
+        }
+
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<impl WalkItemKind>),
@@ -1931,18 +1952,6 @@ pub mod visit {
         }
         V::Result::output()
     }
-
-    pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -> V::Result {
-        match args {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(_args) => {}
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Ast(expr)) => try_visit!(visitor.visit_expr(expr)),
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when walking mac args eq: {:?}", lit)
-            }
-        }
-        V::Result::output()
-    }
 }
 
 pub mod mut_visit {
@@ -2045,20 +2054,6 @@ pub mod mut_visit {
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
     fn visit_thin_exprs<T: MutVisitor>(vis: &mut T, exprs: &mut ThinVec<P<Expr>>) {
         exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
-    }
-
-    fn walk_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
-        match args {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(args) => visit_delim_args(vis, args),
-            AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => {
-                vis.visit_expr(expr);
-                vis.visit_span(eq_span);
-            }
-            AttrArgs::Eq(_eq_span, AttrArgsEq::Hir(lit)) => {
-                unreachable!("in literal form when visiting mac args eq: {:?}", lit)
-            }
-        }
     }
 
     // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
