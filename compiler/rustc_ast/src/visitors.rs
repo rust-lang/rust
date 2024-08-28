@@ -6,9 +6,6 @@ macro_rules! mutability_dependent {
         fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
             Self::Result::output()
         }
-        fn visit_assoc_item(&mut self, i: &'ast AssocItem, ctxt: AssocCtxt) -> Self::Result {
-            walk_assoc_item(self, i, ctxt)
-        }
         fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
             Self::Result::output()
         }
@@ -333,6 +330,10 @@ macro_rules! make_ast_visitor {
 
             fn visit_param_bound(&mut self, tpb: ref_t!(GenericBound), _ctxt: BoundKind) -> result!() {
                 walk_param_bound(self, tpb)
+            }
+
+            fn visit_assoc_item(&mut self, i: ref_t!(AssocItem), ctxt: AssocCtxt) -> result!() {
+                walk_assoc_item(self, i, ctxt)
             }
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
@@ -2297,11 +2298,11 @@ pub mod mut_visit {
     }
 
     pub fn walk_flat_map_assoc_item(
-        visitor: &mut impl MutVisitor,
+        vis: &mut impl MutVisitor,
         mut item: P<Item<AssocItemKind>>,
         ctxt: AssocCtxt
     ) -> SmallVec<[P<Item<AssocItemKind>>; 1]> {
-        walk_assoc_item(visitor, item.deref_mut(), ctxt);
+        vis.visit_assoc_item(item.deref_mut(), ctxt);
         smallvec![item]
     }
 
