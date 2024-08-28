@@ -305,6 +305,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Item, visit_item, walk_item}
             make_visit!{ForeignItem, visit_foreign_item, walk_item}
             make_visit!{FnHeader, visit_fn_header, walk_fn_header}
+            make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
@@ -336,11 +337,6 @@ macro_rules! make_ast_visitor {
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
                 self.visit_anon_const(discr)
-            }
-
-            // TODO: Ask if this Option<> is intentional
-            fn visit_qself(&mut self, qs: ref_t!(Option<P<QSelf>>)) -> result!() {
-                walk_qself(self, qs)
             }
 
             // FIXME: for some reason the immutable version doesn't receive a reference
