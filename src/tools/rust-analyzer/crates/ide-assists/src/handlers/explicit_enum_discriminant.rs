@@ -100,6 +100,8 @@ enum TheEnum$0 {
     Bar,
     Baz = 42,
     Quux,
+    FooBar = -5,
+    FooBaz,
 }
 "#,
             r#"
@@ -108,6 +110,8 @@ enum TheEnum {
     Bar = 1,
     Baz = 42,
     Quux = 43,
+    FooBar = -5,
+    FooBaz = -4,
 }
 "#,
         );
