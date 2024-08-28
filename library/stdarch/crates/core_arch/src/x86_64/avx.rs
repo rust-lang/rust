@@ -13,7 +13,7 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
-use crate::{core_arch::x86::*, intrinsics::simd::*, mem::transmute};
+use crate::{core_arch::x86::*, mem::transmute};
 
 /// Copies `a` to result, and insert the 64-bit integer `i` into result
 /// at the location specified by `index`.

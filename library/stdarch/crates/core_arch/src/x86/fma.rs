@@ -19,7 +19,7 @@
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
 use crate::core_arch::x86::*;
-use crate::intrinsics::simd::{simd_fma, simd_insert, simd_neg};
+use crate::intrinsics::simd::{simd_fma, simd_neg};
 use crate::intrinsics::{fmaf32, fmaf64};
 
 #[cfg(test)]

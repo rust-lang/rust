@@ -1,6 +1,6 @@
 //! `x86_64`'s Streaming SIMD Extensions 2 (SSE2)
 
-use crate::{core_arch::x86::*, intrinsics::simd::*};
+use crate::core_arch::x86::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
