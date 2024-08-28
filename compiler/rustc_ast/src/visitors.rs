@@ -1182,6 +1182,17 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        pub trait WalkItemKind: Sized {
+            fn walk<$($lt,)? V: $trait$(<$lt>)?>(
+                &$($lt)? $($mut)? self,
+                id: NodeId,
+                span: Span,
+                vis: ref_t!(Visibility),
+                ident: ref_t!(Ident),
+                visitor: &mut V,
+            ) -> result!(V);
+        }
+
         make_walk_flat_map!{Arm, walk_flat_map_arm, visit_arm}
         make_walk_flat_map!{Attribute, walk_flat_map_attribute, visit_attribute}
         make_walk_flat_map!{ExprField, walk_flat_map_expr_field, visit_expr_field}
@@ -1299,17 +1310,6 @@ pub mod visit {
         Bound,
         /// Appears as a generic argument.
         GenericArg,
-    }
-
-    pub trait WalkItemKind: Sized {
-        fn walk<'a, V: Visitor<'a>>(
-            &'a self,
-            id: NodeId,
-            span: Span,
-            vis: &'a Visibility,
-            ident: &'a Ident,
-            visitor: &mut V,
-        ) -> V::Result;
     }
 
     make_ast_visitor!(Visitor<'ast>);
@@ -1875,17 +1875,6 @@ pub mod mut_visit {
         }
     }
 
-    pub trait WalkItemKind {
-        fn walk(
-            &mut self,
-            id: NodeId,
-            span: Span,
-            vis: &mut Visibility,
-            ident: &mut Ident,
-            visitor: &mut impl MutVisitor
-        );
-    }
-
     make_ast_visitor!(MutVisitor, mut);
 
     /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
@@ -2284,13 +2273,13 @@ pub mod mut_visit {
     }
 
     impl WalkItemKind for ItemKind {
-        fn walk(
+        fn walk<V: MutVisitor>(
             &mut self,
             id: NodeId,
             span: Span,
             vis: &mut Visibility,
             ident: &mut Ident,
-            visitor: &mut impl MutVisitor
+            visitor: &mut V
         ) {
             match self {
                 ItemKind::ExternCrate(_orig_name) => {}
@@ -2532,13 +2521,14 @@ pub mod mut_visit {
 
 
     impl WalkItemKind for ForeignItemKind {
-        fn walk(
+        fn walk<V: MutVisitor>(
             &mut self,
             id: NodeId,
             span: Span,
             vis: &mut Visibility,
             ident: &mut Ident,
-            visitor: &mut impl MutVisitor) {
+            visitor: &mut V
+        ) {
             match self {
                 ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
                     visitor.visit_ty(ty);
