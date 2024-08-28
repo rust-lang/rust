@@ -687,6 +687,54 @@ impl<T, A: Allocator> Rc<T, A> {
         }
     }
 
+    /// TODO: document
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn new_cyclic_in<F>(data_fn: F, alloc: A) -> Rc<T, A>
+    where
+        F: FnOnce(&Weak<T, A>) -> T,
+    {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let uninit_ptr: NonNull<_> = Box::leak(
+            Box::new_in(RcBox {
+                strong: Cell::new(0),
+                weak: Cell::new(1),
+                value: mem::MaybeUninit::<T>::uninit(),
+            }),
+            alloc,
+        )
+        .into();
+
+        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr, alloc: Global };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        let strong = unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(ptr::addr_of_mut!((*inner).value), data);
+
+            let prev_value = (*inner).strong.get();
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            (*inner).strong.set(1);
+
+            Rc::from_inner(init_ptr)
+        };
+
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
+        mem::forget(weak);
+        strong
+    }
+
     /// Constructs a new `Rc` with uninitialized contents in the provided allocator.
     ///
     /// # Examples
@@ -1662,7 +1710,11 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        if Rc::is_unique(this) { unsafe { Some(Rc::get_mut_unchecked(this)) } } else { None }
+        if Rc::is_unique(this) {
+            unsafe { Some(Rc::get_mut_unchecked(this)) }
+        } else {
+            None
+        }
     }
 
     /// Returns a mutable reference into the given `Rc`,
@@ -3239,7 +3291,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong() } else { 0 }
+        if let Some(inner) = self.inner() {
+            inner.strong()
+        } else {
+            0
+        }
     }
 
     /// Gets the number of `Weak` pointers pointing to this allocation.
