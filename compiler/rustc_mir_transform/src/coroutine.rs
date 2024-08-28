@@ -1182,12 +1182,10 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 source_info,
                 kind: TerminatorKind::Drop { place, target, unwind, replace: _ },
             } => {
-                if let Some(local) = place.as_local() {
-                    if local == SELF_ARG {
-                        (target, unwind, source_info)
-                    } else {
-                        continue;
-                    }
+                if let Some(local) = place.as_local()
+                    && local == SELF_ARG
+                {
+                    (target, unwind, source_info)
                 } else {
                     continue;
                 }
