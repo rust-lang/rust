@@ -432,7 +432,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
-        let ty = deref_target_place.ty(self.body, tcx).ty;
+        let ty = deref_target_place.ty(&self.body.local_decls, tcx).ty;
         let upvar_field = self
             .prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
@@ -567,7 +567,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
                 self.add_borrow_suggestions(err, span);
                 if binds_to.is_empty() {
-                    let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
+                    let place_ty = move_from.ty(&self.body.local_decls, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{desc}`"),
                         None => "value".to_string(),
@@ -599,7 +599,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let use_span = use_spans.var_or_use();
-                let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
+                let place_ty = original_path.ty(&self.body.local_decls, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
@@ -757,7 +757,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
     /// references to the struct's fields since doing so would be undefined behaviour
     fn add_note_for_packed_struct_derive(&self, err: &mut Diag<'_>, local: Local) {
         let local_place: PlaceRef<'tcx> = local.into();
-        let local_ty = local_place.ty(self.body.local_decls(), self.infcx.tcx).ty.peel_refs();
+        let local_ty = local_place.ty(&self.body.local_decls, self.infcx.tcx).ty.peel_refs();
 
         if let Some(adt) = local_ty.ty_adt_def()
             && adt.repr().packed()

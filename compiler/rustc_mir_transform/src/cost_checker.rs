@@ -118,7 +118,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         match &terminator.kind {
             TerminatorKind::Drop { place, unwind, .. } => {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
-                let ty = self.instantiate_ty(place.ty(self.callee_body, self.tcx).ty);
+                let ty = self.instantiate_ty(place.ty(&self.callee_body.local_decls, self.tcx).ty);
                 if ty.needs_drop(self.tcx, self.param_env) {
                     self.penalty += CALL_PENALTY;
                     if let UnwindAction::Cleanup(_) = unwind {

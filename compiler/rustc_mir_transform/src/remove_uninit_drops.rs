@@ -48,7 +48,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
                 param_env,
                 maybe_inits,
                 &move_data,
-                place.ty(body, tcx).ty,
+                place.ty(&body.local_decls, tcx).ty,
                 mpi,
             );
             if !should_keep {

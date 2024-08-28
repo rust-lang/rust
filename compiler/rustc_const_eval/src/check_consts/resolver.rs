@@ -53,7 +53,7 @@ where
 
         if !value {
             for (base, _elem) in place.iter_projections() {
-                let base_ty = base.ty(self.ccx.body, self.ccx.tcx);
+                let base_ty = base.ty(&self.ccx.body.local_decls, self.ccx.tcx);
                 if base_ty.ty.is_union() && Q::in_any_value_of_ty(self.ccx, base_ty.ty) {
                     value = true;
                     break;
@@ -86,7 +86,7 @@ where
         return_places.for_each(|place| {
             // We cannot reason about another function's internals, so use conservative type-based
             // qualification for the result of a function call.
-            let return_ty = place.ty(self.ccx.body, self.ccx.tcx).ty;
+            let return_ty = place.ty(&self.ccx.body.local_decls, self.ccx.tcx).ty;
             let qualif = Q::in_any_value_of_ty(self.ccx, return_ty);
 
             if !place.is_indirect() {
@@ -120,7 +120,10 @@ where
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
-        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.param_env)
+        !place
+            .ty(&self.ccx.body.local_decls, self.ccx.tcx)
+            .ty
+            .is_freeze(self.ccx.tcx, self.ccx.param_env)
     }
 }
 
@@ -172,7 +175,7 @@ where
         match rvalue {
             mir::Rvalue::RawPtr(_mt, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.address_of_allows_mutation() {
-                    let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
+                    let place_ty = borrowed_place.ty(&self.ccx.body.local_decls, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {
                         self.state.qualif.insert(borrowed_place.local);
                         self.state.borrow.insert(borrowed_place.local);
@@ -183,7 +186,7 @@ where
             mir::Rvalue::Ref(_, kind, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.ref_allows_mutation(*kind, *borrowed_place)
                 {
-                    let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
+                    let place_ty = borrowed_place.ty(&self.ccx.body.local_decls, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {
                         self.state.qualif.insert(borrowed_place.local);
                         self.state.borrow.insert(borrowed_place.local);

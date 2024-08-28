@@ -136,7 +136,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
         let caller = body.source.def_id();
         let param_env = tcx.param_env(caller);
 
-        let func_ty = func.ty(body, tcx);
+        let func_ty = func.ty(&body.local_decls, tcx);
         if let ty::FnDef(callee, args) = *func_ty.kind() {
             let Ok(normalized_args) = tcx.try_normalize_erasing_regions(param_env, args) else {
                 return false;
@@ -171,7 +171,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for RecursiveDrop<'tcx> {
     ) -> bool {
         let TerminatorKind::Drop { place, .. } = &terminator.kind else { return false };
 
-        let dropped_ty = place.ty(body, tcx).ty;
+        let dropped_ty = place.ty(&body.local_decls, tcx).ty;
         dropped_ty == self.drop_for
     }
 }

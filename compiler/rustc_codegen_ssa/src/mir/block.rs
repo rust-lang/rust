@@ -504,7 +504,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         unwind: mir::UnwindAction,
         mergeable_succ: bool,
     ) -> MergingSucc {
-        let ty = location.ty(self.mir, bx.tcx()).ty;
+        let ty = location.ty(&self.mir.local_decls, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
@@ -869,7 +869,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.node.ty(self.mir, bx.tcx());
+            let op_ty = op_arg.node.ty(&self.mir.local_decls, bx.tcx());
             self.monomorphize(op_ty)
         }));
 

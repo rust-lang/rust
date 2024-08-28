@@ -678,7 +678,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Discriminant(ref place) => {
-                let discr_ty = rvalue.ty(self.mir, bx.tcx());
+                let discr_ty = rvalue.ty(&self.mir.local_decls, bx.tcx());
                 let discr_ty = self.monomorphize(discr_ty);
                 let discr = self.codegen_place(bx, place.as_ref()).codegen_get_discr(bx, discr_ty);
                 OperandRef {
@@ -746,7 +746,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
             mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
             mir::Rvalue::Aggregate(_, ref fields) => {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
+                let ty = rvalue.ty(&self.mir.local_decls, self.cx.tcx());
                 let ty = self.monomorphize(ty);
                 let layout = self.cx.layout_of(ty);
 
@@ -1053,7 +1053,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.mir, self.cx.tcx());
+                let operand_ty = operand.ty(&self.mir.local_decls, self.cx.tcx());
                 let cast_layout = self.cx.layout_of(self.monomorphize(cast_ty));
                 let operand_layout = self.cx.layout_of(self.monomorphize(operand_ty));
 
@@ -1114,7 +1114,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::AggregateKind::Coroutine(..) | mir::AggregateKind::CoroutineClosure(..) => false,
                 };
                 allowed_kind && {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
+                let ty = rvalue.ty(&self.mir.local_decls, self.cx.tcx());
                 let ty = self.monomorphize(ty);
                     let layout = self.cx.spanned_layout_of(ty, span);
                     !self.cx.is_backend_ref(layout)

@@ -272,7 +272,7 @@ where
 {
     match rvalue {
         Rvalue::ThreadLocalRef(_) | Rvalue::NullaryOp(..) => {
-            Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx))
+            Q::in_any_value_of_ty(cx, rvalue.ty(&cx.body.local_decls, cx.tcx))
         }
 
         Rvalue::Discriminant(place) | Rvalue::Len(place) => {
@@ -294,7 +294,7 @@ where
         Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
             if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
-                let base_ty = place_base.ty(cx.body, cx.tcx).ty;
+                let base_ty = place_base.ty(&cx.body.local_decls, cx.tcx).ty;
                 if let ty::Ref(..) = base_ty.kind() {
                     return in_place::<Q, _>(cx, in_local, place_base);
                 }
@@ -312,7 +312,9 @@ where
                     return true;
                 }
                 // Don't do any value-based reasoning for unions.
-                if def.is_union() && Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)) {
+                if def.is_union()
+                    && Q::in_any_value_of_ty(cx, rvalue.ty(&cx.body.local_decls, cx.tcx))
+                {
                     return true;
                 }
             }
@@ -344,7 +346,7 @@ where
             | ProjectionElem::Index(_) => {}
         }
 
-        let base_ty = place_base.ty(cx.body, cx.tcx);
+        let base_ty = place_base.ty(&cx.body.local_decls, cx.tcx);
         let proj_ty = base_ty.projection_ty(cx.tcx, elem).ty;
         if !Q::in_any_value_of_ty(cx, proj_ty) {
             return false;

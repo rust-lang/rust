@@ -39,12 +39,12 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
         let span = || self.body.source_info(location).span;
         match &terminator.kind {
             mir::TerminatorKind::Call { func, .. } | mir::TerminatorKind::TailCall { func, .. } => {
-                let callee_ty = func.ty(self.body, self.tcx);
+                let callee_ty = func.ty(&self.body.local_decls, self.tcx);
                 self.mentioned_items
                     .push(Spanned { node: MentionedItem::Fn(callee_ty), span: span() });
             }
             mir::TerminatorKind::Drop { place, .. } => {
-                let ty = place.ty(self.body, self.tcx).ty;
+                let ty = place.ty(&self.body.local_decls, self.tcx).ty;
                 self.mentioned_items.push(Spanned { node: MentionedItem::Drop(ty), span: span() });
             }
             mir::TerminatorKind::InlineAsm { ref operands, .. } => {
@@ -77,7 +77,7 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
             | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
                 // This isn't monomorphized yet so we can't tell what the actual types are -- just
                 // add everything that may involve a vtable.
-                let source_ty = operand.ty(self.body, self.tcx);
+                let source_ty = operand.ty(&self.body.local_decls, self.tcx);
                 let may_involve_vtable = match (
                     source_ty.builtin_deref(true).map(|t| t.kind()),
                     target_ty.builtin_deref(true).map(|t| t.kind()),
@@ -98,7 +98,7 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 ref operand,
                 _,
             ) => {
-                let source_ty = operand.ty(self.body, self.tcx);
+                let source_ty = operand.ty(&self.body.local_decls, self.tcx);
                 self.mentioned_items
                     .push(Spanned { node: MentionedItem::Closure(source_ty), span: span() });
             }
@@ -108,7 +108,7 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 ref operand,
                 _,
             ) => {
-                let fn_ty = operand.ty(self.body, self.tcx);
+                let fn_ty = operand.ty(&self.body.local_decls, self.tcx);
                 self.mentioned_items.push(Spanned { node: MentionedItem::Fn(fn_ty), span: span() });
             }
             _ => {}

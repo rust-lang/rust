@@ -166,7 +166,7 @@ fn check_rvalue<'tcx>(
         Rvalue::BinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body, msrv)?;
             check_operand(tcx, rhs, span, body, msrv)?;
-            let ty = lhs.ty(body, tcx);
+            let ty = lhs.ty(&body.local_decls, tcx);
             if ty.is_integral() || ty.is_bool() || ty.is_char() {
                 Ok(())
             } else {
@@ -179,7 +179,7 @@ fn check_rvalue<'tcx>(
         Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks, _)
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
-            let ty = operand.ty(body, tcx);
+            let ty = operand.ty(&body.local_decls, tcx);
             if ty.is_integral() || ty.is_bool() {
                 check_operand(tcx, operand, span, body, msrv)
             } else {
@@ -268,11 +268,11 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
     for (base, elem) in place.as_ref().iter_projections() {
         match elem {
             ProjectionElem::Field(..) => {
-                if base.ty(body, tcx).ty.is_union() && !msrv.meets(msrvs::CONST_FN_UNION) {
+                if base.ty(&body.local_decls, tcx).ty.is_union() && !msrv.meets(msrvs::CONST_FN_UNION) {
                     return Err((span, "accessing union fields is unstable".into()));
                 }
             },
-            ProjectionElem::Deref => match base.ty(body, tcx).ty.kind() {
+            ProjectionElem::Deref => match base.ty(&body.local_decls, tcx).ty.kind() {
                 ty::RawPtr(_, hir::Mutability::Mut) => {
                     return Err((span, "dereferencing raw mut pointer in const fn is unstable".into()));
                 },
@@ -331,7 +331,7 @@ fn check_terminator<'tcx>(
             fn_span: _,
         }
         | TerminatorKind::TailCall { func, args, fn_span: _ } => {
-            let fn_ty = func.ty(body, tcx);
+            let fn_ty = func.ty(&body.local_decls, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 if !is_const_fn(tcx, fn_def_id, msrv) {
                     return Err((

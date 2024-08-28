@@ -588,7 +588,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(_, operand) => {
-                let ty = operand.ty(self.body, self.tcx);
+                let ty = operand.ty(&self.body.local_decls, self.tcx);
                 if is_int_bool_float_or_char(ty) {
                     // Int, bool, float, and char operations are fine.
                 } else {
@@ -597,8 +597,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, box (lhs, rhs)) => {
-                let lhs_ty = lhs.ty(self.body, self.tcx);
-                let rhs_ty = rhs.ty(self.body, self.tcx);
+                let lhs_ty = lhs.ty(&self.body.local_decls, self.tcx);
+                let rhs_ty = rhs.ty(&self.body.local_decls, self.tcx);
 
                 if is_int_bool_float_or_char(lhs_ty) && is_int_bool_float_or_char(rhs_ty) {
                     // Int, bool, float, and char operations are fine.
@@ -652,7 +652,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = place_ref.ty(self.body, self.tcx).ty;
+                let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
                 if base_ty.is_unsafe_ptr() {
                     if place_ref.projection.is_empty() {
                         let decl = &self.body.local_decls[place_ref.local];
@@ -731,7 +731,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id();
 
-                let fn_ty = func.ty(body, tcx);
+                let fn_ty = func.ty(&body.local_decls, tcx);
 
                 let (mut callee, mut fn_args) = match *fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args),
@@ -923,7 +923,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 let mut err_span = self.span;
-                let ty_of_dropped_place = dropped_place.ty(self.body, self.tcx).ty;
+                let ty_of_dropped_place = dropped_place.ty(&self.body.local_decls, self.tcx).ty;
 
                 let ty_needs_non_const_drop =
                     qualifs::NeedsNonConstDrop::in_any_value_of_ty(self.ccx, ty_of_dropped_place);
@@ -1006,7 +1006,7 @@ fn place_as_reborrow<'tcx>(
                 // Ensure the type being derefed is a reference and not a raw pointer.
                 // This is sufficient to prevent an access to a `static mut` from being marked as a
                 // reborrow, even if the check above were to disappear.
-                let inner_ty = place_base.ty(body, tcx).ty;
+                let inner_ty = place_base.ty(&body.local_decls, tcx).ty;
 
                 if let ty::Ref(..) = inner_ty.kind() {
                     return Some(place_base);

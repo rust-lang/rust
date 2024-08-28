@@ -117,35 +117,24 @@ impl<'tcx> PlaceTy<'tcx> {
 }
 
 impl<'tcx> Place<'tcx> {
-    pub fn ty_from<D: ?Sized>(
+    pub fn ty_from(
         local: Local,
         projection: &[PlaceElem<'tcx>],
-        local_decls: &D,
+        local_decls: &LocalDecls<'tcx>,
         tcx: TyCtxt<'tcx>,
-    ) -> PlaceTy<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
-        projection
-            .iter()
-            .fold(PlaceTy::from_ty(local_decls.local_decls()[local].ty), |place_ty, &elem| {
-                place_ty.projection_ty(tcx, elem)
-            })
+    ) -> PlaceTy<'tcx> {
+        projection.iter().fold(PlaceTy::from_ty(local_decls[local].ty), |place_ty, &elem| {
+            place_ty.projection_ty(tcx, elem)
+        })
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
+    pub fn ty(&self, local_decls: &LocalDecls<'tcx>, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx> {
         Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
 }
 
 impl<'tcx> PlaceRef<'tcx> {
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
+    pub fn ty(&self, local_decls: &LocalDecls<'tcx>, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx> {
         Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
 }
@@ -156,10 +145,7 @@ pub enum RvalueInitializationState {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
+    pub fn ty(&self, local_decls: &LocalDecls<'tcx>, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
@@ -220,24 +206,16 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
+    pub fn ty(&self, local_decls: &LocalDecls<'tcx>, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
             Operand::Constant(c) => c.const_.ty(),
         }
     }
 
-    pub fn span<D: ?Sized>(&self, local_decls: &D) -> Span
-    where
-        D: HasLocalDecls<'tcx>,
-    {
+    pub fn span(&self, local_decls: &LocalDecls<'tcx>) -> Span {
         match self {
-            &Operand::Copy(ref l) | &Operand::Move(ref l) => {
-                local_decls.local_decls()[l.local].source_info.span
-            }
+            &Operand::Copy(ref l) | &Operand::Move(ref l) => local_decls[l.local].source_info.span,
             Operand::Constant(c) => c.span,
         }
     }

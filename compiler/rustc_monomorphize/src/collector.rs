@@ -666,7 +666,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 target_ty,
             )
             | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
-                let source_ty = operand.ty(self.body, self.tcx);
+                let source_ty = operand.ty(&self.body.local_decls, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items
                     .insert(MentionedItem::UnsizeCast { source_ty, target_ty });
@@ -694,7 +694,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 ref operand,
                 _,
             ) => {
-                let fn_ty = operand.ty(self.body, self.tcx);
+                let fn_ty = operand.ty(&self.body.local_decls, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(fn_ty));
                 let fn_ty = self.monomorphize(fn_ty);
@@ -705,7 +705,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 ref operand,
                 _,
             ) => {
-                let source_ty = operand.ty(self.body, self.tcx);
+                let source_ty = operand.ty(&self.body.local_decls, self.tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Closure(source_ty));
                 let source_ty = self.monomorphize(source_ty);
@@ -757,7 +757,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         match terminator.kind {
             mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref args, ref fn_span } => {
-                let callee_ty = func.ty(self.body, tcx);
+                let callee_ty = func.ty(&self.body.local_decls, tcx);
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
@@ -765,7 +765,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
-                let ty = place.ty(self.body, self.tcx).ty;
+                let ty = place.ty(&self.body.local_decls, self.tcx).ty;
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Drop(ty));
                 let ty = self.monomorphize(ty);

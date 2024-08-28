@@ -6,15 +6,12 @@ use tracing::debug;
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
-pub fn is_disaligned<'tcx, L>(
+pub fn is_disaligned<'tcx>(
     tcx: TyCtxt<'tcx>,
-    local_decls: &L,
+    local_decls: &LocalDecls<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     place: Place<'tcx>,
-) -> bool
-where
-    L: HasLocalDecls<'tcx>,
-{
+) -> bool {
     debug!("is_disaligned({:?})", place);
     let Some(pack) = is_within_packed(tcx, local_decls, place) else {
         debug!("is_disaligned({:?}) - not within packed", place);
@@ -50,14 +47,11 @@ where
     }
 }
 
-pub fn is_within_packed<'tcx, L>(
+pub fn is_within_packed<'tcx>(
     tcx: TyCtxt<'tcx>,
-    local_decls: &L,
+    local_decls: &LocalDecls<'tcx>,
     place: Place<'tcx>,
-) -> Option<Align>
-where
-    L: HasLocalDecls<'tcx>,
-{
+) -> Option<Align> {
     place
         .iter_projections()
         .rev()

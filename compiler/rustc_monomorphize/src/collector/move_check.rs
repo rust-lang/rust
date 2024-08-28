@@ -95,7 +95,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         limit: Limit,
         operand: &mir::Operand<'tcx>,
     ) -> Option<Size> {
-        let ty = operand.ty(self.body, self.tcx);
+        let ty = operand.ty(&self.body.local_decls, self.tcx);
         let ty = self.monomorphize(ty);
         let Ok(layout) = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)) else {
             return None;

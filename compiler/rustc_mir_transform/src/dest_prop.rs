@@ -137,8 +137,8 @@ use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    dump_mir, traversal, Body, HasLocalDecls, InlineAsmOperand, Local, LocalKind, Location,
-    Operand, PassWhere, Place, Rvalue, Statement, StatementKind, TerminatorKind,
+    dump_mir, traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, PassWhere,
+    Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
@@ -787,15 +787,15 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
 
             // As described at the top of this file, we do not touch locals which have
             // different types.
-            let src_ty = self.body.local_decls()[src].ty;
-            let dest_ty = self.body.local_decls()[dest].ty;
+            let src_ty = self.body.local_decls[src].ty;
+            let dest_ty = self.body.local_decls[dest].ty;
             if src_ty != dest_ty {
                 // FIXME(#112651): This can be removed afterwards. Also update the module description.
                 trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
                 return;
             }
 
-            // Also, we need to make sure that MIR actually allows the `src` to be removed
+            // Also.local_decls, we need to make sure that MIR actually allows the `src` to be removed
             if is_local_required(src, self.body) {
                 return;
             }

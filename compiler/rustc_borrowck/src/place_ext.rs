@@ -38,7 +38,7 @@ impl<'tcx> Place<'tcx> {
 
         for (i, (proj_base, elem)) in self.iter_projections().enumerate() {
             if elem == ProjectionElem::Deref {
-                let ty = proj_base.ty(body, tcx).ty;
+                let ty = proj_base.ty(&body.local_decls, tcx).ty;
                 match ty.kind() {
                     ty::Ref(_, _, hir::Mutability::Not) if i == 0 => {
                         // For references to thread-local statics, we do need

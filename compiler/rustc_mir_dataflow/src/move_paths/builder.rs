@@ -133,7 +133,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
         for (place_ref, elem) in data.rev_lookup.un_derefer.iter_projections(place.as_ref()) {
             let body = self.builder.body;
             let tcx = self.builder.tcx;
-            let place_ty = place_ref.ty(body, tcx).ty;
+            let place_ty = place_ref.ty(&body.local_decls, tcx).ty;
             if place_ty.references_error() {
                 return MovePathResult::Error;
             }
@@ -562,7 +562,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     return;
                 }
             };
-            let base_ty = base_place.ty(self.builder.body, self.builder.tcx).ty;
+            let base_ty = base_place.ty(&self.builder.body.local_decls, self.builder.tcx).ty;
             let len: u64 = match base_ty.kind() {
                 ty::Array(_, size) => {
                     size.eval_target_usize(self.builder.tcx, self.builder.param_env)
@@ -604,7 +604,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
         // Check if we are assigning into a field of a union, if so, lookup the place
         // of the union so it is marked as initialized again.
         if let Some((place_base, ProjectionElem::Field(_, _))) = place.last_projection() {
-            if place_base.ty(self.builder.body, self.builder.tcx).ty.is_union() {
+            if place_base.ty(&self.builder.body.local_decls, self.builder.tcx).ty.is_union() {
                 place = place_base;
             }
         }

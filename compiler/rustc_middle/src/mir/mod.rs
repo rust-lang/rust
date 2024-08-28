@@ -81,31 +81,6 @@ pub use self::pretty::{
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
 
-pub trait HasLocalDecls<'tcx> {
-    fn local_decls(&self) -> &LocalDecls<'tcx>;
-}
-
-impl<'tcx> HasLocalDecls<'tcx> for IndexVec<Local, LocalDecl<'tcx>> {
-    #[inline]
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        self
-    }
-}
-
-impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
-    #[inline]
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        self
-    }
-}
-
-impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
-    #[inline]
-    fn local_decls(&self) -> &LocalDecls<'tcx> {
-        &self.local_decls
-    }
-}
-
 thread_local! {
     static PASS_NAMES: RefCell<FxHashMap<&'static str, &'static str>> = {
         RefCell::new(FxHashMap::default())

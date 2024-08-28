@@ -261,7 +261,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             BorrowKind::Mut { kind: MutBorrowKind::Default },
             tcx.mk_place_deref(dropee_ptr),
         );
-        let ref_ty = reborrow.ty(body.local_decls(), tcx);
+        let ref_ty = reborrow.ty(&body.local_decls, tcx);
         dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
         let new_statements = [
             StatementKind::Assign(Box::new((dropee_ptr, reborrow))),

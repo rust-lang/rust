@@ -109,7 +109,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx,
                 )
             );
             if is_consume {
-                let base_ty = place_base.ty(self.fx.mir, cx.tcx());
+                let base_ty = place_base.ty(&self.fx.mir.local_decls, cx.tcx());
                 let base_ty = self.fx.monomorphize(base_ty);
 
                 // ZSTs don't require any actual memory access.

@@ -65,7 +65,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                     // the move may be codegened as a pointer to that field.
                     // Using that disaligned pointer may trigger UB in the callee,
                     // so do nothing.
-                    && is_within_packed(tcx, body, place).is_none()
+                    && is_within_packed(tcx, &body.local_decls, place).is_none()
                 {
                     call_operands_to_move.push((bb, index));
                 }

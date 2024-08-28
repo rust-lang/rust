@@ -199,7 +199,7 @@ fn place_components_conflict<'tcx>(
             // our place. This is a conflict if that is a part our
             // access cares about.
 
-            let base_ty = base.ty(body, tcx).ty;
+            let base_ty = base.ty(&body.local_decls, tcx).ty;
 
             match (elem, base_ty.kind(), access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
@@ -311,7 +311,7 @@ fn place_projection_conflict<'tcx>(
                 debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
                 Overlap::EqualOrDisjoint
             } else {
-                let ty = pi1.ty(body, tcx).ty;
+                let ty = pi1.ty(&body.local_decls, tcx).ty;
                 if ty.is_union() {
                     // Different fields of a union, we are basically stuck.
                     debug!("place_element_conflict: STUCK-UNION");

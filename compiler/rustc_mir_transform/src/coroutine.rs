@@ -644,7 +644,7 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
         match &bb_data.terminator().kind {
             TerminatorKind::Call { func, .. } => {
-                let func_ty = func.ty(body, tcx);
+                let func_ty = func.ty(&body.local_decls, tcx);
                 if let ty::FnDef(def_id, _) = *func_ty.kind() {
                     if def_id == get_context_def_id {
                         let local = eliminate_get_context_call(&mut body[bb]);

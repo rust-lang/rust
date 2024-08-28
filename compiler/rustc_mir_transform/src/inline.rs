@@ -394,7 +394,7 @@ impl<'tcx> Inliner<'tcx> {
 
         // FIXME(explicit_tail_calls): figure out if we can inline tail calls
         if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
-            let func_ty = func.ty(caller_body, self.tcx);
+            let func_ty = func.ty(&caller_body.local_decls, self.tcx);
             if let ty::FnDef(def_id, args) = *func_ty.kind() {
                 // To resolve an instance its args have to be fully normalized.
                 let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
@@ -550,7 +550,7 @@ impl<'tcx> Inliner<'tcx> {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = callsite.callee.instantiate_mir(
                     self.tcx,
-                    ty::EarlyBinder::bind(&place.ty(callee_body, tcx).ty),
+                    ty::EarlyBinder::bind(&place.ty(&callee_body.local_decls, tcx).ty),
                 );
                 if ty.needs_drop(tcx, self.param_env)
                     && let UnwindAction::Cleanup(unwind) = unwind
@@ -636,7 +636,7 @@ impl<'tcx> Inliner<'tcx> {
                 BorrowKind::Mut { kind: MutBorrowKind::Default },
                 destination,
             );
-            let dest_ty = dest.ty(caller_body, self.tcx);
+            let dest_ty = dest.ty(&caller_body.local_decls, self.tcx);
             let temp =
                 Place::from(self.new_call_temp(caller_body, &callsite, dest_ty, return_block));
             caller_body[callsite.block].statements.push(Statement {
@@ -658,7 +658,7 @@ impl<'tcx> Inliner<'tcx> {
                 self.new_call_temp(
                     caller_body,
                     &callsite,
-                    destination.ty(caller_body, self.tcx).ty,
+                    destination.ty(&caller_body.local_decls, self.tcx).ty,
                     return_block,
                 ),
             )
@@ -760,7 +760,7 @@ impl<'tcx> Inliner<'tcx> {
         // the actually used items. By doing this we can entirely avoid visiting the callee!
         // We need to reconstruct the `required_item` for the callee so that we can find and
         // remove it.
-        let callee_item = MentionedItem::Fn(func.ty(caller_body, self.tcx));
+        let callee_item = MentionedItem::Fn(func.ty(&caller_body.local_decls, self.tcx));
         let caller_mentioned_items = caller_body.mentioned_items.as_mut().unwrap();
         if let Some(idx) = caller_mentioned_items.iter().position(|item| item.node == callee_item) {
             // We found the callee, so remove it and add its items instead.
@@ -824,7 +824,7 @@ impl<'tcx> Inliner<'tcx> {
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
-            let ty::Tuple(tuple_tys) = tuple.ty(caller_body, tcx).ty.kind() else {
+            let ty::Tuple(tuple_tys) = tuple.ty(&caller_body.local_decls, tcx).ty.kind() else {
                 bug!("Closure arguments are not passed as a tuple");
             };
 
@@ -868,7 +868,7 @@ impl<'tcx> Inliner<'tcx> {
 
         // Otherwise, create a temporary for the argument.
         trace!("creating temp for argument {:?}", arg);
-        let arg_ty = arg.ty(caller_body, self.tcx);
+        let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
         let local = self.new_call_temp(caller_body, callsite, arg_ty, return_block);
         caller_body[callsite.block].statements.push(Statement {
             source_info: callsite.source_info,

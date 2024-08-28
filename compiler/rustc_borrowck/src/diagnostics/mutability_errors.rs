@@ -70,7 +70,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_like(
-                    Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
+                    Place::ty_from(local, proj_base, &self.body.local_decls, self.infcx.tcx).ty
                 ));
 
                 let imm_borrow_derefed = self.upvars[upvar_index.index()]
@@ -128,7 +128,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 {
                     item_msg = access_place_desc;
                     debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_ref());
-                    debug_assert!(is_closure_like(the_place_err.ty(self.body, self.infcx.tcx).ty));
+                    debug_assert!(is_closure_like(
+                        the_place_err.ty(&self.body.local_decls, self.infcx.tcx).ty
+                    ));
 
                     reason = if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                         ", as it is a captured variable in a `Fn` closure".to_string()
@@ -267,7 +269,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             } => {
                 err.span_label(span, format!("cannot {act}"));
 
-                let place = Place::ty_from(local, proj_base, self.body, self.infcx.tcx);
+                let place =
+                    Place::ty_from(local, proj_base, &self.body.local_decls, self.infcx.tcx);
                 if let Some(span) = get_mut_span_in_struct_field(self.infcx.tcx, place.ty, *field) {
                     err.span_suggestion_verbose(
                         span,
@@ -377,7 +380,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 if suggest {
                     self.construct_mut_suggestion_for_local_binding_patterns(&mut err, local);
                     let tcx = self.infcx.tcx;
-                    if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
+                    if let ty::Closure(id, _) =
+                        *the_place_err.ty(&self.body.local_decls, tcx).ty.kind()
+                    {
                         self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                     }
                 }
@@ -389,7 +394,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_like(
-                    Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
+                    Place::ty_from(local, proj_base, &self.body.local_decls, self.infcx.tcx).ty
                 ));
 
                 let captured_place = self.upvars[upvar_index.index()];
@@ -430,7 +435,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 }
 
                 let tcx = self.infcx.tcx;
-                if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
+                if let ty::Ref(_, ty, Mutability::Mut) =
+                    the_place_err.ty(&self.body.local_decls, tcx).ty.kind()
                     && let ty::Closure(id, _) = *ty.kind()
                 {
                     self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);

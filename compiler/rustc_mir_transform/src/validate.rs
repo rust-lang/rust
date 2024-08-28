@@ -885,7 +885,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 AggregateKind::Tuple => {}
                 AggregateKind::Array(dest) => {
                     for src in fields {
-                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                        if !self
+                            .mir_assign_valid_types(src.ty(&self.body.local_decls, self.tcx), dest)
+                        {
                             self.fail(location, "array field has the wrong type");
                         }
                     }
@@ -899,7 +901,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
                     );
                     if let [field] = fields.raw.as_slice() {
-                        let src_ty = field.ty(self.body, self.tcx);
+                        let src_ty = field.ty(&self.body.local_decls, self.tcx);
                         if !self.mir_assign_valid_types(src_ty, dest_ty) {
                             self.fail(location, "union field has the wrong type");
                         }
@@ -918,7 +920,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let dest_ty = self
                             .tcx
                             .normalize_erasing_regions(self.param_env, dest.ty(self.tcx, args));
-                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
+                        if !self.mir_assign_valid_types(
+                            src.ty(&self.body.local_decls, self.tcx),
+                            dest_ty,
+                        ) {
                             self.fail(location, "adt field has the wrong type");
                         }
                     }
@@ -929,7 +934,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.fail(location, "closure has the wrong number of initialized fields");
                     }
                     for (src, dest) in std::iter::zip(fields, upvars) {
-                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                        if !self
+                            .mir_assign_valid_types(src.ty(&self.body.local_decls, self.tcx), dest)
+                        {
                             self.fail(location, "closure field has the wrong type");
                         }
                     }
@@ -940,7 +947,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.fail(location, "coroutine has the wrong number of initialized fields");
                     }
                     for (src, dest) in std::iter::zip(fields, upvars) {
-                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                        if !self
+                            .mir_assign_valid_types(src.ty(&self.body.local_decls, self.tcx), dest)
+                        {
                             self.fail(location, "coroutine field has the wrong type");
                         }
                     }
@@ -954,7 +963,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         );
                     }
                     for (src, dest) in std::iter::zip(fields, upvars) {
-                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                        if !self
+                            .mir_assign_valid_types(src.ty(&self.body.local_decls, self.tcx), dest)
+                        {
                             self.fail(location, "coroutine-closure field has the wrong type");
                         }
                     }
@@ -968,8 +979,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
 
                     if let [data_ptr, metadata] = fields.raw.as_slice() {
-                        let data_ptr_ty = data_ptr.ty(self.body, self.tcx);
-                        let metadata_ty = metadata.ty(self.body, self.tcx);
+                        let data_ptr_ty = data_ptr.ty(&self.body.local_decls, self.tcx);
+                        let metadata_ty = metadata.ty(&self.body.local_decls, self.tcx);
                         if let ty::RawPtr(in_pointee, in_mut) = data_ptr_ty.kind() {
                             if *in_mut != mutability {
                                 self.fail(location, "input and output mutability must match");
@@ -1137,7 +1148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }
             Rvalue::Cast(kind, operand, target_type) => {
-                let op_ty = operand.ty(self.body, self.tcx);
+                let op_ty = operand.ty(&self.body.local_decls, self.tcx);
                 match kind {
                     CastKind::DynStar => {
                         // FIXME(dyn-star): make sure nothing needs to be done here.

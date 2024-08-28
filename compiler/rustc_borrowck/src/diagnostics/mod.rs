@@ -318,10 +318,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 ProjectionElem::Deref
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
-                    PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
-                }
-                ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
+                | ProjectionElem::Subslice { .. } => PlaceRef { local, projection: proj_base }
+                    .ty(&self.body.local_decls, self.infcx.tcx),
+                ProjectionElem::Downcast(..) => place.ty(&self.body.local_decls, self.infcx.tcx),
                 ProjectionElem::Subtype(ty) | ProjectionElem::OpaqueCast(ty) => {
                     PlaceTy::from_ty(*ty)
                 }
@@ -426,9 +425,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         ..
                     }) = &bbd.terminator
                     {
-                        if let Some(source) =
-                            BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
-                        {
+                        if let Some(source) = BorrowedContentSource::from_call(
+                            func.ty(&self.body.local_decls, tcx),
+                            tcx,
+                        ) {
                             return source;
                         }
                     }
@@ -440,7 +440,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = deref_base.ty(self.body, tcx).ty;
+        let base_ty = deref_base.ty(&self.body.local_decls, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
@@ -1154,7 +1154,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         err.subdiagnostic(CaptureReasonLabel::BorrowContent { var_span });
                     }
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
-                        let ty = moved_place.ty(self.body, tcx).ty;
+                        let ty = moved_place.ty(&self.body.local_decls, tcx).ty;
                         let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => type_known_to_meet_bound_modulo_regions(
                                 self.infcx,
@@ -1181,7 +1181,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                         // suggest to reborrow it where it was moved, so it
                         // will still be valid by the time we get to the usage.
                         if let ty::Ref(_, _, hir::Mutability::Mut) =
-                            moved_place.ty(self.body, self.infcx.tcx).ty.kind()
+                            moved_place.ty(&self.body.local_decls, self.infcx.tcx).ty.kind()
                         {
                             // Suggest `reborrow` in other place for following situations:
                             // 1. If we are in a loop this will be suggested later.
@@ -1212,7 +1212,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                             });
                         }
                         // Erase and shadow everything that could be passed to the new infcx.
-                        let ty = moved_place.ty(self.body, tcx).ty;
+                        let ty = moved_place.ty(&self.body.local_decls, tcx).ty;
 
                         if let ty::Adt(def, args) = ty.peel_refs().kind()
                             && tcx.is_lang_item(def.did(), LangItem::Pin)

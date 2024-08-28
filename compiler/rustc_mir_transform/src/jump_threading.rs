@@ -200,7 +200,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         let discr = discr.place()?;
         debug!(?discr, ?bb);
 
-        let discr_ty = discr.ty(self.body, self.tcx).ty;
+        let discr_ty = discr.ty(&self.body.local_decls, self.tcx).ty;
         let discr_layout = self.ecx.layout_of(discr_ty).ok()?;
 
         let discr = self.map.find(discr.as_ref())?;
@@ -467,7 +467,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Rvalue::Aggregate(box ref kind, ref operands) => {
-                let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
+                let agg_ty = lhs_place.ty(&self.body.local_decls, self.tcx).ty;
                 let lhs = match kind {
                     // Do not support unions.
                     AggregateKind::Adt(.., Some(_)) => return None,
@@ -551,7 +551,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // we have an opportunity if `variant_index ?= A`.
             StatementKind::SetDiscriminant { box place, variant_index } => {
                 let discr_target = self.map.find_discr(place.as_ref())?;
-                let enum_ty = place.ty(self.body, self.tcx).ty;
+                let enum_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                 // `SetDiscriminant` may be a no-op if the assigned variant is the untagged variant
                 // of a niche encoding. If we cannot ensure that we write to the discriminant, do
                 // nothing.
@@ -643,7 +643,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         debug_assert_eq!(self.body.basic_blocks.predecessors()[target_bb].len(), 1);
 
         let discr = discr.place()?;
-        let discr_ty = discr.ty(self.body, self.tcx).ty;
+        let discr_ty = discr.ty(&self.body.local_decls, self.tcx).ty;
         let discr_layout = self.ecx.layout_of(discr_ty).ok()?;
         let conditions = state.try_get(discr.as_ref(), self.map)?;
 

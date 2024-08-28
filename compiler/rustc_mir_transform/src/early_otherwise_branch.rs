@@ -126,7 +126,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 Operand::Copy(x) => Operand::Copy(*x),
                 Operand::Constant(x) => Operand::Constant(x.clone()),
             };
-            let parent_ty = parent_op.ty(body.local_decls(), tcx);
+            let parent_ty = parent_op.ty(&body.local_decls, tcx);
             let statements_before = bbs[parent].statements.len();
             let parent_end = Location { block: parent, statement_index: statements_before };
 
@@ -233,7 +233,7 @@ fn evaluate_candidate<'tcx>(
     else {
         return None;
     };
-    let parent_ty = parent_discr.ty(body.local_decls(), tcx);
+    let parent_ty = parent_discr.ty(&body.local_decls, tcx);
     if !bbs[targets.otherwise()].is_empty_unreachable() {
         // Someone could write code like this:
         // ```rust
@@ -275,7 +275,7 @@ fn evaluate_candidate<'tcx>(
     else {
         return None;
     };
-    let child_ty = child_discr.ty(body.local_decls(), tcx);
+    let child_ty = child_discr.ty(&body.local_decls, tcx);
     if child_ty != parent_ty {
         return None;
     }

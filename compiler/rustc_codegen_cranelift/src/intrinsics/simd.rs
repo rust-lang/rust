@@ -182,7 +182,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             // Make sure this is actually an array, since typeck only checks the length-suffixed
             // version of this intrinsic.
-            let idx_ty = fx.monomorphize(idx.node.ty(fx.mir, fx.tcx));
+            let idx_ty = fx.monomorphize(idx.node.ty(&fx.mir.local_decls, fx.tcx));
             let n: u16 = match idx_ty.kind() {
                 ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => len
                     .try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())

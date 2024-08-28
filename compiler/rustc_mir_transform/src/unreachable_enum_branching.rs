@@ -40,7 +40,7 @@ fn get_switched_on_type<'tcx>(
     if let StatementKind::Assign(box (l, Rvalue::Discriminant(place))) = stmt_before_term.kind
         && l.as_local() == Some(local)
     {
-        let ty = place.ty(body, tcx).ty;
+        let ty = place.ty(&body.local_decls, tcx).ty;
         if ty.is_enum() {
             return Some(ty);
         }

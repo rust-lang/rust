@@ -41,11 +41,11 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
         } = &terminator.kind
         {
             let source_info = *self.body.source_info(location);
-            let func_ty = func.ty(self.body, self.tcx);
+            let func_ty = func.ty(&self.body.local_decls, self.tcx);
             if let ty::FnDef(def_id, args_ref) = *func_ty.kind() {
                 // Handle calls to `transmute`
                 if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
-                    let arg_ty = args[0].node.ty(self.body, self.tcx);
+                    let arg_ty = args[0].node.ty(&self.body.local_decls, self.tcx);
                     for inner_ty in arg_ty.walk().filter_map(|arg| arg.as_type()) {
                         if let Some((fn_id, fn_args)) = FunctionItemRefChecker::is_fn_ref(inner_ty)
                         {

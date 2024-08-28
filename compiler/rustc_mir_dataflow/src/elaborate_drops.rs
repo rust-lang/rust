@@ -199,7 +199,7 @@ where
 {
     #[instrument(level = "trace", skip(self), ret)]
     fn place_ty(&self, place: Place<'tcx>) -> Ty<'tcx> {
-        place.ty(self.elaborator.body(), self.tcx()).ty
+        place.ty(&self.elaborator.body().local_decls, self.tcx()).ty
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {

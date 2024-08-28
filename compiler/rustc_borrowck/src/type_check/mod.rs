@@ -420,7 +420,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
-        let rval_ty = rvalue.ty(self.body(), self.tcx());
+        let rval_ty = rvalue.ty(&self.body().local_decls, self.tcx());
         self.sanitize_type(rvalue, rval_ty);
     }
 
@@ -630,7 +630,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }))
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Place::from(i).ty(self.body(), tcx).ty;
+                let index_ty = Place::from(i).ty(&self.body().local_decls, tcx).ty;
                 if index_ty != tcx.types.usize {
                     PlaceTy::from_ty(span_mirbug_and_err!(self, i, "index by non-usize {:?}", i))
                 } else {
@@ -1218,11 +1218,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     place.as_local().map(|l| &body.local_decls[l])
                 );
 
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(&body.local_decls, tcx).ty;
                 debug!(?place_ty);
                 let place_ty = self.normalize(place_ty, location);
                 debug!("place_ty normalized: {:?}", place_ty);
-                let rv_ty = rv.ty(body, tcx);
+                let rv_ty = rv.ty(&body.local_decls, tcx);
                 debug!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
                 debug!("normalized rv_ty: {:?}", rv_ty);
@@ -1274,7 +1274,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::AscribeUserType(box (place, projection), variance) => {
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(&body.local_decls, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     *variance,
@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::SwitchInt { discr, .. } => {
                 self.check_operand(discr, term_location);
 
-                let switch_ty = discr.ty(body, tcx);
+                let switch_ty = discr.ty(&body.local_decls, tcx);
                 if !switch_ty.is_integral() && !switch_ty.is_char() && !switch_ty.is_bool() {
                     span_mirbug!(self, term, "bad SwitchInt discr ty {:?}", switch_ty);
                 }
@@ -1360,7 +1360,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.check_operand(&arg.node, term_location);
                 }
 
-                let func_ty = func.ty(body, tcx);
+                let func_ty = func.ty(&body.local_decls, tcx);
                 debug!("func_ty.kind: {:?}", func_ty.kind());
 
                 let sig = match func_ty.kind() {
@@ -1452,16 +1452,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
 
-                let cond_ty = cond.ty(body, tcx);
+                let cond_ty = cond.ty(&body.local_decls, tcx);
                 if cond_ty != tcx.types.bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
                 if let AssertKind::BoundsCheck { len, index } = &**msg {
-                    if len.ty(body, tcx) != tcx.types.usize {
+                    if len.ty(&body.local_decls, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
-                    if index.ty(body, tcx) != tcx.types.usize {
+                    if index.ty(&body.local_decls, tcx) != tcx.types.usize {
                         span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
                     }
                 }
@@ -1472,7 +1472,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 match body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
-                        let value_ty = value.ty(body, tcx);
+                        let value_ty = value.ty(&body.local_decls, tcx);
                         if let Err(terr) = self.sub_types(
                             value_ty,
                             ty,
@@ -1494,7 +1494,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 match body.resume_ty() {
                     None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
-                        let resume_ty = resume_arg.ty(body, tcx);
+                        let resume_ty = resume_arg.ty(&body.local_decls, tcx);
                         if let Err(terr) = self.sub_types(
                             ty,
                             resume_ty.ty,
@@ -1528,7 +1528,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.tcx();
         match target {
             Some(_) => {
-                let dest_ty = destination.ty(body, tcx).ty;
+                let dest_ty = destination.ty(&body.local_decls, tcx).ty;
                 let dest_ty = self.normalize(dest_ty, term_location);
                 let category = match destination.as_local() {
                     Some(RETURN_PLACE) => {
@@ -1604,7 +1604,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let func_ty = func.ty(body, self.infcx.tcx);
+        let func_ty = func.ty(&body.local_decls, self.infcx.tcx);
         if let ty::FnDef(def_id, _) = *func_ty.kind() {
             // Some of the SIMD intrinsics are special: they need a particular argument to be a constant.
             // (Eventually this should use const-generics, but those are not up for the task yet:
@@ -1628,7 +1628,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
-            let op_arg_ty = op_arg.node.ty(body, self.tcx());
+            let op_arg_ty = op_arg.node.ty(&body.local_decls, self.tcx());
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
@@ -1907,7 +1907,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(operand, len) => {
                 self.check_operand(operand, location);
 
-                let array_ty = rvalue.ty(body.local_decls(), tcx);
+                let array_ty = rvalue.ty(&body.local_decls, tcx);
                 self.prove_predicate(
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(array_ty.into())),
                     Locations::Single(location),
@@ -1925,7 +1925,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
-                            let ty = place.ty(body, tcx).ty;
+                            let ty = place.ty(&body.local_decls, tcx).ty;
                             let trait_ref = ty::TraitRef::new(
                                 tcx,
                                 tcx.require_lang_item(LangItem::Copy, Some(span)),
@@ -1978,7 +1978,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 match cast_kind {
                     CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(&body.local_decls, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2007,7 +2007,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(safety)) => {
-                        let sig = match op.ty(body, tcx).kind() {
+                        let sig = match op.ty(&body.local_decls, tcx).kind() {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
@@ -2032,7 +2032,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(&body.local_decls, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2065,7 +2065,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(
                             tcx,
                             tcx.require_lang_item(LangItem::CoerceUnsized, Some(span)),
-                            [op.ty(body, tcx), ty],
+                            [op.ty(&body.local_decls, tcx), ty],
                         );
 
                         self.prove_trait_ref(
@@ -2092,7 +2092,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             _ => panic!("Invalid dyn* cast_ty"),
                         };
 
-                        let self_ty = op.ty(body, tcx);
+                        let self_ty = op.ty(&body.local_decls, tcx);
 
                         self.prove_predicates(
                             existential_predicates
@@ -2115,7 +2115,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::MutToConstPointer) => {
-                        let ty::RawPtr(ty_from, hir::Mutability::Mut) = op.ty(body, tcx).kind()
+                        let ty::RawPtr(ty_from, hir::Mutability::Mut) =
+                            op.ty(&body.local_decls, tcx).kind()
                         else {
                             span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
                             return;
@@ -2142,7 +2143,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::ArrayToPointer) => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
 
                         let opt_ty_elem_mut = match ty_from.kind() {
                             ty::RawPtr(array_ty, array_mut) => match array_ty.kind() {
@@ -2204,7 +2205,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerExposeProvenance => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2222,7 +2223,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerWithExposedProvenance => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2239,7 +2240,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::IntToInt => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2256,7 +2257,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::IntToFloat => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2273,7 +2274,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FloatToInt => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2290,7 +2291,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FloatToFloat => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2307,7 +2308,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FnPtrToPtr => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2324,7 +2325,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::PtrToPtr => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(&body.local_decls, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2408,11 +2409,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(left, location);
                 self.check_operand(right, location);
 
-                let ty_left = left.ty(body, tcx);
+                let ty_left = left.ty(&body.local_decls, tcx);
                 match ty_left.kind() {
                     // Types with regions are comparable if they have a common super-type.
                     ty::RawPtr(_, _) | ty::FnPtr(..) => {
-                        let ty_right = right.ty(body, tcx);
+                        let ty_right = right.ty(&body.local_decls, tcx);
                         let common_ty = self.infcx.next_ty_var(body.source_info(location).span);
                         self.sub_types(
                             ty_left,
@@ -2442,7 +2443,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // For types with no regions we can just check that the
                     // both operands have the same type.
                     ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_)
-                        if ty_left == right.ty(body, tcx) => {}
+                        if ty_left == right.ty(&body.local_decls, tcx) => {}
                     // Other types are compared by trait methods, not by
                     // `Rvalue::BinaryOp`.
                     _ => span_mirbug!(
@@ -2450,7 +2451,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         rvalue,
                         "unexpected comparison types {:?} and {:?}",
                         ty_left,
-                        right.ty(body, tcx)
+                        right.ty(&body.local_decls, tcx)
                     ),
                 }
             }
@@ -2542,7 +2543,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     continue;
                 }
             };
-            let operand_ty = operand.ty(body, tcx);
+            let operand_ty = operand.ty(&body.local_decls, tcx);
             let operand_ty = self.normalize(operand_ty, location);
 
             if let Err(terr) = self.sub_types(
@@ -2626,7 +2627,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             match elem {
                 ProjectionElem::Deref => {
-                    let base_ty = base.ty(body, tcx).ty;
+                    let base_ty = base.ty(&body.local_decls, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind() {

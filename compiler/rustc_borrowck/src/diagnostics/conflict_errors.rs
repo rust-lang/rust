@@ -244,7 +244,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                 );
             }
 
-            let ty = used_place.ty(self.body, self.infcx.tcx).ty;
+            let ty = used_place.ty(&self.body.local_decls, self.infcx.tcx).ty;
             let needs_note = match ty.kind() {
                 ty::Closure(id, _) => {
                     self.infcx.tcx.closure_kind_origin(id.expect_local()).is_none()
@@ -254,7 +254,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
 
             let mpi = self.move_data.moves[move_out_indices[0]].path;
             let place = &self.move_data.move_paths[mpi].place;
-            let ty = place.ty(self.body, self.infcx.tcx).ty;
+            let ty = place.ty(&self.body.local_decls, self.infcx.tcx).ty;
 
             // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
             // Same for if we're in a loop, see #101119.
@@ -460,7 +460,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     && let ty::Param(_) = arg.kind()
                 {
                     let place = &self.move_data.move_paths[mpi].place;
-                    let ty = place.ty(self.body, self.infcx.tcx).ty;
+                    let ty = place.ty(&self.body.local_decls, self.infcx.tcx).ty;
                     if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
                         *has_suggest_reborrow = true;
                         self.suggest_reborrow(err, expr.span, moved_place);
@@ -546,7 +546,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
                     }
                 }
                 let place = &self.move_data.move_paths[mpi].place;
-                let ty = place.ty(self.body, self.infcx.tcx).ty;
+                let ty = place.ty(&self.body.local_decls, self.infcx.tcx).ty;
                 if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call_expr, _) = parent_expr.kind
                     && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IntoIterIntoIter, _)) =
@@ -828,7 +828,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         moved_place: PlaceRef<'tcx>,
         sugg_span: Span,
     ) {
-        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+        let ty = moved_place.ty(&self.body.local_decls, self.infcx.tcx).ty;
         debug!("ty: {:?}, kind: {:?}", ty, ty.kind());
 
         let Some(assign_value) = self.infcx.err_ctxt().ty_kind_suggestion(self.param_env, ty)
@@ -2204,8 +2204,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
             );
             return;
         }
-        let place_ty = PlaceRef::ty(&place.as_ref(), self.body, tcx).ty;
-        let borrowed_place_ty = PlaceRef::ty(&borrowed_place.as_ref(), self.body, tcx).ty;
+        let place_ty = PlaceRef::ty(&place.as_ref(), &self.body.local_decls, tcx).ty;
+        let borrowed_place_ty =
+            PlaceRef::ty(&borrowed_place.as_ref(), &self.body.local_decls, tcx).ty;
         if !has_split_at_mut(place_ty) && !has_split_at_mut(borrowed_place_ty) {
             // Only mention `split_at_mut` on `Vec`, array and slices.
             return;
@@ -2729,7 +2730,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         let union_ty = |place_base| {
             // Need to use fn call syntax `PlaceRef::ty` to determine the type of `place_base`;
             // using a type annotation in the closure argument instead leads to a lifetime error.
-            let ty = PlaceRef::ty(&place_base, self.body, self.infcx.tcx).ty;
+            let ty = PlaceRef::ty(&place_base, &self.body.local_decls, self.infcx.tcx).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
 

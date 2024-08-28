@@ -1374,7 +1374,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
             for (place_ref, proj) in place.iter_projections().rev() {
                 // Handle (a)
                 if proj == ProjectionElem::Deref {
-                    match place_ref.ty(this.body(), this.infcx.tcx).ty.kind() {
+                    match place_ref.ty(&this.body().local_decls, this.infcx.tcx).ty.kind() {
                         // We aren't modifying a variable directly
                         ty::Ref(_, _, hir::Mutability::Mut) => return,
 
@@ -1875,7 +1875,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
         if let Some((place_base, ProjectionElem::Subslice { from, to, from_end: false })) =
             place_span.0.last_projection()
         {
-            let place_ty = place_base.ty(self.body(), self.infcx.tcx);
+            let place_ty = place_base.ty(&self.body().local_decls, self.infcx.tcx);
             if let ty::Array(..) = place_ty.ty.kind() {
                 self.check_if_subslice_element_is_moved(
                     location,
@@ -1987,7 +1987,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                     // assigning to `P.f` requires `P` itself
                     // be already initialized
                     let tcx = self.infcx.tcx;
-                    let base_ty = place_base.ty(self.body(), tcx).ty;
+                    let base_ty = place_base.ty(&self.body().local_decls, tcx).ty;
                     match base_ty.kind() {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
@@ -2076,7 +2076,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
                 // no move out from an earlier location) then this is an attempt at initialization
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
-                if base.ty(this.body(), tcx).ty.is_union() {
+                if base.ty(&this.body().local_decls, tcx).ty.is_union() {
                     if this.move_data.path_map[mpi].iter().any(|moi| {
                         this.move_data.moves[*moi].source.is_predecessor_of(location, this.body)
                     }) {
@@ -2298,7 +2298,7 @@ impl<'mir, 'tcx> MirBorrowckCtxt<'_, 'mir, '_, 'tcx> {
             Some((place_base, elem)) => {
                 match elem {
                     ProjectionElem::Deref => {
-                        let base_ty = place_base.ty(self.body(), self.infcx.tcx).ty;
+                        let base_ty = place_base.ty(&self.body().local_decls, self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
                         match base_ty.kind() {

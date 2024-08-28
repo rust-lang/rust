@@ -327,7 +327,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     && let Some((_, Rvalue::Use(Operand::Constant(c)))) = statement.kind.as_assign()
                     && let Some(idx) = c.const_.try_eval_target_usize(self.tcx, self.param_env)
                     // Determine the type of the thing we are indexing.
-                    && let ty::Array(_, len) = place_base.ty(self.body, self.tcx).ty.kind()
+                    && let ty::Array(_, len) = place_base.ty(&self.body.local_decls, self.tcx).ty.kind()
                     // It's an array; determine its length.
                     && let Some(len) = len.try_eval_target_usize(self.tcx, self.param_env)
                     // If the index is in-bounds, go ahead.
@@ -341,7 +341,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             ProjectionElem::Field(..) => {
-                let base_ty = place_base.ty(self.body, self.tcx).ty;
+                let base_ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
                 if base_ty.is_union() {
                     // No promotion of union field accesses.
                     return Err(Unpromotable);
@@ -400,7 +400,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             // FIXME: consider changing this to only promote &mut [] for default borrows,
             // also forbidding two phase borrows
             BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow } => {
-                let ty = place.ty(self.body, self.tcx).ty;
+                let ty = place.ty(&self.body.local_decls, self.tcx).ty;
 
                 // In theory, any zero-sized value could be borrowed
                 // mutably without consequences. However, only &mut []
@@ -464,7 +464,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
             Rvalue::BinaryOp(op, box (lhs, rhs)) => {
                 let op = *op;
-                let lhs_ty = lhs.ty(self.body, self.tcx);
+                let lhs_ty = lhs.ty(&self.body.local_decls, self.tcx);
 
                 if let ty::RawPtr(_, _) | ty::FnPtr(..) = lhs_ty.kind() {
                     // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
@@ -556,7 +556,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // no problem, only using it is.
                 if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection()
                 {
-                    let base_ty = place_base.ty(self.body, self.tcx).ty;
+                    let base_ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
                         return self.validate_place(place_base);
                     }
@@ -570,7 +570,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if let Some((place_base, ProjectionElem::Deref)) =
                     place_simplified.last_projection()
                 {
-                    let base_ty = place_base.ty(self.body, self.tcx).ty;
+                    let base_ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
                         place_simplified = place_base;
                     }
@@ -647,7 +647,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
         // Functions marked `#[rustc_promotable]` are explicitly allowed to be promoted, so we can
         // accept them at this point.
-        let fn_ty = callee.ty(self.body, self.tcx);
+        let fn_ty = callee.ty(&self.body.local_decls, self.tcx);
         if let ty::FnDef(def_id, _) = *fn_ty.kind() {
             if self.tcx.is_promotable_const_fn(def_id) {
                 return Ok(());

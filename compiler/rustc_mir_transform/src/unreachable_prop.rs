@@ -91,7 +91,7 @@ fn remove_successors_from_switch<'tcx>(
     // In order to preserve this information, we record reachable and unreachable targets as
     // `Assume` statements in MIR.
 
-    let discr_ty = discr.ty(body, tcx);
+    let discr_ty = discr.ty(&body.local_decls, tcx);
     let discr_size = Size::from_bits(match discr_ty.kind() {
         ty::Uint(uint) => uint.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),
         ty::Int(int) => int.normalize(tcx.sess.target.pointer_width).bit_width().unwrap(),

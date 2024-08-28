@@ -72,7 +72,7 @@ trait SimplifyMatch<'tcx> {
             _ => unreachable!(),
         };
 
-        let discr_ty = discr.ty(body.local_decls(), tcx);
+        let discr_ty = discr.ty(&body.local_decls, tcx);
         self.can_simplify(tcx, targets, param_env, bbs, discr_ty)?;
 
         let mut patch = MirPatch::new(body);

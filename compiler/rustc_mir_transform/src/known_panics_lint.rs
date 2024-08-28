@@ -545,7 +545,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
         use rustc_middle::mir::Rvalue::*;
-        let layout = self.ecx.layout_of(dest.ty(self.body, self.tcx).ty).ok()?;
+        let layout = self.ecx.layout_of(dest.ty(&self.body.local_decls, self.tcx).ty).ok()?;
         trace!(?layout);
 
         let val: Value<'_> = match *rvalue {
