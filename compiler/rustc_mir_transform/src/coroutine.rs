@@ -1199,7 +1199,7 @@ fn insert_panic_block<'tcx>(
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks.len());
-    let term = TerminatorKind::Assert {
+    let kind = TerminatorKind::Assert {
         cond: Operand::Constant(Box::new(ConstOperand {
             span: body.span,
             user_ty: None,
@@ -1211,14 +1211,7 @@ fn insert_panic_block<'tcx>(
         unwind: UnwindAction::Continue,
     };
 
-    let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
-        is_cleanup: false,
-    });
-
-    assert_block
+    insert_term_block(body, kind)
 }
 
 fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
