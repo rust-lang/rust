@@ -59,6 +59,7 @@ rm -r tests/run-make/mismatching-target-triples # same
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
+rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -75,6 +76,8 @@ rm -r tests/ui/instrument-coverage/
 
 # missing f16/f128 support
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
+rm tests/ui/asm/aarch64/type-f16.rs
+rm tests/ui/consts/const-float-bits-conv.rs
 
 # optimization tests
 # ==================
@@ -138,6 +141,7 @@ rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation war
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annotation
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
+rm -r tests/run-make/libtest-thread-limit # doesn't work with -Zpanic-abort-tests, missing needs-unwind annotation
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
