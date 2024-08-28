@@ -421,6 +421,16 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        macro_rules! visit_safety {
+            ($vis: expr, $safety: expr) => {
+                if_mut_expr!(
+                    visit_safety($vis, $safety)
+                ,
+                    // assign to _ to prevent unused_variable warnings
+                    { let _ = (&$vis, &$safety); }
+                );
+            }
+        }
 
         // FIXME: should only exist while Visitor::visit_ident
         // doesn't receives a reference
@@ -1090,6 +1100,77 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_ty<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            ty: ref_t!(P!(Ty))
+        ) -> result!(V) {
+            let Ty { id, kind, span, tokens } = deref_P!(ty);
+            try_v!(visit_id!(vis, id));
+            match kind {
+                TyKind::Err(_guar) => {}
+                TyKind::Infer
+                | TyKind::ImplicitSelf
+                | TyKind::Dummy
+                | TyKind::Never
+                | TyKind::CVarArgs => {}
+                TyKind::Slice(ty) => {
+                    try_v!(vis.visit_ty(ty));
+                }
+                TyKind::Ptr(mt) => {
+                    try_v!(vis.visit_mt(mt));
+                }
+                TyKind::Ref(lt, mt) => {
+                    visit_o!(lt, |lt| vis.visit_lifetime(lt, LifetimeCtxt::Ref));
+                    try_v!(vis.visit_mt(mt));
+                }
+                TyKind::BareFn(bft) => {
+                    let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = & $($mut)? **bft;
+                    visit_safety!(vis, safety);
+                    visit_list!(vis, visit_generic_param, flat_map_generic_param, generic_params);
+                    try_v!(vis.visit_fn_decl(decl));
+                    try_v!(visit_span!(vis, decl_span));
+                }
+                TyKind::Tup(tys) => {
+                    visit_list!(vis, visit_ty, tys);
+                }
+                TyKind::Paren(ty) => {
+                    try_v!(vis.visit_ty(ty))
+                }
+                TyKind::Pat(ty, pat) => {
+                    try_v!(vis.visit_ty(ty));
+                    try_v!(vis.visit_pat(pat));
+                }
+                TyKind::Path(qself, path) => {
+                    try_v!(vis.visit_qself(qself));
+                    try_v!(vis.visit_path(path, *id));
+                }
+                TyKind::Array(ty, length) => {
+                    try_v!(vis.visit_ty(ty));
+                    try_v!(vis.visit_anon_const(length));
+                }
+                TyKind::Typeof(expr) => {
+                    try_v!(vis.visit_anon_const(expr));
+                },
+                TyKind::TraitObject(bounds, _syntax) => {
+                    visit_list!(vis, visit_param_bound, bounds; BoundKind::TraitObject);
+                }
+                TyKind::ImplTrait(id, bounds) => {
+                    try_v!(visit_id!(vis, id));
+                    visit_list!(vis, visit_param_bound, bounds; BoundKind::Impl);
+                }
+                TyKind::MacCall(mac) => {
+                    try_v!(vis.visit_mac_call(mac))
+                }
+                TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
+                    try_v!(visit_id!(vis, id));
+                    visit_list!(vis, visit_field_def, flat_map_field_def, fields);
+                }
+            }
+            visit_lazy_tts!(vis, tokens);
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         derive_copy_clone!{
             #[derive(Debug)]
             pub enum FnKind<'a> {
@@ -1355,54 +1436,6 @@ pub mod visit {
         try_visit!(visitor.visit_vis(vis));
         try_visit!(visitor.visit_ident(*ident));
         try_visit!(kind.walk(*id, *span, vis, ident, visitor));
-        V::Result::output()
-    }
-
-    pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
-        let Ty { id, kind, span: _, tokens: _ } = typ;
-        match kind {
-            TyKind::Slice(ty) | TyKind::Paren(ty) => try_visit!(visitor.visit_ty(ty)),
-            TyKind::Ptr(mt) => try_visit!(visitor.visit_mt(mt)),
-            TyKind::Ref(opt_lifetime, mt) => {
-                visit_opt!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
-                try_visit!(visitor.visit_mt(mt));
-            }
-            TyKind::Tup(tuple_element_types) => {
-                walk_list!(visitor, visit_ty, tuple_element_types);
-            }
-            TyKind::BareFn(function_declaration) => {
-                let BareFnTy { safety: _, ext: _, generic_params, decl, decl_span: _ } =
-                    &**function_declaration;
-                walk_list!(visitor, visit_generic_param, generic_params);
-                try_visit!(visitor.visit_fn_decl(decl));
-            }
-            TyKind::Path(maybe_qself, path) => {
-                try_visit!(visitor.visit_qself(maybe_qself));
-                try_visit!(visitor.visit_path(path, *id));
-            }
-            TyKind::Pat(ty, pat) => {
-                try_visit!(visitor.visit_ty(ty));
-                try_visit!(visitor.visit_pat(pat));
-            }
-            TyKind::Array(ty, length) => {
-                try_visit!(visitor.visit_ty(ty));
-                try_visit!(visitor.visit_anon_const(length));
-            }
-            TyKind::TraitObject(bounds, _syntax) => {
-                walk_list!(visitor, visit_param_bound, bounds, BoundKind::TraitObject);
-            }
-            TyKind::ImplTrait(_id, bounds) => {
-                walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
-            }
-            TyKind::Typeof(expression) => try_visit!(visitor.visit_anon_const(expression)),
-            TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy => {}
-            TyKind::Err(_guar) => {}
-            TyKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
-            TyKind::Never | TyKind::CVarArgs => {}
-            TyKind::AnonStruct(_id, ref fields) | TyKind::AnonUnion(_id, ref fields) => {
-                walk_list!(visitor, visit_field_def, fields);
-            }
-        }
         V::Result::output()
     }
 
@@ -1966,61 +1999,6 @@ pub mod mut_visit {
                 visit_bounds(vis, bounds, BoundKind::Bound)
             }
         }
-        vis.visit_span(span);
-    }
-
-    pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
-        let Ty { id, kind, span, tokens } = ty.deref_mut();
-        vis.visit_id(id);
-        match kind {
-            TyKind::Err(_guar) => {}
-            TyKind::Infer
-            | TyKind::ImplicitSelf
-            | TyKind::Dummy
-            | TyKind::Never
-            | TyKind::CVarArgs => {}
-            TyKind::Slice(ty) => vis.visit_ty(ty),
-            TyKind::Ptr(mt) => vis.visit_mt(mt),
-            TyKind::Ref(lt, mt) => {
-                visit_opt(lt, |lt| vis.visit_lifetime(lt, LifetimeCtxt::Ref));
-                vis.visit_mt(mt);
-            }
-            TyKind::BareFn(bft) => {
-                let BareFnTy { safety, ext: _, generic_params, decl, decl_span } = bft.deref_mut();
-                visit_safety(vis, safety);
-                generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
-                vis.visit_fn_decl(decl);
-                vis.visit_span(decl_span);
-            }
-            TyKind::Tup(tys) => visit_thin_vec(tys, |ty| vis.visit_ty(ty)),
-            TyKind::Paren(ty) => vis.visit_ty(ty),
-            TyKind::Pat(ty, pat) => {
-                vis.visit_ty(ty);
-                vis.visit_pat(pat);
-            }
-            TyKind::Path(qself, path) => {
-                vis.visit_qself(qself);
-                vis.visit_path(path, *id);
-            }
-            TyKind::Array(ty, length) => {
-                vis.visit_ty(ty);
-                vis.visit_anon_const(length);
-            }
-            TyKind::Typeof(expr) => vis.visit_anon_const(expr),
-            TyKind::TraitObject(bounds, _syntax) => {
-                visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::TraitObject))
-            }
-            TyKind::ImplTrait(id, bounds) => {
-                vis.visit_id(id);
-                visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Impl));
-            }
-            TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-            TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
-                vis.visit_id(id);
-                fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
-            }
-        }
-        visit_lazy_tts(vis, tokens);
         vis.visit_span(span);
     }
 
