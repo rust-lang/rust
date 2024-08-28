@@ -125,6 +125,17 @@ mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed 
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
 
+mir_build_initializing_type_with_target_feature_requires_unsafe =
+    initializing type with `target_feature` attr is unsafe and requires unsafe block
+    .note = this struct can only be constructed if the corresponding `target_feature`s are available
+    .label = initializing type with `target_feature` attr
+
+mir_build_initializing_type_with_target_feature_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    initializing type with `target_feature` attr is unsafe and requires unsafe function or block
+    .note = this struct can only be constructed if the corresponding `target_feature`s are available
+    .label = initializing type with `target_feature` attr
+
+
 mir_build_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
     .note = inline assembly is entirely unchecked and can cause undefined behavior
@@ -386,6 +397,11 @@ mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe =
     initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
+
+mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_target_feature_requires_unsafe =
+    initializing type with `target_feature` attr is unsafe and requires unsafe block
+    .note = this struct can only be constructed if the corresponding `target_feature`s are available
+    .label = initializing type with `target_feature` attr
 
 mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
