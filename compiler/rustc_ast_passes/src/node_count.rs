@@ -105,7 +105,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
     }
     fn visit_mac_call(&mut self, mac: &MacCall) {
         self.count += 1;
-        walk_mac(self, mac)
+        walk_mac_call(self, mac)
     }
     fn visit_path(&mut self, path: &Path, _id: NodeId) {
         self.count += 1;

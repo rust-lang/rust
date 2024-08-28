@@ -295,7 +295,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_mac_call(&mut self, mac: &'a ast::MacCall) {
         lint_callback!(self, check_mac, mac);
-        ast_visit::walk_mac(self, mac);
+        ast_visit::walk_mac_call(self, mac);
     }
 }
 

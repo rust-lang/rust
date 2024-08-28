@@ -285,7 +285,7 @@ macro_rules! make_ast_visitor {
             make_visit!{TraitRef, visit_trait_ref, walk_trait_ref}
             make_visit!{PolyTraitRef, visit_poly_trait_ref, walk_poly_trait_ref}
             make_visit!{Label, visit_label, walk_label}
-            make_visit!{MacCall, visit_mac_call, walk_mac}
+            make_visit!{MacCall, visit_mac_call, walk_mac_call}
             make_visit!{PathSegment, visit_path_segment, walk_path_segment}
             make_visit!{GenericArgs, visit_generic_args, walk_generic_args}
             make_visit!{GenericArg, visit_generic_arg, walk_generic_arg}
@@ -1335,7 +1335,7 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
-        pub fn walk_mac<$($lt,)? V: $trait$(<$lt>)?>(
+        pub fn walk_mac_call<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
             mac: ref_t!(MacCall)
         ) -> result!(V) {
