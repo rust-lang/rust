@@ -490,32 +490,6 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
     }
 }
 
-/// The `Readable` trait describes interpreter values that one can read from.
-pub trait Readable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
-    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>>;
-}
-
-impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for OpTy<'tcx, Prov> {
-    #[inline(always)]
-    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
-        self.as_mplace_or_imm()
-    }
-}
-
-impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
-    #[inline(always)]
-    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
-        Left(self.clone())
-    }
-}
-
-impl<'tcx, Prov: Provenance> Readable<'tcx, Prov> for ImmTy<'tcx, Prov> {
-    #[inline(always)]
-    fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
-        Right(self.clone())
-    }
-}
-
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
@@ -588,9 +562,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// ConstProp needs it, though.
     pub fn read_immediate_raw(
         &self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
-        Ok(match src.as_mplace_or_imm() {
+        Ok(match src.to_op(self)?.as_mplace_or_imm() {
             Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
                     Right(val)
@@ -608,7 +582,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     #[inline(always)]
     pub fn read_immediate(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         if !matches!(
             op.layout().abi,
@@ -627,7 +601,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         Ok(self.read_immediate(op)?.to_scalar())
     }
@@ -638,21 +612,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Read a pointer from a place.
     pub fn read_pointer(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         self.read_scalar(op)?.to_pointer(self)
     }
     /// Read a pointer-sized unsigned integer from a place.
     pub fn read_target_usize(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, u64> {
         self.read_scalar(op)?.to_target_usize(self)
     }
     /// Read a pointer-sized signed integer from a place.
     pub fn read_target_isize(
         &self,
-        op: &impl Readable<'tcx, M::Provenance>,
+        op: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, i64> {
         self.read_scalar(op)?.to_target_isize(self)
     }

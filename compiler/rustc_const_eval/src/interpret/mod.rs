@@ -33,7 +33,7 @@ pub(crate) use self::intrinsics::eval_nullary_intrinsic;
 pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, ReturnAction};
 pub use self::memory::{AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 use self::operand::Operand;
-pub use self::operand::{ImmTy, Immediate, OpTy, Readable};
+pub use self::operand::{ImmTy, Immediate, OpTy};
 pub use self::place::{MPlaceTy, MemPlaceMeta, PlaceTy, Writeable};
 use self::place::{MemPlace, Place};
 pub use self::projection::{OffsetMode, Projectable};
