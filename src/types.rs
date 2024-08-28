@@ -475,7 +475,7 @@ impl Rewrite for ast::WherePredicate {
                     format!("{type_str}{colon}")
                 };
 
-                rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
+                rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape).ok()?
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
@@ -488,7 +488,8 @@ impl Rewrite for ast::WherePredicate {
                 ..
             }) => {
                 let lhs_ty_str = lhs_ty.rewrite(context, shape).map(|lhs| lhs + " =")?;
-                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
+                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)
+                    .ok()?
             }
         };
 

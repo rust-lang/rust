@@ -194,10 +194,10 @@ pub(crate) fn format_expr(
             rewrite_path(context, PathContext::Expr, qself, path, shape).ok()
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
-            rewrite_assignment(context, lhs, rhs, None, shape)
+            rewrite_assignment(context, lhs, rhs, None, shape).ok()
         }
         ast::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
-            rewrite_assignment(context, lhs, rhs, Some(op), shape)
+            rewrite_assignment(context, lhs, rhs, Some(op), shape).ok()
         }
         ast::ExprKind::Continue(ref opt_label) => {
             let id_str = match *opt_label {
@@ -2050,15 +2050,21 @@ fn rewrite_assignment(
     rhs: &ast::Expr,
     op: Option<&ast::BinOp>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     let operator_str = match op {
         Some(op) => context.snippet(op.span),
         None => "=",
     };
 
     // 1 = space between lhs and operator.
-    let lhs_shape = shape.sub_width(operator_str.len() + 1)?;
-    let lhs_str = format!("{} {}", lhs.rewrite(context, lhs_shape)?, operator_str);
+    let lhs_shape = shape
+        .sub_width(operator_str.len() + 1)
+        .max_width_error(shape.width, lhs.span())?;
+    let lhs_str = format!(
+        "{} {}",
+        lhs.rewrite_result(context, lhs_shape)?,
+        operator_str
+    );
 
     rewrite_assign_rhs(
         context,
@@ -2089,7 +2095,7 @@ pub(crate) fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     ex: &R,
     rhs_kind: &RhsAssignKind<'_>,
     shape: Shape,
-) -> Option<String> {
+) -> RewriteResult {
     rewrite_assign_rhs_with(context, lhs, ex, shape, rhs_kind, RhsTactics::Default)
 }
 
@@ -2100,7 +2106,7 @@ pub(crate) fn rewrite_assign_rhs_expr<R: Rewrite>(
     shape: Shape,
     rhs_kind: &RhsAssignKind<'_>,
     rhs_tactics: RhsTactics,
-) -> Option<String> {
+) -> RewriteResult {
     let last_line_width = last_line_width(lhs).saturating_sub(if lhs.contains('\n') {
         shape.indent.width()
     } else {
@@ -2122,7 +2128,7 @@ pub(crate) fn rewrite_assign_rhs_expr<R: Rewrite>(
         context,
         ex,
         orig_shape,
-        ex.rewrite(context, orig_shape),
+        ex.rewrite_result(context, orig_shape),
         rhs_kind,
         rhs_tactics,
         has_rhs_comment,
@@ -2136,10 +2142,10 @@ pub(crate) fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
     shape: Shape,
     rhs_kind: &RhsAssignKind<'_>,
     rhs_tactics: RhsTactics,
-) -> Option<String> {
+) -> RewriteResult {
     let lhs = lhs.into();
     let rhs = rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics)?;
-    Some(lhs + &rhs)
+    Ok(lhs + &rhs)
 }
 
 pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite + Spanned>(
@@ -2161,8 +2167,7 @@ pub(crate) fn rewrite_assign_rhs_with_comments<S: Into<String>, R: Rewrite + Spa
     } else {
         shape
     };
-    let rhs =
-        rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics).unknown_error()?;
+    let rhs = rewrite_assign_rhs_expr(context, &lhs, ex, shape, rhs_kind, rhs_tactics)?;
     if contains_comment {
         let rhs = rhs.trim_start();
         combine_strs_with_missing_comments(context, &lhs, rhs, between_span, shape, allow_extend)
@@ -2175,23 +2180,25 @@ fn choose_rhs<R: Rewrite>(
     context: &RewriteContext<'_>,
     expr: &R,
     shape: Shape,
-    orig_rhs: Option<String>,
+    orig_rhs: RewriteResult,
     _rhs_kind: &RhsAssignKind<'_>,
     rhs_tactics: RhsTactics,
     has_rhs_comment: bool,
-) -> Option<String> {
+) -> RewriteResult {
     match orig_rhs {
-        Some(ref new_str) if new_str.is_empty() => Some(String::new()),
-        Some(ref new_str)
-            if !new_str.contains('\n') && unicode_str_width(new_str) <= shape.width =>
-        {
-            Some(format!(" {new_str}"))
+        Ok(ref new_str) if new_str.is_empty() => Ok(String::new()),
+        Ok(ref new_str) if !new_str.contains('\n') && unicode_str_width(new_str) <= shape.width => {
+            Ok(format!(" {new_str}"))
         }
         _ => {
             // Expression did not fit on the same line as the identifier.
             // Try splitting the line and see if that works better.
-            let new_shape = shape_from_rhs_tactic(context, shape, rhs_tactics)?;
-            let new_rhs = expr.rewrite(context, new_shape);
+            let new_shape = shape_from_rhs_tactic(context, shape, rhs_tactics)
+                // TODO(ding-young) Ideally, we can replace unknown_error() with max_width_error(),
+                // but this requires either implementing the Spanned trait for ast::GenericBounds
+                // or grabbing the span from the call site.
+                .unknown_error()?;
+            let new_rhs = expr.rewrite_result(context, new_shape);
             let new_indent_str = &shape
                 .indent
                 .block_indent(context.config)
@@ -2199,24 +2206,27 @@ fn choose_rhs<R: Rewrite>(
             let before_space_str = if has_rhs_comment { "" } else { " " };
 
             match (orig_rhs, new_rhs) {
-                (Some(ref orig_rhs), Some(ref new_rhs))
+                (Ok(ref orig_rhs), Ok(ref new_rhs))
                     if !filtered_str_fits(&new_rhs, context.config.max_width(), new_shape) =>
                 {
-                    Some(format!("{before_space_str}{orig_rhs}"))
+                    Ok(format!("{before_space_str}{orig_rhs}"))
                 }
-                (Some(ref orig_rhs), Some(ref new_rhs))
+                (Ok(ref orig_rhs), Ok(ref new_rhs))
                     if prefer_next_line(orig_rhs, new_rhs, rhs_tactics) =>
                 {
-                    Some(format!("{new_indent_str}{new_rhs}"))
+                    Ok(format!("{new_indent_str}{new_rhs}"))
                 }
-                (None, Some(ref new_rhs)) => Some(format!("{new_indent_str}{new_rhs}")),
-                (None, None) if rhs_tactics == RhsTactics::AllowOverflow => {
+                (Err(_), Ok(ref new_rhs)) => Ok(format!("{new_indent_str}{new_rhs}")),
+                (Err(_), Err(_)) if rhs_tactics == RhsTactics::AllowOverflow => {
                     let shape = shape.infinite_width();
-                    expr.rewrite(context, shape)
+                    expr.rewrite_result(context, shape)
                         .map(|s| format!("{}{}", before_space_str, s))
                 }
-                (None, None) => None,
-                (Some(orig_rhs), _) => Some(format!("{before_space_str}{orig_rhs}")),
+                // When both orig_rhs and new_rhs result in errors, we currently propagate
+                // the error from the second attempt since it is more generous with
+                // width constraints. This decision is somewhat arbitrary and is open to change.
+                (Err(_), Err(new_rhs_err)) => Err(new_rhs_err),
+                (Ok(orig_rhs), _) => Ok(format!("{before_space_str}{orig_rhs}")),
             }
         }
     }

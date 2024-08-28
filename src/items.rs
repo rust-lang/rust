@@ -137,8 +137,7 @@ impl Rewrite for ast::Local {
                 init,
                 &RhsAssignKind::Expr(&init.kind, init.span),
                 nested_shape,
-            )
-            .max_width_error(shape.width, self.span())?;
+            )?;
 
             if let Some(block) = else_block {
                 let else_kw_span = init.span.between(block.span);
@@ -711,7 +710,8 @@ impl<'a> FmtVisitor<'a> {
                 shape,
                 &RhsAssignKind::Expr(&ex.kind, ex.span),
                 RhsTactics::AllowOverflow,
-            )?
+            )
+            .ok()?
         } else {
             variant_body
         };
@@ -1206,7 +1206,8 @@ pub(crate) fn format_trait(
             shape,
             &RhsAssignKind::Bounds,
             RhsTactics::ForceNextLineWithoutIndent,
-        )?;
+        )
+        .ok()?;
     }
 
     // Rewrite where-clause.
@@ -1396,6 +1397,7 @@ pub(crate) fn format_trait_alias(
         shape.sub_width(1)?,
     )
     .map(|s| s + ";")
+    .ok()
 }
 
 fn format_unit_struct(
@@ -1835,7 +1837,9 @@ fn rewrite_ty<R: Rewrite>(
 
         // 1 = `;`
         let shape = Shape::indented(indent, context.config).sub_width(1)?;
-        rewrite_assign_rhs(context, lhs, &*ty, &RhsAssignKind::Ty, shape).map(|s| s + ";")
+        rewrite_assign_rhs(context, lhs, &*ty, &RhsAssignKind::Ty, shape)
+            .map(|s| s + ";")
+            .ok()
     } else {
         Some(format!("{result};"))
     }
@@ -1931,8 +1935,7 @@ pub(crate) fn rewrite_struct_field(
 
     let is_prefix_empty = prefix.is_empty();
     // We must use multiline. We are going to put attributes and a field on different lines.
-    let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, &RhsAssignKind::Ty, shape)
-        .unknown_error()?;
+    let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, &RhsAssignKind::Ty, shape)?;
     // Remove a leading white-space from `rewrite_assign_rhs()` when rewriting a tuple struct.
     let field_str = if is_prefix_empty {
         field_str.trim_start()
@@ -3421,6 +3424,7 @@ impl Rewrite for ast::ForeignItem {
                     shape.sub_width(1)?,
                 )
                 .map(|s| s + ";")
+                .ok()
             }
             ast::ForeignItemKind::TyAlias(ref ty_alias) => {
                 let (kind, span) = (&ItemVisitorKind::ForeignItem(self), self.span);

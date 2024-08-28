@@ -1437,18 +1437,15 @@ fn format_lazy_static(
             id,
             ty.rewrite_result(context, nested_shape)?
         ));
-        result.push_str(
-            &rewrite_assign_rhs(
-                context,
-                stmt,
-                &*expr,
-                &RhsAssignKind::Expr(&expr.kind, expr.span),
-                nested_shape
-                    .sub_width(1)
-                    .max_width_error(nested_shape.width, expr.span)?,
-            )
-            .unknown_error()?,
-        );
+        result.push_str(&rewrite_assign_rhs(
+            context,
+            stmt,
+            &*expr,
+            &RhsAssignKind::Expr(&expr.kind, expr.span),
+            nested_shape
+                .sub_width(1)
+                .max_width_error(nested_shape.width, expr.span)?,
+        )?);
         result.push(';');
         if i != last {
             result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
