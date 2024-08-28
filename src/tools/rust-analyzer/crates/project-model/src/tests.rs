@@ -278,7 +278,7 @@ fn crate_graph_dedup() {
     assert_eq!(regex_crate_graph.iter().count(), 60);
 
     crate_graph.extend(regex_crate_graph, &mut regex_proc_macros, |(_, a), (_, b)| a == b);
-    assert_eq!(crate_graph.iter().count(), 119);
+    assert_eq!(crate_graph.iter().count(), 118);
 }
 
 #[test]

@@ -65,7 +65,7 @@ pub(crate) fn inject_rustc_tool_env(
     // NOTE: Technically we should set this for all crates, but that will worsen the deduplication
     // logic so for now just keeping it proc-macros ought to be fine.
     if kind.is_proc_macro() {
-        env.set("CARGO_RUSTC_CURRENT_DIR", cargo.manifest_path().to_string());
+        env.set("CARGO_RUSTC_CURRENT_DIR", cargo.manifest_path().parent().to_string());
     }
 }
 
