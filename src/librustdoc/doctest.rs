@@ -50,6 +50,46 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) args_file: PathBuf,
 }
 
+/// Function used to split command line arguments just like a shell would.
+fn split_args(args: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut iter = args.chars();
+    let mut current = String::new();
+
+    while let Some(c) = iter.next() {
+        if c == '\\' {
+            if let Some(c) = iter.next() {
+                // If it's escaped, even a quote or a whitespace will be ignored.
+                current.push(c);
+            }
+        } else if c == '"' || c == '\'' {
+            while let Some(new_c) = iter.next() {
+                if new_c == c {
+                    break;
+                } else if new_c == '\\' {
+                    if let Some(c) = iter.next() {
+                        // If it's escaped, even a quote will be ignored.
+                        current.push(c);
+                    }
+                } else {
+                    current.push(new_c);
+                }
+            }
+        } else if " \n\t\r".contains(c) {
+            if !current.is_empty() {
+                out.push(current.clone());
+                current.clear();
+            }
+        } else {
+            current.push(c);
+        }
+    }
+    if !current.is_empty() {
+        out.push(current);
+    }
+    out
+}
+
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
     let mut file = File::create(file_path)
         .map_err(|error| format!("failed to create args file: {error:?}"))?;
@@ -79,14 +119,7 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     }
 
     for compilation_args in &options.doctest_compilation_args {
-        for flag in compilation_args
-            .split_whitespace()
-            .map(|flag| flag.trim())
-            .filter(|flag| !flag.is_empty())
-        {
-            // Very simple parsing implementation. Might be a good idea to correctly handle strings.
-            content.push(flag.to_string());
-        }
+        content.extend(split_args(compilation_args));
     }
 
     let content = content.join("\n");
@@ -1001,6 +1034,29 @@ fn doctest_run_fn(
         panic::resume_unwind(Box::new(()));
     }
     Ok(())
+}
+
+#[cfg(test)]
+#[test]
+fn check_split_args() {
+    fn compare(input: &str, expected: &[&str]) {
+        let output = split_args(input);
+        let expected = expected.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(expected, output, "test failed for {input:?}");
+    }
+
+    compare("'a' \"b\"c", &["a", "bc"]);
+    compare("'a' \"b \"c d", &["a", "b c", "d"]);
+    compare("'a' \"b\\\"c\"", &["a", "b\"c"]);
+    compare("'a\"'", &["a\""]);
+    compare("\"a'\"", &["a'"]);
+    compare("\\ a", &[" a"]);
+    compare("\\\\", &["\\"]);
+    compare("a'", &["a"]);
+    compare("a          ", &["a"]);
+    compare("a          b", &["a", "b"]);
+    compare("a\n\t \rb", &["a", "b"]);
+    compare("a\n\t1 \rb", &["a", "1", "b"]);
 }
 
 #[cfg(test)] // used in tests
