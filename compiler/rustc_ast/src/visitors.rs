@@ -82,10 +82,6 @@ macro_rules! mutability_dependent {
             walk_flat_map_assoc_item(self, i, ctxt)
         }
 
-        fn visit_coroutine_kind(&mut self, a: &mut CoroutineKind) {
-            walk_coroutine_kind(self, a);
-        }
-
         fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
             walk_flat_map_stmt(self, s)
         }
@@ -300,6 +296,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Local, visit_local, walk_local}
             make_visit!{PreciseCapturingArg, visit_precise_capturing_arg, walk_precise_capturing_arg}
             make_visit!{Block, visit_block, walk_block}
+            make_visit!{CoroutineKind, visit_coroutine_kind, walk_coroutine_kind}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
