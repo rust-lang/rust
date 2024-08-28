@@ -1,8 +1,5 @@
 macro_rules! mutability_dependent {
     ($($lf: lifetime)?) => {
-        fn visit_foreign_item(&mut self, i: &'ast ForeignItem) -> Self::Result {
-            walk_item(self, i)
-        }
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
             walk_stmt(self, s)
         }
@@ -312,6 +309,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Block, visit_block, walk_block}
             make_visit!{CoroutineKind, visit_coroutine_kind, walk_coroutine_kind}
             make_visit!{Item, visit_item, walk_item}
+            make_visit!{ForeignItem, visit_foreign_item, walk_item}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
             make_visit!{P!(Expr), visit_expr, walk_expr}
