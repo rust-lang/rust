@@ -249,9 +249,14 @@ impl f16 {
     ///
     /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise equal to `-self`.
     /// If `self` is a NaN, then a NaN with the same payload as `self` and the sign bit of `sign` is
-    /// returned. Note, however, that conserving the sign bit on NaN across arithmetical operations
-    /// is not generally guaranteed. See [specification of NaN bit
-    /// patterns](primitive@f32#nan-bit-patterns) for more info.
+    /// returned.
+    ///
+    /// If `sign` is a NaN, then this operation will still carry over its sign into the result. Note
+    /// that IEEE 754 doesn't assign any meaning to the sign bit in case of a NaN, and as Rust
+    /// doesn't guarantee that the bit pattern of NaNs are conserved over arithmetic operations, the
+    /// result of `copysign` with `sign` being a NaN might produce an unexpected or non-portable
+    /// result. See the [specification of NaN bit patterns](primitive@f32#nan-bit-patterns) for more
+    /// info.
     ///
     /// # Examples
     ///
