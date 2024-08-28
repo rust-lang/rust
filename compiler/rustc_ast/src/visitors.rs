@@ -1294,6 +1294,16 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_foreign_mod<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            foreign_mod: ref_t!(ForeignMod)
+        ) -> result!(V) {
+            let ForeignMod { safety, abi: _, items } = foreign_mod;
+            visit_safety!(vis, safety);
+            visit_list!(vis, visit_foreign_item, flat_map_foreign_item, items);
+            return_result!(V)
+        }
+
         pub fn walk_assoc_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<AssocItemKind>),
@@ -1912,12 +1922,6 @@ pub mod visit {
         }
         V::Result::output()
     }
-
-    fn walk_foreign_mod<'a, V: Visitor<'a>>(vis: &mut V, foreign_mod: &'a ForeignMod) -> V::Result {
-        let ForeignMod { safety: _, abi: _, items } = foreign_mod;
-        walk_list!(vis, visit_foreign_item, items);
-        V::Result::output()
-    }
 }
 
 pub mod mut_visit {
@@ -2047,12 +2051,6 @@ pub mod mut_visit {
     pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &mut DelimSpan) {
         vis.visit_span(open);
         vis.visit_span(close);
-    }
-
-    fn walk_foreign_mod<T: MutVisitor>(vis: &mut T, foreign_mod: &mut ForeignMod) {
-        let ForeignMod { safety, abi: _, items } = foreign_mod;
-        visit_safety(vis, safety);
-        items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
     }
 
     fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
