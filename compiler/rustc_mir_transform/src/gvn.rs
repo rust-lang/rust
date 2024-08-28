@@ -119,53 +119,50 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
-        propagate_ssa(tcx, body);
-    }
-}
 
-fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, body, param_env);
-    // Clone dominators as we need them while mutating the body.
-    let dominators = body.basic_blocks.dominators().clone();
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        let ssa = SsaLocals::new(tcx, body, param_env);
+        // Clone dominators as we need them while mutating the body.
+        let dominators = body.basic_blocks.dominators().clone();
 
-    let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
-    ssa.for_each_assignment_mut(
-        body.basic_blocks.as_mut_preserves_cfg(),
-        |local, value, location| {
-            let value = match value {
-                // We do not know anything of this assigned value.
-                AssignedValue::Arg | AssignedValue::Terminator => None,
-                // Try to get some insight.
-                AssignedValue::Rvalue(rvalue) => {
-                    let value = state.simplify_rvalue(rvalue, location);
-                    // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
-                    // `local` as reusable if we have an exact type match.
-                    if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
-                        return;
+        let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
+        ssa.for_each_assignment_mut(
+            body.basic_blocks.as_mut_preserves_cfg(),
+            |local, value, location| {
+                let value = match value {
+                    // We do not know anything of this assigned value.
+                    AssignedValue::Arg | AssignedValue::Terminator => None,
+                    // Try to get some insight.
+                    AssignedValue::Rvalue(rvalue) => {
+                        let value = state.simplify_rvalue(rvalue, location);
+                        // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+                        // `local` as reusable if we have an exact type match.
+                        if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
+                            return;
+                        }
+                        value
                     }
-                    value
-                }
-            };
-            // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
-            let value = value.or_else(|| state.new_opaque()).unwrap();
-            state.assign(local, value);
-        },
-    );
+                };
+                // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
+                let value = value.or_else(|| state.new_opaque()).unwrap();
+                state.assign(local, value);
+            },
+        );
 
-    // Stop creating opaques during replacement as it is useless.
-    state.next_opaque = None;
+        // Stop creating opaques during replacement as it is useless.
+        state.next_opaque = None;
 
-    let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
-    for bb in reverse_postorder {
-        let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
-        state.visit_basic_block_data(bb, data);
+        let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
+        for bb in reverse_postorder {
+            let data = &mut body.basic_blocks.as_mut_preserves_cfg()[bb];
+            state.visit_basic_block_data(bb, data);
+        }
+
+        // For each local that is reused (`y` above), we remove its storage statements do avoid any
+        // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
+        // statements.
+        StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
     }
-
-    // For each local that is reused (`y` above), we remove its storage statements do avoid any
-    // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
-    // statements.
-    StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
 }
 
 newtype_index! {

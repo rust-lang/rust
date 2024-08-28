@@ -18,18 +18,12 @@ pub(super) enum InstSimplify {
     AfterSimplifyCfg,
 }
 
-impl InstSimplify {
+impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
     fn name(&self) -> &'static str {
         match self {
             InstSimplify::BeforeInline => "InstSimplify-before-inline",
             InstSimplify::AfterSimplifyCfg => "InstSimplify-after-simplifycfg",
         }
-    }
-}
-
-impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
-    fn name(&self) -> &'static str {
-        self.name()
     }
 
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
