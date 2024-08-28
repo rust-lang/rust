@@ -67,6 +67,15 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         ast::Expr::IndexExpr(index) if index.base().as_ref() == Some(&to_extract) => true,
         _ => false,
     });
+    let needs_ref = needs_adjust
+        && matches!(
+            to_extract,
+            ast::Expr::FieldExpr(_)
+                | ast::Expr::IndexExpr(_)
+                | ast::Expr::MacroExpr(_)
+                | ast::Expr::ParenExpr(_)
+                | ast::Expr::PathExpr(_)
+        );
 
     let anchor = Anchor::from(&to_extract)?;
     let target = to_extract.syntax().text_range();
@@ -93,10 +102,16 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 Some(ast::Expr::RefExpr(expr)) if expr.mut_token().is_some() => {
                     make::ident_pat(false, true, make::name(&var_name))
                 }
+                _ if needs_adjust
+                    && !needs_ref
+                    && ty.as_ref().is_some_and(|ty| ty.is_mutable_reference()) =>
+                {
+                    make::ident_pat(false, true, make::name(&var_name))
+                }
                 _ => make::ident_pat(false, false, make::name(&var_name)),
             };
 
-            let to_extract = match ty.as_ref().filter(|_| needs_adjust) {
+            let to_extract = match ty.as_ref().filter(|_| needs_ref) {
                 Some(receiver_type) if receiver_type.is_mutable_reference() => {
                     make::expr_ref(to_extract, true)
                 }
@@ -1503,6 +1518,32 @@ fn foo() {
 fn foo() {
     let mut $0var_name = 0;
     let v = &mut var_name;
+}"#,
+        );
+    }
+
+    #[test]
+    fn generates_no_ref_on_calls() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    $0bar()$0.do_work();
+}"#,
+            r#"
+struct S;
+impl S {
+    fn do_work(&mut self) {}
+}
+fn bar() -> S { S }
+fn foo() {
+    let mut $0bar = bar();
+    bar.do_work();
 }"#,
         );
     }
