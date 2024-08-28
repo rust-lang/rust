@@ -173,11 +173,6 @@ pub trait Machine<'tcx>: Sized {
         false
     }
 
-    /// Whether function calls should be [ABI](CallAbi)-checked.
-    fn enforce_abi(_ecx: &InterpCx<'tcx, Self>) -> bool {
-        true
-    }
-
     /// Whether Assert(OverflowNeg) and Assert(Overflow) MIR terminators should actually
     /// check for overflow.
     fn ignore_optional_overflow_checks(_ecx: &InterpCx<'tcx, Self>) -> bool;
@@ -237,6 +232,13 @@ pub trait Machine<'tcx>: Sized {
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
+
+    /// Check whether the given function may be executed on the current machine, in terms of the
+    /// target features is requires.
+    fn check_fn_target_features(
+        _ecx: &InterpCx<'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+    ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
@@ -615,6 +617,16 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         _reason: mir::UnwindTerminateReason,
     ) -> InterpResult<$tcx> {
         unreachable!("unwinding cannot happen during compile-time evaluation")
+    }
+
+    #[inline(always)]
+    fn check_fn_target_features(
+        _ecx: &InterpCx<$tcx, Self>,
+        _instance: ty::Instance<$tcx>,
+    ) -> InterpResult<$tcx> {
+        // For now we don't do any checking here. We can't use `tcx.sess` because that can differ
+        // between crates, and we need to ensure that const-eval always behaves the same.
+        Ok(())
     }
 
     #[inline(always)]
