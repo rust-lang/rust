@@ -681,9 +681,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.switch_to_block(panic_block);
         self.set_debug_loc(bx, terminator.source_info);
 
-        // Get the location information.
-        let location = self.get_caller_location(bx, terminator.source_info).immediate();
-
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
             AssertKind::BoundsCheck { ref len, ref index } => {
@@ -691,18 +688,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (LangItem::PanicBoundsCheck, vec![index, len, location])
+                (LangItem::PanicBoundsCheck, vec![index, len])
             }
             AssertKind::MisalignedPointerDereference { ref required, ref found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
-                (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
+                (LangItem::PanicMisalignedPointerDereference, vec![required, found])
             }
             _ => {
                 // It's `pub fn panic_...()` and `#[track_caller]` adds an implicit argument.
-                (msg.panic_function(), vec![location])
+                (msg.panic_function(), vec![])
             }
         };
 

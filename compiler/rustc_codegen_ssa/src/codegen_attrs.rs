@@ -60,9 +60,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(did));
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
-    if tcx.should_inherit_track_caller(did) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
-    }
 
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
@@ -241,7 +238,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     )
                     .emit();
                 }
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
             }
             sym::export_name => {
                 if let Some(s) = attr.value_str() {
