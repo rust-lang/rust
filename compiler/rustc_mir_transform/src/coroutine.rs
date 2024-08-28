@@ -64,6 +64,7 @@ use rustc_index::bit_set::{BitMatrix, DenseBitSet, GrowableBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, Ty, TyCtxt, TypingMode,
 };
@@ -74,7 +75,9 @@ use rustc_mir_dataflow::impls::{
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::{Span, sym};
+use rustc_span::source_map::dummy_spanned;
+use rustc_span::symbol::sym;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
@@ -159,6 +162,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
 }
 
 const SELF_ARG: Local = Local::from_u32(1);
+const CTX_ARG: Local = Local::from_u32(2);
 
 /// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {
@@ -469,6 +473,35 @@ fn make_aggregate_adt<'tcx>(
     Rvalue::Aggregate(Box::new(AggregateKind::Adt(def_id, variant_idx, args, None, None)), operands)
 }
 
+// Fix return Poll<Rv>::Pending statement into Poll<()>::Pending for async drop function
+struct FixReturnPendingVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for FixReturnPendingVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_assign(
+        &mut self,
+        place: &mut Place<'tcx>,
+        rvalue: &mut Rvalue<'tcx>,
+        _location: Location,
+    ) {
+        if place.local != RETURN_PLACE {
+            return;
+        }
+
+        // Converting `_0 = Poll::<Rv>::Pending` to `_0 = Poll::<()>::Pending`
+        if let Rvalue::Aggregate(kind, _) = rvalue {
+            if let AggregateKind::Adt(_, _, ref mut args, _, _) = **kind {
+                *args = self.tcx.mk_args(&[self.tcx.types.unit.into()]);
+            }
+        }
+    }
+}
+
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let coroutine_ty = body.local_decls.raw[1].ty;
 
@@ -539,11 +572,11 @@ fn replace_local<'tcx>(
 /// The async lowering step and the type / lifetime inference / checking are
 /// still using the `ResumeTy` indirection for the time being, and that indirection
 /// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
-fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Ty<'tcx> {
     let context_mut_ref = Ty::new_task_context(tcx);
 
     // replace the type of the `resume` argument
-    replace_resume_ty_local(tcx, body, Local::new(2), context_mut_ref);
+    replace_resume_ty_local(tcx, body, CTX_ARG, context_mut_ref);
 
     let get_context_def_id = tcx.require_lang_item(LangItem::GetContext, None);
 
@@ -568,6 +601,408 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             }
             _ => {}
         }
+    }
+    context_mut_ref
+}
+
+// rv = call fut.poll()
+fn build_poll_call<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    poll_unit_place: &Place<'tcx>,
+    switch_block: BasicBlock,
+    fut_pin_place: &Place<'tcx>,
+    fut_ty: Ty<'tcx>,
+    context_ref_place: &Place<'tcx>,
+    unwind: UnwindAction,
+) -> BasicBlock {
+    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, None);
+    let poll_fn = Ty::new_fn_def(tcx, poll_fn, [fut_ty]);
+    let poll_fn = Operand::Constant(Box::new(ConstOperand {
+        span: DUMMY_SP,
+        user_ty: None,
+        const_: Const::zero_sized(poll_fn),
+    }));
+    let call = TerminatorKind::Call {
+        func: poll_fn.clone(),
+        args: [
+            dummy_spanned(Operand::Move(*fut_pin_place)),
+            dummy_spanned(Operand::Move(*context_ref_place)),
+        ]
+        .into(),
+        destination: *poll_unit_place,
+        target: Some(switch_block),
+        unwind,
+        call_source: CallSource::Misc,
+        fn_span: DUMMY_SP,
+    };
+    insert_term_block(body, call)
+}
+
+// pin_fut = Pin::new_unchecked(&mut fut)
+fn build_pin_fut<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    fut_place: Place<'tcx>,
+    unwind: UnwindAction,
+) -> (BasicBlock, Place<'tcx>) {
+    let span = body.span;
+    let source_info = SourceInfo::outermost(span);
+    let fut_ty = fut_place.ty(&body.local_decls, tcx).ty;
+    let fut_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, fut_ty);
+    let fut_ref_place = Place::from(body.local_decls.push(LocalDecl::new(fut_ref_ty, span)));
+    let pin_fut_new_unchecked_fn = Ty::new_fn_def(
+        tcx,
+        tcx.require_lang_item(LangItem::PinNewUnchecked, Some(span)),
+        [fut_ref_ty],
+    );
+    let fut_pin_ty = pin_fut_new_unchecked_fn.fn_sig(tcx).output().skip_binder();
+    let fut_pin_place = Place::from(body.local_decls.push(LocalDecl::new(fut_pin_ty, span)));
+    let pin_fut_new_unchecked_fn = Operand::Constant(Box::new(ConstOperand {
+        span,
+        user_ty: None,
+        const_: Const::zero_sized(pin_fut_new_unchecked_fn),
+    }));
+
+    let storage_live =
+        Statement { source_info, kind: StatementKind::StorageLive(fut_pin_place.local) };
+
+    let fut_ref_assign = Statement {
+        source_info,
+        kind: StatementKind::Assign(Box::new((
+            fut_ref_place,
+            Rvalue::Ref(
+                tcx.lifetimes.re_erased,
+                BorrowKind::Mut { kind: MutBorrowKind::Default },
+                fut_place,
+            ),
+        ))),
+    };
+
+    // call Pin<FutTy>::new_unchecked(&mut fut)
+    let pin_fut_bb = body.basic_blocks_mut().push(BasicBlockData {
+        statements: [storage_live, fut_ref_assign].to_vec(),
+        terminator: Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Call {
+                func: pin_fut_new_unchecked_fn,
+                args: [dummy_spanned(Operand::Move(fut_ref_place))].into(),
+                destination: fut_pin_place,
+                target: None, // will be fixed later
+                unwind,
+                call_source: CallSource::Misc,
+                fn_span: span,
+            },
+        }),
+        is_cleanup: false,
+    });
+    (pin_fut_bb, fut_pin_place)
+}
+
+// Build Poll switch for async drop
+// match rv {
+//     Ready() => ready_block
+//     Pending => yield_block
+//}
+fn build_poll_switch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    poll_enum: Ty<'tcx>,
+    poll_unit_place: &Place<'tcx>,
+    ready_block: BasicBlock,
+    yield_block: BasicBlock,
+) -> BasicBlock {
+    let poll_enum_adt = poll_enum.ty_adt_def().unwrap();
+
+    let Discr { val: poll_ready_discr, ty: poll_discr_ty } = poll_enum
+        .discriminant_for_variant(
+            tcx,
+            poll_enum_adt.variant_index_with_id(tcx.require_lang_item(LangItem::PollReady, None)),
+        )
+        .unwrap();
+    let poll_pending_discr = poll_enum
+        .discriminant_for_variant(
+            tcx,
+            poll_enum_adt.variant_index_with_id(tcx.require_lang_item(LangItem::PollPending, None)),
+        )
+        .unwrap()
+        .val;
+    let source_info = SourceInfo::outermost(body.span);
+    let poll_discr_place =
+        Place::from(body.local_decls.push(LocalDecl::new(poll_discr_ty, source_info.span)));
+    let discr_assign = Statement {
+        source_info,
+        kind: StatementKind::Assign(Box::new((
+            poll_discr_place,
+            Rvalue::Discriminant(*poll_unit_place),
+        ))),
+    };
+    let unreachable_block = insert_term_block(body, TerminatorKind::Unreachable);
+    body.basic_blocks_mut().push(BasicBlockData {
+        statements: [discr_assign].to_vec(),
+        terminator: Some(Terminator {
+            source_info,
+            kind: TerminatorKind::SwitchInt {
+                discr: Operand::Move(poll_discr_place),
+                targets: SwitchTargets::new(
+                    [(poll_ready_discr, ready_block), (poll_pending_discr, yield_block)]
+                        .into_iter(),
+                    unreachable_block,
+                ),
+            },
+        }),
+        is_cleanup: false,
+    })
+}
+
+// Gather blocks, reachable through 'drop' targets of Yield and Drop terminators (chained)
+fn gather_dropline_blocks<'tcx>(body: &mut Body<'tcx>) -> DenseBitSet<BasicBlock> {
+    let mut dropline: DenseBitSet<BasicBlock> = DenseBitSet::new_empty(body.basic_blocks.len());
+    for (bb, data) in traversal::reverse_postorder(body) {
+        if dropline.contains(bb) {
+            data.terminator().successors().for_each(|v| {
+                dropline.insert(v);
+            });
+        } else {
+            match data.terminator().kind {
+                TerminatorKind::Yield { drop: Some(v), .. } => {
+                    dropline.insert(v);
+                }
+                TerminatorKind::Drop { drop: Some(v), .. } => {
+                    dropline.insert(v);
+                }
+                _ => (),
+            }
+        }
+    }
+    dropline
+}
+
+/// Cleanup all async drops (reset to sync)
+fn cleanup_async_drops<'tcx>(body: &mut Body<'tcx>) {
+    for block in body.basic_blocks_mut() {
+        if let TerminatorKind::Drop {
+            place: _,
+            target: _,
+            unwind: _,
+            replace: _,
+            ref mut drop,
+            ref mut async_fut,
+        } = block.terminator_mut().kind
+        {
+            if drop.is_some() || async_fut.is_some() {
+                *drop = None;
+                *async_fut = None;
+            }
+        }
+    }
+}
+
+fn has_expandable_async_drops<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    coroutine_ty: Ty<'tcx>,
+) -> bool {
+    for bb in START_BLOCK..body.basic_blocks.next_index() {
+        // Drops in unwind path (cleanup blocks) are not expanded to async drops, only sync drops in unwind path
+        if body[bb].is_cleanup {
+            continue;
+        }
+        let TerminatorKind::Drop { place, target: _, unwind: _, replace: _, drop: _, async_fut } =
+            body[bb].terminator().kind
+        else {
+            continue;
+        };
+        let place_ty = place.ty(&body.local_decls, tcx).ty;
+        if place_ty == coroutine_ty {
+            continue;
+        }
+        if async_fut.is_none() {
+            continue;
+        }
+        return true;
+    }
+    return false;
+}
+
+/// Expand Drop terminator for async drops into mainline poll-switch and dropline poll-switch
+fn expand_async_drops<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    context_mut_ref: Ty<'tcx>,
+    coroutine_kind: hir::CoroutineKind,
+    coroutine_ty: Ty<'tcx>,
+) {
+    let dropline = gather_dropline_blocks(body);
+    // Clean drop and async_fut fields if potentially async drop is not expanded (stays sync)
+    let remove_asyncness = |block: &mut BasicBlockData<'tcx>| {
+        if let TerminatorKind::Drop {
+            place: _,
+            target: _,
+            unwind: _,
+            replace: _,
+            ref mut drop,
+            ref mut async_fut,
+        } = block.terminator_mut().kind
+        {
+            *drop = None;
+            *async_fut = None;
+        }
+    };
+    for bb in START_BLOCK..body.basic_blocks.next_index() {
+        // Drops in unwind path (cleanup blocks) are not expanded to async drops, only sync drops in unwind path
+        if body[bb].is_cleanup {
+            remove_asyncness(&mut body[bb]);
+            continue;
+        }
+        let TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } =
+            body[bb].terminator().kind
+        else {
+            continue;
+        };
+
+        let place_ty = place.ty(&body.local_decls, tcx).ty;
+        if place_ty == coroutine_ty {
+            remove_asyncness(&mut body[bb]);
+            continue;
+        }
+
+        let Some(fut_local) = async_fut else {
+            remove_asyncness(&mut body[bb]);
+            continue;
+        };
+
+        let is_dropline_bb = dropline.contains(bb);
+
+        if !is_dropline_bb && drop.is_none() {
+            remove_asyncness(&mut body[bb]);
+            continue;
+        }
+
+        let fut_place = Place::from(fut_local);
+        let fut_ty = fut_place.ty(&body.local_decls, tcx).ty;
+
+        // poll-code:
+        // state_call_drop:
+        // #bb_pin: fut_pin = Pin<FutT>::new_unchecked(&mut fut)
+        // #bb_call: rv = call fut.poll() (or future_drop_poll(fut) for internal future drops)
+        // #bb_check: match (rv)
+        //  pending => return rv (yield)
+        //  ready => *continue_bb|drop_bb*
+
+        // Compute Poll<> (aka Poll with void return)
+        let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+        let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
+        let poll_decl = LocalDecl::new(poll_enum, body.span);
+        let poll_unit_place = Place::from(body.local_decls.push(poll_decl));
+
+        // First state-loop yield for mainline
+        let context_ref_place =
+            Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, body.span)));
+        let source_info = body[bb].terminator.as_ref().unwrap().source_info;
+        let arg = Rvalue::Use(Operand::Move(Place::from(CTX_ARG)));
+        body[bb].statements.push(Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((context_ref_place, arg))),
+        });
+        let yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
+        let switch_block =
+            build_poll_switch(tcx, body, poll_enum, &poll_unit_place, target, yield_block);
+        let (pin_bb, fut_pin_place) =
+            build_pin_fut(tcx, body, fut_place.clone(), UnwindAction::Continue);
+        let call_bb = build_poll_call(
+            tcx,
+            body,
+            &poll_unit_place,
+            switch_block,
+            &fut_pin_place,
+            fut_ty,
+            &context_ref_place,
+            unwind,
+        );
+
+        // Second state-loop yield for transition to dropline (when coroutine async drop started)
+        let mut dropline_transition_bb: Option<BasicBlock> = None;
+        let mut dropline_yield_bb: Option<BasicBlock> = None;
+        let mut dropline_context_ref: Option<Place<'_>> = None;
+        let mut dropline_call_bb: Option<BasicBlock> = None;
+        if !is_dropline_bb {
+            let context_ref_place2: Place<'_> =
+                Place::from(body.local_decls.push(LocalDecl::new(context_mut_ref, body.span)));
+            let drop_yield_block = insert_term_block(body, TerminatorKind::Unreachable); // `kind` replaced later to yield
+            let drop_switch_block = build_poll_switch(
+                tcx,
+                body,
+                poll_enum,
+                &poll_unit_place,
+                drop.unwrap(),
+                drop_yield_block,
+            );
+            let (pin_bb2, fut_pin_place2) =
+                build_pin_fut(tcx, body, fut_place, UnwindAction::Continue);
+            let drop_call_bb = build_poll_call(
+                tcx,
+                body,
+                &poll_unit_place,
+                drop_switch_block,
+                &fut_pin_place2,
+                fut_ty,
+                &context_ref_place2,
+                unwind,
+            );
+            dropline_transition_bb = Some(pin_bb2);
+            dropline_yield_bb = Some(drop_yield_block);
+            dropline_context_ref = Some(context_ref_place2);
+            dropline_call_bb = Some(drop_call_bb);
+        }
+
+        // value needed only for return-yields or gen-coroutines, so just const here
+        let value = Operand::Constant(Box::new(ConstOperand {
+            span: body.span,
+            user_ty: None,
+            const_: Const::from_bool(tcx, false),
+        }));
+        use rustc_middle::mir::AssertKind::ResumedAfterDrop;
+        let panic_bb = insert_panic_block(tcx, body, ResumedAfterDrop(coroutine_kind));
+
+        if is_dropline_bb {
+            body[yield_block].terminator_mut().kind = TerminatorKind::Yield {
+                value: value.clone(),
+                resume: panic_bb,
+                resume_arg: context_ref_place,
+                drop: Some(pin_bb),
+            };
+        } else {
+            body[yield_block].terminator_mut().kind = TerminatorKind::Yield {
+                value: value.clone(),
+                resume: pin_bb,
+                resume_arg: context_ref_place,
+                drop: dropline_transition_bb,
+            };
+            body[dropline_yield_bb.unwrap()].terminator_mut().kind = TerminatorKind::Yield {
+                value,
+                resume: panic_bb,
+                resume_arg: dropline_context_ref.unwrap(),
+                drop: dropline_transition_bb,
+            };
+        }
+
+        if let TerminatorKind::Call { ref mut target, .. } = body[pin_bb].terminator_mut().kind {
+            *target = Some(call_bb);
+        } else {
+            bug!()
+        }
+        if !is_dropline_bb {
+            if let TerminatorKind::Call { ref mut target, .. } =
+                body[dropline_transition_bb.unwrap()].terminator_mut().kind
+            {
+                *target = dropline_call_bb;
+            } else {
+                bug!()
+            }
+        }
+
+        body[bb].terminator_mut().kind = TerminatorKind::Goto { target: pin_bb };
     }
 }
 
@@ -1036,9 +1471,8 @@ fn insert_switch<'tcx>(
     body: &mut Body<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
     transform: &TransformVisitor<'tcx>,
-    default: TerminatorKind<'tcx>,
+    default_block: BasicBlock,
 ) {
-    let default_block = insert_term_block(body, default);
     let (assign, discr) = transform.get_discr(body);
     let switch_targets =
         SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
@@ -1080,16 +1514,15 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     };
 
     for (block, block_data) in body.basic_blocks.iter_enumerated() {
-        let (target, unwind, source_info) = match block_data.terminator() {
+        let (target, unwind, source_info, dropline) = match block_data.terminator() {
             Terminator {
                 source_info,
-                kind:
-                    TerminatorKind::Drop { place, target, unwind, replace: _, drop: _, async_fut: _ },
+                kind: TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut: _ },
             } => {
                 if let Some(local) = place.as_local()
                     && local == SELF_ARG
                 {
-                    (target, unwind, source_info)
+                    (target, unwind, source_info, *drop)
                 } else {
                     continue;
                 }
@@ -1114,7 +1547,7 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             *target,
             unwind,
             block,
-            None,
+            dropline,
         );
     }
     elaborator.patch.apply(body);
@@ -1144,7 +1577,8 @@ fn create_coroutine_drop_shim<'tcx>(
     // The returned state and the poisoned state fall through to the default
     // case which is just to return
 
-    insert_switch(&mut body, cases, transform, TerminatorKind::Return);
+    let default_block = insert_term_block(&mut body, TerminatorKind::Return);
+    insert_switch(&mut body, cases, transform, default_block);
 
     for block in body.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
@@ -1180,11 +1614,196 @@ fn create_coroutine_drop_shim<'tcx>(
     body
 }
 
+// Create async drop shim function to drop coroutine itself
+fn create_coroutine_drop_shim_async<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    transform: &TransformVisitor<'tcx>,
+    coroutine_ty: Ty<'tcx>,
+    body: &Body<'tcx>,
+    drop_clean: BasicBlock,
+    can_unwind: bool,
+) -> Body<'tcx> {
+    let mut body = body.clone();
+    // Take the coroutine info out of the body, since the drop shim is
+    // not a coroutine body itself; it just has its drop built out of it.
+    let _ = body.coroutine.take();
+
+    FixReturnPendingVisitor { tcx }.visit_body(&mut body);
+
+    // Poison the coroutine when it unwinds
+    if can_unwind {
+        generate_poison_block_and_redirect_unwinds_there(transform, &mut body);
+    }
+
+    let source_info = SourceInfo::outermost(body.span);
+
+    let mut cases = create_cases(&mut body, transform, Operation::Drop);
+
+    cases.insert(0, (CoroutineArgs::UNRESUMED, drop_clean));
+
+    use rustc_middle::mir::AssertKind::ResumedAfterPanic;
+    // Panic when resumed on the returned or poisoned state
+    if can_unwind {
+        cases.insert(
+            1,
+            (
+                CoroutineArgs::POISONED,
+                insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind)),
+            ),
+        );
+    }
+
+    // RETURNED state also goes to default_block with `return Ready<()>`.
+    // For fully-polled coroutine, async drop has nothing to do.
+    let default_block = insert_poll_ready_block(tcx, &mut body);
+    insert_switch(&mut body, cases, transform, default_block);
+
+    for block in body.basic_blocks_mut() {
+        let kind = &mut block.terminator_mut().kind;
+        if let TerminatorKind::CoroutineDrop = *kind {
+            *kind = TerminatorKind::Return;
+            block.statements.push(return_poll_ready_assign(tcx, source_info));
+        }
+    }
+
+    // Replace the return variable: Poll<RetT> to Poll<()>
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+    let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
+
+    make_coroutine_state_argument_indirect(tcx, &mut body);
+
+    match transform.coroutine_kind {
+        // Iterator::next doesn't accept a pinned argument,
+        // unlike for all other coroutine kinds.
+        CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
+        _ => {
+            make_coroutine_state_argument_pinned(tcx, &mut body);
+        }
+    }
+
+    // Make sure we remove dead blocks to remove
+    // unrelated code from the resume part of the function
+    simplify::remove_dead_blocks(&mut body);
+
+    pm::run_passes_no_validate(
+        tcx,
+        &mut body,
+        &[&abort_unwinding_calls::AbortUnwindingCalls],
+        None,
+    );
+
+    // Update the body's def to become the drop glue.
+    let coroutine_instance = body.source.instance;
+    let drop_instance = InstanceKind::FutureDropPollShim(
+        tcx.lang_items().async_drop_in_place_poll_fn().unwrap(),
+        coroutine_ty,
+        coroutine_ty,
+    );
+
+    // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
+    // filename.
+    body.source.instance = coroutine_instance;
+    dump_mir(tcx, false, "coroutine_drop_async", &0, &body, |_, _| Ok(()));
+    body.source.instance = drop_instance;
+
+    body
+}
+
+// Create async drop shim proxy function for future_drop_poll
+// It is just { call coroutine_drop(); return Poll::Ready(); }
+fn create_coroutine_drop_shim_proxy_async<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    coroutine_ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    let mut body = body.clone();
+    // Take the coroutine info out of the body, since the drop shim is
+    // not a coroutine body itself; it just has its drop built out of it.
+    let _ = body.coroutine.take();
+    let basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>> = IndexVec::new();
+    body.basic_blocks = BasicBlocks::new(basic_blocks);
+    body.var_debug_info.clear();
+
+    // Keeping return value and args
+    body.local_decls.truncate(1 + body.arg_count);
+
+    let source_info = SourceInfo::outermost(body.span);
+
+    // Replace the return variable: Poll<RetT> to Poll<()>
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+    let poll_enum = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(poll_enum, source_info);
+
+    // call coroutine_drop()
+    let call_bb = body.basic_blocks_mut().push(BasicBlockData {
+        statements: Vec::new(),
+        terminator: None,
+        is_cleanup: false,
+    });
+
+    // return Poll::Ready()
+    let ret_bb = insert_poll_ready_block(tcx, &mut body);
+
+    let kind = TerminatorKind::Drop {
+        place: Place::from(SELF_ARG),
+        target: ret_bb,
+        unwind: UnwindAction::Continue,
+        replace: false,
+        drop: None,
+        async_fut: None,
+    };
+    body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+
+    let coroutine_instance = body.source.instance;
+    let drop_instance = InstanceKind::FutureDropPollShim(
+        tcx.lang_items().async_drop_in_place_poll_fn().unwrap(),
+        coroutine_ty,
+        coroutine_ty,
+    );
+
+    // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
+    // filename.
+    body.source.instance = coroutine_instance;
+    dump_mir(tcx, false, "coroutine_drop_proxy_async", &0, &body, |_, _| Ok(()));
+    body.source.instance = drop_instance;
+
+    body
+}
+
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator { source_info, kind }),
+        is_cleanup: false,
+    })
+}
+
+fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) -> Statement<'tcx> {
+    // Poll::Ready(())
+    let poll_def_id = tcx.require_lang_item(LangItem::Poll, None);
+    let args = tcx.mk_args(&[tcx.types.unit.into()]);
+    let val = Operand::Constant(Box::new(ConstOperand {
+        span: source_info.span,
+        user_ty: None,
+        const_: Const::zero_sized(tcx.types.unit),
+    }));
+    let ready_val = Rvalue::Aggregate(
+        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
+        IndexVec::from_raw(vec![val]),
+    );
+    Statement {
+        kind: StatementKind::Assign(Box::new((Place::return_place(), ready_val))),
+        source_info,
+    }
+}
+
+fn insert_poll_ready_block<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> BasicBlock {
+    let source_info = SourceInfo::outermost(body.span);
+    body.basic_blocks_mut().push(BasicBlockData {
+        statements: [return_poll_ready_assign(tcx, source_info)].to_vec(),
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
         is_cleanup: false,
     })
 }
@@ -1270,45 +1889,50 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     false
 }
 
+// Poison the coroutine when it unwinds
+fn generate_poison_block_and_redirect_unwinds_there<'tcx>(
+    transform: &TransformVisitor<'tcx>,
+    body: &mut Body<'tcx>,
+) {
+    let source_info = SourceInfo::outermost(body.span);
+    let poison_block = body.basic_blocks_mut().push(BasicBlockData {
+        statements: vec![
+            transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info),
+        ],
+        terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
+        is_cleanup: true,
+    });
+
+    for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
+        let source_info = block.terminator().source_info;
+
+        if let TerminatorKind::UnwindResume = block.terminator().kind {
+            // An existing `Resume` terminator is redirected to jump to our dedicated
+            // "poisoning block" above.
+            if idx != poison_block {
+                *block.terminator_mut() =
+                    Terminator { source_info, kind: TerminatorKind::Goto { target: poison_block } };
+            }
+        } else if !block.is_cleanup {
+            // Any terminators that *can* unwind but don't have an unwind target set are also
+            // pointed at our poisoning block (unless they're part of the cleanup path).
+            if let Some(unwind @ UnwindAction::Continue) = block.terminator_mut().unwind_mut() {
+                *unwind = UnwindAction::Cleanup(poison_block);
+            }
+        }
+    }
+}
+
 fn create_coroutine_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
     body: &mut Body<'tcx>,
     can_return: bool,
+    can_unwind: bool,
 ) {
-    let can_unwind = can_unwind(tcx, body);
-
     // Poison the coroutine when it unwinds
     if can_unwind {
-        let source_info = SourceInfo::outermost(body.span);
-        let poison_block = body.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![
-                transform.set_discr(VariantIdx::new(CoroutineArgs::POISONED), source_info),
-            ],
-            terminator: Some(Terminator { source_info, kind: TerminatorKind::UnwindResume }),
-            is_cleanup: true,
-        });
-
-        for (idx, block) in body.basic_blocks_mut().iter_enumerated_mut() {
-            let source_info = block.terminator().source_info;
-
-            if let TerminatorKind::UnwindResume = block.terminator().kind {
-                // An existing `Resume` terminator is redirected to jump to our dedicated
-                // "poisoning block" above.
-                if idx != poison_block {
-                    *block.terminator_mut() = Terminator {
-                        source_info,
-                        kind: TerminatorKind::Goto { target: poison_block },
-                    };
-                }
-            } else if !block.is_cleanup {
-                // Any terminators that *can* unwind but don't have an unwind target set are also
-                // pointed at our poisoning block (unless they're part of the cleanup path).
-                if let Some(unwind @ UnwindAction::Continue) = block.terminator_mut().unwind_mut() {
-                    *unwind = UnwindAction::Cleanup(poison_block);
-                }
-            }
-        }
+        generate_poison_block_and_redirect_unwinds_there(&transform, body);
     }
 
     let mut cases = create_cases(body, &transform, Operation::Resume);
@@ -1333,7 +1957,13 @@ fn create_coroutine_resume_function<'tcx>(
         let block = match transform.coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
             | CoroutineKind::Coroutine(_) => {
-                insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+                // For async_drop_in_place<T>::{closure} we just keep return Poll::Ready,
+                // because async drop of such coroutine keeps polling original coroutine
+                if tcx.is_templated_coroutine(body.source.def_id()) {
+                    insert_poll_ready_block(tcx, body)
+                } else {
+                    insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
+                }
             }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
             | CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
@@ -1343,7 +1973,8 @@ fn create_coroutine_resume_function<'tcx>(
         cases.insert(1, (CoroutineArgs::RETURNED, block));
     }
 
-    insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
+    let default_block = insert_term_block(body, TerminatorKind::Unreachable);
+    insert_switch(body, cases, &transform, default_block);
 
     make_coroutine_state_argument_indirect(tcx, body);
 
@@ -1365,18 +1996,31 @@ fn create_coroutine_resume_function<'tcx>(
     dump_mir(tcx, false, "coroutine_resume", &0, body, |_, _| Ok(()));
 }
 
-fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
-    let return_block = insert_term_block(body, TerminatorKind::Return);
+fn insert_clean_drop<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    has_async_drops: bool,
+) -> BasicBlock {
+    let source_info = SourceInfo::outermost(body.span);
+    let return_block = if has_async_drops {
+        insert_poll_ready_block(tcx, body)
+    } else {
+        insert_term_block(body, TerminatorKind::Return)
+    };
+
+    // FIXME: When move insert_clean_drop + elaborate_coroutine_drops before async drops expand,
+    // also set dropline here:
+    // let dropline = if has_async_drops { Some(return_block) } else { None };
+    let dropline = None;
 
     let term = TerminatorKind::Drop {
         place: Place::from(SELF_ARG),
         target: return_block,
         unwind: UnwindAction::Continue,
         replace: false,
-        drop: None,
+        drop: dropline,
         async_fut: None,
     };
-    let source_info = SourceInfo::outermost(body.span);
 
     // Create a block to destroy an unresumed coroutines. This can only destroy upvars.
     body.basic_blocks_mut().push(BasicBlockData {
@@ -1431,7 +2075,7 @@ fn create_cases<'tcx>(
 
                 if operation == Operation::Resume {
                     // Move the resume argument to the destination place of the `Yield` terminator
-                    let resume_arg = Local::new(2); // 0 = return, 1 = self
+                    let resume_arg = CTX_ARG;
                     statements.push(Statement {
                         source_info,
                         kind: StatementKind::Assign(Box::new((
@@ -1538,7 +2182,9 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         };
         let old_ret_ty = body.return_ty();
 
-        assert!(body.coroutine_drop().is_none());
+        assert!(body.coroutine_drop().is_none() && body.coroutine_drop_async().is_none());
+
+        dump_mir(tcx, false, "coroutine_before", &0, body, |_, _| Ok(()));
 
         // The first argument is the coroutine type passed by value
         let coroutine_ty = body.local_decls.raw[1].ty;
@@ -1587,19 +2233,32 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // RETURN_PLACE then is a fresh unused local with type ret_ty.
         let old_ret_local = replace_local(RETURN_PLACE, new_ret_ty, body, tcx);
 
+        // We need to insert clean drop for unresumed state and perform drop elaboration
+        // (finally in open_drop_for_tuple) before async drop expansion.
+        // Async drops, produced by this drop elaboration, will be expanded,
+        // and corresponding futures kept in layout.
+        let has_async_drops = matches!(
+            coroutine_kind,
+            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
+        ) && has_expandable_async_drops(tcx, body, coroutine_ty);
+
         // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
         if matches!(
             coroutine_kind,
             CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
         ) {
-            transform_async_context(tcx, body);
+            let context_mut_ref = transform_async_context(tcx, body);
+            expand_async_drops(tcx, body, context_mut_ref, coroutine_kind, coroutine_ty);
+            dump_mir(tcx, false, "coroutine_async_drop_expand", &0, body, |_, _| Ok(()));
+        } else {
+            cleanup_async_drops(body);
         }
 
         // We also replace the resume argument and insert an `Assign`.
         // This is needed because the resume argument `_2` might be live across a `yield`, in which
         // case there is no `Assign` to it that the transform can turn into a store to the coroutine
         // state. After the yield the slot in the coroutine state would then be uninitialized.
-        let resume_local = Local::new(2);
+        let resume_local = CTX_ARG;
         let resume_ty = body.local_decls[resume_local].ty;
         let old_resume_local = replace_local(resume_local, resume_ty, body, tcx);
 
@@ -1679,10 +2338,14 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         body.coroutine.as_mut().unwrap().resume_ty = None;
         body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
 
+        // FIXME: Drops, produced by insert_clean_drop + elaborate_coroutine_drops,
+        // are currently sync only. To allow async for them, we need to move those calls
+        // before expand_async_drops, and fix the related problems.
+        //
         // Insert `drop(coroutine_struct)` which is used to drop upvars for coroutines in
         // the unresumed state.
         // This is expanded to a drop ladder in `elaborate_coroutine_drops`.
-        let drop_clean = insert_clean_drop(body);
+        let drop_clean = insert_clean_drop(tcx, body, has_async_drops);
 
         dump_mir(tcx, false, "coroutine_pre-elab", &0, body, |_, _| Ok(()));
 
@@ -1693,13 +2356,38 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
 
         dump_mir(tcx, false, "coroutine_post-transform", &0, body, |_, _| Ok(()));
 
-        // Create a copy of our MIR and use it to create the drop shim for the coroutine
-        let drop_shim = create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);
+        let can_unwind = can_unwind(tcx, body);
 
-        body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
+        // Create a copy of our MIR and use it to create the drop shim for the coroutine
+        if has_async_drops {
+            // If coroutine has async drops, generating async drop shim
+            let mut drop_shim = create_coroutine_drop_shim_async(
+                tcx,
+                &transform,
+                coroutine_ty,
+                body,
+                drop_clean,
+                can_unwind,
+            );
+            // Run derefer to fix Derefs that are not in the first place
+            deref_finder(tcx, &mut drop_shim);
+            body.coroutine.as_mut().unwrap().coroutine_drop_async = Some(drop_shim);
+        } else {
+            // If coroutine has no async drops, generating sync drop shim
+            let mut drop_shim =
+                create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);
+            // Run derefer to fix Derefs that are not in the first place
+            deref_finder(tcx, &mut drop_shim);
+            body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
+
+            // For coroutine with sync drop, generating async proxy for `future_drop_poll` call
+            let mut proxy_shim = create_coroutine_drop_shim_proxy_async(tcx, body, coroutine_ty);
+            deref_finder(tcx, &mut proxy_shim);
+            body.coroutine.as_mut().unwrap().coroutine_drop_proxy_async = Some(proxy_shim);
+        }
 
         // Create the Coroutine::resume / Future::poll function
-        create_coroutine_resume_function(tcx, transform, body, can_return);
+        create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
 
         // Run derefer to fix Derefs that are not in the first place
         deref_finder(tcx, body);
