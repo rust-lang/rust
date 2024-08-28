@@ -1327,6 +1327,22 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
+            visitor: &mut V,
+            item: ref_t!(Item<impl WalkItemKind>),
+        ) -> result!(V) {
+            let Item { id, span, ident, vis, attrs, kind, tokens } = item;
+            try_v!(visit_id!(visitor, id));
+            visit_list!(visitor, visit_attribute, flat_map_attribute, attrs);
+            try_v!(visitor.visit_vis(vis));
+            try_v!(visit_ident!(visitor, ident));
+            try_v!(kind.walk(*id, *span, vis, ident, visitor));
+            visit_lazy_tts!(visitor, tokens);
+            try_v!(visit_span!(visitor, span));
+            return_result!(V)
+        }
+
+
         pub fn walk_assoc_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<AssocItemKind>),
@@ -1724,18 +1740,6 @@ pub mod visit {
     }
 
     make_ast_visitor!(Visitor<'ast>);
-
-    pub fn walk_item<'a, V: Visitor<'a>>(
-        visitor: &mut V,
-        item: &'a Item<impl WalkItemKind>,
-    ) -> V::Result {
-        let Item { id, span, ident, vis, attrs, kind, tokens: _ } = item;
-        walk_list!(visitor, visit_attribute, attrs);
-        try_visit!(visitor.visit_vis(vis));
-        try_visit!(visitor.visit_ident(*ident));
-        try_visit!(kind.walk(*id, *span, vis, ident, visitor));
-        V::Result::output()
-    }
 
     pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V::Result {
         let Stmt { id: _, kind, span: _ } = statement;
