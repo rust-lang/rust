@@ -1054,6 +1054,22 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_coroutine_kind<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            coroutine_kind: ref_t!(CoroutineKind)
+        ) -> result!(V) {
+            match coroutine_kind {
+                CoroutineKind::Async { span, closure_id, return_impl_trait_id }
+                | CoroutineKind::Gen { span, closure_id, return_impl_trait_id }
+                | CoroutineKind::AsyncGen { span, closure_id, return_impl_trait_id } => {
+                    try_v!(visit_id!(vis, closure_id));
+                    try_v!(visit_id!(vis, return_impl_trait_id));
+                    try_v!(visit_span!(vis, span));
+                }
+            }
+            return_result!(V)
+        }
+
         derive_copy_clone!{
             #[derive(Debug)]
             pub enum FnKind<'a> {
@@ -2231,18 +2247,6 @@ pub mod mut_visit {
         match constness {
             Const::Yes(span) => vis.visit_span(span),
             Const::No => {}
-        }
-    }
-
-    fn walk_coroutine_kind<T: MutVisitor>(vis: &mut T, coroutine_kind: &mut CoroutineKind) {
-        match coroutine_kind {
-            CoroutineKind::Async { span, closure_id, return_impl_trait_id }
-            | CoroutineKind::Gen { span, closure_id, return_impl_trait_id }
-            | CoroutineKind::AsyncGen { span, closure_id, return_impl_trait_id } => {
-                vis.visit_id(closure_id);
-                vis.visit_id(return_impl_trait_id);
-                vis.visit_span(span);
-            }
         }
     }
 
