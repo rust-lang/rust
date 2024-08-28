@@ -128,6 +128,22 @@ impl LocationState {
         Ok(transition)
     }
 
+    /// Like `perform_access`, but ignores the concrete error cause and also uses state-passing
+    /// rather than a mutable reference. As such, it returns `Some(x)` if the transition succeeded,
+    /// or `None` if there was an error.
+    #[cfg(test)]
+    fn perform_access_no_fluff(
+        mut self,
+        access_kind: AccessKind,
+        rel_pos: AccessRelatedness,
+        protected: bool,
+    ) -> Option<Self> {
+        match self.perform_access(access_kind, rel_pos, protected) {
+            Ok(_) => Some(self),
+            Err(_) => None,
+        }
+    }
+
     // Helper to optimize the tree traversal.
     // The optimization here consists of observing thanks to the tests
     // `foreign_read_is_noop_after_foreign_write` and `all_transitions_idempotent`,
@@ -840,6 +856,60 @@ impl Tree {
         node.children.is_empty() && !live.contains(&node.tag)
     }
 
+    /// Checks whether a node can be replaced by its only child.
+    /// If so, returns the index of said only child.
+    /// If not, returns none.
+    fn can_be_replaced_by_single_child(
+        &self,
+        idx: UniIndex,
+        live: &FxHashSet<BorTag>,
+    ) -> Option<UniIndex> {
+        let node = self.nodes.get(idx).unwrap();
+
+        // We never want to replace the root node, as it is also kept in `root_ptr_tags`.
+        if node.children.len() != 1 || live.contains(&node.tag) || node.parent.is_none() {
+            return None;
+        }
+        // Since protected nodes are never GC'd (see `borrow_tracker::FrameExtra::visit_provenance`),
+        // we know that `node` is not protected because otherwise `live` would
+        // have contained `node.tag`.
+        let child_idx = node.children[0];
+        let child = self.nodes.get(child_idx).unwrap();
+        // Check that for that one child, `can_be_replaced_by_child` holds for the permission
+        // on all locations.
+        for (_, data) in self.rperms.iter_all() {
+            let parent_perm =
+                data.get(idx).map(|x| x.permission).unwrap_or_else(|| node.default_initial_perm);
+            let child_perm = data
+                .get(child_idx)
+                .map(|x| x.permission)
+                .unwrap_or_else(|| child.default_initial_perm);
+            if !parent_perm.can_be_replaced_by_child(child_perm) {
+                return None;
+            }
+        }
+
+        Some(child_idx)
+    }
+
+    /// Properly removes a node.
+    /// The node to be removed should not otherwise be usable. It also
+    /// should have no children, but this is not checked, so that nodes
+    /// whose children were rotated somewhere else can be deleted without
+    /// having to first modify them to clear that array.
+    fn remove_useless_node(&mut self, this: UniIndex) {
+        // Due to the API of UniMap we must make sure to call
+        // `UniValMap::remove` for the key of this node on *all* maps that used it
+        // (which are `self.nodes` and every range of `self.rperms`)
+        // before we can safely apply `UniKeyMap::remove` to truly remove
+        // this tag from the `tag_mapping`.
+        let node = self.nodes.remove(this).unwrap();
+        for (_perms_range, perms) in self.rperms.iter_mut_all() {
+            perms.remove(this);
+        }
+        self.tag_mapping.remove(&node.tag);
+    }
+
     /// Traverses the entire tree looking for useless tags.
     /// Removes from the tree all useless child nodes of root.
     /// It will not delete the root itself.
@@ -883,23 +953,21 @@ impl Tree {
                 // Remove all useless children.
                 children_of_node.retain_mut(|idx| {
                     if self.is_useless(*idx, live) {
-                        // Note: In the rest of this comment, "this node" refers to `idx`.
-                        // This node has no more children (if there were any, they have already been removed).
-                        // It is also unreachable as determined by the GC, so we can remove it everywhere.
-                        // Due to the API of UniMap we must make sure to call
-                        // `UniValMap::remove` for the key of this node on *all* maps that used it
-                        // (which are `self.nodes` and every range of `self.rperms`)
-                        // before we can safely apply `UniKeyMap::remove` to truly remove
-                        // this tag from the `tag_mapping`.
-                        let node = self.nodes.remove(*idx).unwrap();
-                        for (_perms_range, perms) in self.rperms.iter_mut_all() {
-                            perms.remove(*idx);
-                        }
-                        self.tag_mapping.remove(&node.tag);
-                        // now delete it
+                        // Delete `idx` node everywhere else.
+                        self.remove_useless_node(*idx);
+                        // And delete it from children_of_node.
                         false
                     } else {
-                        // do nothing, but retain
+                        if let Some(nextchild) = self.can_be_replaced_by_single_child(*idx, live) {
+                            // `nextchild` is our grandchild, and will become our direct child.
+                            // Delete the in-between node, `idx`.
+                            self.remove_useless_node(*idx);
+                            // Set the new child's parent.
+                            self.nodes.get_mut(nextchild).unwrap().parent = Some(*tag);
+                            // Save the new child in children_of_node.
+                            *idx = nextchild;
+                        }
+                        // retain it
                         true
                     }
                 });
