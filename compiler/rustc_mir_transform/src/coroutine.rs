@@ -570,24 +570,23 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 fn eliminate_get_context_call<'tcx>(bb_data: &mut BasicBlockData<'tcx>) -> Local {
     let terminator = bb_data.terminator.take().unwrap();
-    if let TerminatorKind::Call { args, destination, target, .. } = terminator.kind {
-        let [arg] = *Box::try_from(args).unwrap();
-        let local = arg.node.place().unwrap().local;
-
-        let arg = Rvalue::Use(arg.node);
-        let assign = Statement {
-            source_info: terminator.source_info,
-            kind: StatementKind::Assign(Box::new((destination, arg))),
-        };
-        bb_data.statements.push(assign);
-        bb_data.terminator = Some(Terminator {
-            source_info: terminator.source_info,
-            kind: TerminatorKind::Goto { target: target.unwrap() },
-        });
-        local
-    } else {
+    let TerminatorKind::Call { args, destination, target, .. } = terminator.kind else {
         bug!();
-    }
+    };
+    let [arg] = *Box::try_from(args).unwrap();
+    let local = arg.node.place().unwrap().local;
+
+    let arg = Rvalue::Use(arg.node);
+    let assign = Statement {
+        source_info: terminator.source_info,
+        kind: StatementKind::Assign(Box::new((destination, arg))),
+    };
+    bb_data.statements.push(assign);
+    bb_data.terminator = Some(Terminator {
+        source_info: terminator.source_info,
+        kind: TerminatorKind::Goto { target: target.unwrap() },
+    });
+    local
 }
 
 #[cfg_attr(not(debug_assertions), allow(unused))]
