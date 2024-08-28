@@ -9,6 +9,7 @@ use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
+use rustc_middle::mir::pretty::{dump_mir_with_options, PrettyPrintMirOptions};
 use rustc_middle::mir::{
     create_dump_file, dump_enabled, dump_mir, Body, ClosureOutlivesSubject,
     ClosureRegionRequirements, PassWhere, Promoted,
@@ -19,6 +20,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
+use rustc_session::config::MirIncludeSpans;
 use rustc_span::symbol::sym;
 
 use crate::borrow_set::BorrowSet;
@@ -218,32 +220,49 @@ pub(super) fn dump_mir_results<'tcx>(
         return;
     }
 
-    dump_mir(infcx.tcx, false, "nll", &0, body, |pass_where, out| {
-        match pass_where {
-            // Before the CFG, dump out the values for each region variable.
-            PassWhere::BeforeCFG => {
-                regioncx.dump_mir(infcx.tcx, out)?;
-                writeln!(out, "|")?;
-
-                if let Some(closure_region_requirements) = closure_region_requirements {
-                    writeln!(out, "| Free Region Constraints")?;
-                    for_each_region_constraint(
-                        infcx.tcx,
-                        closure_region_requirements,
-                        &mut |msg| writeln!(out, "| {msg}"),
-                    )?;
+    // We want the NLL extra comments printed by default in NLL MIR dumps (they were removed in
+    // #112346). Specifying `-Z mir-include-spans` on the CLI still has priority: for example,
+    // they're always disabled in mir-opt tests to make working with blessed dumps easier.
+    let options = PrettyPrintMirOptions {
+        include_extra_comments: matches!(
+            infcx.tcx.sess.opts.unstable_opts.mir_include_spans,
+            MirIncludeSpans::On | MirIncludeSpans::Nll
+        ),
+    };
+    dump_mir_with_options(
+        infcx.tcx,
+        false,
+        "nll",
+        &0,
+        body,
+        |pass_where, out| {
+            match pass_where {
+                // Before the CFG, dump out the values for each region variable.
+                PassWhere::BeforeCFG => {
+                    regioncx.dump_mir(infcx.tcx, out)?;
                     writeln!(out, "|")?;
+
+                    if let Some(closure_region_requirements) = closure_region_requirements {
+                        writeln!(out, "| Free Region Constraints")?;
+                        for_each_region_constraint(
+                            infcx.tcx,
+                            closure_region_requirements,
+                            &mut |msg| writeln!(out, "| {msg}"),
+                        )?;
+                        writeln!(out, "|")?;
+                    }
                 }
+
+                PassWhere::BeforeLocation(_) => {}
+
+                PassWhere::AfterTerminator(_) => {}
+
+                PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
             }
-
-            PassWhere::BeforeLocation(_) => {}
-
-            PassWhere::AfterTerminator(_) => {}
-
-            PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
-        }
-        Ok(())
-    });
+            Ok(())
+        },
+        options,
+    );
 
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
