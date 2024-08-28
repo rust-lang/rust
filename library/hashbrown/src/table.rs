@@ -780,6 +780,59 @@ where
         }
     }
 
+    /// A mutable iterator visiting all elements which may match a hash.
+    /// The iterator element type is `&'a mut T`.
+    ///
+    /// This iterator may return elements from the table that have a hash value
+    /// different than the one provided. You should always validate the returned
+    /// values before using them.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), 2, hasher);
+    /// table.insert_unique(hasher(&1), 3, hasher);
+    /// table.insert_unique(hasher(&2), 5, hasher);
+    ///
+    /// // Update matching values
+    /// for val in table.iter_hash_mut(hasher(&1)) {
+    ///     *val *= 2;
+    /// }
+    ///
+    /// assert_eq!(table.len(), 3);
+    /// let mut vec: Vec<i32> = Vec::new();
+    ///
+    /// for val in &table {
+    ///     println!("val: {}", val);
+    ///     vec.push(*val);
+    /// }
+    ///
+    /// // The values will contain 4 and 6 and may contain either 5 or 10.
+    /// assert!(vec.contains(&4));
+    /// assert!(vec.contains(&6));
+    ///
+    /// assert_eq!(table.len(), 3);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn iter_hash_mut(&mut self, hash: u64) -> IterHashMut<'_, T> {
+        IterHashMut {
+            inner: unsafe { self.raw.iter_hash(hash) },
+            _marker: PhantomData,
+        }
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
@@ -1991,6 +2044,31 @@ impl<'a, T> Iterator for IterHash<'a, T> {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.inner.next() {
             Some(bucket) => Some(unsafe { bucket.as_ref() }),
+            None => None,
+        }
+    }
+}
+
+/// A mutable iterator over the entries of a `HashTable` that could match a given hash.
+/// The iterator element type is `&'a mut T`.
+///
+/// This `struct` is created by the [`iter_hash_mut`] method on [`HashTable`]. See its
+/// documentation for more.
+///
+/// [`iter_hash_mut`]: struct.HashTable.html#method.iter_hash_mut
+/// [`HashTable`]: struct.HashTable.html
+pub struct IterHashMut<'a, T> {
+    inner: RawIterHash<T>,
+    _marker: PhantomData<&'a mut T>,
+}
+
+impl<'a, T> Iterator for IterHashMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some(bucket) => Some(unsafe { bucket.as_mut() }),
             None => None,
         }
     }
