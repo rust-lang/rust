@@ -362,19 +362,13 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
 /// but it's hard to rule out entirely (especially in the presence of complex macros
 /// or other expansions), and if it does happen then skipping a span or function is
 /// better than an ICE or `llvm-cov` failure that the user might have no way to avoid.
+#[instrument(level = "debug", skip(source_map))]
 fn make_code_region(
     source_map: &SourceMap,
     file_name: Symbol,
     span: Span,
     body_span: Span,
 ) -> Option<CodeRegion> {
-    debug!(
-        "Called make_code_region(file_name={}, span={}, body_span={})",
-        file_name,
-        source_map.span_to_diagnostic_string(span),
-        source_map.span_to_diagnostic_string(body_span)
-    );
-
     let lo = span.lo();
     let hi = span.hi();
 
