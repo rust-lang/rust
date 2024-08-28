@@ -473,6 +473,17 @@ macro_rules! make_ast_visitor {
             }
         }
 
+        macro_rules! visit_delim_args {
+            ($vis: expr, $args: expr) => {
+                if_mut_expr!(
+                    visit_delim_args($vis, $args)
+                ,
+                    // assign to _ to prevent unused_variable warnings
+                    { let _ = (&$vis, &$args); }
+                );
+            }
+        }
+
         // FIXME: should only exist while Visitor::visit_ident
         // doesn't receives a reference
         macro_rules! visit_ident {
@@ -1324,6 +1335,16 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_mac<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            mac: ref_t!(MacCall)
+        ) -> result!(V) {
+            let MacCall { path, args } = mac;
+            try_v!(vis.visit_path(path, DUMMY_NODE_ID));
+            visit_delim_args!(vis, args);
+            return_result!(V)
+        }
+
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<impl WalkItemKind>),
@@ -1754,11 +1775,6 @@ pub mod visit {
         V::Result::output()
     }
 
-    pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) -> V::Result {
-        let MacCall { path, args: _ } = mac;
-        visitor.visit_path(path, DUMMY_NODE_ID)
-    }
-
     pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V::Result {
         let Expr { id, kind, span, attrs, tokens: _ } = expression;
         walk_list!(visitor, visit_attribute, attrs);
@@ -2060,12 +2076,6 @@ pub mod mut_visit {
     pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &mut DelimSpan) {
         vis.visit_span(open);
         vis.visit_span(close);
-    }
-
-    fn walk_mac<T: MutVisitor>(vis: &mut T, mac: &mut MacCall) {
-        let MacCall { path, args } = mac;
-        vis.visit_path(path, DUMMY_NODE_ID);
-        visit_delim_args(vis, args);
     }
 
     fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
