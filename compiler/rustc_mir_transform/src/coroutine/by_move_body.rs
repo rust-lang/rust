@@ -208,7 +208,8 @@ pub fn coroutine_by_move_body_def_id<'tcx>(
     let mut by_move_body = body.clone();
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
 
-    let body_def = tcx.create_def(coroutine_def_id, kw::Empty, DefKind::SyntheticCoroutineBody);
+    // This will always be `{closure#1}`, since the original coroutine is `{closure#0}`.
+    let body_def = tcx.create_def(parent_def_id, kw::Empty, DefKind::SyntheticCoroutineBody);
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
     dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
