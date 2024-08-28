@@ -1,13 +1,14 @@
 use std::fmt::Debug;
 use std::iter;
+use std::ops::Bound;
 
 use hir::def_id::DefId;
-use rustc_abi::Integer::{I8, I32};
+use rustc_abi::Integer::{I8, I32, I128};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
     AbiAndPrefAlign, AddressSpace, Align, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape,
-    HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
-    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
+    HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprFlags, ReprOptions,
+    Scalar, Size, StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
@@ -185,6 +186,59 @@ fn layout_of_uncached<'tcx>(
     }
 
     let tcx = cx.tcx();
+
+    // layout of `async_drop_in_place<T>::{closure}` in case,
+    // when T is a coroutine, contains this internal coroutine's ref
+    if let ty::Coroutine(cor_def, cor_args) = ty.kind()
+        && tcx.is_templated_coroutine(*cor_def)
+    {
+        let arg_cor_ty = cor_args.first().unwrap().expect_ty();
+        if arg_cor_ty.is_coroutine() {
+            fn find_impl_coroutine<'tcx>(tcx: TyCtxt<'tcx>, mut cor_ty: Ty<'tcx>) -> Ty<'tcx> {
+                let mut ty = cor_ty;
+                loop {
+                    if let ty::Coroutine(def_id, args) = ty.kind() {
+                        cor_ty = ty;
+                        if tcx.is_templated_coroutine(*def_id) {
+                            ty = args.first().unwrap().expect_ty();
+                            continue;
+                        } else {
+                            return cor_ty;
+                        }
+                    } else {
+                        return cor_ty;
+                    }
+                }
+            }
+            let repr = ReprOptions {
+                int: None,
+                align: None,
+                pack: None,
+                flags: ReprFlags::empty(),
+                field_shuffle_seed: 0,
+            };
+            let impl_cor = find_impl_coroutine(tcx, arg_cor_ty);
+            let impl_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, impl_cor);
+            let ref_layout = cx.layout_of(impl_ref)?.layout;
+            let variants: IndexVec<VariantIdx, IndexVec<FieldIdx, Layout<'tcx>>> =
+                [IndexVec::from([ref_layout])].into();
+            let Ok(layout) = cx.calc.layout_of_struct_or_enum(
+                &repr,
+                &variants,
+                false,
+                false,
+                (Bound::Unbounded, Bound::Unbounded),
+                |_, _| (I128, false),
+                None::<(VariantIdx, i128)>.into_iter(),
+                false,
+                true,
+            ) else {
+                return Err(error(cx, LayoutError::SizeOverflow(ty)));
+            };
+            return Ok(tcx.mk_layout(layout));
+        }
+    }
+
     let dl = cx.data_layout();
     let scalar_unit = |value: Primitive| {
         let size = value.size(dl);
@@ -871,9 +925,18 @@ fn coroutine_layout<'tcx>(
 ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx();
+    let layout = if tcx.is_templated_coroutine(def_id) {
+        // layout of `async_drop_in_place<T>::{closure}` in case,
+        // when T is a coroutine, contains this internal coroutine's ref
+        // and must be proceed above, in layout_of_uncached
+        assert!(!args.first().unwrap().expect_ty().is_coroutine());
+        tcx.templated_coroutine_layout(ty)
+    } else {
+        tcx.ordinary_coroutine_layout(def_id, args.as_coroutine().kind_ty())
+    };
     let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
-    let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
+    let Some(info) = layout else {
         return Err(error(cx, LayoutError::Unknown(ty)));
     };
     let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(info);
@@ -1211,7 +1274,7 @@ fn variant_info_for_coroutine<'tcx>(
         return (vec![], None);
     };
 
-    let coroutine = cx.tcx().coroutine_layout(def_id, args.as_coroutine().kind_ty()).unwrap();
+    let coroutine = cx.tcx().coroutine_layout(def_id, args).unwrap();
     let upvar_names = cx.tcx().closure_saved_names_of_captured_variables(def_id);
 
     let mut upvars_size = Size::ZERO;

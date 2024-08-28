@@ -549,6 +549,13 @@ rustc_queries! {
         desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key) }
     }
 
+    query templated_mir_drops_elaborated_and_const_checked(ty: Ty<'tcx>)
+        -> &'tcx Steal<mir::Body<'tcx>>
+    {
+        no_hash
+        desc { |tcx| "elaborating drops for templated mir `{}`", ty }
+    }
+
     query mir_for_ctfe(
         key: DefId
     ) -> &'tcx mir::Body<'tcx> {
@@ -612,6 +619,11 @@ rustc_queries! {
     query coverage_attr_on(key: LocalDefId) -> bool {
         desc { |tcx| "checking for `#[coverage(..)]` on `{}`", tcx.def_path_str(key) }
         feedable
+    }
+
+    /// MIR for templated coroutine after our optimization passes have run.
+    query templated_optimized_mir(ty: Ty<'tcx>) -> &'tcx mir::Body<'tcx> {
+        desc { |tcx| "optimizing templated MIR for `{}`", ty }
     }
 
     /// Scans through a function's MIR after MIR optimizations, to prepare the
@@ -1310,7 +1322,11 @@ rustc_queries! {
     /// Generates a MIR body for the shim.
     query mir_shims(key: ty::InstanceKind<'tcx>) -> &'tcx mir::Body<'tcx> {
         arena_cache
-        desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
+        desc {
+            |tcx| "generating MIR shim for `{}`, instance={:?}",
+            tcx.def_path_str(key.def_id()),
+            key
+        }
     }
 
     /// The `symbol_name` query provides the symbol name for calling a
