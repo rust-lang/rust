@@ -54,7 +54,7 @@ pub struct PrettyPrintMirOptions {
 impl PrettyPrintMirOptions {
     /// Create the default set of MIR pretty-printing options from the CLI flags.
     pub fn from_cli(tcx: TyCtxt<'_>) -> Self {
-        Self { include_extra_comments: tcx.sess.opts.unstable_opts.mir_include_spans }
+        Self { include_extra_comments: tcx.sess.opts.unstable_opts.mir_include_spans.is_enabled() }
     }
 }
 

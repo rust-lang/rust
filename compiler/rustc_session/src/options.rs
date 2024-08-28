@@ -445,6 +445,8 @@ mod desc {
     pub const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
     pub const parse_function_return: &str = "`keep` or `thunk-extern`";
     pub const parse_wasm_c_abi: &str = "`legacy` or `spec`";
+    pub const parse_mir_include_spans: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
 }
 
 mod parse {
@@ -1488,6 +1490,17 @@ mod parse {
         }
         true
     }
+
+    pub(crate) fn parse_mir_include_spans(slot: &mut MirIncludeSpans, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("on" | "yes" | "y" | "true") | None => MirIncludeSpans::On,
+            Some("off" | "no" | "n" | "false") => MirIncludeSpans::Off,
+            Some("nll") => MirIncludeSpans::Nll,
+            _ => return false,
+        };
+
+        true
+    }
 }
 
 options! {
@@ -1848,8 +1861,9 @@ options! {
         specified passes to be enabled, overriding all other checks. In particular, this will \
         enable unsound (known-buggy and hence usually disabled) passes without further warning! \
         Passes that are not specified are enabled or disabled by other flags as usual."),
-    mir_include_spans: bool = (false, parse_bool, [UNTRACKED],
-        "use line numbers relative to the function in mir pretty printing"),
+    mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
+        "include extra comments in mir pretty printing, like line numbers and statement indices, \
+         details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
     mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
         "keep place mention MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
