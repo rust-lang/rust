@@ -558,8 +558,6 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                         let local = eliminate_get_context_call(&mut body[bb]);
                         replace_resume_ty_local(tcx, body, local, context_mut_ref);
                     }
-                } else {
-                    continue;
                 }
             }
             TerminatorKind::Yield { resume_arg, .. } => {
