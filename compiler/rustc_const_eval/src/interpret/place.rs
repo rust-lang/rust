@@ -15,7 +15,7 @@ use tracing::{instrument, trace};
 use super::{
     alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance,
     ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
-    Operand, Pointer, Projectable, Provenance, Readable, Scalar,
+    Operand, Pointer, Projectable, Provenance, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -436,7 +436,7 @@ where
     #[instrument(skip(self), level = "trace")]
     pub fn deref_pointer(
         &self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         if src.layout().ty.is_box() {
             // Derefer should have removed all Box derefs.
@@ -768,7 +768,7 @@ where
     #[inline(always)]
     pub(super) fn copy_op_no_dest_validation(
         &mut self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.copy_op_inner(
@@ -781,7 +781,7 @@ where
     #[inline(always)]
     pub fn copy_op_allow_transmute(
         &mut self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.copy_op_inner(
@@ -794,7 +794,7 @@ where
     #[inline(always)]
     pub fn copy_op(
         &mut self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.copy_op_inner(
@@ -808,7 +808,7 @@ where
     #[instrument(skip(self), level = "trace")]
     fn copy_op_inner(
         &mut self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
         validate_dest: bool,
@@ -843,7 +843,7 @@ where
     #[instrument(skip(self), level = "trace")]
     fn copy_op_no_validate(
         &mut self,
-        src: &impl Readable<'tcx, M::Provenance>,
+        src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
