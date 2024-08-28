@@ -11,7 +11,7 @@ use hir_def::{
     ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
 };
 use hir_expand::Lookup;
-use stdx::never;
+use stdx::{never, IsNoneOr};
 use triomphe::Arc;
 
 use crate::{
@@ -169,15 +169,23 @@ pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: CrateId) ->
 }
 
 pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
+    try_const_usize_sign_extend(db, c, false)
+}
+
+pub fn try_const_usize_sign_extend(
+    db: &dyn HirDatabase,
+    c: &Const,
+    is_signed: bool,
+) -> Option<u128> {
     match &c.data(Interner).value {
         chalk_ir::ConstValue::BoundVar(_) => None,
         chalk_ir::ConstValue::InferenceVar(_) => None,
         chalk_ir::ConstValue::Placeholder(_) => None,
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(it, false))),
+            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(it, is_signed))),
             ConstScalar::UnevaluatedConst(c, subst) => {
                 let ec = db.const_eval(*c, subst.clone(), None).ok()?;
-                try_const_usize(db, &ec)
+                try_const_usize_sign_extend(db, &ec, is_signed)
             }
             _ => None,
         },
@@ -256,8 +264,8 @@ pub(crate) fn const_eval_discriminant_variant(
 ) -> Result<i128, ConstEvalError> {
     let def = variant_id.into();
     let body = db.body(def);
+    let loc = variant_id.lookup(db.upcast());
     if body.exprs[body.body_expr] == Expr::Missing {
-        let loc = variant_id.lookup(db.upcast());
         let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
@@ -269,13 +277,17 @@ pub(crate) fn const_eval_discriminant_variant(
         };
         return Ok(value);
     }
+
+    let repr = db.enum_data(loc.parent).repr;
+    let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
+
     let mir_body = db.monomorphized_mir_body(
         def,
         Substitution::empty(Interner),
         db.trait_environment_for_body(def),
     )?;
     let c = interpret_mir(db, mir_body, false, None).0?;
-    let c = try_const_usize(db, &c).unwrap() as i128;
+    let c = try_const_usize_sign_extend(db, &c, is_signed).unwrap() as i128;
     Ok(c)
 }
 
