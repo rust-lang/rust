@@ -888,7 +888,11 @@ impl CanConstProp {
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
-            if ty.is_union() {
+            if ty.is_templated_coroutine(tcx) {
+                // No const propagation for templated coroutine (AsyncDropGlue)
+                *val = ConstPropMode::NoPropagation;
+                continue;
+            } else if ty.is_union() {
                 // Unions are incompatible with the current implementation of
                 // const prop because Rust has no concept of an active
                 // variant of a union

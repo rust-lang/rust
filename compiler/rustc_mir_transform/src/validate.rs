@@ -751,7 +751,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             // since we may be in the process of computing this MIR in the
                             // first place.
                             let layout = if def_id == self.caller_body.source.def_id() {
-                                self.caller_body.coroutine_layout_raw()
+                                self.caller_body
+                                    .coroutine_layout_raw()
+                                    .or_else(|| self.tcx.coroutine_layout(def_id, args))
                             } else if self.tcx.needs_coroutine_by_move_body_def_id(def_id)
                                 && let ty::ClosureKind::FnOnce =
                                     args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap()
@@ -761,7 +763,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 // Same if this is the by-move body of a coroutine-closure.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
-                                self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
+                                self.tcx.coroutine_layout(def_id, args)
                             };
 
                             let Some(layout) = layout else {
