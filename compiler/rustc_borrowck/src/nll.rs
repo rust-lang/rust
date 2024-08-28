@@ -224,6 +224,7 @@ pub(super) fn dump_nll_mir<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
+    borrow_set: &BorrowSet<'tcx>,
 ) {
     let tcx = infcx.tcx;
     if !dump_enabled(tcx, "nll", body.source.def_id()) {
@@ -257,6 +258,18 @@ pub(super) fn dump_nll_mir<'tcx>(
                         for_each_region_constraint(tcx, closure_region_requirements, &mut |msg| {
                             writeln!(out, "| {msg}")
                         })?;
+                        writeln!(out, "|")?;
+                    }
+
+                    if borrow_set.len() > 0 {
+                        writeln!(out, "| Borrows")?;
+                        for (borrow_idx, borrow_data) in borrow_set.iter_enumerated() {
+                            writeln!(
+                                out,
+                                "| {:?}: issued at {:?} in {:?}",
+                                borrow_idx, borrow_data.reserve_location, borrow_data.region
+                            )?;
+                        }
                         writeln!(out, "|")?;
                     }
                 }
