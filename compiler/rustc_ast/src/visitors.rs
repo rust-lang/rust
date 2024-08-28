@@ -77,9 +77,9 @@ macro_rules! mutability_dependent {
         fn flat_map_assoc_item(
             &mut self,
             i: P<AssocItem>,
-            _ctxt: AssocCtxt,
+            ctxt: AssocCtxt,
         ) -> SmallVec<[P<AssocItem>; 1]> {
-            walk_flat_map_item(self, i)
+            walk_flat_map_assoc_item(self, i, ctxt)
         }
 
         fn visit_coroutine_kind(&mut self, a: &mut CoroutineKind) {
@@ -2434,79 +2434,6 @@ pub mod mut_visit {
         }
     }
 
-    impl WalkItemKind for AssocItemKind {
-        fn walk(
-            &mut self,
-            id: NodeId,
-            span: Span,
-            _vis: &mut Visibility,
-            _ident: &mut Ident,
-            visitor: &mut impl MutVisitor
-        ) {
-            match self {
-                AssocItemKind::Const(item) => {
-                    visit_const_item(item, visitor);
-                }
-                AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                    visit_defaultness(visitor, defaultness);
-                    visitor.visit_fn(FnKind::Fn(sig, generics, body), span, id);
-                }
-                AssocItemKind::Type(box TyAlias {
-                    defaultness,
-                    generics,
-                    where_clauses,
-                    bounds,
-                    ty,
-                }) => {
-                    visit_defaultness(visitor, defaultness);
-                    visitor.visit_generics(generics);
-                    visit_bounds(visitor, bounds, BoundKind::Bound);
-                    visit_opt(ty, |ty| visitor.visit_ty(ty));
-                    walk_ty_alias_where_clauses(visitor, where_clauses);
-                }
-                AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
-                AssocItemKind::Delegation(box Delegation {
-                    id,
-                    qself,
-                    path,
-                    rename,
-                    body,
-                    from_glob: _,
-                }) => {
-                    visitor.visit_id(id);
-                    visitor.visit_qself(qself);
-                    visitor.visit_path(path, *id);
-                    if let Some(rename) = rename {
-                        visitor.visit_ident(rename);
-                    }
-                    if let Some(body) = body {
-                        visitor.visit_block(body);
-                    }
-                }
-                AssocItemKind::DelegationMac(box DelegationMac {
-                    qself,
-                    prefix,
-                    suffixes,
-                    body,
-                }) => {
-                    visitor.visit_qself(qself);
-                    visitor.visit_path(prefix, id);
-                    if let Some(suffixes) = suffixes {
-                        for (ident, rename) in suffixes {
-                            visitor.visit_ident(ident);
-                            if let Some(rename) = rename {
-                                visitor.visit_ident(rename);
-                            }
-                        }
-                    }
-                    if let Some(body) = body {
-                        visitor.visit_block(body);
-                    }
-                }
-            }
-        }
-    }
-
     fn visit_const_item<T: MutVisitor>(
         ConstItem { defaultness, generics, ty, expr }: &mut ConstItem,
         visitor: &mut T,
@@ -2539,6 +2466,87 @@ pub mod mut_visit {
         visitor.visit_span(span);
         smallvec![item]
     }
+
+    pub fn walk_assoc_item(visitor: &mut impl MutVisitor, item: &mut Item<AssocItemKind>, _ctxt: AssocCtxt) {
+        let Item { attrs, id, span, vis, ident, kind, tokens } = item;
+        visitor.visit_id(id);
+        visit_attrs(visitor, attrs);
+        visitor.visit_vis(vis);
+        visitor.visit_ident(ident);
+        match kind {
+            AssocItemKind::Const(item) => {
+                visit_const_item(item, visitor);
+            }
+            AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
+                visit_defaultness(visitor, defaultness);
+                visitor.visit_fn(FnKind::Fn(sig, generics, body), *span, *id);
+            }
+            AssocItemKind::Type(box TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                bounds,
+                ty,
+            }) => {
+                visit_defaultness(visitor, defaultness);
+                visitor.visit_generics(generics);
+                visit_bounds(visitor, bounds, BoundKind::Bound);
+                visit_opt(ty, |ty| visitor.visit_ty(ty));
+                walk_ty_alias_where_clauses(visitor, where_clauses);
+            }
+            AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
+            AssocItemKind::Delegation(box Delegation {
+                id,
+                qself,
+                path,
+                rename,
+                body,
+                from_glob: _,
+            }) => {
+                visitor.visit_id(id);
+                visitor.visit_qself(qself);
+                visitor.visit_path(path, *id);
+                if let Some(rename) = rename {
+                    visitor.visit_ident(rename);
+                }
+                if let Some(body) = body {
+                    visitor.visit_block(body);
+                }
+            }
+            AssocItemKind::DelegationMac(box DelegationMac {
+                qself,
+                prefix,
+                suffixes,
+                body,
+            }) => {
+                visitor.visit_qself(qself);
+                visitor.visit_path(prefix, *id);
+                if let Some(suffixes) = suffixes {
+                    for (ident, rename) in suffixes {
+                        visitor.visit_ident(ident);
+                        if let Some(rename) = rename {
+                            visitor.visit_ident(rename);
+                        }
+                    }
+                }
+                if let Some(body) = body {
+                    visitor.visit_block(body);
+                }
+            }
+        }
+        visit_lazy_tts(visitor, tokens);
+        visitor.visit_span(span);
+    }
+
+    pub fn walk_flat_map_assoc_item(
+        visitor: &mut impl MutVisitor,
+        mut item: P<Item<AssocItemKind>>,
+        ctxt: AssocCtxt
+    ) -> SmallVec<[P<Item<AssocItemKind>>; 1]> {
+        walk_assoc_item(visitor, item.deref_mut(), ctxt);
+        smallvec![item]
+    }
+
 
     impl WalkItemKind for ForeignItemKind {
         fn walk(
