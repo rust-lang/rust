@@ -61,7 +61,7 @@ macro_rules! mutability_dependent {
         }
 
         fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-            walk_flat_map_item(self, ni)
+            walk_flat_map_foreign_item(self, ni)
         }
 
         fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
@@ -2280,19 +2280,19 @@ pub mod mut_visit {
         visit_safety(vis, safety);
     }
 
-    /// Mutates one item, returning the item again.
-    pub fn walk_flat_map_item<K: WalkItemKind>(
-        visitor: &mut impl MutVisitor,
-        mut item: P<Item<K>>,
-    ) -> SmallVec<[P<Item<K>>; 1]> {
-        let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
-        visitor.visit_id(id);
-        visit_attrs(visitor, attrs);
-        visitor.visit_vis(vis);
-        visitor.visit_ident(ident);
-        kind.walk(*id, *span,  vis, ident, visitor);
-        visit_lazy_tts(visitor, tokens);
-        visitor.visit_span(span);
+    pub fn walk_flat_map_item(
+        vis: &mut impl MutVisitor,
+        mut item: P<Item>,
+    ) -> SmallVec<[P<Item>; 1]> {
+        vis.visit_item(item.deref_mut());
+        smallvec![item]
+    }
+
+    pub fn walk_flat_map_foreign_item(
+        vis: &mut impl MutVisitor,
+        mut item: P<ForeignItem>,
+    ) -> SmallVec<[P<ForeignItem>; 1]> {
+        vis.visit_foreign_item(item.deref_mut());
         smallvec![item]
     }
 
