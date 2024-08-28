@@ -7,6 +7,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::{Ty, TyCtxt};
+use tracing::trace;
 
 use super::MirPass;
 

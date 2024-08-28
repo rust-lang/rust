@@ -15,6 +15,7 @@ use rustc_mir_dataflow::{
 };
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
+use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
 

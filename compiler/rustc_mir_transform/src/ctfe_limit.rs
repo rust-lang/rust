@@ -6,6 +6,7 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use tracing::instrument;
 
 use crate::MirPass;
 

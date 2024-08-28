@@ -20,6 +20,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::CostChecker;
 use crate::deref_separator::deref_finder;
