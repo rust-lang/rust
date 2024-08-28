@@ -413,7 +413,7 @@ pub fn check_ast_node<'a>(
     }
 }
 
-pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
+fn check_ast_node_inner<'a, T: EarlyLintPass>(
     sess: &Session,
     check_node: impl EarlyCheckNode<'a>,
     context: EarlyContext<'_>,

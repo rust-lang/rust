@@ -16,7 +16,7 @@ use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
 #[derive(Debug)]
-pub enum IllegalMoveOriginKind<'tcx> {
+pub(crate) enum IllegalMoveOriginKind<'tcx> {
     /// Illegal move due to attempt to move from behind a reference.
     BorrowedContent {
         /// The place the reference refers to: if erroneous code was trying to

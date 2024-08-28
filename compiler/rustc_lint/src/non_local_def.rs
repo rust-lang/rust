@@ -55,7 +55,7 @@ declare_lint! {
 }
 
 #[derive(Default)]
-pub struct NonLocalDefinitions {
+pub(crate) struct NonLocalDefinitions {
     body_depth: u32,
 }
 

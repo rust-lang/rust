@@ -784,7 +784,20 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             }
         );
     });
+
     rustc_hir_analysis::check_crate(tcx);
+    sess.time("MIR_coroutine_by_move_body", || {
+        tcx.hir().par_body_owners(|def_id| {
+            if tcx.needs_coroutine_by_move_body_def_id(def_id) {
+                tcx.ensure_with_value().coroutine_by_move_body_def_id(def_id);
+            }
+        });
+    });
+    // Freeze definitions as we don't add new ones at this point.
+    // We need to wait until now since we synthesize a by-move body
+    // This improves performance by allowing lock-free access to them.
+    tcx.untracked().definitions.freeze();
+
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
@@ -816,6 +829,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             );
         }
     });
+
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
 

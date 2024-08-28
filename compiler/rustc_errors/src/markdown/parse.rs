@@ -74,7 +74,7 @@ enum ParseOpt {
 }
 
 /// Parse a buffer
-pub fn entrypoint(txt: &str) -> MdStream<'_> {
+pub(crate) fn entrypoint(txt: &str) -> MdStream<'_> {
     let ctx = Context { top_block: true, prev: Prev::Newline };
     normalize(parse_recursive(txt.trim().as_bytes(), ctx), &mut Vec::new())
 }

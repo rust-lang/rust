@@ -7,7 +7,6 @@ use crate::io::ErrorKind;
 #[macro_use]
 pub mod weak;
 
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;

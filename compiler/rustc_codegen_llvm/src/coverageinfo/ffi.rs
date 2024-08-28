@@ -80,7 +80,7 @@ pub struct CounterExpression {
 /// Must match the layout of `LLVMRustCounterMappingRegionKind`.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub enum RegionKind {
+enum RegionKind {
     /// A CodeRegion associates some code with a counter
     CodeRegion = 0,
 
@@ -110,13 +110,13 @@ pub enum RegionKind {
     MCDCBranchRegion = 6,
 }
 
-pub mod mcdc {
+mod mcdc {
     use rustc_middle::mir::coverage::{ConditionInfo, DecisionInfo};
 
     /// Must match the layout of `LLVMRustMCDCDecisionParameters`.
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct DecisionParameters {
+    pub(crate) struct DecisionParameters {
         bitmap_idx: u32,
         num_conditions: u16,
     }
@@ -127,14 +127,14 @@ pub mod mcdc {
     /// Must match the layout of `LLVMRustMCDCBranchParameters`.
     #[repr(C)]
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct BranchParameters {
+    pub(crate) struct BranchParameters {
         condition_id: LLVMConditionId,
         condition_ids: [LLVMConditionId; 2],
     }
 
     #[repr(C)]
     #[derive(Clone, Copy, Debug)]
-    pub enum ParameterTag {
+    enum ParameterTag {
         None = 0,
         Decision = 1,
         Branch = 2,
@@ -142,24 +142,24 @@ pub mod mcdc {
     /// Same layout with `LLVMRustMCDCParameters`
     #[repr(C)]
     #[derive(Clone, Copy, Debug)]
-    pub struct Parameters {
+    pub(crate) struct Parameters {
         tag: ParameterTag,
         decision_params: DecisionParameters,
         branch_params: BranchParameters,
     }
 
     impl Parameters {
-        pub fn none() -> Self {
+        pub(crate) fn none() -> Self {
             Self {
                 tag: ParameterTag::None,
                 decision_params: Default::default(),
                 branch_params: Default::default(),
             }
         }
-        pub fn decision(decision_params: DecisionParameters) -> Self {
+        pub(crate) fn decision(decision_params: DecisionParameters) -> Self {
             Self { tag: ParameterTag::Decision, decision_params, branch_params: Default::default() }
         }
-        pub fn branch(branch_params: BranchParameters) -> Self {
+        pub(crate) fn branch(branch_params: BranchParameters) -> Self {
             Self { tag: ParameterTag::Branch, decision_params: Default::default(), branch_params }
         }
     }

@@ -4,6 +4,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

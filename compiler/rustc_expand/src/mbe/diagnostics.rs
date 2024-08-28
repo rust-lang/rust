@@ -196,13 +196,14 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
     }
 }
 
-/// Currently used by macro_rules! compilation to extract a little information from the `Failure` case.
-pub struct FailureForwarder<'matcher> {
+/// Currently used by macro_rules! compilation to extract a little information from the `Failure`
+/// case.
+pub(crate) struct FailureForwarder<'matcher> {
     expected_token: Option<&'matcher Token>,
 }
 
 impl<'matcher> FailureForwarder<'matcher> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { expected_token: None }
     }
 }

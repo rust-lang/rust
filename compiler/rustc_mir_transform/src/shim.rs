@@ -78,15 +78,11 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             receiver_by_ref,
         } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
 
-        ty::InstanceKind::CoroutineKindShim { coroutine_def_id } => {
-            return tcx.optimized_mir(coroutine_def_id).coroutine_by_move_body().unwrap().clone();
-        }
-
         ty::InstanceKind::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
-                let coroutine_body = tcx.optimized_mir(*coroutine_def_id);
+            if let Some(&ty::Coroutine(coroutine_def_id, args)) = ty.map(Ty::kind) {
+                let coroutine_body = tcx.optimized_mir(coroutine_def_id);
 
                 let ty::Coroutine(_, id_args) = *tcx.type_of(coroutine_def_id).skip_binder().kind()
                 else {
@@ -105,7 +101,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                         args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
                         ty::ClosureKind::FnOnce
                     );
-                    coroutine_body.coroutine_by_move_body().unwrap().coroutine_drop().unwrap()
+                    tcx.optimized_mir(tcx.coroutine_by_move_body_def_id(coroutine_def_id))
+                        .coroutine_drop()
+                        .unwrap()
                 };
 
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);

@@ -56,6 +56,44 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Pointer to reference conversion
+//!
+//! When converting a pointer to a reference (e.g. via `&*ptr` or `&mut *ptr`),
+//! there are several rules that must be followed:
+//!
+//! * The pointer must be properly aligned.
+//!
+//! * It must be non-null.
+//!
+//! * It must be "dereferenceable" in the sense defined above.
+//!
+//! * The pointer must point to a [valid value] of type `T`.
+//!
+//! * You must enforce Rust's aliasing rules. The exact aliasing rules are not decided yet, so we
+//!   only give a rough overview here. The rules also depend on whether a mutable or a shared
+//!   reference is being created.
+//!   * When creating a mutable reference, then while this reference exists, the memory it points to
+//!     must not get accessed (read or written) through any other pointer or reference not derived
+//!     from this reference.
+//!   * When creating a shared reference, then while this reference exists, the memory it points to
+//!     must not get mutated (except inside `UnsafeCell`).
+//!
+//! If a pointer follows all of these rules, it is said to be
+//! *convertible to a (mutable or shared) reference*.
+// ^ we use this term instead of saying that the produced reference must
+// be valid, as the validity of a reference is easily confused for the
+// validity of the thing it refers to, and while the two concepts are
+// closly related, they are not identical.
+//!
+//! These rules apply even if the result is unused!
+//! (The part about being initialized is not yet fully decided, but until
+//! it is, the only safe approach is to ensure that they are indeed initialized.)
+//!
+//! An example of the implications of the above rules is that an expression such
+//! as `unsafe { &*(0 as *const u8) }` is Immediate Undefined Behavior.
+//!
+//! [valid value]: ../../reference/behavior-considered-undefined.html#invalid-values
+//!
 //! ## Allocated object
 //!
 //! An *allocated object* is a subset of program memory which is addressable

@@ -1,3 +1,7 @@
+// tidy-alphabetical-start
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
+
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};

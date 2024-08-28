@@ -25,6 +25,7 @@
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;
@@ -1701,7 +1702,7 @@ impl DiagCtxtInner {
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
-    pub fn eagerly_translate<'a>(
+    fn eagerly_translate<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,
@@ -1710,7 +1711,7 @@ impl DiagCtxtInner {
     }
 
     /// Translate `message` eagerly with `args` to `String`.
-    pub fn eagerly_translate_to_string<'a>(
+    fn eagerly_translate_to_string<'a>(
         &self,
         message: DiagMessage,
         args: impl Iterator<Item = DiagArg<'a>>,

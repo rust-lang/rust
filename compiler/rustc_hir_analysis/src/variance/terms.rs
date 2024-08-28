@@ -18,13 +18,13 @@ use rustc_middle::ty::{self, TyCtxt};
 
 use self::VarianceTerm::*;
 
-pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
+pub(crate) type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
 #[derive(Copy, Clone, Debug)]
-pub struct InferredIndex(pub usize);
+pub(crate) struct InferredIndex(pub usize);
 
 #[derive(Copy, Clone)]
-pub enum VarianceTerm<'a> {
+pub(crate) enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
     InferredTerm(InferredIndex),
@@ -45,7 +45,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 
 /// The first pass over the crate simply builds up the set of inferreds.
 
-pub struct TermsContext<'a, 'tcx> {
+pub(crate) struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub arena: &'a DroplessArena,
 
@@ -62,7 +62,7 @@ pub struct TermsContext<'a, 'tcx> {
     pub inferred_terms: Vec<VarianceTermPtr<'a>>,
 }
 
-pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
+pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     arena: &'a DroplessArena,
 ) -> TermsContext<'a, 'tcx> {

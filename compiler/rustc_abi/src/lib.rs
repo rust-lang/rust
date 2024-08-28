@@ -3,6 +3,7 @@
 #![cfg_attr(feature = "nightly", doc(rust_logo))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::fmt;
@@ -1699,7 +1700,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutS<FieldIdx, VariantIdx> {
 
     /// Checks if these two `Layout` are equal enough to be considered "the same for all function
     /// call ABIs". Note however that real ABIs depend on more details that are not reflected in the
-    /// `Layout`; the `PassMode` need to be compared as well.
+    /// `Layout`; the `PassMode` need to be compared as well. Also note that we assume
+    /// aggregates are passed via `PassMode::Indirect` or `PassMode::Cast`; more strict
+    /// checks would otherwise be required.
     pub fn eq_abi(&self, other: &Self) -> bool {
         // The one thing that we are not capturing here is that for unsized types, the metadata must
         // also have the same ABI, and moreover that the same metadata leads to the same size. The

@@ -191,12 +191,12 @@ pub(crate) fn placeholder(
 }
 
 #[derive(Default)]
-pub struct PlaceholderExpander {
+pub(crate) struct PlaceholderExpander {
     expanded_fragments: FxHashMap<ast::NodeId, AstFragment>,
 }
 
 impl PlaceholderExpander {
-    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
+    pub(crate) fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment) {
         fragment.mut_visit_with(self);
         self.expanded_fragments.insert(id, fragment);
     }

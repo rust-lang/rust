@@ -745,10 +745,25 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
     /// Checks if these two `ArgAbi` are equal enough to be considered "the same for all
     /// function call ABIs".
-    pub fn eq_abi(&self, other: &Self) -> bool {
+    pub fn eq_abi(&self, other: &Self) -> bool
+    where
+        Ty: PartialEq,
+    {
         // Ideally we'd just compare the `mode`, but that is not enough -- for some modes LLVM will look
         // at the type.
-        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode)
+        self.layout.eq_abi(&other.layout) && self.mode.eq_abi(&other.mode) && {
+            // `fn_arg_sanity_check` accepts `PassMode::Direct` for some aggregates.
+            // That elevates any type difference to an ABI difference since we just use the
+            // full Rust type as the LLVM argument/return type.
+            if matches!(self.mode, PassMode::Direct(..))
+                && matches!(self.layout.abi, Abi::Aggregate { .. })
+            {
+                // For aggregates in `Direct` mode to be compatible, the types need to be equal.
+                self.layout.ty == other.layout.ty
+            } else {
+                true
+            }
+        }
     }
 }
 

@@ -920,7 +920,6 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::ReifyShim(..)
         | ty::InstanceKind::ClosureOnceShim { .. }
         | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::CoroutineKindShim { .. }
         | ty::InstanceKind::Item(..)
         | ty::InstanceKind::FnPtrShim(..)
         | ty::InstanceKind::CloneShim(..)

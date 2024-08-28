@@ -22,7 +22,7 @@ mod private {
     // `UniqueTypeId` from being constructed directly, without asserting
     // the preconditions.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, HashStable)]
-    pub struct HiddenZst;
+    pub(crate) struct HiddenZst;
 }
 
 /// A unique identifier for anything that we create a debuginfo node for.
@@ -48,17 +48,17 @@ pub(super) enum UniqueTypeId<'tcx> {
 }
 
 impl<'tcx> UniqueTypeId<'tcx> {
-    pub fn for_ty(tcx: TyCtxt<'tcx>, t: Ty<'tcx>) -> Self {
+    pub(crate) fn for_ty(tcx: TyCtxt<'tcx>, t: Ty<'tcx>) -> Self {
         assert_eq!(t, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t));
         UniqueTypeId::Ty(t, private::HiddenZst)
     }
 
-    pub fn for_enum_variant_part(tcx: TyCtxt<'tcx>, enum_ty: Ty<'tcx>) -> Self {
+    pub(crate) fn for_enum_variant_part(tcx: TyCtxt<'tcx>, enum_ty: Ty<'tcx>) -> Self {
         assert_eq!(enum_ty, tcx.normalize_erasing_regions(ParamEnv::reveal_all(), enum_ty));
         UniqueTypeId::VariantPart(enum_ty, private::HiddenZst)
     }
 
-    pub fn for_enum_variant_struct_type(
+    pub(crate) fn for_enum_variant_struct_type(
         tcx: TyCtxt<'tcx>,
         enum_ty: Ty<'tcx>,
         variant_idx: VariantIdx,
@@ -67,7 +67,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
         UniqueTypeId::VariantStructType(enum_ty, variant_idx, private::HiddenZst)
     }
 
-    pub fn for_enum_variant_struct_type_wrapper(
+    pub(crate) fn for_enum_variant_struct_type_wrapper(
         tcx: TyCtxt<'tcx>,
         enum_ty: Ty<'tcx>,
         variant_idx: VariantIdx,
@@ -76,7 +76,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
         UniqueTypeId::VariantStructTypeCppLikeWrapper(enum_ty, variant_idx, private::HiddenZst)
     }
 
-    pub fn for_vtable_ty(
+    pub(crate) fn for_vtable_ty(
         tcx: TyCtxt<'tcx>,
         self_type: Ty<'tcx>,
         implemented_trait: Option<PolyExistentialTraitRef<'tcx>>,
@@ -93,7 +93,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     /// argument of the various `LLVMRustDIBuilderCreate*Type()` methods.
     ///
     /// Right now this takes the form of a hex-encoded opaque hash value.
-    pub fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
+    fn generate_unique_id_string(self, tcx: TyCtxt<'tcx>) -> String {
         let mut hasher = StableHasher::new();
         tcx.with_stable_hashing_context(|mut hcx| {
             hcx.while_hashing_spans(false, |hcx| self.hash_stable(hcx, &mut hasher))
@@ -101,7 +101,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
         hasher.finish::<Fingerprint>().to_hex()
     }
 
-    pub fn expect_ty(self) -> Ty<'tcx> {
+    pub(crate) fn expect_ty(self) -> Ty<'tcx> {
         match self {
             UniqueTypeId::Ty(ty, _) => ty,
             _ => bug!("Expected `UniqueTypeId::Ty` but found `{:?}`", self),
@@ -133,25 +133,25 @@ impl<'ll, 'tcx> TypeMap<'ll, 'tcx> {
     }
 }
 
-pub struct DINodeCreationResult<'ll> {
+pub(crate) struct DINodeCreationResult<'ll> {
     pub di_node: &'ll DIType,
     pub already_stored_in_typemap: bool,
 }
 
 impl<'ll> DINodeCreationResult<'ll> {
-    pub fn new(di_node: &'ll DIType, already_stored_in_typemap: bool) -> Self {
+    pub(crate) fn new(di_node: &'ll DIType, already_stored_in_typemap: bool) -> Self {
         DINodeCreationResult { di_node, already_stored_in_typemap }
     }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Stub<'ll> {
+pub(crate) enum Stub<'ll> {
     Struct,
     Union,
     VTableTy { vtable_holder: &'ll DIType },
 }
 
-pub struct StubInfo<'ll, 'tcx> {
+pub(crate) struct StubInfo<'ll, 'tcx> {
     metadata: &'ll DIType,
     unique_type_id: UniqueTypeId<'tcx>,
 }

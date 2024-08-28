@@ -14,12 +14,11 @@ use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-                                        `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
-                                        `literal`, `path`, `meta`, `tt`, `item` and `vis`";
-pub const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
-                                             `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, \
-                                             `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
-                                             `item` and `vis`";
+    `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, \
+    `item` and `vis`";
+pub(crate) const VALID_FRAGMENT_NAMES_MSG_2021: &str = "valid fragment specifiers are \
+    `ident`, `block`, `stmt`, `expr`, `expr_2021`, `pat`, `ty`, `lifetime`, `literal`, `path`, \
+    `meta`, `tt`, `item` and `vis`";
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
 /// takes a generic `TokenStream`, such as is used in the rest of the compiler, and returns a

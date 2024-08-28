@@ -14,7 +14,7 @@ use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.
 #[derive(Debug)]
-pub struct FunctionCoverageCollector<'tcx> {
+pub(crate) struct FunctionCoverageCollector<'tcx> {
     /// Coverage info that was attached to this function by the instrumentor.
     function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
@@ -32,7 +32,7 @@ pub struct FunctionCoverageCollector<'tcx> {
 
 impl<'tcx> FunctionCoverageCollector<'tcx> {
     /// Creates a new set of coverage data for a used (called) function.
-    pub fn new(
+    pub(crate) fn new(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
     ) -> Self {
@@ -40,7 +40,7 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
     }
 
     /// Creates a new set of coverage data for an unused (never called) function.
-    pub fn unused(
+    pub(crate) fn unused(
         instance: Instance<'tcx>,
         function_coverage_info: &'tcx FunctionCoverageInfo,
     ) -> Self {
@@ -195,7 +195,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
-    pub fn source_hash(&self) -> u64 {
+    pub(crate) fn source_hash(&self) -> u64 {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
     }
 

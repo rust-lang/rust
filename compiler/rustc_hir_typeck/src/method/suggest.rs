@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    pub fn suggest_use_shadowed_binding_with_method(
+    fn suggest_use_shadowed_binding_with_method(
         &self,
         self_source: SelfSource<'tcx>,
         method_name: Ident,
@@ -3498,7 +3498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err,
                                 pick.item.def_id,
                                 rcvr.hir_id,
-                                *rcvr_ty,
+                                Some(*rcvr_ty),
                             );
                         if pick.autoderefs == 0 && !trait_in_other_version_found {
                             err.span_label(
@@ -3689,8 +3689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let SelfSource::QPath(ty) = source
             && !valid_out_of_scope_traits.is_empty()
             && let hir::TyKind::Path(path) = ty.kind
-            && let hir::QPath::Resolved(_, path) = path
-            && let Some(def_id) = path.res.opt_def_id()
+            && let hir::QPath::Resolved(..) = path
             && let Some(assoc) = self
                 .tcx
                 .associated_items(valid_out_of_scope_traits[0])
@@ -3700,7 +3699,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // See if the `Type::function(val)` where `function` wasn't found corresponds to a
             // `Trait` that is imported directly, but `Type` came from a different version of the
             // same crate.
-            let rcvr_ty = self.tcx.type_of(def_id).instantiate_identity();
+
+            let rcvr_ty = self.node_ty_opt(ty.hir_id);
             trait_in_other_version_found = self.detect_and_explain_multiple_crate_versions(
                 err,
                 assoc.def_id,
@@ -4080,7 +4080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         item_def_id: DefId,
         hir_id: hir::HirId,
-        rcvr_ty: Ty<'_>,
+        rcvr_ty: Option<Ty<'_>>,
     ) -> bool {
         let hir_id = self.tcx.parent_hir_id(hir_id);
         let Some(traits) = self.tcx.in_scope_traits(hir_id) else { return false };
@@ -4110,8 +4110,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut multi_span: MultiSpan = trait_span.into();
         multi_span.push_span_label(trait_span, format!("this is the trait that is needed"));
         let descr = self.tcx.associated_item(item_def_id).descr();
+        let rcvr_ty =
+            rcvr_ty.map(|t| format!("`{t}`")).unwrap_or_else(|| "the receiver".to_string());
         multi_span
-            .push_span_label(item_span, format!("the {descr} is available for `{rcvr_ty}` here"));
+            .push_span_label(item_span, format!("the {descr} is available for {rcvr_ty} here"));
         for (def_id, import_def_id) in candidates {
             if let Some(import_def_id) = import_def_id {
                 multi_span.push_span_label(
@@ -4221,19 +4223,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum SelfSource<'a> {
+enum SelfSource<'a> {
     QPath(&'a hir::Ty<'a>),
     MethodCall(&'a hir::Expr<'a> /* rcvr */),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct TraitInfo {
+pub(crate) struct TraitInfo {
     pub def_id: DefId,
 }
 
 /// Retrieves all traits in this crate and any dependent crates,
 /// and wraps them into `TraitInfo` for custom sorting.
-pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
+pub(crate) fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
     tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
 }
 

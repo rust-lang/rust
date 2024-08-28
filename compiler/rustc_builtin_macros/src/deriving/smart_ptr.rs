@@ -18,7 +18,7 @@ macro_rules! path {
     ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
 }
 
-pub fn expand_deriving_smart_ptr(
+pub(crate) fn expand_deriving_smart_ptr(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,

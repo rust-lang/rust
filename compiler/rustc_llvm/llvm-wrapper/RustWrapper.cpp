@@ -913,14 +913,19 @@ extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateFile(LLVMRustDIBuilderRef Builder, const char *Filename,
                             size_t FilenameLen, const char *Directory,
                             size_t DirectoryLen, LLVMRustChecksumKind CSKind,
-                            const char *Checksum, size_t ChecksumLen) {
+                            const char *Checksum, size_t ChecksumLen,
+                            const char *Source, size_t SourceLen) {
 
   std::optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
   std::optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
   if (llvmCSKind)
     CSInfo.emplace(*llvmCSKind, StringRef{Checksum, ChecksumLen});
+  std::optional<StringRef> oSource{};
+  if (Source)
+    oSource = StringRef(Source, SourceLen);
   return wrap(Builder->createFile(StringRef(Filename, FilenameLen),
-                                  StringRef(Directory, DirectoryLen), CSInfo));
+                                  StringRef(Directory, DirectoryLen), CSInfo,
+                                  oSource));
 }
 
 extern "C" LLVMMetadataRef
