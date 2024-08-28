@@ -231,10 +231,12 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize)> {
+    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)> {
         match self.place {
             Place::Ptr(mplace) => Left(MPlaceTy { mplace, layout: self.layout }),
-            Place::Local { local, offset, locals_addr } => Right((local, offset, locals_addr)),
+            Place::Local { local, offset, locals_addr } => {
+                Right((local, offset, locals_addr, self.layout))
+            }
         }
     }
 
@@ -277,7 +279,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     ) -> InterpResult<'tcx, Self> {
         Ok(match self.as_mplace_or_local() {
             Left(mplace) => mplace.offset_with_meta(offset, mode, meta, layout, ecx)?.into(),
-            Right((local, old_offset, locals_addr)) => {
+            Right((local, old_offset, locals_addr, _)) => {
                 debug_assert!(layout.is_sized(), "unsized locals should live in memory");
                 assert_matches!(meta, MemPlaceMeta::None); // we couldn't store it anyway...
                 // `Place::Local` are always in-bounds of their surrounding local, so we can just
@@ -328,9 +330,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 
 /// The `Weiteable` trait describes interpreter values that can be written to.
 pub trait Writeable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
-    fn as_mplace_or_local(
-        &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)>;
+    fn to_place(&self) -> PlaceTy<'tcx, Prov>;
 
     fn force_mplace<M: Machine<'tcx, Provenance = Prov>>(
         &self,
@@ -340,11 +340,8 @@ pub trait Writeable<'tcx, Prov: Provenance>: Projectable<'tcx, Prov> {
 
 impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
     #[inline(always)]
-    fn as_mplace_or_local(
-        &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)> {
-        self.as_mplace_or_local()
-            .map_right(|(local, offset, locals_addr)| (local, offset, locals_addr, self.layout))
+    fn to_place(&self) -> PlaceTy<'tcx, Prov> {
+        self.clone()
     }
 
     #[inline(always)]
@@ -358,10 +355,8 @@ impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for PlaceTy<'tcx, Prov> {
 
 impl<'tcx, Prov: Provenance> Writeable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
     #[inline(always)]
-    fn as_mplace_or_local(
-        &self,
-    ) -> Either<MPlaceTy<'tcx, Prov>, (mir::Local, Option<Size>, usize, TyAndLayout<'tcx>)> {
-        Left(self.clone())
+    fn to_place(&self) -> PlaceTy<'tcx, Prov> {
+        self.clone().into()
     }
 
     #[inline(always)]
@@ -615,7 +610,7 @@ where
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
         // but not factored as a separate function.
-        let mplace = match dest.as_mplace_or_local() {
+        let mplace = match dest.to_place().as_mplace_or_local() {
             Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
                     // This has been projected to a part of this local. We could have complicated
@@ -728,7 +723,7 @@ where
         &mut self,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        let mplace = match dest.as_mplace_or_local() {
+        let mplace = match dest.to_place().as_mplace_or_local() {
             Left(mplace) => mplace,
             Right((local, offset, locals_addr, layout)) => {
                 if offset.is_some() {
