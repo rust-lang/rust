@@ -195,6 +195,23 @@ macro_rules! lifetime_helpers {
     };
 }
 
+macro_rules! visit_list {
+    ($visitor: expr, $visit: ident, $flat_map: ident, $list: expr $(; $($arg: expr),*)?) => {
+        if_mut_expr!(
+            $list.flat_map_in_place(|x| $visitor.$flat_map(x $(, $($arg),*)?))
+        ,
+            for elem in $list {
+                try_v!($visitor.$visit(elem $(, $($arg),*)?));
+            }
+        )
+    };
+    ($visitor: expr, $visit: ident, $list: expr $(; $($arg: expr),*)?) => {
+        for elem in $list {
+            try_v!($visitor.$visit(elem $(, $($arg),*)?));
+        }
+    };
+}
+
 macro_rules! make_ast_visitor {
     ($trait: ident $(<$lt: lifetime>)? $(, $mut: ident)?) => {
 
@@ -432,23 +449,6 @@ macro_rules! make_ast_visitor {
                     try_visit!($visit)
                 )
             }
-        }
-
-        macro_rules! visit_list {
-            ($visitor: expr, $visit: ident, $flat_map: ident, $list: expr) => {
-                if_mut_expr!(
-                    $list.flat_map_in_place(|x| $visitor.$flat_map(x))
-                ,
-                    for elem in $list {
-                        try_v!($visitor.$visit(elem));
-                    }
-                )
-            };
-            ($visitor: expr, $visit: ident, $list: expr) => {
-                for elem in $list {
-                    try_v!($visitor.$visit(elem));
-                }
-            };
         }
 
         // TODO: temporary name
