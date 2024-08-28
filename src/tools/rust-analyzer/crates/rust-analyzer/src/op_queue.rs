@@ -37,9 +37,13 @@ impl<Args, Output: Default> Default for OpQueue<Args, Output> {
 }
 
 impl<Args, Output> OpQueue<Args, Output> {
+    /// Request an operation to start.
     pub(crate) fn request_op(&mut self, reason: Cause, args: Args) {
         self.op_requested = Some((reason, args));
     }
+
+    /// If there was an operation requested, mark this queue as
+    /// started and return the request arguments.
     pub(crate) fn should_start_op(&mut self) -> Option<(Cause, Args)> {
         if self.op_in_progress {
             return None;
@@ -47,18 +51,25 @@ impl<Args, Output> OpQueue<Args, Output> {
         self.op_in_progress = self.op_requested.is_some();
         self.op_requested.take()
     }
+
+    /// Mark an operation as completed.
     pub(crate) fn op_completed(&mut self, result: Output) {
         assert!(self.op_in_progress);
         self.op_in_progress = false;
         self.last_op_result = result;
     }
 
+    /// Get the result of the last operation.
     pub(crate) fn last_op_result(&self) -> &Output {
         &self.last_op_result
     }
+
+    // Is there an operation that has started, but hasn't yet finished?
     pub(crate) fn op_in_progress(&self) -> bool {
         self.op_in_progress
     }
+
+    // Has an operation been requested?
     pub(crate) fn op_requested(&self) -> bool {
         self.op_requested.is_some()
     }
