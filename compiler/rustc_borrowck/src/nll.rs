@@ -210,13 +210,23 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     }
 }
 
-pub(super) fn dump_mir_results<'tcx>(
+/// `-Zdump-mir=nll` dumps MIR annotated with NLL specific information:
+/// - free regions
+/// - inferred region values
+/// - region liveness
+/// - inference constraints and their causes
+///
+/// As well as graphviz `.dot` visualizations of:
+/// - the region constraints graph
+/// - the region SCC graph
+pub(super) fn dump_nll_mir<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
 ) {
-    if !dump_enabled(infcx.tcx, "nll", body.source.def_id()) {
+    let tcx = infcx.tcx;
+    if !dump_enabled(tcx, "nll", body.source.def_id()) {
         return;
     }
 
@@ -230,7 +240,7 @@ pub(super) fn dump_mir_results<'tcx>(
         ),
     };
     dump_mir_with_options(
-        infcx.tcx,
+        tcx,
         false,
         "nll",
         &0,
@@ -239,16 +249,14 @@ pub(super) fn dump_mir_results<'tcx>(
             match pass_where {
                 // Before the CFG, dump out the values for each region variable.
                 PassWhere::BeforeCFG => {
-                    regioncx.dump_mir(infcx.tcx, out)?;
+                    regioncx.dump_mir(tcx, out)?;
                     writeln!(out, "|")?;
 
                     if let Some(closure_region_requirements) = closure_region_requirements {
                         writeln!(out, "| Free Region Constraints")?;
-                        for_each_region_constraint(
-                            infcx.tcx,
-                            closure_region_requirements,
-                            &mut |msg| writeln!(out, "| {msg}"),
-                        )?;
+                        for_each_region_constraint(tcx, closure_region_requirements, &mut |msg| {
+                            writeln!(out, "| {msg}")
+                        })?;
                         writeln!(out, "|")?;
                     }
                 }
@@ -264,15 +272,15 @@ pub(super) fn dump_mir_results<'tcx>(
         options,
     );
 
-    // Also dump the inference graph constraints as a graphviz file.
+    // Also dump the region constraint graph as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(infcx.tcx, "regioncx.all.dot", false, "nll", &0, body)?;
+        let mut file = create_dump_file(tcx, "regioncx.all.dot", false, "nll", &0, body)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
-    // Also dump the inference graph constraints as a graphviz file.
+    // Also dump the region constraint SCC graph as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(infcx.tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
+        let mut file = create_dump_file(tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;
     };
 }
