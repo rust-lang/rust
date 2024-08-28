@@ -1033,7 +1033,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 let kind =
-                    FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
+                    FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body);
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
@@ -1568,7 +1568,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     sig,
                     &item.vis,
                     generics,
-                    body.as_deref(),
+                    body,
                 );
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);

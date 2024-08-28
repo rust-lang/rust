@@ -3434,7 +3434,7 @@ impl Rewrite for ast::ForeignItem {
                     ref generics,
                     ref body,
                 } = **fn_kind;
-                if let Some(ref body) = body {
+                if body.is_some() {
                     let mut visitor = FmtVisitor::from_context(context);
                     visitor.block_indent = shape.indent;
                     visitor.last_pos = self.span.lo();
@@ -3447,7 +3447,7 @@ impl Rewrite for ast::ForeignItem {
                             sig,
                             &self.vis,
                             generics,
-                            Some(body),
+                            body,
                         ),
                         &sig.decl,
                         self.span,

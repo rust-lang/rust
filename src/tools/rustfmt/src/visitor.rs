@@ -540,7 +540,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         ref generics,
                         ref body,
                     } = **fn_kind;
-                    if let Some(ref body) = body {
+                    if body.is_some() {
                         let inner_attrs = inner_attributes(&item.attrs);
                         let fn_ctxt = match sig.header.ext {
                             ast::Extern::None => visit::FnCtxt::Free,
@@ -553,7 +553,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                                 sig,
                                 &item.vis,
                                 generics,
-                                Some(body),
+                                body,
                             ),
                             &sig.decl,
                             item.span,
@@ -648,11 +648,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ref generics,
                     ref body,
                 } = **fn_kind;
-                if let Some(ref body) = body {
+                if body.is_some() {
                     let inner_attrs = inner_attributes(&ai.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, generics, Some(body)),
+                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, generics, body),
                         &sig.decl,
                         ai.span,
                         defaultness,
