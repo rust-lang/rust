@@ -9,6 +9,7 @@ macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
             [] layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
+            [] proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
             [] fn_abi: rustc_target::callconv::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
             [decode] adt_def: rustc_middle::ty::AdtDefData,
