@@ -121,7 +121,22 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
             lint_callback!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
-        })
+        });
+
+        // TODO: Once visit_coroutine_kind is properly called by Visitor this and other
+        // manual visits to coroutine_kind can be removed
+        // Explicitly check for lints associated with 'closure_id', since
+        // it does not have a corresponding AST node
+        match e.kind {
+            ast::ExprKind::Closure(box ast::Closure {
+                coroutine_kind: Some(coroutine_kind),
+                ..
+            }) => {
+                self.check_id(coroutine_kind.closure_id());
+            }
+            _ => {}
+        }
+        lint_callback!(self, check_expr_post, e);
     }
 
     fn visit_expr_field(&mut self, f: &'a ast::ExprField) {
@@ -212,21 +227,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
             lint_callback!(cx, check_arm, a);
             ast_visit::walk_arm(cx, a);
         })
-    }
-
-    fn visit_expr_post(&mut self, e: &'a ast::Expr) {
-        // Explicitly check for lints associated with 'closure_id', since
-        // it does not have a corresponding AST node
-        match e.kind {
-            ast::ExprKind::Closure(box ast::Closure {
-                coroutine_kind: Some(coroutine_kind),
-                ..
-            }) => {
-                self.check_id(coroutine_kind.closure_id());
-            }
-            _ => {}
-        }
-        lint_callback!(self, check_expr_post, e);
     }
 
     fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {

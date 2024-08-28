@@ -3,9 +3,6 @@ macro_rules! mutability_dependent {
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
             walk_stmt(self, s)
         }
-        fn visit_expr_post(&mut self, _ex: &'ast Expr) -> Self::Result {
-            Self::Result::output()
-        }
         fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
             Self::Result::output()
         }
@@ -1933,8 +1930,7 @@ pub mod visit {
             ExprKind::Err(_guar) => {}
             ExprKind::Dummy => {}
         }
-
-        visitor.visit_expr_post(expression)
+        V::Result::output()
     }
 
     pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -> V::Result {
