@@ -1034,7 +1034,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             allow_comparison_to_zero,
         ))
     });
-    store.register_late_pass(|_| Box::<std_instead_of_core::StdReexports>::default());
+    store.register_late_pass(move |_| Box::new(std_instead_of_core::StdReexports::new(conf)));
     store.register_late_pass(move |_| Box::new(instant_subtraction::InstantSubtraction::new(msrv())));
     store.register_late_pass(|_| Box::new(partialeq_to_none::PartialeqToNone));
     store.register_late_pass(move |_| Box::new(manual_clamp::ManualClamp::new(msrv())));
