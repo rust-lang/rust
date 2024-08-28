@@ -17,7 +17,7 @@ macro_rules! no_mangle {
     }
 }
 
-#[cfg(all(not(windows), not(target_vendor = "apple")))]
+#[cfg(not(windows))]
 no_mangle! {
     fn acos(x: f64) -> f64;
     fn asin(x: f64) -> f64;
@@ -92,6 +92,7 @@ no_mangle! {
     fn fmodf(x: f32, y: f32) -> f32;
 }
 
+// allow for windows (and other targets)
 intrinsics! {
     pub extern "C" fn lgamma_r(x: f64, s: &mut i32) -> f64 {
         let r = self::libm::lgamma_r(x);
