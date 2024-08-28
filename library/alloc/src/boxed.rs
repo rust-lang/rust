@@ -1553,6 +1553,42 @@ impl Clone for Box<str> {
     }
 }
 
+// This is the same impl as `Cow<'a, str>`, but with a newer stability attribute.
+// It needs to be in this file to refer to the Box as a local struct rather than as a lang-item.
+macro_rules! impl_eq {
+    ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "box_str_partial_eq", since = "CURRENT_RUSTC_VERSION")]
+        #[allow(unused_lifetimes)]
+        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
+            #[inline]
+            fn ne(&self, other: &$rhs) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
+        }
+
+        #[stable(feature = "box_str_partial_eq", since = "CURRENT_RUSTC_VERSION")]
+        #[allow(unused_lifetimes)]
+        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool {
+                PartialEq::eq(&self[..], &other[..])
+            }
+            #[inline]
+            fn ne(&self, other: &$lhs) -> bool {
+                PartialEq::ne(&self[..], &other[..])
+            }
+        }
+    };
+}
+
+impl_eq! { Box<str>, str }
+impl_eq! { Box<str>, &'a str }
+impl_eq! { Box<str>, String }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for Box<T, A> {
     #[inline]
@@ -1564,6 +1600,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for Box<T, A> {
         PartialEq::ne(&**self, &**other)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for Box<T, A> {
     #[inline]

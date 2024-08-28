@@ -14,6 +14,29 @@ fn test_le() {
 }
 
 #[test]
+fn test_box_str_eq() {
+    let boxed: Box<str> = Box::from("boxed");
+    assert!(*"boxed" == boxed);
+    assert!(*"other" != boxed);
+    assert!(boxed == *"boxed");
+    assert!(boxed != *"other");
+
+    assert!(&"boxed" == &boxed);
+    assert!(&boxed == &"boxed");
+    assert!(&"BOXED" != &boxed);
+    assert!(&boxed != &"BOXED");
+
+    assert_eq!(Box::from("foo"), "foo");
+    assert_eq!("bar", Box::from("bar"));
+
+    assert_ne!(Box::from("foo"), "bar");
+    assert_ne!("bar", Box::from("foo"));
+
+    assert!("" == Box::from(""));
+    assert!("本" == String::from("本").into_boxed_str());
+}
+
+#[test]
 fn test_find() {
     assert_eq!("hello".find('l'), Some(2));
     assert_eq!("hello".find(|c: char| c == 'o'), Some(4));
