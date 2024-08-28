@@ -2731,4 +2731,23 @@ fn main() {
 "#,
         )
     }
+
+    #[test]
+    fn shadow_builtin_macro() {
+        check(
+            r#"
+//- minicore: column
+//- /a.rs crate:a
+#[macro_export]
+macro_rules! column { () => {} }
+          // ^^^^^^
+
+//- /b.rs crate:b deps:a
+use a::column;
+fn foo() {
+    $0column!();
+}
+        "#,
+        );
+    }
 }

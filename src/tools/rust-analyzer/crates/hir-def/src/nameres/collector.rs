@@ -1606,7 +1606,11 @@ impl ModCollector<'_, '_> {
 
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some((prelude_module, _use)) = self.def_collector.def_map.prelude {
-            if prelude_module.krate != krate && is_crate_root {
+            // Don't insert macros from the prelude into blocks, as they can be shadowed by other macros.
+            if prelude_module.krate != krate
+                && is_crate_root
+                && self.def_collector.def_map.block.is_none()
+            {
                 cov_mark::hit!(prelude_is_macro_use);
                 self.def_collector.import_macros_from_extern_crate(
                     prelude_module.krate,
