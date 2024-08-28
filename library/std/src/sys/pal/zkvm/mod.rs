@@ -10,7 +10,7 @@
 
 const WORD_SIZE: usize = core::mem::size_of::<u32>();
 
-pub mod alloc;
+pub mod abi;
 #[path = "../zkvm/args.rs"]
 pub mod args;
 pub mod env;
@@ -26,13 +26,10 @@ pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod stdio;
-#[path = "../unsupported/time.rs"]
-pub mod time;
-
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
-
-mod abi;
+#[path = "../unsupported/time.rs"]
+pub mod time;
 
 use crate::io as std_io;
 

@@ -141,7 +141,6 @@ mod intrinsics;
 mod io;
 mod iter;
 mod lazy;
-#[cfg(test)]
 mod macros;
 mod manually_drop;
 mod mem;

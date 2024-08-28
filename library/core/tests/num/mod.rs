@@ -178,7 +178,7 @@ fn test_can_not_overflow() {
 
     // Check u128 separately:
     for base in 2..=36 {
-        let num = u128::MAX as u128;
+        let num = <u128>::MAX;
         let max_len_string = format_radix(num, base as u128);
         // base 16 fits perfectly for u128 and won't overflow:
         assert_eq!(can_overflow::<u128>(base, &max_len_string), base != 16);

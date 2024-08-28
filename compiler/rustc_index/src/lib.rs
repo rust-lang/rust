@@ -3,6 +3,7 @@
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(extend_one, new_uninit, step_trait, test))]
 #![cfg_attr(feature = "nightly", feature(new_zeroed_alloc))]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod bit_set;

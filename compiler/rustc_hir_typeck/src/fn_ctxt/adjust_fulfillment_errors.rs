@@ -12,7 +12,7 @@ use rustc_trait_selection::traits;
 use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn adjust_fulfillment_error_for_expr_obligation(
+    pub(crate) fn adjust_fulfillment_error_for_expr_obligation(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
@@ -483,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
      *
      * This function only updates the error span.
      */
-    pub fn blame_specific_expr_if_possible(
+    pub(crate) fn blame_specific_expr_if_possible(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,

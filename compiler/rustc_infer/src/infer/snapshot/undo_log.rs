@@ -158,7 +158,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtUndoLogs<'tcx> {
-    pub fn start_snapshot(&mut self) -> Snapshot<'tcx> {
+    pub(crate) fn start_snapshot(&mut self) -> Snapshot<'tcx> {
         self.num_open_snapshots += 1;
         Snapshot { undo_len: self.logs.len(), _marker: PhantomData }
     }

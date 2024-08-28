@@ -89,7 +89,7 @@ impl Printer {
 }
 
 impl Token {
-    pub fn is_hardbreak_tok(&self) -> bool {
+    pub(crate) fn is_hardbreak_tok(&self) -> bool {
         *self == Printer::hardbreak_tok_offset(0)
     }
 }

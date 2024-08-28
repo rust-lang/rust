@@ -944,7 +944,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_dereferenceable(
+    fn check_dereferenceable(
         &self,
         span: Span,
         expected: Ty<'tcx>,

@@ -207,13 +207,13 @@ pub(crate) struct CopyBitcode {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_debuginfo_compression)]
-pub struct UnknownCompression {
+pub(crate) struct UnknownCompression {
     pub algorithm: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_mismatch_data_layout)]
-pub struct MismatchedDataLayout<'a> {
+pub(crate) struct MismatchedDataLayout<'a> {
     pub rustc_target: &'a str,
     pub rustc_layout: &'a str,
     pub llvm_target: &'a str,

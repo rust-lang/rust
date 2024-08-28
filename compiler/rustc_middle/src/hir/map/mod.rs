@@ -307,7 +307,7 @@ impl<'hir> Map<'hir> {
             }
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
-            DefKind::Closure => BodyOwnerKind::Closure,
+            DefKind::Closure | DefKind::SyntheticCoroutineBody => BodyOwnerKind::Closure,
             DefKind::Static { safety: _, mutability, nested: false } => {
                 BodyOwnerKind::Static(mutability)
             }

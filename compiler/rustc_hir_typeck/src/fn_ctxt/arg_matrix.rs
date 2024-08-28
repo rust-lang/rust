@@ -17,7 +17,7 @@ rustc_index::newtype_index! {
 }
 
 impl ExpectedIdx {
-    pub fn to_provided_idx(self) -> ProvidedIdx {
+    pub(crate) fn to_provided_idx(self) -> ProvidedIdx {
         ProvidedIdx::from_usize(self.as_usize())
     }
 }

@@ -157,7 +157,7 @@ pub(crate) fn work_products_path(sess: &Session) -> PathBuf {
 }
 
 /// Returns the path to a session's query cache.
-pub fn query_cache_path(sess: &Session) -> PathBuf {
+pub(crate) fn query_cache_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 

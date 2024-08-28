@@ -17,13 +17,13 @@ use crate::lints::{
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
 #[derive(PartialEq)]
-pub enum MethodLateContext {
+pub(crate) enum MethodLateContext {
     TraitAutoImpl,
     TraitImpl,
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
+pub(crate) fn method_context(cx: &LateContext<'_>, id: LocalDefId) -> MethodLateContext {
     let item = cx.tcx.associated_item(id);
     match item.container {
         ty::TraitContainer => MethodLateContext::TraitAutoImpl,

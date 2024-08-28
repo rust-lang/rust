@@ -1730,6 +1730,7 @@ fn render_impl(
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
+                render_rightside(w, cx, item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");
@@ -1751,6 +1752,7 @@ fn render_impl(
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
+                render_rightside(w, cx, item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{id}\" class=\"anchor\">§</a>");

@@ -86,7 +86,7 @@ impl<'a> ArchiveBuilder for LlvmArchiveBuilder<'a> {
     }
 }
 
-pub struct LlvmArchiveBuilderBuilder;
+pub(crate) struct LlvmArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {

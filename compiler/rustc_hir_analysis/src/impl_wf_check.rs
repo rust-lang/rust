@@ -53,7 +53,10 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-pub fn check_impl_wf(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_impl_wf(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
     let mut res = Ok(());
     debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });

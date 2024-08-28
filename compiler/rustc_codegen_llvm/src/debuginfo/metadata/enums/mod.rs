@@ -257,7 +257,7 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
 ///  --->   DW_TAG_structure_type            (type of variant 3)
 ///
 /// ```
-pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
+fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     variant_index: VariantIdx,
     coroutine_type_and_layout: TyAndLayout<'tcx>,

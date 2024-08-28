@@ -576,7 +576,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::ReifyShim(..)
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | ty::InstanceKind::FnPtrShim(..)
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)

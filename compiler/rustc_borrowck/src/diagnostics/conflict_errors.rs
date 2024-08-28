@@ -645,7 +645,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         }
     }
 
-    pub fn suggest_reborrow(
+    pub(crate) fn suggest_reborrow(
         &self,
         err: &mut Diag<'infcx>,
         span: Span,
@@ -678,14 +678,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         let inits = &self.move_data.init_path_map[mpi];
         let move_path = &self.move_data.move_paths[mpi];
         let decl_span = self.body.local_decls[move_path.place.local].source_info.span;
-        let mut spans = vec![];
+        let mut spans_set = FxIndexSet::default();
         for init_idx in inits {
             let init = &self.move_data.inits[*init_idx];
             let span = init.span(self.body);
             if !span.is_dummy() {
-                spans.push(span);
+                spans_set.insert(span);
             }
         }
+        let spans: Vec<_> = spans_set.into_iter().collect();
 
         let (name, desc) = match self.describe_place_with_options(
             moved_place,
@@ -1891,10 +1892,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         struct FindUselessClone<'tcx> {
             tcx: TyCtxt<'tcx>,
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
-            pub clones: Vec<&'tcx hir::Expr<'tcx>>,
+            clones: Vec<&'tcx hir::Expr<'tcx>>,
         }
         impl<'tcx> FindUselessClone<'tcx> {
-            pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+            fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
                 Self { tcx, typeck_results: tcx.typeck(def_id), clones: vec![] }
             }
         }
@@ -1916,7 +1917,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, '_, 'infcx, 'tcx> {
         let body = hir.body(body_id).value;
         expr_finder.visit_expr(body);
 
-        pub struct Holds<'tcx> {
+        struct Holds<'tcx> {
             ty: Ty<'tcx>,
         }
 

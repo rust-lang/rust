@@ -19,6 +19,7 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod util {

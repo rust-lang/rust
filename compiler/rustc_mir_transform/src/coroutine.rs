@@ -53,7 +53,7 @@
 mod by_move_body;
 use std::{iter, ops};
 
-pub use by_move_body::ByMoveBody;
+pub use by_move_body::coroutine_by_move_body_def_id;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;

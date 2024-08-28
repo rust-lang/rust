@@ -1579,6 +1579,12 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    // Whether the body owner is synthetic, which in this case means it does not correspond to
+    // meaningful HIR. This is currently used to skip over MIR borrowck.
+    pub fn is_synthetic_mir(self, def_id: impl Into<DefId>) -> bool {
+        matches!(self.def_kind(def_id.into()), DefKind::SyntheticCoroutineBody)
+    }
+
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
     /// This means it is neither an `async` or `gen` construct.
     pub fn is_general_coroutine(self, def_id: DefId) -> bool {
@@ -3166,6 +3172,18 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
+    }
+
+    pub fn needs_coroutine_by_move_body_def_id(self, def_id: LocalDefId) -> bool {
+        if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
+            self.coroutine_kind(def_id)
+            && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
+            && args.as_coroutine().kind_ty().to_opt_closure_kind() != Some(ty::ClosureKind::FnOnce)
+        {
+            true
+        } else {
+            false
+        }
     }
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`
