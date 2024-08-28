@@ -313,6 +313,7 @@ fn main() {
                        //^^^^^^^^^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
                        //^^^^^^^^^^^^(
                        //^^^^^^^^^^^^)
+                       //^^^^<fn-item-to-fn-pointer>
     let _: fn()        = || {};
                        //^^^^^<closure-to-fn-pointer>
     let _: unsafe fn() = || {};
@@ -321,6 +322,8 @@ fn main() {
                        //^^^^^^^^^^^^^^^^^^^^^<mut-ptr-to-const-ptr>
                        //^^^^^^^^^^^^^^^^^^^^^(
                        //^^^^^^^^^^^^^^^^^^^^^)
+                       //^^^^^^^^^&raw mut $
+                       //^^^^^^^^^*
     let _: &mut [_]    = &mut [0; 0];
                        //^^^^^^^^^^^<unsize>
                        //^^^^^^^^^^^&mut $

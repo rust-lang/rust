@@ -1475,7 +1475,7 @@ impl Evaluator<'_> {
                 }
             }
             Rvalue::Cast(kind, operand, target_ty) => match kind {
-                CastKind::Pointer(cast) => match cast {
+                CastKind::PointerCoercion(cast) => match cast {
                     PointerCast::ReifyFnPointer | PointerCast::ClosureFnPointer(_) => {
                         let current_ty = self.operand_ty(operand, locals)?;
                         if let TyKind::FnDef(_, _) | TyKind::Closure(_, _) =
@@ -1506,6 +1506,7 @@ impl Evaluator<'_> {
                 },
                 CastKind::DynStar => not_supported!("dyn star cast"),
                 CastKind::IntToInt
+                | CastKind::PtrToPtr
                 | CastKind::PointerExposeAddress
                 | CastKind::PointerFromExposedAddress => {
                     let current_ty = self.operand_ty(operand, locals)?;

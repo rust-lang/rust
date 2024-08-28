@@ -4,7 +4,9 @@
 //! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
 pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
-use hir_ty::{db::HirDatabase, diagnostics::BodyValidationDiagnostic, InferenceDiagnostic};
+use hir_ty::{
+    db::HirDatabase, diagnostics::BodyValidationDiagnostic, CastError, InferenceDiagnostic,
+};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -50,10 +52,12 @@ macro_rules! diagnostics {
 diagnostics![
     AwaitOutsideOfAsync,
     BreakOutsideOfLoop,
+    CastToUnsized,
     ExpectedFunction,
     InactiveCode,
     IncoherentImpl,
     IncorrectCase,
+    InvalidCast,
     InvalidDeriveTarget,
     MacroDefError,
     MacroError,
@@ -364,6 +368,20 @@ pub struct RemoveUnnecessaryElse {
     pub if_expr: InFile<AstPtr<ast::IfExpr>>,
 }
 
+#[derive(Debug)]
+pub struct CastToUnsized {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub cast_ty: Type,
+}
+
+#[derive(Debug)]
+pub struct InvalidCast {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub error: CastError,
+    pub expr_ty: Type,
+    pub cast_ty: Type,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -619,6 +637,16 @@ impl AnyDiagnostic {
                     }
                 };
                 MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into()
+            }
+            InferenceDiagnostic::CastToUnsized { expr, cast_ty } => {
+                let expr = expr_syntax(*expr)?;
+                CastToUnsized { expr, cast_ty: Type::new(db, def, cast_ty.clone()) }.into()
+            }
+            InferenceDiagnostic::InvalidCast { expr, error, expr_ty, cast_ty } => {
+                let expr = expr_syntax(*expr)?;
+                let expr_ty = Type::new(db, def, expr_ty.clone());
+                let cast_ty = Type::new(db, def, cast_ty.clone());
+                InvalidCast { expr, error: *error, expr_ty, cast_ty }.into()
             }
         })
     }

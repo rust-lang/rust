@@ -311,6 +311,7 @@ fn saturating() {
 fn allocator() {
     check_number(
         r#"
+        //- minicore: sized
         extern "Rust" {
             #[rustc_allocator]
             fn __rust_alloc(size: usize, align: usize) -> *mut u8;

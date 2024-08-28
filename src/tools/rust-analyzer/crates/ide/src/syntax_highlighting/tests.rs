@@ -554,6 +554,7 @@ fn main() {
 fn test_unsafe_highlighting() {
     check_highlighting(
         r#"
+//- minicore: sized
 macro_rules! id {
     ($($tt:tt)*) => {
         $($tt)*

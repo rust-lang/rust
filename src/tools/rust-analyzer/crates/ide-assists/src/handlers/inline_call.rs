@@ -1020,6 +1020,7 @@ fn main() {
         check_assist(
             inline_call,
             r#"
+//- minicore: sized
 fn foo(x: *const u32) -> u32 {
     x as u32
 }

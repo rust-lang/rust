@@ -13,7 +13,7 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
-mod cast;
+pub(crate) mod cast;
 pub(crate) mod closure;
 mod coerce;
 mod expr;
@@ -76,7 +76,7 @@ pub use coerce::could_coerce;
 #[allow(unreachable_pub)]
 pub use unify::{could_unify, could_unify_deeply};
 
-use cast::CastCheck;
+use cast::{CastCheck, CastError};
 pub(crate) use closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
@@ -253,6 +253,16 @@ pub enum InferenceDiagnostic {
     TypedHole {
         expr: ExprId,
         expected: Ty,
+    },
+    CastToUnsized {
+        expr: ExprId,
+        cast_ty: Ty,
+    },
+    InvalidCast {
+        expr: ExprId,
+        error: CastError,
+        expr_ty: Ty,
+        cast_ty: Ty,
     },
 }
 
@@ -456,6 +466,7 @@ pub struct InferenceResult {
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field
     pub mutated_bindings_in_closure: FxHashSet<BindingId>,
+    pub coercion_casts: FxHashSet<ExprId>,
 }
 
 impl InferenceResult {
@@ -666,7 +677,7 @@ impl<'a> InferenceContext<'a> {
         let InferenceContext {
             mut table,
             mut result,
-            deferred_cast_checks,
+            mut deferred_cast_checks,
             tuple_field_accesses_rev,
             ..
         } = self;
@@ -695,6 +706,7 @@ impl<'a> InferenceContext<'a> {
             closure_info: _,
             mutated_bindings_in_closure: _,
             tuple_field_access_types: _,
+            coercion_casts,
         } = &mut result;
 
         table.fallback_if_possible();
@@ -702,8 +714,18 @@ impl<'a> InferenceContext<'a> {
         // Comment from rustc:
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
-        for cast in deferred_cast_checks {
-            cast.check(&mut table);
+        let mut apply_adjustments = |expr, adj| {
+            expr_adjustments.insert(expr, adj);
+        };
+        let mut set_coercion_cast = |expr| {
+            coercion_casts.insert(expr);
+        };
+        for cast in deferred_cast_checks.iter_mut() {
+            if let Err(diag) =
+                cast.check(&mut table, &mut apply_adjustments, &mut set_coercion_cast)
+            {
+                diagnostics.push(diag);
+            }
         }
 
         // FIXME resolve obligations as well (use Guidance if necessary)

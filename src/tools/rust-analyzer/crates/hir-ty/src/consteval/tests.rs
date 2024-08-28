@@ -186,7 +186,13 @@ fn floating_point() {
 
 #[test]
 fn casts() {
-    check_number(r#"const GOAL: usize = 12 as *const i32 as usize"#, 12);
+    check_number(
+        r#"
+    //- minicore: sized
+    const GOAL: usize = 12 as *const i32 as usize
+        "#,
+        12,
+    );
     check_number(
         r#"
     //- minicore: coerce_unsized, index, slice
@@ -204,7 +210,7 @@ fn casts() {
         r#"
     //- minicore: coerce_unsized, index, slice
     const GOAL: i16 = {
-        let a = &mut 5;
+        let a = &mut 5_i16;
         let z = a as *mut _;
         unsafe { *z }
     };
@@ -244,7 +250,13 @@ fn casts() {
         "#,
         4,
     );
-    check_number(r#"const GOAL: i32 = -12i8 as i32"#, -12);
+    check_number(
+        r#"
+    //- minicore: sized
+    const GOAL: i32 = -12i8 as i32
+        "#,
+        -12,
+    );
 }
 
 #[test]
@@ -1911,6 +1923,7 @@ fn function_pointer() {
     );
     check_number(
         r#"
+    //- minicore: sized
     fn add2(x: u8) -> u8 {
         x + 2
     }
@@ -2422,6 +2435,7 @@ fn statics() {
 fn extern_weak_statics() {
     check_number(
         r#"
+    //- minicore: sized
     extern "C" {
         #[linkage = "extern_weak"]
         static __dso_handle: *mut u8;
@@ -2716,6 +2730,7 @@ fn const_trait_assoc() {
     );
     check_number(
         r#"
+    //- minicore: sized
     struct S<T>(*mut T);
 
     trait MySized: Sized {
