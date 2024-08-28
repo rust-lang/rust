@@ -1304,6 +1304,29 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_attribute<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            attr: ref_t!(Attribute)
+        ) -> result!(V) {
+            let Attribute { kind, id:_, style: _, span } = attr;
+            match kind {
+                AttrKind::Normal(normal) => {
+                    let NormalAttr {
+                        item: AttrItem { unsafety, path, args, tokens },
+                        tokens: attr_tokens,
+                    } = &$($mut)? **normal;
+                    visit_safety!(vis, unsafety);
+                    try_v!(vis.visit_path(path, DUMMY_NODE_ID));
+                    try_v!(walk_attr_args(vis, args));
+                    visit_lazy_tts!(vis, tokens);
+                    visit_lazy_tts!(vis, attr_tokens);
+                }
+                AttrKind::DocComment(_kind, _sym) => {}
+            }
+            try_v!(visit_span!(vis, span));
+            return_result!(V)
+        }
+
         pub fn walk_assoc_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<AssocItemKind>),
@@ -1897,20 +1920,6 @@ pub mod visit {
         visitor.visit_expr_post(expression)
     }
 
-    pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) -> V::Result {
-        let Attribute { kind, id: _, style: _, span: _ } = attr;
-        match kind {
-            AttrKind::Normal(normal) => {
-                let NormalAttr { item, tokens: _ } = &**normal;
-                let AttrItem { unsafety: _, path, args, tokens: _ } = item;
-                try_visit!(visitor.visit_path(path, DUMMY_NODE_ID));
-                try_visit!(walk_attr_args(visitor, args));
-            }
-            AttrKind::DocComment(_kind, _sym) => {}
-        }
-        V::Result::output()
-    }
-
     pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -> V::Result {
         match args {
             AttrArgs::Empty => {}
@@ -2026,8 +2035,7 @@ pub mod mut_visit {
         exprs.flat_map_in_place(|expr| vis.filter_map_expr(expr))
     }
 
-    // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-    fn visit_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
+    fn walk_attr_args<T: MutVisitor>(vis: &mut T, args: &mut AttrArgs) {
         match args {
             AttrArgs::Empty => {}
             AttrArgs::Delimited(args) => visit_delim_args(vis, args),
@@ -2051,24 +2059,6 @@ pub mod mut_visit {
     pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &mut DelimSpan) {
         vis.visit_span(open);
         vis.visit_span(close);
-    }
-
-    fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
-        let Attribute { kind, id: _, style: _, span } = attr;
-        match kind {
-            AttrKind::Normal(normal) => {
-                let NormalAttr {
-                    item: AttrItem { unsafety: _, path, args, tokens },
-                    tokens: attr_tokens,
-                } = &mut **normal;
-                vis.visit_path(path, DUMMY_NODE_ID);
-                visit_attr_args(vis, args);
-                visit_lazy_tts(vis, tokens);
-                visit_lazy_tts(vis, attr_tokens);
-            }
-            AttrKind::DocComment(_kind, _sym) => {}
-        }
-        vis.visit_span(span);
     }
 
     fn walk_mac<T: MutVisitor>(vis: &mut T, mac: &mut MacCall) {
@@ -2234,7 +2224,7 @@ pub mod mut_visit {
             token::NtMeta(item) => {
                 let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
                 vis.visit_path(path, DUMMY_NODE_ID);
-                visit_attr_args(vis, args);
+                walk_attr_args(vis, args);
                 visit_lazy_tts(vis, tokens);
             }
             token::NtPath(path) => vis.visit_path(path, DUMMY_NODE_ID),
