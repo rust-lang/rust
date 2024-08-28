@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 //~^ NOTE lint level is defined here
 

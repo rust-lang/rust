@@ -1,3 +1,4 @@
+#![feature(exhaustive_patterns)]
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 #![allow(dead_code, unreachable_code)]
