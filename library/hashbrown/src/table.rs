@@ -3,7 +3,7 @@ use core::{fmt, iter::FusedIterator, marker::PhantomData};
 use crate::{
     raw::{
         Allocator, Bucket, Global, InsertSlot, RawDrain, RawExtractIf, RawIntoIter, RawIter,
-        RawTable,
+        RawIterHash, RawTable,
     },
     TryReserveError,
 };
@@ -738,6 +738,45 @@ where
         IterMut {
             inner: unsafe { self.raw.iter() },
             marker: PhantomData,
+        }
+    }
+
+    /// An iterator visiting all elements which may match a hash.
+    /// The iterator element type is `&'a T`.
+    ///
+    /// This iterator may return elements from the table that have a hash value
+    /// different than the one provided. You should always validate the returned
+    /// values before using them.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
+    /// table.insert_unique(hasher(&"a"), "b", hasher);
+    /// table.insert_unique(hasher(&"b"), "c", hasher);
+    ///
+    /// // Will print "a" and "b" (and possibly "c") in an arbitrary order.
+    /// for x in table.iter_hash(hasher(&"a")) {
+    ///     println!("{}", x);
+    /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn iter_hash(&self, hash: u64) -> IterHash<'_, T> {
+        IterHash {
+            inner: unsafe { self.raw.iter_hash(hash) },
+            _marker: PhantomData,
         }
     }
 
@@ -1931,6 +1970,31 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {
 }
 
 impl<T> FusedIterator for IterMut<'_, T> {}
+
+/// An iterator over the entries of a `HashTable` that could match a given hash.
+/// The iterator element type is `&'a T`.
+///
+/// This `struct` is created by the [`iter_hash`] method on [`HashTable`]. See its
+/// documentation for more.
+///
+/// [`iter_hash`]: struct.HashTable.html#method.iter_hash
+/// [`HashTable`]: struct.HashTable.html
+pub struct IterHash<'a, T> {
+    inner: RawIterHash<T>,
+    _marker: PhantomData<&'a T>,
+}
+
+impl<'a, T> Iterator for IterHash<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Avoid `Option::map` because it bloats LLVM IR.
+        match self.inner.next() {
+            Some(bucket) => Some(unsafe { bucket.as_ref() }),
+            None => None,
+        }
+    }
+}
 
 /// An owning iterator over the entries of a `HashTable` in arbitrary order.
 /// The iterator element type is `T`.
