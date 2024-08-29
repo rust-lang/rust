@@ -359,8 +359,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
 //
 // This section enforces bullet point 2
 
-struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
-    body: &'body Body<'tcx>,
+struct FilterInformation<'a, 'alloc, 'tcx> {
+    body: &'a Body<'tcx>,
     points: &'a DenseLocationMap,
     live: &'a SparseIntervalMatrix<Local, PointIndex>,
     candidates: &'a mut Candidates<'alloc>,
@@ -446,7 +446,7 @@ enum CandidateFilter {
     Remove,
 }
 
-impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
+impl<'a, 'alloc, 'tcx> FilterInformation<'a, 'alloc, 'tcx> {
     /// Filters the set of candidates to remove those that conflict.
     ///
     /// The steps we take are exactly those that are outlined at the top of the file. For each
@@ -464,12 +464,12 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
     /// before the statement/terminator will correctly report locals that are read in the
     /// statement/terminator to be live. We are additionally conservative by treating all written to
     /// locals as also being read from.
-    fn filter_liveness<'b>(
+    fn filter_liveness(
         candidates: &mut Candidates<'alloc>,
         points: &DenseLocationMap,
         live: &SparseIntervalMatrix<Local, PointIndex>,
-        write_info_alloc: &'alloc mut WriteInfo,
-        body: &'b Body<'tcx>,
+        write_info: &'alloc mut WriteInfo,
+        body: &Body<'tcx>,
     ) {
         let mut this = FilterInformation {
             body,
@@ -478,7 +478,7 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
             candidates,
             // We don't actually store anything at this scope, we just keep things here to be able
             // to reuse the allocation.
-            write_info: write_info_alloc,
+            write_info,
             // Doesn't matter what we put here, will be overwritten before being used
             at: Location::START,
         };
@@ -820,9 +820,9 @@ fn is_local_required(local: Local, body: &Body<'_>) -> bool {
 /////////////////////////////////////////////////////////
 // MIR Dump
 
-fn dest_prop_mir_dump<'body, 'tcx>(
+fn dest_prop_mir_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &'body Body<'tcx>,
+    body: &Body<'tcx>,
     points: &DenseLocationMap,
     live: &SparseIntervalMatrix<Local, PointIndex>,
     round: usize,
