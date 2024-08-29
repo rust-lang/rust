@@ -330,8 +330,10 @@ impl DefKind {
     /// Whether `query struct_target_features` should be used with this definition.
     pub fn has_struct_target_features(self) -> bool {
         match self {
-            DefKind::Struct | DefKind::Union | DefKind::Enum => true,
+            DefKind::Struct => true,
             DefKind::Fn
+            | DefKind::Union
+            | DefKind::Enum
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure

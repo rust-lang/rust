@@ -1393,7 +1393,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.codegen_fn_attrs[def_id] <- self.tcx.codegen_fn_attrs(def_id));
             }
             if def_kind.has_struct_target_features() {
-                record_array!(self.tables.struct_target_features[def_id] <- self.tcx.struct_target_features(def_id));
+                record_defaulted_array!(self.tables.struct_target_features[def_id] <- self.tcx.struct_target_features(def_id));
             }
             if should_encode_visibility(def_kind) {
                 let vis =
