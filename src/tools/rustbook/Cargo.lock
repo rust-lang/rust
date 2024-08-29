@@ -690,6 +690,7 @@ dependencies = [
  "mdbook",
  "once_cell",
  "pathdiff",
+ "pulldown-cmark",
  "regex",
  "semver",
  "serde_json",
