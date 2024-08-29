@@ -70,7 +70,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
 
 pub(crate) fn merge_bounds(
     cx: &clean::DocContext<'_>,
-    bounds: &mut Vec<clean::GenericBound>,
+    bounds: &mut [clean::GenericBound],
     trait_did: DefId,
     assoc: clean::PathSegment,
     rhs: &clean::Term,
