@@ -87,7 +87,8 @@ fn walk_unsafe(
             let g = resolver.update_to_inner_scope(db.upcast(), def, current);
             let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
             if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
-                if db.static_data(id).mutable {
+                let static_data = db.static_data(id);
+                if static_data.mutable || static_data.is_extern {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
