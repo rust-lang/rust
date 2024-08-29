@@ -75,21 +75,8 @@ struct PostExpansionVisitor<'a> {
 
 impl<'a> PostExpansionVisitor<'a> {
     #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn check_abi(&self, abi: ast::StrLit, constness: ast::Const) {
+    fn check_abi(&self, abi: ast::StrLit) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
-
-        if let ast::Const::Yes(_) = constness {
-            match symbol_unescaped {
-                // Stable
-                sym::Rust | sym::C => {}
-                abi => gate!(
-                    &self,
-                    const_extern_fn,
-                    span,
-                    format!("`{}` as a `const fn` ABI is unstable", abi)
-                ),
-            }
-        }
 
         match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
@@ -110,9 +97,9 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
-    fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
+    fn check_extern(&self, ext: ast::Extern) {
         if let ast::Extern::Explicit(abi, _) = ext {
-            self.check_abi(abi, constness);
+            self.check_abi(abi);
         }
     }
 
@@ -239,7 +226,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &i.kind {
             ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi, ast::Const::No);
+                    self.check_abi(abi);
                 }
             }
 
@@ -341,7 +328,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &ty.kind {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
-                self.check_extern(bare_fn_ty.ext, ast::Const::No);
+                self.check_extern(bare_fn_ty.ext);
                 self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
@@ -446,7 +433,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
-            self.check_extern(header.ext, header.constness);
+            self.check_extern(header.ext);
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {

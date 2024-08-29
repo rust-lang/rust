@@ -1,8 +1,6 @@
 // Checks that we report ABI mismatches for "const extern fn"
 //@ compile-flags: -Z unleash-the-miri-inside-of-you
 
-#![feature(const_extern_fn)]
-
 const extern "C" fn c_fn() {}
 
 const fn call_rust_fn(my_fn: extern "Rust" fn()) {

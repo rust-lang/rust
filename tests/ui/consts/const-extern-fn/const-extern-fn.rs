@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(const_extern_fn)]
 
 const extern "C" fn foo1(val: u8) -> u8 {
     val + 1
@@ -47,6 +46,10 @@ fn main() {
     let _bar2_cast: unsafe extern "C" fn(bool) -> bool = bar2;
 
     unsize(&[0, 1, 2]);
-    unsafe { closure(); }
-    unsafe { use_float(); }
+    unsafe {
+        closure();
+    }
+    unsafe {
+        use_float();
+    }
 }
