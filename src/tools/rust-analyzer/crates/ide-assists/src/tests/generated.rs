@@ -383,6 +383,40 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_closure_to_fn() {
+    check_doc_test(
+        "convert_closure_to_fn",
+        r#####"
+//- minicore: copy
+struct String;
+impl String {
+    fn new() -> Self {}
+    fn push_str(&mut self, s: &str) {}
+}
+fn main() {
+    let mut s = String::new();
+    let closure = |$0a| s.push_str(a);
+    closure("abc");
+}
+"#####,
+        r#####"
+struct String;
+impl String {
+    fn new() -> Self {}
+    fn push_str(&mut self, s: &str) {}
+}
+fn main() {
+    let mut s = String::new();
+    fn closure(a: &str, s: &mut String) {
+        s.push_str(a)
+    }
+    closure("abc", &mut s);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_for_loop_with_for_each() {
     check_doc_test(
         "convert_for_loop_with_for_each",

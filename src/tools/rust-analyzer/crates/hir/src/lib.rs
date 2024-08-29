@@ -78,6 +78,7 @@ use hir_ty::{
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 use span::{Edition, EditionedFileId, FileId, MacroCallId, SyntaxContextId};
 use stdx::{impl_from, never};
 use syntax::{
@@ -4113,6 +4114,15 @@ impl ClosureCapture {
         Local { parent: self.owner, binding_id: self.capture.local() }
     }
 
+    /// Returns whether this place has any field (aka. non-deref) projections.
+    pub fn has_field_projections(&self) -> bool {
+        self.capture.has_field_projections()
+    }
+
+    pub fn usages(&self) -> CaptureUsages {
+        CaptureUsages { parent: self.owner, spans: self.capture.spans() }
+    }
+
     pub fn kind(&self) -> CaptureKind {
         match self.capture.kind() {
             hir_ty::CaptureKind::ByRef(
@@ -4128,6 +4138,15 @@ impl ClosureCapture {
         }
     }
 
+    /// Converts the place to a name that can be inserted into source code.
+    pub fn place_to_name(&self, db: &dyn HirDatabase) -> String {
+        self.capture.place_to_name(self.owner, db)
+    }
+
+    pub fn display_place_source_code(&self, db: &dyn HirDatabase) -> String {
+        self.capture.display_place_source_code(self.owner, db)
+    }
+
     pub fn display_place(&self, db: &dyn HirDatabase) -> String {
         self.capture.display_place(self.owner, db)
     }
@@ -4139,6 +4158,74 @@ pub enum CaptureKind {
     UniqueSharedRef,
     MutableRef,
     Move,
+}
+
+#[derive(Debug, Clone)]
+pub struct CaptureUsages {
+    parent: DefWithBodyId,
+    spans: SmallVec<[mir::MirSpan; 3]>,
+}
+
+impl CaptureUsages {
+    pub fn sources(&self, db: &dyn HirDatabase) -> Vec<CaptureUsageSource> {
+        let (body, source_map) = db.body_with_source_map(self.parent);
+        let mut result = Vec::with_capacity(self.spans.len());
+        for &span in self.spans.iter() {
+            let is_ref = span.is_ref_span(&body);
+            match span {
+                mir::MirSpan::ExprId(expr) => {
+                    if let Ok(expr) = source_map.expr_syntax(expr) {
+                        result.push(CaptureUsageSource {
+                            is_ref,
+                            source: expr.map(AstPtr::wrap_left),
+                        })
+                    }
+                }
+                mir::MirSpan::PatId(pat) => {
+                    if let Ok(pat) = source_map.pat_syntax(pat) {
+                        result.push(CaptureUsageSource {
+                            is_ref,
+                            source: pat.map(AstPtr::wrap_right),
+                        });
+                    }
+                }
+                mir::MirSpan::BindingId(binding) => result.extend(
+                    source_map
+                        .patterns_for_binding(binding)
+                        .iter()
+                        .filter_map(|&pat| source_map.pat_syntax(pat).ok())
+                        .map(|pat| CaptureUsageSource {
+                            is_ref,
+                            source: pat.map(AstPtr::wrap_right),
+                        }),
+                ),
+                mir::MirSpan::SelfParam | mir::MirSpan::Unknown => {
+                    unreachable!("invalid capture usage span")
+                }
+            }
+        }
+        result
+    }
+}
+
+#[derive(Debug)]
+pub struct CaptureUsageSource {
+    is_ref: bool,
+    source: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+}
+
+impl CaptureUsageSource {
+    pub fn source(&self) -> AstPtr<Either<ast::Expr, ast::Pat>> {
+        self.source.value
+    }
+
+    pub fn file_id(&self) -> HirFileId {
+        self.source.file_id
+    }
+
+    pub fn is_ref(&self) -> bool {
+        self.is_ref
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
