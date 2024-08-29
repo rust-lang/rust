@@ -212,4 +212,6 @@ unsafe fn run_dtors() {
             unsafe { cur = (*cur).next };
         }
     }
+
+    crate::rt::thread_cleanup();
 }
