@@ -4,7 +4,7 @@ use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
-use crate::interpret::{InterpCx, MemoryKind, OpTy};
+use crate::interpret::{InterpCx, MemoryKind};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
 /// instance of `T`.
@@ -61,13 +61,17 @@ fn might_permit_raw_init_strict<'tcx>(
         .expect("failed to write bytes for zero valid check");
     }
 
-    let ot: OpTy<'_, _> = allocated.into();
-
     // Assume that if it failed, it's a validation failure.
     // This does *not* actually check that references are dereferenceable, but since all types that
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
-    Ok(cx.validate_operand(&ot, /*recursive*/ false).is_ok())
+    Ok(cx
+        .validate_operand(
+            &allocated.into(),
+            /*recursive*/ false,
+            /*reset_provenance*/ false,
+        )
+        .is_ok())
 }
 
 /// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for

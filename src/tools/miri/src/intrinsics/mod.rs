@@ -152,8 +152,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // ```
             // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
             "is_val_statically_known" => {
-                let [arg] = check_arg_count(args)?;
-                this.validate_operand(arg, /*recursive*/ false)?;
+                let [_arg] = check_arg_count(args)?;
+                // FIXME: should we check for validity here? It's tricky because we do not have a
+                // place. Codegen does not seem to set any attributes like `noundef` for intrinsic
+                // calls, so we don't *have* to do anything.
                 let branch: bool = this.machine.rng.get_mut().gen();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
