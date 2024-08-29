@@ -1,13 +1,13 @@
-use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
-use crate::traits::ObligationCtxt;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_infer::traits::Obligation;
+pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserType};
-
-pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_span::{Span, DUMMY_SP};
+
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
+use crate::traits::ObligationCtxt;
 
 impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     type QueryResponse = ();

@@ -3,17 +3,19 @@
 // interface.
 //
 
-use crate::errors;
-use crate::util::{expr_to_string, get_exprs_from_tts, get_single_str_from_tts};
+use std::env;
+use std::env::VarError;
+
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AstDeref, ExprKind, GenericArg, Mutability};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use std::env;
-use std::env::VarError;
 use thin_vec::thin_vec;
+
+use crate::errors;
+use crate::util::{expr_to_string, get_exprs_from_tts, get_single_str_from_tts};
 
 fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Result<Symbol, VarError> {
     let var = var.as_str();

@@ -79,7 +79,7 @@ LL | |     }
    | |_____^ expected `Pin<Box<...>>`, found `async` block
    |
    = note:     expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
-           found `async` block `{async block@$DIR/expected-boxed-future-isnt-pinned.rs:28:5: 30:6}`
+           found `async` block `{async block@$DIR/expected-boxed-future-isnt-pinned.rs:28:5: 28:10}`
 help: you need to pin and box this expression
    |
 LL ~     Box::pin(async {

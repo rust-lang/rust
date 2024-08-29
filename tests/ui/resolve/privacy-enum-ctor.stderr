@@ -82,7 +82,7 @@ help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
    |                   ~
-help: consider importing one of these items instead
+help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
    |
@@ -123,7 +123,7 @@ help: alternatively, the following enum variant is available
    |
 LL |     let _: E = (E::Fn(/* fields */));
    |                ~~~~~~~~~~~~~~~~~~~~~
-help: consider importing one of these items instead
+help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
    |
@@ -295,6 +295,11 @@ error[E0533]: expected value, found struct variant `Z::Struct`
    |
 LL |         let _: Z = Z::Struct;
    |                    ^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |         let _: Z = Z::Struct { s: /* value */ };
+   |                              ++++++++++++++++++
 
 error[E0618]: expected function, found enum variant `Z::Unit`
   --> $DIR/privacy-enum-ctor.rs:31:17
@@ -336,6 +341,11 @@ error[E0533]: expected value, found struct variant `m::E::Struct`
    |
 LL |     let _: E = m::E::Struct;
    |                ^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let _: E = m::E::Struct { s: /* value */ };
+   |                             ++++++++++++++++++
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
   --> $DIR/privacy-enum-ctor.rs:47:16
@@ -377,6 +387,11 @@ error[E0533]: expected value, found struct variant `E::Struct`
    |
 LL |     let _: E = E::Struct;
    |                ^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let _: E = E::Struct { s: /* value */ };
+   |                          ++++++++++++++++++
 
 error[E0618]: expected function, found enum variant `E::Unit`
   --> $DIR/privacy-enum-ctor.rs:55:16
@@ -400,6 +415,11 @@ error[E0533]: expected value, found struct variant `m::n::Z::Struct`
    |
 LL |     let _: Z = m::n::Z::Struct;
    |                ^^^^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let _: Z = m::n::Z::Struct { s: /* value */ };
+   |                                ++++++++++++++++++
 
 error: aborting due to 23 previous errors
 

@@ -1,4 +1,5 @@
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedFused};
+use crate::iter::adapters::SourceIter;
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused};
 use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
@@ -68,7 +69,7 @@ where
     fn next_chunk<const N: usize>(
         &mut self,
     ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
-        let mut array: [MaybeUninit<Self::Item>; N] = MaybeUninit::uninit_array();
+        let mut array: [MaybeUninit<Self::Item>; N] = [const { MaybeUninit::uninit() }; N];
 
         struct Guard<'a, T> {
             array: &'a mut [MaybeUninit<T>],

@@ -6,5 +6,5 @@ fn foo<const N: usize>(_: impl std::fmt::Display) -> [usize; N] {
 
 fn main() {
     let _ = foo("foo");
-    //~^ ERROR type annotations needed for `[usize; _]`
+    //~^ ERROR type annotations needed
 }

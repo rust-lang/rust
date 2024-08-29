@@ -47,6 +47,7 @@ use crate::ptr;
 #[lang = "manually_drop"]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
+#[cfg_attr(not(bootstrap), rustc_pub_transparent)]
 pub struct ManuallyDrop<T: ?Sized> {
     value: T,
 }
@@ -62,6 +63,9 @@ impl<T> ManuallyDrop<T> {
     /// x.truncate(5); // You can still safely operate on the value
     /// assert_eq!(*x, "Hello");
     /// // But `Drop` will not be run here
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # let _ = ManuallyDrop::into_inner(x);
     /// ```
     #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]
@@ -115,10 +119,12 @@ impl<T> ManuallyDrop<T> {
 }
 
 impl<T: ?Sized> ManuallyDrop<T> {
-    /// Manually drops the contained value. This is exactly equivalent to calling
-    /// [`ptr::drop_in_place`] with a pointer to the contained value. As such, unless
-    /// the contained value is a packed struct, the destructor will be called in-place
-    /// without moving the value, and thus can be used to safely drop [pinned] data.
+    /// Manually drops the contained value.
+    ///
+    /// This is exactly equivalent to calling [`ptr::drop_in_place`] with a
+    /// pointer to the contained value. As such, unless the contained value is a
+    /// packed struct, the destructor will be called in-place without moving the
+    /// value, and thus can be used to safely drop [pinned] data.
     ///
     /// If you have ownership of the value, you can use [`ManuallyDrop::into_inner`] instead.
     ///

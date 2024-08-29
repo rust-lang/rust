@@ -53,7 +53,28 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:56:20
+  --> tests/ui/manual_unwrap_or_default.rs:52:5
+   |
+LL | /     match x {
+LL | |
+LL | |         Ok(v) => v,
+LL | |         Err(_) => String::new(),
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default.rs:59:5
+   |
+LL | /     if let Ok(v) = x {
+LL | |
+LL | |         v
+LL | |     } else {
+LL | |         String::new()
+LL | |     };
+   | |_____^ help: replace it with: `x.unwrap_or_default()`
+
+error: match can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default.rs:71:20
    |
 LL |           Some(_) => match *b {
    |  ____________________^
@@ -62,5 +83,5 @@ LL | |             _ => 0,
 LL | |         },
    | |_________^ help: replace it with: `(*b).unwrap_or_default()`
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 

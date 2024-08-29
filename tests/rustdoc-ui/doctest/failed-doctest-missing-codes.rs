@@ -3,7 +3,7 @@
 
 //@ compile-flags:--test
 //@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ failure-status: 101
 
 /// ```compile_fail,E0004

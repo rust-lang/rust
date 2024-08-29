@@ -50,7 +50,7 @@ LL |     my_recursive_macro!();
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro! ();`
 
-error: expected expression, found pattern `A { a: a, b: 0, c: _, .. }`
+error: expected expression, found pattern `A { a : a, b : 0, c : _, .. }`
   --> $DIR/trace_faulty_macros.rs:16:9
    |
 LL |         $a
@@ -69,7 +69,7 @@ LL | #[derive(Debug)]
 LL | fn use_derive_macro_as_attr() {}
    | -------------------------------- not a `struct`, `enum` or `union`
 
-error: expected expression, found pattern `1 + 1`
+error: expected expression, found pattern `1+1`
   --> $DIR/trace_faulty_macros.rs:49:37
    |
 LL |     (let $p:pat = $e:expr) => {test!(($p,$e))};
@@ -96,7 +96,7 @@ LL |     let a = pat_macro!();
    = note: expanding `pat_macro! {  }`
    = note: to `pat_macro! (A { a : a, b : 0, c : _, .. });`
    = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
-   = note: to `A { a: a, b: 0, c: _, .. }`
+   = note: to `A { a : a, b : 0, c : _, .. }`
 
 note: trace_macro
   --> $DIR/trace_faulty_macros.rs:53:5
@@ -105,9 +105,9 @@ LL |     test!(let x = 1+1);
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `test! { let x = 1+1 }`
-   = note: to `test! ((x, 1 + 1))`
-   = note: expanding `test! { (x, 1 + 1) }`
-   = note: to `let x = 1 + 1;`
+   = note: to `test! ((x, 1+1))`
+   = note: expanding `test! { (x, 1+1) }`
+   = note: to `let x = 1+1;`
 
 error: aborting due to 5 previous errors
 

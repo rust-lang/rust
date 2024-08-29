@@ -1,2 +1,2 @@
-echo Called dlltool via script.cmd> %TMPDIR%\output.txt
+echo Called dlltool via script.cmd> actual.txt
 dlltool.exe %*

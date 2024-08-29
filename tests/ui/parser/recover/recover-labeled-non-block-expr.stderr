@@ -54,7 +54,7 @@ help: consider enclosing expression in a block
    |
 LL ~     let _i = 'label: { match x {
 LL |         0 => 42,
- ...
+...
 LL |         _ => 1,
 LL ~     } };
    |

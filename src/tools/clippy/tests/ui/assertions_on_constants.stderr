@@ -80,5 +80,21 @@ LL |     const _: () = assert!(true);
    |
    = help: remove it
 
-error: aborting due to 10 previous errors
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:52:5
+   |
+LL |     assert!(8 == (7 + 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: `assert!(true)` will be optimized out by the compiler
+  --> tests/ui/assertions_on_constants.rs:61:5
+   |
+LL |     assert!(true);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: remove it
+
+error: aborting due to 12 previous errors
 

@@ -9,16 +9,15 @@ use std::slice::from_ref;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use hir::Expr;
-use rustc_lint::LateContext;
-// Export these here so that Clippy can use them.
-pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
-
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{HirId, PatKind};
+use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
+// Export these here so that Clippy can use them.
+pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
     self, adjustment, AdtKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _,
@@ -170,7 +169,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
     }
 
     fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error {
-        self.tcx.dcx().span_delayed_bug(span, msg.to_string())
+        self.dcx().span_delayed_bug(span, msg.to_string())
     }
 
     fn error_reported_in_ty(&self, ty: Ty<'tcx>) -> Result<(), Self::Error> {
@@ -734,7 +733,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if self.cx.tcx().dcx().has_errors().is_none() {
+                if self.cx.tainted_by_errors().is_ok() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }
@@ -1741,7 +1740,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             PatKind::Slice(before, ref slice, after) => {
-                let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
+                let Some(element_ty) = self
+                    .cx
+                    .try_structurally_resolve_type(pat.span, place_with_id.place.ty())
+                    .builtin_index()
+                else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
                     return Err(self
                         .cx

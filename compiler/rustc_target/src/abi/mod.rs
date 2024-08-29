@@ -1,14 +1,13 @@
+use std::fmt;
+use std::ops::Deref;
+
 use rustc_data_structures::intern::Interned;
+use rustc_macros::HashStable_Generic;
 pub use Float::*;
 pub use Integer::*;
 pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
-
-use std::fmt;
-use std::ops::Deref;
-
-use rustc_macros::HashStable_Generic;
 
 pub mod call;
 
@@ -254,29 +253,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_transparent(self)
-    }
-
-    pub fn offset_of_subfield<C, I>(self, cx: &C, indices: I) -> Size
-    where
-        Ty: TyAbiInterface<'a, C>,
-        I: Iterator<Item = (VariantIdx, FieldIdx)>,
-    {
-        let mut layout = self;
-        let mut offset = Size::ZERO;
-
-        for (variant, field) in indices {
-            layout = layout.for_variant(cx, variant);
-            let index = field.index();
-            offset += layout.fields.offset(index);
-            layout = layout.field(cx, index);
-            assert!(
-                layout.is_sized(),
-                "offset of unsized field (type {:?}) cannot be computed statically",
-                layout.ty
-            );
-        }
-
-        offset
     }
 
     /// Finds the one field that is not a 1-ZST.

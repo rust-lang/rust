@@ -1,11 +1,13 @@
 //! Module that define a common trait for things that represent a crate definition,
 //! such as, a function, a trait, an enum, and any other definitions.
 
-use crate::ty::Span;
+use serde::Serialize;
+
+use crate::ty::{GenericArgs, Span, Ty};
 use crate::{with, Crate, Symbol};
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct DefId(pub(crate) usize);
 
 /// A trait for retrieving information about a particular definition.
@@ -50,6 +52,60 @@ pub trait CrateDef {
         let def_id = self.def_id();
         with(|cx| cx.span_of_an_item(def_id))
     }
+
+    /// Return attributes with the given attribute name.
+    ///
+    /// Single segmented name like `#[inline]` is specified as `&["inline".to_string()]`.
+    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    fn attrs_by_path(&self, attr: &[Symbol]) -> Vec<Attribute> {
+        let def_id = self.def_id();
+        with(|cx| cx.get_attrs_by_path(def_id, attr))
+    }
+
+    /// Return all attributes of this definition.
+    fn all_attrs(&self) -> Vec<Attribute> {
+        let def_id = self.def_id();
+        with(|cx| cx.get_all_attrs(def_id))
+    }
+}
+
+/// A trait that can be used to retrieve a definition's type.
+///
+/// Note that not every CrateDef has a type `Ty`. They should not implement this trait.
+pub trait CrateDefType: CrateDef {
+    /// Returns the type of this crate item.
+    fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.def_id()))
+    }
+
+    /// Retrieve the type of this definition by instantiating and normalizing it with `args`.
+    ///
+    /// This will panic if instantiation fails.
+    fn ty_with_args(&self, args: &GenericArgs) -> Ty {
+        with(|cx| cx.def_ty_with_args(self.def_id(), args))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Attribute {
+    value: String,
+    span: Span,
+}
+
+impl Attribute {
+    pub fn new(value: String, span: Span) -> Attribute {
+        Attribute { value, span }
+    }
+
+    /// Get the span of this attribute.
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    /// Get the string representation of this attribute.
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
 }
 
 macro_rules! crate_def {
@@ -65,5 +121,23 @@ macro_rules! crate_def {
                 self.0
             }
         }
+    };
+}
+
+macro_rules! crate_def_with_ty {
+    ( $(#[$attr:meta])*
+      $vis:vis $name:ident $(;)?
+    ) => {
+        $(#[$attr])*
+        #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+        $vis struct $name(pub DefId);
+
+        impl CrateDef for $name {
+            fn def_id(&self) -> DefId {
+                self.0
+            }
+        }
+
+        impl CrateDefType for $name {}
     };
 }

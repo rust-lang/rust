@@ -34,19 +34,17 @@
 -         StorageLive(_5);
 +         nop;
           StorageLive(_6);
-          _6 = (_2.1: bool);
+          _6 = copy (_2.1: bool);
           _5 = Not(move _6);
           StorageDead(_6);
-          _0 = _5;
+          _0 = copy _5;
 -         StorageDead(_5);
 +         nop;
           StorageDead(_3);
           StorageDead(_2);
           return;
       }
-+ }
-+ 
-+ ALLOC0 (size: 8, align: 4) {
-+     01 00 00 00 00 __ __ __                         │ .....░░░
   }
++ 
++ ALLOC0 (size: 8, align: 4) { .. }
   

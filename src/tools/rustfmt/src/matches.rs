@@ -5,7 +5,7 @@ use std::iter::repeat;
 use rustc_ast::{ast, ptr, MatchKind};
 use rustc_span::{BytePos, Span};
 
-use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
+use crate::comment::{combine_strs_with_missing_comments, rewrite_comment, FindUncommented};
 use crate::config::lists::*;
 use crate::config::{Config, ControlBraceStyle, IndentStyle, MatchArmLeadingPipe, Version};
 use crate::expr::{
@@ -104,6 +104,10 @@ pub(crate) fn rewrite_match(
     let inner_attrs_str = if inner_attrs.is_empty() {
         String::new()
     } else {
+        let shape = match context.config.version() {
+            Version::One => shape,
+            _ => shape.block_indent(context.config.tab_spaces()),
+        };
         inner_attrs
             .rewrite(context, shape)
             .map(|s| format!("{}{}\n", nested_indent_str, s))?
@@ -352,10 +356,10 @@ fn flatten_arm_body<'a>(
                     (true, body)
                 }
             } else {
-                let cond_becomes_muti_line = opt_shape
+                let cond_becomes_multi_line = opt_shape
                     .and_then(|shape| rewrite_cond(context, expr, shape))
                     .map_or(false, |cond| cond.contains('\n'));
-                if cond_becomes_muti_line {
+                if cond_becomes_multi_line {
                     (false, &*body)
                 } else {
                     (can_extend(expr), &*expr)
@@ -415,7 +419,11 @@ fn rewrite_match_body(
         let arrow_snippet = context.snippet(arrow_span).trim();
         // search for the arrow starting from the end of the snippet since there may be a match
         // expression within the guard
-        let arrow_index = arrow_snippet.rfind("=>").unwrap();
+        let arrow_index = if context.config.version() == Version::One {
+            arrow_snippet.rfind("=>").unwrap()
+        } else {
+            arrow_snippet.find_last_uncommented("=>").unwrap()
+        };
         // 2 = `=>`
         let comment_str = arrow_snippet[arrow_index + 2..].trim();
         if comment_str.is_empty() {
@@ -464,8 +472,8 @@ fn rewrite_match_body(
             };
 
         let block_sep = match context.config.control_brace_style() {
-            ControlBraceStyle::AlwaysNextLine => format!("{}{}", alt_block_sep, body_prefix),
             _ if body_prefix.is_empty() => "".to_owned(),
+            ControlBraceStyle::AlwaysNextLine => format!("{}{}", alt_block_sep, body_prefix),
             _ if forbid_same_line || !arrow_comment.is_empty() => {
                 format!("{}{}", alt_block_sep, body_prefix)
             }

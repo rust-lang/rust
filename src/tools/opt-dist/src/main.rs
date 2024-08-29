@@ -1,10 +1,10 @@
-use crate::bolt::{bolt_optimize, with_bolt_instrumented};
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 use log::LevelFilter;
 use utils::io;
 
+use crate::bolt::{bolt_optimize, with_bolt_instrumented};
 use crate::environment::{Environment, EnvironmentBuilder};
 use crate::exec::{cmd, Bootstrap};
 use crate::tests::run_tests;
@@ -90,6 +90,10 @@ enum EnvironmentCmd {
 
         #[clap(flatten)]
         shared: SharedArgs,
+
+        /// Arguments passed to `rustc-perf --cargo-config <value>` when running benchmarks.
+        #[arg(long)]
+        benchmark_cargo_config: Vec<String>,
     },
     /// Perform an optimized build on Linux CI, from inside Docker.
     LinuxCi {
@@ -119,6 +123,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
             llvm_shared,
             use_bolt,
             skipped_tests,
+            benchmark_cargo_config,
             shared,
         } => {
             let env = EnvironmentBuilder::default()
@@ -132,6 +137,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(llvm_shared)
                 .use_bolt(use_bolt)
                 .skipped_tests(skipped_tests)
+                .benchmark_cargo_config(benchmark_cargo_config)
                 .build()?;
 
             (env, shared.build_args)

@@ -49,11 +49,31 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
         T![dyn] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
         T![<] => path_type_bounds(p, allow_bounds),
+        T![ident] if !p.edition().at_least_2018() && is_dyn_weak(p) => dyn_trait_type_weak(p),
         _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
         LIFETIME_IDENT if p.nth_at(1, T![+]) => bare_dyn_trait_type(p),
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
         }
+    }
+}
+
+fn is_dyn_weak(p: &Parser<'_>) -> bool {
+    const WEAK_DYN_PATH_FIRST: TokenSet = TokenSet::new(&[
+        IDENT,
+        T![self],
+        T![super],
+        T![crate],
+        T![Self],
+        T![lifetime_ident],
+        T![?],
+        T![for],
+        T!['('],
+    ]);
+
+    p.at_contextual_kw(T![dyn]) && {
+        let la = p.nth(1);
+        WEAK_DYN_PATH_FIRST.contains(la) && (la != T![:] || la != T![<])
     }
 }
 
@@ -169,7 +189,7 @@ fn array_or_slice_type(p: &mut Parser<'_>) {
     m.complete(p, kind);
 }
 
-// test reference_type;
+// test reference_type
 // type A = &();
 // type B = &'static ();
 // type C = &mut ();
@@ -275,6 +295,23 @@ fn dyn_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![dyn]));
     let m = p.start();
     p.bump(T![dyn]);
+    generic_params::bounds_without_colon(p);
+    m.complete(p, DYN_TRAIT_TYPE);
+}
+
+// test dyn_trait_type_weak 2015
+// type DynPlain = dyn Path;
+// type DynRef = &dyn Path;
+// type DynLt = dyn 'a + Path;
+// type DynQuestion = dyn ?Path;
+// type DynFor = dyn for<'a> Path;
+// type DynParen = dyn(Path);
+// type Path = dyn::Path;
+// type Generic = dyn<Path>;
+fn dyn_trait_type_weak(p: &mut Parser<'_>) {
+    assert!(p.at_contextual_kw(T![dyn]));
+    let m = p.start();
+    p.bump_remap(T![dyn]);
     generic_params::bounds_without_colon(p);
     m.complete(p, DYN_TRAIT_TYPE);
 }

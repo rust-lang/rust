@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_as_impl;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::{implements_trait, make_normalized_projection};
+use clippy_utils::ty::{deref_chain, get_adt_inherent_method, implements_trait, make_normalized_projection};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
@@ -9,8 +9,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Symbol};
-use std::iter;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -124,42 +123,15 @@ fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         .is_some_and(|did| cx.effective_visibilities.is_exported(did))
 }
 
-/// Returns the deref chain of a type, starting with the type itself.
-fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'cx {
-    iter::successors(Some(ty), |&ty| {
-        if let Some(deref_did) = cx.tcx.lang_items().deref_trait()
-            && implements_trait(cx, ty, deref_did, &[])
-        {
-            make_normalized_projection(cx.tcx, cx.param_env, deref_did, sym::Target, [ty])
-        } else {
-            None
-        }
-    })
-}
-
-fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
-    if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
-        cx.tcx.inherent_impls(ty_did).into_iter().flatten().any(|&did| {
-            cx.tcx
-                .associated_items(did)
-                .filter_by_name_unhygienic(method_name)
-                .next()
-                .is_some_and(|item| item.kind == ty::AssocKind::Fn)
-        })
-    } else {
-        false
-    }
-}
-
 impl LateLintPass<'_> for IterWithoutIntoIter {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
-        if !in_external_macro(cx.sess(), item.span)
-            && let ItemKind::Impl(imp) = item.kind
+        if let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
             && let Some(trait_ref) = imp.of_trait
             && trait_ref
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
+            && !in_external_macro(cx.sess(), item.span)
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
@@ -167,7 +139,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
             }
             && !deref_chain(cx, ty).any(|ty| {
                 // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
-                ty.peel_refs().is_slice() || adt_has_inherent_method(cx, ty, expected_method_name)
+                ty.peel_refs().is_slice() || get_adt_inherent_method(cx, ty, expected_method_name).is_some()
             })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
                 if item.ident.name == sym!(IntoIter) {

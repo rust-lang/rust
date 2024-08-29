@@ -9,11 +9,11 @@ LL |     a = 42;
 help: consider making this binding mutable
    |
 LL |     let Foo(mut a) = Foo(0);
-   |             ~~~~~
+   |             +++
 help: to modify the original value, take a borrow instead
    |
 LL |     let Foo(ref mut a) = Foo(0);
-   |             ~~~~~~~~~
+   |             +++++++
 
 error[E0384]: cannot assign twice to immutable variable `a`
   --> $DIR/mut-ref-mut-2021.rs:15:5

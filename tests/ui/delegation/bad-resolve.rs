@@ -34,6 +34,9 @@ impl Trait for S {
 
     reuse foo { &self.0 }
     //~^ ERROR cannot find function `foo` in this scope
+    reuse Trait::foo2 { self.0 }
+    //~^ ERROR cannot find function `foo2` in trait `Trait`
+    //~| ERROR method `foo2` is not a member of trait `Trait`
 }
 
 mod prefix {}

@@ -3,23 +3,22 @@ use std::fmt;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, AsAssocItem, AttrsWithOwner, HasAttrs, HasSource, HirFileIdExt, Semantics,
+    db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasSource, HirFileIdExt, Semantics,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
-    base_db::{FilePosition, FileRange},
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FxHashMap, FxHashSet, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxHashSet, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use span::TextSize;
 use stdx::{always, format_to};
 use syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxNode,
+    SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
@@ -78,15 +77,14 @@ impl RunnableKind {
 }
 
 impl Runnable {
-    // test package::module::testname
-    pub fn label(&self, target: Option<String>) -> String {
+    pub fn label(&self, target: Option<&str>) -> String {
         match &self.kind {
             RunnableKind::Test { test_id, .. } => format!("test {test_id}"),
             RunnableKind::TestMod { path } => format!("test-mod {path}"),
             RunnableKind::Bench { test_id } => format!("bench {test_id}"),
             RunnableKind::DocTest { test_id, .. } => format!("doctest {test_id}"),
             RunnableKind::Bin => {
-                target.map_or_else(|| "run binary".to_owned(), |t| format!("run {t}"))
+                format!("run {}", target.unwrap_or("binary"))
             }
         }
     }
@@ -230,7 +228,7 @@ pub(crate) fn related_tests(
 ) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let mut res: FxHashSet<Runnable> = FxHashSet::default();
-    let syntax = sema.parse(position.file_id).syntax().clone();
+    let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
 
     find_related_tests(&sema, &syntax, position, search_scope, &mut res);
 
@@ -291,8 +289,9 @@ fn find_related_tests_in_module(
     let mod_source = parent_module.definition_source_range(sema.db);
 
     let file_id = mod_source.file_id.original_file(sema.db);
-    let mod_scope = SearchScope::file_range(FileRange { file_id, range: mod_source.value });
-    let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
+    let mod_scope = SearchScope::file_range(hir::FileRange { file_id, range: mod_source.value });
+    let fn_pos =
+        FilePosition { file_id: file_id.into(), offset: fn_name.syntax().text_range().start() };
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
 
@@ -333,7 +332,7 @@ pub(crate) fn runnable_fn(
             };
             canonical_path
                 .map(TestId::Path)
-                .unwrap_or(TestId::Name(def.name(sema.db).to_smol_str()))
+                .unwrap_or(TestId::Name(def.name(sema.db).display_no_db().to_smolstr()))
         };
 
         if def.is_test(sema.db) {
@@ -404,7 +403,7 @@ pub(crate) fn runnable_impl(
 }
 
 fn has_cfg_test(attrs: AttrsWithOwner) -> bool {
-    attrs.cfgs().any(|cfg| matches!(cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if s == "test"))
+    attrs.cfgs().any(|cfg| matches!(&cfg, CfgExpr::Atom(CfgAtom::Flag(s)) if *s == sym::test))
 }
 
 /// Creates a test mod runnable for outline modules at the top of their definition.
@@ -482,7 +481,8 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         Some(path)
     })();
 
-    let test_id = path.map_or_else(|| TestId::Name(def_name.to_smol_str()), TestId::Path);
+    let test_id =
+        path.map_or_else(|| TestId::Name(def_name.display_no_db().to_smolstr()), TestId::Path);
 
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),
@@ -513,11 +513,11 @@ impl TestAttr {
     }
 }
 
-const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
-const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
-    &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
-
 fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
+    const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
+    const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
+        &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
+
     docs_from_attrs(attrs).map_or(false, |doc| {
         let mut in_code_block = false;
 

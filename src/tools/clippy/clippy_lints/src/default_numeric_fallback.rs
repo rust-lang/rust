@@ -22,9 +22,8 @@ declare_clippy_lint! {
     ///
     /// See [RFC0212](https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md) for more information about the fallback.
     ///
-    /// ### Why is this bad?
-    /// For those who are very careful about types, default numeric fallback
-    /// can be a pitfall that cause unexpected runtime behavior.
+    /// ### Why restrict this?
+    /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
     /// This lint can only be allowed at the function level or above.
@@ -49,8 +48,10 @@ declare_clippy_lint! {
 declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         let hir = cx.tcx.hir();
+        // NOTE: this is different from `clippy_utils::is_inside_always_const_context`.
+        // Inline const supports type inference.
         let is_parent_const = matches!(
             hir.body_const_context(hir.body_owner_def_id(body.id())),
             Some(ConstContext::Const { inline: false } | ConstContext::Static(_))
@@ -91,20 +92,8 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
             let (suffix, is_float) = match lit_ty.kind() {
                 ty::Int(IntTy::I32) => ("i32", false),
                 ty::Float(FloatTy::F64) => ("f64", true),
-                // Default numeric fallback never results in other types.
                 _ => return,
             };
-
-            let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
-                src
-            } else {
-                match lit.node {
-                    LitKind::Int(src, _) => format!("{src}"),
-                    LitKind::Float(src, _) => format!("{src}"),
-                    _ => return,
-                }
-            };
-            let sugg = numeric_literal::format(&src, Some(suffix), is_float);
             span_lint_hir_and_then(
                 self.cx,
                 DEFAULT_NUMERIC_FALLBACK,
@@ -112,6 +101,17 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                 lit.span,
                 "default numeric fallback might occur",
                 |diag| {
+                    let src = if let Some(src) = snippet_opt(self.cx, lit.span) {
+                        src
+                    } else {
+                        match lit.node {
+                            LitKind::Int(src, _) => format!("{src}"),
+                            LitKind::Float(src, _) => format!("{src}"),
+                            _ => unreachable!("Default numeric fallback never results in other types"),
+                        }
+                    };
+
+                    let sugg = numeric_literal::format(&src, Some(suffix), is_float);
                     diag.span_suggestion(lit.span, "consider adding suffix", sugg, Applicability::MaybeIncorrect);
                 },
             );
@@ -236,7 +236,7 @@ fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'
     // We can't use `Ty::fn_sig` because it automatically performs args, this may result in FNs.
     match node_ty.kind() {
         ty::FnDef(def_id, _) => Some(cx.tcx.fn_sig(*def_id).instantiate_identity()),
-        ty::FnPtr(fn_sig) => Some(*fn_sig),
+        ty::FnPtr(sig_tys, hdr) => Some(sig_tys.with(*hdr)),
         _ => None,
     }
 }

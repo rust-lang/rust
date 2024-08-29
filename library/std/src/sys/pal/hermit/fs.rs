@@ -1,24 +1,20 @@
 use super::fd::FileDesc;
 use super::hermit_abi::{
     self, dirent64, stat as stat_struct, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT,
-    O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG,
+    O_DIRECTORY, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG,
 };
 use crate::ffi::{CStr, OsStr, OsString};
-use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
-use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem;
+use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
-use crate::sys::cvt;
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
+use crate::sys::{cvt, unsupported};
+pub use crate::sys_common::fs::{copy, exists};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-
-pub use crate::sys_common::fs::{copy, try_exists};
+use crate::{fmt, mem};
 
 #[derive(Debug)]
 pub struct File(FileDesc);
@@ -62,7 +58,7 @@ pub struct DirEntry {
     /// 64-bit inode number
     ino: u64,
     /// File type
-    type_: u32,
+    type_: u8,
     /// name of the entry
     name: OsString,
 }
@@ -90,7 +86,7 @@ pub struct FilePermissions {
 
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct FileType {
-    mode: u32,
+    mode: u8,
 }
 
 impl PartialEq for FileType {
@@ -112,31 +108,23 @@ pub struct DirBuilder {
 
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(
-            self.stat_val.st_mtime.try_into().unwrap(),
-            self.stat_val.st_mtime_nsec.try_into().unwrap(),
-        ))
+        Ok(SystemTime::new(self.stat_val.st_mtim.tv_sec, self.stat_val.st_mtim.tv_nsec))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(
-            self.stat_val.st_atime.try_into().unwrap(),
-            self.stat_val.st_atime_nsec.try_into().unwrap(),
-        ))
+        Ok(SystemTime::new(self.stat_val.st_atim.tv_sec, self.stat_val.st_atim.tv_nsec))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::new(
-            self.stat_val.st_ctime.try_into().unwrap(),
-            self.stat_val.st_ctime_nsec.try_into().unwrap(),
-        ))
+        Ok(SystemTime::new(self.stat_val.st_ctim.tv_sec, self.stat_val.st_ctim.tv_nsec))
     }
 
     pub fn size(&self) -> u64 {
         self.stat_val.st_size as u64
     }
+
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { mode: (self.stat_val.st_mode) }
+        FilePermissions { mode: self.stat_val.st_mode }
     }
 
     pub fn file_type(&self) -> FileType {
@@ -220,7 +208,7 @@ impl Iterator for ReadDir {
                 let entry = DirEntry {
                     root: self.inner.root.clone(),
                     ino: dir.d_ino,
-                    type_: dir.d_type as u32,
+                    type_: dir.d_type,
                     name: OsString::from_vec(name_bytes.to_vec()),
                 };
 
@@ -251,7 +239,7 @@ impl DirEntry {
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType { mode: self.type_ as u32 })
+        Ok(FileType { mode: self.type_ })
     }
 
     #[allow(dead_code)]
@@ -385,12 +373,12 @@ impl File {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        crate::io::default_read_vectored(|buf| self.read(buf), bufs)
+        self.0.read_vectored(bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        false
+        self.0.is_read_vectored()
     }
 
     pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
@@ -402,12 +390,12 @@ impl File {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|buf| self.write(buf), bufs)
+        self.0.write_vectored(bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        false
+        self.0.is_write_vectored()
     }
 
     #[inline]
@@ -439,13 +427,13 @@ impl DirBuilder {
 
     pub fn mkdir(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| {
-            cvt(unsafe { hermit_abi::mkdir(path.as_ptr(), self.mode) }).map(|_| ())
+            cvt(unsafe { hermit_abi::mkdir(path.as_ptr(), self.mode.into()) }).map(|_| ())
         })
     }
 
     #[allow(dead_code)]
     pub fn set_mode(&mut self, mode: u32) {
-        self.mode = mode as u32;
+        self.mode = mode;
     }
 }
 
@@ -496,13 +484,15 @@ impl IntoRawFd for File {
 
 impl FromRawFd for File {
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
-        Self(FromRawFd::from_raw_fd(raw_fd))
+        let file_desc = unsafe { FileDesc::from_raw_fd(raw_fd) };
+        Self(file_desc)
     }
 }
 
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let fd_raw =
-        run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::opendir(path.as_ptr()) }))?;
+    let fd_raw = run_path_with_cstr(path, &|path| {
+        cvt(unsafe { hermit_abi::open(path.as_ptr(), O_RDONLY | O_DIRECTORY, 0) })
+    })?;
     let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
     let root = path.to_path_buf();
 

@@ -29,11 +29,10 @@ impl StopWatch {
             // When debugging rust-analyzer using rr, the perf-related syscalls cause it to abort.
             // We allow disabling perf by setting the env var `RA_DISABLE_PERF`.
 
-            use once_cell::sync::Lazy;
-            static PERF_ENABLED: Lazy<bool> =
-                Lazy::new(|| std::env::var_os("RA_DISABLE_PERF").is_none());
+            use std::sync::OnceLock;
+            static PERF_ENABLED: OnceLock<bool> = OnceLock::new();
 
-            if *PERF_ENABLED {
+            if *PERF_ENABLED.get_or_init(|| std::env::var_os("RA_DISABLE_PERF").is_none()) {
                 let mut counter = perf_event::Builder::new()
                     .build()
                     .map_err(|err| eprintln!("Failed to create perf counter: {err}"))

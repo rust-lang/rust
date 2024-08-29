@@ -13,7 +13,7 @@ pub mod another {
 }
 
 #[no_mangle]
-pub extern fn foo() {
+pub extern "C" fn foo() {
     // This will import `another::foo` through ThinLTO passes, and it better not
     // also accidentally import the `FOO` custom section into this module as
     // well

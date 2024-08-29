@@ -2,7 +2,8 @@ use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
-use crate::{lint::lint_body, validate, MirPass};
+use crate::lint::lint_body;
+use crate::{validate, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
@@ -180,12 +181,6 @@ fn run_passes_inner<'tcx>(
         }
 
         body.pass_count = 1;
-    }
-
-    if let Some(coroutine) = body.coroutine.as_mut() {
-        if let Some(by_move_body) = coroutine.by_move_body.as_mut() {
-            run_passes_inner(tcx, by_move_body, passes, phase_change, validate_each);
-        }
     }
 }
 

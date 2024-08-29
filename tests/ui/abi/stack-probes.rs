@@ -8,6 +8,10 @@
 //@ ignore-sgx no processes
 //@ ignore-fuchsia no exception handler registered for segfault
 //@ ignore-nto Crash analysis impossible at SIGSEGV in QNX Neutrino
+//@ ignore-ios Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-tvos Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-watchos Stack probes are enabled, but the SIGSEGV handler isn't
+//@ ignore-visionos Stack probes are enabled, but the SIGSEGV handler isn't
 
 use std::env;
 use std::mem::MaybeUninit;

@@ -1,6 +1,5 @@
 //@ignore-target-windows: no libc time APIs on Windows
 //@compile-flags: -Zmiri-disable-isolation
-use std::ffi::CStr;
 use std::{env, mem, ptr};
 
 fn main() {
@@ -64,7 +63,9 @@ fn test_localtime_r() {
         tm_wday: 0,
         tm_yday: 0,
         tm_isdst: 0,
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
         tm_gmtoff: 0,
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
         tm_zone: std::ptr::null_mut::<libc::c_char>(),
     };
     let res = unsafe { libc::localtime_r(custom_time_ptr, &mut tm) };
@@ -82,7 +83,7 @@ fn test_localtime_r() {
     assert_eq!(tm.tm_gmtoff, 0);
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "freebsd"))]
     unsafe {
-        assert_eq!(CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "+00")
+        assert_eq!(std::ffi::CStr::from_ptr(tm.tm_zone).to_str().unwrap(), "+00")
     };
 
     // The returned value is the pointer passed in.

@@ -1,5 +1,3 @@
-use crate::base::allocator_kind_for_codegen;
-
 use std::collections::hash_map::Entry::*;
 
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
@@ -12,12 +10,13 @@ use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{self, SymbolName, TyCtxt};
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::{SanitizerSet, TlsModel};
+use tracing::debug;
+
+use crate::base::allocator_kind_for_codegen;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
@@ -309,7 +308,7 @@ fn exported_symbols_provider_local(
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
         use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
-        use rustc_middle::ty::InstanceDef;
+        use rustc_middle::ty::InstanceKind;
 
         // Normally, we require that shared monomorphizations are not hidden,
         // because if we want to re-use a monomorphization from a Rust dylib, it
@@ -336,7 +335,7 @@ fn exported_symbols_provider_local(
             }
 
             match *mono_item {
-                MonoItem::Fn(Instance { def: InstanceDef::Item(def), args }) => {
+                MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     if args.non_erasable_generics(tcx, def).next().is_some() {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
@@ -349,9 +348,9 @@ fn exported_symbols_provider_local(
                         ));
                     }
                 }
-                MonoItem::Fn(Instance { def: InstanceDef::DropGlue(def_id, Some(ty)), args }) => {
+                MonoItem::Fn(Instance { def: InstanceKind::DropGlue(def_id, Some(ty)), args }) => {
                     // A little sanity-check
-                    debug_assert_eq!(
+                    assert_eq!(
                         args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
@@ -365,12 +364,12 @@ fn exported_symbols_provider_local(
                     ));
                 }
                 MonoItem::Fn(Instance {
-                    def: InstanceDef::AsyncDropGlueCtorShim(def_id, Some(ty)),
+                    def: InstanceKind::AsyncDropGlueCtorShim(def_id, Some(ty)),
                     args,
                 }) => {
                     // A little sanity-check
-                    debug_assert_eq!(
-                        args.non_erasable_generics(tcx, def_id).skip(1).next(),
+                    assert_eq!(
+                        args.non_erasable_generics(tcx, def_id).next(),
                         Some(GenericArgKind::Type(ty))
                     );
                     symbols.push((
@@ -399,7 +398,7 @@ fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
-    let cnums = tcx.used_crates(());
+    let cnums = tcx.crates(());
 
     let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
 
@@ -421,10 +420,7 @@ fn upstream_monomorphizations_provider(
                 }
                 ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
                     if let Some(async_drop_in_place_fn_def_id) = async_drop_in_place_fn_def_id {
-                        (
-                            async_drop_in_place_fn_def_id,
-                            tcx.mk_args(&[tcx.lifetimes.re_erased.into(), ty.into()]),
-                        )
+                        (async_drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
                     } else {
                         // `drop_in_place` in place does not exist, don't try
                         // to use it.
@@ -464,7 +460,7 @@ fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
-    debug_assert!(!def_id.is_local());
+    assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
 
@@ -472,11 +468,16 @@ fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
 ) -> Option<CrateNum> {
-    if let Some(def_id) = tcx.lang_items().drop_in_place_fn() {
-        tcx.upstream_monomorphizations_for(def_id).and_then(|monos| monos.get(&args).cloned())
-    } else {
-        None
-    }
+    let def_id = tcx.lang_items().drop_in_place_fn()?;
+    tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
+}
+
+fn upstream_async_drop_glue_for_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    args: GenericArgsRef<'tcx>,
+) -> Option<CrateNum> {
+    let def_id = tcx.lang_items().async_drop_in_place_fn()?;
+    tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -490,6 +491,7 @@ pub fn provide(providers: &mut Providers) {
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
+    providers.upstream_async_drop_glue_for = upstream_async_drop_glue_for_provider;
     providers.wasm_import_module_map = wasm_import_module_map;
     providers.extern_queries.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.extern_queries.upstream_monomorphizations_for =
@@ -555,7 +557,7 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
                 ty::Instance {
-                    def: ty::InstanceDef::ThreadLocalShim(def_id),
+                    def: ty::InstanceKind::ThreadLocalShim(def_id),
                     args: ty::GenericArgs::empty(),
                 },
                 instantiating_crate,

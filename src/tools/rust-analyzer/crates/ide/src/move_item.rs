@@ -1,7 +1,7 @@
 use std::{iter::once, mem};
 
 use hir::Semantics;
-use ide_db::{base_db::FileRange, helpers::pick_best_token, RootDatabase};
+use ide_db::{helpers::pick_best_token, FileRange, RootDatabase};
 use itertools::Itertools;
 use syntax::{algo, ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange};
 use text_edit::{TextEdit, TextEditBuilder};
@@ -30,7 +30,7 @@ pub(crate) fn move_item(
     direction: Direction,
 ) -> Option<TextEdit> {
     let sema = Semantics::new(db);
-    let file = sema.parse(range.file_id);
+    let file = sema.parse_guess_edition(range.file_id);
 
     let item = if range.range.is_empty() {
         SyntaxElement::Token(pick_best_token(

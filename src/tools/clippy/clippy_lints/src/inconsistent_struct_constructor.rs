@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::fulfill_or_allowed;
 use clippy_utils::source::snippet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -65,13 +66,15 @@ declare_lint_pass!(InconsistentStructConstructor => [INCONSISTENT_STRUCT_CONSTRU
 
 impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !expr.span.from_expansion()
-            && let ExprKind::Struct(qpath, fields, base) = expr.kind
+        if let ExprKind::Struct(qpath, fields, base) = expr.kind
+            && fields.iter().all(|f| f.is_shorthand)
+            && !expr.span.from_expansion()
             && let ty = cx.typeck_results().expr_ty(expr)
             && let Some(adt_def) = ty.ty_adt_def()
             && adt_def.is_struct()
+            && let Some(local_def_id) = adt_def.did().as_local()
+            && let ty_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id)
             && let Some(variant) = adt_def.variants().iter().next()
-            && fields.iter().all(|f| f.is_shorthand)
         {
             let mut def_order_map = FxHashMap::default();
             for (idx, field) in variant.fields.iter().enumerate() {
@@ -103,15 +106,17 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                 snippet(cx, qpath.span(), ".."),
             );
 
-            span_lint_and_sugg(
-                cx,
-                INCONSISTENT_STRUCT_CONSTRUCTOR,
-                expr.span,
-                "struct constructor field order is inconsistent with struct definition field order",
-                "try",
-                sugg,
-                Applicability::MachineApplicable,
-            );
+            if !fulfill_or_allowed(cx, INCONSISTENT_STRUCT_CONSTRUCTOR, Some(ty_hir_id)) {
+                span_lint_and_sugg(
+                    cx,
+                    INCONSISTENT_STRUCT_CONSTRUCTOR,
+                    expr.span,
+                    "struct constructor field order is inconsistent with struct definition field order",
+                    "try",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 }

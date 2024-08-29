@@ -4,7 +4,7 @@
 // CHECK-NOT: Unwind
 
 #![feature(test)]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 extern crate test;
 

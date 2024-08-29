@@ -10,9 +10,9 @@
 
 /// [Self::f]
 /// [Self::MAX]
-// @has prim_self/primitive.usize.html
-// @has - '//a[@href="primitive.usize.html#method.f"]' 'Self::f'
-// @has - '//a[@href="primitive.usize.html#associatedconstant.MAX"]' 'Self::MAX'
+//@ has prim_self/primitive.usize.html
+//@ has - '//a[@href="primitive.usize.html#method.f"]' 'Self::f'
+//@ has - '//a[@href="primitive.usize.html#associatedconstant.MAX"]' 'Self::MAX'
 impl usize {
     /// Some docs
     pub fn f() {}
@@ -20,7 +20,7 @@ impl usize {
     /// 10 and 2^32 are basically the same.
     pub const MAX: usize = 10;
 
-    // @has - '//a[@href="primitive.usize.html#associatedtype.ME"]' 'Self::ME'
+    //@ has - '//a[@href="primitive.usize.html#associatedtype.ME"]' 'Self::ME'
     /// [Self::ME]
     pub type ME = usize;
 }

@@ -3,13 +3,12 @@ use hir::{
     StructKind, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::FileId,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
     path_transform::PathTransform,
     source_change::SourceChangeBuilder,
-    FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
@@ -208,7 +207,8 @@ fn get_adt_source(
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
-    find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()]).map(|impl_| (impl_, range.file_id))
+    find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()])
+        .map(|impl_| (impl_, range.file_id.file_id()))
 }
 
 struct FunctionBuilder {
@@ -393,9 +393,9 @@ impl FunctionBuilder {
 /// The rule for whether we focus a return type or not (and thus focus the function body),
 /// is rather simple:
 /// * If we could *not* infer what the return type should be, focus it (so the user can fill-in
-/// the correct return type).
+///   the correct return type).
 /// * If we could infer the return type, don't focus it (and thus focus the function body) so the
-/// user can change the `todo!` function body.
+///   user can change the `todo!` function body.
 fn make_return_type(
     ctx: &AssistContext<'_>,
     expr: &ast::Expr,
@@ -482,7 +482,7 @@ fn get_fn_target(
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId)> {
-    let mut file = ctx.file_id();
+    let mut file = ctx.file_id().into();
     let target = match target_module {
         Some(target_module) => {
             let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module);
@@ -918,9 +918,9 @@ fn filter_generic_params(ctx: &AssistContext<'_>, node: SyntaxNode) -> Option<hi
 /// Say we have a trait bound `Struct<T>: Trait<U>`. Given `necessary_params`, when is it relevant
 /// and when not? Some observations:
 /// - When `necessary_params` contains `T`, it's likely that we want this bound, but now we have
-/// an extra param to consider: `U`.
+///   an extra param to consider: `U`.
 /// - On the other hand, when `necessary_params` contains `U` (but not `T`), then it's unlikely
-/// that we want this bound because it doesn't really constrain `U`.
+///   that we want this bound because it doesn't really constrain `U`.
 ///
 /// (FIXME?: The latter clause might be overstating. We may want to include the bound if the self
 /// type does *not* include generic params at all - like `Option<i32>: From<U>`)
@@ -928,7 +928,7 @@ fn filter_generic_params(ctx: &AssistContext<'_>, node: SyntaxNode) -> Option<hi
 /// Can we make this a bit more formal? Let's define "dependency" between generic parameters and
 /// trait bounds:
 /// - A generic parameter `T` depends on a trait bound if `T` appears in the self type (i.e. left
-/// part) of the bound.
+///   part) of the bound.
 /// - A trait bound depends on a generic parameter `T` if `T` appears in the bound.
 ///
 /// Using the notion, what we want is all the bounds that params in `necessary_params`
@@ -1168,7 +1168,7 @@ fn next_space_for_fn_in_module(
         }
     };
 
-    (file, assist_item)
+    (file.file_id(), assist_item)
 }
 
 #[derive(Clone, Copy)]

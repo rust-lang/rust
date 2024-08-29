@@ -13,7 +13,7 @@ use crate::{
     TraitId, TypeAliasId, TypeOrConstParamId, UnionId, UseId,
 };
 
-pub type Key<K, V> = crate::dyn_map::Key<K, V, AstPtrPolicy<K, V>>;
+pub type Key<K, V> = crate::dyn_map::Key<AstPtr<K>, V, AstPtrPolicy<K, V>>;
 
 pub const BLOCK: Key<ast::BlockExpr, BlockId> = Key::new();
 pub const FUNCTION: Key<ast::Fn, FunctionId> = Key::new();
@@ -39,6 +39,7 @@ pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
 pub const MACRO_RULES: Key<ast::MacroRules, MacroRulesId> = Key::new();
 pub const MACRO2: Key<ast::MacroDef, Macro2Id> = Key::new();
 pub const PROC_MACRO: Key<ast::Fn, ProcMacroId> = Key::new();
+pub const MACRO_CALL: Key<ast::MacroCall, MacroCallId> = Key::new();
 pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
 pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, MacroCallId, Box<[Option<MacroCallId>]>)> =
     Key::new();
@@ -54,18 +55,16 @@ pub struct AstPtrPolicy<AST, ID> {
 }
 
 impl<AST: AstNode + 'static, ID: 'static> Policy for AstPtrPolicy<AST, ID> {
-    type K = AST;
+    type K = AstPtr<AST>;
     type V = ID;
-    fn insert(map: &mut DynMap, key: AST, value: ID) {
-        let key = AstPtr::new(&key);
+    fn insert(map: &mut DynMap, key: AstPtr<AST>, value: ID) {
         map.map
             .entry::<FxHashMap<AstPtr<AST>, ID>>()
             .or_insert_with(Default::default)
             .insert(key, value);
     }
-    fn get<'a>(map: &'a DynMap, key: &AST) -> Option<&'a ID> {
-        let key = AstPtr::new(key);
-        map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(&key)
+    fn get<'a>(map: &'a DynMap, key: &AstPtr<AST>) -> Option<&'a ID> {
+        map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(key)
     }
     fn is_empty(map: &DynMap) -> bool {
         map.map.get::<FxHashMap<AstPtr<AST>, ID>>().map_or(true, |it| it.is_empty())

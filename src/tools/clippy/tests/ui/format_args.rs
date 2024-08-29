@@ -104,6 +104,7 @@ fn main() {
     println!("{foo}{bar}", foo = "foo", bar = "bar".to_string());
     println!("{foo}{bar}", bar = "bar".to_string(), foo = "foo");
     println!("{foo}{bar}", bar = "bar", foo = "foo".to_string());
+    println!("{}", my_other_macro!().to_string());
 
     // negative tests
     println!("error: something failed at {}", Somewhere.to_string());

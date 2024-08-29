@@ -1,6 +1,5 @@
 // Tests that forced unwind through POF Rust frames wouldn't trigger our terminating guards.
 
-#![feature(c_unwind)]
 #![no_main]
 
 extern "C-unwind" {

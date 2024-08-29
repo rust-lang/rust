@@ -1,10 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/tail-expr-as-potential-return.rs:27:9
+  --> $DIR/tail-expr-as-potential-return.rs:28:9
    |
 LL | /     if x {
 LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
-LL | |                 //| HELP you might have meant to return this value
+LL | |
+LL | |
 LL | |     }
    | |_____- expected this to be `()`
    |
@@ -16,12 +17,13 @@ LL |         return Err(42);
    |         ++++++        +
 
 error[E0308]: mismatched types
-  --> $DIR/tail-expr-as-potential-return.rs:43:9
+  --> $DIR/tail-expr-as-potential-return.rs:45:9
    |
 LL | /     if true {
 LL | |         1i32
    | |         ^^^^ expected `()`, found `i32`
-LL | |             //| HELP you might have meant to return this value
+LL | |
+LL | |
 LL | |     }
    | |_____- expected this to be `()`
    |
@@ -36,7 +38,8 @@ error[E0308]: mismatched types
 LL | /     if x {
 LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
-LL | |                 //| HELP you might have meant to return this value
+LL | |
+LL | |
 LL | |     }
    | |_____- expected this to be `()`
    |
@@ -47,6 +50,22 @@ help: you might have meant to return this value
 LL |         return Err(42);
    |         ++++++        +
 
-error: aborting due to 3 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/tail-expr-as-potential-return.rs:60:18
+   |
+LL |         Receiver.generic();
+   |                  ^^^^^^^ cannot infer type of the type parameter `T` declared on the method `generic`
+   |
+help: consider specifying the generic argument
+   |
+LL |         Receiver.generic::<T>();
+   |                         +++++
+help: you might have meant to return this to infer its type parameters
+   |
+LL |         return Receiver.generic();
+   |         ++++++
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

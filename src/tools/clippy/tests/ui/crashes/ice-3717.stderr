@@ -9,14 +9,13 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::implicit_hasher)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-help: consider adding a type parameter
+help: add a type parameter for `BuildHasher`
    |
-LL | pub fn ice_3717<S: ::std::hash::BuildHasher + Default>(_: &HashSet<usize, S>) {
-   |                +++++++++++++++++++++++++++++++++++++++     ~~~~~~~~~~~~~~~~~
-help: ...and use generic constructor
+LL ~ pub fn ice_3717<S: ::std::hash::BuildHasher + Default>(_: &HashSet<usize, S>) {
+LL |
+LL |     let _ = [0u8; 0];
+LL ~     let _: HashSet<usize> = HashSet::default();
    |
-LL |     let _: HashSet<usize> = HashSet::default();
-   |                             ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

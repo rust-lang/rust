@@ -1,13 +1,15 @@
+// tidy-alphabetical-start
+#![allow(unused_variables)]
 #![feature(alloc_layout_extra)]
 #![feature(never_type)]
-#![allow(unused_variables)]
+// tidy-alphabetical-end
 
 pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
 pub mod layout;
 mod maybe_transmutable;
 
-#[derive(Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Assume {
     pub alignment: bool,
     pub lifetimes: bool,
@@ -77,18 +79,14 @@ pub enum Reason<T> {
 
 #[cfg(feature = "rustc")]
 mod rustc {
-    use super::*;
-
     use rustc_hir::lang_items::LangItem;
     use rustc_infer::infer::InferCtxt;
     use rustc_macros::TypeVisitable;
     use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty::Const;
-    use rustc_middle::ty::ParamEnv;
-    use rustc_middle::ty::Ty;
-    use rustc_middle::ty::TyCtxt;
-    use rustc_middle::ty::ValTree;
+    use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt, ValTree};
     use rustc_span::DUMMY_SP;
+
+    use super::*;
 
     /// The source and destination types of a transmutation.
     #[derive(TypeVisitable, Debug, Clone, Copy)]
@@ -135,7 +133,7 @@ mod rustc {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::symbol::sym;
 
-            let Ok(cv) = c.eval(tcx, param_env, DUMMY_SP) else {
+            let Ok((ty, cv)) = c.eval(tcx, param_env, DUMMY_SP) else {
                 return Some(Self {
                     alignment: true,
                     lifetimes: true,
@@ -144,7 +142,7 @@ mod rustc {
                 });
             };
 
-            let adt_def = c.ty().ty_adt_def()?;
+            let adt_def = ty.ty_adt_def()?;
 
             assert_eq!(
                 tcx.require_lang_item(LangItem::TransmuteOpts, None),

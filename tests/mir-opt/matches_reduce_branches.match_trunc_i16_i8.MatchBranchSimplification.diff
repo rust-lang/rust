@@ -1,0 +1,77 @@
+- // MIR for `match_trunc_i16_i8` before MatchBranchSimplification
++ // MIR for `match_trunc_i16_i8` after MatchBranchSimplification
+  
+  fn match_trunc_i16_i8(_1: EnumAi16) -> i8 {
+      debug i => _1;
+      let mut _0: i8;
+      let mut _2: i16;
++     let mut _3: i16;
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [128: bb11, 255: bb10, 0: bb9, 1: bb8, 127: bb7, 65408: bb6, 65535: bb5, 65280: bb4, 65281: bb3, 65407: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         unreachable;
+-     }
+- 
+-     bb2: {
+-         _0 = const i8::MAX;
+-         goto -> bb12;
+-     }
+- 
+-     bb3: {
+-         _0 = const 1_i8;
+-         goto -> bb12;
+-     }
+- 
+-     bb4: {
+-         _0 = const 0_i8;
+-         goto -> bb12;
+-     }
+- 
+-     bb5: {
+-         _0 = const -1_i8;
+-         goto -> bb12;
+-     }
+- 
+-     bb6: {
+-         _0 = const i8::MIN;
+-         goto -> bb12;
+-     }
+- 
+-     bb7: {
+-         _0 = const i8::MAX;
+-         goto -> bb12;
+-     }
+- 
+-     bb8: {
+-         _0 = const 1_i8;
+-         goto -> bb12;
+-     }
+- 
+-     bb9: {
+-         _0 = const 0_i8;
+-         goto -> bb12;
+-     }
+- 
+-     bb10: {
+-         _0 = const -1_i8;
+-         goto -> bb12;
+-     }
+- 
+-     bb11: {
+-         _0 = const i8::MIN;
+-         goto -> bb12;
+-     }
+- 
+-     bb12: {
++         StorageLive(_3);
++         _3 = move _2;
++         _0 = copy _3 as i8 (IntToInt);
++         StorageDead(_3);
+          return;
+      }
+  }
+  

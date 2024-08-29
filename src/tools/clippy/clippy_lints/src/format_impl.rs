@@ -97,7 +97,6 @@ struct FormatTraitNames {
     formatter_name: Option<Symbol>,
 }
 
-#[derive(Default)]
 pub struct FormatImpl {
     format_args: FormatArgsStorage,
     // Whether we are inside Display or Debug trait impl - None for neither
@@ -197,7 +196,7 @@ impl<'a, 'tcx> FormatImplExpr<'a, 'tcx> {
                     && trait_name == self.format_trait_impl.name
                     && let Ok(index) = placeholder.argument.index
                     && let Some(arg) = format_args.arguments.all_args().get(index)
-                    && let Ok(arg_expr) = find_format_arg_expr(self.expr, arg)
+                    && let Some(arg_expr) = find_format_arg_expr(self.expr, arg)
                 {
                     self.check_format_arg_self(arg_expr);
                 }

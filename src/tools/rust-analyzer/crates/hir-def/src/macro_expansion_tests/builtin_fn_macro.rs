@@ -154,7 +154,7 @@ fn main() { file!(); }
 #[rustc_builtin_macro]
 macro_rules! file {() => {}}
 
-fn main() { ""; }
+fn main() { "file"; }
 "##]],
     );
 }
@@ -439,7 +439,7 @@ macro_rules! include_bytes {
     ($file:expr,) => {{ /* compiler built-in */ }};
 }
 
-fn main() { include_bytes("foo"); }
+fn main() { include_bytes("foo");include_bytes(r"foo"); }
 "#,
         expect![[r##"
 #[rustc_builtin_macro]
@@ -448,7 +448,7 @@ macro_rules! include_bytes {
     ($file:expr,) => {{ /* compiler built-in */ }};
 }
 
-fn main() { include_bytes("foo"); }
+fn main() { include_bytes("foo");include_bytes(r"foo"); }
 "##]],
     );
 }
@@ -460,13 +460,13 @@ fn test_concat_expand() {
 #[rustc_builtin_macro]
 macro_rules! concat {}
 
-fn main() { concat!("fo", "o", 0, r#"bar"#, "\n", false, '"', '\0'); }
+fn main() { concat!("fo", "o", 0, r#""bar""#, "\n", false, '"', '\0'); }
 "##,
         expect![[r##"
 #[rustc_builtin_macro]
 macro_rules! concat {}
 
-fn main() { "foo0bar\nfalse\"\u{0}"; }
+fn main() { "foo0\"bar\"\nfalse\"\u{0}"; }
 "##]],
     );
 }
@@ -478,13 +478,13 @@ fn test_concat_bytes_expand() {
 #[rustc_builtin_macro]
 macro_rules! concat_bytes {}
 
-fn main() { concat_bytes!(b'A', b"BC", [68, b'E', 70]); }
+fn main() { concat_bytes!(b'A', b"BC\"", [68, b'E', 70], br#"G""#,b'\0'); }
 "##,
         expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! concat_bytes {}
 
-fn main() { [b'A', 66, 67, 68, b'E', 70]; }
+fn main() { b"ABC\"DEFG\"\x00"; }
 "#]],
     );
 }

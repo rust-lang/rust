@@ -23,6 +23,16 @@ fn main() {
 
     let ref reference3 = SomeStruct;
     forget(reference3); //~ WARN calls to `std::mem::forget`
+
+    let ref reference4 = SomeStruct;
+
+    let a = 1;
+    match a {
+        1 => forget(&*reference1), //~ WARN calls to `std::mem::forget`
+        2 => forget(reference3), //~ WARN calls to `std::mem::forget`
+        3 => forget(reference4), //~ WARN calls to `std::mem::forget`
+        _ => {}
+    }
 }
 
 #[allow(dead_code)]

@@ -69,12 +69,12 @@ pub macro simd_swizzle {
     }
 }
 
-/// Create a vector from the elements of another vector.
+/// Creates a vector from the elements of another vector.
 pub trait Swizzle<const N: usize> {
     /// Map from the elements of the input vector to the output vector.
     const INDEX: [usize; N];
 
-    /// Create a new vector from the elements of `vector`.
+    /// Creates a new vector from the elements of `vector`.
     ///
     /// Lane `i` of the output is `vector[Self::INDEX[i]]`.
     #[inline]
@@ -109,7 +109,7 @@ pub trait Swizzle<const N: usize> {
         }
     }
 
-    /// Create a new vector from the elements of `first` and `second`.
+    /// Creates a new vector from the elements of `first` and `second`.
     ///
     /// Lane `i` of the output is `concat[Self::INDEX[i]]`, where `concat` is the concatenation of
     /// `first` and `second`.
@@ -145,7 +145,7 @@ pub trait Swizzle<const N: usize> {
         }
     }
 
-    /// Create a new mask from the elements of `mask`.
+    /// Creates a new mask from the elements of `mask`.
     ///
     /// Element `i` of the output is `concat[Self::INDEX[i]]`, where `concat` is the concatenation of
     /// `first` and `second`.
@@ -161,7 +161,7 @@ pub trait Swizzle<const N: usize> {
         unsafe { Mask::from_int_unchecked(Self::swizzle(mask.to_int())) }
     }
 
-    /// Create a new mask from the elements of `first` and `second`.
+    /// Creates a new mask from the elements of `first` and `second`.
     ///
     /// Element `i` of the output is `concat[Self::INDEX[i]]`, where `concat` is the concatenation of
     /// `first` and `second`.

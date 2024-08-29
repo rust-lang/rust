@@ -1,5 +1,5 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::find_all_ret_expressions;
@@ -10,59 +10,80 @@ use rustc_hir::{LangItem, QPath};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
-pub(crate) struct OptionAndThenSome;
-
-impl BindInsteadOfMap for OptionAndThenSome {
-    const VARIANT_LANG_ITEM: LangItem = LangItem::OptionSome;
-    const BAD_METHOD_NAME: &'static str = "and_then";
-    const GOOD_METHOD_NAME: &'static str = "map";
+pub(super) fn check_and_then_some(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    recv: &hir::Expr<'_>,
+    arg: &hir::Expr<'_>,
+) -> bool {
+    BindInsteadOfMap {
+        variant_lang_item: LangItem::OptionSome,
+        bad_method_name: "and_then",
+        good_method_name: "map",
+    }
+    .check(cx, expr, recv, arg)
 }
 
-pub(crate) struct ResultAndThenOk;
-
-impl BindInsteadOfMap for ResultAndThenOk {
-    const VARIANT_LANG_ITEM: LangItem = LangItem::ResultOk;
-    const BAD_METHOD_NAME: &'static str = "and_then";
-    const GOOD_METHOD_NAME: &'static str = "map";
+pub(super) fn check_and_then_ok(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    recv: &hir::Expr<'_>,
+    arg: &hir::Expr<'_>,
+) -> bool {
+    BindInsteadOfMap {
+        variant_lang_item: LangItem::ResultOk,
+        bad_method_name: "and_then",
+        good_method_name: "map",
+    }
+    .check(cx, expr, recv, arg)
 }
 
-pub(crate) struct ResultOrElseErrInfo;
-
-impl BindInsteadOfMap for ResultOrElseErrInfo {
-    const VARIANT_LANG_ITEM: LangItem = LangItem::ResultErr;
-    const BAD_METHOD_NAME: &'static str = "or_else";
-    const GOOD_METHOD_NAME: &'static str = "map_err";
+pub(super) fn check_or_else_err(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    recv: &hir::Expr<'_>,
+    arg: &hir::Expr<'_>,
+) -> bool {
+    BindInsteadOfMap {
+        variant_lang_item: LangItem::ResultErr,
+        bad_method_name: "or_else",
+        good_method_name: "map_err",
+    }
+    .check(cx, expr, recv, arg)
 }
 
-pub(crate) trait BindInsteadOfMap {
-    const VARIANT_LANG_ITEM: LangItem;
-    const BAD_METHOD_NAME: &'static str;
-    const GOOD_METHOD_NAME: &'static str;
+struct BindInsteadOfMap {
+    variant_lang_item: LangItem,
+    bad_method_name: &'static str,
+    good_method_name: &'static str,
+}
 
-    fn no_op_msg(cx: &LateContext<'_>) -> Option<String> {
-        let variant_id = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM)?;
+impl BindInsteadOfMap {
+    fn no_op_msg(&self, cx: &LateContext<'_>) -> Option<String> {
+        let variant_id = cx.tcx.lang_items().get(self.variant_lang_item)?;
         let item_id = cx.tcx.parent(variant_id);
         Some(format!(
             "using `{}.{}({})`, which is a no-op",
             cx.tcx.item_name(item_id),
-            Self::BAD_METHOD_NAME,
+            self.bad_method_name,
             cx.tcx.item_name(variant_id),
         ))
     }
 
-    fn lint_msg(cx: &LateContext<'_>) -> Option<String> {
-        let variant_id = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM)?;
+    fn lint_msg(&self, cx: &LateContext<'_>) -> Option<String> {
+        let variant_id = cx.tcx.lang_items().get(self.variant_lang_item)?;
         let item_id = cx.tcx.parent(variant_id);
         Some(format!(
             "using `{}.{}(|x| {}(y))`, which is more succinctly expressed as `{}(|x| y)`",
             cx.tcx.item_name(item_id),
-            Self::BAD_METHOD_NAME,
+            self.bad_method_name,
             cx.tcx.item_name(variant_id),
-            Self::GOOD_METHOD_NAME
+            self.good_method_name,
         ))
     }
 
     fn lint_closure_autofixable(
+        &self,
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
         recv: &hir::Expr<'_>,
@@ -71,9 +92,9 @@ pub(crate) trait BindInsteadOfMap {
     ) -> bool {
         if let hir::ExprKind::Call(some_expr, [inner_expr]) = closure_expr.kind
             && let hir::ExprKind::Path(QPath::Resolved(_, path)) = some_expr.kind
-            && Self::is_variant(cx, path.res)
+            && self.is_variant(cx, path.res)
             && !contains_return(inner_expr)
-            && let Some(msg) = Self::lint_msg(cx)
+            && let Some(msg) = self.lint_msg(cx)
         {
             let mut app = Applicability::MachineApplicable;
             let some_inner_snip = snippet_with_context(cx, inner_expr.span, closure_expr.span.ctxt(), "_", &mut app).0;
@@ -82,7 +103,7 @@ pub(crate) trait BindInsteadOfMap {
             let option_snip = snippet(cx, recv.span, "..");
             let note = format!(
                 "{option_snip}.{}({closure_args_snip} {some_inner_snip})",
-                Self::GOOD_METHOD_NAME
+                self.good_method_name
             );
             span_lint_and_sugg(cx, BIND_INSTEAD_OF_MAP, expr.span, msg, "try", note, app);
             true
@@ -91,13 +112,13 @@ pub(crate) trait BindInsteadOfMap {
         }
     }
 
-    fn lint_closure(cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) -> bool {
+    fn lint_closure(&self, cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) -> bool {
         let mut suggs = Vec::new();
         let can_sugg: bool = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
             if !ret_expr.span.from_expansion()
                 && let hir::ExprKind::Call(func_path, [arg]) = ret_expr.kind
                 && let hir::ExprKind::Path(QPath::Resolved(_, path)) = func_path.kind
-                && Self::is_variant(cx, path.res)
+                && self.is_variant(cx, path.res)
                 && !contains_return(arg)
             {
                 suggs.push((ret_expr.span, arg.span.source_callsite()));
@@ -108,31 +129,32 @@ pub(crate) trait BindInsteadOfMap {
         });
         let (span, msg) = if can_sugg
             && let hir::ExprKind::MethodCall(segment, ..) = expr.kind
-            && let Some(msg) = Self::lint_msg(cx)
+            && let Some(msg) = self.lint_msg(cx)
         {
             (segment.ident.span, msg)
         } else {
             return false;
         };
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, msg, |diag| {
-            multispan_sugg_with_applicability(
-                diag,
-                "try",
+            diag.multipart_suggestion(
+                format!("use `{}` instead", self.good_method_name),
+                std::iter::once((span, self.good_method_name.into()))
+                    .chain(
+                        suggs
+                            .into_iter()
+                            .map(|(span1, span2)| (span1, snippet(cx, span2, "_").into())),
+                    )
+                    .collect(),
                 Applicability::MachineApplicable,
-                std::iter::once((span, Self::GOOD_METHOD_NAME.into())).chain(
-                    suggs
-                        .into_iter()
-                        .map(|(span1, span2)| (span1, snippet(cx, span2, "_").into())),
-                ),
             );
         });
         true
     }
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
-    fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) -> bool {
+    fn check(&self, cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) -> bool {
         if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
-            && let Some(vid) = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM)
+            && let Some(vid) = cx.tcx.lang_items().get(self.variant_lang_item)
             && adt.did() == cx.tcx.parent(vid)
         {
         } else {
@@ -144,15 +166,15 @@ pub(crate) trait BindInsteadOfMap {
                 let closure_body = cx.tcx.hir().body(body);
                 let closure_expr = peel_blocks(closure_body.value);
 
-                if Self::lint_closure_autofixable(cx, expr, recv, closure_expr, fn_decl_span) {
+                if self.lint_closure_autofixable(cx, expr, recv, closure_expr, fn_decl_span) {
                     true
                 } else {
-                    Self::lint_closure(cx, expr, closure_expr)
+                    self.lint_closure(cx, expr, closure_expr)
                 }
             },
             // `_.and_then(Some)` case, which is no-op.
-            hir::ExprKind::Path(QPath::Resolved(_, path)) if Self::is_variant(cx, path.res) => {
-                if let Some(msg) = Self::no_op_msg(cx) {
+            hir::ExprKind::Path(QPath::Resolved(_, path)) if self.is_variant(cx, path.res) => {
+                if let Some(msg) = self.no_op_msg(cx) {
                     span_lint_and_sugg(
                         cx,
                         BIND_INSTEAD_OF_MAP,
@@ -169,9 +191,9 @@ pub(crate) trait BindInsteadOfMap {
         }
     }
 
-    fn is_variant(cx: &LateContext<'_>, res: Res) -> bool {
+    fn is_variant(&self, cx: &LateContext<'_>, res: Res) -> bool {
         if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM) {
+            if let Some(variant_id) = cx.tcx.lang_items().get(self.variant_lang_item) {
                 return cx.tcx.parent(id) == variant_id;
             }
         }

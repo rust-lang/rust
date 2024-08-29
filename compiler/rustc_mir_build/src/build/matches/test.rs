@@ -5,27 +5,32 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use crate::build::matches::{Candidate, MatchPair, Test, TestBranch, TestCase, TestKind};
-use crate::build::Builder;
+use std::cmp::Ordering;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_middle::mir::*;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
-use std::cmp::Ordering;
+use crate::build::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::build::Builder;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
-    pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub(super) fn pick_test_for_match_pair<'pat>(
+        &mut self,
+        match_pair: &MatchPairTree<'pat, 'tcx>,
+    ) -> Test<'tcx> {
         let kind = match match_pair.test_case {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
@@ -47,6 +52,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Never => TestKind::Never,
 
+            // Or-patterns are not tested directly; instead they are expanded into subcandidates,
+            // which are then distinguished by testing whatever non-or patterns they contain.
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
             TestCase::Irrefutable { .. } => span_bug!(
@@ -140,10 +147,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
                 if let ty::Adt(def, _) = ty.kind()
-                    && Some(def.did()) == tcx.lang_items().string()
+                    && tcx.is_lang_item(def.did(), LangItem::String)
                 {
                     if !tcx.features().string_deref_patterns {
-                        bug!(
+                        span_bug!(
+                            test.span,
                             "matching on `String` went through without enabling string_deref_patterns"
                         );
                     }
@@ -323,7 +331,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty: None,
                     const_: method,
                 })),
-                args: vec![Spanned { node: Operand::Move(ref_src), span }],
+                args: [Spanned { node: Operand::Move(ref_src), span }].into(),
                 destination: temp,
                 target: Some(target_block),
                 unwind: UnwindAction::Continue,
@@ -431,40 +439,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        match *ty.kind() {
-            ty::Ref(_, deref_ty, _) => ty = deref_ty,
-            _ => {
-                // non_scalar_compare called on non-reference type
-                let temp = self.temp(ty, source_info.span);
-                self.cfg.push_assign(block, source_info, temp, Rvalue::Use(expect));
-                let ref_ty = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, ty);
-                let ref_temp = self.temp(ref_ty, source_info.span);
-
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    ref_temp,
-                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, temp),
-                );
-                expect = Operand::Move(ref_temp);
-
-                let ref_temp = self.temp(ref_ty, source_info.span);
-                self.cfg.push_assign(
-                    block,
-                    source_info,
-                    ref_temp,
-                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, val),
-                );
-                val = ref_temp;
+        // Figure out the type on which we are calling `PartialEq`. This involves an extra wrapping
+        // reference: we can only compare two `&T`, and then compare_ty will be `T`.
+        // Make sure that we do *not* call any user-defined code here.
+        // The only types that can end up here are string and byte literals,
+        // which have their comparison defined in `core`.
+        // (Interestingly this means that exhaustiveness analysis relies, for soundness,
+        // on the `PartialEq` impls for `str` and `[u8]` to b correct!)
+        let compare_ty = match *ty.kind() {
+            ty::Ref(_, deref_ty, _)
+                if deref_ty == self.tcx.types.str_ || deref_ty != self.tcx.types.u8 =>
+            {
+                deref_ty
             }
-        }
+            _ => span_bug!(source_info.span, "invalid type for non-scalar compare: {}", ty),
+        };
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
         let method = trait_method(
             self.tcx,
             eq_def_id,
             sym::eq,
-            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [ty, ty]),
+            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [compare_ty, compare_ty]),
         );
 
         let bool_ty = self.tcx.types.bool;
@@ -485,10 +481,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     const_: method,
                 })),
-                args: vec![
+                args: [
                     Spanned { node: Operand::Copy(val), span: DUMMY_SP },
                     Spanned { node: expect, span: DUMMY_SP },
-                ],
+                ]
+                .into(),
                 destination: eq_result,
                 target: Some(eq_block),
                 unwind: UnwindAction::Continue,
@@ -550,6 +547,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .enumerate()
             .find(|&(_, mp)| mp.place == Some(test_place))?;
 
+        // If true, the match pair is completely entailed by its corresponding test
+        // branch, so it can be removed. If false, the match pair is _compatible_
+        // with its test branch, but still needs a more specific test.
         let fully_matched;
         let ret = match (&test.kind, &match_pair.test_case) {
             // If we are performing a variant switch, then this
@@ -571,8 +571,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (TestKind::SwitchInt, &TestCase::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
-                // Beware: there might be some ranges sorted into the failure case; we must not add
-                // a success case that could be matched by one of these ranges.
+                // An important invariant of candidate sorting is that a candidate
+                // must not match in multiple branches. For `SwitchInt` tests, adding
+                // a new value might invalidate that property for range patterns that
+                // have already been sorted into the failure arm, so we must take care
+                // not to add such values here.
                 let is_covering_range = |test_case: &TestCase<'_, 'tcx>| {
                     test_case.as_range().is_some_and(|range| {
                         matches!(range.contains(value, self.tcx, self.param_env), None | Some(true))
@@ -597,6 +600,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
             (TestKind::SwitchInt, TestCase::Range(range)) => {
+                // When performing a `SwitchInt` test, a range pattern can be
+                // sorted into the failure arm if it doesn't contain _any_ of
+                // the values being tested. (This restricts what values can be
+                // added to the test by subsequent candidates.)
                 fully_matched = false;
                 let not_contained =
                     sorted_candidates.keys().filter_map(|br| br.as_constant()).copied().all(

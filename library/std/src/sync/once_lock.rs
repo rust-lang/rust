@@ -5,49 +5,19 @@ use crate::mem::MaybeUninit;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 
-/// A synchronization primitive which can be written to only once.
+/// A synchronization primitive which can nominally be written to only once.
 ///
 /// This type is a thread-safe [`OnceCell`], and can be used in statics.
+/// In many simple cases, you can use [`LazyLock<T, F>`] instead to get the benefits of this type
+/// with less effort: `LazyLock<T, F>` "looks like" `&T` because it initializes with `F` on deref!
+/// Where OnceLock shines is when LazyLock is too simple to support a given case, as LazyLock
+/// doesn't allow additional inputs to its function after you call [`LazyLock::new(|| ...)`].
 ///
 /// [`OnceCell`]: crate::cell::OnceCell
+/// [`LazyLock<T, F>`]: crate::sync::LazyLock
+/// [`LazyLock::new(|| ...)`]: crate::sync::LazyLock::new
 ///
 /// # Examples
-///
-/// Using `OnceLock` to store a function’s previously computed value (a.k.a.
-/// ‘lazy static’ or ‘memoizing’):
-///
-/// ```
-/// use std::sync::OnceLock;
-///
-/// struct DeepThought {
-///     answer: String,
-/// }
-///
-/// impl DeepThought {
-/// #   fn great_question() -> String {
-/// #       "42".to_string()
-/// #   }
-/// #
-///     fn new() -> Self {
-///         Self {
-///             // M3 Ultra takes about 16 million years in --release config
-///             answer: Self::great_question(),
-///         }
-///     }
-/// }
-///
-/// fn computation() -> &'static DeepThought {
-///     // n.b. static items do not call [`Drop`] on program termination, so if
-///     // [`DeepThought`] impls Drop, that will not be used for this instance.
-///     static COMPUTATION: OnceLock<DeepThought> = OnceLock::new();
-///     COMPUTATION.get_or_init(|| DeepThought::new())
-/// }
-///
-/// // The `DeepThought` is built, stored in the `OnceLock`, and returned.
-/// let _ = computation().answer;
-/// // The `DeepThought` is retrieved from the `OnceLock` and returned.
-/// let _ = computation().answer;
-/// ```
 ///
 /// Writing to a `OnceLock` from a separate thread:
 ///
@@ -72,6 +42,62 @@ use crate::sync::Once;
 ///     CELL.get(),
 ///     Some(&12345),
 /// );
+/// ```
+///
+/// You can use `OnceLock` to implement a type that requires "append-only" logic:
+///
+/// ```
+/// use std::sync::{OnceLock, atomic::{AtomicU32, Ordering}};
+/// use std::thread;
+///
+/// struct OnceList<T> {
+///     data: OnceLock<T>,
+///     next: OnceLock<Box<OnceList<T>>>,
+/// }
+/// impl<T> OnceList<T> {
+///     const fn new() -> OnceList<T> {
+///         OnceList { data: OnceLock::new(), next: OnceLock::new() }
+///     }
+///     fn push(&self, value: T) {
+///         // FIXME: this impl is concise, but is also slow for long lists or many threads.
+///         // as an exercise, consider how you might improve on it while preserving the behavior
+///         if let Err(value) = self.data.set(value) {
+///             let next = self.next.get_or_init(|| Box::new(OnceList::new()));
+///             next.push(value)
+///         };
+///     }
+///     fn contains(&self, example: &T) -> bool
+///     where
+///         T: PartialEq,
+///     {
+///         self.data.get().map(|item| item == example).filter(|v| *v).unwrap_or_else(|| {
+///             self.next.get().map(|next| next.contains(example)).unwrap_or(false)
+///         })
+///     }
+/// }
+///
+/// // Let's exercise this new Sync append-only list by doing a little counting
+/// static LIST: OnceList<u32> = OnceList::new();
+/// static COUNTER: AtomicU32 = AtomicU32::new(0);
+///
+/// # const LEN: u32 = if cfg!(miri) { 50 } else { 1000 };
+/// # /*
+/// const LEN: u32 = 1000;
+/// # */
+/// thread::scope(|s| {
+///     for _ in 0..thread::available_parallelism().unwrap().get() {
+///         s.spawn(|| {
+///             while let i @ 0..LEN = COUNTER.fetch_add(1, Ordering::Relaxed) {
+///                 LIST.push(i);
+///             }
+///         });
+///     }
+/// });
+///
+/// for i in 0..LEN {
+///     assert!(LIST.contains(&i));
+/// }
+///
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {
@@ -139,6 +165,34 @@ impl<T> OnceLock<T> {
         } else {
             None
         }
+    }
+
+    /// Blocks the current thread until the cell is initialized.
+    ///
+    /// # Example
+    ///
+    /// Waiting for a computation on another thread to finish:
+    /// ```rust
+    /// #![feature(once_wait)]
+    ///
+    /// use std::thread;
+    /// use std::sync::OnceLock;
+    ///
+    /// let value = OnceLock::new();
+    ///
+    /// thread::scope(|s| {
+    ///     s.spawn(|| value.set(1 + 1));
+    ///
+    ///     let result = value.wait();
+    ///     assert_eq!(result, &2);
+    /// })
+    /// ```
+    #[inline]
+    #[unstable(feature = "once_wait", issue = "127527")]
+    pub fn wait(&self) -> &T {
+        self.once.wait_force();
+
+        unsafe { self.get_unchecked() }
     }
 
     /// Sets the contents of this cell to `value`.
@@ -255,9 +309,7 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it with `f` if the cell was empty.
     ///
-    /// Many threads may call `get_mut_or_init` concurrently with different
-    /// initializing functions, but it is guaranteed that only one function
-    /// will be executed.
+    /// This method never blocks.
     ///
     /// # Panics
     ///
@@ -346,6 +398,8 @@ impl<T> OnceLock<T> {
     /// Gets the mutable reference of the contents of the cell, initializing
     /// it with `f` if the cell was empty. If the cell was empty and `f` failed,
     /// an error is returned.
+    ///
+    /// This method never blocks.
     ///
     /// # Panics
     ///
@@ -476,7 +530,7 @@ impl<T> OnceLock<T> {
     #[inline]
     unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.is_initialized());
-        (&*self.value.get()).assume_init_ref()
+        unsafe { (&*self.value.get()).assume_init_ref() }
     }
 
     /// # Safety
@@ -485,7 +539,7 @@ impl<T> OnceLock<T> {
     #[inline]
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.is_initialized());
-        (&mut *self.value.get()).assume_init_mut()
+        unsafe { (&mut *self.value.get()).assume_init_mut() }
     }
 }
 
@@ -552,7 +606,7 @@ impl<T: Clone> Clone for OnceLock<T> {
 
 #[stable(feature = "once_cell", since = "1.70.0")]
 impl<T> From<T> for OnceLock<T> {
-    /// Create a new cell with its contents set to `value`.
+    /// Creates a new cell with its contents set to `value`.
     ///
     /// # Example
     ///

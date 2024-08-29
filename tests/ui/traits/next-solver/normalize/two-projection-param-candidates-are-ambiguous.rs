@@ -24,7 +24,7 @@ fn needs_bar<T: Bar>() {}
 
 fn foo<T: Foo<Assoc = i32> + Foo<Assoc = u32>>() {
     needs_bar::<T>();
-    //~^ ERROR type annotations needed: cannot satisfy `<T as Foo>::Assoc == i32`
+    //~^ ERROR type annotations needed: cannot normalize
 }
 
 fn main() {}

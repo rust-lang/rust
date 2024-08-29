@@ -115,7 +115,7 @@
 +     }
 + 
 +     bb15 (cleanup): {
-+         switchInt(_7) -> [0: bb12, otherwise: bb14];
++         switchInt(copy _7) -> [0: bb12, otherwise: bb14];
 +     }
 + 
 +     bb16: {
@@ -132,7 +132,7 @@
 +     }
 + 
 +     bb19: {
-+         switchInt(_7) -> [0: bb13, otherwise: bb18];
++         switchInt(copy _7) -> [0: bb13, otherwise: bb18];
 +     }
 + 
 +     bb20 (cleanup): {
@@ -141,7 +141,7 @@
 +     }
 + 
 +     bb21 (cleanup): {
-+         switchInt(_7) -> [0: bb12, otherwise: bb20];
++         switchInt(copy _7) -> [0: bb12, otherwise: bb20];
       }
   }
   

@@ -56,4 +56,20 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn unresolved_self_val() {
+        check_diagnostics(
+            r#"
+fn main() {
+    self.a;
+  //^^^^ error: no such value in this scope
+    let self:
+         self =
+            self;
+          //^^^^ error: no such value in this scope
+}
+"#,
+        );
+    }
 }

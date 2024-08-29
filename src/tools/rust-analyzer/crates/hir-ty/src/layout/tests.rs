@@ -1,8 +1,9 @@
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
-use project_model::target_data_layout::RustcDataLayoutConfig;
+use project_model::{target_data_layout::RustcDataLayoutConfig, Sysroot};
 use rustc_hash::FxHashMap;
+use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
@@ -17,7 +18,7 @@ mod closure;
 
 fn current_machine_data_layout() -> String {
     project_model::target_data_layout::get(
-        RustcDataLayoutConfig::Rustc(None),
+        RustcDataLayoutConfig::Rustc(&Sysroot::empty()),
         None,
         &FxHashMap::default(),
     )
@@ -34,20 +35,26 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
     let adt_or_type_alias_id = file_ids
         .into_iter()
         .find_map(|file_id| {
-            let module_id = db.module_for_file(file_id);
+            let module_id = db.module_for_file(file_id.file_id());
             let def_map = module_id.def_map(&db);
             let scope = &def_map[module_id.local_id].scope;
             let adt_or_type_alias_id = scope.declarations().find_map(|x| match x {
                 hir_def::ModuleDefId::AdtId(x) => {
                     let name = match x {
-                        hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_smol_str(),
-                        hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
-                        hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
+                        hir_def::AdtId::StructId(x) => {
+                            db.struct_data(x).name.display_no_db().to_smolstr()
+                        }
+                        hir_def::AdtId::UnionId(x) => {
+                            db.union_data(x).name.display_no_db().to_smolstr()
+                        }
+                        hir_def::AdtId::EnumId(x) => {
+                            db.enum_data(x).name.display_no_db().to_smolstr()
+                        }
                     };
                     (name == "Goal").then_some(Either::Left(x))
                 }
                 hir_def::ModuleDefId::TypeAliasId(x) => {
-                    let name = db.type_alias_data(x).name.to_smol_str();
+                    let name = db.type_alias_data(x).name.display_no_db().to_smolstr();
                     (name == "Goal").then_some(Either::Right(x))
                 }
                 _ => None,
@@ -80,21 +87,26 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Arc<Layout>, LayoutErro
     );
 
     let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id);
+    let module_id = db.module_for_file(file_id.file_id());
     let def_map = module_id.def_map(&db);
     let scope = &def_map[module_id.local_id].scope;
     let function_id = scope
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
-                let name = db.function_data(x).name.to_smol_str();
+                let name = db.function_data(x).name.display_no_db().to_smolstr();
                 (name == "main").then_some(x)
             }
             _ => None,
         })
         .unwrap();
     let hir_body = db.body(function_id.into());
-    let b = hir_body.bindings.iter().find(|x| x.1.name.to_smol_str() == "goal").unwrap().0;
+    let b = hir_body
+        .bindings
+        .iter()
+        .find(|x| x.1.name.display_no_db().to_smolstr() == "goal")
+        .unwrap()
+        .0;
     let infer = db.infer(function_id.into());
     let goal_ty = infer.type_of_binding[b].clone();
     db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
@@ -426,6 +438,7 @@ fn enums() {
 
 #[test]
 fn primitives() {
+    // FIXME(#17451): Add `f16` and `f128` once they are stabilised.
     size_and_align! {
         struct Goal(i32, i128, isize, usize, f32, f64, bool, char);
     }

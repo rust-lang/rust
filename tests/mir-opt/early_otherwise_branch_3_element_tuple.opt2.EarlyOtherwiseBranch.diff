@@ -45,7 +45,7 @@
 +         StorageLive(_18);
 +         _18 = discriminant((_4.1: Option2<u32>));
 +         StorageLive(_19);
-+         _19 = Ne(_14, move _18);
++         _19 = Ne(copy _14, move _18);
 +         StorageDead(_18);
 +         switchInt(move _19) -> [0: bb10, otherwise: bb1];
       }
@@ -64,8 +64,8 @@
 - 
 -     bb3: {
           _8 = discriminant((_4.2: Option2<u32>));
--         switchInt(move _8) -> [0: bb8, otherwise: bb1];
-+         switchInt(move _8) -> [0: bb5, otherwise: bb1];
+-         switchInt(move _8) -> [0: bb10, otherwise: bb1];
++         switchInt(move _8) -> [0: bb7, otherwise: bb1];
       }
   
 -     bb4: {
@@ -88,22 +88,13 @@
 -     bb7: {
 +     bb4: {
           _12 = discriminant((_4.2: Option2<u32>));
--         switchInt(move _12) -> [2: bb10, otherwise: bb1];
-+         switchInt(move _12) -> [2: bb7, otherwise: bb1];
+-         switchInt(move _12) -> [2: bb8, otherwise: bb1];
++         switchInt(move _12) -> [2: bb5, otherwise: bb1];
       }
   
 -     bb8: {
 +     bb5: {
-          StorageLive(_15);
-          _15 = (((_4.0: Option2<u32>) as Some).0: u32);
-          StorageLive(_16);
-          _16 = (((_4.1: Option2<u32>) as Some).0: u32);
-          StorageLive(_17);
-          _17 = (((_4.2: Option2<u32>) as Some).0: u32);
-          _0 = const 0_u32;
-          StorageDead(_17);
-          StorageDead(_16);
-          StorageDead(_15);
+          _0 = const 3_u32;
 -         goto -> bb11;
 +         goto -> bb8;
       }
@@ -117,7 +108,16 @@
   
 -     bb10: {
 +     bb7: {
-          _0 = const 3_u32;
+          StorageLive(_15);
+          _15 = copy (((_4.0: Option2<u32>) as Some).0: u32);
+          StorageLive(_16);
+          _16 = copy (((_4.1: Option2<u32>) as Some).0: u32);
+          StorageLive(_17);
+          _17 = copy (((_4.2: Option2<u32>) as Some).0: u32);
+          _0 = const 0_u32;
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageDead(_15);
 -         goto -> bb11;
 +         goto -> bb8;
       }
@@ -135,7 +135,7 @@
 + 
 +     bb10: {
 +         StorageDead(_19);
-+         switchInt(_14) -> [0: bb2, 1: bb3, 2: bb4, otherwise: bb9];
++         switchInt(copy _14) -> [0: bb2, 1: bb3, 2: bb4, otherwise: bb9];
       }
   }
   

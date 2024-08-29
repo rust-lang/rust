@@ -14,8 +14,8 @@ mod v20 {
     //~^ ERROR cannot find value `v8` in this scope
     //~| ERROR cannot find function `v6` in this scope
     pub struct v17<const v10: usize, const v7: v11> {
-    //~^ WARN type `v17` should have an upper camel case name
-    //~| ERROR `[[usize; v4]; v4]` is forbidden as the type of a const generic parameter
+        //~^ WARN type `v17` should have an upper camel case name
+        //~| ERROR `[[usize; v4]; v4]` is forbidden as the type of a const generic parameter
         _p: (),
     }
 
@@ -25,10 +25,10 @@ mod v20 {
     }
 
     impl<const v10: usize> v17<v10, v2> {
-    //~^ ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#1}
-    //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#1}
+        //~^ ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#1}
+        //~| ERROR maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#1}
         pub const fn v21() -> v18 {
-        //~^ ERROR cannot find type `v18` in this scope
+            //~^ ERROR cannot find type `v18` in this scope
             v18 { _p: () }
             //~^ ERROR cannot find struct, variant or union type `v18` in this scope
         }

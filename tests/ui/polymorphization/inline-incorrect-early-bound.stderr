@@ -1,0 +1,15 @@
+error[E0195]: lifetime parameters or bounds on method `foo` do not match the trait declaration
+  --> $DIR/inline-incorrect-early-bound.rs:17:11
+   |
+LL |     fn foo<'a, K: 'a>(self, _: K);
+   |           -----------
+   |           |       |
+   |           |       this bound might be missing in the impl
+   |           lifetimes in impl do not match this method in trait
+...
+LL |     fn foo<K>(self, _: K) {
+   |           ^^^ lifetimes do not match method in trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0195`.

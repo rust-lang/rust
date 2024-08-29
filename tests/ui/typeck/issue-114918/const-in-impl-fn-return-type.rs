@@ -3,16 +3,18 @@
 // of an impl fn produces a type mismatch error instead of triggering
 // a const eval cycle
 
-
 trait Trait {
-    fn func<const N: u32>() -> [ (); N ]; //~ ERROR mismatched types
+    fn func<const N: u32>() -> [(); N];
+    //~^ ERROR: the constant `N` is not of type `usize`
+    //~| ERROR: mismatched types
 }
 
 struct S {}
 
 #[allow(unused_braces)]
 impl Trait for S {
-    fn func<const N: u32>() -> [ (); { () }] { //~ ERROR mismatched types
+    fn func<const N: u32>() -> [(); { () }] {
+        //~^ ERROR mismatched types
         N
     }
 }

@@ -19,8 +19,6 @@ fn main() {
         #[coroutine]
         || {
             //[fail]~^ ERROR Coroutine<A>` is not satisfied
-            //[fail]~| ERROR as Coroutine<A>>::Yield == B`
-            //[fail]~| ERROR as Coroutine<A>>::Return == C`
             yield ();
         },
     );

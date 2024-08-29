@@ -3,14 +3,14 @@
 use base_db::CrateId;
 use hir_expand::{
     attrs::{Attr, AttrId, AttrInput},
+    inert_attr_macro::find_builtin_attr_idx,
     MacroCallId, MacroCallKind, MacroDefId,
 };
 use span::SyntaxContextId;
-use syntax::{ast, SmolStr};
+use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
-    attr::builtin::{find_builtin_attr_idx, TOOL_MODULES},
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
     nameres::path_resolution::ResolveMode,
@@ -59,7 +59,7 @@ impl DefMap {
                     return Ok(ResolvedAttr::Other);
                 }
             }
-            None => return Err(UnresolvedMacro { path: ast_id.path }),
+            None => return Err(UnresolvedMacro { path: ast_id.path.as_ref().clone() }),
         };
 
         Ok(ResolvedAttr::Macro(attr_macro_as_call_id(
@@ -79,20 +79,22 @@ impl DefMap {
         let segments = path.segments();
 
         if let Some(name) = segments.first() {
-            let name = name.to_smol_str();
-            let pred = |n: &_| *n == name;
+            let name = name.symbol();
+            let pred = |n: &_| *n == *name;
 
-            let registered = self.data.registered_tools.iter().map(SmolStr::as_str);
-            let is_tool = TOOL_MODULES.iter().copied().chain(registered).any(pred);
+            let is_tool = self.data.registered_tools.iter().any(pred);
             // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
                 return true;
             }
 
             if segments.len() == 1 {
-                let mut registered = self.data.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert = find_builtin_attr_idx(&name).is_some() || registered.any(pred);
-                return is_inert;
+                if find_builtin_attr_idx(name).is_some() {
+                    return true;
+                }
+                if self.data.registered_attrs.iter().any(pred) {
+                    return true;
+                }
             }
         }
         false
@@ -135,12 +137,12 @@ pub(super) fn derive_macro_as_call_id(
     derive_pos: u32,
     call_site: SyntaxContextId,
     krate: CrateId,
-    resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
+    resolver: impl Fn(&path::ModPath) -> Option<(MacroId, MacroDefId)>,
     derive_macro_id: MacroCallId,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
-    let (macro_id, def_id) = resolver(item_attr.path.clone())
+    let (macro_id, def_id) = resolver(&item_attr.path)
         .filter(|(_, def_id)| def_id.is_derive())
-        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
+        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.as_ref().clone() })?;
     let call_id = def_id.make_call(
         db.upcast(),
         krate,

@@ -7,12 +7,9 @@ pub mod select;
 pub mod solve;
 pub mod specialization_graph;
 mod structural_impls;
-pub mod util;
 
-use crate::mir::ConstraintCategory;
-use crate::ty::abstract_const::NotConstEvaluatable;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, AdtKind, Ty};
+use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
@@ -25,61 +22,14 @@ use rustc_macros::{
 use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+// FIXME: Remove this import and import via `solve::`
+pub use rustc_type_ir::solve::{BuiltinImplSource, Reveal};
 use smallvec::{smallvec, SmallVec};
 
-use std::borrow::Cow;
-use std::hash::{Hash, Hasher};
-
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
-// FIXME: Remove this import and import via `solve::`
-pub use rustc_next_trait_solver::solve::BuiltinImplSource;
-
-/// Depending on the stage of compilation, we want projection to be
-/// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
-pub enum Reveal {
-    /// At type-checking time, we refuse to project any associated
-    /// type that is marked `default`. Non-`default` ("final") types
-    /// are always projected. This is necessary in general for
-    /// soundness of specialization. However, we *could* allow
-    /// projections in fully-monomorphic cases. We choose not to,
-    /// because we prefer for `default type` to force the type
-    /// definition to be treated abstractly by any consumers of the
-    /// impl. Concretely, that means that the following example will
-    /// fail to compile:
-    ///
-    /// ```compile_fail,E0308
-    /// #![feature(specialization)]
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     default type Output = bool;
-    /// }
-    ///
-    /// fn main() {
-    ///     let x: <() as Assoc>::Output = true;
-    /// }
-    /// ```
-    ///
-    /// We also do not reveal the hidden type of opaque types during
-    /// type-checking.
-    UserFacing,
-
-    /// At codegen time, all monomorphic projections will succeed.
-    /// Also, `impl Trait` is normalized to the concrete type,
-    /// which has to be already collected by type-checking.
-    ///
-    /// NOTE: as `impl Trait`'s concrete type should *never*
-    /// be observable directly by the user, `Reveal::All`
-    /// should not be used by checks which may expose
-    /// type equality or type contents to the user.
-    /// There are some exceptions, e.g., around auto traits and
-    /// transmute-checking, which expose some details, but
-    /// not the whole concrete type of the `impl Trait`.
-    All,
-}
+use crate::mir::ConstraintCategory;
+use crate::ty::abstract_const::NotConstEvaluatable;
+use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 
 /// The reason why we incurred this obligation; used for error reporting.
 ///
@@ -403,7 +353,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReturnValue(HirId),
 
     /// Opaque return type of this function
-    OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
+    OpaqueReturnType(Option<(Ty<'tcx>, HirId)>),
 
     /// Block implicit return
     BlockTailExpression(HirId, hir::MatchSource),
@@ -616,6 +566,8 @@ pub enum SelectionError<'tcx> {
     /// We can thus not know whether the hidden type implements an auto trait, so
     /// we should not presume anything about it.
     OpaqueTypeAutoTraitLeakageUnknown(DefId),
+    /// Error for a `ConstArgHasType` goal
+    ConstArgHasWrongType { ct: ty::Const<'tcx>, ct_ty: Ty<'tcx>, expected_ty: Ty<'tcx> },
 }
 
 #[derive(Clone, Debug, TypeVisitable)]

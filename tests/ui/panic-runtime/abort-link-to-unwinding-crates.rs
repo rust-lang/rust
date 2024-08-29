@@ -5,12 +5,11 @@
 //@ no-prefer-dynamic
 //@ ignore-wasm32 no processes
 //@ ignore-sgx no processes
-//@ ignore-macos
 
 extern crate exit_success_if_unwind;
 
-use std::process::Command;
 use std::env;
+use std::process::Command;
 
 fn main() {
     let mut args = env::args_os();
@@ -24,7 +23,6 @@ fn main() {
 
     let mut cmd = Command::new(env::args_os().next().unwrap());
     cmd.arg("foo");
-
 
     // ARMv6 hanges while printing the backtrace, see #41004
     if cfg!(target_arch = "arm") && cfg!(target_env = "gnu") {

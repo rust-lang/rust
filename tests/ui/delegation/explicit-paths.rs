@@ -22,9 +22,7 @@ mod fn_to_other {
     use super::*;
 
     reuse Trait::foo1;
-    //~^ ERROR delegation to a trait method from a free function is not supported yet
     reuse <S as Trait>::foo2;
-    //~^ ERROR delegation to a trait method from a free function is not supported yet
     reuse to_reuse::foo3;
     reuse S::foo4;
     //~^ ERROR cannot find function `foo4` in `S`
@@ -34,7 +32,7 @@ mod inherent_impl_assoc_fn_to_other {
     use crate::*;
 
     impl S {
-        reuse Trait::foo1 { &self.0 }
+        reuse Trait::foo1 { self.0 }
         reuse <S as Trait>::foo2;
         reuse to_reuse::foo3;
         reuse F::foo4 { &self.0 }
@@ -46,7 +44,7 @@ mod trait_impl_assoc_fn_to_other {
     use crate::*;
 
     impl Trait for S {
-        reuse Trait::foo1 { &self.0 }
+        reuse Trait::foo1 { self.0 }
         reuse <F as Trait>::foo2;
         reuse to_reuse::foo3;
         //~^ ERROR method `foo3` is not a member of trait `Trait`

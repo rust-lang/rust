@@ -10,7 +10,7 @@ fn main() {
         .collect::<String>();
 
     fn set_thread_name(name: &CStr) -> i32 {
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))]
         return unsafe { libc::pthread_setname_np(libc::pthread_self(), name.as_ptr().cast()) };
         #[cfg(target_os = "freebsd")]
         unsafe {

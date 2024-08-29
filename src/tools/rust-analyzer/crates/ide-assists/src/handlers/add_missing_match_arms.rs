@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, Crate, HasAttrs, HasSource, ModuleDef, Semantics};
+use hir::{sym, Adt, Crate, HasAttrs, HasSource, ImportPathConfig, ModuleDef, Semantics};
 use ide_db::RootDatabase;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
@@ -71,6 +71,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
+    let cfg = ctx.config.import_path_config();
+
     let module = ctx.sema.scope(expr.syntax())?.module();
     let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
@@ -88,13 +90,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .into_iter()
             .filter_map(|variant| {
                 Some((
-                    build_pat(
-                        ctx.db(),
-                        module,
-                        variant,
-                        ctx.config.prefer_no_std,
-                        ctx.config.prefer_prelude,
-                    )?,
+                    build_pat(ctx.db(), module, variant, cfg)?,
                     variant.should_be_hidden(ctx.db(), module.krate()),
                 ))
             })
@@ -145,15 +141,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns = variants.into_iter().filter_map(|variant| {
-                    build_pat(
-                        ctx.db(),
-                        module,
-                        variant,
-                        ctx.config.prefer_no_std,
-                        ctx.config.prefer_prelude,
-                    )
-                });
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx.db(), module, variant, cfg));
 
                 (ast::Pat::from(make::tuple_pat(patterns)), is_hidden)
             })
@@ -184,15 +174,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns = variants.into_iter().filter_map(|variant| {
-                    build_pat(
-                        ctx.db(),
-                        module,
-                        variant,
-                        ctx.config.prefer_no_std,
-                        ctx.config.prefer_prelude,
-                    )
-                });
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx.db(), module, variant, cfg));
                 (ast::Pat::from(make::slice_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
@@ -393,7 +377,7 @@ impl ExtendedEnum {
     fn is_non_exhaustive(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
             ExtendedEnum::Enum(e) => {
-                e.attrs(db).by_key("non_exhaustive").exists() && e.module(db).krate() != krate
+                e.attrs(db).by_key(&sym::non_exhaustive).exists() && e.module(db).krate() != krate
             }
             _ => false,
         }
@@ -457,18 +441,11 @@ fn build_pat(
     db: &RootDatabase,
     module: hir::Module,
     var: ExtendedVariant,
-    prefer_no_std: bool,
-    prefer_prelude: bool,
+    cfg: ImportPathConfig,
 ) -> Option<ast::Pat> {
     match var {
         ExtendedVariant::Variant(var) => {
-            let path = mod_path_to_ast(&module.find_use_path(
-                db,
-                ModuleDef::from(var),
-                prefer_no_std,
-                prefer_prelude,
-            )?);
-
+            let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?);
             // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
             Some(match var.source(db)?.value.kind() {
                 ast::StructKind::Tuple(field_list) => {

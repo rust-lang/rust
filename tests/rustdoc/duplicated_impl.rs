@@ -6,8 +6,8 @@
 // We check that there is only one "impl<T> Something<Whatever> for T" listed in the
 // blanket implementations.
 
-// @has 'foo/struct.Whatever.html'
-// @count - '//*[@id="blanket-implementations-list"]/section[@class="impl"]' 1
+//@ has 'foo/struct.Whatever.html'
+//@ count - '//*[@id="blanket-implementations-list"]/section[@class="impl"]' 1
 
 pub trait Something<T> { }
 pub struct Whatever;

@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, LetStmt, Node, Stmt, StmtKind};
@@ -12,9 +12,10 @@ declare_clippy_lint! {
     /// whether the read occurs before or after the write depends on the evaluation
     /// order of sub-expressions.
     ///
-    /// ### Why is this bad?
-    /// It is often confusing to read. As described [here](https://doc.rust-lang.org/reference/expressions.html?highlight=subexpression#evaluation-order-of-operands),
-    /// the operands of these expressions are evaluated before applying the effects of the expression.
+    /// ### Why restrict this?
+    /// While [the evaluation order of sub-expressions] is fully specified in Rust,
+    /// it still may be confusing to read an expression where the evaluation order
+    /// affects its behavior.
     ///
     /// ### Known problems
     /// Code which intentionally depends on the evaluation
@@ -40,6 +41,8 @@ declare_clippy_lint! {
     /// };
     /// let a = tmp + x;
     /// ```
+    ///
+    /// [order]: (https://doc.rust-lang.org/reference/expressions.html?highlight=subexpression#evaluation-order-of-operands)
     #[clippy::version = "pre 1.29.0"]
     pub MIXED_READ_WRITE_IN_EXPRESSION,
     restriction,
@@ -163,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             ExprKind::Call(func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
                 match typ.kind() {
-                    ty::FnDef(..) | ty::FnPtr(_) => {
+                    ty::FnDef(..) | ty::FnPtr(..) => {
                         let sig = typ.fn_sig(self.cx.tcx);
                         if self.cx.tcx.instantiate_bound_regions_with_erased(sig).output().kind() == &ty::Never {
                             self.report_diverging_sub_expr(e);
@@ -321,13 +324,17 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         if path_to_local_id(expr, self.var) {
             // Check that this is a read, not a write.
             if !is_in_assignment_position(self.cx, expr) {
-                span_lint_and_note(
+                span_lint_and_then(
                     self.cx,
                     MIXED_READ_WRITE_IN_EXPRESSION,
                     expr.span,
                     format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
-                    Some(self.write_expr.span),
-                    "whether read occurs before this write depends on evaluation order",
+                    |diag| {
+                        diag.span_note(
+                            self.write_expr.span,
+                            "whether read occurs before this write depends on evaluation order",
+                        );
+                    },
                 );
             }
         }

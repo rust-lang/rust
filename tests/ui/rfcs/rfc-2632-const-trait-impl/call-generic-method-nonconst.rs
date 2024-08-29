@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl, effects)] //~ WARN the feature `effects` is incomplete
 
 struct S;
 
@@ -21,6 +21,7 @@ const fn equals_self<T: ~const Foo>(t: &T) -> bool {
 // it not using the impl.
 
 pub const EQ: bool = equals_self(&S);
-//~^ ERROR: the trait bound `S: const Foo` is not satisfied
+//~^ ERROR: the trait bound `Runtime: const Compat` is not satisfied
+// FIXME(effects) diagnostic
 
 fn main() {}

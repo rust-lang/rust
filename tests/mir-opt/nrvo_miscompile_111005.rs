@@ -10,12 +10,14 @@ use core::intrinsics::mir::*;
 // EMIT_MIR nrvo_miscompile_111005.wrong.RenameReturnPlace.diff
 #[custom_mir(dialect = "runtime", phase = "initial")]
 pub fn wrong(arg: char) -> char {
-    mir!({
-        let temp = arg;
-        RET = temp;
-        temp = 'b';
-        Return()
-    })
+    mir! {
+        {
+            let temp = arg;
+            RET = temp;
+            temp = 'b';
+            Return()
+        }
+    }
 }
 
 fn main() {

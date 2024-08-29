@@ -1,5 +1,5 @@
 //@ compile-flags: -O
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 #[no_mangle]
 pub fn get_len() -> usize {

@@ -190,4 +190,49 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "`rust.lld` has a new default value of `true` on `x86_64-unknown-linux-gnu`. Starting at stage1, `rust-lld` will thus be this target's default linker. No config changes should be necessary.",
     },
+    ChangeInfo {
+        change_id: 125535,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `dist.missing-tools` configuration as it was deprecated long time ago.",
+    },
+    ChangeInfo {
+        change_id: 126701,
+        severity: ChangeSeverity::Warning,
+        summary: "`llvm.lld` is enabled by default for the dist profile. If set to false, `lld` will not be included in the dist build.",
+    },
+    ChangeInfo {
+        change_id: 127913,
+        severity: ChangeSeverity::Warning,
+        summary: "`debug-logging` option has been removed from the default `tools` profile.",
+    },
+    ChangeInfo {
+        change_id: 127866,
+        severity: ChangeSeverity::Info,
+        summary: "the `wasm-component-ld` tool is now built as part of `build.extended` and can be a member of `build.tools`",
+    },
+    ChangeInfo {
+        change_id: 120593,
+        severity: ChangeSeverity::Info,
+        summary: "Removed android-ndk r25b support in favor of android-ndk r26d.",
+    },
+    ChangeInfo {
+        change_id: 125181,
+        severity: ChangeSeverity::Warning,
+        summary: "For tarball sources, default value for `rust.channel` will be taken from `src/ci/channel` file.",
+    },
+    ChangeInfo {
+        change_id: 125642,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.libzstd` to control whether llvm is built with zstd support.",
+    },
+    ChangeInfo {
+        change_id: 128841,
+        severity: ChangeSeverity::Warning,
+        summary: "./x test --rustc-args was renamed to --compiletest-rustc-args as it only applies there. ./x miri --rustc-args was also removed.",
+    },
+    ChangeInfo {
+        change_id: 129295,
+        severity: ChangeSeverity::Info,
+        summary: "The `build.profiler` option now tries to use source code from `download-ci-llvm` if possible, instead of checking out the `src/llvm-project` submodule.",
+    },
 ];

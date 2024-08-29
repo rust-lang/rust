@@ -162,7 +162,7 @@ fn extract_cycle(f: impl FnOnce() + UnwindSafe) -> salsa::Cycle {
             return cycle.clone();
         }
     }
-    panic!("unexpected value: {:?}", v)
+    panic!("unexpected value: {v:?}")
 }
 
 #[test]

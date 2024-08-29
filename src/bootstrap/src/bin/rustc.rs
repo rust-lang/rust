@@ -20,26 +20,24 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::Instant;
 
-use dylib_util::{dylib_path, dylib_path_var, exe};
+use shared_helpers::{
+    dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
+    parse_value_from_args,
+};
 
-#[path = "../utils/bin_helpers.rs"]
-mod bin_helpers;
-
-#[path = "../utils/dylib.rs"]
-mod dylib_util;
+#[path = "../utils/shared_helpers.rs"]
+mod shared_helpers;
 
 fn main() {
     let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = orig_args.clone();
-    let arg =
-        |name| orig_args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
-    let stage = bin_helpers::parse_rustc_stage();
-    let verbose = bin_helpers::parse_rustc_verbose();
+    let stage = parse_rustc_stage();
+    let verbose = parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
-    let target = arg("--target");
+    let target = parse_value_from_args(&orig_args, "--target");
     let version = args.iter().find(|w| &**w == "-vV");
 
     // Use a different compiler for build scripts, since there may not yet be a
@@ -91,6 +89,25 @@ fn main() {
         rustc_real
     };
 
+    // Get the name of the crate we're compiling, if any.
+    let crate_name = parse_value_from_args(&orig_args, "--crate-name");
+
+    // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
+    if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
+        && crate_name == Some("rustc_driver")
+        && stage != "0"
+    {
+        if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
+            a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
+        }) {
+            args.remove(pos);
+            args.remove(pos);
+        }
+        if let Some(pos) = args.iter().position(|a| a == "-Cprefer-dynamic") {
+            args.remove(pos);
+        }
+    }
+
     let mut cmd = match env::var_os("RUSTC_WRAPPER_REAL") {
         Some(wrapper) if !wrapper.is_empty() => {
             let mut cmd = Command::new(wrapper);
@@ -100,9 +117,6 @@ fn main() {
         _ => Command::new(rustc_driver),
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
-
-    // Get the name of the crate we're compiling, if any.
-    let crate_name = arg("--crate-name");
 
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
@@ -143,10 +157,11 @@ fn main() {
             cmd.arg("-C").arg("panic=abort");
         }
 
+        let crate_type = parse_value_from_args(&orig_args, "--crate-type");
         // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
         // issue https://github.com/rust-lang/rust/issues/100530
         if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
-            && arg("--crate-type") != Some("proc-macro")
+            && crate_type != Some("proc-macro")
             && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
         {
             cmd.arg("-Ztls-model=initial-exec");
@@ -251,7 +266,7 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
-    bin_helpers::maybe_dump(format!("stage{stage}-rustc"), &cmd);
+    maybe_dump(format!("stage{stage}-rustc"), &cmd);
 
     let start = Instant::now();
     let (child, status) = {
@@ -316,14 +331,10 @@ fn format_rusage_data(_child: Child) -> Option<String> {
 fn format_rusage_data(child: Child) -> Option<String> {
     use std::os::windows::io::AsRawHandle;
 
-    use windows::{
-        Win32::Foundation::HANDLE,
-        Win32::System::ProcessStatus::{
-            K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX,
-        },
-        Win32::System::Threading::GetProcessTimes,
-        Win32::System::Time::FileTimeToSystemTime,
-    };
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::ProcessStatus::{K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+    use windows::Win32::System::Threading::GetProcessTimes;
+    use windows::Win32::System::Time::FileTimeToSystemTime;
 
     let handle = HANDLE(child.as_raw_handle() as isize);
 
@@ -332,6 +343,7 @@ fn format_rusage_data(child: Child) -> Option<String> {
     let mut kernel_filetime = Default::default();
     let mut kernel_time = Default::default();
     let mut memory_counters = PROCESS_MEMORY_COUNTERS::default();
+    let memory_counters_size = std::mem::size_of_val(&memory_counters);
 
     unsafe {
         GetProcessTimes(
@@ -348,15 +360,9 @@ fn format_rusage_data(child: Child) -> Option<String> {
 
     // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
     // with the given handle and none of that process's children.
-    unsafe {
-        K32GetProcessMemoryInfo(
-            handle,
-            &mut memory_counters,
-            std::mem::size_of::<PROCESS_MEMORY_COUNTERS_EX>() as u32,
-        )
-    }
-    .ok()
-    .ok()?;
+    unsafe { K32GetProcessMemoryInfo(handle, &mut memory_counters, memory_counters_size as u32) }
+        .ok()
+        .ok()?;
 
     // Guide on interpreting these numbers:
     // https://docs.microsoft.com/en-us/windows/win32/psapi/process-memory-usage-information

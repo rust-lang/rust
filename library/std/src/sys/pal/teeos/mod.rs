@@ -2,13 +2,12 @@
 //!
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Teeos.
-#![allow(unsafe_op_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
 pub use self::rand::hashmap_random_keys;
 
-pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
 #[path = "../unsupported/env.rs"]
@@ -27,9 +26,6 @@ pub mod process;
 mod rand;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-#[path = "../unix/thread_local_key.rs"]
-pub mod thread_local_key;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
 pub mod time;

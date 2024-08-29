@@ -6,7 +6,7 @@
 #![rustc_coherence_is_core]
 #![crate_type = "rlib"]
 
-// @has no_doc_primitive/index.html
+//@ has no_doc_primitive/index.html
 //! A [`char`] and its [`char::len_utf8`].
 impl char {
     pub fn len_utf8(self) -> usize {

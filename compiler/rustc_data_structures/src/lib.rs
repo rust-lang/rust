@@ -18,17 +18,14 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(assert_matches)]
 #![feature(auto_traits)]
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
 #![feature(hash_raw_entry)]
-#![feature(hasher_prefixfree_extras)]
-#![feature(lazy_cell)]
-#![feature(lint_reasons)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]
-#![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -42,13 +39,11 @@
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
-pub use atomic_ref::AtomicRef;
-pub use ena::snapshot_vec;
-pub use ena::undo_log;
-pub use ena::unify;
-pub use rustc_index::static_assert_size;
-
 use std::fmt;
+
+pub use atomic_ref::AtomicRef;
+pub use ena::{snapshot_vec, undo_log, unify};
+pub use rustc_index::static_assert_size;
 
 pub mod aligned;
 pub mod base_n;
@@ -69,7 +64,6 @@ pub mod owned_slice;
 pub mod packed;
 pub mod profiling;
 pub mod sharded;
-pub mod sip128;
 pub mod small_c_str;
 pub mod snapshot_map;
 pub mod sorted_map;

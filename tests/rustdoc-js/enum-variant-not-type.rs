@@ -5,10 +5,14 @@ pub trait MyTrait {
     fn not_appearing(&self) -> Option<&Self::T>;
 }
 
-pub fn my_fn<X>(t: X) -> X { t }
+pub fn my_fn<X>(t: X) -> X {
+    t
+}
 
 pub trait AutoCorrectConfounder {
     type InsertUnnecessarilyLongTypeNameHere;
-    fn assoc_type_acts_like_generic(&self, x: &Self::InsertUnnecessarilyLongTypeNameHere)
-        -> Option<&Self::InsertUnnecessarilyLongTypeNameHere>;
+    fn assoc_type_acts_like_generic(
+        &self,
+        x: &Self::InsertUnnecessarilyLongTypeNameHere,
+    ) -> Option<&Self::InsertUnnecessarilyLongTypeNameHere>;
 }

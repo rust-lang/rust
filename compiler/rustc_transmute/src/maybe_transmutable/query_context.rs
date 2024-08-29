@@ -4,7 +4,6 @@ use crate::layout;
 pub(crate) trait QueryContext {
     type Def: layout::Def;
     type Ref: layout::Ref;
-    type Scope: Copy;
 }
 
 #[cfg(test)]
@@ -28,19 +27,17 @@ pub(crate) mod test {
     impl QueryContext for UltraMinimal {
         type Def = Def;
         type Ref = !;
-        type Scope = ();
     }
 }
 
 #[cfg(feature = "rustc")]
 mod rustc {
+    use rustc_middle::ty::TyCtxt;
+
     use super::*;
-    use rustc_middle::ty::{Ty, TyCtxt};
 
     impl<'tcx> super::QueryContext for TyCtxt<'tcx> {
         type Def = layout::rustc::Def<'tcx>;
         type Ref = layout::rustc::Ref<'tcx>;
-
-        type Scope = Ty<'tcx>;
     }
 }

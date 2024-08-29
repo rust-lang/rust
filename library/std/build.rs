@@ -7,9 +7,18 @@ fn main() {
     let target_vendor =
         env::var("CARGO_CFG_TARGET_VENDOR").expect("CARGO_CFG_TARGET_VENDOR was not set");
     let target_env = env::var("CARGO_CFG_TARGET_ENV").expect("CARGO_CFG_TARGET_ENV was not set");
+    let target_pointer_width: u32 = env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
+        .expect("CARGO_CFG_TARGET_POINTER_WIDTH was not set")
+        .parse()
+        .unwrap();
+    let is_miri = env::var_os("CARGO_CFG_MIRI").is_some();
+
+    println!("cargo:rustc-check-cfg=cfg(netbsd10)");
     if target_os == "netbsd" && env::var("RUSTC_STD_NETBSD10").is_ok() {
         println!("cargo:rustc-cfg=netbsd10");
     }
+
+    println!("cargo:rustc-check-cfg=cfg(restricted_std)");
     if target_os == "linux"
         || target_os == "android"
         || target_os == "netbsd"
@@ -59,8 +68,118 @@ fn main() {
         // - arch=avr
         // - JSON targets
         // - Any new targets that have not been explicitly added above.
-        println!("cargo:rustc-cfg=feature=\"restricted-std\"");
+        println!("cargo:rustc-cfg=restricted_std");
     }
-    println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+
+    println!("cargo:rustc-check-cfg=cfg(backtrace_in_libstd)");
     println!("cargo:rustc-cfg=backtrace_in_libstd");
+
+    println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+
+    // Emit these on platforms that have no known ABI bugs, LLVM selection bugs, lowering bugs,
+    // missing symbols, or other problems, to determine when tests get run.
+    // If more broken platforms are found, please update the tracking issue at
+    // <https://github.com/rust-lang/rust/issues/116909>
+    //
+    // Some of these match arms are redundant; the goal is to separate reasons that the type is
+    // unreliable, even when multiple reasons might fail the same platform.
+    println!("cargo:rustc-check-cfg=cfg(reliable_f16)");
+    println!("cargo:rustc-check-cfg=cfg(reliable_f128)");
+
+    // This is a step beyond only having the types and basic functions available. Math functions
+    // aren't consistently available or correct.
+    println!("cargo:rustc-check-cfg=cfg(reliable_f16_math)");
+    println!("cargo:rustc-check-cfg=cfg(reliable_f128_math)");
+
+    let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
+        // We can always enable these in Miri as that is not affected by codegen bugs.
+        _ if is_miri => true,
+        // Selection failure until recent LLVM <https://github.com/llvm/llvm-project/issues/93894>
+        // FIXME(llvm19): can probably be removed at the version bump
+        ("loongarch64", _) => false,
+        // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
+        ("s390x", _) => false,
+        // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
+        ("arm64ec", _) => false,
+        // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
+        ("x86_64", "windows") => false,
+        // Apple has a special ABI for `f16` that we do not yet support
+        // FIXME(builtins): fixed by <https://github.com/rust-lang/compiler-builtins/pull/675>
+        ("x86" | "x86_64", _) if target_vendor == "apple" => false,
+        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
+        ("powerpc" | "powerpc64", _) => false,
+        // Missing `__gnu_h2f_ieee` and `__gnu_f2h_ieee`
+        ("mips" | "mips32r6" | "mips64" | "mips64r6", _) => false,
+        // Missing `__extendhfsf` and `__truncsfhf`
+        ("riscv32" | "riscv64", _) => false,
+        // Most OSs are missing `__extendhfsf` and `__truncsfhf`
+        (_, "linux" | "macos") => true,
+        // Almost all OSs besides Linux and MacOS are missing symbols until compiler-builtins can
+        // be updated. <https://github.com/rust-lang/rust/pull/125016> will get some of these, the
+        // next CB update should get the rest.
+        _ => false,
+    };
+
+    let has_reliable_f128 = match (target_arch.as_str(), target_os.as_str()) {
+        // We can always enable these in Miri as that is not affected by codegen bugs.
+        _ if is_miri => true,
+        // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
+        ("arm64ec", _) => false,
+        // ABI and precision bugs <https://github.com/rust-lang/rust/issues/125109>
+        // <https://github.com/rust-lang/rust/issues/125102>
+        ("powerpc" | "powerpc64", _) => false,
+        // Selection bug <https://github.com/llvm/llvm-project/issues/95471>
+        ("nvptx64", _) => false,
+        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
+        ("sparc", _) => false,
+        // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
+        ("x86_64", "windows") => false,
+        // 64-bit Linux is about the only platform to have f128 symbols by default
+        (_, "linux") if target_pointer_width == 64 => true,
+        // Same as for f16, except MacOS is also missing f128 symbols.
+        _ => false,
+    };
+
+    // Configure platforms that have reliable basics but may have unreliable math.
+
+    // LLVM is currenlty adding missing routines, <https://github.com/llvm/llvm-project/issues/93566>
+    let has_reliable_f16_math = has_reliable_f16
+        && match (target_arch.as_str(), target_os.as_str()) {
+            // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
+            _ if is_miri => false,
+            // x86 has a crash for `powi`: <https://github.com/llvm/llvm-project/issues/105747>
+            ("x86" | "x86_64", _) => false,
+            // Assume that working `f16` means working `f16` math for most platforms, since
+            // operations just go through `f32`.
+            _ => true,
+        };
+
+    let has_reliable_f128_math = has_reliable_f128
+        && match (target_arch.as_str(), target_os.as_str()) {
+            // FIXME: Disabled on Miri as the intrinsics are not implemented yet.
+            _ if is_miri => false,
+            // LLVM lowers `fp128` math to `long double` symbols even on platforms where
+            // `long double` is not IEEE binary128. See
+            // <https://github.com/llvm/llvm-project/issues/44744>.
+            //
+            // This rules out anything that doesn't have `long double` = `binary128`; <= 32 bits
+            // (ld is `f64`), anything other than Linux (Windows and MacOS use `f64`), and `x86`
+            // (ld is 80-bit extended precision).
+            ("x86_64", _) => false,
+            (_, "linux") if target_pointer_width == 64 => true,
+            _ => false,
+        };
+
+    if has_reliable_f16 {
+        println!("cargo:rustc-cfg=reliable_f16");
+    }
+    if has_reliable_f128 {
+        println!("cargo:rustc-cfg=reliable_f128");
+    }
+    if has_reliable_f16_math {
+        println!("cargo:rustc-cfg=reliable_f16_math");
+    }
+    if has_reliable_f128_math {
+        println!("cargo:rustc-cfg=reliable_f128_math");
+    }
 }

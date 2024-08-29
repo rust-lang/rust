@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as lc from "vscode-languageclient/node";
+import type * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
 import { Config, prepareVSCodeConfig } from "./config";
@@ -22,9 +22,10 @@ import {
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
-import type { RustAnalyzerExtensionApi } from "./main";
-import type { JsonProject } from "./rust_project";
 import { prepareTestExplorer } from "./test_explorer";
+import { spawn } from "node:child_process";
+import { text } from "node:stream/consumers";
+import type { RustAnalyzerExtensionApi } from "./main";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -69,8 +70,9 @@ export type CtxInit = Ctx & {
 
 export class Ctx implements RustAnalyzerExtensionApi {
     readonly statusBar: vscode.StatusBarItem;
-    config: Config;
+    readonly config: Config;
     readonly workspace: Workspace;
+    readonly version: string;
 
     private _client: lc.LanguageClient | undefined;
     private _serverPath: string | undefined;
@@ -85,6 +87,15 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private _dependencies: RustDependenciesProvider | undefined;
     private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
     private lastStatus: ServerStatusParams | { health: "stopped" } = { health: "stopped" };
+    private _serverVersion: string;
+
+    get serverPath(): string | undefined {
+        return this._serverPath;
+    }
+
+    get serverVersion(): string | undefined {
+        return this._serverVersion;
+    }
 
     get client() {
         return this._client;
@@ -104,7 +115,9 @@ export class Ctx implements RustAnalyzerExtensionApi {
         workspace: Workspace,
     ) {
         extCtx.subscriptions.push(this);
-        this.config = new Config(extCtx);
+        this.version = extCtx.extension.packageJSON.version ?? "<unknown>";
+        this._serverVersion = "<not running>";
+        this.config = new Config(extCtx.subscriptions);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         if (this.config.testExplorer) {
             this.testController = vscode.tests.createTestController(
@@ -173,17 +186,18 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
 
         if (!this._client) {
-            this._serverPath = await bootstrap(this.extCtx, this.config, this.state).catch(
-                (err) => {
-                    let message = "bootstrap error. ";
-
-                    message +=
-                        'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
-                    message +=
-                        'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
-
-                    log.error("Bootstrap error", err);
-                    throw new Error(message);
+            this._serverPath = await this.bootstrap();
+            text(spawn(this._serverPath, ["--version"]).stdout.setEncoding("utf-8")).then(
+                (data) => {
+                    const prefix = `rust-analyzer `;
+                    this._serverVersion = data
+                        .slice(data.startsWith(prefix) ? prefix.length : 0)
+                        .trim();
+                    this.refreshServerStatus();
+                },
+                (_) => {
+                    this._serverVersion = "<unknown>";
+                    this.refreshServerStatus();
                 },
             );
             const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
@@ -197,15 +211,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
             };
 
             let rawInitializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
-            if (this.config.discoverProjectRunner) {
-                const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
-                log.info(`running command: ${command}`);
-                const uris = vscode.workspace.textDocuments
-                    .filter(isRustDocument)
-                    .map((document) => document.uri);
-                const projects: JsonProject[] = await vscode.commands.executeCommand(command, uris);
-                this.setWorkspaces(projects);
-            }
 
             if (this.workspace.kind === "Detached Files") {
                 rawInitializationOptions = {
@@ -214,16 +219,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 };
             }
 
-            const initializationOptions = prepareVSCodeConfig(
-                rawInitializationOptions,
-                (key, obj) => {
-                    // we only want to set discovered workspaces on the right key
-                    // and if a workspace has been discovered.
-                    if (key === "linkedProjects" && this.config.discoveredWorkspaces.length > 0) {
-                        obj["linkedProjects"] = this.config.discoveredWorkspaces;
-                    }
-                },
-            );
+            const initializationOptions = prepareVSCodeConfig(rawInitializationOptions);
 
             this._client = await createClient(
                 this.traceOutputChannel,
@@ -243,25 +239,22 @@ export class Ctx implements RustAnalyzerExtensionApi {
                     this.outputChannel!.show();
                 }),
             );
-            this.pushClientCleanup(
-                this._client.onNotification(ra.unindexedProject, async (params) => {
-                    if (this.config.discoverProjectRunner) {
-                        const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
-                        log.info(`running command: ${command}`);
-                        const uris = params.textDocuments.map((doc) =>
-                            vscode.Uri.parse(doc.uri, true),
-                        );
-                        const projects: JsonProject[] = await vscode.commands.executeCommand(
-                            command,
-                            uris,
-                        );
-                        this.setWorkspaces(projects);
-                        await this.notifyRustAnalyzer();
-                    }
-                }),
-            );
         }
         return this._client;
+    }
+
+    private async bootstrap(): Promise<string> {
+        return bootstrap(this.extCtx, this.config, this.state).catch((err) => {
+            let message = "bootstrap error. ";
+
+            message +=
+                'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+            message +=
+                'To enable verbose logs, click the gear icon in the "OUTPUT" tab and select "Debug".';
+
+            log.error("Bootstrap error", err);
+            throw new Error(message);
+        });
     }
 
     async start() {
@@ -372,23 +365,6 @@ export class Ctx implements RustAnalyzerExtensionApi {
         return this.extCtx.subscriptions;
     }
 
-    get serverPath(): string | undefined {
-        return this._serverPath;
-    }
-
-    setWorkspaces(workspaces: JsonProject[]) {
-        this.config.discoveredWorkspaces = workspaces;
-    }
-
-    async notifyRustAnalyzer(): Promise<void> {
-        // this is a workaround to avoid needing writing the `rust-project.json` into
-        // a workspace-level VS Code-specific settings folder. We'd like to keep the
-        // `rust-project.json` entirely in-memory.
-        await this.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
-            settings: "",
-        });
-    }
-
     private updateCommands(forceDisable?: "disable") {
         this.commandDisposables.forEach((disposable) => disposable.dispose());
         this.commandDisposables = [];
@@ -472,32 +448,27 @@ export class Ctx implements RustAnalyzerExtensionApi {
         if (status.message) {
             statusBar.tooltip.appendText(status.message);
         }
-        if (status.workspaceInfo) {
-            if (statusBar.tooltip.value) {
-                statusBar.tooltip.appendMarkdown("\n\n---\n\n");
-            }
-            statusBar.tooltip.appendMarkdown(status.workspaceInfo);
-        }
         if (statusBar.tooltip.value) {
             statusBar.tooltip.appendMarkdown("\n\n---\n\n");
         }
-        statusBar.tooltip.appendMarkdown("\n\n[Open Logs](command:rust-analyzer.openLogs)");
+
+        const toggleCheckOnSave = this.config.checkOnSave ? "Disable" : "Enable";
         statusBar.tooltip.appendMarkdown(
-            `\n\n[${
-                this.config.checkOnSave ? "Disable" : "Enable"
-            } Check on Save](command:rust-analyzer.toggleCheckOnSave)`,
+            `[Extension Info](command:rust-analyzer.serverVersion "Show version and server binary info"): Version ${this.version}, Server Version ${this._serverVersion}` +
+                "\n\n---\n\n" +
+                '[$(terminal) Open Logs](command:rust-analyzer.openLogs "Open the server logs")' +
+                "\n\n" +
+                `[$(settings) ${toggleCheckOnSave} Check on Save](command:rust-analyzer.toggleCheckOnSave "Temporarily ${toggleCheckOnSave.toLowerCase()} check on save functionality")` +
+                "\n\n" +
+                '[$(refresh) Reload Workspace](command:rust-analyzer.reloadWorkspace "Reload and rediscover workspaces")' +
+                "\n\n" +
+                '[$(symbol-property) Rebuild Build Dependencies](command:rust-analyzer.rebuildProcMacros "Rebuild build scripts and proc-macros")' +
+                "\n\n" +
+                '[$(stop-circle) Stop server](command:rust-analyzer.stopServer "Stop the server")' +
+                "\n\n" +
+                '[$(debug-restart) Restart server](command:rust-analyzer.restartServer "Restart the server")',
         );
-        statusBar.tooltip.appendMarkdown(
-            "\n\n[Reload Workspace](command:rust-analyzer.reloadWorkspace)",
-        );
-        statusBar.tooltip.appendMarkdown(
-            "\n\n[Rebuild Proc Macros](command:rust-analyzer.rebuildProcMacros)",
-        );
-        statusBar.tooltip.appendMarkdown(
-            "\n\n[Restart server](command:rust-analyzer.restartServer)",
-        );
-        statusBar.tooltip.appendMarkdown("\n\n[Stop server](command:rust-analyzer.stopServer)");
-        if (!status.quiescent) icon = "$(sync~spin) ";
+        if (!status.quiescent) icon = "$(loading~spin) ";
         statusBar.text = `${icon}rust-analyzer`;
     }
 

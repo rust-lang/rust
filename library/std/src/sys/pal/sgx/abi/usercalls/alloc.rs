@@ -1,18 +1,17 @@
 #![allow(unused)]
 
-use crate::arch::asm;
-use crate::cell::UnsafeCell;
-use crate::cmp;
-use crate::convert::TryInto;
-use crate::intrinsics;
-use crate::mem;
-use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
-use crate::ptr::{self, NonNull};
-use crate::slice;
-use crate::slice::SliceIndex;
+use fortanix_sgx_abi::*;
 
 use super::super::mem::{is_enclave_range, is_user_range};
-use fortanix_sgx_abi::*;
+use crate::arch::asm;
+use crate::cell::UnsafeCell;
+use crate::convert::TryInto;
+use crate::mem::{self, ManuallyDrop};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
+use crate::pin::PinCoerceUnsized;
+use crate::ptr::{self, NonNull};
+use crate::slice::SliceIndex;
+use crate::{cmp, intrinsics, slice};
 
 /// A type that can be safely read from or written to userspace.
 ///
@@ -67,7 +66,7 @@ pub unsafe trait UserSafe {
     /// Equivalent to `mem::align_of::<Self>`.
     fn align_of() -> usize;
 
-    /// Construct a pointer to `Self` given a memory range in user space.
+    /// Constructs a pointer to `Self` given a memory range in user space.
     ///
     /// N.B., this takes a size, not a length!
     ///
@@ -77,7 +76,7 @@ pub unsafe trait UserSafe {
     /// correct size and is correctly aligned and points to the right type.
     unsafe fn from_raw_sized_unchecked(ptr: *mut u8, size: usize) -> *mut Self;
 
-    /// Construct a pointer to `Self` given a memory range.
+    /// Constructs a pointer to `Self` given a memory range.
     ///
     /// N.B., this takes a size, not a length!
     ///
@@ -176,6 +175,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
 /// are used solely to indicate intent: a mutable reference is for writing to
 /// user memory, an immutable reference for reading from user memory.
 #[unstable(feature = "sgx_platform", issue = "56975")]
+#[repr(transparent)]
 pub struct UserRef<T: ?Sized>(UnsafeCell<T>);
 /// An owned type in userspace memory. `User<T>` is equivalent to `Box<T>` in
 /// enclave memory. Access to the memory is only allowed by copying to avoid
@@ -266,9 +266,7 @@ where
     /// Converts this value into a raw pointer. The value will no longer be
     /// automatically freed.
     pub fn into_raw(self) -> *mut T {
-        let ret = self.0;
-        mem::forget(self);
-        ret.as_ptr() as _
+        ManuallyDrop::new(self).0.as_ptr() as _
     }
 }
 
@@ -277,7 +275,7 @@ impl<T> User<T>
 where
     T: UserSafe,
 {
-    /// Allocate space for `T` in user memory.
+    /// Allocates space for `T` in user memory.
     pub fn uninitialized() -> Self {
         Self::new_uninit_bytes(mem::size_of::<T>())
     }
@@ -288,7 +286,7 @@ impl<T> User<[T]>
 where
     [T]: UserSafe,
 {
-    /// Allocate space for a `[T]` of `n` elements in user memory.
+    /// Allocates space for a `[T]` of `n` elements in user memory.
     pub fn uninitialized(n: usize) -> Self {
         Self::new_uninit_bytes(n * mem::size_of::<T>())
     }
@@ -753,6 +751,9 @@ where
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
+
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized> PinCoerceUnsized for UserRef<T> {}
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T, I> Index<I> for UserRef<[T]>

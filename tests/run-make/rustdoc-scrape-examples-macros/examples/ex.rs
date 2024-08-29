@@ -8,20 +8,20 @@ a_proc_macro!(); // no
 
 #[an_attr_macro]
 fn a() {
-  f(); // no
+    f(); // no
 }
 
 #[an_attr_macro(with_span)]
 fn b() {
-  f(); // yes
+    f(); // yes
 }
 
 fn c() {
-  a_rules_macro!(f()); // yes
+    a_rules_macro!(f()); // yes
 }
 
 fn d() {
-  a_rules_macro!(()); // no
+    a_rules_macro!(()); // no
 }
 
-fn main(){}
+fn main() {}

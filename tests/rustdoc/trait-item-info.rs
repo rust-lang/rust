@@ -7,16 +7,16 @@
 
 #![unstable(feature = "test", issue = "none")]
 
-// @has 'foo/trait.Foo.html'
+//@ has 'foo/trait.Foo.html'
 
 #[stable(feature = "rust2", since = "2.2.2")]
 pub trait Foo {
-    // @has - '//div[@class="methods"]/span[@class="item-info"]' 'bla'
+    //@ has - '//div[@class="methods"]/span[@class="item-info"]' 'bla'
     // Should not be in a `<details>` because there is no doc.
     #[unstable(feature = "bla", reason = "bla", issue = "111")]
     fn bla() {}
 
-    // @has - '//details[@class="toggle method-toggle"]/summary/span[@class="item-info"]' 'bar'
+    //@ has - '//details[@class="toggle method-toggle"]/summary/span[@class="item-info"]' 'bar'
     // Should have a `<summary>` in the `<details>` containing the unstable info.
     /// doc
     #[unstable(feature = "bar", reason = "bla", issue = "222")]

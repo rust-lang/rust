@@ -18,7 +18,12 @@ error: missing type for `const` item
   --> $DIR/item-free-const-no-body-semantic-fail.rs:6:8
    |
 LL | const B;
-   |        ^ help: provide a type for the item: `: <type>`
+   |        ^
+   |
+help: provide a type for the item
+   |
+LL | const B: <type>;
+   |        ++++++++
 
 error: aborting due to 3 previous errors
 

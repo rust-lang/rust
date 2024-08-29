@@ -3,7 +3,7 @@
 use hir::{db::HirDatabase, Name, StructKind};
 use ide_db::{documentation::HasDocs, SnippetCap};
 use itertools::Itertools;
-use syntax::SmolStr;
+use syntax::{SmolStr, ToSmolStr};
 
 use crate::{
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
@@ -20,7 +20,7 @@ pub(crate) fn render_struct_pat(
     strukt: hir::Struct,
     local_name: Option<Name>,
 ) -> Option<CompletionItem> {
-    let _p = tracing::span!(tracing::Level::INFO, "render_struct_pat").entered();
+    let _p = tracing::info_span!("render_struct_pat").entered();
 
     let fields = strukt.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, strukt)?;
@@ -31,7 +31,8 @@ pub(crate) fn render_struct_pat(
     }
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db()));
-    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
+    let (name, escaped_name) =
+        (name.unescaped().display(ctx.db()).to_smolstr(), name.display(ctx.db()).to_smolstr());
     let kind = strukt.kind(ctx.db());
     let label = format_literal_label(name.as_str(), kind, ctx.snippet_cap());
     let lookup = format_literal_lookup(name.as_str(), kind);
@@ -50,7 +51,7 @@ pub(crate) fn render_variant_pat(
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
 ) -> Option<CompletionItem> {
-    let _p = tracing::span!(tracing::Level::INFO, "render_variant_pat").entered();
+    let _p = tracing::info_span!("render_variant_pat").entered();
 
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
@@ -63,7 +64,11 @@ pub(crate) fn render_variant_pat(
         ),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
-            (name.unescaped().to_smol_str(), name.to_smol_str())
+            let it = (
+                name.unescaped().display(ctx.db()).to_smolstr(),
+                name.display(ctx.db()).to_smolstr(),
+            );
+            it
         }
     };
 
@@ -184,7 +189,7 @@ fn render_record_as_pat(
         None => {
             format!(
                 "{name} {{ {}{} }}",
-                fields.map(|field| field.name(db).to_smol_str()).format(", "),
+                fields.map(|field| field.name(db).display_no_db().to_smolstr()).format(", "),
                 if fields_omitted { ", .." } else { "" },
                 name = name
             )

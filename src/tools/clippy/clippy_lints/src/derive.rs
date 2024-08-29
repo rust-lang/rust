@@ -1,17 +1,17 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Safety, Impl, Item, ItemKind, UnsafeSource,
+    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, Safety, UnsafeSource,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, Upcast, TraitPredicate, Ty, TyCtxt,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -390,13 +390,17 @@ fn check_unsafe_derive_deserialize<'tcx>(
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {
-        span_lint_and_help(
+        span_lint_hir_and_then(
             cx,
             UNSAFE_DERIVE_DESERIALIZE,
+            adt_hir_id,
             item.span,
             "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
-            None,
-            "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html",
+            |diag| {
+                diag.help(
+                    "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html",
+                );
+            },
         );
     }
 }
@@ -452,20 +456,27 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
+        && let Some(local_def_id) = adt.did().as_local()
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
             .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[]))
     {
-        span_lint_and_sugg(
+        span_lint_hir_and_then(
             cx,
             DERIVE_PARTIAL_EQ_WITHOUT_EQ,
+            cx.tcx.local_def_id_to_hir_id(local_def_id),
             span.ctxt().outer_expn_data().call_site,
             "you are deriving `PartialEq` and can implement `Eq`",
-            "consider deriving `Eq` as well",
-            "PartialEq, Eq".to_string(),
-            Applicability::MachineApplicable,
+            |diag| {
+                diag.span_suggestion(
+                    span.ctxt().outer_expn_data().call_site,
+                    "consider deriving `Eq` as well",
+                    "PartialEq, Eq",
+                    Applicability::MachineApplicable,
+                );
+            },
         );
     }
 }

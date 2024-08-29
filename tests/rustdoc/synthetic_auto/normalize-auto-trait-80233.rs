@@ -32,8 +32,8 @@ impl<T: Trait3> Trait3 for Vec<T> {
 
 pub struct Struct1 {}
 
-// @has foo/struct.Question.html
-// @has - '//h3[@class="code-header"]' 'impl<T> Send for Question<T>'
+//@ has foo/struct.Question.html
+//@ has - '//h3[@class="code-header"]' 'impl<T> Send for Question<T>'
 pub struct Question<T: Trait1> {
     pub ins: <<Vec<T> as Trait3>::Type3 as Trait2>::Type2,
 }

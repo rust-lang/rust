@@ -41,18 +41,18 @@
 #[allow_internal_unstable(rustc_attrs, liballoc_internals)]
 macro_rules! vec {
     () => (
-        $crate::__rust_force_expr!($crate::vec::Vec::new())
+        $crate::vec::Vec::new()
     );
     ($elem:expr; $n:expr) => (
-        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
+        $crate::vec::from_elem($elem, $n)
     );
     ($($x:expr),+ $(,)?) => (
-        $crate::__rust_force_expr!(<[_]>::into_vec(
+        <[_]>::into_vec(
             // This rustc_box is not required, but it produces a dramatic improvement in compile
             // time when constructing arrays with many elements.
             #[rustc_box]
             $crate::boxed::Box::new([$($x),+])
-        ))
+        )
     );
 }
 
@@ -111,6 +111,7 @@ macro_rules! vec {
 /// # Examples
 ///
 /// ```
+/// # #![allow(unused_must_use)]
 /// format!("test");                             // => "test"
 /// format!("hello {}", "world!");               // => "hello world!"
 /// format!("x = {}, y = {val}", 10, val = 30);  // => "x = 10, y = 30"
@@ -119,20 +120,13 @@ macro_rules! vec {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(hint_must_use, liballoc_internals)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
 macro_rules! format {
-    ($($arg:tt)*) => {{
-        let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
-        res
-    }}
-}
-
-/// Force AST node to an expression to improve diagnostics in pattern position.
-#[doc(hidden)]
-#[macro_export]
-#[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
-macro_rules! __rust_force_expr {
-    ($e:expr) => {
-        $e
-    };
+    ($($arg:tt)*) => {
+        $crate::__export::must_use({
+            let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
+            res
+        })
+    }
 }

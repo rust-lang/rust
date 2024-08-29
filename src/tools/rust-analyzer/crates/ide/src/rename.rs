@@ -6,16 +6,17 @@
 
 use hir::{AsAssocItem, HirFileIdExt, InFile, Semantics};
 use ide_db::{
-    base_db::{FileId, FileRange},
     defs::{Definition, NameClass, NameRefClass},
     rename::{bail, format_err, source_edit_from_references, IdentifierKind},
     source_change::SourceChangeBuilder,
-    RootDatabase,
+    FileId, FileRange, RootDatabase,
 };
 use itertools::Itertools;
+use span::Edition;
 use stdx::{always, never};
 use syntax::{
     ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxKind, SyntaxNode, TextRange, TextSize,
+    ToSmolStr,
 };
 
 use text_edit::TextEdit;
@@ -33,7 +34,7 @@ pub(crate) fn prepare_rename(
     position: FilePosition,
 ) -> RenameResult<RangeInfo<()>> {
     let sema = Semantics::new(db);
-    let source_file = sema.parse(position.file_id);
+    let source_file = sema.parse_guess_edition(position.file_id);
     let syntax = source_file.syntax();
 
     let res = find_definitions(&sema, syntax, position)?
@@ -87,7 +88,10 @@ pub(crate) fn rename(
     new_name: &str,
 ) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
-    let source_file = sema.parse(position.file_id);
+    let file_id = sema
+        .attach_first_edition(position.file_id)
+        .ok_or_else(|| format_err!("No references found at position"))?;
+    let source_file = sema.parse(file_id);
     let syntax = source_file.syntax();
 
     let defs = find_definitions(&sema, syntax, position)?;
@@ -98,7 +102,7 @@ pub(crate) fn rename(
             // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
             // properly find "direct" usages/references.
             .map(|(.., def)| {
-                match IdentifierKind::classify(new_name)? {
+                match IdentifierKind::classify(Edition::CURRENT_FIXME, new_name)? {
                     IdentifierKind::Ident => (),
                     IdentifierKind::Lifetime => {
                         bail!("Cannot alias reference to a lifetime identifier")
@@ -109,7 +113,7 @@ pub(crate) fn rename(
                 let mut usages = def.usages(&sema).all();
 
                 // FIXME: hack - removes the usage that triggered this rename operation.
-                match usages.references.get_mut(&position.file_id).and_then(|refs| {
+                match usages.references.get_mut(&file_id).and_then(|refs| {
                     refs.iter()
                         .position(|ref_| ref_.range.contains_inclusive(position.offset))
                         .map(|idx| refs.remove(idx))
@@ -119,8 +123,8 @@ pub(crate) fn rename(
                 };
 
                 let mut source_change = SourceChange::default();
-                source_change.extend(usages.iter().map(|(&file_id, refs)| {
-                    (file_id, source_edit_from_references(refs, def, new_name))
+                source_change.extend(usages.references.get_mut(&file_id).iter().map(|refs| {
+                    (position.file_id, source_edit_from_references(refs, def, new_name))
                 }));
 
                 Ok(source_change)
@@ -266,7 +270,7 @@ fn find_definitions(
                             // if the name differs from the definitions name it has to be an alias
                             if def
                                 .name(sema.db)
-                                .map_or(false, |it| it.to_smol_str() != name_ref.text().as_str())
+                                .map_or(false, |it| it.display_no_db().to_smolstr() != name_ref.text().as_str())
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
@@ -300,7 +304,11 @@ fn find_definitions(
                 Err(format_err!("No references found at position"))
             } else {
                 // remove duplicates, comparing `Definition`s
-                Ok(v.into_iter().unique_by(|&(.., def)| def).collect::<Vec<_>>().into_iter())
+                Ok(v.into_iter()
+                    .unique_by(|&(.., def)| def)
+                    .map(|(a, b, c)| (a.into(), b, c))
+                    .collect::<Vec<_>>()
+                    .into_iter())
             }
         }
         Err(e) => Err(e),
@@ -361,14 +369,15 @@ fn rename_to_self(
         bail!("Parameter type differs from impl block type");
     }
 
-    let InFile { file_id, value: param_source } =
-        first_param.source(sema.db).ok_or_else(|| format_err!("No source for parameter found"))?;
+    let InFile { file_id, value: param_source } = sema
+        .source(first_param.clone())
+        .ok_or_else(|| format_err!("No source for parameter found"))?;
 
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
     let mut source_change = SourceChange::default();
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, "self"))
+    source_change.extend(usages.iter().map(|(file_id, references)| {
+        (file_id.into(), source_edit_from_references(references, def, "self"))
     }));
     source_change.insert_source_edit(
         file_id.original_file(sema.db),
@@ -389,10 +398,10 @@ fn rename_self_to_param(
         return Ok(SourceChange::default());
     }
 
-    let identifier_kind = IdentifierKind::classify(new_name)?;
+    let identifier_kind = IdentifierKind::classify(Edition::CURRENT_FIXME, new_name)?;
 
     let InFile { file_id, value: self_param } =
-        self_param.source(sema.db).ok_or_else(|| format_err!("cannot find function source"))?;
+        sema.source(self_param).ok_or_else(|| format_err!("cannot find function source"))?;
 
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
@@ -403,8 +412,8 @@ fn rename_self_to_param(
     }
     let mut source_change = SourceChange::default();
     source_change.insert_source_edit(file_id.original_file(sema.db), edit);
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        (file_id, source_edit_from_references(references, def, new_name))
+    source_change.extend(usages.iter().map(|(file_id, references)| {
+        (file_id.into(), source_edit_from_references(references, def, new_name))
     }));
     Ok(source_change)
 }
@@ -444,12 +453,8 @@ mod tests {
 
     use super::{RangeInfo, RenameError};
 
-    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        check_with_rename_config(new_name, ra_fixture_before, ra_fixture_after);
-    }
-
     #[track_caller]
-    fn check_with_rename_config(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -466,7 +471,7 @@ mod tests {
                 let (&file_id, edit) = match source_change.source_file_edits.len() {
                     0 => return,
                     1 => source_change.source_file_edits.iter().next().unwrap(),
-                    _ => (&position.file_id, &source_change.source_file_edits[&position.file_id]),
+                    _ => panic!(),
                 };
                 for indel in edit.0.iter() {
                     text_edit_builder.replace(indel.delete, indel.insert.clone());
@@ -2689,7 +2694,7 @@ use qux as frob;
 
     #[test]
     fn disallow_renaming_for_non_local_definition() {
-        check_with_rename_config(
+        check(
             "Baz",
             r#"
 //- /lib.rs crate:lib new_source_root:library
@@ -2704,7 +2709,7 @@ fn main() { let _: S$0; }
 
     #[test]
     fn disallow_renaming_for_builtin_macros() {
-        check_with_rename_config(
+        check(
             "Baz",
             r#"
 //- minicore: derive, hash
@@ -2762,14 +2767,19 @@ fn test() {
         check(
             "Baz",
             r#"
+//- /main.rs crate:main
+mod module;
 mod foo { pub struct Foo; }
 mod bar { use super::Foo; }
 
 use foo::Foo$0;
 
 fn main() { let _: Foo; }
+//- /module.rs
+use crate::foo::Foo;
 "#,
             r#"
+mod module;
 mod foo { pub struct Foo; }
 mod bar { use super::Baz; }
 
@@ -2778,5 +2788,23 @@ use foo::Foo as Baz;
 fn main() { let _: Baz; }
 "#,
         )
+    }
+
+    #[test]
+    fn rename_path_inside_use_tree_foreign() {
+        check(
+            "Baz",
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S;
+//- /main.rs crate:main deps:lib new_source_root:local
+use lib::S$0;
+fn main() { let _: S; }
+"#,
+            r#"
+use lib::S as Baz;
+fn main() { let _: Baz; }
+"#,
+        );
     }
 }

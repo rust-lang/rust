@@ -11,10 +11,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc64-unknown-freebsd".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("PPC64 FreeBSD (ELFv1 and ELFv2)".into()),
+            tier: Some(3),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "E-m:e-Fn32-i64:64-n32:64".into(),

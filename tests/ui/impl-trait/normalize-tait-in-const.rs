@@ -6,22 +6,25 @@
 
 use std::marker::Destruct;
 
-trait T {
-    type Item;
+mod foo {
+    trait T {
+        type Item;
+    }
+
+    pub type Alias<'a> = impl T<Item = &'a ()>;
+
+    struct S;
+    impl<'a> T for &'a S {
+        type Item = &'a ();
+    }
+
+    pub const fn filter_positive<'a>() -> &'a Alias<'a> {
+        &&S
+    }
 }
+use foo::*;
 
-type Alias<'a> = impl T<Item = &'a ()>;
-
-struct S;
-impl<'a> T for &'a S {
-    type Item = &'a ();
-}
-
-const fn filter_positive<'a>() -> &'a Alias<'a> {
-    &&S
-}
-
-const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
+const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
     fun(filter_positive());
 }
 

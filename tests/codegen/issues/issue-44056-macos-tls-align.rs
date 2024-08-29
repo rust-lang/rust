@@ -1,5 +1,5 @@
 //
-//@ only-macos
+//@ only-apple
 //@ compile-flags: -O
 
 #![crate_type = "rlib"]

@@ -1,16 +1,14 @@
-use super::LoweringContext;
 use core::ops::ControlFlow;
-use rustc_ast as ast;
+use std::borrow::Cow;
+
 use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir as hir;
-use rustc_span::{
-    sym,
-    symbol::{kw, Ident},
-    Span, Symbol,
-};
-use std::borrow::Cow;
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::{sym, Span, Symbol};
+use {rustc_ast as ast, rustc_hir as hir};
+
+use super::LoweringContext;
 
 impl<'hir> LoweringContext<'_, 'hir> {
     pub(crate) fn lower_format_args(&mut self, sp: Span, fmt: &FormatArgs) -> hir::ExprKind<'hir> {

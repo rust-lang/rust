@@ -92,7 +92,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
             cx,
             PTR_AS_PTR,
             expr.span,
-            "`as` casting between raw pointers without changing its mutability",
+            "`as` casting between raw pointers without changing their constness",
             help,
             final_suggestion,
             app,

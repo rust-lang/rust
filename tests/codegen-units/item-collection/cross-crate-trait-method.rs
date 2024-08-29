@@ -24,8 +24,6 @@ fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn <char as cgu_export_trait_method::Trait>::with_default_impl
     let _ = Trait::with_default_impl('c');
 
-
-
     //~ MONO_ITEM fn <u32 as cgu_export_trait_method::Trait>::with_default_impl_generic::<&str>
     let _ = Trait::with_default_impl_generic(0u32, "abc");
     //~ MONO_ITEM fn <u32 as cgu_export_trait_method::Trait>::with_default_impl_generic::<bool>

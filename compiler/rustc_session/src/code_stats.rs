@@ -1,9 +1,10 @@
+use std::cmp;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lock;
 use rustc_span::def_id::DefId;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
-use std::cmp;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct VariantInfo {

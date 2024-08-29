@@ -10,7 +10,7 @@
 //!   and the relative position of the access;
 //! - idempotency properties asserted in `perms.rs` (for optimizations)
 
-use std::fmt;
+use std::{fmt, mem};
 
 use smallvec::SmallVec;
 
@@ -530,13 +530,11 @@ impl<'tcx> Tree {
         span: Span,        // diagnostics
     ) -> InterpResult<'tcx> {
         self.perform_access(
-            AccessKind::Write,
             tag,
-            Some(access_range),
+            Some((access_range, AccessKind::Write, diagnostics::AccessCause::Dealloc)),
             global,
             alloc_id,
             span,
-            diagnostics::AccessCause::Dealloc,
         )?;
         for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size) {
             TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
@@ -570,12 +568,16 @@ impl<'tcx> Tree {
     }
 
     /// Map the per-node and per-location `LocationState::perform_access`
-    /// to each location of `access_range`, on every tag of the allocation.
+    /// to each location of the first component of `access_range_and_kind`,
+    /// on every tag of the allocation.
     ///
-    /// If `access_range` is `None`, this is interpreted as the special
+    /// If `access_range_and_kind` is `None`, this is interpreted as the special
     /// access that is applied on protector release:
     /// - the access will be applied only to initialized locations of the allocation,
-    /// - and it will not be visible to children.
+    /// - it will not be visible to children,
+    /// - it will be recorded as a `FnExit` diagnostic access
+    /// - and it will be a read except if the location is `Active`, i.e. has been written to,
+    ///   in which case it will be a write.
     ///
     /// `LocationState::perform_access` will take care of raising transition
     /// errors and updating the `initialized` status of each location,
@@ -585,13 +587,11 @@ impl<'tcx> Tree {
     /// - recording the history.
     pub fn perform_access(
         &mut self,
-        access_kind: AccessKind,
         tag: BorTag,
-        access_range: Option<AllocRange>,
+        access_range_and_kind: Option<(AllocRange, AccessKind, diagnostics::AccessCause)>,
         global: &GlobalState,
-        alloc_id: AllocId,                      // diagnostics
-        span: Span,                             // diagnostics
-        access_cause: diagnostics::AccessCause, // diagnostics
+        alloc_id: AllocId, // diagnostics
+        span: Span,        // diagnostics
     ) -> InterpResult<'tcx> {
         use std::ops::Range;
         // Performs the per-node work:
@@ -605,6 +605,8 @@ impl<'tcx> Tree {
         // `perms_range` is only for diagnostics (it is the range of
         // the `RangeMap` on which we are currently working).
         let node_app = |perms_range: Range<u64>,
+                        access_kind: AccessKind,
+                        access_cause: diagnostics::AccessCause,
                         args: NodeAppArgs<'_>|
          -> Result<ContinueTraversal, TransitionError> {
             let NodeAppArgs { node, mut perm, rel_pos } = args;
@@ -618,14 +620,13 @@ impl<'tcx> Tree {
 
             let protected = global.borrow().protected_tags.contains_key(&node.tag);
             let transition = old_state.perform_access(access_kind, rel_pos, protected)?;
-
             // Record the event as part of the history
             if !transition.is_noop() {
                 node.debug_info.history.push(diagnostics::Event {
                     transition,
                     is_foreign: rel_pos.is_foreign(),
                     access_cause,
-                    access_range,
+                    access_range: access_range_and_kind.map(|x| x.0),
                     transition_range: perms_range,
                     span,
                 });
@@ -636,6 +637,7 @@ impl<'tcx> Tree {
         // Error handler in case `node_app` goes wrong.
         // Wraps the faulty transition in more context for diagnostics.
         let err_handler = |perms_range: Range<u64>,
+                           access_cause: diagnostics::AccessCause,
                            args: ErrHandlerArgs<'_, TransitionError>|
          -> InterpError<'tcx> {
             let ErrHandlerArgs { error_kind, conflicting_info, accessed_info } = args;
@@ -650,7 +652,7 @@ impl<'tcx> Tree {
             .build()
         };
 
-        if let Some(access_range) = access_range {
+        if let Some((access_range, access_kind, access_cause)) = access_range_and_kind {
             // Default branch: this is a "normal" access through a known range.
             // We iterate over affected locations and traverse the tree for each of them.
             for (perms_range, perms) in self.rperms.iter_mut(access_range.start, access_range.size)
@@ -658,8 +660,8 @@ impl<'tcx> Tree {
                 TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                     .traverse_parents_this_children_others(
                         tag,
-                        |args| node_app(perms_range.clone(), args),
-                        |args| err_handler(perms_range.clone(), args),
+                        |args| node_app(perms_range.clone(), access_kind, access_cause, args),
+                        |args| err_handler(perms_range.clone(), access_cause, args),
                     )?;
             }
         } else {
@@ -678,11 +680,14 @@ impl<'tcx> Tree {
                 if let Some(p) = perms.get(idx)
                     && p.initialized
                 {
+                    let access_kind =
+                        if p.permission.is_active() { AccessKind::Write } else { AccessKind::Read };
+                    let access_cause = diagnostics::AccessCause::FnExit(access_kind);
                     TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
                         .traverse_nonchildren(
                         tag,
-                        |args| node_app(perms_range.clone(), args),
-                        |args| err_handler(perms_range.clone(), args),
+                        |args| node_app(perms_range.clone(), access_kind, access_cause, args),
+                        |args| err_handler(perms_range.clone(), access_cause, args),
                     )?;
                 }
             }
@@ -694,8 +699,7 @@ impl<'tcx> Tree {
 /// Integration with the BorTag garbage collector
 impl Tree {
     pub fn remove_unreachable_tags(&mut self, live_tags: &FxHashSet<BorTag>) {
-        let root_is_needed = self.keep_only_needed(self.root, live_tags); // root can't be removed
-        assert!(root_is_needed);
+        self.remove_useless_children(self.root, live_tags);
         // Right after the GC runs is a good moment to check if we can
         // merge some adjacent ranges that were made equal by the removal of some
         // tags (this does not necessarily mean that they have identical internal representations,
@@ -703,9 +707,16 @@ impl Tree {
         self.rperms.merge_adjacent_thorough();
     }
 
+    /// Checks if a node is useless and should be GC'ed.
+    /// A node is useless if it has no children and also the tag is no longer live.
+    fn is_useless(&self, idx: UniIndex, live: &FxHashSet<BorTag>) -> bool {
+        let node = self.nodes.get(idx).unwrap();
+        node.children.is_empty() && !live.contains(&node.tag)
+    }
+
     /// Traverses the entire tree looking for useless tags.
-    /// Returns true iff the tag it was called on is still live or has live children,
-    /// and removes from the tree all tags that have no live children.
+    /// Removes from the tree all useless child nodes of root.
+    /// It will not delete the root itself.
     ///
     /// NOTE: This leaves in the middle of the tree tags that are unreachable but have
     /// reachable children. There is a potential for compacting the tree by reassigning
@@ -716,42 +727,60 @@ impl Tree {
     /// `child: Reserved`. This tree can exist. If we blindly delete `parent` and reassign
     /// `child` to be a direct child of `root` then Writes to `child` are now permitted
     /// whereas they were not when `parent` was still there.
-    fn keep_only_needed(&mut self, idx: UniIndex, live: &FxHashSet<BorTag>) -> bool {
-        let node = self.nodes.get(idx).unwrap();
-        // FIXME: this function does a lot of cloning, a 2-pass approach is possibly
-        // more efficient. It could consist of
-        // 1. traverse the Tree, collect all useless tags in a Vec
-        // 2. traverse the Vec, remove all tags previously selected
-        // Bench it.
-        let children: SmallVec<_> = node
-            .children
-            .clone()
-            .into_iter()
-            .filter(|child| self.keep_only_needed(*child, live))
-            .collect();
-        let no_children = children.is_empty();
-        let node = self.nodes.get_mut(idx).unwrap();
-        node.children = children;
-        if !live.contains(&node.tag) && no_children {
-            // All of the children and this node are unreachable, delete this tag
-            // from the tree (the children have already been deleted by recursive
-            // calls).
-            // Due to the API of UniMap we must absolutely call
-            // `UniValMap::remove` for the key of this tag on *all* maps that used it
-            // (which are `self.nodes` and every range of `self.rperms`)
-            // before we can safely apply `UniValMap::forget` to truly remove
-            // the tag from the mapping.
-            let tag = node.tag;
-            self.nodes.remove(idx);
-            for (_perms_range, perms) in self.rperms.iter_mut_all() {
-                perms.remove(idx);
+    fn remove_useless_children(&mut self, root: UniIndex, live: &FxHashSet<BorTag>) {
+        // To avoid stack overflows, we roll our own stack.
+        // Each element in the stack consists of the current tag, and the number of the
+        // next child to be processed.
+
+        // The other functions are written using the `TreeVisitorStack`, but that does not work here
+        // since we need to 1) do a post-traversal and 2) remove nodes from the tree.
+        // Since we do a post-traversal (by deleting nodes only after handling all children),
+        // we also need to be a bit smarter than "pop node, push all children."
+        let mut stack = vec![(root, 0)];
+        while let Some((tag, nth_child)) = stack.last_mut() {
+            let node = self.nodes.get(*tag).unwrap();
+            if *nth_child < node.children.len() {
+                // Visit the child by pushing it to the stack.
+                // Also increase `nth_child` so that when we come back to the `tag` node, we
+                // look at the next child.
+                let next_child = node.children[*nth_child];
+                *nth_child += 1;
+                stack.push((next_child, 0));
+                continue;
+            } else {
+                // We have processed all children of `node`, so now it is time to process `node` itself.
+                // First, get the current children of `node`. To appease the borrow checker,
+                // we have to temporarily move the list out of the node, and then put the
+                // list of remaining children back in.
+                let mut children_of_node =
+                    mem::take(&mut self.nodes.get_mut(*tag).unwrap().children);
+                // Remove all useless children, and save them for later.
+                // The closure needs `&self` and the loop below needs `&mut self`, so we need to `collect`
+                // in to a temporary list.
+                let to_remove: Vec<_> =
+                    children_of_node.drain_filter(|x| self.is_useless(*x, live)).collect();
+                // Put back the now-filtered vector.
+                self.nodes.get_mut(*tag).unwrap().children = children_of_node;
+                // Now, all that is left is unregistering the children saved in `to_remove`.
+                for idx in to_remove {
+                    // Note: In the rest of this comment, "this node" refers to `idx`.
+                    // This node has no more children (if there were any, they have already been removed).
+                    // It is also unreachable as determined by the GC, so we can remove it everywhere.
+                    // Due to the API of UniMap we must make sure to call
+                    // `UniValMap::remove` for the key of this node on *all* maps that used it
+                    // (which are `self.nodes` and every range of `self.rperms`)
+                    // before we can safely apply `UniKeyMap::remove` to truly remove
+                    // this tag from the `tag_mapping`.
+                    let node = self.nodes.remove(idx).unwrap();
+                    for (_perms_range, perms) in self.rperms.iter_mut_all() {
+                        perms.remove(idx);
+                    }
+                    self.tag_mapping.remove(&node.tag);
+                }
+                // We are done, the parent can continue.
+                stack.pop();
+                continue;
             }
-            self.tag_mapping.remove(&tag);
-            // The tag has been deleted, inform the caller
-            false
-        } else {
-            // The tag is still live or has live children, it must be kept
-            true
         }
     }
 }

@@ -14,6 +14,10 @@ session_crate_name_empty = crate name must not be empty
 
 session_crate_name_invalid = crate names cannot start with a `-`, but `{$s}` has a leading hyphen
 
+session_embed_source_insufficient_dwarf_version = `-Zembed-source=y` requires at least `-Z dwarf-version=5` but DWARF version is {$dwarf_version}
+
+session_embed_source_requires_debug_info = `-Zembed-source=y` requires debug information to be enabled
+
 session_expr_parentheses_needed = parentheses are required to parse this as an expression
 
 session_failed_to_create_profiler = failed to create profiler: {$err}
@@ -82,9 +86,9 @@ session_octal_float_literal_not_supported = octal float literal is not supported
 
 session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}
 
-session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C profile-sample-use` does not exist.
+session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C profile-sample-use` does not exist
 
-session_profile_use_file_does_not_exist = file `{$path}` passed to `-C profile-use` does not exist.
+session_profile_use_file_does_not_exist = file `{$path}` passed to `-C profile-use` does not exist
 
 session_sanitizer_cfi_canonical_jump_tables_requires_cfi = `-Zsanitizer-cfi-canonical-jump-tables` requires `-Zsanitizer=cfi`
 

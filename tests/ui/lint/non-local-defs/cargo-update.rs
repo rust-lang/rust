@@ -10,6 +10,8 @@
 // of the `cargo update` suggestion we assert it here.
 //@ error-pattern: `cargo update -p non_local_macro`
 
+#![warn(non_local_definitions)]
+
 extern crate non_local_macro;
 
 struct LocalStruct;

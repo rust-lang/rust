@@ -1,6 +1,5 @@
 use core::mem::*;
 use core::ptr;
-
 #[cfg(panic = "unwind")]
 use std::rc::Rc;
 
@@ -83,12 +82,12 @@ fn align_of_val_raw_packed() {
         f: [u32],
     }
     let storage = [0u8; 4];
-    let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+    let b: *const B = ptr::from_raw_parts(storage.as_ptr(), 1);
     assert_eq!(unsafe { align_of_val_raw(b) }, 1);
 
     const ALIGN_OF_VAL_RAW: usize = {
         let storage = [0u8; 4];
-        let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+        let b: *const B = ptr::from_raw_parts(storage.as_ptr(), 1);
         unsafe { align_of_val_raw(b) }
     };
     assert_eq!(ALIGN_OF_VAL_RAW, 1);

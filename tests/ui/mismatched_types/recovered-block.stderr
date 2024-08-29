@@ -1,13 +1,13 @@
-error: missing `struct` for struct definition
-  --> $DIR/recovered-block.rs:11:8
+error: missing `enum` for enum definition
+  --> $DIR/recovered-block.rs:11:5
    |
 LL |     pub Foo { text }
-   |        ^
+   |     ^^^^^^^
    |
-help: add `struct` here to parse `Foo` as a public struct
+help: add `enum` here to parse `Foo` as an enum
    |
-LL |     pub struct Foo { text }
-   |         ++++++
+LL |     pub enum Foo { text }
+   |         ++++
 
 error: aborting due to 1 previous error
 

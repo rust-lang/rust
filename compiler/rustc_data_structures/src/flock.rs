@@ -9,6 +9,10 @@ cfg_match! {
         mod linux;
         use linux as imp;
     }
+    cfg(target_os = "redox") => {
+        mod linux;
+        use linux as imp;
+    }
     cfg(unix) => {
         mod unix;
         use unix as imp;

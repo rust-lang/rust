@@ -1,6 +1,8 @@
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 #![allow(clippy::unnecessary_cast)]
 
+// FIXME(f16_f128): add tests for these types when `powf` is available
+
 fn main() {
     let x = 3f32;
     let _ = 2f32.powf(x);
@@ -22,6 +24,14 @@ fn main() {
     let _ = 1.5_f64.powf(1.0 / 3.0);
     let _ = 1.5_f64.powf(1.0 / 2.0);
     let _ = 1.5_f64.powf(3.0);
+
+    macro_rules! m {
+        ($e:expr) => {
+            5.5 - $e
+        };
+    }
+
+    let _ = 2f32.powf(1f32 + m!(2.0));
 
     // Cases where the lint shouldn't be applied
     let _ = x.powf(2.1);

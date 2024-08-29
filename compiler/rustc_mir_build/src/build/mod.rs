@@ -1,5 +1,3 @@
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
 use itertools::Itertools;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::Float;
@@ -15,19 +13,19 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use super::lints;
+use crate::build::expr::as_place::PlaceBuilder;
+use crate::build::scope::DropKind;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -219,8 +217,8 @@ struct Builder<'a, 'tcx> {
     lint_level_roots_cache: GrowableBitSet<hir::ItemLocalId>,
 
     /// Collects additional coverage information during MIR building.
-    /// Only present if branch coverage is enabled and this function is eligible.
-    coverage_branch_info: Option<coverageinfo::BranchInfoBuilder>,
+    /// Only present if coverage is enabled and this function is eligible.
+    coverage_info: Option<coverageinfo::CoverageInfoBuilder>,
 }
 
 type CaptureMap<'tcx> = SortedIndexMultiMap<usize, HirId, Capture<'tcx>>;
@@ -404,6 +402,15 @@ enum NeedsTemporary {
 #[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
+impl BlockAnd<()> {
+    /// Unpacks `BlockAnd<()>` into a [`BasicBlock`].
+    #[must_use]
+    fn into_block(self) -> BasicBlock {
+        let Self(block, ()) = self;
+        block
+    }
+}
+
 trait BlockAndExtension {
     fn and<T>(self, v: T) -> BlockAnd<T>;
     fn unit(self) -> BlockAnd<()>;
@@ -427,11 +434,6 @@ macro_rules! unpack {
         $x = b;
         v
     }};
-
-    ($c:expr) => {{
-        let BlockAnd(b, ()) = $c;
-        b
-    }};
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -452,7 +454,7 @@ fn construct_fn<'tcx>(
     assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
 
     // Figure out what primary body this item has.
-    let body_id = tcx.hir().body_owned_by(fn_def);
+    let body = tcx.hir().body_owned_by(fn_def);
     let span_with_body = tcx.hir().span_with_body(fn_id);
     let return_ty_span = tcx
         .hir()
@@ -512,26 +514,27 @@ fn construct_fn<'tcx>(
     );
 
     let call_site_scope =
-        region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::CallSite };
+        region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::CallSite };
     let arg_scope =
-        region::Scope { id: body_id.hir_id.local_id, data: region::ScopeData::Arguments };
+        region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::Arguments };
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
-    unpack!(builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
+    let _: BlockAnd<()> = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
         let fn_end = span_with_body.shrink_to_hi();
-        let return_block =
-            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+        let return_block = builder
+            .in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(START_BLOCK, arguments, arg_scope, expr)
                 }))
-            }));
+            })
+            .into_block();
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         builder.build_drop_trees();
         return_block.unit()
-    }));
+    });
 
     let mut body = builder.finish();
 
@@ -580,7 +583,7 @@ fn construct_const<'a, 'tcx>(
         Builder::new(thir, infcx, def, hir_id, span, 0, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
-    unpack!(block = builder.expr_into_dest(Place::return_place(), block, expr));
+    block = builder.expr_into_dest(Place::return_place(), block, expr).into_block();
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -774,7 +777,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unit_temp: None,
             var_debug_info: vec![],
             lint_level_roots_cache: GrowableBitSet::new_empty(),
-            coverage_branch_info: coverageinfo::BranchInfoBuilder::new_if_enabled(tcx, def),
+            coverage_info: coverageinfo::CoverageInfoBuilder::new_if_enabled(tcx, def),
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -803,7 +806,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
-        body.coverage_branch_info = self.coverage_branch_info.and_then(|b| b.into_done());
+        body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
         body
     }
 
@@ -962,7 +965,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some((Some(&place), span)),
                     );
                     let place_builder = PlaceBuilder::from(local);
-                    unpack!(block = self.place_into_pattern(block, pat, place_builder, false));
+                    block = self.place_into_pattern(block, pat, place_builder, false).into_block();
                 }
             }
             self.source_scope = original_source_scope;
@@ -1014,14 +1017,14 @@ fn parse_float_into_constval<'tcx>(
     float_ty: ty::FloatTy,
     neg: bool,
 ) -> Option<ConstValue<'tcx>> {
-    parse_float_into_scalar(num, float_ty, neg).map(ConstValue::Scalar)
+    parse_float_into_scalar(num, float_ty, neg).map(|s| ConstValue::Scalar(s.into()))
 }
 
 pub(crate) fn parse_float_into_scalar(
     num: Symbol,
     float_ty: ty::FloatTy,
     neg: bool,
-) -> Option<Scalar> {
+) -> Option<ScalarInt> {
     let num = num.as_str();
     match float_ty {
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
@@ -1030,7 +1033,7 @@ pub(crate) fn parse_float_into_scalar(
             if neg {
                 f = -f;
             }
-            Some(Scalar::from_f16(f))
+            Some(ScalarInt::from(f))
         }
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
@@ -1053,7 +1056,7 @@ pub(crate) fn parse_float_into_scalar(
                 f = -f;
             }
 
-            Some(Scalar::from_f32(f))
+            Some(ScalarInt::from(f))
         }
         ty::FloatTy::F64 => {
             let Ok(rust_f) = num.parse::<f64>() else { return None };
@@ -1076,7 +1079,7 @@ pub(crate) fn parse_float_into_scalar(
                 f = -f;
             }
 
-            Some(Scalar::from_f64(f))
+            Some(ScalarInt::from(f))
         }
         // FIXME(f16_f128): When available, compare to the library parser as with `f32` and `f64`
         ty::FloatTy::F128 => {
@@ -1084,7 +1087,7 @@ pub(crate) fn parse_float_into_scalar(
             if neg {
                 f = -f;
             }
-            Some(Scalar::from_f128(f))
+            Some(ScalarInt::from(f))
         }
     }
 }

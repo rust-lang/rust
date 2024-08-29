@@ -1,7 +1,8 @@
-use super::{Byte, Ref, Tree, Uninhabited};
-use crate::{Map, Set};
 use std::fmt;
 use std::sync::atomic::{AtomicU32, Ordering};
+
+use super::{Byte, Ref, Tree, Uninhabited};
+use crate::{Map, Set};
 
 /// A non-deterministic finite automaton (NFA) that represents the layout of a type.
 /// The transmutability of two given types is computed by comparing their `Nfa`s.
@@ -86,6 +87,7 @@ where
     pub(crate) fn from_tree(tree: Tree<!, R>) -> Result<Self, Uninhabited> {
         Ok(match tree {
             Tree::Byte(b) => Self::from_byte(b),
+            #[cfg(bootstrap)]
             Tree::Def(..) => unreachable!(),
             Tree::Ref(r) => Self::from_ref(r),
             Tree::Alt(alts) => {

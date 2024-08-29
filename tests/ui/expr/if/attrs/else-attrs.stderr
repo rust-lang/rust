@@ -9,12 +9,17 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL |       } else #[attr] if false {
    |  _______----_^^^^^^^_-
-   | |       |    |
-   | |       |    help: remove the attributes
+   | |       |
    | |       the branch belongs to this `else`
 LL | |     } else {
 LL | |     }
    | |_____- the attributes are attached to this branch
+   |
+help: remove the attributes
+   |
+LL -     } else #[attr] if false {
+LL +     } else if false {
+   |
 
 error: expected expression, found keyword `else`
   --> $DIR/else-attrs.rs:20:15

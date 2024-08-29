@@ -1,3 +1,6 @@
+use std::fmt::Debug;
+use std::iter;
+
 use hir::def_id::DefId;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
@@ -10,15 +13,14 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, EarlyBinder, FieldDef, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, FieldDef, GenericArgsRef, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::*;
-
-use std::fmt::Debug;
-use std::iter;
+use tracing::{debug, instrument, trace};
 
 use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
@@ -182,7 +184,7 @@ fn layout_of_uncached<'tcx>(
         ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(Float(Float::from_float_ty(fty))),
-        ty::FnPtr(_) => {
+        ty::FnPtr(..) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
             tcx.mk_layout(LayoutS::scalar(cx, ptr))
@@ -217,9 +219,13 @@ fn layout_of_uncached<'tcx>(
                             // its struct tail cannot be normalized either, so try to get a
                             // more descriptive layout error here, which will lead to less confusing
                             // diagnostics.
+                            //
+                            // We use the raw struct tail function here to get the first tail
+                            // that is an alias, which is likely the cause of the normalization
+                            // error.
                             match tcx.try_normalize_erasing_regions(
                                 param_env,
-                                tcx.struct_tail_without_normalization(pointee),
+                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
                             ) {
                                 Ok(_) => {}
                                 Err(better_err) => {
@@ -242,7 +248,7 @@ fn layout_of_uncached<'tcx>(
 
                 metadata
             } else {
-                let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
+                let unsized_part = tcx.struct_tail_for_codegen(pointee, param_env);
 
                 match unsized_part.kind() {
                     ty::Foreign(..) => {
@@ -731,9 +737,7 @@ fn coroutine_saved_local_eligibility(
                     // point, so it is no longer a candidate.
                     trace!(
                         "removing local {:?} in >1 variant ({:?}, {:?})",
-                        local,
-                        variant_index,
-                        idx
+                        local, variant_index, idx
                     );
                     ineligible_locals.insert(*local);
                     assignments[*local] = Ineligible(None);

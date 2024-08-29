@@ -1,17 +1,20 @@
+use core::cell::Cell;
+use core::cmp::Ordering::{self, Equal, Greater, Less};
+use core::convert::identity;
+use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::Ordering::Relaxed;
+use core::{fmt, mem};
+use std::panic;
+
+use rand::distributions::Standard;
+use rand::prelude::*;
+use rand::{Rng, RngCore};
+
 use crate::borrow::ToOwned;
 use crate::rc::Rc;
 use crate::string::ToString;
 use crate::test_helpers::test_rng;
 use crate::vec::Vec;
-
-use core::cell::Cell;
-use core::cmp::Ordering::{self, Equal, Greater, Less};
-use core::convert::identity;
-use core::fmt;
-use core::mem;
-use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use rand::{distributions::Standard, prelude::*, Rng, RngCore};
-use std::panic;
 
 macro_rules! do_test {
     ($input:ident, $func:ident) => {
@@ -34,7 +37,7 @@ macro_rules! do_test {
             }
 
             let v = $input.to_owned();
-            let _ = std::panic::catch_unwind(move || {
+            let _ = panic::catch_unwind(move || {
                 let mut v = v;
                 let mut panic_countdown = panic_countdown;
                 v.$func(|a, b| {
@@ -240,6 +243,7 @@ fn panic_safe() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_sort() {
     let mut rng = test_rng();
 
@@ -294,15 +298,20 @@ fn test_sort() {
         }
     }
 
-    // Sort using a completely random comparison function.
-    // This will reorder the elements *somehow*, but won't panic.
-    let mut v = [0; 500];
-    for i in 0..v.len() {
+    const ORD_VIOLATION_MAX_LEN: usize = 500;
+    let mut v = [0; ORD_VIOLATION_MAX_LEN];
+    for i in 0..ORD_VIOLATION_MAX_LEN {
         v[i] = i as i32;
     }
-    v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+
+    // Sort using a completely random comparison function. This will reorder the elements *somehow*,
+    // it may panic but the original elements must still be present.
+    let _ = panic::catch_unwind(move || {
+        v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+    });
+
     v.sort();
-    for i in 0..v.len() {
+    for i in 0..ORD_VIOLATION_MAX_LEN {
         assert_eq!(v[i], i as i32);
     }
 

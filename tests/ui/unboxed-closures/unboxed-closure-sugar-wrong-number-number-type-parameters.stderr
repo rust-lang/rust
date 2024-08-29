@@ -2,7 +2,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:17
    |
 LL | fn foo1(_: &dyn Zero()) {
-   |                 ^^^^-- help: remove these parenthetical generics
+   |                 ^^^^-- help: remove the unnecessary parenthetical generics
    |                 |
    |                 expected 0 generic arguments
    |
@@ -22,7 +22,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:10:17
    |
 LL | fn foo2(_: &dyn Zero<usize>) {
-   |                 ^^^^------- help: remove these generics
+   |                 ^^^^------- help: remove the unnecessary generics
    |                 |
    |                 expected 0 generic arguments
    |
@@ -36,7 +36,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:14:17
    |
 LL | fn foo3(_: &dyn Zero <   usize   >) {
-   |                 ^^^^-------------- help: remove these generics
+   |                 ^^^^-------------- help: remove the unnecessary generics
    |                 |
    |                 expected 0 generic arguments
    |
@@ -50,7 +50,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:18:17
    |
 LL | fn foo4(_: &dyn Zero(usize)) {
-   |                 ^^^^------- help: remove these parenthetical generics
+   |                 ^^^^------- help: remove the unnecessary parenthetical generics
    |                 |
    |                 expected 0 generic arguments
    |
@@ -70,7 +70,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:23:17
    |
 LL | fn foo5(_: &dyn Zero (   usize   )) {
-   |                 ^^^^-------------- help: remove these parenthetical generics
+   |                 ^^^^-------------- help: remove the unnecessary parenthetical generics
    |                 |
    |                 expected 0 generic arguments
    |

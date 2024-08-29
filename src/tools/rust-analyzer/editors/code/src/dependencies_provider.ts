@@ -4,7 +4,7 @@ import * as fs from "fs";
 import type { CtxInit } from "./ctx";
 import * as ra from "./lsp_ext";
 import type { FetchDependencyListResult } from "./lsp_ext";
-import { unwrapUndefinable } from "./undefinable";
+import { unwrapUndefinable } from "./util";
 
 export class RustDependenciesProvider
     implements vscode.TreeDataProvider<Dependency | DependencyFile>

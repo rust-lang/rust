@@ -7,6 +7,7 @@
 
 use std::panic::catch_unwind;
 
+#[allow(dead_code)]
 #[derive(Default)]
 struct Guard;
 

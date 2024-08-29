@@ -1,0 +1,182 @@
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:5:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+   = note: `-D clippy::manual-inspect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_inspect)]`
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL ~         println!("{}", x);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:10:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL ~         println!("{x}");
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:15:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL ~         println!("{}", x * 5 + 1);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:20:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |         if x == 0 {
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:27:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |         if &x == &0 {
+LL |             let _y = x;
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:78:41
+   |
+LL |     let _ = Some((String::new(), 0u32)).map(|x| {
+   |                                         ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some((String::new(), 0u32)).inspect(|x| {
+LL |         if x.1 == 0 {
+LL |             let _x = x.1;
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:104:33
+   |
+LL |     let _ = Some(String::new()).map(|x| {
+   |                                 ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(String::new()).inspect(|x| {
+LL |         if x.is_empty() {
+LL |             let _ = || {
+LL ~                 let _x = x;
+LL |             };
+LL ~             return;
+LL |         }
+LL ~         println!("test");
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:115:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |         if x == 0 {
+...
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:130:46
+   |
+LL |         let _ = Some(Cell2(Cell::new(0u32))).map(|x| {
+   |                                              ^^^
+   |
+help: try
+   |
+LL ~         let _ = Some(Cell2(Cell::new(0u32))).inspect(|x| {
+LL ~             x.0.set(1);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:146:34
+   |
+LL |     let _: Result<_, ()> = Ok(0).map(|x| {
+   |                                  ^^^
+   |
+help: try
+   |
+LL ~     let _: Result<_, ()> = Ok(0).inspect(|&x| {
+LL ~         println!("{}", x);
+   |
+
+error: using `map_err` over `inspect_err`
+  --> tests/ui/manual_inspect.rs:151:35
+   |
+LL |     let _: Result<(), _> = Err(0).map_err(|x| {
+   |                                   ^^^^^^^
+   |
+help: try
+   |
+LL ~     let _: Result<(), _> = Err(0).inspect_err(|&x| {
+LL ~         println!("{}", x);
+   |
+
+error: this call to `map()` won't have an effect on the call to `count()`
+  --> tests/ui/manual_inspect.rs:156:13
+   |
+LL |       let _ = [0]
+   |  _____________^
+LL | |         .into_iter()
+LL | |         .map(|x| {
+LL | |             println!("{}", x);
+LL | |             x
+LL | |         })
+LL | |         .count();
+   | |________________^
+   |
+   = help: make sure you did not confuse `map` with `filter`, `for_each` or `inspect`
+   = note: `-D clippy::suspicious-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_map)]`
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:158:10
+   |
+LL |         .map(|x| {
+   |          ^^^
+   |
+help: try
+   |
+LL ~         .inspect(|&x| {
+LL ~             println!("{}", x);
+   |
+
+error: aborting due to 13 previous errors
+

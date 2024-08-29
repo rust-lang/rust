@@ -5,7 +5,8 @@
 
 use std::fmt;
 
-use hir_expand::name::{name, AsName, Name};
+use hir_expand::name::{AsName, Name};
+use intern::{sym, Symbol};
 /// Different signed int types.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BuiltinInt {
@@ -30,8 +31,10 @@ pub enum BuiltinUint {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BuiltinFloat {
+    F16,
     F32,
     F64,
+    F128,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -46,59 +49,67 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     #[rustfmt::skip]
-    pub const ALL: &'static [(Name, BuiltinType)] = &[
-        (name![char], BuiltinType::Char),
-        (name![bool], BuiltinType::Bool),
-        (name![str],  BuiltinType::Str),
+    pub fn all_builtin_types() -> [(Name, BuiltinType); 19] {
+        [
+            (Name::new_symbol_root(sym::char.clone()), BuiltinType::Char),
+            (Name::new_symbol_root(sym::bool.clone()), BuiltinType::Bool),
+            (Name::new_symbol_root(sym::str.clone()),  BuiltinType::Str),
 
-        (name![isize], BuiltinType::Int(BuiltinInt::Isize)),
-        (name![i8],    BuiltinType::Int(BuiltinInt::I8)),
-        (name![i16],   BuiltinType::Int(BuiltinInt::I16)),
-        (name![i32],   BuiltinType::Int(BuiltinInt::I32)),
-        (name![i64],   BuiltinType::Int(BuiltinInt::I64)),
-        (name![i128],  BuiltinType::Int(BuiltinInt::I128)),
+            (Name::new_symbol_root(sym::isize.clone()), BuiltinType::Int(BuiltinInt::Isize)),
+            (Name::new_symbol_root(sym::i8.clone()),    BuiltinType::Int(BuiltinInt::I8)),
+            (Name::new_symbol_root(sym::i16.clone()),   BuiltinType::Int(BuiltinInt::I16)),
+            (Name::new_symbol_root(sym::i32.clone()),   BuiltinType::Int(BuiltinInt::I32)),
+            (Name::new_symbol_root(sym::i64.clone()),   BuiltinType::Int(BuiltinInt::I64)),
+            (Name::new_symbol_root(sym::i128.clone()),  BuiltinType::Int(BuiltinInt::I128)),
 
-        (name![usize], BuiltinType::Uint(BuiltinUint::Usize)),
-        (name![u8],    BuiltinType::Uint(BuiltinUint::U8)),
-        (name![u16],   BuiltinType::Uint(BuiltinUint::U16)),
-        (name![u32],   BuiltinType::Uint(BuiltinUint::U32)),
-        (name![u64],   BuiltinType::Uint(BuiltinUint::U64)),
-        (name![u128],  BuiltinType::Uint(BuiltinUint::U128)),
+            (Name::new_symbol_root(sym::usize.clone()), BuiltinType::Uint(BuiltinUint::Usize)),
+            (Name::new_symbol_root(sym::u8.clone()),    BuiltinType::Uint(BuiltinUint::U8)),
+            (Name::new_symbol_root(sym::u16.clone()),   BuiltinType::Uint(BuiltinUint::U16)),
+            (Name::new_symbol_root(sym::u32.clone()),   BuiltinType::Uint(BuiltinUint::U32)),
+            (Name::new_symbol_root(sym::u64.clone()),   BuiltinType::Uint(BuiltinUint::U64)),
+            (Name::new_symbol_root(sym::u128.clone()),  BuiltinType::Uint(BuiltinUint::U128)),
 
-        (name![f32], BuiltinType::Float(BuiltinFloat::F32)),
-        (name![f64], BuiltinType::Float(BuiltinFloat::F64)),
-    ];
+            (Name::new_symbol_root(sym::f16.clone()), BuiltinType::Float(BuiltinFloat::F16)),
+            (Name::new_symbol_root(sym::f32.clone()), BuiltinType::Float(BuiltinFloat::F32)),
+            (Name::new_symbol_root(sym::f64.clone()), BuiltinType::Float(BuiltinFloat::F64)),
+            (Name::new_symbol_root(sym::f128.clone()), BuiltinType::Float(BuiltinFloat::F128)),
+        ]
+    }
 
     pub fn by_name(name: &Name) -> Option<Self> {
-        Self::ALL.iter().find_map(|(n, ty)| if n == name { Some(*ty) } else { None })
+        Self::all_builtin_types()
+            .iter()
+            .find_map(|(n, ty)| if n == name { Some(*ty) } else { None })
     }
 }
 
 impl AsName for BuiltinType {
     fn as_name(&self) -> Name {
         match self {
-            BuiltinType::Char => name![char],
-            BuiltinType::Bool => name![bool],
-            BuiltinType::Str => name![str],
+            BuiltinType::Char => Name::new_symbol_root(sym::char.clone()),
+            BuiltinType::Bool => Name::new_symbol_root(sym::bool.clone()),
+            BuiltinType::Str => Name::new_symbol_root(sym::str.clone()),
             BuiltinType::Int(it) => match it {
-                BuiltinInt::Isize => name![isize],
-                BuiltinInt::I8 => name![i8],
-                BuiltinInt::I16 => name![i16],
-                BuiltinInt::I32 => name![i32],
-                BuiltinInt::I64 => name![i64],
-                BuiltinInt::I128 => name![i128],
+                BuiltinInt::Isize => Name::new_symbol_root(sym::isize.clone()),
+                BuiltinInt::I8 => Name::new_symbol_root(sym::i8.clone()),
+                BuiltinInt::I16 => Name::new_symbol_root(sym::i16.clone()),
+                BuiltinInt::I32 => Name::new_symbol_root(sym::i32.clone()),
+                BuiltinInt::I64 => Name::new_symbol_root(sym::i64.clone()),
+                BuiltinInt::I128 => Name::new_symbol_root(sym::i128.clone()),
             },
             BuiltinType::Uint(it) => match it {
-                BuiltinUint::Usize => name![usize],
-                BuiltinUint::U8 => name![u8],
-                BuiltinUint::U16 => name![u16],
-                BuiltinUint::U32 => name![u32],
-                BuiltinUint::U64 => name![u64],
-                BuiltinUint::U128 => name![u128],
+                BuiltinUint::Usize => Name::new_symbol_root(sym::usize.clone()),
+                BuiltinUint::U8 => Name::new_symbol_root(sym::u8.clone()),
+                BuiltinUint::U16 => Name::new_symbol_root(sym::u16.clone()),
+                BuiltinUint::U32 => Name::new_symbol_root(sym::u32.clone()),
+                BuiltinUint::U64 => Name::new_symbol_root(sym::u64.clone()),
+                BuiltinUint::U128 => Name::new_symbol_root(sym::u128.clone()),
             },
             BuiltinType::Float(it) => match it {
-                BuiltinFloat::F32 => name![f32],
-                BuiltinFloat::F64 => name![f64],
+                BuiltinFloat::F16 => Name::new_symbol_root(sym::f16.clone()),
+                BuiltinFloat::F32 => Name::new_symbol_root(sym::f32.clone()),
+                BuiltinFloat::F64 => Name::new_symbol_root(sym::f64.clone()),
+                BuiltinFloat::F128 => Name::new_symbol_root(sym::f128.clone()),
             },
         }
     }
@@ -132,6 +143,18 @@ impl BuiltinInt {
         };
         Some(res)
     }
+    pub fn from_suffix_sym(suffix: &Symbol) -> Option<BuiltinInt> {
+        let res = match suffix {
+            s if *s == sym::isize => Self::Isize,
+            s if *s == sym::i8    => Self::I8,
+            s if *s == sym::i16   => Self::I16,
+            s if *s == sym::i32   => Self::I32,
+            s if *s == sym::i64   => Self::I64,
+            s if *s == sym::i128  => Self::I128,
+            _ => return None,
+        };
+        Some(res)
+    }
 }
 
 #[rustfmt::skip]
@@ -149,14 +172,29 @@ impl BuiltinUint {
         };
         Some(res)
     }
+    pub fn from_suffix_sym(suffix: &Symbol) -> Option<BuiltinUint> {
+        let res = match suffix {
+            s if *s == sym::usize => Self::Usize,
+            s if *s == sym::u8    => Self::U8,
+            s if *s == sym::u16   => Self::U16,
+            s if *s == sym::u32   => Self::U32,
+            s if *s == sym::u64   => Self::U64,
+            s if *s == sym::u128  => Self::U128,
+
+            _ => return None,
+        };
+        Some(res)
+    }
 }
 
 #[rustfmt::skip]
 impl BuiltinFloat {
     pub fn from_suffix(suffix: &str) -> Option<BuiltinFloat> {
         let res = match suffix {
+            "f16" => BuiltinFloat::F16,
             "f32" => BuiltinFloat::F32,
             "f64" => BuiltinFloat::F64,
+            "f128" => BuiltinFloat::F128,
             _ => return None,
         };
         Some(res)
@@ -192,8 +230,10 @@ impl fmt::Display for BuiltinUint {
 impl fmt::Display for BuiltinFloat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
+            BuiltinFloat::F16 => "f16",
             BuiltinFloat::F32 => "f32",
             BuiltinFloat::F64 => "f64",
+            BuiltinFloat::F128 => "f128",
         })
     }
 }

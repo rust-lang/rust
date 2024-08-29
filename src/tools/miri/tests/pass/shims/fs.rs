@@ -30,6 +30,8 @@ fn main() {
     test_directory();
     test_canonicalize();
     test_from_raw_os_error();
+    #[cfg(unix)]
+    test_pread_pwrite();
 }
 
 fn test_path_conversion() {
@@ -202,7 +204,7 @@ fn test_errors() {
     // Opening a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, File::open(&path).unwrap_err().kind());
     // Make sure we can also format this.
-    format!("{0}: {0:?}", File::open(&path).unwrap_err());
+    let _ = format!("{0}: {0:?}", File::open(&path).unwrap_err());
     // Removing a non-existing file should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, remove_file(&path).unwrap_err().kind());
     // Reading the metadata of a non-existing file should fail with a "not found" error.
@@ -301,5 +303,44 @@ fn test_from_raw_os_error() {
     let error = Error::from_raw_os_error(code);
     assert!(matches!(error.kind(), ErrorKind::Uncategorized));
     // Make sure we can also format this.
-    format!("{error:?}");
+    let _ = format!("{error:?}");
+}
+
+#[cfg(unix)]
+fn test_pread_pwrite() {
+    use std::os::unix::fs::FileExt;
+
+    let bytes = b"hello world";
+    let path = utils::prepare_with_content("miri_test_fs_pread_pwrite.txt", bytes);
+    let mut f = OpenOptions::new().read(true).write(true).open(path).unwrap();
+
+    let mut buf1 = [0u8; 3];
+    f.seek(SeekFrom::Start(5)).unwrap();
+
+    // Check that we get expected result after seek
+    f.read_exact(&mut buf1).unwrap();
+    assert_eq!(&buf1, b" wo");
+    f.seek(SeekFrom::Start(5)).unwrap();
+
+    // Check pread
+    f.read_exact_at(&mut buf1, 2).unwrap();
+    assert_eq!(&buf1, b"llo");
+    f.read_exact_at(&mut buf1, 6).unwrap();
+    assert_eq!(&buf1, b"wor");
+
+    // Ensure that cursor position is not changed
+    f.read_exact(&mut buf1).unwrap();
+    assert_eq!(&buf1, b" wo");
+    f.seek(SeekFrom::Start(5)).unwrap();
+
+    // Check pwrite
+    f.write_all_at(b" mo", 6).unwrap();
+
+    let mut buf2 = [0u8; 11];
+    f.read_exact_at(&mut buf2, 0).unwrap();
+    assert_eq!(&buf2, b"hello  mold");
+
+    // Ensure that cursor position is not changed
+    f.read_exact(&mut buf1).unwrap();
+    assert_eq!(&buf1, b"  m");
 }

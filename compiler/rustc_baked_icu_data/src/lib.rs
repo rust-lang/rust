@@ -20,10 +20,13 @@
 //! --cldr-tag latest --icuexport-tag latest -o src/data
 //! ```
 
-#![allow(internal_features)]
-#![feature(rustdoc_internals)]
-#![doc(rust_logo)]
+// tidy-alphabetical-start
 #![allow(elided_lifetimes_in_paths)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
+// #![warn(unreachable_pub)] // don't use because this crate is mostly generated code
+// tidy-alphabetical-end
 
 mod data {
     include!("data/mod.rs");

@@ -1,3 +1,6 @@
+use std::collections::hash_map::Entry;
+use std::mem;
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
@@ -13,22 +16,17 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::query::QuerySideEffects;
-use rustc_serialize::{
-    opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder},
-    Decodable, Decoder, Encodable, Encoder,
-};
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{
-    BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span, SpanDecoder, SpanEncoder,
-    StableSourceFileId,
+    BytePos, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span,
+    SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
-use rustc_span::{CachingSourceMapView, Symbol};
-use std::collections::hash_map::Entry;
-use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -733,10 +731,10 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        self.tcx.def_path_hash_to_def_id(
-            def_path_hash,
-            &("Failed to convert DefPathHash", def_path_hash),
-        )
+        match self.tcx.def_path_hash_to_def_id(def_path_hash) {
+            Some(r) => r,
+            None => panic!("Failed to convert DefPathHash {def_path_hash:?}"),
+        }
     }
 
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
@@ -752,7 +750,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> 
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
-    for &'tcx UnordMap<DefId, ty::EarlyBinder<Ty<'tcx>>>
+    for &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>
 {
     #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context, walk_span_to_context};
-use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{get_async_fn_body, is_async_fn};
+use clippy_utils::visitors::for_each_expr_without_closures;
+use clippy_utils::{get_async_fn_body, is_async_fn, is_from_proc_macro};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -16,12 +16,13 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for missing return statements at the end of a block.
     ///
-    /// ### Why is this bad?
-    /// Actually omitting the return keyword is idiomatic Rust code. Programmers
-    /// coming from other languages might prefer the expressiveness of `return`. It's possible to miss
-    /// the last returning statement because the only difference is a missing `;`. Especially in bigger
-    /// code with multiple return paths having a `return` keyword makes it easier to find the
-    /// corresponding statements.
+    /// ### Why restrict this?
+    /// Omitting the return keyword whenever possible is idiomatic Rust code, but:
+    ///
+    /// * Programmers coming from other languages might prefer the expressiveness of `return`.
+    /// * It's possible to miss the last returning statement because the only difference is a missing `;`.
+    /// * Especially in bigger code with multiple return paths, having a `return` keyword makes it easier to find the
+    ///   corresponding statements.
     ///
     /// ### Example
     /// ```no_run
@@ -44,8 +45,6 @@ declare_clippy_lint! {
 declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 
 fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
-    let mut app = Applicability::MachineApplicable;
-    let snip = snippet_with_applicability(cx, span, "..", &mut app);
     span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
@@ -53,14 +52,14 @@ fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
         span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(span, "add `return` as shown", format!("return {snip}"), app);
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_applicability(cx, span, "..", &mut app);
+            diag.span_suggestion_verbose(span, "add `return` as shown", format!("return {snip}"), app);
         },
     );
 }
 
 fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, expr_span: Span) {
-    let mut app = Applicability::MachineApplicable;
-    let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
     span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
@@ -68,7 +67,9 @@ fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, exp
         break_span,
         "missing `return` statement",
         |diag| {
-            diag.span_suggestion(
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
+            diag.span_suggestion_verbose(
                 break_span,
                 "change `break` to `return` as shown",
                 format!("return {snip}"),
@@ -152,7 +153,7 @@ fn lint_implicit_returns(
 
         ExprKind::Loop(block, ..) => {
             let mut add_return = false;
-            let _: Option<!> = for_each_expr(block, |e| {
+            let _: Option<!> = for_each_expr_without_closures(block, |e| {
                 if let ExprKind::Break(dest, sub_expr) = e.kind {
                     if dest.target_id.ok() == Some(expr.hir_id) {
                         if call_site_span.is_none() && e.span.ctxt() == ctxt {
@@ -244,6 +245,10 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
         } else {
             body.value
         };
+
+        if is_from_proc_macro(cx, expr) {
+            return;
+        }
         lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
     }
 }

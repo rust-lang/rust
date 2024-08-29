@@ -5,7 +5,7 @@
 //@ only-x86_64-fortanix-unknown-sgx
 
 #[no_mangle]
-pub extern fn plus_one(r: &mut u64) {
+pub extern "C" fn plus_one(r: &mut u64) {
     *r = *r + 1;
 }
 

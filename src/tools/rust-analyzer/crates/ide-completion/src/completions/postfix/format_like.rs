@@ -65,7 +65,7 @@ pub(crate) fn add_format_like_completions(
         let exprs = with_placeholders(exprs);
         for (label, macro_name) in KINDS {
             let snippet = if exprs.is_empty() {
-                format!(r#"{}({})"#, macro_name, out)
+                format!(r#"{macro_name}({out})"#)
             } else {
                 format!(r#"{}({}, {})"#, macro_name, out, exprs.join(", "))
             };
@@ -108,7 +108,7 @@ mod tests {
 
         for (kind, input, output) in test_vector {
             let (parsed_string, _exprs) = parse_format_exprs(input).unwrap();
-            let snippet = format!(r#"{}("{}")"#, kind, parsed_string);
+            let snippet = format!(r#"{kind}("{parsed_string}")"#);
             assert_eq!(&snippet, output);
         }
     }

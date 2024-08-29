@@ -1,9 +1,10 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::trait_ref_of_method;
 use clippy_utils::ty::InteriorMut;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
@@ -67,17 +68,12 @@ declare_clippy_lint! {
 }
 
 pub struct MutableKeyType<'tcx> {
-    ignore_interior_mutability: Vec<String>,
     interior_mut: InteriorMut<'tcx>,
 }
 
 impl_lint_pass!(MutableKeyType<'_> => [ MUTABLE_KEY_TYPE ]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        self.interior_mut = InteriorMut::without_pointers(cx, &self.ignore_interior_mutability);
-    }
-
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
             self.check_sig(cx, item.owner_id.def_id, sig.decl);
@@ -107,10 +103,9 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType<'tcx> {
 }
 
 impl<'tcx> MutableKeyType<'tcx> {
-    pub fn new(ignore_interior_mutability: Vec<String>) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {
         Self {
-            ignore_interior_mutability,
-            interior_mut: InteriorMut::default(),
+            interior_mut: InteriorMut::without_pointers(tcx, &conf.ignore_interior_mutability),
         }
     }
 
@@ -130,14 +125,12 @@ impl<'tcx> MutableKeyType<'tcx> {
     // generics (because the compiler cannot ensure immutability for unknown types).
     fn check_ty_(&mut self, cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
         let ty = ty.peel_refs();
-        if let ty::Adt(def, args) = ty.kind() {
-            let is_keyed_type = [sym::HashMap, sym::BTreeMap, sym::HashSet, sym::BTreeSet]
-                .iter()
-                .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did()));
-            if !is_keyed_type {
-                return;
-            }
-
+        if let ty::Adt(def, args) = ty.kind()
+            && matches!(
+                cx.tcx.get_diagnostic_name(def.did()),
+                Some(sym::HashMap | sym::BTreeMap | sym::HashSet | sym::BTreeSet)
+            )
+        {
             let subst_ty = args.type_at(0);
             if self.interior_mut.is_interior_mut_ty(cx, subst_ty) {
                 span_lint(cx, MUTABLE_KEY_TYPE, span, "mutable key type");

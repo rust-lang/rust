@@ -1,7 +1,7 @@
-use super::*;
-
 use std::cell::RefCell;
 use std::clone::Clone;
+
+use super::*;
 
 #[test]
 fn test_clone() {
@@ -316,6 +316,24 @@ fn test_cowrc_clone_weak() {
     assert!(cow1_weak.upgrade().is_none());
 }
 
+/// This is similar to the doc-test for `Rc::make_mut()`, but on an unsized type (slice).
+#[test]
+fn test_cowrc_unsized() {
+    use std::rc::Rc;
+
+    let mut data: Rc<[i32]> = Rc::new([10, 20, 30]);
+
+    Rc::make_mut(&mut data)[0] += 1; // Won't clone anything
+    let mut other_data = Rc::clone(&data); // Won't clone inner data
+    Rc::make_mut(&mut data)[1] += 1; // Clones inner data
+    Rc::make_mut(&mut data)[2] += 1; // Won't clone anything
+    Rc::make_mut(&mut other_data)[0] *= 10; // Won't clone anything
+
+    // Now `data` and `other_data` point to different allocations.
+    assert_eq!(*data, [11, 21, 31]);
+    assert_eq!(*other_data, [110, 20, 30]);
+}
+
 #[test]
 fn test_show() {
     let foo = Rc::new(75);
@@ -606,6 +624,23 @@ fn test_unique_rc_drops_contents() {
     assert!(dropped);
 }
 
+/// Exercise the non-default allocator usage.
+#[test]
+fn test_unique_rc_with_alloc_drops_contents() {
+    let mut dropped = false;
+    struct DropMe<'a>(&'a mut bool);
+    impl Drop for DropMe<'_> {
+        fn drop(&mut self) {
+            *self.0 = true;
+        }
+    }
+    {
+        let rc = UniqueRc::new_in(DropMe(&mut dropped), std::alloc::System);
+        drop(rc);
+    }
+    assert!(dropped);
+}
+
 #[test]
 fn test_unique_rc_weak_clone_holding_ref() {
     let mut v = UniqueRc::new(0u8);
@@ -613,4 +648,13 @@ fn test_unique_rc_weak_clone_holding_ref() {
     let r = &mut *v;
     let _ = w.clone(); // touch weak count
     *r = 123;
+}
+
+#[test]
+fn test_unique_rc_unsizing_coercion() {
+    let mut rc: UniqueRc<[u8]> = UniqueRc::new([0u8; 3]);
+    assert_eq!(rc.len(), 3);
+    rc[0] = 123;
+    let rc: Rc<[u8]> = UniqueRc::into_rc(rc);
+    assert_eq!(*rc, [123, 0, 0]);
 }

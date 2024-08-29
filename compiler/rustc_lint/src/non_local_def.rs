@@ -1,20 +1,23 @@
-use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, TyKind};
-use rustc_hir::{Path, QPath};
+use rustc_errors::MultiSpan;
+use rustc_hir::def::DefKind;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, QPath, TyKind};
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{Obligation, ObligationCause};
-use rustc_middle::ty::{self, Binder, Ty, TyCtxt, TypeFoldable, TypeFolder};
-use rustc_middle::ty::{EarlyBinder, TraitRef, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, Binder, EarlyBinder, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::Span;
-use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};
-use rustc_trait_selection::infer::TyCtxtInferExt;
-use rustc_trait_selection::traits::error_reporting::ambiguity::{
+use rustc_span::symbol::kw;
+use rustc_span::{sym, ExpnKind, MacroKind, Span, Symbol};
+use rustc_trait_selection::error_reporting::traits::ambiguity::{
     compute_applicable_impls_for_diagnostics, CandidateSource,
 };
+use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::{fluent_generated as fluent, LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`
@@ -46,13 +49,13 @@ declare_lint! {
     /// All nested bodies (functions, enum discriminant, array length, consts) (expect for
     /// `const _: Ty = { ... }` in top-level module, which is still undecided) are checked.
     pub NON_LOCAL_DEFINITIONS,
-    Warn,
+    Allow,
     "checks for non-local definitions",
     report_in_external_macro
 }
 
 #[derive(Default)]
-pub struct NonLocalDefinitions {
+pub(crate) struct NonLocalDefinitions {
     body_depth: u32,
 }
 
@@ -64,11 +67,11 @@ impl_lint_pass!(NonLocalDefinitions => [NON_LOCAL_DEFINITIONS]);
 // instead check_mod is called after every body has been handled.
 
 impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
-    fn check_body(&mut self, _cx: &LateContext<'tcx>, _body: &'tcx Body<'tcx>) {
+    fn check_body(&mut self, _cx: &LateContext<'tcx>, _body: &Body<'tcx>) {
         self.body_depth += 1;
     }
 
-    fn check_body_post(&mut self, _cx: &LateContext<'tcx>, _body: &'tcx Body<'tcx>) {
+    fn check_body_post(&mut self, _cx: &LateContext<'tcx>, _body: &Body<'tcx>) {
         self.body_depth -= 1;
     }
 
@@ -107,6 +110,12 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
             }
         };
 
+        // determining if we are in a doctest context can't currently be determined
+        // by the code itself (there are no specific attributes), but fortunately rustdoc
+        // sets a perma-unstable env var for libtest so we just reuse that for now
+        let is_at_toplevel_doctest =
+            || self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
+
         match item.kind {
             ItemKind::Impl(impl_) => {
                 // The RFC states:
@@ -134,35 +143,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 };
 
                 // Part 1: Is the Self type local?
-                let self_ty_has_local_parent = match impl_.self_ty.kind {
-                    TyKind::Path(QPath::Resolved(_, ty_path)) => {
-                        path_has_local_parent(ty_path, cx, parent, parent_parent)
-                    }
-                    TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
-                        path_has_local_parent(
-                            principle_poly_trait_ref.trait_ref.path,
-                            cx,
-                            parent,
-                            parent_parent,
-                        )
-                    }
-                    TyKind::TraitObject([], _, _)
-                    | TyKind::InferDelegation(_, _)
-                    | TyKind::Slice(_)
-                    | TyKind::Array(_, _)
-                    | TyKind::Ptr(_)
-                    | TyKind::Ref(_, _)
-                    | TyKind::BareFn(_)
-                    | TyKind::Never
-                    | TyKind::Tup(_)
-                    | TyKind::Path(_)
-                    | TyKind::Pat(..)
-                    | TyKind::AnonAdt(_)
-                    | TyKind::OpaqueDef(_, _, _)
-                    | TyKind::Typeof(_)
-                    | TyKind::Infer
-                    | TyKind::Err(_) => false,
-                };
+                let self_ty_has_local_parent =
+                    ty_has_local_parent(&impl_.self_ty.kind, cx, parent, parent_parent);
 
                 if self_ty_has_local_parent {
                     return;
@@ -202,8 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // Get the span of the parent const item ident (if it's a not a const anon).
                 //
                 // Used to suggest changing the const item to a const anon.
-                let span_for_const_anon_suggestion = if self.body_depth == 1
-                    && parent_def_kind == DefKind::Const
+                let span_for_const_anon_suggestion = if parent_def_kind == DefKind::Const
                     && parent_opt_item_name != Some(kw::Underscore)
                     && let Some(parent) = parent.as_local()
                     && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
@@ -215,9 +196,90 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     None
                 };
 
+                let const_anon = matches!(parent_def_kind, DefKind::Const | DefKind::Static { .. })
+                    .then_some(span_for_const_anon_suggestion);
+
+                let may_remove = match &impl_.self_ty.kind {
+                    TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty)
+                        if ty_has_local_parent(&mut_ty.ty.kind, cx, parent, parent_parent) =>
+                    {
+                        let type_ =
+                            if matches!(impl_.self_ty.kind, TyKind::Ptr(_)) { "*" } else { "&" };
+                        let part = format!("{}{}", type_, mut_ty.mutbl.prefix_str());
+                        Some((impl_.self_ty.span.shrink_to_lo().until(mut_ty.ty.span), part))
+                    }
+                    _ => None,
+                };
+
+                let impl_span = item.span.shrink_to_lo().to(impl_.self_ty.span);
+                let mut ms = MultiSpan::from_span(impl_span);
+
+                let (self_ty_span, self_ty_str) =
+                    self_ty_kind_for_diagnostic(&impl_.self_ty, cx.tcx);
+
+                ms.push_span_label(
+                    self_ty_span,
+                    fluent::lint_non_local_definitions_self_ty_not_local,
+                );
+                let of_trait_str = if let Some(of_trait) = &impl_.of_trait {
+                    ms.push_span_label(
+                        path_span_without_args(&of_trait.path),
+                        fluent::lint_non_local_definitions_of_trait_not_local,
+                    );
+                    Some(path_name_to_string(&of_trait.path))
+                } else {
+                    None
+                };
+
+                let (doctest, move_to) = if is_at_toplevel_doctest() {
+                    (true, None)
+                } else {
+                    let mut collector = PathCollector { paths: Vec::new() };
+                    collector.visit_ty(&impl_.self_ty);
+                    if let Some(of_trait) = &impl_.of_trait {
+                        collector.visit_trait_ref(of_trait);
+                    }
+                    collector.visit_generics(&impl_.generics);
+
+                    let mut may_move: Vec<Span> = collector
+                        .paths
+                        .into_iter()
+                        .filter_map(|path| {
+                            if let Some(did) = path.res.opt_def_id()
+                                && did_has_local_parent(did, cx.tcx, parent, parent_parent)
+                            {
+                                Some(cx.tcx.def_span(did))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    may_move.sort();
+                    may_move.dedup();
+
+                    let move_to = if may_move.is_empty() {
+                        ms.push_span_label(
+                            cx.tcx.def_span(parent),
+                            fluent::lint_non_local_definitions_impl_move_help,
+                        );
+                        None
+                    } else {
+                        Some((cx.tcx.def_span(parent), may_move))
+                    };
+
+                    (false, move_to)
+                };
+
+                let macro_to_change =
+                    if let ExpnKind::Macro(kind, name) = item.span.ctxt().outer_expn_data().kind {
+                        Some((name.to_string(), kind.descr()))
+                    } else {
+                        None
+                    };
+
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
-                    item.span,
+                    ms,
                     NonLocalDefinitionsDiag::Impl {
                         depth: self.body_depth,
                         body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
@@ -225,19 +287,20 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
-                        const_anon: span_for_const_anon_suggestion,
+                        const_anon,
+                        self_ty_str,
+                        of_trait_str,
+                        move_to,
+                        doctest,
+                        may_remove,
+                        has_trait: impl_.of_trait.is_some(),
+                        macro_to_change,
                     },
                 )
             }
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
-                // determining we if are in a doctest context can't currently be determined
-                // by the code it-self (no specific attrs), but fortunatly rustdoc sets a
-                // perma-unstable env for libtest so we just re-use that env for now
-                let is_at_toplevel_doctest =
-                    self.body_depth == 2 && std::env::var("UNSTABLE_RUSTDOC_TEST_PATH").is_ok();
-
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,
                     item.span,
@@ -248,9 +311,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
                         cargo_update: cargo_update(),
-                        help: (!is_at_toplevel_doctest).then_some(()),
-                        doctest_help: is_at_toplevel_doctest.then_some(()),
-                        notes: (),
+                        doctest: is_at_toplevel_doctest(),
                     },
                 )
             }
@@ -259,7 +320,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
     }
 }
 
-// Detecting if the impl definition is leaking outside of it's defining scope.
+// Detecting if the impl definition is leaking outside of its defining scope.
 //
 // Rule: for each impl, instantiate all local types with inference vars and
 // then assemble candidates for that goal, if there are more than 1 (non-private
@@ -270,7 +331,7 @@ fn impl_trait_ref_has_enough_non_local_candidates<'tcx>(
     tcx: TyCtxt<'tcx>,
     infer_span: Span,
     trait_def_id: DefId,
-    binder: EarlyBinder<TraitRef<'tcx>>,
+    binder: EarlyBinder<'tcx, TraitRef<'tcx>>,
     mut did_has_local_parent: impl FnMut(DefId) -> bool,
 ) -> bool {
     let infcx = tcx
@@ -328,7 +389,7 @@ struct ReplaceLocalTypesWithInfer<'a, 'tcx, F: FnMut(DefId) -> bool> {
 impl<'a, 'tcx, F: FnMut(DefId) -> bool> TypeFolder<TyCtxt<'tcx>>
     for ReplaceLocalTypesWithInfer<'a, 'tcx, F>
 {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -340,6 +401,54 @@ impl<'a, 'tcx, F: FnMut(DefId) -> bool> TypeFolder<TyCtxt<'tcx>>
         } else {
             t.super_fold_with(self)
         }
+    }
+}
+
+/// Simple hir::Path collector
+struct PathCollector<'tcx> {
+    paths: Vec<Path<'tcx>>,
+}
+
+impl<'tcx> Visitor<'tcx> for PathCollector<'tcx> {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+        self.paths.push(path.clone()); // need to clone, bc of the restricted lifetime
+        intravisit::walk_path(self, path)
+    }
+}
+
+/// Given a `Ty` we check if the (outermost) type is local.
+fn ty_has_local_parent(
+    ty_kind: &TyKind<'_>,
+    cx: &LateContext<'_>,
+    impl_parent: DefId,
+    impl_parent_parent: Option<DefId>,
+) -> bool {
+    match ty_kind {
+        TyKind::Path(QPath::Resolved(_, ty_path)) => {
+            path_has_local_parent(ty_path, cx, impl_parent, impl_parent_parent)
+        }
+        TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => path_has_local_parent(
+            principle_poly_trait_ref.0.trait_ref.path,
+            cx,
+            impl_parent,
+            impl_parent_parent,
+        ),
+        TyKind::TraitObject([], _, _)
+        | TyKind::InferDelegation(_, _)
+        | TyKind::Slice(_)
+        | TyKind::Array(_, _)
+        | TyKind::Ptr(_)
+        | TyKind::Ref(_, _)
+        | TyKind::BareFn(_)
+        | TyKind::Never
+        | TyKind::Tup(_)
+        | TyKind::Path(_)
+        | TyKind::Pat(..)
+        | TyKind::AnonAdt(_)
+        | TyKind::OpaqueDef(_, _, _)
+        | TyKind::Typeof(_)
+        | TyKind::Infer
+        | TyKind::Err(_) => false,
     }
 }
 
@@ -383,4 +492,53 @@ fn did_has_local_parent(
         } else {
             false
         }
+}
+
+/// Return for a given `Path` the span until the last args
+fn path_span_without_args(path: &Path<'_>) -> Span {
+    if let Some(args) = &path.segments.last().unwrap().args {
+        path.span.until(args.span_ext)
+    } else {
+        path.span
+    }
+}
+
+/// Return a "error message-able" ident for the last segment of the `Path`
+fn path_name_to_string(path: &Path<'_>) -> String {
+    path.segments.last().unwrap().ident.name.to_ident_string()
+}
+
+/// Compute the `Span` and visual representation for the `Self` we want to point at;
+/// It follows part of the actual logic of non-local, and if possible return the least
+/// amount possible for the span and representation.
+fn self_ty_kind_for_diagnostic(ty: &rustc_hir::Ty<'_>, tcx: TyCtxt<'_>) -> (Span, String) {
+    match ty.kind {
+        TyKind::Path(QPath::Resolved(_, ty_path)) => (
+            path_span_without_args(ty_path),
+            ty_path
+                .res
+                .opt_def_id()
+                .map(|did| tcx.opt_item_name(did))
+                .flatten()
+                .as_ref()
+                .map(|s| Symbol::as_str(s))
+                .unwrap_or("<unnameable>")
+                .to_string(),
+        ),
+        TyKind::TraitObject([principle_poly_trait_ref, ..], _, _) => {
+            let path = &principle_poly_trait_ref.0.trait_ref.path;
+            (
+                path_span_without_args(path),
+                path.res
+                    .opt_def_id()
+                    .map(|did| tcx.opt_item_name(did))
+                    .flatten()
+                    .as_ref()
+                    .map(|s| Symbol::as_str(s))
+                    .unwrap_or("<unnameable>")
+                    .to_string(),
+            )
+        }
+        _ => (ty.span, rustc_hir_pretty::ty_to_string(&tcx, ty)),
+    }
 }

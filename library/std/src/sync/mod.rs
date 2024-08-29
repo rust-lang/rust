@@ -133,10 +133,14 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//! - [`Once`]: Used for a thread-safe, one-time global initialization routine
+//! - [`Once`]: Used for a thread-safe, one-time global initialization routine.
+//!   Mostly useful for implementing other types like `OnceLock`.
 //!
 //! - [`OnceLock`]: Used for thread-safe, one-time initialization of a
-//!   global variable.
+//!   variable, with potentially different initializers based on the caller.
+//!
+//! - [`LazyLock`]: Used for thread-safe, one-time initialization of a
+//!   variable, using one nullary initializer function provided at creation.
 //!
 //! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
 //!   multiple readers at the same time, while allowing only one
@@ -155,16 +159,19 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::sync::{Arc, Weak};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 pub use core::sync::Exclusive;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::sync::{Arc, Weak};
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::{Condvar, WaitTimeoutResult};
+#[stable(feature = "lazy_cell", since = "1.80.0")]
+pub use self::lazy_lock::LazyLock;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::mutex::MappedMutexGuard;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -172,20 +179,16 @@ pub use self::mutex::{Mutex, MutexGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 pub use self::once::{Once, OnceState, ONCE_INIT};
+#[stable(feature = "once_cell", since = "1.70.0")]
+pub use self::once_lock::OnceLock;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
+#[unstable(feature = "reentrant_lock", issue = "121440")]
+pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-#[unstable(feature = "lazy_cell", issue = "109736")]
-pub use self::lazy_lock::LazyLock;
-#[stable(feature = "once_cell", since = "1.70.0")]
-pub use self::once_lock::OnceLock;
-
-#[unstable(feature = "reentrant_lock", issue = "121440")]
-pub use self::reentrant_lock::{ReentrantLock, ReentrantLockGuard};
 
 pub mod mpsc;
 

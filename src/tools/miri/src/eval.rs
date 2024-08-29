@@ -68,7 +68,7 @@ pub enum IsolatedOp {
     Allow,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BacktraceStyle {
     /// Prints a terser backtrace which ideally only contains relevant information.
     Short,
@@ -78,6 +78,16 @@ pub enum BacktraceStyle {
     Off,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ValidationMode {
+    /// Do not perform any kind of validation.
+    No,
+    /// Validate the interior of the value, but not things behind references.
+    Shallow,
+    /// Fully recursively validate references.
+    Deep,
+}
+
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -85,7 +95,7 @@ pub struct MiriConfig {
     /// (This is still subject to isolation as well as `forwarded_env_vars`.)
     pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
-    pub validate: bool,
+    pub validation: ValidationMode,
     /// Determines if Stacked Borrows or Tree Borrows is enabled.
     pub borrow_tracker: Option<BorrowTrackerMethod>,
     /// Whether `core::ptr::Unique` receives special treatment.
@@ -108,8 +118,6 @@ pub struct MiriConfig {
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
     pub tracked_pointer_tags: FxHashSet<BorTag>,
-    /// The stacked borrows call IDs to report about
-    pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
     pub tracked_alloc_ids: FxHashSet<AllocId>,
     /// For the tracked alloc ids, also report read/write accesses.
@@ -162,7 +170,7 @@ impl Default for MiriConfig {
     fn default() -> MiriConfig {
         MiriConfig {
             env: vec![],
-            validate: true,
+            validation: ValidationMode::Shallow,
             borrow_tracker: Some(BorrowTrackerMethod::StackedBorrows),
             unique_is_unique: false,
             check_alignment: AlignmentCheck::Int,
@@ -173,7 +181,6 @@ impl Default for MiriConfig {
             args: vec![],
             seed: None,
             tracked_pointer_tags: FxHashSet::default(),
-            tracked_call_ids: FxHashSet::default(),
             tracked_alloc_ids: FxHashSet::default(),
             track_alloc_accesses: false,
             data_race_detector: true,
@@ -214,7 +221,7 @@ enum MainThreadState<'tcx> {
 impl<'tcx> MainThreadState<'tcx> {
     fn on_main_stack_empty(
         &mut self,
-        this: &mut MiriInterpCx<'_, 'tcx>,
+        this: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use MainThreadState::*;
         match self {
@@ -263,12 +270,12 @@ impl<'tcx> MainThreadState<'tcx> {
 
 /// Returns a freshly created `InterpCx`.
 /// Public because this is also used by `priroda`.
-pub fn create_ecx<'mir, 'tcx: 'mir>(
+pub fn create_ecx<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>> {
+) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx =
@@ -282,7 +289,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     })?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"], Namespace::ValueNS);
+    let sentinel =
+        helpers::try_resolve_path(tcx, &["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
         tcx.dcx().fatal(
             "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
@@ -296,14 +304,15 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // First argument is constructed later, because it's skipped if the entry function uses #[start].
 
     // Second argument (argc): length of `config.args`.
-    let argc = Scalar::from_target_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
+    let argc =
+        ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
         let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
         for arg in config.args.iter() {
             // Make space for `0` terminator.
-            let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();
+            let size = u64::try_from(arg.len()).unwrap().strict_add(1);
             let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
             let arg_place =
                 ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Machine.into())?;
@@ -323,13 +332,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             ecx.write_immediate(arg, &place)?;
         }
         ecx.mark_immutable(&argvs_place);
-        // A pointer to that place is the 3rd argument for main.
-        let argv = argvs_place.to_ref(&ecx);
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
             let argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())?;
-            ecx.write_scalar(argc, &argc_place)?;
+            ecx.write_immediate(*argc, &argc_place)?;
             ecx.mark_immutable(&argc_place);
             ecx.machine.argc = Some(argc_place.ptr());
 
@@ -337,7 +344,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 ecx.layout_of(Ty::new_imm_ptr(tcx, tcx.types.unit))?,
                 MiriMemoryKind::Machine.into(),
             )?;
-            ecx.write_immediate(argv, &argv_place)?;
+            ecx.write_pointer(argvs_place.ptr(), &argv_place)?;
             ecx.mark_immutable(&argv_place);
             ecx.machine.argv = Some(argv_place.ptr());
         }
@@ -358,7 +365,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             }
             ecx.mark_immutable(&cmd_place);
         }
-        argv
+        ecx.mplace_to_ref(&argvs_place)?
     };
 
     // Return place (in static memory so that it does not count as leak).
@@ -375,7 +382,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             });
             let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
-            let start_instance = ty::Instance::resolve(
+            let start_instance = ty::Instance::try_resolve(
                 tcx,
                 ty::ParamEnv::reveal_all(),
                 start_id,
@@ -394,10 +401,14 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 start_instance,
                 Abi::Rust,
                 &[
-                    Scalar::from_pointer(main_ptr, &ecx).into(),
-                    argc.into(),
+                    ImmTy::from_scalar(
+                        Scalar::from_pointer(main_ptr, &ecx),
+                        // FIXME use a proper fn ptr type
+                        ecx.machine.layouts.const_raw_ptr,
+                    ),
+                    argc,
                     argv,
-                    Scalar::from_u8(sigpipe).into(),
+                    ImmTy::from_uint(sigpipe, ecx.machine.layouts.u8),
                 ],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
@@ -407,7 +418,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             ecx.call_function(
                 entry_instance,
                 Abi::Rust,
-                &[argc.into(), argv],
+                &[argc, argv],
                 Some(&ret_place),
                 StackPopCleanup::Root { cleanup: true },
             )?;
@@ -446,6 +457,10 @@ pub fn eval_entry<'tcx>(
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
+    // `Ok` can never happen.
+    #[cfg(not(bootstrap))]
+    let Err(res) = res;
+    #[cfg(bootstrap)]
     let res = match res {
         Err(res) => res,
         // `Ok` can never happen
@@ -468,7 +483,7 @@ pub fn eval_entry<'tcx>(
         // Check for thread leaks.
         if !ecx.have_all_terminated() {
             tcx.dcx().err("the main thread terminated without waiting for all remaining threads");
-            tcx.dcx().note("pass `-Zmiri-ignore-leaks` to disable this check");
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             return None;
         }
         // Check for memory leaks.
@@ -476,14 +491,7 @@ pub fn eval_entry<'tcx>(
         let leaks = ecx.find_leaked_allocations(&ecx.machine.static_roots);
         if !leaks.is_empty() {
             report_leaks(&ecx, leaks);
-            let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
-            if ecx.machine.collect_leak_backtraces {
-                // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
-                tcx.dcx().note(leak_message);
-            } else {
-                // If we do not have backtraces, we just report an error without any span.
-                tcx.dcx().err(leak_message);
-            };
+            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
             // Ignore the provided return code - let the reported error
             // determine the return code.
             return None;

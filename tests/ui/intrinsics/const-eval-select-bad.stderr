@@ -24,7 +24,7 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<()>` is not implemented for `{integer}`
+   = help: the trait `FnOnce()` is not implemented for `{integer}`
    = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
@@ -37,7 +37,7 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<()>` is not implemented for `{integer}`
+   = help: the trait `FnOnce()` is not implemented for `{integer}`
    = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL

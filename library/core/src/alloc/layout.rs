@@ -4,11 +4,9 @@
 // collections, resulting in having to optimize down excess IR multiple times.
 // Your performance intuition is useless. Run perf.
 
-use crate::cmp;
 use crate::error::Error;
-use crate::fmt;
-use crate::mem;
 use crate::ptr::{Alignment, NonNull};
+use crate::{assert_unsafe_precondition, cmp, fmt, mem};
 
 // While this function is used in one place and its implementation
 // could be inlined, the previous attempts to do so made rustc
@@ -26,7 +24,7 @@ const fn size_align<T>() -> (usize, usize) {
 /// You build a `Layout` up as an input to give to an allocator.
 ///
 /// All layouts have an associated size and a power-of-two alignment. The size, when rounded up to
-/// the nearest multiple of `align`, does not overflow isize (i.e., the rounded value will always be
+/// the nearest multiple of `align`, does not overflow `isize` (i.e., the rounded value will always be
 /// less than or equal to `isize::MAX`).
 ///
 /// (Note that layouts are *not* required to have non-zero size,
@@ -61,19 +59,27 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow isize (i.e., the rounded value must be
+    ///    must not overflow `isize` (i.e., the rounded value must be
     ///    less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
     #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
-        if !align.is_power_of_two() {
-            return Err(LayoutError);
+        if Layout::is_size_align_valid(size, align) {
+            // SAFETY: Layout::is_size_align_valid checks the preconditions for this call.
+            unsafe { Ok(Layout { size, align: mem::transmute(align) }) }
+        } else {
+            Err(LayoutError)
         }
+    }
 
-        // SAFETY: just checked that align is a power of two.
-        Layout::from_size_alignment(size, unsafe { Alignment::new_unchecked(align) })
+    const fn is_size_align_valid(size: usize, align: usize) -> bool {
+        let Some(align) = Alignment::new(align) else { return false };
+        if size > Self::max_size_for_align(align) {
+            return false;
+        }
+        true
     }
 
     #[inline(always)]
@@ -118,8 +124,17 @@ impl Layout {
     #[inline]
     #[rustc_allow_const_fn_unstable(ptr_alignment_type)]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "Layout::from_size_align_unchecked requires that align is a power of 2 \
+            and the rounded-up allocation size does not exceed isize::MAX",
+            (
+                size: usize = size,
+                align: usize = align,
+            ) => Layout::is_size_align_valid(size, align)
+        );
         // SAFETY: the caller is required to uphold the preconditions.
-        unsafe { Layout { size, align: Alignment::new_unchecked(align) } }
+        unsafe { Layout { size, align: mem::transmute(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
@@ -183,6 +198,8 @@ impl Layout {
     ///     - a [slice], then the length of the slice tail must be an initialized
     ///       integer, and the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///       For the special case where the dynamic tail length is 0, this function
+    ///       is safe to call.
     ///     - a [trait object], then the vtable part of the pointer must point
     ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
     ///       and the size of the *entire value*

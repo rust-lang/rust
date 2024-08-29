@@ -1,3 +1,5 @@
+use super::TrustedLen;
+
 /// Conversion from an [`Iterator`].
 ///
 /// By implementing `FromIterator` for a type, you define how it will be
@@ -311,8 +313,7 @@ where
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
-#[cfg_attr(bootstrap, rustc_skip_array_during_method_dispatch)]
-#[cfg_attr(not(bootstrap), rustc_skip_during_method_dispatch(array, boxed_slice))]
+#[rustc_skip_during_method_dispatch(array, boxed_slice)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
@@ -461,6 +462,27 @@ pub trait Extend<A> {
     fn extend_reserve(&mut self, additional: usize) {
         let _ = additional;
     }
+
+    /// Extends a collection with one element, without checking there is enough capacity for it.
+    ///
+    /// # Safety
+    ///
+    /// **For callers:** This must only be called when we know the collection has enough capacity
+    /// to contain the new item, for example because we previously called `extend_reserve`.
+    ///
+    /// **For implementors:** For a collection to unsafely rely on this method's safety precondition (that is,
+    /// invoke UB if they are violated), it must implement `extend_reserve` correctly. In other words,
+    /// callers may assume that if they `extend_reserve`ed enough space they can call this method.
+
+    // This method is for internal usage only. It is only on the trait because of specialization's limitations.
+    #[unstable(feature = "extend_one_unchecked", issue = "none")]
+    #[doc(hidden)]
+    unsafe fn extend_one_unchecked(&mut self, item: A)
+    where
+        Self: Sized,
+    {
+        self.extend_one(item);
+    }
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
@@ -500,24 +522,7 @@ where
     fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
         let (a, b) = self;
         let iter = into_iter.into_iter();
-
-        fn extend<'a, A, B>(
-            a: &'a mut impl Extend<A>,
-            b: &'a mut impl Extend<B>,
-        ) -> impl FnMut((), (A, B)) + 'a {
-            move |(), (t, u)| {
-                a.extend_one(t);
-                b.extend_one(u);
-            }
-        }
-
-        let (lower_bound, _) = iter.size_hint();
-        if lower_bound > 0 {
-            a.extend_reserve(lower_bound);
-            b.extend_reserve(lower_bound);
-        }
-
-        iter.fold((), extend(a, b));
+        SpecTupleExtend::extend(iter, a, b);
     }
 
     fn extend_one(&mut self, item: (A, B)) {
@@ -528,5 +533,91 @@ where
     fn extend_reserve(&mut self, additional: usize) {
         self.0.extend_reserve(additional);
         self.1.extend_reserve(additional);
+    }
+
+    unsafe fn extend_one_unchecked(&mut self, item: (A, B)) {
+        // SAFETY: Those are our safety preconditions, and we correctly forward `extend_reserve`.
+        unsafe {
+            self.0.extend_one_unchecked(item.0);
+            self.1.extend_one_unchecked(item.1);
+        }
+    }
+}
+
+fn default_extend_tuple<A, B, ExtendA, ExtendB>(
+    iter: impl Iterator<Item = (A, B)>,
+    a: &mut ExtendA,
+    b: &mut ExtendB,
+) where
+    ExtendA: Extend<A>,
+    ExtendB: Extend<B>,
+{
+    fn extend<'a, A, B>(
+        a: &'a mut impl Extend<A>,
+        b: &'a mut impl Extend<B>,
+    ) -> impl FnMut((), (A, B)) + 'a {
+        move |(), (t, u)| {
+            a.extend_one(t);
+            b.extend_one(u);
+        }
+    }
+
+    let (lower_bound, _) = iter.size_hint();
+    if lower_bound > 0 {
+        a.extend_reserve(lower_bound);
+        b.extend_reserve(lower_bound);
+    }
+
+    iter.fold((), extend(a, b));
+}
+
+trait SpecTupleExtend<A, B> {
+    fn extend(self, a: &mut A, b: &mut B);
+}
+
+impl<A, B, ExtendA, ExtendB, Iter> SpecTupleExtend<ExtendA, ExtendB> for Iter
+where
+    ExtendA: Extend<A>,
+    ExtendB: Extend<B>,
+    Iter: Iterator<Item = (A, B)>,
+{
+    default fn extend(self, a: &mut ExtendA, b: &mut ExtendB) {
+        default_extend_tuple(self, a, b);
+    }
+}
+
+impl<A, B, ExtendA, ExtendB, Iter> SpecTupleExtend<ExtendA, ExtendB> for Iter
+where
+    ExtendA: Extend<A>,
+    ExtendB: Extend<B>,
+    Iter: TrustedLen<Item = (A, B)>,
+{
+    fn extend(self, a: &mut ExtendA, b: &mut ExtendB) {
+        fn extend<'a, A, B>(
+            a: &'a mut impl Extend<A>,
+            b: &'a mut impl Extend<B>,
+        ) -> impl FnMut((), (A, B)) + 'a {
+            // SAFETY: We reserve enough space for the `size_hint`, and the iterator is `TrustedLen`
+            // so its `size_hint` is exact.
+            move |(), (t, u)| unsafe {
+                a.extend_one_unchecked(t);
+                b.extend_one_unchecked(u);
+            }
+        }
+
+        let (lower_bound, upper_bound) = self.size_hint();
+
+        if upper_bound.is_none() {
+            // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
+            default_extend_tuple(self, a, b);
+            return;
+        }
+
+        if lower_bound > 0 {
+            a.extend_reserve(lower_bound);
+            b.extend_reserve(lower_bound);
+        }
+
+        self.fold((), extend(a, b));
     }
 }

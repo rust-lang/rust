@@ -3,20 +3,20 @@
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
 | Act |    └─┬──<TAG=root of the allocation>
-| RsM |      └─┬──<TAG=base>
-| RsM |        ├─┬──<TAG=x>
-| RsM |        │ └─┬──<TAG=caller:x>
-| RsCM|        │   └────<TAG=callee:x>
-| RsM |        └────<TAG=y, caller:y, callee:y>
+| ReIM|      └─┬──<TAG=base>
+| ReIM|        ├─┬──<TAG=x>
+| ReIM|        │ └─┬──<TAG=caller:x>
+| ResC|        │   └────<TAG=callee:x>
+| ReIM|        └────<TAG=y, caller:y, callee:y>
 ──────────────────────────────────────────────────
 [interior mut] Foreign Read: Re* -> Re*
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   8
 | Act |    └─┬──<TAG=root of the allocation>
-| RsM |      └─┬──<TAG=base>
-| RsM |        ├────<TAG=x>
-| RsM |        └────<TAG=y>
+| ReIM|      └─┬──<TAG=base>
+| ReIM|        ├────<TAG=x>
+| ReIM|        └────<TAG=y>
 ──────────────────────────────────────────────────
 [interior mut] Foreign Write: Re* -> Re*
 ──────────────────────────────────────────────────
@@ -24,7 +24,7 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 0..   8
 | Act |    └─┬──<TAG=root of the allocation>
 | Act |      └─┬──<TAG=base>
-| RsM |        ├────<TAG=x>
+| ReIM|        ├────<TAG=x>
 | Act |        └────<TAG=y>
 ──────────────────────────────────────────────────
 [protected] Foreign Read: Res -> Frz
@@ -32,20 +32,20 @@ Warning: this tree is indicative only. Some tags may have been hidden.
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
 | Act |    └─┬──<TAG=root of the allocation>
-| Rs  |      └─┬──<TAG=base>
-| Rs  |        ├─┬──<TAG=x>
-| Rs  |        │ └─┬──<TAG=caller:x>
-| RsC |        │   └────<TAG=callee:x>
-| Rs  |        └────<TAG=y, caller:y, callee:y>
+| Res |      └─┬──<TAG=base>
+| Res |        ├─┬──<TAG=x>
+| Res |        │ └─┬──<TAG=caller:x>
+| ResC|        │   └────<TAG=callee:x>
+| Res |        └────<TAG=y, caller:y, callee:y>
 ──────────────────────────────────────────────────
 [] Foreign Read: Res -> Res
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   1
 | Act |    └─┬──<TAG=root of the allocation>
-| Rs  |      └─┬──<TAG=base>
-| Rs  |        ├────<TAG=x>
-| Rs  |        └────<TAG=y>
+| Res |      └─┬──<TAG=base>
+| Res |        ├────<TAG=x>
+| Res |        └────<TAG=y>
 ──────────────────────────────────────────────────
 [] Foreign Write: Res -> Dis
 ──────────────────────────────────────────────────

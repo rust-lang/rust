@@ -13,7 +13,8 @@ use rustc_const_eval::interpret::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
-use rustc_index::{bit_set::BitSet, IndexVec};
+use rustc_index::bit_set::BitSet;
+use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -64,7 +65,7 @@ impl<'tcx> MirLint<'tcx> for KnownPanicsLint {
 /// Visits MIR nodes, performs const propagation
 /// and runs lint checks as it goes
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, DummyMachine>,
+    ecx: InterpCx<'tcx, DummyMachine>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     worklist: Vec<BasicBlock>,
@@ -102,8 +103,12 @@ impl<'tcx> Value<'tcx> {
                 }
                 (PlaceElem::Index(idx), Value::Aggregate { fields, .. }) => {
                     let idx = prop.get_const(idx.into())?.immediate()?;
-                    let idx = prop.ecx.read_target_usize(idx).ok()?;
-                    fields.get(FieldIdx::from_u32(idx.try_into().ok()?)).unwrap_or(&Value::Uninit)
+                    let idx = prop.ecx.read_target_usize(idx).ok()?.try_into().ok()?;
+                    if idx <= FieldIdx::MAX_AS_U32 {
+                        fields.get(FieldIdx::from_u32(idx)).unwrap_or(&Value::Uninit)
+                    } else {
+                        return None;
+                    }
                 }
                 (
                     PlaceElem::ConstantIndex { offset, min_length: _, from_end: false },
@@ -352,15 +357,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 debug!("check_binary_op: reporting assert for {:?}", location);
                 let panic = AssertKind::Overflow(
                     op,
-                    match l {
-                        Some(l) => l.to_const_int(),
-                        // Invent a dummy value, the diagnostic ignores it anyway
-                        None => ConstInt::new(
-                            ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
-                            left_ty.is_signed(),
-                            left_ty.is_ptr_sized_integral(),
-                        ),
-                    },
+                    // Invent a dummy value, the diagnostic ignores it anyway
+                    ConstInt::new(
+                        ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
+                        left_ty.is_signed(),
+                        left_ty.is_ptr_sized_integral(),
+                    ),
                     r.to_const_int(),
                 );
                 self.report_assert_as_lint(location, AssertLintKind::ArithmeticOverflow, panic);
@@ -417,8 +419,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             // Do not try creating references (#67862)
-            Rvalue::AddressOf(_, place) | Rvalue::Ref(_, _, place) => {
-                trace!("skipping AddressOf | Ref for {:?}", place);
+            Rvalue::RawPtr(_, place) | Rvalue::Ref(_, _, place) => {
+                trace!("skipping RawPtr | Ref for {:?}", place);
 
                 // This may be creating mutable references or immutable references to cells.
                 // If that happens, the pointed to value could be mutated via that reference.
@@ -614,16 +616,17 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 ImmTy::from_scalar(Scalar::from_target_usize(len, self), layout).into()
             }
 
-            Ref(..) | AddressOf(..) => return None,
+            Ref(..) | RawPtr(..) => return None,
 
             NullaryOp(ref null_op, ty) => {
                 let op_layout = self.use_ecx(|this| this.ecx.layout_of(ty))?;
                 let val = match null_op {
                     NullOp::SizeOf => op_layout.size.bytes(),
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => {
-                        op_layout.offset_of_subfield(self, fields.iter()).bytes()
-                    }
+                    NullOp::OffsetOf(fields) => self
+                        .tcx
+                        .offset_of_subfield(self.param_env, op_layout, fields.iter())
+                        .bytes(),
                     NullOp::UbChecks => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
@@ -704,9 +707,9 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        trace!("visit_constant: {:?}", constant);
-        self.super_constant(constant, location);
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
+        trace!("visit_const_operand: {:?}", constant);
+        self.super_const_operand(constant, location);
         self.eval_constant(constant);
     }
 
@@ -782,8 +785,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
-                    && let Ok(constant) = value_const.try_to_int()
-                    && let Ok(constant) = constant.try_to_bits(constant.size())
+                    && let Ok(constant) = value_const.to_bits(value_const.size())
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
                     // one target.
@@ -798,6 +800,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::Yield { .. }
@@ -966,9 +969,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
             | NonMutatingUse(NonMutatingUseContext::FakeBorrow)
-            | NonMutatingUse(NonMutatingUseContext::AddressOf)
+            | NonMutatingUse(NonMutatingUseContext::RawBorrow)
             | MutatingUse(MutatingUseContext::Borrow)
-            | MutatingUse(MutatingUseContext::AddressOf) => {
+            | MutatingUse(MutatingUseContext::RawBorrow) => {
                 trace!("local {:?} can't be propagated because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }

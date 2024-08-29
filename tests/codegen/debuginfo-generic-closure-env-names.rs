@@ -46,7 +46,6 @@
 // NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
 // MSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
 
-
 #![crate_type = "lib"]
 use std::future::Future;
 
@@ -70,11 +69,9 @@ async fn generic_async_function<T: 'static>(x: T) -> T {
     x
 }
 
-fn generic_async_block<T: 'static>(x: T) -> impl Future<Output=T> {
+fn generic_async_block<T: 'static>(x: T) -> impl Future<Output = T> {
     static _X: u8 = 0; // Same as above
-    async move {
-        x
-    }
+    async move { x }
 }
 
 pub fn instantiate_generics() {

@@ -1,12 +1,11 @@
-use crate::fmt;
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
 use crate::net::test::{next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
-use crate::thread;
 use crate::time::{Duration, Instant};
+use crate::{fmt, thread};
 
 fn each_ip(f: &mut dyn FnMut(SocketAddr)) {
     f(next_test_ip4());
@@ -301,7 +300,7 @@ fn read_buf() {
         });
 
         let mut s = t!(srv.accept()).0;
-        let mut buf: [MaybeUninit<u8>; 128] = MaybeUninit::uninit_array();
+        let mut buf: [MaybeUninit<u8>; 128] = [MaybeUninit::uninit(); 128];
         let mut buf = BorrowedBuf::from(buf.as_mut_slice());
         t!(s.read_buf(buf.unfilled()));
         assert_eq!(buf.filled(), &[1, 2, 3, 4]);

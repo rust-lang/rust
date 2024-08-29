@@ -9,19 +9,9 @@
 
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
-use core::mem;
-use core::ptr;
-use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
-use core::unicode::conversions;
-
-use crate::borrow::ToOwned;
-use crate::boxed::Box;
-use crate::slice::{Concat, Join, SliceIndex};
-use crate::string::String;
-use crate::vec::Vec;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
+use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
@@ -55,6 +45,14 @@ pub use core::str::{RSplitN, SplitN};
 pub use core::str::{RSplitTerminator, SplitTerminator};
 #[stable(feature = "utf8_chunks", since = "1.79.0")]
 pub use core::str::{Utf8Chunk, Utf8Chunks};
+use core::unicode::conversions;
+use core::{mem, ptr};
+
+use crate::borrow::ToOwned;
+use crate::boxed::Box;
+use crate::slice::{Concat, Join, SliceIndex};
+use crate::string::String;
+use crate::vec::Vec;
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.
@@ -206,15 +204,16 @@ impl BorrowMut<str> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for str {
     type Owned = String;
+
     #[inline]
     fn to_owned(&self) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
 
+    #[inline]
     fn clone_into(&self, target: &mut String) {
-        let mut b = mem::take(target).into_bytes();
-        self.as_bytes().clone_into(&mut b);
-        *target = unsafe { String::from_utf8_unchecked(b) }
+        target.clear();
+        target.push_str(self);
     }
 }
 
@@ -268,7 +267,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
+    pub fn replace<P: Pattern>(&self, from: P, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
@@ -308,7 +307,7 @@ impl str {
     #[must_use = "this returns the replaced string as a new allocation, \
                   without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
-    pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
+    pub fn replacen<P: Pattern>(&self, pat: P, to: &str, count: usize) -> String {
         // Hope to reduce the times of re-allocation
         let mut result = String::with_capacity(32);
         let mut last_end = 0;

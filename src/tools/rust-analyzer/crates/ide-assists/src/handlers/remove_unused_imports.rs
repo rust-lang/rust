@@ -1,8 +1,7 @@
 use std::collections::hash_map::Entry;
 
-use hir::{HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
+use hir::{FileRange, HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
 use ide_db::{
-    base_db::FileRange,
     defs::Definition,
     search::{FileReference, ReferenceCategory, SearchScope},
     FxHashMap, RootDatabase,
@@ -771,6 +770,40 @@ mod z {
 struct X();
 struct Y();
 mod z {
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_fixes_nested_self() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod inner {
+    pub struct X();
+    pub struct Y();
+}
+
+mod z {
+    use super::inner::{self, X}$0;
+
+    fn f() {
+        let y = inner::Y();
+    }
+}
+"#,
+            r#"mod inner {
+    pub struct X();
+    pub struct Y();
+}
+
+mod z {
+    use super::inner::{self};
+
+    fn f() {
+        let y = inner::Y();
+    }
 }
 "#,
         );

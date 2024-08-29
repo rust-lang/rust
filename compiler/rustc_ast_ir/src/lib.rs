@@ -1,6 +1,9 @@
+// tidy-alphabetical-start
+#![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
-#![cfg_attr(feature = "nightly", allow(internal_features))]
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
 
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};

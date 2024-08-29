@@ -1,9 +1,9 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, is_lint_allowed, iter_input_pats,
-    last_path_segment, SpanlessEq,
+    fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats, last_path_segment,
+    SpanlessEq,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -114,40 +114,35 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
+        _: Span,
         _: LocalDefId,
     ) {
-        if let FnKind::Closure = k {
-            // Does not apply to closures
-            return;
-        }
-        if in_external_macro(cx.tcx.sess, span) {
-            return;
-        }
-        for arg in iter_input_pats(decl, body) {
-            // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
-            if !is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id) {
-                return;
-            }
-            if let PatKind::Binding(BindingMode(ByRef::Yes(_), _), ..) = arg.pat.kind {
-                span_lint(
-                    cx,
-                    TOPLEVEL_REF_ARG,
-                    arg.pat.span,
-                    "`ref` directly on a function argument is ignored. \
-                    Consider using a reference type instead",
-                );
+        if !matches!(k, FnKind::Closure) {
+            for arg in iter_input_pats(decl, body) {
+                if let PatKind::Binding(BindingMode(ByRef::Yes(_), _), ..) = arg.pat.kind
+                    && is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id)
+                    && !in_external_macro(cx.tcx.sess, arg.span)
+                {
+                    span_lint_hir(
+                        cx,
+                        TOPLEVEL_REF_ARG,
+                        arg.hir_id,
+                        arg.pat.span,
+                        "`ref` directly on a function argument is ignored. \
+                        Consider using a reference type instead",
+                    );
+                }
             }
         }
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if !in_external_macro(cx.tcx.sess, stmt.span)
-            && let StmtKind::Let(local) = stmt.kind
+        if let StmtKind::Let(local) = stmt.kind
             && let PatKind::Binding(BindingMode(ByRef::Yes(mutabl), _), .., name, None) = local.pat.kind
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
             && is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id)
+            && !in_external_macro(cx.tcx.sess, stmt.span)
         {
             let ctxt = local.span.ctxt();
             let mut app = Applicability::MachineApplicable;
@@ -206,7 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span)
             || expr.span.desugaring_kind().is_some()
-            || any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+            || in_automatically_derived(cx.tcx, expr.hir_id)
         {
             return;
         }

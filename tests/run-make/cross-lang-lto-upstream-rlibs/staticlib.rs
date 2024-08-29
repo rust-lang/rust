@@ -1,4 +1,4 @@
-#![crate_type="staticlib"]
+#![crate_type = "staticlib"]
 
 extern crate upstream;
 

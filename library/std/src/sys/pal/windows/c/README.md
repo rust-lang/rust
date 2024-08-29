@@ -3,7 +3,7 @@ be edited manually.
 
 To add bindings, edit `bindings.txt` then regenerate using the following command:
 
-    ./x run generate-windows-sys && ./x fmt library/std
+    ./x run generate-windows-sys && ./x fmt
 
 If you need to override generated functions or types then add them to
 `library/std/src/sys/pal/windows/c.rs`.

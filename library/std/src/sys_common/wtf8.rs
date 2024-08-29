@@ -19,20 +19,18 @@
 mod tests;
 
 use core::char::{encode_utf16_raw, encode_utf8_raw};
+use core::clone::CloneToUninit;
 use core::str::next_code_point;
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FusedIterator;
-use crate::mem;
-use crate::ops;
+use crate::ptr::addr_of_mut;
 use crate::rc::Rc;
-use crate::slice;
-use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::AsInner;
+use crate::{fmt, mem, ops, slice, str};
 
 const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 
@@ -325,6 +323,11 @@ impl Wtf8Buf {
         self.bytes.shrink_to(min_capacity)
     }
 
+    #[inline]
+    pub fn leak<'a>(self) -> &'a mut Wtf8 {
+        unsafe { Wtf8::from_mut_bytes_unchecked(self.bytes.leak()) }
+    }
+
     /// Returns the number of bytes that this string buffer can hold without reallocating.
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -469,10 +472,13 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
 
-    /// Part of a hack to make PathBuf::push/pop more efficient.
+    /// Provides plumbing to core `Vec::extend_from_slice`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
     #[inline]
-    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
-        &mut self.bytes
+    pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+        self.bytes.extend_from_slice(other);
+        self.is_known_utf8 = false;
     }
 }
 
@@ -594,7 +600,8 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
-        mem::transmute(value)
+        // SAFETY: start with &[u8], end with fancy &[u8]
+        unsafe { &*(value as *const [u8] as *const Wtf8) }
     }
 
     /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
@@ -603,7 +610,8 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
-        mem::transmute(value)
+        // SAFETY: start with &mut [u8], end with fancy &mut [u8]
+        unsafe { &mut *(value as *mut [u8] as *mut Wtf8) }
     }
 
     /// Returns the length, in WTF-8 bytes.
@@ -934,8 +942,12 @@ pub fn check_utf8_boundary(slice: &Wtf8, index: usize) {
 /// Copied from core::str::raw::slice_unchecked
 #[inline]
 pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
-    // memory layout of a &[u8] and &Wtf8 are the same
-    Wtf8::from_bytes_unchecked(slice::from_raw_parts(s.bytes.as_ptr().add(begin), end - begin))
+    // SAFETY: memory layout of a &[u8] and &Wtf8 are the same
+    unsafe {
+        let len = end - begin;
+        let start = s.as_bytes().as_ptr().add(begin);
+        Wtf8::from_bytes_unchecked(slice::from_raw_parts(start, len))
+    }
 }
 
 /// Copied from core::str::raw::slice_error_fail
@@ -1034,5 +1046,15 @@ impl Hash for Wtf8 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Wtf8 {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: we're just a wrapper around [u8]
+        unsafe { self.bytes.clone_to_uninit(addr_of_mut!((*dst).bytes)) }
     }
 }

@@ -35,33 +35,18 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_>) {
-        if in_external_macro(cx.sess(), ty.span) {
-            return;
-        }
-
-        if let hir::TyKind::Ref(
-            _,
-            hir::MutTy {
-                ty: pty,
-                mutbl: hir::Mutability::Mut,
-            },
-        ) = ty.kind
+        if let hir::TyKind::Ref(_, mty) = ty.kind
+            && mty.mutbl == hir::Mutability::Mut
+            && let hir::TyKind::Ref(_, mty) = mty.ty.kind
+            && mty.mutbl == hir::Mutability::Mut
+            && !in_external_macro(cx.sess(), ty.span)
         {
-            if let hir::TyKind::Ref(
-                _,
-                hir::MutTy {
-                    mutbl: hir::Mutability::Mut,
-                    ..
-                },
-            ) = pty.kind
-            {
-                span_lint(
-                    cx,
-                    MUT_MUT,
-                    ty.span,
-                    "generally you want to avoid `&mut &mut _` if possible",
-                );
-            }
+            span_lint(
+                cx,
+                MUT_MUT,
+                ty.span,
+                "generally you want to avoid `&mut &mut _` if possible",
+            );
         }
     }
 }

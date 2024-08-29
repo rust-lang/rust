@@ -42,3 +42,60 @@ fn test_normalize_newlines() {
     check("\r\r\n", "\r\n", &[2]);
     check("hello\rworld", "hello\rworld", &[]);
 }
+
+#[test]
+fn test_trim() {
+    let span = |lo: usize, hi: usize| {
+        Span::new(BytePos::from_usize(lo), BytePos::from_usize(hi), SyntaxContext::root(), None)
+    };
+
+    // Various positions, named for their relation to `start` and `end`.
+    let well_before = 1;
+    let before = 3;
+    let start = 5;
+    let mid = 7;
+    let end = 9;
+    let after = 11;
+    let well_after = 13;
+
+    // The resulting span's context should be that of `self`, not `other`.
+    let other = span(start, end).with_ctxt(SyntaxContext::from_u32(999));
+
+    // Test cases for `trim_end`.
+
+    assert_eq!(span(well_before, before).trim_end(other), Some(span(well_before, before)));
+    assert_eq!(span(well_before, start).trim_end(other), Some(span(well_before, start)));
+    assert_eq!(span(well_before, mid).trim_end(other), Some(span(well_before, start)));
+    assert_eq!(span(well_before, end).trim_end(other), Some(span(well_before, start)));
+    assert_eq!(span(well_before, after).trim_end(other), Some(span(well_before, start)));
+
+    assert_eq!(span(start, mid).trim_end(other), None);
+    assert_eq!(span(start, end).trim_end(other), None);
+    assert_eq!(span(start, after).trim_end(other), None);
+
+    assert_eq!(span(mid, end).trim_end(other), None);
+    assert_eq!(span(mid, after).trim_end(other), None);
+
+    assert_eq!(span(end, after).trim_end(other), None);
+
+    assert_eq!(span(after, well_after).trim_end(other), None);
+
+    // Test cases for `trim_start`.
+
+    assert_eq!(span(after, well_after).trim_start(other), Some(span(after, well_after)));
+    assert_eq!(span(end, well_after).trim_start(other), Some(span(end, well_after)));
+    assert_eq!(span(mid, well_after).trim_start(other), Some(span(end, well_after)));
+    assert_eq!(span(start, well_after).trim_start(other), Some(span(end, well_after)));
+    assert_eq!(span(before, well_after).trim_start(other), Some(span(end, well_after)));
+
+    assert_eq!(span(mid, end).trim_start(other), None);
+    assert_eq!(span(start, end).trim_start(other), None);
+    assert_eq!(span(before, end).trim_start(other), None);
+
+    assert_eq!(span(start, mid).trim_start(other), None);
+    assert_eq!(span(before, mid).trim_start(other), None);
+
+    assert_eq!(span(before, start).trim_start(other), None);
+
+    assert_eq!(span(well_before, before).trim_start(other), None);
+}

@@ -8,5 +8,5 @@ use std::fmt;
 
 fn main() {
     let a: &dyn fmt::Debug = &1;
-    format!("{:?}", a);
+    let _ = format!("{:?}", a);
 }

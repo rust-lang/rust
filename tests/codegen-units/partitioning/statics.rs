@@ -2,7 +2,7 @@
 //@ incremental
 //@ compile-flags:-Zprint-mono-items=lazy
 
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 //~ MONO_ITEM static FOO @@ statics[Internal]
 static FOO: u32 = 0;

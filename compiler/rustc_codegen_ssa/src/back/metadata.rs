@@ -10,7 +10,6 @@ use object::{
     elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
     ObjectSymbol, SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope,
 };
-
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::creader::MetadataLoader;
@@ -209,6 +208,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "powerpc64" => (Architecture::PowerPc64, None),
         "riscv32" => (Architecture::Riscv32, None),
         "riscv64" => (Architecture::Riscv64, None),
+        "sparc" => (Architecture::Sparc32Plus, None),
         "sparc64" => (Architecture::Sparc64, None),
         "avr" => (Architecture::Avr, None),
         "msp430" => (Architecture::Msp430, None),
@@ -656,7 +656,13 @@ pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: 
         imports.import(
             "env",
             "__linear_memory",
-            wasm_encoder::MemoryType { minimum: 0, maximum: None, memory64: true, shared: false },
+            wasm_encoder::MemoryType {
+                minimum: 0,
+                maximum: None,
+                memory64: true,
+                shared: false,
+                page_size_log2: None,
+            },
         );
     }
 

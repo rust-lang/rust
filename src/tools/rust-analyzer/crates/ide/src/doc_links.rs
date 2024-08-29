@@ -11,7 +11,8 @@ use stdx::format_to;
 use url::Url;
 
 use hir::{
-    db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, DescendPreference, HasAttrs,
+    db::HirDatabase, sym, Adt, AsAssocItem, AssocItem, AssocItemContainer, DescendPreference,
+    HasAttrs,
 };
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, SourceDatabase},
@@ -136,7 +137,7 @@ pub(crate) fn external_docs(
     sysroot: Option<&str>,
 ) -> Option<DocumentationLinks> {
     let sema = &Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | T![self] => 3,
         T!['('] | T![')'] => 2,
@@ -487,19 +488,23 @@ fn get_doc_base_urls(
     let system_doc = sysroot
         .map(|sysroot| format!("file:///{sysroot}/share/doc/rust/html/"))
         .and_then(|it| Url::parse(&it).ok());
+    let krate = def.krate(db);
+    let channel = krate
+        .and_then(|krate| db.toolchain_channel(krate.into()))
+        .unwrap_or(ReleaseChannel::Nightly)
+        .as_str();
 
     // special case base url of `BuiltinType` to core
     // https://github.com/rust-lang/rust-analyzer/issues/12250
     if let Definition::BuiltinType(..) = def {
-        let web_link = Url::parse("https://doc.rust-lang.org/nightly/core/").ok();
+        let web_link = Url::parse(&format!("https://doc.rust-lang.org/{channel}/core/")).ok();
         let system_link = system_doc.and_then(|it| it.join("core/").ok());
         return (web_link, system_link);
     };
 
-    let Some(krate) = def.krate(db) else { return Default::default() };
+    let Some(krate) = krate else { return Default::default() };
     let Some(display_name) = krate.display_name(db) else { return Default::default() };
     let crate_data = &db.crate_graph()[krate.into()];
-    let channel = db.toolchain_channel(krate.into()).unwrap_or(ReleaseChannel::Nightly).as_str();
 
     let (web_base, local_base) = match &crate_data.origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
@@ -589,12 +594,14 @@ fn filename_and_frag_for_def(
         },
         Definition::Module(m) => match m.name(db) {
             // `#[doc(keyword = "...")]` is internal used only by rust compiler
-            Some(name) => match m.attrs(db).by_key("doc").find_string_value_in_tt("keyword") {
-                Some(kw) => {
-                    format!("keyword.{}.html", kw.trim_matches('"'))
+            Some(name) => {
+                match m.attrs(db).by_key(&sym::doc).find_string_value_in_tt(&sym::keyword) {
+                    Some(kw) => {
+                        format!("keyword.{}.html", kw)
+                    }
+                    None => format!("{}/index.html", name.display(db.upcast())),
                 }
-                None => format!("{}/index.html", name.display(db.upcast())),
-            },
+            }
             None => String::from("index.html"),
         },
         Definition::Trait(t) => format!("trait.{}.html", t.name(db).display(db.upcast())),

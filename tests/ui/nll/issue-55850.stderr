@@ -10,8 +10,16 @@ LL |         yield &s[..]
 error[E0626]: borrow may still be in use when coroutine yields
   --> $DIR/issue-55850.rs:28:16
    |
+LL |     GenIter(#[coroutine] move || {
+   |                          ------- within this coroutine
+LL |         let mut s = String::new();
 LL |         yield &s[..]
    |         -------^---- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     GenIter(#[coroutine] static move || {
+   |                          ++++++
 
 error: aborting due to 2 previous errors
 

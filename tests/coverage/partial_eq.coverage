@@ -10,11 +10,7 @@
    LL|       |
    LL|       |impl Version {
    LL|      2|    pub fn new(major: usize, minor: usize, patch: usize) -> Self {
-   LL|      2|        Self {
-   LL|      2|            major,
-   LL|      2|            minor,
-   LL|      2|            patch,
-   LL|      2|        }
+   LL|      2|        Self { major, minor, patch }
    LL|      2|    }
    LL|       |}
    LL|       |
@@ -26,7 +22,7 @@
    LL|      1|        "{:?} < {:?} = {}",
    LL|      1|        version_3_2_1,
    LL|      1|        version_3_3_0,
-   LL|      1|        version_3_2_1 < version_3_3_0
+   LL|      1|        version_3_2_1 < version_3_3_0, //
    LL|      1|    );
    LL|      1|}
    LL|       |

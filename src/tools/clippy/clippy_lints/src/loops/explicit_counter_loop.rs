@@ -2,6 +2,7 @@ use super::{make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_enclosing_block, is_integer_const};
+use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr};
 use rustc_hir::{Expr, Pat};
@@ -17,6 +18,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
+    label: Option<Label>,
 ) {
     // Look for variables that are incremented once per loop iteration.
     let mut increment_visitor = IncrementVisitor::new(cx);
@@ -34,7 +36,7 @@ pub(super) fn check<'tcx>(
             {
                 let mut applicability = Applicability::MaybeIncorrect;
                 let span = expr.span.with_hi(arg.span.hi());
-
+                let loop_label = label.map_or(String::new(), |l| format!("{}: ", l.ident.name));
                 let int_name = match ty.map(Ty::kind) {
                     // usize or inferred
                     Some(ty::Uint(UintTy::Usize)) | None => {
@@ -45,7 +47,7 @@ pub(super) fn check<'tcx>(
                             format!("the variable `{name}` is used as a loop counter"),
                             "consider using",
                             format!(
-                                "for ({name}, {}) in {}.enumerate()",
+                                "{loop_label}for ({name}, {}) in {}.enumerate()",
                                 snippet_with_applicability(cx, pat.span, "item", &mut applicability),
                                 make_iterator_snippet(cx, arg, &mut applicability),
                             ),
@@ -68,7 +70,7 @@ pub(super) fn check<'tcx>(
                             span,
                             "consider using",
                             format!(
-                                "for ({name}, {}) in (0_{int_name}..).zip({})",
+                                "{loop_label}for ({name}, {}) in (0_{int_name}..).zip({})",
                                 snippet_with_applicability(cx, pat.span, "item", &mut applicability),
                                 make_iterator_snippet(cx, arg, &mut applicability),
                             ),

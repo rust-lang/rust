@@ -1,4 +1,6 @@
 //@ run-rustfix
+//@ edition:2018
+
 #![feature(arbitrary_self_types)]
 #![allow(non_snake_case, dead_code)]
 
@@ -53,6 +55,11 @@ impl Struct {
     }
 
     fn wrap_ref_Self_Self<'a>(self: Wrap<&Self, Self>, f: &'a u8) -> &'a u8 {
+        f
+        //~^ ERROR lifetime may not live long enough
+    }
+
+    fn ref_box_Self<'a>(self: &Box<Self>, f: &'a u32) -> &'a u32 {
         f
         //~^ ERROR lifetime may not live long enough
     }

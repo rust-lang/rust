@@ -14,9 +14,13 @@ LL | trait Add<Rhs=Self> {
    | ------------------- type parameter `Rhs` must be specified for this
 ...
 LL |     let x = &10 as &dyn Add;
-   |                         ^^^ help: set the type parameter to the desired type: `Add<Rhs>`
+   |                         ^^^
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
+help: set the type parameter to the desired type
+   |
+LL |     let x = &10 as &dyn Add<Rhs>;
+   |                            +++++
 
 error: aborting due to 2 previous errors
 

@@ -1,10 +1,11 @@
-use clippy_config::types::DisallowedPath;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -49,60 +50,56 @@ declare_clippy_lint! {
     "use of disallowed types"
 }
 
-#[derive(Clone, Debug)]
 pub struct DisallowedTypes {
-    conf_disallowed: Vec<DisallowedPath>,
-    def_ids: FxHashMap<DefId, usize>,
-    prim_tys: FxHashMap<PrimTy, usize>,
+    def_ids: DefIdMap<(&'static str, Option<&'static str>)>,
+    prim_tys: FxHashMap<PrimTy, (&'static str, Option<&'static str>)>,
 }
 
 impl DisallowedTypes {
-    pub fn new(conf_disallowed: Vec<DisallowedPath>) -> Self {
-        Self {
-            conf_disallowed,
-            def_ids: FxHashMap::default(),
-            prim_tys: FxHashMap::default(),
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
+        let mut def_ids = DefIdMap::default();
+        let mut prim_tys = FxHashMap::default();
+        for x in &conf.disallowed_types {
+            let path: Vec<_> = x.path().split("::").collect::<Vec<_>>();
+            let reason = x.reason();
+            for res in clippy_utils::def_path_res(tcx, &path) {
+                match res {
+                    Res::Def(_, id) => {
+                        def_ids.insert(id, (x.path(), reason));
+                    },
+                    Res::PrimTy(ty) => {
+                        prim_tys.insert(ty, (x.path(), reason));
+                    },
+                    _ => {},
+                }
+            }
         }
+        Self { def_ids, prim_tys }
     }
 
     fn check_res_emit(&self, cx: &LateContext<'_>, res: &Res, span: Span) {
-        match res {
-            Res::Def(_, did) => {
-                if let Some(&index) = self.def_ids.get(did) {
-                    emit(cx, &cx.tcx.def_path_str(*did), span, &self.conf_disallowed[index]);
+        let (path, reason) = match res {
+            Res::Def(_, did) if let Some(&x) = self.def_ids.get(did) => x,
+            Res::PrimTy(prim) if let Some(&x) = self.prim_tys.get(prim) => x,
+            _ => return,
+        };
+        span_lint_and_then(
+            cx,
+            DISALLOWED_TYPES,
+            span,
+            format!("use of a disallowed type `{path}`"),
+            |diag| {
+                if let Some(reason) = reason {
+                    diag.note(reason);
                 }
             },
-            Res::PrimTy(prim) => {
-                if let Some(&index) = self.prim_tys.get(prim) {
-                    emit(cx, prim.name_str(), span, &self.conf_disallowed[index]);
-                }
-            },
-            _ => {},
-        }
+        );
     }
 }
 
 impl_lint_pass!(DisallowedTypes => [DISALLOWED_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
-    fn check_crate(&mut self, cx: &LateContext<'_>) {
-        for (index, conf) in self.conf_disallowed.iter().enumerate() {
-            let segs: Vec<_> = conf.path().split("::").collect();
-
-            for res in clippy_utils::def_path_res(cx, &segs) {
-                match res {
-                    Res::Def(_, id) => {
-                        self.def_ids.insert(id, index);
-                    },
-                    Res::PrimTy(ty) => {
-                        self.prim_tys.insert(ty, index);
-                    },
-                    _ => {},
-                }
-            }
-        }
-    }
-
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Use(path, UseKind::Single) = &item.kind {
             for res in &path.res {
@@ -120,18 +117,4 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>) {
         self.check_res_emit(cx, &poly.trait_ref.path.res, poly.trait_ref.path.span);
     }
-}
-
-fn emit(cx: &LateContext<'_>, name: &str, span: Span, conf: &DisallowedPath) {
-    span_lint_and_then(
-        cx,
-        DISALLOWED_TYPES,
-        span,
-        format!("`{name}` is not allowed according to config"),
-        |diag| {
-            if let Some(reason) = conf.reason() {
-                diag.note(reason);
-            }
-        },
-    );
 }

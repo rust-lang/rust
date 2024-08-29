@@ -95,6 +95,14 @@ impl<'tcx> CValue<'tcx> {
         CValue(CValueInner::ByValPair(value, extra), layout)
     }
 
+    /// Create an instance of a ZST
+    ///
+    /// The is represented by a dangling pointer of suitable alignment.
+    pub(crate) fn zst(layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
+        assert!(layout.is_zst());
+        CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout)
+    }
+
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
         self.1
     }
@@ -319,7 +327,7 @@ impl<'tcx> CValue<'tcx> {
 
         let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
-                let const_val = const_val.assert_bits(layout.size);
+                let const_val = const_val.to_bits(layout.size);
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
@@ -331,7 +339,7 @@ impl<'tcx> CValue<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnPtr(..) => {
-                let raw_val = const_val.size().truncate(const_val.assert_bits(layout.size));
+                let raw_val = const_val.size().truncate(const_val.to_bits(layout.size));
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F32) => {
@@ -669,8 +677,10 @@ impl<'tcx> CPlace<'tcx> {
                         let to_addr = to_ptr.get_addr(fx);
                         let src_layout = from.1;
                         let size = dst_layout.size.bytes();
-                        let src_align = src_layout.align.abi.bytes() as u8;
-                        let dst_align = dst_layout.align.abi.bytes() as u8;
+                        // `emit_small_memory_copy` uses `u8` for alignments, just use the maximum
+                        // alignment that fits in a `u8` if the actual alignment is larger.
+                        let src_align = src_layout.align.abi.bytes().try_into().unwrap_or(128);
+                        let dst_align = dst_layout.align.abi.bytes().try_into().unwrap_or(128);
                         fx.bcx.emit_small_memory_copy(
                             fx.target_config,
                             to_addr,
@@ -864,7 +874,7 @@ pub(crate) fn assert_assignable<'tcx>(
         (ty::Ref(_, a, _), ty::RawPtr(b, _)) | (ty::RawPtr(a, _), ty::Ref(_, b, _)) => {
             assert_assignable(fx, *a, *b, limit - 1);
         }
-        (ty::FnPtr(_), ty::FnPtr(_)) => {
+        (ty::FnPtr(..), ty::FnPtr(..)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                 ParamEnv::reveal_all(),
                 from_ty.fn_sig(fx.tcx),

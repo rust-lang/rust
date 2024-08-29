@@ -172,7 +172,7 @@ You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 Note: `allow` means to suppress the lint for your code. With `warn` the lint
 will only emit a warning, while with `deny` the lint will emit an error, when
-triggering for your code. An error causes clippy to exit with an error code, so
+triggering for your code. An error causes Clippy to exit with an error code, so
 is useful in scripts like CI/CD.
 
 If you do not want to include your lint levels in your code, you can globally
@@ -238,7 +238,7 @@ define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 ### Specifying the minimum supported Rust version
 
 Projects that intend to support old versions of Rust can disable lints pertaining to newer features by
-specifying the minimum supported Rust version (MSRV) in the clippy configuration file.
+specifying the minimum supported Rust version (MSRV) in the Clippy configuration file.
 
 ```toml
 msrv = "1.30.0"

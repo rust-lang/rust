@@ -25,7 +25,7 @@ unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
 #[inline]
-pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
+pub unsafe fn raw(m: &Mutex) -> *mut c::SRWLOCK {
     m.srwlock.get()
 }
 

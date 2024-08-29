@@ -34,7 +34,7 @@ pub enum Enum1 {
 
 // CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1{{.*}}
 // CHECK-NEXT: start:
-// CHECK-NEXT: %1 = add i8 %0, -2
+// CHECK-NEXT: %1 = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %2 = zext i8 %1 to i64
 // CHECK-NEXT: %3 = icmp ult i8 %1, 2
 // CHECK-NEXT: %4 = add nuw nsw i64 %2, 1
@@ -50,6 +50,7 @@ pub fn match1(e: Enum1) -> u8 {
 }
 
 // Case 2: Special cases don't apply.
+#[rustfmt::skip]
 pub enum X {
     _2=2, _3, _4, _5, _6, _7, _8, _9, _10, _11,
     _12, _13, _14, _15, _16, _17, _18, _19, _20,

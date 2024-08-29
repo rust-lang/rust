@@ -1,11 +1,11 @@
-use super::*;
-use crate::testing::crash_test::{CrashTestDummy, Panic};
-use crate::vec::Vec;
-
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::thread;
 
 use rand::RngCore;
+
+use super::*;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
+use crate::vec::Vec;
 
 #[test]
 fn test_basic() {
@@ -1163,4 +1163,41 @@ fn test_drop_panic() {
     catch_unwind(move || drop(q)).ok();
 
     assert_eq!(unsafe { DROPS }, 8);
+}
+
+#[test]
+fn test_allocator() {
+    use core::alloc::{AllocError, Allocator, Layout};
+    use core::cell::Cell;
+
+    struct A {
+        has_allocated: Cell<bool>,
+        has_deallocated: Cell<bool>,
+    }
+
+    unsafe impl Allocator for A {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            assert!(!self.has_allocated.get());
+            self.has_allocated.set(true);
+
+            Global.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            assert!(!self.has_deallocated.get());
+            self.has_deallocated.set(true);
+
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    let alloc = &A { has_allocated: Cell::new(false), has_deallocated: Cell::new(false) };
+    {
+        let mut list = LinkedList::new_in(alloc);
+        list.push_back(5u32);
+        list.remove(0);
+    }
+
+    assert!(alloc.has_allocated.get());
+    assert!(alloc.has_deallocated.get());
 }

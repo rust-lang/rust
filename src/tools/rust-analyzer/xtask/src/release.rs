@@ -32,6 +32,7 @@ impl flags::Release {
         // Generates bits of manual.adoc.
         codegen::diagnostics_docs::generate(false);
         codegen::assists_doc_tests::generate(false);
+        codegen::feature_docs::generate(false);
 
         let website_root = project_root().join("../rust-analyzer.github.io");
         {
@@ -119,12 +120,11 @@ impl flags::RustcPull {
         // Fetch given rustc commit.
         cmd!(sh, "git fetch http://localhost:{JOSH_PORT}/rust-lang/rust.git@{commit}{JOSH_FILTER}.git")
             .run()
-            .map_err(|e| {
+            .inspect_err(|_| {
                 // Try to un-do the previous `git commit`, to leave the repo in the state we found it it.
                 cmd!(sh, "git reset --hard HEAD^")
                     .run()
                     .expect("FAILED to clean up again after failed `git fetch`, sorry for that");
-                e
             })
             .context("FAILED to fetch new commits, something went wrong (committing the rust-version file has been undone)")?;
 
@@ -202,7 +202,10 @@ impl flags::RustcPush {
         let head = cmd!(sh, "git rev-parse HEAD").read()?;
         let fetch_head = cmd!(sh, "git rev-parse FETCH_HEAD").read()?;
         if head != fetch_head {
-            bail!("Josh created a non-roundtrip push! Do NOT merge this into rustc!");
+            bail!(
+                "Josh created a non-roundtrip push! Do NOT merge this into rustc!\n\
+                Expected {head}, got {fetch_head}."
+            );
         }
         println!("Confirmed that the push round-trips back to rust-analyzer properly. Please create a rustc PR:");
         // https://github.com/github-linguist/linguist/compare/master...octocat:linguist:master

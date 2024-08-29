@@ -23,3 +23,7 @@ b2d2184edea578109a48ec3d8decbee5948e8f35
 # test directives migration
 6e48b96692d63a79a14563f27fe5185f122434f8
 ec2cc761bc7067712ecc7734502f703fe3b024c8
+# format use declarations
+84ac80f1921afc243d71fd0caaa4f2838c294102
+# bless mir-opt tests to add `copy`
+99cb0c6bc399fb94a0ddde7e9b38e9c00d523bad

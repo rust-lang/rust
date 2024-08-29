@@ -1,6 +1,5 @@
-// Code taken from the `packed_simd` crate
-// Run this code with `cargo test --example dot_product`
-//use std::iter::zip;
+//! Code taken from the `packed_simd` crate.
+//! Run this code with `cargo test --example dot_product`.
 
 #![feature(array_chunks)]
 #![feature(slice_as_chunks)]

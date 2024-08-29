@@ -1,4 +1,5 @@
 //@ test-mir-pass: GVN
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 
 // EMIT_MIR address_of_pair.fn0.GVN.diff
 pub fn fn0() -> bool {
@@ -9,13 +10,13 @@ pub fn fn0() -> bool {
     // CHECK: (*[[ptr]]) = const true;
     // CHECK-NOT: = const false;
     // CHECK-NOT: = const true;
-    // CHECK: [[tmp:_.*]] = ([[pair]].1: bool);
+    // CHECK: [[tmp:_.*]] = copy ([[pair]].1: bool);
     // CHECK-NOT: = const false;
     // CHECK-NOT: = const true;
     // CHECK: [[ret]] = Not(move [[tmp]]);
     // CHECK-NOT: = const false;
     // CHECK-NOT: = const true;
-    // CHECK: _0 = [[ret]];
+    // CHECK: _0 = copy [[ret]];
     let mut pair = (1, false);
     let ptr = core::ptr::addr_of_mut!(pair.1);
     pair = (1, false);

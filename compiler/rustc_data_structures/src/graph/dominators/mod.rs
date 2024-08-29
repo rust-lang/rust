@@ -9,10 +9,11 @@
 //! Thomas Lengauer and Robert Endre Tarjan.
 //! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
-use super::ControlFlowGraph;
+use std::cmp::Ordering;
+
 use rustc_index::{Idx, IndexSlice, IndexVec};
 
-use std::cmp::Ordering;
+use super::ControlFlowGraph;
 
 #[cfg(test)]
 mod tests;
@@ -93,7 +94,7 @@ fn dominators_impl<G: ControlFlowGraph>(graph: &G) -> Inner<G::Node> {
     // These are all done here rather than through one of the 'standard'
     // graph traversals to help make this fast.
     'recurse: while let Some(frame) = stack.last_mut() {
-        while let Some(successor) = frame.iter.next() {
+        for successor in frame.iter.by_ref() {
             if real_to_pre_order[successor].is_none() {
                 let pre_order_idx = pre_order_to_real.push(successor);
                 real_to_pre_order[successor] = Some(pre_order_idx);

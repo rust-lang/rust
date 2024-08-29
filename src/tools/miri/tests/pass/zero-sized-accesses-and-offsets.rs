@@ -39,8 +39,6 @@ fn test_ptr(ptr: *mut ()) {
         // Distance.
         let ptr = ptr.cast::<i32>();
         ptr.offset_from(ptr);
-        /*
-        FIXME: this is disabled for now as these cases are not yet allowed.
         // Distance from other "bad" pointers that have the same address, but different provenance. Some
         // of this is library UB, but we don't want it to be language UB since that would violate
         // provenance monotonicity: if we allow computing the distance between two ptrs with no
@@ -54,6 +52,5 @@ fn test_ptr(ptr: *mut ()) {
         // - Distance from use-after-free pointer
         drop(b);
         ptr.offset_from(other_ptr.with_addr(ptr.addr()));
-        */
     }
 }

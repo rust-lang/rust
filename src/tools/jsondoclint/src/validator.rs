@@ -3,13 +3,14 @@ use std::hash::Hash;
 
 use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
-    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, ItemSummary, Module,
-    OpaqueTy, Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias,
-    Type, TypeAlias, TypeBinding, TypeBindingKind, Union, Variant, VariantKind, WherePredicate,
+    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, ItemSummary, Module, Path,
+    Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeAlias,
+    TypeBinding, TypeBindingKind, Union, Variant, VariantKind, WherePredicate,
 };
 use serde_json::Value;
 
-use crate::{item_kind::Kind, json_find, Error, ErrorKind};
+use crate::item_kind::Kind;
+use crate::{json_find, Error, ErrorKind};
 
 // This is a rustc implementation detail that we rely on here
 const LOCAL_CRATE_ID: u32 = 0;
@@ -100,8 +101,10 @@ impl<'a> Validator<'a> {
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
                 ItemEnum::Impl(x) => self.check_impl(x, id),
                 ItemEnum::TypeAlias(x) => self.check_type_alias(x),
-                ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
-                ItemEnum::Constant(x) => self.check_constant(x),
+                ItemEnum::Constant { type_, const_ } => {
+                    self.check_type(type_);
+                    self.check_constant(const_);
+                }
                 ItemEnum::Static(x) => self.check_static(x),
                 ItemEnum::ForeignType => {} // nop
                 ItemEnum::Macro(x) => self.check_macro(x),
@@ -226,13 +229,8 @@ impl<'a> Validator<'a> {
         self.check_type(&x.type_);
     }
 
-    fn check_opaque_ty(&mut self, x: &'a OpaqueTy) {
-        x.bounds.iter().for_each(|b| self.check_generic_bound(b));
-        self.check_generics(&x.generics);
-    }
-
-    fn check_constant(&mut self, x: &'a Constant) {
-        self.check_type(&x.type_);
+    fn check_constant(&mut self, _x: &'a Constant) {
+        // nop
     }
 
     fn check_static(&mut self, x: &'a Static) {
@@ -295,6 +293,7 @@ impl<'a> Validator<'a> {
                 generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
             }
             GenericBound::Outlives(_) => {}
+            GenericBound::Use(_) => {}
         }
     }
 
@@ -371,8 +370,8 @@ impl<'a> Validator<'a> {
                 bounds.iter().for_each(|b| self.check_generic_bound(b));
                 generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
             }
-            WherePredicate::RegionPredicate { lifetime: _, bounds } => {
-                bounds.iter().for_each(|b| self.check_generic_bound(b));
+            WherePredicate::LifetimePredicate { lifetime: _, outlives: _ } => {
+                // nop, all strings.
             }
             WherePredicate::EqPredicate { lhs, rhs } => {
                 self.check_type(lhs);
@@ -415,15 +414,13 @@ impl<'a> Validator<'a> {
             } else {
                 self.fail_expecting(id, expected);
             }
-        } else {
-            if !self.missing_ids.contains(id) {
-                self.missing_ids.insert(id);
+        } else if !self.missing_ids.contains(id) {
+            self.missing_ids.insert(id);
 
-                let sels = json_find::find_selector(&self.krate_json, &Value::String(id.0.clone()));
-                assert_ne!(sels.len(), 0);
+            let sels = json_find::find_selector(&self.krate_json, &Value::String(id.0.clone()));
+            assert_ne!(sels.len(), 0);
 
-                self.fail(id, ErrorKind::NotFound(sels))
-            }
+            self.fail(id, ErrorKind::NotFound(sels))
         }
     }
 

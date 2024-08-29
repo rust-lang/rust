@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -45,25 +46,10 @@ pub struct ExtraUnusedTypeParameters {
 }
 
 impl ExtraUnusedTypeParameters {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
-    }
-
-    /// Don't lint external macros or functions with empty bodies. Also, don't lint exported items
-    /// if the `avoid_breaking_exported_api` config option is set.
-    fn is_empty_exported_or_macro(
-        &self,
-        cx: &LateContext<'_>,
-        span: Span,
-        def_id: LocalDefId,
-        body_id: BodyId,
-    ) -> bool {
-        let body = cx.tcx.hir().body(body_id).value;
-        let fn_empty = matches!(&body.kind, ExprKind::Block(blk, None) if blk.stmts.is_empty() && blk.expr.is_none());
-        let is_exported = cx.effective_visibilities.is_exported(def_id);
-        in_external_macro(cx.sess(), span) || fn_empty || (is_exported && self.avoid_breaking_exported_api)
     }
 }
 
@@ -266,10 +252,17 @@ impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
     }
 }
 
+fn is_empty_body(cx: &LateContext<'_>, body: BodyId) -> bool {
+    matches!(cx.tcx.hir().body(body).value.kind, ExprKind::Block(b, _) if b.stmts.is_empty() && b.expr.is_none())
+}
+
 impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Fn(_, generics, body_id) = item.kind
-            && !self.is_empty_exported_or_macro(cx, item.span, item.owner_id.def_id, body_id)
+            && !generics.params.is_empty()
+            && !is_empty_body(cx, body_id)
+            && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
+            && !in_external_macro(cx.sess(), item.span)
             && !is_from_proc_macro(cx, item)
         {
             let mut walker = TypeWalker::new(cx, generics);
@@ -281,8 +274,12 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'tcx>) {
         // Only lint on inherent methods, not trait methods.
         if let ImplItemKind::Fn(.., body_id) = item.kind
+            && !item.generics.params.is_empty()
             && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
-            && !self.is_empty_exported_or_macro(cx, item.span, item.owner_id.def_id, body_id)
+            && !is_empty_body(cx, body_id)
+            && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
+            && !in_external_macro(cx.sess(), item.span)
+            && !is_from_proc_macro(cx, item)
         {
             let mut walker = TypeWalker::new(cx, item.generics);
             walk_impl_item(&mut walker, item);

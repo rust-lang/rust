@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::visitors::is_local_used;
@@ -43,9 +44,9 @@ pub struct UnusedSelf {
 impl_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
 impl UnusedSelf {
-    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            avoid_breaking_exported_api,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
         }
     }
 }
@@ -59,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         let parent_item = cx.tcx.hir().expect_item(parent);
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let contains_todo = |cx, body: &'_ Body<'_>| -> bool {
-            clippy_utils::visitors::for_each_expr(body.value, |e| {
+            clippy_utils::visitors::for_each_expr_without_closures(body.value, |e| {
                 if let Some(macro_call) = root_macro_call_first_node(cx, e) {
                     if cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
                         ControlFlow::Break(())

@@ -6,16 +6,12 @@ import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
-import type { JsonProject } from "./rust_project";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
-// This API is not stable and may break in between minor releases.
 export interface RustAnalyzerExtensionApi {
+    // FIXME: this should be non-optional
     readonly client?: lc.LanguageClient;
-
-    setWorkspaces(workspaces: JsonProject[]): void;
-    notifyRustAnalyzer(): Promise<void>;
 }
 
 export async function deactivate() {
@@ -145,7 +141,6 @@ function createCommands(): Record<string, CommandFactory> {
 
         analyzerStatus: { enabled: commands.analyzerStatus },
         memoryUsage: { enabled: commands.memoryUsage },
-        shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
         reloadWorkspace: { enabled: commands.reloadWorkspace },
         rebuildProcMacros: { enabled: commands.rebuildProcMacros },
         matchingBrace: { enabled: commands.matchingBrace },
@@ -177,16 +172,19 @@ function createCommands(): Record<string, CommandFactory> {
         serverVersion: { enabled: commands.serverVersion },
         viewMemoryLayout: { enabled: commands.viewMemoryLayout },
         toggleCheckOnSave: { enabled: commands.toggleCheckOnSave },
+        toggleLSPLogs: { enabled: commands.toggleLSPLogs },
+        openWalkthrough: { enabled: commands.openWalkthrough },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
         applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
         debugSingle: { enabled: commands.debugSingle },
         gotoLocation: { enabled: commands.gotoLocation },
-        linkToCommand: { enabled: commands.linkToCommand },
+        hoverRefCommandProxy: { enabled: commands.hoverRefCommandProxy },
         resolveCodeAction: { enabled: commands.resolveCodeAction },
         runSingle: { enabled: commands.runSingle },
         showReferences: { enabled: commands.showReferences },
         triggerParameterHints: { enabled: commands.triggerParameterHints },
+        rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
     };
@@ -199,16 +197,6 @@ function checkConflictingExtensions() {
                 `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
                     "plugins enabled. These are known to conflict and cause various functions of " +
                     "both plugins to not work correctly. You should disable one of them.",
-                "Got it",
-            )
-            .then(() => {}, console.error);
-    }
-
-    if (vscode.extensions.getExtension("panicbit.cargo")) {
-        vscode.window
-            .showWarningMessage(
-                `You have both the rust-analyzer (rust-lang.rust-analyzer) and Cargo (panicbit.cargo) plugins enabled, ` +
-                    'you can disable it or set {"cargo.automaticCheck": false} in settings.json to avoid invoking cargo twice',
                 "Got it",
             )
             .then(() => {}, console.error);

@@ -1,36 +1,35 @@
-use crate::errors::{
-    self, AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
-    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
-};
-use crate::fluent_generated as fluent;
-use crate::hir_ty_lowering::HirTyLowerer;
-use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::MultiSpan;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed,
+    pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::traits::FulfillmentError;
+use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
-use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, suggest_constraining_type_param};
-use rustc_middle::ty::{AdtDef, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::ty::{Binder, TraitRef};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_param, AdtDef, Binder, GenericParamDefKind, TraitRef, Ty,
+    TyCtxt, TypeVisitableExt,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::BytePos;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::error_reporting::traits::report_object_safety_error;
 use rustc_trait_selection::traits::{
-    object_safety_violations_for_assoc_item, TraitAliasExpansionInfo,
+    object_safety_violations_for_assoc_item, FulfillmentError, TraitAliasExpansionInfo,
 };
+
+use crate::errors::{
+    self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
+    ParenthesizedFnTraitExpansion, TraitObjectDeclaredWithNoTraits,
+};
+use crate::fluent_generated as fluent;
+use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
@@ -46,7 +45,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         }
 
-        self.tcx().dcx().emit_err(MissingTypeParams {
+        self.dcx().emit_err(MissingTypeParams {
             span,
             def_span: self.tcx().def_span(def_id),
             span_snippet: self.tcx().sess.source_map().span_to_snippet(span).ok(),
@@ -109,19 +108,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         if is_impl {
             let trait_name = self.tcx().def_path_str(trait_def_id);
-            self.tcx().dcx().emit_err(ManualImplementation { span, trait_name });
+            self.dcx().emit_err(ManualImplementation { span, trait_name });
         }
     }
 
     pub(super) fn complain_about_assoc_item_not_found<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        ty_param_name: &str,
-        ty_param_def_id: Option<LocalDefId>,
+        qself: AssocItemQSelf,
         assoc_kind: ty::AssocKind,
         assoc_name: Ident,
         span: Span,
-        binding: Option<&hir::TypeBinding<'tcx>>,
+        constraint: Option<&hir::AssocItemConstraint<'tcx>>,
     ) -> ErrorGuaranteed
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -135,11 +133,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .find(|item| tcx.hygienic_eq(assoc_name, item.ident(tcx), r.def_id()))
         }) {
             return self.complain_about_assoc_kind_mismatch(
-                assoc_item, assoc_kind, assoc_name, span, binding,
+                assoc_item, assoc_kind, assoc_name, span, constraint,
             );
         }
 
-        let assoc_kind_str = super::assoc_kind_str(assoc_kind);
+        let assoc_kind_str = assoc_kind_str(assoc_kind);
+        let qself_str = qself.to_string(tcx);
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
         // valid span, so we point at the whole path segment instead.
@@ -149,14 +148,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span: if is_dummy { span } else { assoc_name.span },
             assoc_name,
             assoc_kind: assoc_kind_str,
-            ty_param_name,
+            qself: &qself_str,
             label: None,
             sugg: None,
         };
 
         if is_dummy {
             err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span });
-            return tcx.dcx().emit_err(err);
+            return self.dcx().emit_err(err);
         }
 
         let all_candidate_names: Vec<_> = all_candidates()
@@ -174,7 +173,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_kind: assoc_kind_str,
                 suggested_name,
             });
-            return tcx.dcx().emit_err(err);
+            return self.dcx().emit_err(err);
         }
 
         // If we didn't find a good item in the supertraits (or couldn't get
@@ -219,19 +218,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     suggested_name,
                     identically_named: suggested_name == assoc_name.name,
                 });
-                let hir = tcx.hir();
-                if let Some(def_id) = ty_param_def_id
-                    && let parent = hir.get_parent_item(tcx.local_def_id_to_hir_id(def_id))
-                    && let Some(generics) = hir.get_generics(parent.def_id)
+                if let AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span) = qself
+                    // Not using `self.item_def_id()` here as that would yield the opaque type itself if we're
+                    // inside an opaque type while we're interested in the overarching type alias (TAIT).
+                    // FIXME: However, for trait aliases, this incorrectly returns the enclosing module...
+                    && let item_def_id =
+                        tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
+                    // FIXME: ...which obviously won't have any generics.
+                    && let Some(generics) = tcx.hir().get_generics(item_def_id.def_id)
                 {
-                    if generics.bounds_for_param(def_id).flat_map(|pred| pred.bounds.iter()).any(
-                        |b| match b {
+                    // FIXME: Suggest adding supertrait bounds if we have a `Self` type param.
+                    // FIXME(trait_alias): Suggest adding `Self: Trait` to
+                    // `trait Alias = where Self::Proj:;` with `trait Trait { type Proj; }`.
+                    if generics
+                        .bounds_for_param(ty_param_def_id)
+                        .flat_map(|pred| pred.bounds.iter())
+                        .any(|b| match b {
                             hir::GenericBound::Trait(t, ..) => {
                                 t.trait_ref.trait_def_id() == Some(best_trait)
                             }
                             _ => false,
-                        },
-                    ) {
+                        })
+                    {
                         // The type param already has a bound for `trait_name`, we just need to
                         // change the associated item.
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
@@ -239,51 +247,63 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
-                        return tcx.dcx().emit_err(err);
+                        return self.dcx().emit_err(err);
                     }
 
-                    let mut err = tcx.dcx().create_err(err);
-                    if suggest_constraining_type_param(
-                        tcx,
-                        generics,
-                        &mut err,
-                        &ty_param_name,
-                        &trait_name,
-                        None,
-                        None,
-                    ) && suggested_name != assoc_name.name
+                    let trait_args = &ty::GenericArgs::identity_for_item(tcx, best_trait)[1..];
+                    let mut trait_ref = trait_name.clone();
+                    let applicability = if let [arg, args @ ..] = trait_args {
+                        use std::fmt::Write;
+                        write!(trait_ref, "</* {arg}").unwrap();
+                        args.iter().try_for_each(|arg| write!(trait_ref, ", {arg}")).unwrap();
+                        trait_ref += " */>";
+                        Applicability::HasPlaceholders
+                    } else {
+                        Applicability::MaybeIncorrect
+                    };
+
+                    let identically_named = suggested_name == assoc_name.name;
+
+                    if let DefKind::TyAlias = tcx.def_kind(item_def_id)
+                        && !tcx.type_alias_is_lazy(item_def_id)
                     {
-                        // We suggested constraining a type parameter, but the associated item on it
-                        // was also not an exact match, so we also suggest changing it.
-                        err.span_suggestion_verbose(
-                            assoc_name.span,
-                            fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
+                        err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTraitQPath {
+                            lo: ty_param_span.shrink_to_lo(),
+                            mi: ty_param_span.shrink_to_hi(),
+                            hi: (!identically_named).then_some(assoc_name.span),
+                            trait_ref,
+                            identically_named,
                             suggested_name,
-                            Applicability::MaybeIncorrect,
-                        );
+                            applicability,
+                        });
+                    } else {
+                        let mut err = self.dcx().create_err(err);
+                        if suggest_constraining_type_param(
+                            tcx, generics, &mut err, &qself_str, &trait_ref, None, None,
+                        ) && !identically_named
+                        {
+                            // We suggested constraining a type parameter, but the associated item on it
+                            // was also not an exact match, so we also suggest changing it.
+                            err.span_suggestion_verbose(
+                                assoc_name.span,
+                                fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
+                                suggested_name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        return err.emit();
                     }
-                    return err.emit();
                 }
-                return tcx.dcx().emit_err(err);
+                return self.dcx().emit_err(err);
             }
         }
 
         // If we still couldn't find any associated item, and only one associated item exists,
-        // suggests using it.
+        // suggest using it.
         if let [candidate_name] = all_candidate_names.as_slice() {
-            // This should still compile, except on `#![feature(associated_type_defaults)]`
-            // where it could suggests `type A = Self::A`, thus recursing infinitely.
-            let applicability =
-                if assoc_kind == ty::AssocKind::Type && tcx.features().associated_type_defaults {
-                    Applicability::Unspecified
-                } else {
-                    Applicability::MaybeIncorrect
-                };
-
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
                 span: assoc_name.span,
-                applicability,
-                ty_param_name,
+                qself: &qself_str,
                 assoc_kind: assoc_kind_str,
                 suggested_name: *candidate_name,
             });
@@ -291,7 +311,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_name.span });
         }
 
-        tcx.dcx().emit_err(err)
+        self.dcx().emit_err(err)
     }
 
     fn complain_about_assoc_kind_mismatch(
@@ -300,18 +320,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_kind: ty::AssocKind,
         ident: Ident,
         span: Span,
-        binding: Option<&hir::TypeBinding<'tcx>>,
+        constraint: Option<&hir::AssocItemConstraint<'tcx>>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
         let bound_on_assoc_const_label = if let ty::AssocKind::Const = assoc_item.kind
-            && let Some(binding) = binding
-            && let hir::TypeBindingKind::Constraint { .. } = binding.kind
+            && let Some(constraint) = constraint
+            && let hir::AssocItemConstraintKind::Bound { .. } = constraint.kind
         {
-            let lo = if binding.gen_args.span_ext.is_dummy() {
+            let lo = if constraint.gen_args.span_ext.is_dummy() {
                 ident.span
             } else {
-                binding.gen_args.span_ext
+                constraint.gen_args.span_ext
             };
             Some(lo.between(span.shrink_to_hi()))
         } else {
@@ -319,8 +339,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         // FIXME(associated_const_equality): This has quite a few false positives and negatives.
-        let wrap_in_braces_sugg = if let Some(binding) = binding
-            && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(hir_ty) } = binding.kind
+        let wrap_in_braces_sugg = if let Some(constraint) = constraint
+            && let Some(hir_ty) = constraint.ty()
             && let ty = self.lower_ty(hir_ty)
             && (ty.is_enum() || ty.references_error())
             && tcx.features().associated_const_equality
@@ -333,26 +353,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             None
         };
 
-        // For equality bounds, we want to blame the term (RHS) instead of the item (LHS) since
+        // For equality constraints, we want to blame the term (RHS) instead of the item (LHS) since
         // one can argue that that's more “intuitive” to the user.
-        let (span, expected_because_label, expected, got) = if let Some(binding) = binding
-            && let hir::TypeBindingKind::Equality { term } = binding.kind
+        let (span, expected_because_label, expected, got) = if let Some(constraint) = constraint
+            && let hir::AssocItemConstraintKind::Equality { term } = constraint.kind
         {
             let span = match term {
                 hir::Term::Ty(ty) => ty.span,
-                hir::Term::Const(ct) => tcx.def_span(ct.def_id),
+                hir::Term::Const(ct) => ct.span(),
             };
             (span, Some(ident.span), assoc_item.kind, assoc_kind)
         } else {
             (ident.span, None, assoc_kind, assoc_item.kind)
         };
 
-        tcx.dcx().emit_err(errors::AssocKindMismatch {
+        self.dcx().emit_err(errors::AssocKindMismatch {
             span,
-            expected: super::assoc_kind_str(expected),
-            got: super::assoc_kind_str(got),
+            expected: assoc_kind_str(expected),
+            got: assoc_kind_str(got),
             expected_because_label,
-            assoc_kind: super::assoc_kind_str(assoc_item.kind),
+            assoc_kind: assoc_kind_str(assoc_item.kind),
             def_span: tcx.def_span(assoc_item.def_id),
             bound_on_assoc_const_label,
             wrap_in_braces_sugg,
@@ -366,8 +386,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         traits: &[String],
         name: Symbol,
     ) -> ErrorGuaranteed {
-        let mut err =
-            struct_span_code_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
+        let mut err = struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type");
         if self
             .tcx()
             .resolutions(())
@@ -463,9 +482,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         }
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     pub(crate) fn complain_about_ambiguous_inherent_assoc_ty(
@@ -475,16 +492,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) -> ErrorGuaranteed {
         let mut err = struct_span_code_err!(
-            self.tcx().dcx(),
+            self.dcx(),
             name.span,
             E0034,
             "multiple applicable items in scope"
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
         self.note_ambiguous_inherent_assoc_ty(&mut err, candidates, span);
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
@@ -576,7 +591,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
 
             let mut err = struct_span_code_err!(
-                tcx.dcx(),
+                self.dcx(),
                 name.span,
                 E0220,
                 "associated type `{name}` not found for `{self_ty}` in the current scope"
@@ -593,7 +608,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
             let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
-            match &self_ty.kind() {
+            match self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
                 ty::Adt(def, _) => {
                     bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
@@ -662,7 +677,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         bounds.sort();
         bounds.dedup();
 
-        let mut err = tcx.dcx().struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             name.span,
             format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
@@ -702,8 +717,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(crate) fn complain_about_missing_assoc_tys(
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
-        potential_assoc_types: Vec<Span>,
-        trait_bounds: &[hir::PolyTraitRef<'_>],
+        potential_assoc_types: Vec<usize>,
+        trait_bounds: &[(hir::PolyTraitRef<'_>, hir::TraitBoundModifier)],
     ) {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
@@ -745,8 +760,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if object_safety_violations {
             return;
         }
+
+        // related to issue #91997, turbofishes added only when in an expr or pat
+        let mut in_expr_or_pat = false;
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
-            match bound.trait_ref.path.segments {
+            let grandparent = tcx.parent_hir_node(tcx.parent_hir_id(bound.0.trait_ref.hir_ref_id));
+            in_expr_or_pat = match grandparent {
+                hir::Node::Expr(_) | hir::Node::Pat(_) => true,
+                _ => false,
+            };
+            match bound.0.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.
@@ -787,12 +810,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // and we can then use their span to indicate this to the user.
         let bound_names = trait_bounds
             .iter()
-            .filter_map(|poly_trait_ref| {
+            .filter_map(|(poly_trait_ref, _)| {
                 let path = poly_trait_ref.trait_ref.path.segments.last()?;
                 let args = path.args?;
 
-                Some(args.bindings.iter().filter_map(|binding| {
-                    let ident = binding.ident;
+                Some(args.constraints.iter().filter_map(|constraint| {
+                    let ident = constraint.ident;
                     let trait_def = path.res.def_id();
                     let assoc_item = tcx.associated_items(trait_def).find_by_name_and_kind(
                         tcx,
@@ -829,7 +852,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         trait_bound_spans.sort();
         let mut err = struct_span_code_err!(
-            tcx.dcx(),
+            self.dcx(),
             trait_bound_spans,
             E0191,
             "the value of the associated type{} {} must be specified",
@@ -901,6 +924,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
                     // suggestion.
                     format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
+                } else if in_expr_or_pat {
+                    // The user wrote `Iterator`, so we don't have a type we can suggest, but at
+                    // least we can clue them to the correct syntax `Iterator::<Item = Type>`.
+                    format!("{}::<{}>", snippet, types.join(", "))
                 } else {
                     // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                     // least we can clue them to the correct syntax `Iterator<Item = Type>`.
@@ -974,7 +1001,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        self.set_tainted_by_errors(err.emit());
+        err.emit();
     }
 
     /// On ambiguous associated type, look for an associated function whose name matches the
@@ -1011,17 +1038,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .filter_by_name_unhygienic(Symbol::intern(&name))
                 .next()
         {
-            let reported =
-                struct_span_code_err!(tcx.dcx(), span, E0223, "ambiguous associated type")
-                    .with_span_suggestion_verbose(
-                        ident2.span.to(ident3.span),
-                        format!("there is an associated function with a similar name: `{name}`"),
-                        name,
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
-            self.set_tainted_by_errors(reported);
-            Err(reported)
+            Err(struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
+                .with_span_suggestion_verbose(
+                    ident2.span.to(ident3.span),
+                    format!("there is an associated function with a similar name: `{name}`"),
+                    name,
+                    Applicability::MaybeIncorrect,
+                )
+                .emit())
         } else {
             Ok(())
         }
@@ -1120,7 +1144,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let last_span = *arg_spans.last().unwrap();
         let span: MultiSpan = arg_spans.into();
         let mut err = struct_span_code_err!(
-            self.tcx().dcx(),
+            self.dcx(),
             span,
             E0109,
             "{kind} arguments are not allowed on {this_type}",
@@ -1130,20 +1154,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.span_label(span, format!("not allowed on {what}"));
         }
         generics_args_err_extend(self.tcx(), segments, &mut err, err_extend);
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     pub fn report_trait_object_addition_traits_error(
         &self,
         regular_traits: &Vec<TraitAliasExpansionInfo<'_>>,
     ) -> ErrorGuaranteed {
-        let tcx = self.tcx();
         let first_trait = &regular_traits[0];
         let additional_trait = &regular_traits[1];
         let mut err = struct_span_code_err!(
-            tcx.dcx(),
+            self.dcx(),
             additional_trait.bottom().1,
             E0225,
             "only auto traits can be used as additional traits in a trait object"
@@ -1169,9 +1190,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
              for more information on them, visit \
              <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
         );
-        let reported = err.emit();
-        self.set_tainted_by_errors(reported);
-        reported
+        err.emit()
     }
 
     pub fn report_trait_object_with_no_traits_error(
@@ -1185,21 +1204,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|&(trait_ref, _)| trait_ref.def_id())
             .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
             .map(|trait_ref| tcx.def_span(trait_ref));
-        let reported =
-            tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-        self.set_tainted_by_errors(reported);
-        reported
+
+        self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span })
     }
 }
 
-/// Emits an error regarding forbidden type binding associations
-pub fn prohibit_assoc_item_binding(
-    tcx: TyCtxt<'_>,
-    binding: &hir::TypeBinding<'_>,
+/// Emit an error for the given associated item constraint.
+pub fn prohibit_assoc_item_constraint(
+    cx: &dyn HirTyLowerer<'_>,
+    constraint: &hir::AssocItemConstraint<'_>,
     segment: Option<(DefId, &hir::PathSegment<'_>, Span)>,
 ) -> ErrorGuaranteed {
-    let mut err = tcx.dcx().create_err(AssocTypeBindingNotAllowed {
-        span: binding.span,
+    let tcx = cx.tcx();
+    let mut err = cx.dcx().create_err(AssocItemConstraintsNotAllowedHere {
+        span: constraint.span,
         fn_trait_expansion: if let Some((_, segment, span)) = segment
             && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar
         {
@@ -1217,13 +1235,11 @@ pub fn prohibit_assoc_item_binding(
     // otherwise suggest the removal of the binding.
     if let Some((def_id, segment, _)) = segment
         && segment.args().parenthesized == hir::GenericArgsParentheses::No
-        && let hir::TypeBindingKind::Equality { term } = binding.kind
     {
         // Suggests removal of the offending binding
         let suggest_removal = |e: &mut Diag<'_>| {
-            let bindings = segment.args().bindings;
+            let constraints = segment.args().constraints;
             let args = segment.args().args;
-            let binding_span = binding.span;
 
             // Compute the span to remove based on the position
             // of the binding. We do that as follows:
@@ -1236,26 +1252,21 @@ pub fn prohibit_assoc_item_binding(
             //     the start of the next span or will simply be the
             //     span encomassing everything within the generics brackets
 
-            let Some(binding_index) = bindings.iter().position(|b| b.hir_id == binding.hir_id)
-            else {
+            let Some(index) = constraints.iter().position(|b| b.hir_id == constraint.hir_id) else {
                 bug!("a type binding exists but its HIR ID not found in generics");
             };
 
-            let preceding_span = if binding_index > 0 {
-                Some(bindings[binding_index - 1].span)
+            let preceding_span = if index > 0 {
+                Some(constraints[index - 1].span)
             } else {
                 args.last().map(|a| a.span())
             };
 
-            let next_span = if binding_index < bindings.len() - 1 {
-                Some(bindings[binding_index + 1].span)
-            } else {
-                None
-            };
+            let next_span = constraints.get(index + 1).map(|constraint| constraint.span);
 
             let removal_span = match (preceding_span, next_span) {
-                (Some(prec), _) => binding_span.with_lo(prec.hi()),
-                (None, Some(next)) => binding_span.with_hi(next.lo()),
+                (Some(prec), _) => constraint.span.with_lo(prec.hi()),
+                (None, Some(next)) => constraint.span.with_hi(next.lo()),
                 (None, None) => {
                     let Some(generics_span) = segment.args().span_ext() else {
                         bug!("a type binding exists but generic span is empty");
@@ -1266,14 +1277,12 @@ pub fn prohibit_assoc_item_binding(
             };
 
             // Now emit the suggestion
-            if let Ok(suggestion) = tcx.sess.source_map().span_to_snippet(removal_span) {
-                e.span_suggestion_verbose(
-                    removal_span,
-                    "consider removing this type binding",
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            e.span_suggestion_verbose(
+                removal_span,
+                format!("consider removing this associated item {}", constraint.kind.descr()),
+                "",
+                Applicability::MaybeIncorrect,
+            );
         };
 
         // Suggest replacing the associated item binding with a generic argument.
@@ -1281,7 +1290,7 @@ pub fn prohibit_assoc_item_binding(
         let suggest_direct_use = |e: &mut Diag<'_>, sp: Span| {
             if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(sp) {
                 e.span_suggestion_verbose(
-                    binding.span,
+                    constraint.span,
                     format!("to use `{snippet}` as a generic argument specify it directly"),
                     snippet,
                     Applicability::MaybeIncorrect,
@@ -1289,21 +1298,76 @@ pub fn prohibit_assoc_item_binding(
             }
         };
 
-        // Check if the type has a generic param with the
-        // same name as the assoc type name in type binding
+        // Check if the type has a generic param with the same name
+        // as the assoc type name in the associated item binding.
         let generics = tcx.generics_of(def_id);
-        let matching_param =
-            generics.own_params.iter().find(|p| p.name.as_str() == binding.ident.as_str());
+        let matching_param = generics.own_params.iter().find(|p| p.name == constraint.ident.name);
 
         // Now emit the appropriate suggestion
         if let Some(matching_param) = matching_param {
-            match (&matching_param.kind, term) {
-                (GenericParamDefKind::Type { .. }, hir::Term::Ty(ty)) => {
-                    suggest_direct_use(&mut err, ty.span);
+            match (constraint.kind, &matching_param.kind) {
+                (
+                    hir::AssocItemConstraintKind::Equality { term: hir::Term::Ty(ty) },
+                    GenericParamDefKind::Type { .. },
+                ) => suggest_direct_use(&mut err, ty.span),
+                (
+                    hir::AssocItemConstraintKind::Equality { term: hir::Term::Const(c) },
+                    GenericParamDefKind::Const { .. },
+                ) => {
+                    suggest_direct_use(&mut err, c.span());
                 }
-                (GenericParamDefKind::Const { .. }, hir::Term::Const(c)) => {
-                    let span = tcx.hir().span(c.hir_id);
-                    suggest_direct_use(&mut err, span);
+                (hir::AssocItemConstraintKind::Bound { bounds }, _) => {
+                    // Suggest `impl<T: Bound> Trait<T> for Foo` when finding
+                    // `impl Trait<T: Bound> for Foo`
+
+                    // Get the parent impl block based on the binding we have
+                    // and the trait DefId
+                    let impl_block = tcx
+                        .hir()
+                        .parent_iter(constraint.hir_id)
+                        .find_map(|(_, node)| node.impl_block_of_trait(def_id));
+
+                    let type_with_constraints =
+                        tcx.sess.source_map().span_to_snippet(constraint.span);
+
+                    if let Some(impl_block) = impl_block
+                        && let Ok(type_with_constraints) = type_with_constraints
+                    {
+                        // Filter out the lifetime parameters because
+                        // they should be declared before the type parameter
+                        let lifetimes: String = bounds
+                            .iter()
+                            .filter_map(|bound| {
+                                if let hir::GenericBound::Outlives(lifetime) = bound {
+                                    Some(format!("{lifetime}, "))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        // Figure out a span and suggestion string based on
+                        // whether there are any existing parameters
+                        let param_decl = if let Some(param_span) =
+                            impl_block.generics.span_for_param_suggestion()
+                        {
+                            (param_span, format!(", {lifetimes}{type_with_constraints}"))
+                        } else {
+                            (
+                                impl_block.generics.span.shrink_to_lo(),
+                                format!("<{lifetimes}{type_with_constraints}>"),
+                            )
+                        };
+                        let suggestions = vec![
+                            param_decl,
+                            (constraint.span.with_lo(constraint.ident.span.hi()), String::new()),
+                        ];
+
+                        err.multipart_suggestion_verbose(
+                            "declare the type parameter right after the `impl` keyword",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
                 _ => suggest_removal(&mut err),
             }
@@ -1322,8 +1386,7 @@ pub(crate) fn fn_trait_to_string(
 ) -> String {
     let args = trait_segment
         .args
-        .as_ref()
-        .and_then(|args| args.args.get(0))
+        .and_then(|args| args.args.first())
         .and_then(|arg| match arg {
             hir::GenericArg::Type(ty) => match ty.kind {
                 hir::TyKind::Tup(t) => t
@@ -1334,7 +1397,7 @@ pub(crate) fn fn_trait_to_string(
                 _ => tcx.sess.source_map().span_to_snippet(ty.span),
             }
             .map(|s| {
-                // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a comma
+                // `is_empty()` checks to see if the type is the unit tuple, if so we don't want a comma
                 if parenthesized || s.is_empty() { format!("({s})") } else { format!("({s},)") }
             })
             .ok(),
@@ -1344,20 +1407,17 @@ pub(crate) fn fn_trait_to_string(
 
     let ret = trait_segment
         .args()
-        .bindings
+        .constraints
         .iter()
-        .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
-            (true, hir::TypeBindingKind::Equality { term }) => {
-                let span = match term {
-                    hir::Term::Ty(ty) => ty.span,
-                    hir::Term::Const(c) => tcx.hir().span(c.hir_id),
-                };
-
-                (span != tcx.hir().span(trait_segment.hir_id))
-                    .then_some(tcx.sess.source_map().span_to_snippet(span).ok())
-                    .flatten()
+        .find_map(|c| {
+            if c.ident.name == sym::Output
+                && let Some(ty) = c.ty()
+                && ty.span != tcx.hir().span(trait_segment.hir_id)
+            {
+                tcx.sess.source_map().span_to_snippet(ty.span).ok()
+            } else {
+                None
             }
-            _ => None,
         })
         .unwrap_or_else(|| "()".to_string());
 
@@ -1570,5 +1630,13 @@ fn generics_args_err_extend<'a>(
             }
         }
         _ => {}
+    }
+}
+
+pub(super) fn assoc_kind_str(kind: ty::AssocKind) -> &'static str {
+    match kind {
+        ty::AssocKind::Fn => "function",
+        ty::AssocKind::Const => "constant",
+        ty::AssocKind::Type => "type",
     }
 }

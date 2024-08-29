@@ -1,10 +1,9 @@
-use crate::fmt;
+use libc::{c_int, pid_t};
+
 use crate::io;
 use crate::num::NonZero;
 use crate::sys::pal::unix::unsupported::*;
 use crate::sys::process::process_common::*;
-
-use libc::{c_int, pid_t};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

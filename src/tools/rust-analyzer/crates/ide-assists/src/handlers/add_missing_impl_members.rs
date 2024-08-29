@@ -105,7 +105,7 @@ fn add_missing_impl_members_inner(
     assist_id: &'static str,
     label: &'static str,
 ) -> Option<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "add_missing_impl_members_inner").entered();
+    let _p = tracing::info_span!("add_missing_impl_members_inner").entered();
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
     let impl_ = ctx.sema.to_def(&impl_def)?;
 
@@ -2279,5 +2279,30 @@ impl b::LocalTrait for B {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn impl_with_type_param_with_former_param_as_default() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Test<'a, T, U = T> {
+    fn test(item: &'a T) -> U;
+}
+impl<'a> Test<'a, i32> for bool {
+    $0
+}
+"#,
+            r#"
+pub trait Test<'a, T, U = T> {
+    fn test(item: &'a T) -> U;
+}
+impl<'a> Test<'a, i32> for bool {
+    fn test(item: &'a i32) -> i32 {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
     }
 }

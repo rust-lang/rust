@@ -60,7 +60,7 @@ const fn escape_ascii<const N: usize>(byte: u8) -> ([ascii::Char; N], Range<u8>)
 const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], Range<u8>) {
     const { assert!(N >= 10 && N < u8::MAX as usize) };
 
-    let c = u32::from(c);
+    let c = c as u32;
 
     // OR-ing `1` ensures that for `c == 0` the code computes that
     // one digit should be printed.

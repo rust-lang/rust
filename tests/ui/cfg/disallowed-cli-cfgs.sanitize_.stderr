@@ -1,0 +1,8 @@
+error: unexpected `--cfg sanitize="cfi"` flag
+   |
+   = note: config `sanitize` is only supposed to be controlled by `-Z sanitizer`
+   = note: manually setting a built-in cfg can and does create incoherent behaviors
+   = note: `#[deny(explicit_builtin_cfgs_in_flags)]` on by default
+
+error: aborting due to 1 previous error
+

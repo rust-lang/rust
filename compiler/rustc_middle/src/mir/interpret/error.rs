@@ -1,19 +1,19 @@
+use std::any::Any;
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
-use std::{any::Any, backtrace::Backtrace, fmt};
+use std::fmt;
 
 use either::Either;
-
 use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
-use rustc_span::Symbol;
-use rustc_span::{def_id::DefId, Span, DUMMY_SP};
+use rustc_span::def_id::DefId;
+use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{call, Align, Size, VariantIdx, WrappingRange};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
-
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
 use crate::ty::{self, layout, tls, Ty, TyCtxt, ValTree};
@@ -90,9 +90,11 @@ TrivialTypeTraversalImpls! { ErrorHandled }
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
-/// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.
-/// This is needed in `thir::pattern::lower_inline_const`.
-pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
+/// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
+/// because the value containts something of type `ty` that is not valtree-compatible.
+/// The caller can then show an appropriate error; the query does not have the
+/// necssary context to give good user-facing errors for this case.
+pub type EvalToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
 
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(InterpErrorInfo<'_>, 8);
@@ -327,16 +329,22 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a pointer after it got freed.
     PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
-    /// (If `ptr_size > 0`, determines the size of the memory range that was expected to be in-bounds.)
     PointerOutOfBounds {
         alloc_id: AllocId,
         alloc_size: Size,
         ptr_offset: i64,
-        ptr_size: Size,
+        /// The size of the memory range that was expected to be in-bounds.
+        inbounds_size: i64,
         msg: CheckInAllocMsg,
     },
     /// Using an integer as a pointer in the wrong way.
-    DanglingIntPointer(u64, CheckInAllocMsg),
+    DanglingIntPointer {
+        addr: u64,
+        /// The size of the memory range that was expected to be in-bounds (or 0 if we need an
+        /// allocation but not any actual memory there, e.g. for function pointers).
+        inbounds_size: i64,
+        msg: CheckInAllocMsg,
+    },
     /// Used a pointer with bad alignment.
     AlignmentCheckFailed(Misalignment, CheckAlignMsg),
     /// Writing to read-only memory.
@@ -438,9 +446,6 @@ pub enum ValidationErrorKind<'tcx> {
         ptr_kind: PointerKind,
         ty: Ty<'tcx>,
     },
-    PtrToStatic {
-        ptr_kind: PointerKind,
-    },
     ConstRefToMutable,
     ConstRefToExtern,
     MutableRefToImmutable,
@@ -523,6 +528,8 @@ pub enum UnsupportedOpInfo {
     Unsupported(String),
     /// Unsized local variables.
     UnsizedLocal,
+    /// Extern type field with an indeterminate offset.
+    ExternTypeField,
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //

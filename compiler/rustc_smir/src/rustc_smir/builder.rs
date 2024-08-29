@@ -3,11 +3,13 @@
 //! We first retrieve and monomorphize the rustc body representation, i.e., we generate a
 //! monomorphic body using internal representation.
 //! After that, we convert the internal representation into a stable one.
-use crate::rustc_smir::{Stable, Tables};
+
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::ty::{self, TyCtxt};
+
+use crate::rustc_smir::{Stable, Tables};
 
 /// Builds a monomorphic body for a given instance.
 pub struct BodyBuilder<'tcx> {
@@ -19,7 +21,7 @@ impl<'tcx> BodyBuilder<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> Self {
         let instance = match instance.def {
             // To get the fallback body of an intrinsic, we need to convert it to an item.
-            ty::InstanceDef::Intrinsic(def_id) => ty::Instance::new(def_id, instance.args),
+            ty::InstanceKind::Intrinsic(def_id) => ty::Instance::new(def_id, instance.args),
             _ => instance,
         };
         BodyBuilder { tcx, instance }
@@ -52,7 +54,11 @@ impl<'tcx> BodyBuilder<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
-    fn visit_constant(&mut self, constant: &mut mir::ConstOperand<'tcx>, location: mir::Location) {
+    fn visit_const_operand(
+        &mut self,
+        constant: &mut mir::ConstOperand<'tcx>,
+        location: mir::Location,
+    ) {
         let const_ = constant.const_;
         let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), constant.span) {
             Ok(v) => v,
@@ -63,7 +69,7 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
         };
         let ty = constant.ty();
         constant.const_ = mir::Const::Val(val, ty);
-        self.super_constant(constant, location);
+        self.super_const_operand(constant, location);
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {

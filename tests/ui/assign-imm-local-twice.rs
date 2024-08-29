@@ -1,7 +1,7 @@
 fn test() {
     let v: isize;
     //~^ HELP consider making this binding mutable
-    //~| SUGGESTION mut v
+    //~| SUGGESTION mut
     v = 1; //~ NOTE first assignment
     println!("v={}", v);
     v = 2; //~ ERROR cannot assign twice to immutable variable

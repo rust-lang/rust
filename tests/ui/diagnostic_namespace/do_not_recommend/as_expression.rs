@@ -55,6 +55,7 @@ impl<T> Foo for T where T: Expression {}
 
 fn main() {
     SelectInt.check("bar");
-    //[next]~^ ERROR the trait bound `&str: AsExpression<<SelectInt as Expression>::SqlType>` is not satisfied
-    //[current]~^^ ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
+    //~^ ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
+    //[next]~| the trait bound `&str: AsExpression<<SelectInt as Expression>::SqlType>` is not satisfied
+    //[next]~| type mismatch
 }

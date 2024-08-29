@@ -139,10 +139,6 @@ impl Parse for Newtype {
                         Self::index(start).checked_sub(u).map(Self::from_usize)
                     }
                 }
-
-                // Safety: The implementation of `Step` upholds all invariants.
-                #gate_rustc_only
-                unsafe impl ::std::iter::TrustedStep for #name {}
             }
         } else {
             quote! {}
@@ -198,6 +194,21 @@ impl Parse for Newtype {
                 /// Will panic if `value` exceeds `MAX`.
                 #[inline]
                 #vis const fn from_u32(value: u32) -> Self {
+                    assert!(value <= #max);
+                    // SAFETY: We just checked that `value <= max`.
+                    unsafe {
+                        Self::from_u32_unchecked(value)
+                    }
+                }
+
+                /// Creates a new index from a given `u16`.
+                ///
+                /// # Panics
+                ///
+                /// Will panic if `value` exceeds `MAX`.
+                #[inline]
+                #vis const fn from_u16(value: u16) -> Self {
+                    let value = value as u32;
                     assert!(value <= #max);
                     // SAFETY: We just checked that `value <= max`.
                     unsafe {

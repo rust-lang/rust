@@ -1,19 +1,19 @@
 use std::collections::BTreeMap;
 
-use super::NormalizeExt;
-use super::{ObligationCause, PredicateObligation, SelectionContext};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferCtxt, InferOk};
+pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
-use rustc_middle::ty::GenericArgsRef;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt, Upcast};
-use rustc_middle::ty::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, GenericArgsRef, ImplSubject, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, Upcast,
+};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
-pub use rustc_infer::traits::util::*;
+use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
@@ -128,11 +128,11 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         }
 
         // Get components of trait alias.
-        let predicates = tcx.super_predicates_of(trait_ref.def_id());
+        let predicates = tcx.explicit_super_predicates_of(trait_ref.def_id());
         debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
-            pred.instantiate_supertrait(tcx, &trait_ref)
+            pred.instantiate_supertrait(tcx, trait_ref)
                 .as_trait_clause()
                 .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
         });
@@ -158,43 +158,6 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
             }
         }
         None
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Iterator over def-IDs of supertraits
-///////////////////////////////////////////////////////////////////////////
-
-pub struct SupertraitDefIds<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    stack: Vec<DefId>,
-    visited: FxHashSet<DefId>,
-}
-
-pub fn supertrait_def_ids(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SupertraitDefIds<'_> {
-    SupertraitDefIds {
-        tcx,
-        stack: vec![trait_def_id],
-        visited: Some(trait_def_id).into_iter().collect(),
-    }
-}
-
-impl Iterator for SupertraitDefIds<'_> {
-    type Item = DefId;
-
-    fn next(&mut self) -> Option<DefId> {
-        let def_id = self.stack.pop()?;
-        let predicates = self.tcx.super_predicates_of(def_id);
-        let visited = &mut self.visited;
-        self.stack.extend(
-            predicates
-                .predicates
-                .iter()
-                .filter_map(|(pred, _)| pred.as_trait_clause())
-                .map(|trait_ref| trait_ref.def_id())
-                .filter(|&super_def_id| visited.insert(super_def_id)),
-        );
-        Some(def_id)
     }
 }
 
@@ -245,23 +208,6 @@ pub fn upcast_choices<'tcx>(
     supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
 }
 
-/// Given an upcast trait object described by `object`, returns the
-/// index of the method `method_def_id` (which should be part of
-/// `object.upcast_trait_ref`) within the vtable for `object`.
-pub fn get_vtable_index_of_object_method<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    vtable_base: usize,
-    method_def_id: DefId,
-) -> Option<usize> {
-    // Count number of methods preceding the one we are selecting and
-    // add them to the total offset.
-    tcx.own_existential_vtable_entries(tcx.parent(method_def_id))
-        .iter()
-        .copied()
-        .position(|def_id| def_id == method_def_id)
-        .map(|index| vtable_base + index)
-}
-
 pub fn closure_trait_ref_and_return_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
@@ -295,7 +241,7 @@ pub fn coroutine_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, sig.resume_ty]);
@@ -306,7 +252,7 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty]);
@@ -317,7 +263,7 @@ pub fn iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, iterator_def_id, [self_ty]);
@@ -328,7 +274,7 @@ pub fn async_iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     async_iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::GenSig<'tcx>,
+    sig: ty::GenSig<TyCtxt<'tcx>>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, async_iterator_def_id, [self_ty]);
@@ -448,7 +394,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -520,7 +466,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst { universe, bound: bound_const };
                 self.mapped_consts.insert(p, bound_const);
-                ty::Const::new_placeholder(self.infcx.tcx, p, ct.ty())
+                ty::Const::new_placeholder(self.infcx.tcx, p)
             }
             _ => ct.super_fold_with(self),
         }
@@ -563,7 +509,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -604,7 +550,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        ty::Region::new_bound(self.interner(), db, *replace_var)
+                        ty::Region::new_bound(self.cx(), db, *replace_var)
                     }
                     None => r1,
                 }
@@ -663,7 +609,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                     let db = ty::DebruijnIndex::from_usize(
                         self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                     );
-                    ty::Const::new_bound(self.infcx.tcx, db, *replace_var, ct.ty())
+                    ty::Const::new_bound(self.infcx.tcx, db, *replace_var)
                 }
                 None => {
                     if ct.has_infer() {

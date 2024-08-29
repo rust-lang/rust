@@ -59,7 +59,7 @@ fn main() {
         let _ = x;
     }
 
-    // shouldnt fire
+    // shouldn't fire
     for x in &vec {
         let _ = x;
     }

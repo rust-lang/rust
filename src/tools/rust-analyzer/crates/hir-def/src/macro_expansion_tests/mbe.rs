@@ -1201,7 +1201,6 @@ macro_rules! m {
 
 #[test]
 fn test_meta_doc_comments() {
-    cov_mark::check!(test_meta_doc_comments);
     check(
         r#"
 macro_rules! m {
@@ -1879,6 +1878,100 @@ fn test() {
     "2 1";
     "1 2 1";
     "2 2";
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_pat_fragment_eof_17441() {
+    check(
+        r#"
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? ) => {
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+fn f() {
+    matches!(0, 10..);
+    matches!(0, 10.. if true);
+}
+ "#,
+        expect![[r#"
+macro_rules! matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? ) => {
+        match $expression {
+            $pattern $(if $guard)? => true,
+            _ => false
+        }
+    };
+}
+fn f() {
+    match 0 {
+        10.. =>true , _=>false
+    };
+    match 0 {
+        10..if true =>true , _=>false
+    };
+}
+ "#]],
+    );
+}
+
+#[test]
+fn test_edition_handling_out() {
+    check(
+        r#"
+//- /main.rs crate:main deps:old edition:2021
+macro_rules! r#try {
+    ($it:expr) => {
+        $it?
+    };
+}
+fn f() {
+    old::invoke_bare_try!(0);
+}
+//- /old.rs crate:old edition:2015
+#[macro_export]
+macro_rules! invoke_bare_try {
+    ($it:expr) => {
+        try!($it)
+    };
+}
+ "#,
+        expect![[r#"
+macro_rules! r#try {
+    ($it:expr) => {
+        $it?
+    };
+}
+fn f() {
+    try!(0);
+}
+"#]],
+    );
+}
+
+#[test]
+fn test_edition_handling_in() {
+    check(
+        r#"
+//- /main.rs crate:main deps:old edition:2021
+fn f() {
+    old::parse_try_old!(try!{});
+}
+//- /old.rs crate:old edition:2015
+#[macro_export]
+macro_rules! parse_try_old {
+    ($it:expr) => {};
+}
+ "#,
+        expect![[r#"
+fn f() {
+    ;
 }
 "#]],
     );

@@ -1,6 +1,7 @@
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Align;
+use tracing::debug;
 
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
@@ -21,7 +22,7 @@ where
     };
 
     let ty = place.ty(local_decls, tcx).ty;
-    let unsized_tail = || tcx.struct_tail_with_normalize(ty, |ty| ty, || {});
+    let unsized_tail = || tcx.struct_tail_for_codegen(ty, param_env);
     match tcx.layout_of(param_env.and(ty)) {
         Ok(layout)
             if layout.align.abi <= pack

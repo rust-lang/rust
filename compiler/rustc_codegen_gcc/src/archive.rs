@@ -1,27 +1,24 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use rustc_codegen_ssa::back::archive::{
-    get_native_object_symbols, ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder,
+    ArArchiveBuilder, ArchiveBuilder, ArchiveBuilderBuilder, DEFAULT_OBJECT_READER,
 };
 use rustc_session::Session;
-
-use rustc_session::cstore::DllImport;
 
 pub(crate) struct ArArchiveBuilderBuilder;
 
 impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a> {
-        Box::new(ArArchiveBuilder::new(sess, get_native_object_symbols))
+        Box::new(ArArchiveBuilder::new(sess, &DEFAULT_OBJECT_READER))
     }
 
     fn create_dll_import_lib(
         &self,
         _sess: &Session,
         _lib_name: &str,
-        _dll_imports: &[DllImport],
-        _tmpdir: &Path,
-        _is_direct_dependency: bool,
-    ) -> PathBuf {
+        _import_name_and_ordinal_vector: Vec<(String, Option<u16>)>,
+        _output_path: &Path,
+    ) {
         unimplemented!("creating dll imports is not yet supported");
     }
 }

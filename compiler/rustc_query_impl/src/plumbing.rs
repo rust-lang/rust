@@ -2,19 +2,21 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::QueryConfigRestored;
+use std::num::NonZero;
+
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::Idx;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::{
-    self, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
+    self, dep_kinds, DepContext, DepKind, DepKindStruct, DepNode, DepNodeIndex,
+    SerializedDepNodeIndex,
 };
-use rustc_middle::query::on_disk_cache::AbsoluteBytePos;
-use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
+use rustc_middle::query::on_disk_cache::{
+    AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
+};
 use rustc_middle::query::Key;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -26,12 +28,12 @@ use rustc_query_system::query::{
     QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow};
-use rustc_serialize::Decodable;
-use rustc_serialize::Encodable;
+use rustc_serialize::{Decodable, Encodable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use std::num::NonZero;
 use thin_vec::ThinVec;
+
+use crate::QueryConfigRestored;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
@@ -620,7 +622,9 @@ macro_rules! define_queries {
                                 tcx,
                                 {
                                     let ret = call_provider!([$($modifiers)*][tcx, $name, key]);
-                                    tracing::trace!(?ret);
+                                    rustc_middle::ty::print::with_reduced_queries!({
+                                        tracing::trace!(?ret);
+                                    });
                                     ret
                                 }
                             )
@@ -698,11 +702,17 @@ macro_rules! define_queries {
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
-                tcx.query_system.states.$name.try_collect_active_jobs(
+                let res = tcx.query_system.states.$name.try_collect_active_jobs(
                     tcx,
                     make_query,
                     qmap,
-                ).unwrap();
+                );
+                // this can be called during unwinding, and the function has a `try_`-prefix, so
+                // don't `unwrap()` here, just manually check for `None` and do best-effort error
+                // reporting.
+                if res.is_none() {
+                    tracing::warn!("Failed to collect active jobs for query with name `{}`!", stringify!($name));
+                }
             }
 
             pub fn alloc_self_profile_query_strings<'tcx>(tcx: TyCtxt<'tcx>, string_cache: &mut QueryKeyStringCache) {

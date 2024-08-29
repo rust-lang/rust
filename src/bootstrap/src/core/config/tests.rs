@@ -1,26 +1,20 @@
-use super::{flags::Flags, ChangeIdWrapper, Config};
-use crate::core::build_steps::clippy::get_clippy_rules_in_order;
-use crate::core::config::{LldMode, TomlConfig};
+use std::env;
+use std::fs::{remove_file, File};
+use std::io::Write;
+use std::path::Path;
 
 use clap::CommandFactory;
 use serde::Deserialize;
-use std::{
-    env,
-    fs::{remove_file, File},
-    io::Write,
-    path::Path,
-};
+
+use super::flags::Flags;
+use super::{ChangeIdWrapper, Config};
+use crate::core::build_steps::clippy::get_clippy_rules_in_order;
+use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
 
 fn parse(config: &str) -> Config {
     Config::parse_inner(
-        &[
-            "check".to_string(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--config=/does/not/exist".to_string(),
-            "--skip-stage0-validation".to_string(),
-        ],
-        |&_| toml::from_str(&config).unwrap(),
+        Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
+        |&_| toml::from_str(&config),
     )
 }
 
@@ -102,8 +96,8 @@ fn detect_src_and_out() {
     test(parse(""), None);
 
     {
-        let build_dir = if cfg!(windows) { Some("C:\\tmp") } else { Some("/tmp") };
-        test(parse("build.build-dir = \"/tmp\""), build_dir);
+        let build_dir = if cfg!(windows) { "C:\\tmp" } else { "/tmp" };
+        test(parse(&format!("build.build-dir = '{build_dir}'")), Some(build_dir));
     }
 }
 
@@ -115,7 +109,7 @@ fn clap_verify() {
 #[test]
 fn override_toml() {
     let config = Config::parse_inner(
-        &[
+        Flags::parse(&[
             "check".to_owned(),
             "--config=/does/not/exist".to_owned(),
             "--set=change-id=1".to_owned(),
@@ -124,7 +118,11 @@ fn override_toml() {
             "--set=build.gdb=\"bar\"".to_owned(),
             "--set=build.tools=[\"cargo\"]".to_owned(),
             "--set=llvm.build-config={\"foo\" = \"bar\"}".to_owned(),
-        ],
+            "--set=target.x86_64-unknown-linux-gnu.runner=bar".to_owned(),
+            "--set=target.x86_64-unknown-linux-gnu.rpath=false".to_owned(),
+            "--set=target.aarch64-unknown-linux-gnu.sanitizers=false".to_owned(),
+            "--set=target.aarch64-apple-darwin.runner=apple".to_owned(),
+        ]),
         |&_| {
             toml::from_str(
                 r#"
@@ -140,9 +138,19 @@ tools = []
 [llvm]
 download-ci-llvm = false
 build-config = {}
+
+[target.aarch64-unknown-linux-gnu]
+sanitizers = true
+rpath = true
+runner = "aarch64-runner"
+
+[target.x86_64-unknown-linux-gnu]
+sanitizers = true
+rpath = true
+runner = "x86_64-runner"
+
                 "#,
             )
-            .unwrap()
         },
     );
     assert_eq!(config.change_id, Some(1), "setting top-level value");
@@ -163,28 +171,49 @@ build-config = {}
         [("foo".to_string(), "bar".to_string())].into_iter().collect(),
         "setting dictionary value"
     );
+
+    let x86_64 = TargetSelection::from_user("x86_64-unknown-linux-gnu");
+    let x86_64_values = Target {
+        sanitizers: Some(true),
+        rpath: Some(false),
+        runner: Some("bar".into()),
+        ..Default::default()
+    };
+    let aarch64 = TargetSelection::from_user("aarch64-unknown-linux-gnu");
+    let aarch64_values = Target {
+        sanitizers: Some(false),
+        rpath: Some(true),
+        runner: Some("aarch64-runner".into()),
+        ..Default::default()
+    };
+    let darwin = TargetSelection::from_user("aarch64-apple-darwin");
+    let darwin_values = Target { runner: Some("apple".into()), ..Default::default() };
+    assert_eq!(
+        config.target_config,
+        [(x86_64, x86_64_values), (aarch64, aarch64_values), (darwin, darwin_values)]
+            .into_iter()
+            .collect(),
+        "setting dictionary value"
+    );
 }
 
 #[test]
 #[should_panic]
 fn override_toml_duplicate() {
     Config::parse_inner(
-        &[
+        Flags::parse(&[
             "check".to_owned(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--config=/does/not/exist".to_owned(),
-            "--skip-stage0-validation".to_owned(),
+            "--config=/does/not/exist".to_string(),
             "--set=change-id=1".to_owned(),
             "--set=change-id=2".to_owned(),
-        ],
-        |&_| toml::from_str("change-id = 0").unwrap(),
+        ]),
+        |&_| toml::from_str("change-id = 0"),
     );
 }
 
 #[test]
 fn profile_user_dist() {
-    fn get_toml(file: &Path) -> TomlConfig {
+    fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
             if file.ends_with("config.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
                 "profile = \"user\"".to_owned()
@@ -193,19 +222,9 @@ fn profile_user_dist() {
                 std::fs::read_to_string(file).unwrap()
             };
 
-        toml::from_str(&contents)
-            .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            .unwrap()
+        toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
     }
-    Config::parse_inner(
-        &[
-            "check".to_owned(),
-            "--set=build.rustc=/does/not/exist".to_string(),
-            "--set=build.cargo=/does/not/exist".to_string(),
-            "--skip-stage0-validation".to_string(),
-        ],
-        get_toml,
-    );
+    Config::parse_inner(Flags::parse(&["check".to_owned()]), get_toml);
 }
 
 #[test]
@@ -280,7 +299,7 @@ fn order_of_clippy_rules() {
         "-Aclippy::foo1".to_string(),
         "-Aclippy::foo2".to_string(),
     ];
-    let config = Config::parse(&args);
+    let config = Config::parse(Flags::parse(&args));
 
     let actual = match &config.cmd {
         crate::Subcommand::Clippy { allow, deny, warn, forbid, .. } => {

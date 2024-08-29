@@ -197,7 +197,7 @@ pub fn with_overflow(a: i32, b: i32) {
 pub fn read_via_copy_primitive(r: &i32) -> i32 {
     // CHECK-LABEL: fn read_via_copy_primitive(
     // CHECK: [[tmp:_.*]] = &raw const (*_1);
-    // CHECK: _0 = (*[[tmp]]);
+    // CHECK: _0 = copy (*[[tmp]]);
     // CHECK: return;
 
     unsafe { core::intrinsics::read_via_copy(r) }
@@ -207,7 +207,7 @@ pub fn read_via_copy_primitive(r: &i32) -> i32 {
 pub fn read_via_copy_uninhabited(r: &Never) -> Never {
     // CHECK-LABEL: fn read_via_copy_uninhabited(
     // CHECK: [[tmp:_.*]] = &raw const (*_1);
-    // CHECK: _0 = (*[[tmp]]);
+    // CHECK: _0 = copy (*[[tmp]]);
     // CHECK: unreachable;
 
     unsafe { core::intrinsics::read_via_copy(r) }
@@ -257,4 +257,13 @@ pub fn make_pointers(a: *const u8, b: *mut (), n: usize) {
     let _thin_mut: *mut u8 = aggregate_raw_ptr(b, ());
     let _slice_const: *const [u16] = aggregate_raw_ptr(a, n);
     let _slice_mut: *mut [u64] = aggregate_raw_ptr(b, n);
+}
+
+// EMIT_MIR lower_intrinsics.get_metadata.LowerIntrinsics.diff
+pub fn get_metadata(a: *const i32, b: *const [u8], c: *const dyn std::fmt::Debug) {
+    use std::intrinsics::ptr_metadata;
+
+    let _unit = ptr_metadata(a);
+    let _usize = ptr_metadata(b);
+    let _vtable = ptr_metadata(c);
 }

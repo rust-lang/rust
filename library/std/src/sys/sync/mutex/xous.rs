@@ -1,9 +1,7 @@
 use crate::os::xous::ffi::{blocking_scalar, do_yield};
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
-use crate::sync::atomic::{
-    AtomicBool, AtomicUsize,
-    Ordering::{Acquire, Relaxed, Release},
-};
+use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{AtomicBool, AtomicUsize};
 
 pub struct Mutex {
     /// The "locked" value indicates how many threads are waiting on this

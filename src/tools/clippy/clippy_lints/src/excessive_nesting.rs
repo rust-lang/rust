@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use rustc_ast::node_id::NodeSet;
@@ -63,13 +64,19 @@ declare_clippy_lint! {
 }
 impl_lint_pass!(ExcessiveNesting => [EXCESSIVE_NESTING]);
 
-#[derive(Clone)]
 pub struct ExcessiveNesting {
     pub excessive_nesting_threshold: u64,
     pub nodes: NodeSet,
 }
 
 impl ExcessiveNesting {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            excessive_nesting_threshold: conf.excessive_nesting_threshold,
+            nodes: NodeSet::default(),
+        }
+    }
+
     pub fn check_node_id(&self, cx: &EarlyContext<'_>, span: Span, node_id: NodeId) {
         if self.nodes.contains(&node_id) {
             span_lint_and_help(

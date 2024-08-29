@@ -1,23 +1,25 @@
 use std::ops::Range;
 
-use crate::errors;
-use crate::lexer::unicode_chars::UNICODE_ARRAY;
-use crate::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{codes::*, Applicability, Diag, DiagCtxt, StashKey};
+use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
-use rustc_lexer::{Base, DocStyle, RawStrError};
-use rustc_lexer::{Cursor, LiteralKind};
+use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
 use rustc_session::lint::builtin::{
     RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX, TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::ParseSess;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
-use rustc_span::{edition::Edition, BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span};
+use tracing::debug;
+
+use crate::lexer::unicode_chars::UNICODE_ARRAY;
+use crate::{errors, make_unclosed_delims_error};
 
 mod diagnostics;
 mod tokentrees;
@@ -41,7 +43,7 @@ pub(crate) struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
-pub(crate) fn parse_token_trees<'psess, 'src>(
+pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
@@ -65,7 +67,7 @@ pub(crate) fn parse_token_trees<'psess, 'src>(
         last_lifetime: None,
     };
     let (stream, res, unmatched_delims) =
-        tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
+        tokentrees::TokenTreesReader::lex_all_token_trees(string_reader);
     match res {
         Ok(()) if unmatched_delims.is_empty() => Ok(stream),
         _ => {
@@ -112,8 +114,8 @@ struct StringReader<'psess, 'src> {
 }
 
 impl<'psess, 'src> StringReader<'psess, 'src> {
-    fn dcx(&self) -> &'psess DiagCtxt {
-        &self.psess.dcx
+    fn dcx(&self) -> DiagCtxtHandle<'psess> {
+        self.psess.dcx()
     }
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
@@ -247,8 +249,8 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
                     let suffix = if suffix_start < self.pos {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
-                            self.psess
-                                .dcx
+                            self
+                                .dcx()
                                 .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
                             None
                         } else {
@@ -596,8 +598,7 @@ impl<'psess, 'src> StringReader<'psess, 'src> {
     }
 
     fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
-        self.psess
-            .dcx
+        self.dcx()
             .struct_span_fatal(
                 self.mk_sp(start, self.pos),
                 format!(

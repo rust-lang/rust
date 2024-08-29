@@ -7,34 +7,34 @@ use core::intrinsics::mir::*;
 // EMIT_MIR as_cast.int_to_int.built.after.mir
 #[custom_mir(dialect = "built")]
 fn int_to_int(x: u32) -> i32 {
-    mir!(
+    mir! {
         {
             RET = x as i32;
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR as_cast.float_to_int.built.after.mir
 #[custom_mir(dialect = "built")]
 fn float_to_int(x: f32) -> i32 {
-    mir!(
+    mir! {
         {
             RET = x as i32;
             Return()
         }
-    )
+    }
 }
 
 // EMIT_MIR as_cast.int_to_ptr.built.after.mir
 #[custom_mir(dialect = "built")]
 fn int_to_ptr(x: usize) -> *const i32 {
-    mir!(
+    mir! {
         {
             RET = x as *const i32;
             Return()
         }
-    )
+    }
 }
 
 fn main() {

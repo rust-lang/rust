@@ -38,7 +38,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit, HasTypeBounds},
-    format_smolstr, AstNode, SmolStr, SyntaxElement, SyntaxKind, TextRange, T,
+    format_smolstr, AstNode, SmolStr, SyntaxElement, SyntaxKind, TextRange, ToSmolStr, T,
 };
 use text_edit::TextEdit;
 
@@ -180,8 +180,10 @@ fn add_function_impl(
 ) {
     let fn_name = func.name(ctx.db);
 
+    let is_async = func.is_async(ctx.db);
     let label = format_smolstr!(
-        "fn {}({})",
+        "{}fn {}({})",
+        if is_async { "async " } else { "" },
         fn_name.display(ctx.db),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
@@ -193,9 +195,13 @@ fn add_function_impl(
     });
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!("fn {}", fn_name.display(ctx.db)))
-        .set_documentation(func.docs(ctx.db))
-        .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+    item.lookup_by(format!(
+        "{}fn {}",
+        if is_async { "async " } else { "" },
+        fn_name.display(ctx.db)
+    ))
+    .set_documentation(func.docs(ctx.db))
+    .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
     if let Some(source) = ctx.sema.source(func) {
         let assoc_item = ast::AssocItem::Fn(source.value);
@@ -252,7 +258,7 @@ fn add_type_alias_impl(
     type_alias: hir::TypeAlias,
     impl_def: hir::Impl,
 ) {
-    let alias_name = type_alias.name(ctx.db).unescaped().to_smol_str();
+    let alias_name = type_alias.name(ctx.db).unescaped().display(ctx.db).to_smolstr();
 
     let label = format_smolstr!("type {alias_name} =");
 
@@ -314,7 +320,7 @@ fn add_const_impl(
     const_: hir::Const,
     impl_def: hir::Impl,
 ) {
-    let const_name = const_.name(ctx.db).map(|n| n.to_smol_str());
+    let const_name = const_.name(ctx.db).map(|n| n.display_no_db().to_smolstr());
 
     if let Some(const_name) = const_name {
         if let Some(source) = ctx.sema.source(const_) {

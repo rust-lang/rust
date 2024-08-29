@@ -39,17 +39,20 @@
 // OPT3WINX64-NEXT: store <8 x i16>
 // CHECK-NEXT: ret void
 #[no_mangle]
-#[cfg(target_endian = "little")]
 pub fn convert(value: [u16; 8]) -> [u8; 16] {
+    #[cfg(target_endian = "little")]
+    let bswap = u16::to_be;
+    #[cfg(target_endian = "big")]
+    let bswap = u16::to_le;
     let addr16 = [
-        value[0].to_be(),
-        value[1].to_be(),
-        value[2].to_be(),
-        value[3].to_be(),
-        value[4].to_be(),
-        value[5].to_be(),
-        value[6].to_be(),
-        value[7].to_be(),
+        bswap(value[0]),
+        bswap(value[1]),
+        bswap(value[2]),
+        bswap(value[3]),
+        bswap(value[4]),
+        bswap(value[5]),
+        bswap(value[6]),
+        bswap(value[7]),
     ];
     unsafe { core::mem::transmute::<_, [u8; 16]>(addr16) }
 }

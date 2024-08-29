@@ -13,7 +13,7 @@
 //! Code in this module also contains inline tests, which start with
 //! `// test name-of-the-test` comment and look like this:
 //!
-//! ```
+//! ```text
 //! // test function_with_zero_parameters
 //! // fn foo() {}
 //! ```
@@ -158,42 +158,6 @@ pub(crate) mod entry {
             attributes::meta(p);
             if p.at(EOF) {
                 m.abandon(p);
-                return;
-            }
-            while !p.at(EOF) {
-                p.bump_any();
-            }
-            m.complete(p, ERROR);
-        }
-
-        pub(crate) fn eager_macro_input(p: &mut Parser<'_>) {
-            let m = p.start();
-
-            let closing_paren_kind = match p.current() {
-                T!['{'] => T!['}'],
-                T!['('] => T![')'],
-                T!['['] => T![']'],
-                _ => {
-                    p.error("expected `{`, `[`, `(`");
-                    while !p.at(EOF) {
-                        p.bump_any();
-                    }
-                    m.complete(p, ERROR);
-                    return;
-                }
-            };
-            p.bump_any();
-            while !p.at(EOF) && !p.at(closing_paren_kind) {
-                if expressions::expr(p).is_none() {
-                    break;
-                }
-                if !p.at(EOF) && !p.at(closing_paren_kind) {
-                    p.expect(T![,]);
-                }
-            }
-            p.expect(closing_paren_kind);
-            if p.at(EOF) {
-                m.complete(p, MACRO_EAGER_INPUT);
                 return;
             }
             while !p.at(EOF) {
@@ -418,7 +382,7 @@ fn delimited(
         }
         if !p.eat(delim) {
             if p.at_ts(first_set) {
-                p.error(format!("expected {:?}", delim));
+                p.error(format!("expected {delim:?}"));
             } else {
                 break;
             }

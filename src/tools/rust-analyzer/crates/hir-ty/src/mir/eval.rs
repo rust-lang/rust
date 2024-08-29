@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
-use base_db::{CrateId, FileId};
+use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
@@ -14,11 +14,16 @@ use hir_def::{
     AdtId, ConstId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
     StaticId, VariantId,
 };
-use hir_expand::{mod_path::ModPath, HirFileIdExt, InFile};
-use intern::Interned;
+use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
+use intern::sym;
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
+use rustc_apfloat::{
+    ieee::{Half as f16, Quad as f128},
+    Float,
+};
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -31,7 +36,7 @@ use crate::{
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
     method_resolution::{is_dyn_method, lookup_impl_const},
-    name, static_lifetime,
+    static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
     CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstScalar, FnDefId, Interner, MemoryMap,
@@ -54,6 +59,13 @@ macro_rules! from_bytes {
             Ok(it) => it,
             Err(_) => return Err(MirEvalError::InternalError(stringify!(mismatched size in constructing $ty).into())),
         }))
+    };
+    ($apfloat:tt, $bits:tt, $value:expr) => {
+        // FIXME(#17451): Switch to builtin `f16` and `f128` once they are stable.
+        $apfloat::from_bits($bits::from_le_bytes(match ($value).try_into() {
+            Ok(it) => it,
+            Err(_) => return Err(MirEvalError::InternalError(stringify!(mismatched size in constructing $apfloat).into())),
+        }).into())
     };
 }
 
@@ -363,7 +375,7 @@ impl MirEvalError {
                         )?;
                     }
                     Either::Right(closure) => {
-                        writeln!(f, "In {:?}", closure)?;
+                        writeln!(f, "In {closure:?}")?;
                     }
                 }
                 let source_map = db.body_with_source_map(*def).1;
@@ -376,6 +388,16 @@ impl MirEvalError {
                         Ok(s) => s.map(|it| it.syntax_node_ptr()),
                         Err(_) => continue,
                     },
+                    MirSpan::BindingId(b) => {
+                        match source_map
+                            .patterns_for_binding(*b)
+                            .iter()
+                            .find_map(|p| source_map.pat_syntax(*p).ok())
+                        {
+                            Some(s) => s.map(|it| it.syntax_node_ptr()),
+                            None => continue,
+                        }
+                    }
                     MirSpan::SelfParam => match source_map.self_param_syntax() {
                         Some(s) => s.map(|it| it.syntax_node_ptr()),
                         None => continue,
@@ -384,7 +406,7 @@ impl MirEvalError {
                 };
                 let file_id = span.file_id.original_file(db.upcast());
                 let text_range = span.value.text_range();
-                writeln!(f, "{}", span_formatter(file_id, text_range))?;
+                writeln!(f, "{}", span_formatter(file_id.file_id(), text_range))?;
             }
         }
         match err {
@@ -424,7 +446,7 @@ impl MirEvalError {
             | MirEvalError::StackOverflow
             | MirEvalError::CoerceUnsizedError(_)
             | MirEvalError::InternalError(_)
-            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{:?}", err)?,
+            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{err:?}")?,
         }
         Ok(())
     }
@@ -620,15 +642,21 @@ impl Evaluator<'_> {
             cached_fn_trait_func: db
                 .lang_item(crate_id, LangItem::Fn)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call.clone()))
+                }),
             cached_fn_mut_trait_func: db
                 .lang_item(crate_id, LangItem::FnMut)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call_mut])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call_mut.clone()))
+                }),
             cached_fn_once_trait_func: db
                 .lang_item(crate_id, LangItem::FnOnce)
                 .and_then(|x| x.as_trait())
-                .and_then(|x| db.trait_data(x).method_by_name(&name![call_once])),
+                .and_then(|x| {
+                    db.trait_data(x).method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
+                }),
         })
     }
 
@@ -1110,6 +1138,10 @@ impl Evaluator<'_> {
                 }
                 if let TyKind::Scalar(chalk_ir::Scalar::Float(f)) = ty.kind(Interner) {
                     match f {
+                        chalk_ir::FloatTy::F16 => {
+                            let c = -from_bytes!(f16, u16, c);
+                            Owned(u16::try_from(c.to_bits()).unwrap().to_le_bytes().into())
+                        }
                         chalk_ir::FloatTy::F32 => {
                             let c = -from_bytes!(f32, c);
                             Owned(c.to_le_bytes().into())
@@ -1117,6 +1149,10 @@ impl Evaluator<'_> {
                         chalk_ir::FloatTy::F64 => {
                             let c = -from_bytes!(f64, c);
                             Owned(c.to_le_bytes().into())
+                        }
+                        chalk_ir::FloatTy::F128 => {
+                            let c = -from_bytes!(f128, u128, c);
+                            Owned(c.to_bits().to_le_bytes().into())
                         }
                     }
                 } else {
@@ -1169,6 +1205,39 @@ impl Evaluator<'_> {
                 }
                 if let TyKind::Scalar(chalk_ir::Scalar::Float(f)) = ty.kind(Interner) {
                     match f {
+                        chalk_ir::FloatTy::F16 => {
+                            let l = from_bytes!(f16, u16, lc);
+                            let r = from_bytes!(f16, u16, rc);
+                            match op {
+                                BinOp::Ge
+                                | BinOp::Gt
+                                | BinOp::Le
+                                | BinOp::Lt
+                                | BinOp::Eq
+                                | BinOp::Ne => {
+                                    let r = op.run_compare(l, r) as u8;
+                                    Owned(vec![r])
+                                }
+                                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
+                                    let r = match op {
+                                        BinOp::Add => l + r,
+                                        BinOp::Sub => l - r,
+                                        BinOp::Mul => l * r,
+                                        BinOp::Div => l / r,
+                                        _ => unreachable!(),
+                                    };
+                                    Owned(
+                                        u16::try_from(r.value.to_bits())
+                                            .unwrap()
+                                            .to_le_bytes()
+                                            .into(),
+                                    )
+                                }
+                                it => not_supported!(
+                                    "invalid binop {it:?} on floating point operators"
+                                ),
+                            }
+                        }
                         chalk_ir::FloatTy::F32 => {
                             let l = from_bytes!(f32, lc);
                             let r = from_bytes!(f32, rc);
@@ -1219,6 +1288,34 @@ impl Evaluator<'_> {
                                         _ => unreachable!(),
                                     };
                                     Owned(r.to_le_bytes().into())
+                                }
+                                it => not_supported!(
+                                    "invalid binop {it:?} on floating point operators"
+                                ),
+                            }
+                        }
+                        chalk_ir::FloatTy::F128 => {
+                            let l = from_bytes!(f128, u128, lc);
+                            let r = from_bytes!(f128, u128, rc);
+                            match op {
+                                BinOp::Ge
+                                | BinOp::Gt
+                                | BinOp::Le
+                                | BinOp::Lt
+                                | BinOp::Eq
+                                | BinOp::Ne => {
+                                    let r = op.run_compare(l, r) as u8;
+                                    Owned(vec![r])
+                                }
+                                BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div => {
+                                    let r = match op {
+                                        BinOp::Add => l + r,
+                                        BinOp::Sub => l - r,
+                                        BinOp::Mul => l * r,
+                                        BinOp::Div => l / r,
+                                        _ => unreachable!(),
+                                    };
+                                    Owned(r.value.to_bits().to_le_bytes().into())
                                 }
                                 it => not_supported!(
                                     "invalid binop {it:?} on floating point operators"
@@ -2553,10 +2650,7 @@ impl Evaluator<'_> {
         let static_data = self.db.static_data(st);
         let result = if !static_data.is_extern {
             let konst = self.db.const_eval_static(st).map_err(|e| {
-                MirEvalError::ConstEvalError(
-                    static_data.name.as_str().unwrap_or("_").to_owned(),
-                    Box::new(e),
-                )
+                MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;
             self.allocate_const_in_heap(locals, &konst)?
         } else {
@@ -2613,7 +2707,7 @@ impl Evaluator<'_> {
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
             let drop_trait = self.db.lang_item(self.crate_id, LangItem::Drop)?.as_trait()?;
-            self.db.trait_data(drop_trait).method_by_name(&name![drop])
+            self.db.trait_data(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop.clone()))
         })() else {
             // in some tests we don't have drop trait in minicore, and
             // we can ignore drop in them.
@@ -2717,14 +2811,13 @@ pub fn render_const_using_debug_impl(
     let resolver = owner.resolver(db.upcast());
     let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
-            hir_expand::mod_path::PathKind::Abs,
-            [name![core], name![fmt], name![Debug]],
-        )),
+        &hir_def::path::Path::from_known_path_with_no_generic(path![core::fmt::Debug]),
     ) else {
         not_supported!("core::fmt::Debug not found");
     };
-    let Some(debug_fmt_fn) = db.trait_data(debug_trait).method_by_name(&name![fmt]) else {
+    let Some(debug_fmt_fn) =
+        db.trait_data(debug_trait).method_by_name(&Name::new_symbol_root(sym::fmt.clone()))
+    else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
     // a1 = &[""]
@@ -2749,10 +2842,7 @@ pub fn render_const_using_debug_impl(
     evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
-        &hir_def::path::Path::from_known_path_with_no_generic(ModPath::from_segments(
-            hir_expand::mod_path::PathKind::Abs,
-            [name![std], name![fmt], name![format]],
-        )),
+        &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
     ) else {
         not_supported!("std::fmt::format not found");
     };

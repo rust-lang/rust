@@ -93,7 +93,7 @@
 +     }
 + 
 +     bb12 (cleanup): {
-+         switchInt(_6) -> [0: bb10, otherwise: bb11];
++         switchInt(copy _6) -> [0: bb10, otherwise: bb11];
       }
   }
   

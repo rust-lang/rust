@@ -12,6 +12,7 @@ use hir_def::{
 };
 use hir_expand::{mod_path::PathKind, name::Name};
 use hir_ty::{db::HirDatabase, method_resolution};
+use span::SyntaxContextId;
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -307,7 +308,7 @@ fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
         let kind = match parts.next()? {
             "" => PathKind::Abs,
             "crate" => PathKind::Crate,
-            "self" => PathKind::Super(0),
+            "self" => PathKind::SELF,
             "super" => {
                 let mut deg = 1;
                 for segment in parts.by_ref() {
@@ -327,9 +328,11 @@ fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
         };
         let parts = first_segment.into_iter().chain(parts).map(|segment| match segment.parse() {
             Ok(idx) => Name::new_tuple_field(idx),
-            Err(_) => {
-                Name::new_text_dont_use(segment.split_once('<').map_or(segment, |it| it.0).into())
-            }
+            Err(_) => Name::new(
+                segment.split_once('<').map_or(segment, |it| it.0),
+                tt::IdentIsRaw::No,
+                SyntaxContextId::ROOT,
+            ),
         });
         Some(ModPath::from_segments(kind, parts))
     };

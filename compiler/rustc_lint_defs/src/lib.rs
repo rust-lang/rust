@@ -1,4 +1,7 @@
-pub use self::Level::*;
+// tidy-alphabetical-start
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
+
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -7,15 +10,15 @@ use rustc_data_structures::stable_hasher::{
 };
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
-use rustc_hir::HashStableContext;
-use rustc_hir::HirId;
+use rustc_hir::{HashStableContext, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::MacroRulesNormalizedIdent;
-use rustc_span::{sym, symbol::Ident, Span, Symbol};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::abi::Abi;
-
 use serde::{Deserialize, Serialize};
+
+pub use self::Level::*;
 
 pub mod builtin;
 
@@ -618,10 +621,6 @@ pub enum BuiltinLintDiag {
         is_foreign: bool,
     },
     LegacyDeriveHelpers(Span),
-    ProcMacroBackCompat {
-        crate_name: String,
-        fixed_version: String,
-    },
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     TrailingMacro(bool, Ident),
@@ -630,6 +629,9 @@ pub enum BuiltinLintDiag {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
+    MissingUnsafeOnExtern {
+        suggestion: Span,
+    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -692,9 +694,14 @@ pub enum BuiltinLintDiag {
         /// The span of the unnecessarily-qualified path to remove.
         removal_span: Span,
     },
+    UnsafeAttrOutsideUnsafe {
+        attribute_name_span: Span,
+        sugg_spans: (Span, Span),
+    },
     AssociatedConstElidedLifetime {
         elided: bool,
         span: Span,
+        lifetimes_in_scope: MultiSpan,
     },
     RedundantImportVisibility {
         span: Span,
@@ -707,7 +714,10 @@ pub enum BuiltinLintDiag {
     },
     MacroUseDeprecated,
     UnusedMacroUse,
-    PrivateExternCrateReexport(Ident),
+    PrivateExternCrateReexport {
+        source: Ident,
+        extern_crate_span: Span,
+    },
     UnusedLabel,
     MacroIsPrivate(Ident),
     UnusedMacroDefinition(Symbol),
@@ -737,6 +747,14 @@ pub enum BuiltinLintDiag {
     InnerAttributeUnstable {
         is_macro: bool,
     },
+    OutOfScopeMacroCalls {
+        path: String,
+    },
+    UnexpectedBuiltinCfg {
+        cfg: String,
+        cfg_name: Symbol,
+        controlled_by: &'static str,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
@@ -744,7 +762,7 @@ pub enum BuiltinLintDiag {
 #[derive(Debug)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-    pub span: MultiSpan,
+    pub span: Option<MultiSpan>,
 
     /// The `NodeId` of the AST node that generated the lint.
     pub node_id: NodeId,
@@ -764,19 +782,7 @@ pub struct LintBuffer {
 
 impl LintBuffer {
     pub fn add_early_lint(&mut self, early_lint: BufferedEarlyLint) {
-        let arr = self.map.entry(early_lint.node_id).or_default();
-        arr.push(early_lint);
-    }
-
-    pub fn add_lint(
-        &mut self,
-        lint: &'static Lint,
-        node_id: NodeId,
-        span: MultiSpan,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        let lint_id = LintId::of(lint);
-        self.add_early_lint(BufferedEarlyLint { lint_id, node_id, span, diagnostic });
+        self.map.entry(early_lint.node_id).or_default().push(early_lint);
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
@@ -787,11 +793,16 @@ impl LintBuffer {
     pub fn buffer_lint(
         &mut self,
         lint: &'static Lint,
-        id: NodeId,
-        sp: impl Into<MultiSpan>,
+        node_id: NodeId,
+        span: impl Into<MultiSpan>,
         diagnostic: BuiltinLintDiag,
     ) {
-        self.add_lint(lint, id, sp.into(), diagnostic)
+        self.add_early_lint(BufferedEarlyLint {
+            lint_id: LintId::of(lint),
+            node_id,
+            span: Some(span.into()),
+            diagnostic,
+        });
     }
 }
 
@@ -862,7 +873,7 @@ macro_rules! declare_lint {
         );
     );
     ($(#[$attr:meta])* $vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $(@feature_gate = $gate:expr;)?
+     $(@feature_gate = $gate:ident;)?
      $(@future_incompatible = FutureIncompatibleInfo {
         reason: $reason:expr,
         $($field:ident : $val:expr),* $(,)*
@@ -876,7 +887,7 @@ macro_rules! declare_lint {
             desc: $desc,
             is_externally_loaded: false,
             $($v: true,)*
-            $(feature_gate: Some($gate),)?
+            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 reason: $reason,
                 $($field: $val,)*
@@ -892,21 +903,21 @@ macro_rules! declare_lint {
 macro_rules! declare_tool_lint {
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
-        $(, @feature_gate = $gate:expr;)?
+        $(, @feature_gate = $gate:ident;)?
     ) => (
         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
-        $(, @feature_gate = $gate:expr;)?
+        $(, @feature_gate = $gate:ident;)?
     ) => (
          $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep $(, @feature_gate = $gate;)?}
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
-        $(, @feature_gate = $gate:expr;)?
+        $(, @feature_gate = $gate:ident;)?
     ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -917,7 +928,7 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_externally_loaded: true,
-            $(feature_gate: Some($gate),)?
+            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
             crate_level_only: false,
             ..$crate::Lint::default_fields_for_macro()
         };

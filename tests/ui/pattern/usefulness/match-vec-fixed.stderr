@@ -2,7 +2,9 @@ error: unreachable pattern
   --> $DIR/match-vec-fixed.rs:7:9
    |
 LL |         [_, _, _] => {}
-   |         ^^^^^^^^^
+   |         --------- matches all the relevant values
+LL |         [_, _, _] => {}
+   |         ^^^^^^^^^ no value can reach this
    |
 note: the lint level is defined here
   --> $DIR/match-vec-fixed.rs:1:9
@@ -14,7 +16,9 @@ error: unreachable pattern
   --> $DIR/match-vec-fixed.rs:11:9
    |
 LL |         [_, 1, _] => {}
-   |         ^^^^^^^^^
+   |         --------- matches all the relevant values
+LL |         [_, 1, _] => {}
+   |         ^^^^^^^^^ no value can reach this
 
 error: aborting due to 2 previous errors
 

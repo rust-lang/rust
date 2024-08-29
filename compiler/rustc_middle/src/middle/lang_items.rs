@@ -7,12 +7,12 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-use crate::ty::{self, TyCtxt};
-
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_span::Span;
 use rustc_target::spec::PanicStrategy;
+
+use crate::ty::{self, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
@@ -21,6 +21,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.lang_items().get(lang_item).unwrap_or_else(|| {
             self.dcx().emit_fatal(crate::error::RequiresLangItem { span, name: lang_item.name() });
         })
+    }
+
+    pub fn is_lang_item(self, def_id: DefId, lang_item: LangItem) -> bool {
+        self.lang_items().get(lang_item) == Some(def_id)
+    }
+
+    pub fn as_lang_item(self, def_id: DefId) -> Option<LangItem> {
+        self.lang_items().from_def_id(def_id)
     }
 
     /// Given a [`DefId`] of one of the [`Fn`], [`FnMut`] or [`FnOnce`] traits,

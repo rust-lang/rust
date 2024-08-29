@@ -3,7 +3,7 @@
 
 //@ compile-flags: -O
 
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 // CHECK-LABEL: @test
 #[no_mangle]

@@ -1,24 +1,31 @@
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, ObligationCtxt, SelectionContext};
+use std::fmt::Debug;
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::Obligation;
+pub use rustc_infer::infer::*;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::ty::{GenericArg, Upcast};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
 
-use std::fmt::Debug;
-
-pub use rustc_infer::infer::*;
+use crate::infer::at::ToTrace;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
+    fn can_eq<T: ToTrace<'tcx>>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool {
+        self.probe(|_| {
+            let ocx = ObligationCtxt::new(self);
+            let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
+                return false;
+            };
+            ocx.select_where_possible().is_empty()
+        })
+    }
+
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
@@ -94,7 +101,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
             )) {
                 Ok(Some(selection)) => {
-                    let ocx = ObligationCtxt::new(self);
+                    let ocx = ObligationCtxt::new_with_diagnostics(self);
                     ocx.register_obligations(selection.nested_obligations());
                     Some(ocx.select_all_or_error())
                 }

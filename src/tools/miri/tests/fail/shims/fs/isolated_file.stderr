@@ -4,8 +4,8 @@ error: unsupported operation: `open` not available when isolation is enabled
 LL |         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `open` not available when isolation is enabled
    |
-   = help: pass the flag `-Zmiri-disable-isolation` to disable isolation;
-   = help: or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning
+   = help: set `MIRIFLAGS=-Zmiri-disable-isolation` to disable isolation;
+   = help: or set `MIRIFLAGS=-Zmiri-isolation-error=warn` to make Miri return an error code from isolated operations (if supported for that operation) and continue with a warning
    = note: BACKTRACE:
    = note: inside closure at RUSTLIB/std/src/sys/pal/PLATFORM/fs.rs:LL:CC
    = note: inside `std::sys::pal::PLATFORM::cvt_r::<i32, {closure@std::sys::pal::PLATFORM::fs::File::open_c::{closure#0}}>` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC

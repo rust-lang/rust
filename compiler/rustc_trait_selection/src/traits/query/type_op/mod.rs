@@ -1,25 +1,25 @@
+use std::fmt;
+
+use rustc_errors::ErrorGuaranteed;
+use rustc_infer::infer::canonical::Certainty;
+use rustc_infer::traits::PredicateObligation;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_span::Span;
+
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{ObligationCause, ObligationCtxt};
-use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::canonical::Certainty;
-use rustc_infer::traits::PredicateObligations;
-use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
-use rustc_span::Span;
-use std::fmt;
 
 pub mod ascribe_user_type;
 pub mod custom;
-pub mod eq;
 pub mod implied_outlives_bounds;
 pub mod normalize;
 pub mod outlives;
 pub mod prove_predicate;
-pub mod subtype;
 
 pub use rustc_middle::traits::query::type_op::*;
 
@@ -103,7 +103,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         (
             Self::QueryResponse,
             Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
-            PredicateObligations<'tcx>,
+            Vec<PredicateObligation<'tcx>>,
             Certainty,
         ),
         NoSolution,
@@ -168,44 +168,12 @@ where
         // collecting region constraints via `region_constraints`.
         let (mut output, _) = scrape_region_constraints(
             infcx,
-            |_ocx| {
-                let (output, ei, mut obligations, _) =
+            |ocx| {
+                let (output, ei, obligations, _) =
                     Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
                 error_info = ei;
 
-                // Typically, instantiating NLL query results does not
-                // create obligations. However, in some cases there
-                // are unresolved type variables, and unify them *can*
-                // create obligations. In that case, we have to go
-                // fulfill them. We do this via a (recursive) query.
-                while !obligations.is_empty() {
-                    trace!("{:#?}", obligations);
-                    let mut progress = false;
-                    for obligation in std::mem::take(&mut obligations) {
-                        let obligation = infcx.resolve_vars_if_possible(obligation);
-                        match ProvePredicate::fully_perform_into(
-                            obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
-                            infcx,
-                            &mut region_constraints,
-                            span,
-                        ) {
-                            Ok(((), _, new, certainty)) => {
-                                obligations.extend(new);
-                                progress = true;
-                                if let Certainty::Ambiguous = certainty {
-                                    obligations.push(obligation);
-                                }
-                            }
-                            Err(_) => obligations.push(obligation),
-                        }
-                    }
-                    if !progress {
-                        infcx.dcx().span_bug(
-                            span,
-                            format!("ambiguity processing {obligations:?} from {self:?}"),
-                        );
-                    }
-                }
+                ocx.register_obligations(obligations);
                 Ok(output)
             },
             "fully_perform",

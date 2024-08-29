@@ -4,7 +4,7 @@ use ide_db::{
     imports::insert_use::{insert_use, ImportScope},
 };
 use syntax::{
-    ast::{self, make},
+    ast::{self, make, HasGenericArgs},
     match_ast, ted, AstNode, SyntaxNode,
 };
 
@@ -63,12 +63,11 @@ pub(crate) fn replace_qualified_name_with_use(
     );
     let path_to_qualifier = starts_with_name_ref
         .then(|| {
-            ctx.sema.scope(path.syntax())?.module().find_use_path_prefixed(
+            ctx.sema.scope(path.syntax())?.module().find_use_path(
                 ctx.sema.db,
                 module,
                 ctx.config.insert_use.prefix_kind,
-                ctx.config.prefer_no_std,
-                ctx.config.prefer_prelude,
+                ctx.config.import_path_config(),
             )
         })
         .flatten();

@@ -10,9 +10,11 @@ use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types as scip_types;
+use tracing::error;
 
 use crate::{
     cli::flags,
+    config::ConfigChange,
     line_index::{LineEndings, LineIndex, PositionEncoding},
 };
 
@@ -35,12 +37,20 @@ impl flags::Scip {
             lsp_types::ClientCapabilities::default(),
             vec![],
             None,
+            None,
         );
 
         if let Some(p) = self.config_path {
             let mut file = std::io::BufReader::new(std::fs::File::open(p)?);
             let json = serde_json::from_reader(&mut file)?;
-            config.update(json)?;
+            let mut change = ConfigChange::default();
+            change.change_client_config(json);
+
+            let error_sink;
+            (config, error_sink, _) = config.apply_change(change);
+
+            // FIXME @alibektas : What happens to errors without logging?
+            error!(?error_sink, "Config Error(s)");
         }
         let cargo_config = config.cargo();
         let (db, vfs, _) = load_workspace_at(
@@ -53,7 +63,7 @@ impl flags::Scip {
         let db = host.raw_database();
         let analysis = host.analysis();
 
-        let si = StaticIndex::compute(&analysis);
+        let si = StaticIndex::compute(&analysis, &root.clone().into());
 
         let metadata = scip_types::Metadata {
             version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
@@ -324,6 +334,7 @@ mod test {
     use ide::{FilePosition, TextSize};
     use scip::symbol::format_symbol;
     use test_fixture::ChangeFixture;
+    use vfs::VfsPath;
 
     fn position(ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
@@ -332,7 +343,7 @@ mod test {
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ()");
         let offset = range_or_offset.expect_offset();
-        (host, FilePosition { file_id, offset })
+        (host, FilePosition { file_id: file_id.into(), offset })
     }
 
     /// If expected == "", then assert that there are no symbols (this is basically local symbol)
@@ -341,7 +352,8 @@ mod test {
         let (host, position) = position(ra_fixture);
 
         let analysis = host.analysis();
-        let si = StaticIndex::compute(&analysis);
+        let si =
+            StaticIndex::compute(&analysis, &VfsPath::new_virtual_path("/workspace".to_owned()));
 
         let FilePosition { file_id, offset } = position;
 
@@ -374,7 +386,7 @@ mod test {
     fn basic() {
         check_symbol(
             r#"
-//- /lib.rs crate:main deps:foo
+//- /workspace/lib.rs crate:main deps:foo
 use foo::example_mod::func;
 fn main() {
     func$0();
@@ -475,7 +487,7 @@ pub mod module {
     fn symbol_for_field() {
         check_symbol(
             r#"
-    //- /lib.rs crate:main deps:foo
+    //- /workspace/lib.rs crate:main deps:foo
     use foo::St;
     fn main() {
         let x = St { a$0: 2 };
@@ -493,7 +505,7 @@ pub mod module {
     fn symbol_for_param() {
         check_symbol(
             r#"
-//- /lib.rs crate:main deps:foo
+//- /workspace/lib.rs crate:main deps:foo
 use foo::example_mod::func;
 fn main() {
     func(42);
@@ -511,7 +523,7 @@ pub mod example_mod {
     fn symbol_for_closure_param() {
         check_symbol(
             r#"
-//- /lib.rs crate:main deps:foo
+//- /workspace/lib.rs crate:main deps:foo
 use foo::example_mod::func;
 fn main() {
     func();
@@ -531,7 +543,7 @@ pub mod example_mod {
     fn local_symbol_for_local() {
         check_symbol(
             r#"
-    //- /lib.rs crate:main deps:foo
+    //- /workspace/lib.rs crate:main deps:foo
     use foo::module::func;
     fn main() {
         func();
@@ -551,13 +563,13 @@ pub mod example_mod {
     fn global_symbol_for_pub_struct() {
         check_symbol(
             r#"
-    //- /lib.rs crate:main
+    //- /workspace/lib.rs crate:main
     mod foo;
 
     fn main() {
         let _bar = foo::Bar { i: 0 };
     }
-    //- /foo.rs
+    //- /workspace/foo.rs
     pub struct Bar$0 {
         pub i: i32,
     }
@@ -570,13 +582,13 @@ pub mod example_mod {
     fn global_symbol_for_pub_struct_reference() {
         check_symbol(
             r#"
-    //- /lib.rs crate:main
+    //- /workspace/lib.rs crate:main
     mod foo;
 
     fn main() {
         let _bar = foo::Bar$0 { i: 0 };
     }
-    //- /foo.rs
+    //- /workspace/foo.rs
     pub struct Bar {
         pub i: i32,
     }
@@ -589,7 +601,7 @@ pub mod example_mod {
     fn symbol_for_for_type_alias() {
         check_symbol(
             r#"
-    //- /lib.rs crate:main
+    //- /workspace/lib.rs crate:main
     pub type MyTypeAlias$0 = u8;
     "#,
             "rust-analyzer cargo main . MyTypeAlias#",
@@ -605,7 +617,8 @@ pub mod example_mod {
         host.raw_database_mut().apply_change(change_fixture.change);
 
         let analysis = host.analysis();
-        let si = StaticIndex::compute(&analysis);
+        let si =
+            StaticIndex::compute(&analysis, &VfsPath::new_virtual_path("/workspace".to_owned()));
 
         let file = si.files.first().unwrap();
         let (_, token_id) = file.tokens.first().unwrap();

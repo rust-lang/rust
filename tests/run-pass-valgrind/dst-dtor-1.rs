@@ -3,15 +3,19 @@ static mut DROP_RAN: bool = false;
 struct Foo;
 impl Drop for Foo {
     fn drop(&mut self) {
-        unsafe { DROP_RAN = true; }
+        unsafe {
+            DROP_RAN = true;
+        }
     }
 }
 
-trait Trait { fn dummy(&self) { } }
+trait Trait {
+    fn dummy(&self) {}
+}
 impl Trait for Foo {}
 
 struct Fat<T: ?Sized> {
-    f: T
+    f: T,
 }
 
 pub fn main() {

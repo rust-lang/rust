@@ -1,13 +1,18 @@
+// tidy-alphabetical-start
+#![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(unsafe_attributes, unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![allow(internal_features)]
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
 
 // NOTE: This crate only exists to allow linking on mingw targets.
 
-use libc::{c_char, size_t};
 use std::cell::RefCell;
 use std::slice;
+
+use libc::{c_char, size_t};
 
 #[repr(C)]
 pub struct RustString {
@@ -25,13 +30,13 @@ impl RustString {
 }
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn LLVMRustStringWriteImpl(
     sr: &RustString,
     ptr: *const c_char,
     size: size_t,
 ) {
-    let slice = slice::from_raw_parts(ptr as *const u8, size);
+    let slice = unsafe { slice::from_raw_parts(ptr as *const u8, size) };
 
     sr.bytes.borrow_mut().extend_from_slice(slice);
 }
@@ -43,7 +48,7 @@ pub fn initialize_available_targets() {
         ($cfg:meta, $($method:ident),*) => { {
             #[cfg($cfg)]
             fn init() {
-                extern "C" {
+                unsafe extern "C" {
                     $(fn $method();)*
                 }
                 unsafe {
@@ -187,6 +192,13 @@ pub fn initialize_available_targets() {
         LLVMInitializeHexagonTargetMC,
         LLVMInitializeHexagonAsmPrinter,
         LLVMInitializeHexagonAsmParser
+    );
+    init_target!(
+        llvm_component = "xtensa",
+        LLVMInitializeXtensaTargetInfo,
+        LLVMInitializeXtensaTarget,
+        LLVMInitializeXtensaTargetMC,
+        LLVMInitializeXtensaAsmParser
     );
     init_target!(
         llvm_component = "webassembly",

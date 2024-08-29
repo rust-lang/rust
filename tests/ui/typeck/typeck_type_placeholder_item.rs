@@ -47,7 +47,7 @@ impl Test9 {
 
 fn test11(x: &usize) -> &_ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
-    &x //~ ERROR cannot return reference to function parameter
+    &x
 }
 
 unsafe fn test12(x: *const usize) -> *const *const _ {

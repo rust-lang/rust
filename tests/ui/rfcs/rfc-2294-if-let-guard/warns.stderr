@@ -16,7 +16,9 @@ error: unreachable pattern
   --> $DIR/warns.rs:15:25
    |
 LL |         x if let None | None = x => {}
-   |                         ^^^^
+   |                  ----   ^^^^ no value can reach this
+   |                  |
+   |                  matches all the relevant values
    |
 note: the lint level is defined here
   --> $DIR/warns.rs:12:8

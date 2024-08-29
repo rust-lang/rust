@@ -2,15 +2,15 @@
 // when the no_global_oom_handling feature is turned on.
 // See https://github.com/rust-lang/rust/pull/110649
 
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::{rustc, source_root};
 
 fn main() {
     rustc()
         .edition("2021")
         .arg("-Dwarnings")
         .crate_type("rlib")
-        .input("../../../library/core/src/lib.rs")
-        .sysroot(tmp_dir().join("fakeroot"))
+        .input(source_root().join("library/core/src/lib.rs"))
+        .sysroot("fakeroot")
         .cfg("no_global_oom_handling")
         .run();
 }

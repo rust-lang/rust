@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, get_parent_expr};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -46,7 +46,7 @@ fn collect_replace_calls<'tcx>(
     let mut methods = VecDeque::new();
     let mut from_args = VecDeque::new();
 
-    let _: Option<()> = for_each_expr(expr, |e| {
+    let _: Option<()> = for_each_expr_without_closures(expr, |e| {
         if let Some(("replace", _, [from, to], _, _)) = method_call(e) {
             if eq_expr_value(cx, to_arg, to) && cx.typeck_results().expr_ty(from).peel_refs().is_char() {
                 methods.push_front(e);

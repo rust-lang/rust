@@ -3,7 +3,8 @@
 //! [`LintcheckServer`] to ask if it should be skipped, and if not sends the stderr of running
 //! clippy on the crate to the server
 
-use crate::{ClippyWarning, RecursiveOptions};
+use crate::input::RecursiveOptions;
+use crate::ClippyWarning;
 
 use std::collections::HashSet;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -19,7 +20,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct DriverInfo {
     pub package_name: String,
-    pub crate_name: String,
     pub version: String,
 }
 
@@ -62,10 +62,17 @@ fn process_stream(
     let mut stderr = String::new();
     stream.read_to_string(&mut stderr).unwrap();
 
+    // It's 99% likely that dependencies compiled with recursive mode are on crates.io
+    // and therefore on docs.rs. This links to the sources directly, do avoid invalid
+    // links due to remaped paths. See rust-lang/docs.rs#2551 for more details.
+    let base_url = format!(
+        "https://docs.rs/crate/{}/{}/source/src/{{file}}#{{line}}",
+        driver_info.package_name, driver_info.version
+    );
     let messages = stderr
         .lines()
         .filter_map(|json_msg| serde_json::from_str::<Diagnostic>(json_msg).ok())
-        .filter_map(|diag| ClippyWarning::new(diag, &driver_info.package_name, &driver_info.version));
+        .filter_map(|diag| ClippyWarning::new(diag, &base_url, &driver_info.package_name));
 
     for message in messages {
         sender.send(message).unwrap();

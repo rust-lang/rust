@@ -1,5 +1,5 @@
 warning: trait method `try_into` will become ambiguous in Rust 2021
-  --> $DIR/inherent-dyn-collision.rs:41:9
+  --> $DIR/inherent-dyn-collision.rs:42:9
    |
 LL |         get_dyn_trait().try_into().unwrap()
    |         ^^^^^^^^^^^^^^^ help: disambiguate the method call: `(&*get_dyn_trait())`

@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
@@ -7,7 +9,6 @@ use crate::os::xous::ffi::{
 };
 use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
 use crate::time::Duration;
-use core::arch::asm;
 
 pub struct Thread {
     tid: ThreadId,
@@ -81,7 +82,7 @@ impl Thread {
             // Destroy TLS, which will free the TLS page and call the destructor for
             // any thread local storage (if any).
             unsafe {
-                crate::sys::thread_local_key::destroy_tls();
+                crate::sys::thread_local::key::destroy_tls();
             }
 
             // Deallocate the stack memory, along with the guard pages. Afterwards,

@@ -1,7 +1,5 @@
 //! A collection of tools for profiling rust-analyzer.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
 mod memory_usage;
@@ -13,13 +11,6 @@ pub use crate::{
     memory_usage::{Bytes, MemoryUsage},
     stop_watch::{StopWatch, StopWatchSpan},
 };
-
-pub use countme;
-/// Include `_c: Count<Self>` field in important structs to count them.
-///
-/// To view the counts, run with `RA_COUNT=1`. The overhead of disabled count is
-/// almost zero.
-pub use countme::Count;
 
 thread_local!(static IN_SCOPE: RefCell<bool> = const { RefCell::new(false) });
 

@@ -69,13 +69,13 @@ fn test_binary_search() {
     assert_eq!(b.binary_search(&8), Err(5));
 
     let b = [(); usize::MAX];
-    assert_eq!(b.binary_search(&()), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search(&()), Ok(usize::MAX - 1));
 }
 
 #[test]
 fn test_binary_search_by_overflow() {
     let b = [(); usize::MAX];
-    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(usize::MAX - 1));
     assert_eq!(b.binary_search_by(|_| Ordering::Greater), Err(0));
     assert_eq!(b.binary_search_by(|_| Ordering::Less), Err(usize::MAX));
 }
@@ -87,13 +87,13 @@ fn test_binary_search_implementation_details() {
     let b = [1, 1, 2, 2, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(1));
     assert_eq!(b.binary_search(&2), Ok(3));
-    assert_eq!(b.binary_search(&3), Ok(5));
+    assert_eq!(b.binary_search(&3), Ok(6));
     let b = [1, 1, 1, 1, 1, 3, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(4));
-    assert_eq!(b.binary_search(&3), Ok(7));
+    assert_eq!(b.binary_search(&3), Ok(8));
     let b = [1, 1, 1, 1, 3, 3, 3, 3, 3];
-    assert_eq!(b.binary_search(&1), Ok(2));
-    assert_eq!(b.binary_search(&3), Ok(4));
+    assert_eq!(b.binary_search(&1), Ok(3));
+    assert_eq!(b.binary_search(&3), Ok(8));
 }
 
 #[test]
@@ -1803,9 +1803,7 @@ fn brute_force_rotate_test_1() {
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
 fn sort_unstable() {
-    use core::cmp::Ordering::{Equal, Greater, Less};
-    use core::slice::heapsort;
-    use rand::{seq::SliceRandom, Rng};
+    use rand::Rng;
 
     // Miri is too slow (but still need to `chain` to make the types match)
     let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
@@ -1839,29 +1837,8 @@ fn sort_unstable() {
                 tmp.copy_from_slice(v);
                 tmp.sort_unstable_by(|a, b| b.cmp(a));
                 assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
-
-                // Test heapsort using `<` operator.
-                tmp.copy_from_slice(v);
-                heapsort(tmp, |a, b| a < b);
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Test heapsort using `>` operator.
-                tmp.copy_from_slice(v);
-                heapsort(tmp, |a, b| a > b);
-                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
             }
         }
-    }
-
-    // Sort using a completely random comparison function.
-    // This will reorder the elements *somehow*, but won't panic.
-    for i in 0..v.len() {
-        v[i] = i as i32;
-    }
-    v.sort_unstable_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
-    v.sort_unstable();
-    for i in 0..v.len() {
-        assert_eq!(v[i], i as i32);
     }
 
     // Should not panic.
@@ -1879,6 +1856,7 @@ fn sort_unstable() {
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
+
     use rand::seq::SliceRandom;
     use rand::Rng;
 

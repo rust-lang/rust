@@ -1,14 +1,14 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_ast` in no particular order.
 
-use crate::ich::StableHashingContext;
+use std::assert_matches::assert_matches;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::SourceFile;
-use std::assert_matches::assert_matches;
-
 use smallvec::SmallVec;
+
+use crate::ich::StableHashingContext;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
@@ -73,7 +73,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             source_len: _,
             lines: _,
             ref multibyte_chars,
-            ref non_narrow_chars,
             ref normalized_pos,
         } = *self;
 
@@ -95,11 +94,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         // We only hash the relative position within this source_file
         multibyte_chars.len().hash_stable(hcx, hasher);
         for &char_pos in multibyte_chars.iter() {
-            char_pos.hash_stable(hcx, hasher);
-        }
-
-        non_narrow_chars.len().hash_stable(hcx, hasher);
-        for &char_pos in non_narrow_chars.iter() {
             char_pos.hash_stable(hcx, hasher);
         }
 

@@ -1,13 +1,12 @@
 //! This diagnostic provides an assist for creating a struct definition from a JSON
 //! example.
 
-use hir::{PathResolution, Semantics};
+use hir::{ImportPathConfig, PathResolution, Semantics};
 use ide_db::{
-    base_db::{FileId, FileRange},
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope},
     source_change::SourceChangeBuilder,
-    FxHashMap, RootDatabase,
+    EditionedFileId, FileRange, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::{format_to, never};
@@ -37,7 +36,7 @@ impl State {
             self.names.insert(name.clone(), 1);
             1
         };
-        make::name(&format!("{}{}", name, count))
+        make::name(&format!("{name}{count}"))
     }
 
     fn serde_derive(&self) -> String {
@@ -102,7 +101,7 @@ impl State {
 pub(crate) fn json_in_items(
     sema: &Semantics<'_, RootDatabase>,
     acc: &mut Vec<Diagnostic>,
-    file_id: FileId,
+    file_id: EditionedFileId,
     node: &SyntaxNode,
     config: &DiagnosticsConfig,
 ) {
@@ -132,7 +131,7 @@ pub(crate) fn json_in_items(
                     Diagnostic::new(
                         DiagnosticCode::Ra("json-is-not-rust", Severity::WeakWarning),
                         "JSON syntax is not valid as a Rust item",
-                        FileRange { file_id, range },
+                        FileRange { file_id: file_id.into(), range },
                     )
                     .with_fixes(Some(vec![{
                         let mut scb = SourceChangeBuilder::new(file_id);
@@ -142,14 +141,20 @@ pub(crate) fn json_in_items(
                             ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),
                         };
                         let current_module = semantics_scope.module();
+
+                        let cfg = ImportPathConfig {
+                            prefer_no_std: config.prefer_no_std,
+                            prefer_prelude: config.prefer_prelude,
+                            prefer_absolute: config.prefer_absolute,
+                        };
+
                         if !scope_has("Serialize") {
                             if let Some(PathResolution::Def(it)) = serialize_resolved {
-                                if let Some(it) = current_module.find_use_path_prefixed(
+                                if let Some(it) = current_module.find_use_path(
                                     sema.db,
                                     it,
                                     config.insert_use.prefix_kind,
-                                    config.prefer_no_std,
-                                    config.prefer_prelude,
+                                    cfg,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }
@@ -157,12 +162,11 @@ pub(crate) fn json_in_items(
                         }
                         if !scope_has("Deserialize") {
                             if let Some(PathResolution::Def(it)) = deserialize_resolved {
-                                if let Some(it) = current_module.find_use_path_prefixed(
+                                if let Some(it) = current_module.find_use_path(
                                     sema.db,
                                     it,
                                     config.insert_use.prefix_kind,
-                                    config.prefer_no_std,
-                                    config.prefer_prelude,
+                                    cfg,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }

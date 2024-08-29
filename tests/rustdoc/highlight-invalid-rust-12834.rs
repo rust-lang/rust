@@ -5,8 +5,8 @@
 #![crate_name="issue_12834"]
 #![allow(rustdoc::invalid_rust_codeblocks)]
 
-// @has issue_12834/fn.foo.html
-// @has - //pre 'a + b '
+//@ has issue_12834/fn.foo.html
+//@ has - //pre 'a + b '
 
 /// ```
 /// a + b ∈ Self ∀ a, b ∈ Self

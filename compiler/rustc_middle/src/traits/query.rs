@@ -5,21 +5,22 @@
 //! The providers for the queries defined here can be found in
 //! `rustc_traits`.
 
-use crate::error::DropCheckOverflow;
-use crate::infer::canonical::{Canonical, QueryResponse};
-use crate::ty::error::TypeError;
-use crate::ty::GenericArg;
-use crate::ty::{self, Ty, TyCtxt};
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 // FIXME: Remove this import and import via `traits::solve`.
-pub use rustc_next_trait_solver::solve::NoSolution;
+pub use rustc_type_ir::solve::NoSolution;
+
+use crate::error::DropCheckOverflow;
+use crate::infer::canonical::{Canonical, QueryResponse};
+use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
 pub mod type_op {
+    use std::fmt;
+
+    use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
+
     use crate::ty::fold::TypeFoldable;
     use crate::ty::{Predicate, Ty, TyCtxt, UserType};
-    use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
-    use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
@@ -91,12 +92,6 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
 
-impl<'tcx> From<TypeError<'tcx>> for NoSolution {
-    fn from(_: TypeError<'tcx>) -> NoSolution {
-        NoSolution
-    }
-}
-
 #[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
@@ -163,7 +158,7 @@ pub struct CandidateStep<'tcx> {
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct MethodAutoderefStepsResult<'tcx> {
-    /// The valid autoderef steps that could be find.
+    /// The valid autoderef steps that could be found.
     pub steps: &'tcx [CandidateStep<'tcx>],
     /// If Some(T), a type autoderef reported an error on.
     pub opt_bad_ty: Option<&'tcx MethodAutoderefBadTy<'tcx>>,

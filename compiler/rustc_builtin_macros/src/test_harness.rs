@@ -1,11 +1,14 @@
 // Code that generates a test runner to run all the tests in a crate
 
+use std::{iter, mem};
+
 use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_item, Visitor};
 use rustc_ast::{attr, ModKind};
+use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
@@ -19,8 +22,6 @@ use rustc_target::spec::PanicStrategy;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::{thin_vec, ThinVec};
 use tracing::debug;
-
-use std::{iter, mem};
 
 use crate::errors;
 
@@ -121,15 +122,15 @@ impl TestHarnessGenerator<'_> {
 impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     fn visit_crate(&mut self, c: &mut ast::Crate) {
         let prev_tests = mem::take(&mut self.tests);
-        noop_visit_crate(c, self);
+        walk_crate(self, c);
         self.add_test_cases(ast::CRATE_NODE_ID, c.spans.inner_span, prev_tests);
 
         // Create a main function to run our tests
         c.items.push(mk_main(&mut self.cx));
     }
 
-    fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        let mut item = i.into_inner();
+    fn flat_map_item(&mut self, mut i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
+        let item = &mut *i;
         if let Some(name) = get_test_name(&item) {
             debug!("this is a test item");
 
@@ -143,13 +144,13 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
-            noop_visit_item_kind(&mut item.kind, self);
+            walk_item_kind(&mut item.kind, item.span, item.id, self);
             self.add_test_cases(item.id, span, prev_tests);
         } else {
             // But in those cases, we emit a lint to warn the user of these missing tests.
             walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
         }
-        smallvec![P(item)]
+        smallvec![i]
     }
 }
 
@@ -191,7 +192,7 @@ struct EntryPointCleaner<'a> {
 impl<'a> MutVisitor for EntryPointCleaner<'a> {
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         self.depth += 1;
-        let item = noop_flat_map_item(i, self).expect_one("noop did something");
+        let item = walk_flat_map_item(self, i).expect_one("noop did something");
         self.depth -= 1;
 
         // Remove any #[rustc_main] or #[start] from the AST so it doesn't
@@ -203,6 +204,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let allow_dead_code = attr::mk_attr_nested_word(
                         &self.sess.psess.attr_id_generator,
                         ast::AttrStyle::Outer,
+                        ast::Safety::Default,
                         sym::allow,
                         sym::dead_code,
                         self.def_site,
@@ -390,7 +392,7 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
     attr::first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(dcx: &rustc_errors::DiagCtxt, krate: &ast::Crate) -> Option<ast::Path> {
+fn get_test_runner(dcx: DiagCtxtHandle<'_>, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     let meta_list = test_attr.meta_item_list()?;
     let span = test_attr.span;

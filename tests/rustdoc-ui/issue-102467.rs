@@ -5,8 +5,8 @@
 
 trait T {
     type A: S<C<X = 0i32> = 34>;
-    //~^ ERROR associated type bindings are not allowed here
-    //~| ERROR associated type bindings are not allowed here
+    //~^ ERROR associated item constraints are not allowed here
+    //~| ERROR associated item constraints are not allowed here
 }
 
 trait S {

@@ -12,10 +12,7 @@ error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:19:18
    |
 LL |     fn make() -> u8 { 0 }
-   |                  ^^
-   |                  |
-   |                  expected associated type, found `u8`
-   |                  help: change the output type to match the trait: `<A<T> as Tr>::Ty`
+   |                  ^^ expected associated type, found `u8`
    |
 note: type in trait
   --> $DIR/defaults-specialization.rs:9:18
@@ -24,6 +21,10 @@ LL |     fn make() -> Self::Ty {
    |                  ^^^^^^^^
    = note: expected signature `fn() -> <A<T> as Tr>::Ty`
               found signature `fn() -> u8`
+help: change the output type to match the trait
+   |
+LL |     fn make() -> <A<T> as Tr>::Ty { 0 }
+   |                  ~~~~~~~~~~~~~~~~
 
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:35:18
@@ -32,10 +33,7 @@ LL |     default type Ty = bool;
    |     ----------------------- associated type is `default` and may be overridden
 LL |
 LL |     fn make() -> bool { true }
-   |                  ^^^^
-   |                  |
-   |                  expected associated type, found `bool`
-   |                  help: change the output type to match the trait: `<B<T> as Tr>::Ty`
+   |                  ^^^^ expected associated type, found `bool`
    |
 note: type in trait
   --> $DIR/defaults-specialization.rs:9:18
@@ -44,6 +42,10 @@ LL |     fn make() -> Self::Ty {
    |                  ^^^^^^^^
    = note: expected signature `fn() -> <B<T> as Tr>::Ty`
               found signature `fn() -> bool`
+help: change the output type to match the trait
+   |
+LL |     fn make() -> <B<T> as Tr>::Ty { true }
+   |                  ~~~~~~~~~~~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:10:9

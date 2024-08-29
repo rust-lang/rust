@@ -217,7 +217,8 @@ Diagnostics have the following format:
 Artifact notifications are emitted when the [`--json=artifacts`
 flag][option-json] is used. They indicate that a file artifact has been saved
 to disk. More information about emit kinds may be found in the [`--emit`
-flag][option-emit] documentation.
+flag][option-emit] documentation. Notifications can contain more than one file
+for each type, for example when using multiple codegen units.
 
 ```javascript
 {
@@ -229,6 +230,11 @@ flag][option-emit] documentation.
        - "link": The generated crate as specified by the crate-type.
        - "dep-info": The `.d` file with dependency information in a Makefile-like syntax.
        - "metadata": The Rust `.rmeta` file containing metadata about the crate.
+       - "asm": The `.s` file with generated assembly
+       - "llvm-ir": The `.ll` file with generated textual LLVM IR
+       - "llvm-bc": The `.bc` file with generated LLVM bitcode
+       - "mir": The `.mir` file with rustc's mid-level intermediate representation.
+       - "obj": The `.o` file with generated native object code
     */
     "emit": "link"
 }

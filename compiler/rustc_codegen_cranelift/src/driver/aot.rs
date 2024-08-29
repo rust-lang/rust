@@ -11,8 +11,9 @@ use rustc_codegen_ssa::assert_module_sources::CguReuse;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
-use rustc_codegen_ssa::errors as ssa_errors;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
+use rustc_codegen_ssa::{
+    errors as ssa_errors, CodegenResults, CompiledModule, CrateInfo, ModuleKind,
+};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{par_map, IntoDynSyncSend};
@@ -26,7 +27,9 @@ use rustc_session::Session;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
-use crate::{prelude::*, BackendConfig};
+use crate::prelude::*;
+use crate::unwind_module::UnwindModule;
+use crate::BackendConfig;
 
 struct ModuleCodegenResult {
     module_regular: CompiledModule,
@@ -200,7 +203,7 @@ fn produce_final_output_artifacts(
     // to get rid of it.
     for output_type in crate_output.outputs.keys() {
         match *output_type {
-            OutputType::Bitcode => {
+            OutputType::Bitcode | OutputType::ThinLinkBitcode => {
                 // Cranelift doesn't have bitcode
                 // user_wants_bitcode = true;
                 // // Copy to .bc, but always keep the .0.bc. There is a later
@@ -288,6 +291,29 @@ fn produce_final_output_artifacts(
         }
     }
 
+    if sess.opts.json_artifact_notifications {
+        if codegen_results.modules.len() == 1 {
+            codegen_results.modules[0].for_each_output(|_path, ty| {
+                if sess.opts.output_types.contains_key(&ty) {
+                    let descr = ty.shorthand();
+                    // for single cgu file is renamed to drop cgu specific suffix
+                    // so we regenerate it the same way
+                    let path = crate_output.path(ty);
+                    sess.dcx().emit_artifact_notification(path.as_path(), descr);
+                }
+            });
+        } else {
+            for module in &codegen_results.modules {
+                module.for_each_output(|path, ty| {
+                    if sess.opts.output_types.contains_key(&ty) {
+                        let descr = ty.shorthand();
+                        sess.dcx().emit_artifact_notification(&path, descr);
+                    }
+                });
+            }
+        }
+    }
+
     // We leave the following files around by default:
     //  - #crate#.o
     //  - #crate#.crate.metadata.o
@@ -295,7 +321,11 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> ObjectModule {
+fn make_module(
+    sess: &Session,
+    backend_config: &BackendConfig,
+    name: String,
+) -> UnwindModule<ObjectModule> {
     let isa = crate::build_isa(sess, backend_config);
 
     let mut builder =
@@ -304,16 +334,15 @@ fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> 
     // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
     // can easily double the amount of time necessary to perform linking.
     builder.per_function_section(sess.opts.unstable_opts.function_sections.unwrap_or(false));
-    ObjectModule::new(builder)
+    UnwindModule::new(ObjectModule::new(builder), true)
 }
 
 fn emit_cgu(
     output_filenames: &OutputFilenames,
     prof: &SelfProfilerRef,
     name: String,
-    module: ObjectModule,
+    module: UnwindModule<ObjectModule>,
     debug: Option<DebugContext>,
-    unwind_context: UnwindContext,
     global_asm_object_file: Option<PathBuf>,
     producer: &str,
 ) -> Result<ModuleCodegenResult, String> {
@@ -322,8 +351,6 @@ fn emit_cgu(
     if let Some(mut debug) = debug {
         debug.emit(&mut product);
     }
-
-    unwind_context.emit(&mut product);
 
     let module_regular = emit_module(
         output_filenames,
@@ -471,7 +498,6 @@ fn module_codegen(
 
             let mut cx = crate::CodegenCx::new(
                 tcx,
-                backend_config.clone(),
                 module.isa(),
                 tcx.sess.opts.debuginfo != DebugInfo::None,
                 cgu_name,
@@ -508,13 +534,7 @@ fn module_codegen(
                     }
                 }
             }
-            crate::main_shim::maybe_create_entry_wrapper(
-                tcx,
-                &mut module,
-                &mut cx.unwind_context,
-                false,
-                cgu.is_primary(),
-            );
+            crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, false, cgu.is_primary());
 
             let cgu_name = cgu.name().as_str().to_owned();
 
@@ -548,7 +568,6 @@ fn module_codegen(
                     cgu_name,
                     module,
                     cx.debug_context,
-                    cx.unwind_context,
                     global_asm_object_file,
                     &producer,
                 )
@@ -642,13 +661,10 @@ pub(crate) fn run_aot(
     });
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
-    let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);
-    let created_alloc_shim =
-        crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
+    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
     let allocator_module = if created_alloc_shim {
-        let mut product = allocator_module.finish();
-        allocator_unwind_context.emit(&mut product);
+        let product = allocator_module.finish();
 
         match emit_module(
             tcx.output_filenames(()),

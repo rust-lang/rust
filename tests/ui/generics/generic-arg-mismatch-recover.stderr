@@ -2,7 +2,7 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/generic-arg-mismatch-recover.rs:6:5
    |
 LL |     Foo::<'static, 'static, ()>(&0);
-   |     ^^^            ------- help: remove this lifetime argument
+   |     ^^^          --------- help: remove the lifetime argument
    |     |
    |     expected 1 lifetime argument
    |
@@ -16,7 +16,7 @@ error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were sup
   --> $DIR/generic-arg-mismatch-recover.rs:9:5
    |
 LL |     Bar::<'static, 'static, ()>(&());
-   |     ^^^            ------- help: remove this lifetime argument
+   |     ^^^          --------- help: remove the lifetime argument
    |     |
    |     expected 1 lifetime argument
    |
@@ -30,7 +30,7 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/generic-arg-mismatch-recover.rs:9:5
    |
 LL |     Bar::<'static, 'static, ()>(&());
-   |     ^^^                     -- help: remove this generic argument
+   |     ^^^                     -- help: remove the unnecessary generic argument
    |     |
    |     expected 0 generic arguments
    |

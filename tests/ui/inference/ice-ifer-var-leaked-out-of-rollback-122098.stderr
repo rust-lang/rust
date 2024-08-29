@@ -55,16 +55,18 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:21:31
    |
 LL |     LendingIterator::for_each(Query::new(&data), Box::new);
-   |                               ^^^^^^^^^^ -----
-   |                                          |
-   |                                          unexpected argument of type `&fn() {data}`
-   |                                          help: remove the extra argument
+   |                               ^^^^^^^^^^ ----- unexpected argument of type `&fn() {data}`
    |
 note: associated function defined here
   --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:17:12
    |
 LL |     pub fn new() -> Self {}
    |            ^^^
+help: remove the extra argument
+   |
+LL -     LendingIterator::for_each(Query::new(&data), Box::new);
+LL +     LendingIterator::for_each(Query::new(), Box::new);
+   |
 
 error: aborting due to 6 previous errors
 

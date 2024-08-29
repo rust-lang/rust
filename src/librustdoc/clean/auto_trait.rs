@@ -6,13 +6,11 @@ use rustc_middle::ty::{self, Region, Ty};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
-
 use thin_vec::ThinVec;
 
-use crate::clean::{self, simplify, Lifetime};
 use crate::clean::{
-    clean_generic_param_def, clean_middle_ty, clean_predicate, clean_trait_ref_with_bindings,
-    clean_ty_generics,
+    self, clean_generic_param_def, clean_middle_ty, clean_predicate,
+    clean_trait_ref_with_constraints, clean_ty_generics, simplify, Lifetime,
 };
 use crate::core::DocContext;
 
@@ -121,7 +119,7 @@ fn synthesize_auto_trait_impl<'tcx>(
         kind: Box::new(clean::ImplItem(Box::new(clean::Impl {
             safety: hir::Safety::Safe,
             generics,
-            trait_: Some(clean_trait_ref_with_bindings(cx, trait_ref, ThinVec::new())),
+            trait_: Some(clean_trait_ref_with_constraints(cx, trait_ref, ThinVec::new())),
             for_: clean_middle_ty(ty::Binder::dummy(ty), cx, None, None),
             items: Vec::new(),
             polarity,

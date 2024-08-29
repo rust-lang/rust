@@ -2,19 +2,25 @@ error: expected identifier, found `,`
   --> $DIR/ident-recovery.rs:1:4
    |
 LL | fn ,comma() {
-   |    ^
-   |    |
-   |    expected identifier
-   |    help: remove this comma
+   |    ^ expected identifier
+   |
+help: remove this comma
+   |
+LL - fn ,comma() {
+LL + fn comma() {
+   |
 
 error: expected identifier, found `,`
   --> $DIR/ident-recovery.rs:4:16
    |
 LL |         x: i32,,
-   |                ^
-   |                |
-   |                expected identifier
-   |                help: remove this comma
+   |                ^ expected identifier
+   |
+help: remove this comma
+   |
+LL -         x: i32,,
+LL +         x: i32,
+   |
 
 error: expected identifier, found keyword `break`
   --> $DIR/ident-recovery.rs:10:4

@@ -1,5 +1,4 @@
-//@ build-pass
-//@ ignore-compare-mode-next-solver (hangs)
+//@ check-pass
 
 // Closures include captured types twice in a type tree.
 //

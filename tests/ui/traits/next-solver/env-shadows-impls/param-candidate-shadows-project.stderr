@@ -2,13 +2,8 @@ error[E0271]: type mismatch resolving `<T as Foo>::Assoc == i32`
   --> $DIR/param-candidate-shadows-project.rs:27:19
    |
 LL |     require_bar::<T>();
-   |                   ^ type mismatch resolving `<T as Foo>::Assoc == i32`
+   |                   ^ types differ
    |
-note: types differ
-  --> $DIR/param-candidate-shadows-project.rs:10:18
-   |
-LL |     type Assoc = i32;
-   |                  ^^^
 note: required for `T` to implement `Bar`
   --> $DIR/param-candidate-shadows-project.rs:13:9
    |

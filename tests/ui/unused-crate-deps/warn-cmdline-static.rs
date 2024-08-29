@@ -7,4 +7,4 @@
 //@ no-prefer-dynamic
 
 fn main() {}
-//~^ WARNING external crate `bar` unused in
+//~^ WARNING extern crate `bar` is unused in

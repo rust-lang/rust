@@ -24,8 +24,8 @@ reuse to_reuse::zero_args { self }
 
 struct S(F);
 impl Trait for S {
-    reuse Trait::bar { &self.0 }
-    reuse Trait::description { &self.0 }
+    reuse Trait::bar { self.0 }
+    reuse Trait::description { self.0 }
     reuse <F as Trait>::static_method;
     reuse <F as Trait>::static_method2 { S::static_method(self) }
 }

@@ -368,7 +368,7 @@ In particular, we generate:
 
 * Documentation tests for assists
 
-See the `sourcegen` crate for details.
+See the `xtask\src\codegen\assists_doc_tests.rs` module for details.
 
 **Architecture Invariant:** we avoid bootstrapping.
 For codegen we need to parse Rust code.
@@ -408,7 +408,7 @@ It has a much richer vocabulary of types than `ide`, but the basic testing setup
 For comparisons, we use the `expect` crate for snapshot testing.
 
 To test various analysis corner cases and avoid forgetting about old tests, we use so-called marks.
-See the `marks` module in the `test_utils` crate for more.
+See the [cov_mark](https://docs.rs/cov-mark/latest/cov_mark/) crate documentation for more.
 
 **Architecture Invariant:** rust-analyzer tests do not use libcore or libstd.
 All required library code must be a part of the tests.

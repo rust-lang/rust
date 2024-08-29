@@ -1,6 +1,5 @@
-use crate::ops;
-use crate::process;
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::{ops, process};
 
 /// Reference counter internals.
 struct Counter<C> {
@@ -63,7 +62,7 @@ impl<C> Sender<C> {
             disconnect(&self.counter().chan);
 
             if self.counter().destroy.swap(true, Ordering::AcqRel) {
-                drop(Box::from_raw(self.counter));
+                drop(unsafe { Box::from_raw(self.counter) });
             }
         }
     }
@@ -116,7 +115,7 @@ impl<C> Receiver<C> {
             disconnect(&self.counter().chan);
 
             if self.counter().destroy.swap(true, Ordering::AcqRel) {
-                drop(Box::from_raw(self.counter));
+                drop(unsafe { Box::from_raw(self.counter) });
             }
         }
     }

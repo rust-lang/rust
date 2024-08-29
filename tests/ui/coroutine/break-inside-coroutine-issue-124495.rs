@@ -18,6 +18,7 @@ async gen fn async_gen_fn() {
 
 fn main() {
     let _ = async { break; }; //~ ERROR `break` inside `async` block
+
     let _ = async || { break; }; //~ ERROR `break` inside `async` closure
 
     let _ = gen { break; }; //~ ERROR `break` inside `gen` block

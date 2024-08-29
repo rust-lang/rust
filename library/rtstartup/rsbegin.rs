@@ -29,6 +29,8 @@ trait Copy {}
 #[lang = "freeze"]
 auto trait Freeze {}
 
+impl<T: ?Sized> Copy for *mut T {}
+
 #[lang = "drop_in_place"]
 #[inline]
 #[allow(unconditional_recursion)]

@@ -5,7 +5,9 @@ static mut DROP_RAN: isize = 0;
 struct Foo;
 impl Drop for Foo {
     fn drop(&mut self) {
-        unsafe { DROP_RAN += 1; }
+        unsafe {
+            DROP_RAN += 1;
+        }
     }
 }
 

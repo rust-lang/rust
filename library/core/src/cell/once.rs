@@ -1,13 +1,12 @@
 use crate::cell::UnsafeCell;
-use crate::fmt;
-use crate::mem;
+use crate::{fmt, mem};
 
-/// A cell which can be written to only once.
+/// A cell which can nominally be written to only once.
 ///
 /// This allows obtaining a shared `&T` reference to its inner value without copying or replacing
 /// it (unlike [`Cell`]), and without runtime borrow checks (unlike [`RefCell`]). However,
 /// only immutable references can be obtained unless one has a mutable reference to the cell
-/// itself.
+/// itself. In the same vein, the cell can only be re-initialized with such a mutable reference.
 ///
 /// For a thread-safe version of this struct, see [`std::sync::OnceLock`].
 ///
@@ -310,7 +309,8 @@ impl<T> OnceCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "once_cell", since = "1.70.0")]
-    pub fn into_inner(self) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    pub const fn into_inner(self) -> Option<T> {
         // Because `into_inner` takes `self` by value, the compiler statically verifies
         // that it is not currently borrowed. So it is safe to move out `Option<T>`.
         self.inner.into_inner()

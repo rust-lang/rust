@@ -3,8 +3,8 @@
 
 //@ compile-flags:--document-private-items
 
-// @has traits_in_bodies_private/struct.SomeStruct.html
-// @!has - '//code' 'impl HiddenTrait for SomeStruct'
+//@ has traits_in_bodies_private/struct.SomeStruct.html
+//@ !has - '//code' 'impl HiddenTrait for SomeStruct'
 pub struct SomeStruct;
 
 fn __implementation_details() {

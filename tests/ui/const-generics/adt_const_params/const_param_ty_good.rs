@@ -1,7 +1,9 @@
 //@ check-pass
+
+#![feature(adt_const_params, unsized_const_params)]
 #![allow(incomplete_features)]
-#![feature(adt_const_params)]
-use std::marker::ConstParamTy;
+
+use std::marker::UnsizedConstParamTy;
 
 #[derive(PartialEq, Eq)]
 struct S<T> {
@@ -9,16 +11,15 @@ struct S<T> {
     gen: T,
 }
 
-impl<T: ConstParamTy> ConstParamTy for S<T> {}
+impl<T: UnsizedConstParamTy> UnsizedConstParamTy for S<T> {}
 
-#[derive(PartialEq, Eq, ConstParamTy)]
+#[derive(PartialEq, Eq, UnsizedConstParamTy)]
 struct D<T> {
     field: u8,
     gen: T,
 }
 
-
-fn check<T: ConstParamTy + ?Sized>() {}
+fn check<T: UnsizedConstParamTy + ?Sized>() {}
 
 fn main() {
     check::<u8>();

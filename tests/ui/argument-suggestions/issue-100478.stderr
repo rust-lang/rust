@@ -4,8 +4,8 @@ error[E0061]: this function takes 3 arguments but 1 argument was supplied
 LL |     three_diff(T2::new(0));
    |     ^^^^^^^^^^------------
    |               ||
-   |               |an argument of type `T1` is missing
-   |               an argument of type `T3` is missing
+   |               |argument #1 of type `T1` is missing
+   |               argument #3 of type `T3` is missing
    |
 note: function defined here
   --> $DIR/issue-100478.rs:30:4
@@ -63,7 +63,7 @@ LL |     foo(
    |     ^^^
 ...
 LL |         p3, p4, p5, p6, p7, p8,
-   |         -- an argument of type `Arc<T2>` is missing
+   |         -- argument #2 of type `Arc<T2>` is missing
    |
 note: function defined here
   --> $DIR/issue-100478.rs:29:4

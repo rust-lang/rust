@@ -6,8 +6,12 @@ FROM centos:7
 
 WORKDIR /build
 
+# CentOS 7 EOL is June 30, 2024, but the repos remain in the vault.
+RUN sed -i /etc/yum.repos.d/*.repo -e 's!^mirrorlist!#mirrorlist!' \
+  -e 's!^#baseurl=http://mirror.centos.org/!baseurl=https://vault.centos.org/!'
+RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
+
 RUN yum upgrade -y && \
-    yum install -y epel-release && \
     yum install -y \
       automake \
       bzip2 \
@@ -58,6 +62,10 @@ COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
+# Build zstd to enable `llvm.libzstd`.
+COPY host-x86_64/dist-x86_64-linux/build-zstd.sh /tmp/
+RUN ./build-zstd.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -75,6 +83,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
+      --set llvm.libzstd=true \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin \

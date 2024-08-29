@@ -4,14 +4,12 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
-use crate::fmt;
-use crate::fs;
-use crate::io;
 use crate::marker::PhantomData;
-use crate::mem::forget;
+use crate::mem::ManuallyDrop;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit")))]
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{fmt, fs, io};
 
 /// A borrowed file descriptor.
 ///
@@ -24,9 +22,14 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// passed as an argument, it is not captured or consumed, and it never has the
 /// value `-1`.
 ///
-/// This type's `.to_owned()` implementation returns another `BorrowedFd`
-/// rather than an `OwnedFd`. It just makes a trivial copy of the raw file
-/// descriptor, which is then borrowed under the same lifetime.
+/// This type does not have a [`ToOwned`][crate::borrow::ToOwned]
+/// implementation. Calling `.to_owned()` on a variable of this type will call
+/// it on `&BorrowedFd` and use `Clone::clone()` like `ToOwned` does for all
+/// types implementing `Clone`. The result will be descriptor borrowed under
+/// the same lifetime.
+///
+/// To obtain an [`OwnedFd`], you can use [`BorrowedFd::try_clone_to_owned`]
+/// instead, but this is not supported on all platforms.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -50,6 +53,8 @@ pub struct BorrowedFd<'fd> {
 /// descriptor, so it can be used in FFI in places where a file descriptor is
 /// passed as a consumed argument or returned as an owned value, and it never
 /// has the value `-1`.
+///
+/// You can use [`AsFd::as_fd`] to obtain a [`BorrowedFd`].
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
 // libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
@@ -63,7 +68,7 @@ pub struct OwnedFd {
 }
 
 impl BorrowedFd<'_> {
-    /// Return a `BorrowedFd` holding the given raw file descriptor.
+    /// Returns a `BorrowedFd` holding the given raw file descriptor.
     ///
     /// # Safety
     ///
@@ -141,9 +146,7 @@ impl AsRawFd for OwnedFd {
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        let fd = self.fd;
-        forget(self);
-        fd
+        ManuallyDrop::new(self).fd
     }
 }
 
@@ -175,6 +178,11 @@ impl Drop for OwnedFd {
             // the file descriptor was closed or not, and if we retried (for
             // something like EINTR), we might close another valid file descriptor
             // opened after we closed ours.
+            // However, this is usually justified, as some of the major Unices
+            // do make sure to always close the FD, even when `close()` is interrupted,
+            // and the scenario is rare to begin with.
+            // Helpful link to an epic discussion by POSIX workgroup:
+            // http://austingroupbugs.net/view.php?id=529
             #[cfg(not(target_os = "hermit"))]
             {
                 #[cfg(unix)]

@@ -1,6 +1,5 @@
-//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-//@ min-lldb-version: 310
-
+//@ min-lldb-version: 1800
+//@ min-gdb-version: 13.0
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -8,13 +7,11 @@
 // gdb-command:run
 
 // gdb-command:print s
-// gdbg-check:$1 = {a = 1, b = 2.5}
-// gdbr-check:$1 = by_value_non_immediate_argument::Struct {a: 1, b: 2.5}
+// gdb-check:$1 = by_value_non_immediate_argument::Struct {a: 1, b: 2.5}
 // gdb-command:continue
 
 // gdb-command:print x
-// gdbg-check:$2 = {a = 3, b = 4.5}
-// gdbr-check:$2 = by_value_non_immediate_argument::Struct {a: 3, b: 4.5}
+// gdb-check:$2 = by_value_non_immediate_argument::Struct {a: 3, b: 4.5}
 // gdb-command:print y
 // gdb-check:$3 = 5
 // gdb-command:print z
@@ -22,18 +19,15 @@
 // gdb-command:continue
 
 // gdb-command:print a
-// gdbg-check:$5 = {__0 = 7, __1 = 8, __2 = 9.5, __3 = 10.5}
-// gdbr-check:$5 = (7, 8, 9.5, 10.5)
+// gdb-check:$5 = (7, 8, 9.5, 10.5)
 // gdb-command:continue
 
 // gdb-command:print a
-// gdbg-check:$6 = {__0 = 11.5, __1 = 12.5, __2 = 13, __3 = 14}
-// gdbr-check:$6 = by_value_non_immediate_argument::Newtype (11.5, 12.5, 13, 14)
+// gdb-check:$6 = by_value_non_immediate_argument::Newtype (11.5, 12.5, 13, 14)
 // gdb-command:continue
 
 // gdb-command:print x
-// gdbg-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, [...]}}
-// gdbr-check:$7 = by_value_non_immediate_argument::Enum::Case1{x: 0, y: 8970181431921507452}
+// gdb-check:$7 = by_value_non_immediate_argument::Enum::Case1{x: 0, y: 8970181431921507452}
 // gdb-command:continue
 
 
@@ -42,11 +36,11 @@
 // lldb-command:run
 
 // lldb-command:v s
-// lldb-check:[...] Struct { a: 1, b: 2.5 }
+// lldb-check:[...] Struct { a = 1 b = 2.5 }
 // lldb-command:continue
 
 // lldb-command:v x
-// lldb-check:[...] Struct { a: 3, b: 4.5 }
+// lldb-check:[...] Struct { a = 3 b = 4.5 }
 // lldb-command:v y
 // lldb-check:[...] 5
 // lldb-command:v z

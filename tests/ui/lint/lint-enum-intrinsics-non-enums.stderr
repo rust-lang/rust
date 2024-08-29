@@ -4,7 +4,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant(&());
    |     ^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `()`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `()`, which is not an enum
   --> $DIR/lint-enum-intrinsics-non-enums.rs:26:18
    |
 LL |     discriminant(&());
@@ -17,7 +17,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant(&&SomeEnum::B);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `&SomeEnum`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `&SomeEnum`, which is not an enum
   --> $DIR/lint-enum-intrinsics-non-enums.rs:29:18
    |
 LL |     discriminant(&&SomeEnum::B);
@@ -29,7 +29,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `SomeStruct`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `SomeStruct`, which is not an enum
   --> $DIR/lint-enum-intrinsics-non-enums.rs:32:18
    |
 LL |     discriminant(&SomeStruct);
@@ -41,7 +41,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant(&123u32);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `u32`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `u32`, which is not an enum
   --> $DIR/lint-enum-intrinsics-non-enums.rs:35:18
    |
 LL |     discriminant(&123u32);
@@ -53,7 +53,7 @@ error: the return value of `mem::discriminant` is unspecified when called with a
 LL |     discriminant(&&123i8);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `&i8`, which is not an enum.
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `&i8`, which is not an enum
   --> $DIR/lint-enum-intrinsics-non-enums.rs:38:18
    |
 LL |     discriminant(&&123i8);
@@ -65,7 +65,7 @@ error: the return value of `mem::variant_count` is unspecified when called with 
 LL |     variant_count::<&str>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `&str`, which is not an enum.
+   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `&str`, which is not an enum
 
 error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
   --> $DIR/lint-enum-intrinsics-non-enums.rs:49:5
@@ -73,7 +73,7 @@ error: the return value of `mem::variant_count` is unspecified when called with 
 LL |     variant_count::<*const u8>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `*const u8`, which is not an enum.
+   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `*const u8`, which is not an enum
 
 error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
   --> $DIR/lint-enum-intrinsics-non-enums.rs:52:5
@@ -81,7 +81,7 @@ error: the return value of `mem::variant_count` is unspecified when called with 
 LL |     variant_count::<()>();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `()`, which is not an enum.
+   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `()`, which is not an enum
 
 error: the return value of `mem::variant_count` is unspecified when called with a non-enum type
   --> $DIR/lint-enum-intrinsics-non-enums.rs:55:5
@@ -89,7 +89,7 @@ error: the return value of `mem::variant_count` is unspecified when called with 
 LL |     variant_count::<&SomeEnum>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `&SomeEnum`, which is not an enum.
+   = note: the type parameter of `variant_count` should be an enum, but it was instantiated with the type `&SomeEnum`, which is not an enum
 
 error: aborting due to 9 previous errors
 

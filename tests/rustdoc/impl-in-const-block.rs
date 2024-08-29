@@ -4,12 +4,12 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/struct.A.html'
-// @has - '//*[@id="method.new"]/*[@class="code-header"]' 'pub fn new() -> A'
-// @has - '//*[@id="method.bar"]/*[@class="code-header"]' 'pub fn bar(&self)'
-// @has - '//*[@id="method.woo"]/*[@class="code-header"]' 'pub fn woo(&self)'
-// @has - '//*[@id="method.yoo"]/*[@class="code-header"]' 'pub fn yoo()'
-// @has - '//*[@id="method.yuu"]/*[@class="code-header"]' 'pub fn yuu()'
+//@ has 'foo/struct.A.html'
+//@ has - '//*[@id="method.new"]/*[@class="code-header"]' 'pub fn new() -> A'
+//@ has - '//*[@id="method.bar"]/*[@class="code-header"]' 'pub fn bar(&self)'
+//@ has - '//*[@id="method.woo"]/*[@class="code-header"]' 'pub fn woo(&self)'
+//@ has - '//*[@id="method.yoo"]/*[@class="code-header"]' 'pub fn yoo()'
+//@ has - '//*[@id="method.yuu"]/*[@class="code-header"]' 'pub fn yuu()'
 pub struct A;
 
 const _: () = {

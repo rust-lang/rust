@@ -1,11 +1,3 @@
-#[cfg(not(no_global_oom_handling))]
-use super::AsVecIntoIter;
-use crate::alloc::{Allocator, Global};
-#[cfg(not(no_global_oom_handling))]
-use crate::collections::VecDeque;
-use crate::raw_vec::RawVec;
-use core::array;
-use core::fmt;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen,
     TrustedRandomAccessNoCoerce,
@@ -17,6 +9,14 @@ use core::num::NonZero;
 use core::ops::Deref;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
+use core::{array, fmt};
+
+#[cfg(not(no_global_oom_handling))]
+use super::AsVecIntoIter;
+use crate::alloc::{Allocator, Global};
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::VecDeque;
+use crate::raw_vec::RawVec;
 
 macro non_null {
     (mut $place:expr, $t:ident) => {{
@@ -114,16 +114,22 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
-    /// This method guarantees it won't panic before relinquishing
-    /// the backing allocation.
+    ///
+    /// This method guarantees it won't panic before relinquishing the backing
+    /// allocation.
     ///
     /// This is roughly equivalent to the following, but more efficient
     ///
     /// ```
-    /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
+    /// # let mut vec = Vec::<u8>::with_capacity(10);
+    /// # let ptr = vec.as_mut_ptr();
+    /// # let mut into_iter = vec.into_iter();
     /// let mut into_iter = std::mem::replace(&mut into_iter, Vec::new().into_iter());
     /// (&mut into_iter).for_each(drop);
     /// std::mem::forget(into_iter);
+    /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
+    /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
+    /// # drop(unsafe { Vec::<u8>::from_raw_parts(ptr, 0, 10) });
     /// ```
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect
@@ -254,7 +260,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next_chunk<const N: usize>(&mut self) -> Result<[T; N], core::array::IntoIter<T, N>> {
-        let mut raw_ary = MaybeUninit::uninit_array();
+        let mut raw_ary = [const { MaybeUninit::uninit() }; N];
 
         let len = self.len();
 

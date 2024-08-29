@@ -13,8 +13,8 @@ LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains the generic associated type `A`
    = help: consider moving `A` to another trait
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Foo` for this new enum and using it instead:
-             Fooer<T>
              Fooy
+             Fooer<T>
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/gat-in-trait-path.rs:32:5
@@ -31,8 +31,8 @@ LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains the generic associated type `A`
    = help: consider moving `A` to another trait
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Foo` for this new enum and using it instead:
-             Fooer<T>
              Fooy
+             Fooer<T>
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/gat-in-trait-path.rs:32:5
@@ -49,9 +49,9 @@ LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains the generic associated type `A`
    = help: consider moving `A` to another trait
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Foo` for this new enum and using it instead:
-             Fooer<T>
              Fooy
-   = note: required for the cast from `Box<Fooer<{integer}>>` to `Box<(dyn Foo<A = &'a ()> + 'static)>`
+             Fooer<T>
+   = note: required for the cast from `Box<Fooer<{integer}>>` to `Box<(dyn Foo<A<'a> = &'a ()> + 'static)>`
 
 error: aborting due to 3 previous errors
 

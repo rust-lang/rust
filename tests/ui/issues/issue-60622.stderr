@@ -20,7 +20,7 @@ error[E0107]: method takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/issue-60622.rs:10:7
    |
 LL |     b.a::<'_, T>();
-   |       ^       - help: remove this generic argument
+   |       ^       - help: remove the unnecessary generic argument
    |       |
    |       expected 0 generic arguments
    |

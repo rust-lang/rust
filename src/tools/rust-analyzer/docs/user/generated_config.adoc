@@ -9,17 +9,22 @@ for enum variants.
 --
 Placeholder expression to use for missing expressions in assists.
 --
-[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `400`)::
+[[rust-analyzer.assist.termSearch.borrowcheck]]rust-analyzer.assist.termSearch.borrowcheck (default: `true`)::
 +
 --
-Term search fuel in "units of work" for assists (Defaults to 400).
+Enable borrow checking for term search code assists. If set to false, also there will be more suggestions, but some of them may not borrow-check.
+--
+[[rust-analyzer.assist.termSearch.fuel]]rust-analyzer.assist.termSearch.fuel (default: `1800`)::
++
+--
+Term search fuel in "units of work" for assists (Defaults to 1800).
 --
 [[rust-analyzer.cachePriming.enable]]rust-analyzer.cachePriming.enable (default: `true`)::
 +
 --
 Warm up caches on project load.
 --
-[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `0`)::
+[[rust-analyzer.cachePriming.numThreads]]rust-analyzer.cachePriming.numThreads (default: `"physical"`)::
 +
 --
 How many worker threads to handle priming caches. The default `0` means to pick automatically.
@@ -77,7 +82,7 @@ By default, a cargo invocation will be constructed for the configured
 targets and features, with the following base command line:
 
 ```bash
-cargo check --quiet --workspace --message-format=json --all-targets
+cargo check --quiet --workspace --message-format=json --all-targets --keep-going
 ```
 .
 --
@@ -138,16 +143,6 @@ Relative path to the sysroot, or "discover" to try to automatically find it via
 Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
---
-[[rust-analyzer.cargo.sysrootQueryMetadata]]rust-analyzer.cargo.sysrootQueryMetadata (default: `false`)::
-+
---
-Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
-third-party dependencies of the standard libraries.
-
-This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
-will attempt to clean up afterwards, but nevertheless requires the location to be
-writable to.
 --
 [[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
 +
@@ -350,12 +345,6 @@ Default:
     "description": "Put the expression into a pinned `Box`",
     "scope": "expr"
   },
-  "Ok": {
-    "postfix": "ok",
-    "body": "Ok(${receiver})",
-    "description": "Wrap the expression in a `Result::Ok`",
-    "scope": "expr"
-  },
   "Err": {
     "postfix": "err",
     "body": "Err(${receiver})",
@@ -366,6 +355,12 @@ Default:
     "postfix": "some",
     "body": "Some(${receiver})",
     "description": "Wrap the expression in an `Option::Some`",
+    "scope": "expr"
+  },
+  "Ok": {
+    "postfix": "ok",
+    "body": "Ok(${receiver})",
+    "description": "Wrap the expression in a `Result::Ok`",
     "scope": "expr"
   }
 }
@@ -378,10 +373,10 @@ Custom completion snippets.
 --
 Whether to enable term search based snippets like `Some(foo.bar().baz())`.
 --
-[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `200`)::
+[[rust-analyzer.completion.termSearch.fuel]]rust-analyzer.completion.termSearch.fuel (default: `1000`)::
 +
 --
-Term search fuel in "units of work" for autocompletion (Defaults to 200).
+Term search fuel in "units of work" for autocompletion (Defaults to 1000).
 --
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +
@@ -589,6 +584,11 @@ Whether to prefer import paths containing a `prelude` module.
 --
 The path structure for newly inserted paths to use.
 --
+[[rust-analyzer.imports.prefixExternPrelude]]rust-analyzer.imports.prefixExternPrelude (default: `false`)::
++
+--
+Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
+--
 [[rust-analyzer.inlayHints.bindingModeHints.enable]]rust-analyzer.inlayHints.bindingModeHints.enable (default: `false`)::
 +
 --
@@ -644,6 +644,21 @@ Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
 +
 --
 Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
+--
+[[rust-analyzer.inlayHints.genericParameterHints.const.enable]]rust-analyzer.inlayHints.genericParameterHints.const.enable (default: `true`)::
++
+--
+Whether to show const generic parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.lifetime.enable]]rust-analyzer.inlayHints.genericParameterHints.lifetime.enable (default: `false`)::
++
+--
+Whether to show generic lifetime parameter name inlay hints.
+--
+[[rust-analyzer.inlayHints.genericParameterHints.type.enable]]rust-analyzer.inlayHints.genericParameterHints.type.enable (default: `false`)::
++
+--
+Whether to show generic type parameter name inlay hints.
 --
 [[rust-analyzer.inlayHints.implicitDrops.enable]]rust-analyzer.inlayHints.implicitDrops.enable (default: `false`)::
 +
@@ -739,12 +754,6 @@ Whether to show `Debug` lens. Only applies when
 --
 Whether to show CodeLens in Rust files.
 --
-[[rust-analyzer.lens.forceCustomCommands]]rust-analyzer.lens.forceCustomCommands (default: `true`)::
-+
---
-Internal config: use custom client-side commands even when the
-client doesn't set the corresponding capability.
---
 [[rust-analyzer.lens.implementations.enable]]rust-analyzer.lens.implementations.enable (default: `true`)::
 +
 --
@@ -810,11 +819,6 @@ Sets the LRU capacity of the specified queries.
 +
 --
 Whether to show `can't find Cargo.toml` error message.
---
-[[rust-analyzer.notifications.unindexedProject]]rust-analyzer.notifications.unindexedProject (default: `false`)::
-+
---
-Whether to send an UnindexedProject notification to the client.
 --
 [[rust-analyzer.numThreads]]rust-analyzer.numThreads (default: `null`)::
 +
@@ -989,6 +993,103 @@ Show documentation.
 +
 --
 Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
+--
+[[rust-analyzer.workspace.discoverConfig]]rust-analyzer.workspace.discoverConfig (default: `null`)::
++
+--
+Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
+
+[`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
+`progress_label` is used for the title in progress indicators, whereas `files_to_watch`
+is used to determine which build system-specific files should be watched in order to
+reload rust-analyzer.
+
+Below is an example of a valid configuration:
+```json
+"rust-analyzer.workspace.discoverConfig": {
+    "command": [
+        "rust-project",
+        "develop-json"
+    ],
+    "progressLabel": "rust-analyzer",
+    "filesToWatch": [
+        "BUCK"
+    ]
+}
+```
+
+## On `DiscoverWorkspaceConfig::command`
+
+**Warning**: This format is provisional and subject to change.
+
+[`DiscoverWorkspaceConfig::command`] *must* return a JSON object
+corresponding to `DiscoverProjectData::Finished`:
+
+```norun
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "kind")]
+#[serde(rename_all = "snake_case")]
+enum DiscoverProjectData {
+    Finished { buildfile: Utf8PathBuf, project: ProjectJsonData },
+    Error { error: String, source: Option<String> },
+    Progress { message: String },
+}
+```
+
+As JSON, `DiscoverProjectData::Finished` is:
+
+```json
+{
+    // the internally-tagged representation of the enum.
+    "kind": "finished",
+    // the file used by a non-Cargo build system to define
+    // a package or target.
+    "buildfile": "rust-analyzer/BUILD",
+    // the contents of a rust-project.json, elided for brevity
+    "project": {
+        "sysroot": "foo",
+        "crates": []
+    }
+}
+```
+
+It is encouraged, but not required, to use the other variants on
+`DiscoverProjectData` to provide a more polished end-user experience.
+
+`DiscoverWorkspaceConfig::command` may *optionally* include an `{arg}`,
+which will be substituted with the JSON-serialized form of the following
+enum:
+
+```norun
+#[derive(PartialEq, Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DiscoverArgument {
+   Path(AbsPathBuf),
+   Buildfile(AbsPathBuf),
+}
+```
+
+The JSON representation of `DiscoverArgument::Path` is:
+
+```json
+{
+    "path": "src/main.rs"
+}
+```
+
+Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
+
+```
+{
+    "buildfile": "BUILD"
+}
+```
+
+`DiscoverArgument::Path` is used to find and generate a `rust-project.json`,
+and therefore, a workspace, whereas `DiscoverArgument::buildfile` is used to
+to update an existing workspace. As a reference for implementors,
+buck2's `rust-project` will likely be useful:
+https://github.com/facebook/buck2/tree/main/integrations/rust-project.
 --
 [[rust-analyzer.workspace.symbol.search.kind]]rust-analyzer.workspace.symbol.search.kind (default: `"only_types"`)::
 +

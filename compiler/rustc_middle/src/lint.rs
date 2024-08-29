@@ -2,16 +2,15 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::{Diag, DiagMessage, MultiSpan};
+use rustc_errors::{Diag, MultiSpan};
 use rustc_hir::{HirId, ItemLocalId};
 use rustc_macros::HashStable;
-use rustc_session::lint::{
-    builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintId,
-};
+use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
+use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintId};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{symbol, DesugaringKind, Span, Symbol, DUMMY_SP};
+use tracing::instrument;
 
 use crate::ty::TyCtxt;
 
@@ -229,9 +228,11 @@ pub fn explain_lint_level_source(
                 err.note_once(format!(
                     "`{flag} {hyphen_case_lint_name}` implied by `{flag} {hyphen_case_flag_val}`"
                 ));
-                err.help_once(format!(
-                    "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
-                ));
+                if matches!(orig_level, Level::Warn | Level::Deny) {
+                    err.help_once(format!(
+                        "to override `{flag} {hyphen_case_flag_val}` add `#[allow({name})]`"
+                    ));
+                }
             }
         }
         LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {
@@ -269,7 +270,6 @@ pub fn lint_level(
     level: Level,
     src: LintLevelSource,
     span: Option<MultiSpan>,
-    msg: impl Into<DiagMessage>,
     decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
@@ -281,7 +281,6 @@ pub fn lint_level(
         level: Level,
         src: LintLevelSource,
         span: Option<MultiSpan>,
-        msg: impl Into<DiagMessage>,
         decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
@@ -350,10 +349,6 @@ pub fn lint_level(
             }
         }
 
-        // Delay evaluating and setting the primary message until after we've
-        // suppressed the lint due to macros.
-        err.primary_message(msg);
-
         err.is_lint(lint.name_lower(), has_future_breakage);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
@@ -418,7 +413,7 @@ pub fn lint_level(
         explain_lint_level_source(lint, level, src, &mut err);
         err.emit()
     }
-    lint_level_impl(sess, lint, level, src, span, msg, Box::new(decorate))
+    lint_level_impl(sess, lint, level, src, span, Box::new(decorate))
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.

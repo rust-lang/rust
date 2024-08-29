@@ -1,5 +1,6 @@
 use quote::quote;
-use syn::{parse_quote, visit_mut::VisitMut};
+use syn::parse_quote;
+use syn::visit_mut::VisitMut;
 use synstructure::decl_derive;
 
 decl_derive!(
@@ -71,7 +72,7 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
             wc.push(parse_quote! { #ty: ::rustc_type_ir::lift::Lift<J, Lifted = #lifted_ty> });
             let bind = &bindings[index];
             quote! {
-                #bind.lift_to_tcx(interner)?
+                #bind.lift_to_interner(interner)?
             }
         })
     });
@@ -89,7 +90,7 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
         quote! {
             type Lifted = #lifted_ty;
 
-            fn lift_to_tcx(
+            fn lift_to_interner(
                 self,
                 interner: J,
             ) -> Option<Self::Lifted> {

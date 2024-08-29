@@ -9,8 +9,4 @@ fn main() {
 // Basically, avoid modifying this file, including adding or removing whitespace!
 fn foo() {
     assert_eq!(1, 1);
-
-
-
-
 }

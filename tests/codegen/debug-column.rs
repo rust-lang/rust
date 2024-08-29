@@ -3,6 +3,7 @@
 //@ ignore-windows
 //@ compile-flags: -C debuginfo=2
 
+#[rustfmt::skip]
 fn main() {
     unsafe {
         // Column numbers are 1-based. Regression test for #65437.
@@ -13,8 +14,8 @@ fn main() {
         // CHECK: call void @turtle(){{( #[0-9]+)?}}, !dbg [[B:!.*]]
 /* ż */ turtle();
 
-        // CHECK: [[A]] = !DILocation(line: 10, column: 9,
-        // CHECK: [[B]] = !DILocation(line: 14, column: 10,
+        // CHECK: [[A]] = !DILocation(line: 11, column: 9,
+        // CHECK: [[B]] = !DILocation(line: 15, column: 10,
     }
 }
 

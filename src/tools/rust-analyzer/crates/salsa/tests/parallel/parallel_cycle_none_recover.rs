@@ -33,7 +33,7 @@ fn parallel_cycle_none_recover() {
         "#]]
         .assert_debug_eq(&c.unexpected_participants(&db));
     } else {
-        panic!("b failed in an unexpected way: {:?}", err_b);
+        panic!("b failed in an unexpected way: {err_b:?}");
     }
 
     // We expect A to propagate a panic, which causes us to use the sentinel

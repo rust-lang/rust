@@ -51,6 +51,7 @@ pub(crate) struct Pat {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PatKind {
     Wild,
+    Never,
 
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
@@ -205,7 +206,7 @@ impl<'a> PatCtxt<'a> {
         &mut self,
         pats: &[PatId],
         expected_len: usize,
-        ellipsis: Option<usize>,
+        ellipsis: Option<u32>,
     ) -> Vec<FieldPat> {
         if pats.len() > expected_len {
             self.errors.push(PatternError::ExtraFields);
@@ -213,7 +214,7 @@ impl<'a> PatCtxt<'a> {
         }
 
         pats.iter()
-            .enumerate_and_adjust(expected_len, ellipsis)
+            .enumerate_and_adjust(expected_len, ellipsis.map(|it| it as usize))
             .map(|(i, &subpattern)| FieldPat {
                 field: LocalFieldId::from_raw((i as u32).into()),
                 pattern: self.lower_pattern(subpattern),
@@ -294,6 +295,7 @@ impl HirDisplay for Pat {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match &*self.kind {
             PatKind::Wild => write!(f, "_"),
+            PatKind::Never => write!(f, "!"),
             PatKind::Binding { name, subpattern } => {
                 write!(f, "{}", name.display(f.db.upcast()))?;
                 if let Some(subpattern) = subpattern {

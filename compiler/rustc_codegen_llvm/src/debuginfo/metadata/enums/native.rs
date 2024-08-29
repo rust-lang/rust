@@ -1,36 +1,24 @@
 use std::borrow::Cow;
 
-use crate::{
-    common::CodegenCx,
-    debuginfo::{
-        metadata::{
-            enums::tag_base_type,
-            file_metadata, size_and_align_of, type_di_node,
-            type_map::{self, Stub, StubInfo, UniqueTypeId},
-            unknown_file_metadata, visibility_di_flags, DINodeCreationResult, SmallVec,
-            NO_GENERICS, UNKNOWN_LINE_NUMBER,
-        },
-        utils::{create_DIArray, get_namespace_for_item, DIB},
-    },
-    llvm::{
-        self,
-        debuginfo::{DIFile, DIFlags, DIType},
-    },
-};
 use libc::c_uint;
-use rustc_codegen_ssa::{
-    debuginfo::{type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo},
-    traits::ConstMethods,
-};
-use rustc_middle::{
-    bug,
-    ty::{
-        self,
-        layout::{LayoutOf, TyAndLayout},
-    },
-};
+use rustc_codegen_ssa::debuginfo::type_names::compute_debuginfo_type_name;
+use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
+use rustc_codegen_ssa::traits::ConstMethods;
+use rustc_middle::bug;
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self};
 use rustc_target::abi::{Size, TagEncoding, VariantIdx, Variants};
 use smallvec::smallvec;
+
+use crate::common::CodegenCx;
+use crate::debuginfo::metadata::type_map::{self, Stub, StubInfo, UniqueTypeId};
+use crate::debuginfo::metadata::{
+    file_metadata, size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
+    DINodeCreationResult, SmallVec, NO_GENERICS, UNKNOWN_LINE_NUMBER,
+};
+use crate::debuginfo::utils::{create_DIArray, get_namespace_for_item, DIB};
+use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
+use crate::llvm::{self};
 
 /// Build the debuginfo node for an enum type. The listing below shows how such a
 /// type looks like at the LLVM IR/DWARF level. It is a `DW_TAG_structure_type`
@@ -65,7 +53,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 
     let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
 
-    debug_assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(cx.tcx, enum_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -142,7 +130,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, coroutine_def_id);
     let coroutine_type_and_layout = cx.layout_of(coroutine_type);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
+    assert!(!wants_c_like_enum_debuginfo(cx.tcx, coroutine_type_and_layout));
 
     let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
@@ -332,7 +320,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
         &Variants::Single { .. } => None,
 
         &Variants::Multiple { tag_field, .. } => {
-            let tag_base_type = tag_base_type(cx, enum_or_coroutine_type_and_layout);
+            let tag_base_type = tag_base_type(cx.tcx, enum_or_coroutine_type_and_layout);
             let (size, align) = cx.size_and_align_of(tag_base_type);
 
             unsafe {

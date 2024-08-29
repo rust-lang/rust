@@ -1,5 +1,4 @@
 #![feature(adt_const_params)]
-//~^ WARN the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
 #[derive(PartialEq, Eq)]
 enum Nat {

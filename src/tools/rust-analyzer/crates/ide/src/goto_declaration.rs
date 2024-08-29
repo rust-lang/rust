@@ -16,14 +16,14 @@ use crate::{
 //
 // This is the same as `Go to Definition` with the following exceptions:
 // - outline modules will navigate to the `mod name;` item declaration
-// - trait assoc items will navigate to the assoc item of the trait declaration opposed to the trait impl
+// - trait assoc items will navigate to the assoc item of the trait declaration as opposed to the trait impl
 // - fields in patterns will navigate to the field declaration of the struct, union or variant
 pub(crate) fn goto_declaration(
     db: &RootDatabase,
     position @ FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
-    let file = sema.parse(file_id).syntax().clone();
+    let file = sema.parse_guess_edition(file_id).syntax().clone();
     let original_token = file
         .token_at_offset(offset)
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
@@ -78,7 +78,7 @@ pub(crate) fn goto_declaration(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::FileRange;
+    use ide_db::FileRange;
     use itertools::Itertools;
 
     use crate::fixture;

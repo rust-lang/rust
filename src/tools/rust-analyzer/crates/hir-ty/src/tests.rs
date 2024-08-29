@@ -9,10 +9,11 @@ mod patterns;
 mod regression;
 mod simple;
 mod traits;
+mod type_alias_impl_traits;
 
 use std::env;
 
-use base_db::{FileRange, SourceDatabaseExt2 as _};
+use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
@@ -23,7 +24,7 @@ use hir_def::{
     src::HasSource,
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::{db::ExpandDatabase, InFile};
+use hir_expand::{db::ExpandDatabase, FileRange, InFile};
 use once_cell::race::OnceBool;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
@@ -344,7 +345,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             } else {
                 (node.value.text_range(), node.value.text().to_string().replace('\n', " "))
             };
-            let macro_prefix = if node.file_id != file_id.into() { "!" } else { "" };
+            let macro_prefix = if node.file_id != file_id { "!" } else { "" };
             format_to!(
                 buf,
                 "{}{:?} '{}': {}\n",
@@ -361,7 +362,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             });
             for (src_ptr, mismatch) in &mismatches {
                 let range = src_ptr.value.text_range();
-                let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
+                let macro_prefix = if src_ptr.file_id != file_id { "!" } else { "" };
                 format_to!(
                     buf,
                     "{}{:?}: expected {}, got {}\n",
@@ -584,7 +585,7 @@ fn salsa_bug() {
         }
     ";
 
-    db.set_file_text(pos.file_id, new_text);
+    db.set_file_text(pos.file_id.file_id(), new_text);
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = module.def_map(&db);

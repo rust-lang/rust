@@ -5,11 +5,7 @@
 pub fn bound(index: usize, slice: &[u8]) -> u8 {
     // CHECK-LABEL: fn bound(
     // CHECK-NOT: ::len(
-    if index < slice.len() {
-        slice[index]
-    } else {
-        42
-    }
+    if index < slice.len() { slice[index] } else { 42 }
 }
 
 fn main() {

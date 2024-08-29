@@ -17,10 +17,8 @@ pub use self::layout::Layout;
 )]
 #[allow(deprecated, deprecated_in_future)]
 pub use self::layout::LayoutErr;
-
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
-
 use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};

@@ -1,17 +1,16 @@
 #![allow(dead_code)]
 
+use core::ffi::c_int;
+
 use super::fd::FileDesc;
-use crate::cmp;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, RawFd};
 use crate::sys::time::Instant;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
-
-use core::ffi::c_int;
+use crate::{cmp, mem};
 
 #[allow(unused_extern_crates)]
 pub extern crate hermit_abi as netc;
@@ -175,12 +174,12 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        crate::io::default_read_vectored(|b| self.read(b), bufs)
+        self.0.read_vectored(bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        false
+        self.0.is_read_vectored()
     }
 
     fn recv_from_with_flags(&self, buf: &mut [u8], flags: i32) -> io::Result<(usize, SocketAddr)> {
@@ -209,16 +208,15 @@ impl Socket {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let sz = cvt(unsafe { netc::write(self.0.as_raw_fd(), buf.as_ptr(), buf.len()) })?;
-        Ok(sz.try_into().unwrap())
+        self.0.write(buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|b| self.write(b), bufs)
+        self.0.write_vectored(bufs)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        false
+        self.0.is_write_vectored()
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: i32) -> io::Result<()> {
@@ -265,7 +263,7 @@ impl Socket {
             Shutdown::Read => netc::SHUT_RD,
             Shutdown::Both => netc::SHUT_RDWR,
         };
-        cvt(unsafe { netc::shutdown_socket(self.as_raw_fd(), how) })?;
+        cvt(unsafe { netc::shutdown(self.as_raw_fd(), how) })?;
         Ok(())
     }
 

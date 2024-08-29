@@ -1,10 +1,9 @@
-use rustc_attr as attr;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
+use {rustc_attr as attr, rustc_hir as hir};
 
 /// Whether the `def_id` is an unstable const fn and what feature gate(s) are necessary to enable
 /// it.
@@ -42,10 +41,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
         | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
             hir::Constness::Const
         }
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => tcx
-            .generics_of(def_id)
-            .host_effect_index
-            .map_or(hir::Constness::NotConst, |_| hir::Constness::Const),
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.constness,
         hir::Node::ForeignItem(hir::ForeignItem { kind: hir::ForeignItemKind::Fn(..), .. }) => {
             // Intrinsics use `rustc_const_{un,}stable` attributes to indicate constness. All other
             // foreign items cannot be evaluated at compile-time.

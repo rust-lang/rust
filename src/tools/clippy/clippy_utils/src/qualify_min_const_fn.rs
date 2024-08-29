@@ -6,7 +6,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use hir::LangItem;
 use rustc_attr::StableSince;
-use rustc_const_eval::transform::check_consts::ConstCx;
+use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -18,7 +18,6 @@ use rustc_middle::mir::{
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ObligationCause};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, GenericArgKind, TraitRef, Ty, TyCtxt};
-use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::{ObligationCtxt, SelectionContext};
@@ -40,9 +39,13 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     )?;
 
     for bb in &*body.basic_blocks {
-        check_terminator(tcx, body, bb.terminator(), msrv)?;
-        for stmt in &bb.statements {
-            check_statement(tcx, body, def_id, stmt, msrv)?;
+        // Cleanup blocks are ignored entirely by const eval, so we can too:
+        // https://github.com/rust-lang/rust/blob/1dea922ea6e74f99a0e97de5cdb8174e4dea0444/compiler/rustc_const_eval/src/transform/check_consts/check.rs#L382
+        if !bb.is_cleanup {
+            check_terminator(tcx, body, bb.terminator(), msrv)?;
+            for stmt in &bb.statements {
+                check_statement(tcx, body, def_id, stmt, msrv)?;
+            }
         }
     }
     Ok(())
@@ -106,7 +109,7 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
+        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             check_place(tcx, *place, span, body, msrv)
         },
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
@@ -138,7 +141,7 @@ fn check_rvalue<'tcx>(
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
-            let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
+            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, tcx.param_env(def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(tcx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.
@@ -326,7 +329,8 @@ fn check_terminator<'tcx>(
             target: _,
             unwind: _,
             fn_span: _,
-        } => {
+        }
+        | TerminatorKind::TailCall { func, args, fn_span: _ } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 if !is_const_fn(tcx, fn_def_id, msrv) {
@@ -386,11 +390,7 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                     StableSince::Err => return false,
                 };
 
-                msrv.meets(RustcVersion::new(
-                    u32::from(const_stab_rust_version.major),
-                    u32::from(const_stab_rust_version.minor),
-                    u32::from(const_stab_rust_version.patch),
-                ))
+                msrv.meets(const_stab_rust_version)
             } else {
                 // Unstable const fn with the feature enabled.
                 msrv.current().is_none()

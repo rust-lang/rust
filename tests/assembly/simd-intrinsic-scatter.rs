@@ -4,7 +4,7 @@
 //@ [x86-avx512] needs-llvm-components: x86
 //@ [x86-avx512] min-llvm-version: 18.0
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O
+//@ compile-flags: --crate-type=lib -O -C panic=abort
 
 #![feature(no_core, lang_items, repr_simd, intrinsics)]
 #![no_core]

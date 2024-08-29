@@ -1,6 +1,4 @@
-use std::collections::btree_map::Entry;
-use std::collections::BTreeMap;
-
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_lint_allowed;
 use itertools::Itertools;
@@ -10,6 +8,8 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, HirId, Stmt, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span, SyntaxContext};
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -90,9 +90,8 @@ pub enum MetavarState {
     ReferencedInSafe,
 }
 
-#[derive(Default)]
 pub struct ExprMetavarsInUnsafe {
-    pub warn_unsafe_macro_metavars_in_private_macros: bool,
+    warn_unsafe_macro_metavars_in_private_macros: bool,
     /// A metavariable can be expanded more than once, potentially across multiple bodies, so it
     /// requires some state kept across HIR nodes to make it possible to delay a warning
     /// and later undo:
@@ -106,7 +105,16 @@ pub struct ExprMetavarsInUnsafe {
     ///     }
     /// }
     /// ```
-    pub metavar_expns: BTreeMap<Span, MetavarState>,
+    metavar_expns: BTreeMap<Span, MetavarState>,
+}
+
+impl ExprMetavarsInUnsafe {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            warn_unsafe_macro_metavars_in_private_macros: conf.warn_unsafe_macro_metavars_in_private_macros,
+            metavar_expns: BTreeMap::new(),
+        }
+    }
 }
 
 struct BodyVisitor<'a, 'tcx> {
@@ -114,8 +122,23 @@ struct BodyVisitor<'a, 'tcx> {
     /// within a relevant macro.
     macro_unsafe_blocks: Vec<HirId>,
     /// When this is >0, it means that the node currently being visited is "within" a
-    /// macro definition. This is not necessary for correctness, it merely helps reduce the number
-    /// of spans we need to insert into the map, since only spans from macros are relevant.
+    /// macro definition.
+    /// This is used to detect if an expression represents a metavariable.
+    ///
+    /// For example, the following pre-expansion code that we want to lint
+    /// ```ignore
+    /// macro_rules! m { ($e:expr) => { unsafe { $e; } } }
+    /// m!(1);
+    /// ```
+    /// would look like this post-expansion code:
+    /// ```ignore
+    /// unsafe { /* macro */
+    ///     1 /* root */; /* macro */
+    /// }
+    /// ```
+    /// Visiting the block and the statement will increment the `expn_depth` so that it is >0,
+    /// and visiting the expression with a root context while `expn_depth > 0` tells us
+    /// that it must be a metavariable.
     expn_depth: u32,
     cx: &'a LateContext<'tcx>,
     lint: &'a mut ExprMetavarsInUnsafe,
@@ -149,7 +172,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
             && (self.lint.warn_unsafe_macro_metavars_in_private_macros || is_public_macro(self.cx, macro_def_id))
         {
             self.macro_unsafe_blocks.push(block.hir_id);
+            self.expn_depth += 1;
             walk_block(self, block);
+            self.expn_depth -= 1;
             self.macro_unsafe_blocks.pop();
         } else if ctxt.is_root() && self.expn_depth > 0 {
             let unsafe_block = self.macro_unsafe_blocks.last().copied();
@@ -186,7 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BodyVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
         if is_lint_allowed(cx, MACRO_METAVARS_IN_UNSAFE, body.value.hir_id) {
             return;
         }

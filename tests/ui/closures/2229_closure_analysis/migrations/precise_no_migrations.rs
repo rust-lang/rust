@@ -48,7 +48,7 @@ impl Drop for ContainsAndImplsDrop {
 }
 
 // If a path isn't directly captured but requires Drop, then this tests that migrations aren't
-// needed if the a parent to that path is captured.
+// needed if the parent to that path is captured.
 fn test_precise_analysis_parent_captured_1() {
     let t = ConstainsDropField(Foo(10), Foo(20));
 
@@ -60,7 +60,7 @@ fn test_precise_analysis_parent_captured_1() {
 }
 
 // If a path isn't directly captured but requires Drop, then this tests that migrations aren't
-// needed if the a parent to that path is captured.
+// needed if the parent to that path is captured.
 fn test_precise_analysis_parent_captured_2() {
     let t = ContainsAndImplsDrop(Foo(10));
 

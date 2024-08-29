@@ -1,8 +1,10 @@
 // Regression test for #92230.
 //
 //@ check-pass
+//@ compile-flags: -Znext-solver
 
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
+#![allow(incomplete_features)]
 
 #[const_trait]
 pub trait Super {}

@@ -9,26 +9,25 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 pub mod cli;
 
-mod caps;
-mod cargo_target_spec;
+mod command;
 mod diagnostics;
-mod diff;
-mod dispatch;
-mod global_state;
+mod discover;
+mod flycheck;
 mod hack_recover_crate_name;
 mod line_index;
 mod main_loop;
 mod mem_docs;
 mod op_queue;
 mod reload;
+mod target_spec;
 mod task_pool;
+mod test_runner;
 mod version;
 
 mod handlers {
+    pub(crate) mod dispatch;
     pub(crate) mod notification;
     pub(crate) mod request;
 }
@@ -40,6 +39,7 @@ pub mod tracing {
 }
 
 pub mod config;
+mod global_state;
 pub mod lsp;
 use self::lsp::ext as lsp_ext;
 
@@ -49,7 +49,8 @@ mod integrated_benchmarks;
 use serde::de::DeserializeOwned;
 
 pub use crate::{
-    caps::server_capabilities, main_loop::main_loop, reload::ws_to_crate_graph, version::version,
+    lsp::capabilities::server_capabilities, main_loop::main_loop, reload::ws_to_crate_graph,
+    version::version,
 };
 
 pub fn from_json<T: DeserializeOwned>(

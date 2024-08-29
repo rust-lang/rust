@@ -14,7 +14,7 @@ bitflags::bitflags! {
         /// Does this have `ConstKind::Param`?
         const HAS_CT_PARAM                = 1 << 2;
 
-        const HAS_PARAM                 = TypeFlags::HAS_TY_PARAM.bits()
+        const HAS_PARAM                   = TypeFlags::HAS_TY_PARAM.bits()
                                           | TypeFlags::HAS_RE_PARAM.bits()
                                           | TypeFlags::HAS_CT_PARAM.bits();
 
@@ -27,7 +27,7 @@ bitflags::bitflags! {
 
         /// Does this have inference variables? Used to determine whether
         /// inference is required.
-        const HAS_INFER                 = TypeFlags::HAS_TY_INFER.bits()
+        const HAS_INFER                   = TypeFlags::HAS_TY_INFER.bits()
                                           | TypeFlags::HAS_RE_INFER.bits()
                                           | TypeFlags::HAS_CT_INFER.bits();
 
@@ -39,7 +39,7 @@ bitflags::bitflags! {
         const HAS_CT_PLACEHOLDER          = 1 << 8;
 
         /// Does this have placeholders?
-        const HAS_PLACEHOLDER           = TypeFlags::HAS_TY_PLACEHOLDER.bits()
+        const HAS_PLACEHOLDER             = TypeFlags::HAS_TY_PLACEHOLDER.bits()
                                           | TypeFlags::HAS_RE_PLACEHOLDER.bits()
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits();
 
@@ -81,7 +81,7 @@ bitflags::bitflags! {
         /// Does this have `Alias` or `ConstKind::Unevaluated`?
         ///
         /// Rephrased, could this term be normalized further?
-        const HAS_ALIASES              = TypeFlags::HAS_TY_PROJECTION.bits()
+        const HAS_ALIAS                   = TypeFlags::HAS_TY_PROJECTION.bits()
                                           | TypeFlags::HAS_TY_WEAK.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()

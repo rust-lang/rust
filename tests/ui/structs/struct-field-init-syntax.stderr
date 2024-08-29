@@ -2,17 +2,27 @@ error: cannot use a comma after the base struct
   --> $DIR/struct-field-init-syntax.rs:11:9
    |
 LL |         ..Foo::default(),
-   |         ^^^^^^^^^^^^^^^^- help: remove this comma
+   |         ^^^^^^^^^^^^^^^^
    |
    = note: the base struct must always be the last field
+help: remove this comma
+   |
+LL -         ..Foo::default(),
+LL +         ..Foo::default()
+   |
 
 error: cannot use a comma after the base struct
   --> $DIR/struct-field-init-syntax.rs:16:9
    |
 LL |         ..Foo::default(),
-   |         ^^^^^^^^^^^^^^^^- help: remove this comma
+   |         ^^^^^^^^^^^^^^^^
    |
    = note: the base struct must always be the last field
+help: remove this comma
+   |
+LL -         ..Foo::default(),
+LL +         ..Foo::default()
+   |
 
 error: aborting due to 2 previous errors
 

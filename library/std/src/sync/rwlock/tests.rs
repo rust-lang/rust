@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
 use crate::sync::{
@@ -5,7 +7,6 @@ use crate::sync::{
     TryLockError,
 };
 use crate::thread;
-use rand::Rng;
 
 #[derive(Eq, PartialEq, Debug)]
 struct NonCopy(i32);
@@ -20,6 +21,10 @@ fn smoke() {
 }
 
 #[test]
+// FIXME: On macOS we use a provenance-incorrect implementation and Miri
+// catches that issue with a chance of around 1/1000.
+// See <https://github.com/rust-lang/rust/issues/121950> for details.
+#[cfg_attr(all(miri, target_os = "macos"), ignore)]
 fn frob() {
     const N: u32 = 10;
     const M: usize = if cfg!(miri) { 100 } else { 1000 };

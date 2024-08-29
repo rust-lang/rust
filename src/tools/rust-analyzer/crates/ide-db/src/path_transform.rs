@@ -2,12 +2,12 @@
 
 use crate::helpers::mod_path_to_ast;
 use either::Either;
-use hir::{AsAssocItem, HirDisplay, ModuleDef, SemanticsScope};
+use hir::{AsAssocItem, HirDisplay, ImportPathConfig, ModuleDef, SemanticsScope};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, make, AstNode},
-    ted, SyntaxNode,
+    ast::{self, make, AstNode, HasGenericArgs},
+    ted, NodeOrToken, SyntaxNode,
 };
 
 #[derive(Default)]
@@ -308,11 +308,15 @@ impl Ctx<'_> {
                             parent.segment()?.name_ref()?,
                         )
                         .and_then(|trait_ref| {
-                            let found_path = self.target_module.find_use_path(
+                            let cfg = ImportPathConfig {
+                                prefer_no_std: false,
+                                prefer_prelude: true,
+                                prefer_absolute: false,
+                            };
+                            let found_path = self.target_module.find_path(
                                 self.source_scope.db.upcast(),
                                 hir::ModuleDef::Trait(trait_ref),
-                                false,
-                                true,
+                                cfg,
                             )?;
                             match make::ty_path(mod_path_to_ast(&found_path)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
@@ -324,10 +328,26 @@ impl Ctx<'_> {
                         let qualified = make::path_from_segments(std::iter::once(segment), false);
                         ted::replace(path.syntax(), qualified.clone_for_update().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
-                        ted::replace(
-                            path_ty.syntax(),
-                            subst.clone_subtree().clone_for_update().syntax(),
-                        );
+                        let old = path_ty.syntax();
+
+                        if old.parent().is_some() {
+                            ted::replace(old, subst.clone_subtree().clone_for_update().syntax());
+                        } else {
+                            // Some `path_ty` has no parent, especially ones made for default value
+                            // of type parameters.
+                            // In this case, `ted` cannot replace `path_ty` with `subst` directly.
+                            // So, just replace its children as long as the `subst` is the same type.
+                            let new = subst.clone_subtree().clone_for_update();
+                            if !matches!(new, ast::Type::PathType(..)) {
+                                return None;
+                            }
+                            let start = path_ty.syntax().first_child().map(NodeOrToken::Node)?;
+                            let end = path_ty.syntax().last_child().map(NodeOrToken::Node)?;
+                            ted::replace_all(
+                                start..=end,
+                                new.syntax().children().map(NodeOrToken::Node).collect::<Vec<_>>(),
+                            );
+                        }
                     } else {
                         ted::replace(
                             path.syntax(),
@@ -347,12 +367,13 @@ impl Ctx<'_> {
                     }
                 }
 
-                let found_path = self.target_module.find_use_path(
-                    self.source_scope.db.upcast(),
-                    def,
-                    false,
-                    true,
-                )?;
+                let cfg = ImportPathConfig {
+                    prefer_no_std: false,
+                    prefer_prelude: true,
+                    prefer_absolute: false,
+                };
+                let found_path =
+                    self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
                 let res = mod_path_to_ast(&found_path).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {
@@ -385,11 +406,15 @@ impl Ctx<'_> {
 
                 if let Some(adt) = ty.as_adt() {
                     if let ast::Type::PathType(path_ty) = &ast_ty {
-                        let found_path = self.target_module.find_use_path(
+                        let cfg = ImportPathConfig {
+                            prefer_no_std: false,
+                            prefer_prelude: true,
+                            prefer_absolute: false,
+                        };
+                        let found_path = self.target_module.find_path(
                             self.source_scope.db.upcast(),
                             ModuleDef::from(adt),
-                            false,
-                            true,
+                            cfg,
                         )?;
 
                         if let Some(qual) = mod_path_to_ast(&found_path).qualifier() {
@@ -463,7 +488,7 @@ fn find_trait_for_assoc_item(
         });
 
         for name in names {
-            if assoc_item_name.as_str() == name.as_text()?.as_str() {
+            if assoc_item_name.as_str() == name.as_str() {
                 // It is fine to return the first match because in case of
                 // multiple possibilities, the exact trait must be disambiguated
                 // in the definition of trait being implemented, so this search

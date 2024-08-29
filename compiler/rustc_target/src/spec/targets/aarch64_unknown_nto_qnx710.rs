@@ -4,10 +4,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-unknown".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("ARM64 QNX Neutrino 7.1 RTOS".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         // from: https://llvm.org/docs/LangRef.html#data-layout

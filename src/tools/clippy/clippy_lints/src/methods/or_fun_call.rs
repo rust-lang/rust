@@ -1,8 +1,13 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
-use clippy_utils::{contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment};
+use clippy_utils::visitors::for_each_expr;
+use clippy_utils::{
+    contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks,
+};
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -13,7 +18,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
 
 /// Checks for the `OR_FUN_CALL` lint.
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
@@ -26,7 +31,6 @@ pub(super) fn check<'tcx>(
     /// `or_insert(T::new())` or `or_insert(T::default())`.
     /// Similarly checks for `unwrap_or_else(T::new)`, `unwrap_or_else(T::default)`,
     /// `or_insert_with(T::new)` or `or_insert_with(T::default)`.
-    #[allow(clippy::too_many_arguments)]
     fn check_unwrap_or_default(
         cx: &LateContext<'_>,
         name: &str,
@@ -70,18 +74,31 @@ pub(super) fn check<'tcx>(
         };
 
         let receiver_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs();
-        let has_suggested_method = receiver_ty.ty_adt_def().is_some_and(|adt_def| {
+        let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
             cx.tcx
                 .inherent_impls(adt_def.did())
                 .into_iter()
                 .flatten()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
-                .any(|assoc| {
-                    assoc.fn_has_self_parameter
+                .find_map(|assoc| {
+                    if assoc.fn_has_self_parameter
                         && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
+                    {
+                        Some(assoc.def_id)
+                    } else {
+                        None
+                    }
                 })
-        });
-        if !has_suggested_method {
+        }) else {
+            return false;
+        };
+        let in_sugg_method_implementation = {
+            matches!(
+                suggested_method_def_id.as_local(),
+                Some(local_def_id) if local_def_id == cx.tcx.hir().get_parent_item(receiver.hir_id).def_id
+            )
+        };
+        if in_sugg_method_implementation {
             return false;
         }
 
@@ -110,8 +127,8 @@ pub(super) fn check<'tcx>(
     }
 
     /// Checks for `*or(foo())`.
-    #[allow(clippy::too_many_arguments)]
-    fn check_general_case<'tcx>(
+    #[expect(clippy::too_many_arguments)]
+    fn check_or_fn_call<'tcx>(
         cx: &LateContext<'tcx>,
         name: &str,
         method_span: Span,
@@ -122,7 +139,7 @@ pub(super) fn check<'tcx>(
         span: Span,
         // None if lambda is required
         fun_span: Option<Span>,
-    ) {
+    ) -> bool {
         // (path, fn_has_argument, methods, suffix)
         const KNOW_TYPES: [(Symbol, bool, &[&str], &str); 4] = [
             (sym::BTreeEntry, false, &["or_insert"], "with"),
@@ -172,54 +189,68 @@ pub(super) fn check<'tcx>(
                 format!("{name}_{suffix}({sugg})"),
                 app,
             );
+            true
+        } else {
+            false
         }
     }
 
-    let extract_inner_arg = |arg: &'tcx hir::Expr<'_>| {
-        if let hir::ExprKind::Block(
-            hir::Block {
-                stmts: [],
-                expr: Some(expr),
-                ..
-            },
-            _,
-        ) = arg.kind
-        {
-            expr
-        } else {
-            arg
-        }
-    };
-
     if let [arg] = args {
-        let inner_arg = extract_inner_arg(arg);
-        match inner_arg.kind {
-            hir::ExprKind::Call(fun, or_args) => {
-                let or_has_args = !or_args.is_empty();
-                if or_has_args
-                    || !check_unwrap_or_default(cx, name, receiver, fun, Some(inner_arg), expr.span, method_span)
-                {
-                    let fun_span = if or_has_args { None } else { Some(fun.span) };
-                    check_general_case(cx, name, method_span, receiver, arg, None, expr.span, fun_span);
-                }
-            },
-            hir::ExprKind::Path(..) | hir::ExprKind::Closure(..) => {
-                check_unwrap_or_default(cx, name, receiver, inner_arg, None, expr.span, method_span);
-            },
-            hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
-                check_general_case(cx, name, method_span, receiver, arg, None, expr.span, None);
-            },
-            _ => (),
-        }
+        let inner_arg = peel_blocks(arg);
+        for_each_expr(cx, inner_arg, |ex| {
+            // `or_fun_call` lint needs to take nested expr into account,
+            // but `unwrap_or_default` lint doesn't, we don't want something like:
+            // `opt.unwrap_or(Foo { inner: String::default(), other: 1 })` to get replaced by
+            // `opt.unwrap_or_default()`.
+            let is_nested_expr = ex.hir_id != inner_arg.hir_id;
+
+            let is_triggered = match ex.kind {
+                hir::ExprKind::Call(fun, fun_args) => {
+                    let inner_fun_has_args = !fun_args.is_empty();
+                    let fun_span = if inner_fun_has_args || is_nested_expr {
+                        None
+                    } else {
+                        Some(fun.span)
+                    };
+                    (!inner_fun_has_args
+                        && !is_nested_expr
+                        && check_unwrap_or_default(cx, name, receiver, fun, Some(ex), expr.span, method_span))
+                        || check_or_fn_call(cx, name, method_span, receiver, arg, None, expr.span, fun_span)
+                },
+                hir::ExprKind::Path(..) | hir::ExprKind::Closure(..) if !is_nested_expr => {
+                    check_unwrap_or_default(cx, name, receiver, ex, None, expr.span, method_span)
+                },
+                hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
+                    check_or_fn_call(cx, name, method_span, receiver, arg, None, expr.span, None)
+                },
+                _ => false,
+            };
+
+            if is_triggered {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        });
     }
 
     // `map_or` takes two arguments
     if let [arg, lambda] = args {
-        let inner_arg = extract_inner_arg(arg);
-        if let hir::ExprKind::Call(fun, or_args) = inner_arg.kind {
-            let fun_span = if or_args.is_empty() { Some(fun.span) } else { None };
-            check_general_case(cx, name, method_span, receiver, arg, Some(lambda), expr.span, fun_span);
-        }
+        let inner_arg = peel_blocks(arg);
+        for_each_expr(cx, inner_arg, |ex| {
+            let is_top_most_expr = ex.hir_id == inner_arg.hir_id;
+            if let hir::ExprKind::Call(fun, fun_args) = ex.kind {
+                let fun_span = if fun_args.is_empty() && is_top_most_expr {
+                    Some(fun.span)
+                } else {
+                    None
+                };
+                if check_or_fn_call(cx, name, method_span, receiver, arg, Some(lambda), expr.span, fun_span) {
+                    return ControlFlow::Break(());
+                }
+            }
+            ControlFlow::Continue(())
+        });
     }
 }
 

@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
         }
 
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
-            for def_id in def_path_def_ids(cx, module) {
+            for def_id in def_path_def_ids(cx.tcx, module) {
                 for item in cx.tcx.module_children(def_id) {
                     if let Res::Def(DefKind::Const, item_def_id) = item.res
                         && let ty = cx.tcx.type_of(item_def_id).instantiate_identity()
@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
         if let ExprKind::Call(func, [arg]) = &expr.kind
             && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind()
             && match_def_path(cx, *def_id, &paths::SYMBOL_INTERN)
-            && let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg)
+            && let Some(Constant::Str(arg)) = ConstEvalCtxt::new(cx).eval_simple(arg)
             && let value = Symbol::intern(&arg).as_u32()
             && let Some(&def_id) = self.symbol_map.get(&value)
         {
@@ -199,7 +199,7 @@ impl InterningDefinedSymbol {
             });
         }
         // is a string constant
-        if let Some(Constant::Str(s)) = constant_simple(cx, cx.typeck_results(), expr) {
+        if let Some(Constant::Str(s)) = ConstEvalCtxt::new(cx).eval_simple(expr) {
             let value = Symbol::intern(&s).as_u32();
             // ...which matches a symbol constant
             if let Some(&def_id) = self.symbol_map.get(&value) {

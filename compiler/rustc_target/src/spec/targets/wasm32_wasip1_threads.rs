@@ -13,6 +13,7 @@ pub fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
+    options.env = "p1".into();
 
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::No),
@@ -62,9 +63,9 @@ pub fn target() -> Target {
         llvm_target: "wasm32-wasi".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),

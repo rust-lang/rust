@@ -1,6 +1,28 @@
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use std::path::PathBuf;
-use std::process::Command;
+
+use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::utils::exec::command;
+
+/// List of default paths used for vendoring for `x vendor` and dist tarballs.
+pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<PathBuf> {
+    let mut paths = vec![];
+    for p in [
+        "src/tools/cargo/Cargo.toml",
+        "src/tools/rust-analyzer/Cargo.toml",
+        "compiler/rustc_codegen_cranelift/Cargo.toml",
+        "compiler/rustc_codegen_gcc/Cargo.toml",
+        "library/Cargo.toml",
+        "src/bootstrap/Cargo.toml",
+        "src/tools/rustbook/Cargo.toml",
+        "src/tools/rustc-perf/Cargo.toml",
+        "src/tools/opt-dist/Cargo.toml",
+    ] {
+        paths.push(builder.src.join(p));
+    }
+
+    paths
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
@@ -27,22 +49,21 @@ impl Step for Vendor {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut cmd = Command::new(&builder.initial_cargo);
+        let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");
 
         if self.versioned_dirs {
             cmd.arg("--versioned-dirs");
         }
 
+        // These submodules must be present for `x vendor` to work.
+        for submodule in SUBMODULES_FOR_RUSTBOOK.iter().chain(["src/tools/cargo"].iter()) {
+            builder.build.require_submodule(submodule, None);
+        }
+
         // Sync these paths by default.
-        for p in [
-            "src/tools/cargo/Cargo.toml",
-            "src/tools/rust-analyzer/Cargo.toml",
-            "compiler/rustc_codegen_cranelift/Cargo.toml",
-            "compiler/rustc_codegen_gcc/Cargo.toml",
-            "src/bootstrap/Cargo.toml",
-        ] {
-            cmd.arg("--sync").arg(builder.src.join(p));
+        for p in default_paths_to_vendor(builder) {
+            cmd.arg("--sync").arg(p);
         }
 
         // Also sync explicitly requested paths.
@@ -56,6 +77,6 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir);
 
-        builder.run(&mut cmd);
+        cmd.run(builder);
     }
 }

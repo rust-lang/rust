@@ -61,15 +61,15 @@ pub fn test_44731_4() -> Box<Iterator<Item=impl Clone>> {
     Box::new(g())
 }
 
-// @has foo/fn.g.html
-// @has foo/fn.h.html
-// @has foo/fn.i.html
-// @has foo/fn.j.html
-// @has foo/fn.k.html
-// @has foo/fn.l.html
-// @has foo/fn.m.html
-// @has foo/fn.n.html
-// @has foo/fn.o.html
-// @has foo/fn.test_44731_0.html
-// @has foo/fn.test_44731_1.html
-// @has foo/fn.test_44731_4.html
+//@ has foo/fn.g.html
+//@ has foo/fn.h.html
+//@ has foo/fn.i.html
+//@ has foo/fn.j.html
+//@ has foo/fn.k.html
+//@ has foo/fn.l.html
+//@ has foo/fn.m.html
+//@ has foo/fn.n.html
+//@ has foo/fn.o.html
+//@ has foo/fn.test_44731_0.html
+//@ has foo/fn.test_44731_1.html
+//@ has foo/fn.test_44731_4.html

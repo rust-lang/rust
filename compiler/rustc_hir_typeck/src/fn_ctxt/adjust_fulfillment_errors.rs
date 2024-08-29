@@ -1,16 +1,18 @@
-use crate::FnCtxt;
+use std::ops::ControlFlow;
+
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{symbol::kw, Span};
+use rustc_span::symbol::kw;
+use rustc_span::Span;
 use rustc_trait_selection::traits;
 
-use std::ops::ControlFlow;
+use crate::FnCtxt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn adjust_fulfillment_error_for_expr_obligation(
+    pub(crate) fn adjust_fulfillment_error_for_expr_obligation(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
     ) -> bool {
@@ -338,8 +340,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
             type Result = ControlFlow<ty::GenericArg<'tcx>>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-                if let Some(origin) = self.0.type_var_origin(ty)
-                    && let Some(def_id) = origin.param_def_id
+                if let ty::Infer(ty::TyVar(vid)) = *ty.kind()
+                    && let Some(def_id) = self.0.type_var_origin(vid).param_def_id
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
                     && let Some(arg) =
@@ -481,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
      *
      * This function only updates the error span.
      */
-    pub fn blame_specific_expr_if_possible(
+    pub(crate) fn blame_specific_expr_if_possible(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -569,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
         let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
-            ty::TraitRef::new(
+            ty::TraitRef::new_from_args(
                 self.tcx,
                 obligation.impl_or_alias_def_id,
                 ty::GenericArgs::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),

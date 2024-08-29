@@ -5,21 +5,24 @@
 // EMIT_MIR enum_cast.far.built.after.mir
 
 enum Foo {
-    A
+    A,
 }
 
 enum Bar {
-    A, B
+    A,
+    B,
 }
 
 #[repr(u8)]
 enum Boo {
-    A, B
+    A,
+    B,
 }
 
 #[repr(i16)]
 enum Far {
-    A, B
+    A,
+    B,
 }
 
 fn foo(foo: Foo) -> usize {
@@ -40,7 +43,9 @@ fn far(far: Far) -> isize {
 
 // EMIT_MIR enum_cast.droppy.built.after.mir
 enum Droppy {
-    A, B, C
+    A,
+    B,
+    C,
 }
 
 impl Drop for Droppy {
@@ -82,12 +87,15 @@ fn unsigny(x: UnsignedAroundZero) -> u16 {
     x as u16
 }
 
-enum NotStartingAtZero { A = 4, B = 6, C = 8 }
+enum NotStartingAtZero {
+    A = 4,
+    B = 6,
+    C = 8,
+}
 
 // EMIT_MIR enum_cast.offsetty.built.after.mir
 fn offsetty(x: NotStartingAtZero) -> u32 {
     x as u32
 }
 
-fn main() {
-}
+fn main() {}

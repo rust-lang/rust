@@ -1,0 +1,100 @@
+// MIR for `shortcut_second_or` after SimplifyCfg-initial
+
+fn shortcut_second_or() -> () {
+    let mut _0: ();
+    let mut _1: ((i32, i32), i32);
+    let mut _2: (i32, i32);
+    let _3: (i32, i32);
+    let _4: i32;
+    scope 1 {
+        debug x => _3;
+        debug y => _4;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = (const 0_i32, const 0_i32);
+        _1 = (move _2, const 0_i32);
+        StorageDead(_2);
+        PlaceMention(_1);
+        switchInt(copy ((_1.0: (i32, i32)).0: i32)) -> [0: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        switchInt(copy ((_1.0: (i32, i32)).1: i32)) -> [1: bb4, otherwise: bb3];
+    }
+
+    bb2: {
+        switchInt(copy (_1.1: i32)) -> [2: bb5, 3: bb6, otherwise: bb3];
+    }
+
+    bb3: {
+        _0 = const ();
+        goto -> bb14;
+    }
+
+    bb4: {
+        switchInt(copy (_1.1: i32)) -> [2: bb7, 3: bb8, otherwise: bb3];
+    }
+
+    bb5: {
+        falseEdge -> [real: bb12, imaginary: bb6];
+    }
+
+    bb6: {
+        falseEdge -> [real: bb11, imaginary: bb1];
+    }
+
+    bb7: {
+        falseEdge -> [real: bb10, imaginary: bb8];
+    }
+
+    bb8: {
+        falseEdge -> [real: bb9, imaginary: bb3];
+    }
+
+    bb9: {
+        StorageLive(_3);
+        _3 = copy (_1.0: (i32, i32));
+        StorageLive(_4);
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
+    }
+
+    bb10: {
+        StorageLive(_3);
+        _3 = copy (_1.0: (i32, i32));
+        StorageLive(_4);
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
+    }
+
+    bb11: {
+        StorageLive(_3);
+        _3 = copy (_1.0: (i32, i32));
+        StorageLive(_4);
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
+    }
+
+    bb12: {
+        StorageLive(_3);
+        _3 = copy (_1.0: (i32, i32));
+        StorageLive(_4);
+        _4 = copy (_1.1: i32);
+        goto -> bb13;
+    }
+
+    bb13: {
+        _0 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb14;
+    }
+
+    bb14: {
+        StorageDead(_1);
+        return;
+    }
+}

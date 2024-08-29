@@ -15,6 +15,9 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use std::cell::Cell;
+use std::iter;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -25,18 +28,18 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{
+    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Symbol;
-use std::iter;
+use rustc_span::{ErrorGuaranteed, Symbol};
 
 use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;
 
 #[derive(Debug)]
-pub struct UniversalRegions<'tcx> {
+pub(crate) struct UniversalRegions<'tcx> {
     indices: UniversalRegionIndices<'tcx>,
 
     /// The vid assigned to `'static`
@@ -92,7 +95,7 @@ pub struct UniversalRegions<'tcx> {
 /// regions appear free in the defining type and late-bound regions
 /// appear bound in the signature.
 #[derive(Copy, Clone, Debug)]
-pub enum DefiningTy<'tcx> {
+pub(crate) enum DefiningTy<'tcx> {
     /// The MIR is a closure. The signature is found via
     /// `ClosureArgs::closure_sig_ty`.
     Closure(DefId, GenericArgsRef<'tcx>),
@@ -128,7 +131,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// not a closure or coroutine, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
     /// match up with the upvar order in the HIR, typesystem, and MIR.
-    pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
+    pub(crate) fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
             DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().upvar_tys(),
@@ -142,7 +145,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// Number of implicit inputs -- notably the "environment"
     /// parameter for closures -- that appear in MIR but not in the
     /// user's code.
-    pub fn implicit_inputs(self) -> usize {
+    pub(crate) fn implicit_inputs(self) -> usize {
         match self {
             DefiningTy::Closure(..)
             | DefiningTy::CoroutineClosure(..)
@@ -151,15 +154,15 @@ impl<'tcx> DefiningTy<'tcx> {
         }
     }
 
-    pub fn is_fn_def(&self) -> bool {
+    pub(crate) fn is_fn_def(&self) -> bool {
         matches!(*self, DefiningTy::FnDef(..))
     }
 
-    pub fn is_const(&self) -> bool {
+    pub(crate) fn is_const(&self) -> bool {
         matches!(*self, DefiningTy::Const(..) | DefiningTy::InlineConst(..))
     }
 
-    pub fn def_id(&self) -> DefId {
+    pub(crate) fn def_id(&self) -> DefId {
         match *self {
             DefiningTy::Closure(def_id, ..)
             | DefiningTy::CoroutineClosure(def_id, ..)
@@ -186,10 +189,14 @@ struct UniversalRegionIndices<'tcx> {
 
     /// The vid assigned to `'static`. Used only for diagnostics.
     pub fr_static: RegionVid,
+
+    /// Whether we've encountered an error region. If we have, cancel all
+    /// outlives errors, as they are likely bogus.
+    pub tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum RegionClassification {
+pub(crate) enum RegionClassification {
     /// A **global** region is one that can be named from
     /// anywhere. There is only one, `'static`.
     Global,
@@ -239,7 +246,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// MIR -- that is, all the regions that appear in the function's
     /// signature. This will also compute the relationships that are
     /// known between those regions.
-    pub fn new(
+    pub(crate) fn new(
         infcx: &BorrowckInferCtxt<'tcx>,
         mir_def: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
@@ -256,7 +263,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// if the `ClosureRegionRequirements` contains something like
     /// `'1: '2`, then the caller would impose the constraint that
     /// `V[1]: V[2]`.
-    pub fn closure_mapping(
+    pub(crate) fn closure_mapping(
         tcx: TyCtxt<'tcx>,
         closure_args: GenericArgsRef<'tcx>,
         expected_num_vars: usize,
@@ -282,13 +289,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 
     /// Returns `true` if `r` is a member of this set of universal regions.
-    pub fn is_universal_region(&self, r: RegionVid) -> bool {
+    pub(crate) fn is_universal_region(&self, r: RegionVid) -> bool {
         (FIRST_GLOBAL_INDEX..self.num_universals).contains(&r.index())
     }
 
     /// Classifies `r` as a universal region, returning `None` if this
     /// is not a member of this set of universal regions.
-    pub fn region_classification(&self, r: RegionVid) -> Option<RegionClassification> {
+    pub(crate) fn region_classification(&self, r: RegionVid) -> Option<RegionClassification> {
         let index = r.index();
         if (FIRST_GLOBAL_INDEX..self.first_extern_index).contains(&index) {
             Some(RegionClassification::Global)
@@ -303,17 +310,17 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
-    pub fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
+    pub(crate) fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::from_usize)
     }
 
     /// Returns `true` if `r` is classified as a local region.
-    pub fn is_local_free_region(&self, r: RegionVid) -> bool {
+    pub(crate) fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
     }
 
     /// Returns the number of universal regions created in any category.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.num_universals
     }
 
@@ -322,19 +329,19 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// closure type (versus those bound in the closure
     /// signature). They are therefore the regions between which the
     /// closure may impose constraints that its creator must verify.
-    pub fn num_global_and_external_regions(&self) -> usize {
+    pub(crate) fn num_global_and_external_regions(&self) -> usize {
         self.first_local_index
     }
 
     /// Gets an iterator over all the early-bound regions that have names.
-    pub fn named_universal_regions<'s>(
+    pub(crate) fn named_universal_regions<'s>(
         &'s self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
     }
 
     /// See `UniversalRegionIndices::to_region_vid`.
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.indices.to_region_vid(r)
     }
 
@@ -407,6 +414,10 @@ impl<'tcx> UniversalRegions<'tcx> {
                 ));
             }
         }
+    }
+
+    pub(crate) fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
+        self.indices.tainted_by_errors.get()
     }
 }
 
@@ -663,7 +674,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let arg_mapping = iter::zip(identity_args.regions(), fr_args.regions().map(|r| r.as_var()));
 
-        UniversalRegionIndices { indices: global_mapping.chain(arg_mapping).collect(), fr_static }
+        UniversalRegionIndices {
+            indices: global_mapping.chain(arg_mapping).collect(),
+            fr_static,
+            tainted_by_errors: Cell::new(None),
+        }
     }
 
     fn compute_inputs_and_output(
@@ -865,10 +880,11 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// reference those regions from the `ParamEnv`. It is also used
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
-    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+    fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReVar(..) = *r {
             r.as_var()
-        } else if r.is_error() {
+        } else if let ty::ReError(guar) = *r {
+            self.tainted_by_errors.set(Some(guar));
             // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
             // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
             // errors are being emitted and 2) it leaves the happy path unaffected.
@@ -883,7 +899,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
 
     /// Replaces all free regions in `value` with region vids, as
     /// returned by `to_region_vid`.
-    pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
+    fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {

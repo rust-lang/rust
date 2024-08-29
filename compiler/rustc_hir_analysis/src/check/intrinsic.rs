@@ -1,13 +1,8 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
-use crate::check::check_function_signature;
-use crate::errors::{
-    UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
-    WrongNumberOfGenericArgumentsToIntrinsic,
-};
-
-use rustc_errors::{codes::*, struct_span_code_err, DiagMessage};
+use rustc_errors::codes::*;
+use rustc_errors::{struct_span_code_err, DiagMessage};
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -16,6 +11,12 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
+
+use crate::check::check_function_signature;
+use crate::errors::{
+    UnrecognizedAtomicOperation, UnrecognizedIntrinsicFunction,
+    WrongNumberOfGenericArgumentsToIntrinsic,
+};
 
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -26,15 +27,12 @@ fn equate_intrinsic_type<'tcx>(
     n_cts: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
-    let (own_counts, span) = match tcx.hir_node_by_def_id(def_id) {
+    let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
         | hir::Node::ForeignItem(hir::ForeignItem {
-            kind: hir::ForeignItemKind::Fn(.., generics),
+            kind: hir::ForeignItemKind::Fn(_, _, generics),
             ..
-        }) => {
-            let own_counts = tcx.generics_of(def_id).own_counts();
-            (own_counts, generics.span)
-        }
+        }) => (tcx.generics_of(def_id), generics.span),
         _ => {
             struct_span_code_err!(tcx.dcx(), span, E0622, "intrinsic must be a function")
                 .with_span_label(span, "expected a function")
@@ -42,6 +40,7 @@ fn equate_intrinsic_type<'tcx>(
             return;
         }
     };
+    let own_counts = generics.own_counts();
 
     let gen_count_ok = |found: usize, expected: usize, descr: &str| -> bool {
         if found != expected {
@@ -57,9 +56,17 @@ fn equate_intrinsic_type<'tcx>(
         }
     };
 
+    // the host effect param should be invisible as it shouldn't matter
+    // whether effects is enabled for the intrinsic provider crate.
+    let consts_count = if generics.host_effect_index.is_some() {
+        own_counts.consts - 1
+    } else {
+        own_counts.consts
+    };
+
     if gen_count_ok(own_counts.lifetimes, n_lts, "lifetime")
         && gen_count_ok(own_counts.types, n_tps, "type")
-        && gen_count_ok(own_counts.consts, n_cts, "const")
+        && gen_count_ok(consts_count, n_cts, "const")
     {
         let _ = check_function_signature(
             tcx,
@@ -113,6 +120,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::type_id
         | sym::likely
         | sym::unlikely
+        | sym::select_unpredictable
         | sym::ptr_guaranteed_cmp
         | sym::minnumf16
         | sym::minnumf32
@@ -130,6 +138,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::is_val_statically_known
         | sym::ptr_mask
         | sym::aggregate_raw_ptr
+        | sym::ptr_metadata
         | sym::ub_checks
         | sym::fadd_algebraic
         | sym::fsub_algebraic
@@ -164,9 +173,8 @@ pub fn check_intrinsic_type(
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
-        if let Some(&ty::GenericParamDef {
-            name, kind: ty::GenericParamDefKind::Type { .. }, ..
-        }) = generics.opt_param_at(n as usize, tcx)
+        if let &ty::GenericParamDef { name, kind: ty::GenericParamDefKind::Type { .. }, .. } =
+            generics.param_at(n as usize, tcx)
         {
             Ty::new_param(tcx, n, name)
         } else {
@@ -429,17 +437,17 @@ pub fn check_intrinsic_type(
 
             sym::ptr_guaranteed_cmp => (
                 1,
-                1,
+                0,
                 vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
                 tcx.types.u8,
             ),
 
             sym::const_allocate => {
-                (0, 1, vec![tcx.types.usize, tcx.types.usize], Ty::new_mut_ptr(tcx, tcx.types.u8))
+                (0, 0, vec![tcx.types.usize, tcx.types.usize], Ty::new_mut_ptr(tcx, tcx.types.u8))
             }
             sym::const_deallocate => (
                 0,
-                1,
+                0,
                 vec![Ty::new_mut_ptr(tcx, tcx.types.u8), tcx.types.usize, tcx.types.usize],
                 tcx.types.unit,
             ),
@@ -478,16 +486,17 @@ pub fn check_intrinsic_type(
             | sym::frem_algebraic => (1, 0, vec![param(0), param(0)], param(0)),
             sym::float_to_int_unchecked => (2, 0, vec![param(0)], param(1)),
 
-            sym::assume => (0, 1, vec![tcx.types.bool], tcx.types.unit),
-            sym::likely => (0, 1, vec![tcx.types.bool], tcx.types.bool),
-            sym::unlikely => (0, 1, vec![tcx.types.bool], tcx.types.bool),
+            sym::assume => (0, 0, vec![tcx.types.bool], tcx.types.unit),
+            sym::likely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
+            sym::unlikely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
+            sym::select_unpredictable => (1, 0, vec![tcx.types.bool, param(0), param(0)], param(0)),
 
             sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
             sym::write_via_move => {
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
             }
 
-            sym::typed_swap => (1, 1, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit),
+            sym::typed_swap => (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit),
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -504,7 +513,11 @@ pub fn check_intrinsic_type(
                         ty::Region::new_bound(tcx, ty::INNERMOST, br),
                         param(0),
                     )],
-                    Ty::new_projection(tcx, discriminant_def_id, tcx.mk_args(&[param(0).into()])),
+                    Ty::new_projection_from_args(
+                        tcx,
+                        discriminant_def_id,
+                        tcx.mk_args(&[param(0).into()]),
+                    ),
                 )
             }
 
@@ -566,9 +579,9 @@ pub fn check_intrinsic_type(
 
             sym::black_box => (1, 0, vec![param(0)], param(0)),
 
-            sym::is_val_statically_known => (1, 1, vec![param(0)], tcx.types.bool),
+            sym::is_val_statically_known => (1, 0, vec![param(0)], tcx.types.bool),
 
-            sym::const_eval_select => (4, 1, vec![param(0), param(1), param(2)], param(3)),
+            sym::const_eval_select => (4, 0, vec![param(0), param(1), param(2)], param(3)),
 
             sym::vtable_size | sym::vtable_align => {
                 (0, 0, vec![Ty::new_imm_ptr(tcx, tcx.types.unit)], tcx.types.usize)
@@ -576,9 +589,10 @@ pub fn check_intrinsic_type(
 
             // This type check is not particularly useful, but the `where` bounds
             // on the definition in `core` do the heavy lifting for checking it.
-            sym::aggregate_raw_ptr => (3, 1, vec![param(1), param(2)], param(0)),
+            sym::aggregate_raw_ptr => (3, 0, vec![param(1), param(2)], param(0)),
+            sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
-            sym::ub_checks => (0, 1, Vec::new(), tcx.types.bool),
+            sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
 
             sym::simd_eq
             | sym::simd_ne

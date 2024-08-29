@@ -14,14 +14,13 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use self::TargetLint::*;
+use std::cell::Cell;
+use std::{iter, slice};
 
-use crate::levels::LintLevelsBuilder;
-use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{Diag, DiagMessage, LintDiagnostic, MultiSpan};
+use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -30,19 +29,21 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _};
-use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
-use rustc_session::lint::{BuiltinLintDiag, LintExpectationId};
-use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
+use rustc_middle::ty::print::{with_no_trimmed_paths, PrintError, PrintTraitRefExt as _, Printer};
+use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_session::lint::{
+    BuiltinLintDiag, FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
+};
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi;
+use tracing::debug;
 
-use std::cell::Cell;
-use std::iter;
-use std::slice;
+use self::TargetLint::*;
+use crate::levels::LintLevelsBuilder;
+use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
 mod diagnostics;
 
@@ -94,7 +95,8 @@ enum TargetLint {
 
     /// A lint name that should give no warnings and have no effect.
     ///
-    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers
+    /// them as tool lints.
     Ignored,
 }
 
@@ -126,12 +128,16 @@ pub enum CheckLintNameResult<'a> {
     Renamed(String),
     /// The lint has been removed due to the given reason.
     Removed(String),
-    /// The lint is from a tool. If the Option is None, then either
-    /// the lint does not exist in the tool or the code was not
-    /// compiled with the tool and therefore the lint was never
-    /// added to the `LintStore`. Otherwise the `LintId` will be
-    /// returned as if it where a rustc lint.
-    Tool(Result<&'a [LintId], (Option<&'a [LintId]>, String)>),
+
+    /// The lint is from a tool. The `LintId` will be returned as if it were a
+    /// rustc lint. The `Option<String>` indicates if the lint has been
+    /// renamed.
+    Tool(&'a [LintId], Option<String>),
+
+    /// The lint is from a tool. Either the lint does not exist in the tool or
+    /// the code was not compiled with the tool and therefore the lint was
+    /// never added to the `LintStore`.
+    MissingTool,
 }
 
 impl LintStore {
@@ -384,14 +390,14 @@ impl LintStore {
                         } else {
                             // 2. The tool isn't currently running, so no lints will be registered.
                             // To avoid giving a false positive, ignore all unknown lints.
-                            CheckLintNameResult::Tool(Err((None, String::new())))
+                            CheckLintNameResult::MissingTool
                         };
                     }
                     Some(LintGroup { lint_ids, .. }) => {
-                        return CheckLintNameResult::Tool(Ok(lint_ids));
+                        return CheckLintNameResult::Tool(lint_ids, None);
                     }
                 },
-                Some(Id(id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
+                Some(Id(id)) => return CheckLintNameResult::Tool(slice::from_ref(id), None),
                 // If the lint was registered as removed or renamed by the lint tool, we don't need
                 // to treat tool_lints and rustc lints different and can use the code below.
                 _ => {}
@@ -411,7 +417,7 @@ impl LintStore {
                         return if *silent {
                             CheckLintNameResult::Ok(lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(lint_ids, Some((*name).to_string()))
                         };
                     }
                     CheckLintNameResult::Ok(lint_ids)
@@ -472,18 +478,17 @@ impl LintStore {
                     // Reaching this would be weird, but let's cover this case anyway
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
-                        return if *silent {
-                            CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
+                        if *silent {
+                            CheckLintNameResult::Tool(lint_ids, Some(complete_name))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
-                        };
+                            CheckLintNameResult::Tool(lint_ids, Some((*name).to_string()))
+                        }
+                    } else {
+                        CheckLintNameResult::Tool(lint_ids, Some(complete_name))
                     }
-                    CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                 }
             },
-            Some(Id(id)) => {
-                CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
-            }
+            Some(Id(id)) => CheckLintNameResult::Tool(slice::from_ref(id), Some(complete_name)),
             Some(other) => {
                 debug!("got renamed lint {:?}", other);
                 CheckLintNameResult::NoLint(None)
@@ -528,7 +533,7 @@ pub struct EarlyContext<'a> {
 }
 
 impl EarlyContext<'_> {
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// Emit a lint at the appropriate level, with an associated span and an existing
     /// diagnostic.
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
@@ -539,7 +544,23 @@ impl EarlyContext<'_> {
         span: MultiSpan,
         diagnostic: BuiltinLintDiag,
     ) {
-        diagnostics::emit_buffered_lint(self, lint, span, diagnostic)
+        self.opt_span_lint_with_diagnostics(lint, Some(span), diagnostic);
+    }
+
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// diagnostic.
+    ///
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
+    pub fn opt_span_lint_with_diagnostics(
+        &self,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        diagnostic: BuiltinLintDiag,
+    ) {
+        self.opt_span_lint(lint, span, |diag| {
+            diagnostics::decorate_lint(self.sess(), diagnostic, diag);
+        });
     }
 }
 
@@ -556,7 +577,6 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     );
 
@@ -568,8 +588,8 @@ pub trait LintContext {
         span: S,
         decorator: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
-        self.opt_span_lint(lint, Some(span), decorator.msg(), |diag| {
-            decorator.decorate_lint(diag);
+        self.opt_span_lint(lint, Some(span), |lint| {
+            decorator.decorate_lint(lint);
         });
     }
 
@@ -581,17 +601,16 @@ pub trait LintContext {
         &self,
         lint: &'static Lint,
         span: S,
-        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        self.opt_span_lint(lint, Some(span), msg, decorate);
+        self.opt_span_lint(lint, Some(span), decorate);
     }
 
     /// Emit a lint from a lint struct (some type that implements `LintDiagnostic`, typically
     /// generated by `#[derive(LintDiagnostic)]`).
     fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> LintDiagnostic<'a, ()>) {
-        self.opt_span_lint(lint, None as Option<Span>, decorator.msg(), |diag| {
-            decorator.decorate_lint(diag);
+        self.opt_span_lint(lint, None as Option<Span>, |lint| {
+            decorator.decorate_lint(lint);
         });
     }
 
@@ -599,13 +618,8 @@ pub trait LintContext {
     ///
     /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn lint(
-        &self,
-        lint: &'static Lint,
-        msg: impl Into<DiagMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        self.opt_span_lint(lint, None as Option<Span>, msg, decorate);
+    fn lint(&self, lint: &'static Lint, decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)) {
+        self.opt_span_lint(lint, None as Option<Span>, decorate);
     }
 
     /// This returns the lint level for the given lint at the current location.
@@ -668,14 +682,13 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {
-            Some(s) => self.tcx.node_span_lint(lint, hir_id, s, msg, decorate),
-            None => self.tcx.node_lint(lint, hir_id, msg, decorate),
+            Some(s) => self.tcx.node_span_lint(lint, hir_id, s, decorate),
+            None => self.tcx.node_lint(lint, hir_id, decorate),
         }
     }
 
@@ -695,10 +708,9 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        msg: impl Into<DiagMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        self.builder.opt_span_lint(lint, span.map(|s| s.into()), msg, decorate)
+        self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorate)
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> Level {

@@ -7,6 +7,8 @@
 )]
 #![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
+//@no-rustfix: need to change the suggestion to a multipart suggestion
+
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
 use std::ops::Deref;
@@ -157,6 +159,25 @@ fn main() {
     require_path(&std::path::PathBuf::from("x").to_path_buf());
     require_str(&String::from("x").to_string());
     require_slice(&[String::from("x")].to_owned());
+
+    let slice = [0u8; 1024];
+    let _ref_str: &str = &String::from_utf8(slice.to_vec()).expect("not UTF-8");
+    let _ref_str: &str = &String::from_utf8(b"foo".to_vec()).unwrap();
+    let _ref_str: &str = &String::from_utf8(b"foo".as_slice().to_owned()).unwrap();
+    // Expression is of type `&String`, can't suggest `str::from_utf8` here
+    let _ref_string = &String::from_utf8(b"foo".to_vec()).unwrap();
+    macro_rules! arg_from_macro {
+        () => {
+            b"foo".to_vec()
+        };
+    }
+    macro_rules! string_from_utf8_from_macro {
+        () => {
+            &String::from_utf8(b"foo".to_vec()).unwrap()
+        };
+    }
+    let _ref_str: &str = &String::from_utf8(arg_from_macro!()).unwrap();
+    let _ref_str: &str = string_from_utf8_from_macro!();
 }
 
 fn require_c_str(_: &CStr) {}

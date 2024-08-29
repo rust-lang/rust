@@ -4,14 +4,14 @@ mod init_mask;
 mod provenance_map;
 
 use std::borrow::Cow;
-use std::fmt;
-use std::hash;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut, Range};
-use std::ptr;
+use std::{fmt, hash, ptr};
 
 use either::{Left, Right};
-
+use init_mask::*;
+pub use init_mask::{InitChunk, InitChunkIter};
+use provenance_map::*;
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -23,10 +23,6 @@ use super::{
     ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 use crate::ty;
-use init_mask::*;
-use provenance_map::*;
-
-pub use init_mask::{InitChunk, InitChunkIter};
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Target = [u8]> {
@@ -40,9 +36,16 @@ pub trait AllocBytes: Clone + fmt::Debug + Deref<Target = [u8]> + DerefMut<Targe
     /// Gives direct access to the raw underlying storage.
     ///
     /// Crucially this pointer is compatible with:
-    /// - other pointers retunred by this method, and
+    /// - other pointers returned by this method, and
     /// - references returned from `deref()`, as long as there was no write.
     fn as_mut_ptr(&mut self) -> *mut u8;
+
+    /// Gives direct access to the raw underlying storage.
+    ///
+    /// Crucially this pointer is compatible with:
+    /// - other pointers returned by this method, and
+    /// - references returned from `deref()`, as long as there was no write.
+    fn as_ptr(&self) -> *const u8;
 }
 
 /// Default `bytes` for `Allocation` is a `Box<u8>`.
@@ -52,15 +55,18 @@ impl AllocBytes for Box<[u8]> {
     }
 
     fn zeroed(size: Size, _align: Align) -> Option<Self> {
-        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).ok()?;
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes().try_into().ok()?).ok()?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
         Some(bytes)
     }
 
     fn as_mut_ptr(&mut self) -> *mut u8 {
-        // Carefully avoiding any intermediate references.
-        ptr::addr_of_mut!(**self).cast()
+        Box::as_mut_ptr(self).cast()
+    }
+
+    fn as_ptr(&self) -> *const u8 {
+        Box::as_ptr(self).cast()
     }
 }
 
@@ -266,19 +272,6 @@ impl AllocRange {
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
-    /// Creates an allocation from an existing `Bytes` value - this is needed for miri FFI support
-    pub fn from_raw_bytes(bytes: Bytes, align: Align, mutability: Mutability) -> Self {
-        let size = Size::from_bytes(bytes.len());
-        Self {
-            bytes,
-            provenance: ProvenanceMap::new(),
-            init_mask: InitMask::new(size, true),
-            align,
-            mutability,
-            extra: (),
-        }
-    }
-
     /// Creates an allocation initialized by the given bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
@@ -336,24 +329,39 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// first call this function and then call write_scalar to fill in the right data.
     pub fn uninit(size: Size, align: Align) -> Self {
         match Self::uninit_inner(size, align, || {
-            panic!("Allocation::uninit called with panic_on_fail had allocation failure");
+            panic!(
+                "interpreter ran out of memory: cannot create allocation of {} bytes",
+                size.bytes()
+            );
         }) {
             Ok(x) => x,
             Err(x) => x,
+        }
+    }
+
+    /// Add the extra.
+    pub fn with_extra<Extra>(self, extra: Extra) -> Allocation<Prov, Extra, Bytes> {
+        Allocation {
+            bytes: self.bytes,
+            provenance: self.provenance,
+            init_mask: self.init_mask,
+            align: self.align,
+            mutability: self.mutability,
+            extra,
         }
     }
 }
 
 impl Allocation {
     /// Adjust allocation from the ones in `tcx` to a custom Machine instance
-    /// with a different `Provenance`, `Extra` and `Byte` type.
-    pub fn adjust_from_tcx<Prov: Provenance, Extra, Bytes: AllocBytes, Err>(
-        self,
+    /// with a different `Provenance` and `Byte` type.
+    pub fn adjust_from_tcx<Prov: Provenance, Bytes: AllocBytes, Err>(
+        &self,
         cx: &impl HasDataLayout,
-        extra: Extra,
         mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> Result<Pointer<Prov>, Err>,
-    ) -> Result<Allocation<Prov, Extra, Bytes>, Err> {
-        let mut bytes = self.bytes;
+    ) -> Result<Allocation<Prov, (), Bytes>, Err> {
+        // Copy the data.
+        let mut bytes = Bytes::from_bytes(Cow::Borrowed(&*self.bytes), self.align);
         // Adjust provenance of pointers stored in this allocation.
         let mut new_provenance = Vec::with_capacity(self.provenance.ptrs().len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
@@ -369,12 +377,12 @@ impl Allocation {
         }
         // Create allocation.
         Ok(Allocation {
-            bytes: AllocBytes::from_bytes(Cow::Owned(Vec::from(bytes)), self.align),
+            bytes,
             provenance: ProvenanceMap::from_presorted_ptrs(new_provenance),
-            init_mask: self.init_mask,
+            init_mask: self.init_mask.clone(),
             align: self.align,
             mutability: self.mutability,
-            extra,
+            extra: self.extra,
         })
     }
 }
@@ -488,18 +496,26 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         self.provenance.clear(range, cx)?;
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
-        // Cruciall, we go via `AllocBytes::as_mut_ptr`, not `AllocBytes::deref_mut`.
+        // Crucially, we go via `AllocBytes::as_mut_ptr`, not `AllocBytes::deref_mut`.
         let begin_ptr = self.bytes.as_mut_ptr().wrapping_add(range.start.bytes_usize());
         let len = range.end().bytes_usize() - range.start.bytes_usize();
         Ok(ptr::slice_from_raw_parts_mut(begin_ptr, len))
     }
 
     /// This gives direct mutable access to the entire buffer, just exposing their internal state
-    /// without reseting anything. Directly exposes `AllocBytes::as_mut_ptr`. Only works if
+    /// without resetting anything. Directly exposes `AllocBytes::as_mut_ptr`. Only works if
     /// `OFFSET_IS_ADDR` is true.
     pub fn get_bytes_unchecked_raw_mut(&mut self) -> *mut u8 {
         assert!(Prov::OFFSET_IS_ADDR);
         self.bytes.as_mut_ptr()
+    }
+
+    /// This gives direct immutable access to the entire buffer, just exposing their internal state
+    /// without resetting anything. Directly exposes `AllocBytes::as_ptr`. Only works if
+    /// `OFFSET_IS_ADDR` is true.
+    pub fn get_bytes_unchecked_raw(&self) -> *const u8 {
+        assert!(Prov::OFFSET_IS_ADDR);
+        self.bytes.as_ptr()
     }
 }
 

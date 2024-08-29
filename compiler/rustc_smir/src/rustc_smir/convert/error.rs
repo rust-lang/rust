@@ -1,9 +1,11 @@
 //! Handle the conversion of different internal errors into a stable version.
 //!
 //! Currently we encode everything as [stable_mir::Error], which is represented as a string.
-use crate::rustc_smir::{Stable, Tables};
+
 use rustc_middle::mir::interpret::AllocError;
 use rustc_middle::ty::layout::LayoutError;
+
+use crate::rustc_smir::{Stable, Tables};
 
 impl<'tcx> Stable<'tcx> for LayoutError<'tcx> {
     type T = stable_mir::Error;

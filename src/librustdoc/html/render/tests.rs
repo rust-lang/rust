@@ -34,7 +34,7 @@ fn test_compare_names() {
 #[test]
 fn test_name_sorting() {
     let names = [
-        "Apple", "Banana", "Fruit", "Fruit0", "Fruit00", "Fruit01", "Fruit1", "Fruit02", "Fruit2",
+        "Apple", "Banana", "Fruit", "Fruit0", "Fruit00", "Fruit01", "Fruit02", "Fruit1", "Fruit2",
         "Fruit20", "Fruit30x", "Fruit100", "Pear",
     ];
     let mut sorted = names.to_owned();

@@ -1,8 +1,9 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::consts::{constant_full_int, FullInt};
+use clippy_config::Conf;
+use clippy_utils::consts::{ConstEvalCtxt, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{in_constant, path_to_local};
+use clippy_utils::{is_in_const_context, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -38,9 +39,10 @@ pub struct ManualRemEuclid {
 }
 
 impl ManualRemEuclid {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -48,35 +50,30 @@ impl_lint_pass!(ManualRemEuclid => [MANUAL_REM_EUCLID]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !self.msrv.meets(msrvs::REM_EUCLID) {
-            return;
-        }
-
-        if in_constant(cx, expr.hir_id) && !self.msrv.meets(msrvs::REM_EUCLID_CONST) {
-            return;
-        }
-
-        if in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-
         // (x % c + c) % c
-        if let ExprKind::Binary(op1, expr1, right) = expr.kind
-            && op1.node == BinOpKind::Rem
+        if let ExprKind::Binary(rem_op, rem_lhs, rem_rhs) = expr.kind
+            && rem_op.node == BinOpKind::Rem
+            && let ExprKind::Binary(add_op, add_lhs, add_rhs) = rem_lhs.kind
+            && add_op.node == BinOpKind::Add
             && let ctxt = expr.span.ctxt()
-            && expr1.span.ctxt() == ctxt
-            && let Some(const1) = check_for_unsigned_int_constant(cx, right)
-            && let ExprKind::Binary(op2, left, right) = expr1.kind
-            && op2.node == BinOpKind::Add
-            && let Some((const2, expr2)) = check_for_either_unsigned_int_constant(cx, left, right)
-            && expr2.span.ctxt() == ctxt
-            && let ExprKind::Binary(op3, expr3, right) = expr2.kind
-            && op3.node == BinOpKind::Rem
-            && let Some(const3) = check_for_unsigned_int_constant(cx, right)
+            && rem_lhs.span.ctxt() == ctxt
+            && rem_rhs.span.ctxt() == ctxt
+            && add_lhs.span.ctxt() == ctxt
+            && add_rhs.span.ctxt() == ctxt
+            && !in_external_macro(cx.sess(), expr.span)
+            && self.msrv.meets(msrvs::REM_EUCLID)
+            && (self.msrv.meets(msrvs::REM_EUCLID_CONST) || !is_in_const_context(cx))
+            && let Some(const1) = check_for_unsigned_int_constant(cx, rem_rhs)
+            && let Some((const2, add_other)) = check_for_either_unsigned_int_constant(cx, add_lhs, add_rhs)
+            && let ExprKind::Binary(rem2_op, rem2_lhs, rem2_rhs) = add_other.kind
+            && rem2_op.node == BinOpKind::Rem
+            && const1 == const2
+            && let Some(hir_id) = path_to_local(rem2_lhs)
+            && let Some(const3) = check_for_unsigned_int_constant(cx, rem2_rhs)
             // Also ensures the const is nonzero since zero can't be a divisor
-            && const1 == const2 && const2 == const3
-            && let Some(hir_id) = path_to_local(expr3)
-            && let Node::Pat(_) = cx.tcx.hir_node(hir_id)
+            && const2 == const3
+            && rem2_lhs.span.ctxt() == ctxt
+            && rem2_rhs.span.ctxt() == ctxt
         {
             // Apply only to params or locals with annotated types
             match cx.tcx.parent_hir_node(hir_id) {
@@ -91,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             };
 
             let mut app = Applicability::MachineApplicable;
-            let rem_of = snippet_with_context(cx, expr3.span, ctxt, "_", &mut app).0;
+            let rem_of = snippet_with_context(cx, rem2_lhs.span, ctxt, "_", &mut app).0;
             span_lint_and_sugg(
                 cx,
                 MANUAL_REM_EUCLID,
@@ -120,7 +117,7 @@ fn check_for_either_unsigned_int_constant<'a>(
 }
 
 fn check_for_unsigned_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<u128> {
-    let int_const = constant_full_int(cx, cx.typeck_results(), expr)?;
+    let int_const = ConstEvalCtxt::new(cx).eval_full_int(expr)?;
     match int_const {
         FullInt::S(s) => s.try_into().ok(),
         FullInt::U(u) => Some(u),

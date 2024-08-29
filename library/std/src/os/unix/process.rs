@@ -4,15 +4,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::ffi::OsStr;
-use crate::io;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
-use crate::process;
-use crate::sealed::Sealed;
-use crate::sys;
-use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-
 use cfg_if::cfg_if;
+
+use crate::ffi::OsStr;
+use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::sealed::Sealed;
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+use crate::{io, process, sys};
 
 cfg_if! {
     if #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
@@ -111,13 +109,21 @@ pub trait CommandExt: Sealed {
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
     ///
-    /// This method is stable and usable, but it should be unsafe. To fix
-    /// that, it got deprecated in favor of the unsafe [`pre_exec`].
+    /// `before_exec` used to be a safe method, but it needs to be unsafe since the closure may only
+    /// perform operations that are *async-signal-safe*. Hence it got deprecated in favor of the
+    /// unsafe [`pre_exec`]. Meanwhile, Rust gained the ability to make an existing safe method
+    /// fully unsafe in a new edition, which is how `before_exec` became `unsafe`. It still also
+    /// remains deprecated; `pre_exec` should be used instead.
     ///
     /// [`pre_exec`]: CommandExt::pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
     #[deprecated(since = "1.37.0", note = "should be unsafe, use `pre_exec` instead")]
-    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+    #[cfg_attr(bootstrap, rustc_deprecated_safe_2024)]
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_deprecated_safe_2024(audit_that = "the closure is async-signal-safe")
+    )]
+    unsafe fn before_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,
     {
@@ -444,7 +450,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
     }
 }
 
-/// Create a `ChildStdin` from the provided `OwnedFd`.
+/// Creates a `ChildStdin` from the provided `OwnedFd`.
 ///
 /// The provided file descriptor must point to a pipe
 /// with the `CLOEXEC` flag set.
@@ -475,7 +481,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
     }
 }
 
-/// Create a `ChildStdout` from the provided `OwnedFd`.
+/// Creates a `ChildStdout` from the provided `OwnedFd`.
 ///
 /// The provided file descriptor must point to a pipe
 /// with the `CLOEXEC` flag set.
@@ -506,7 +512,7 @@ impl From<crate::process::ChildStderr> for OwnedFd {
     }
 }
 
-/// Create a `ChildStderr` from the provided `OwnedFd`.
+/// Creates a `ChildStderr` from the provided `OwnedFd`.
 ///
 /// The provided file descriptor must point to a pipe
 /// with the `CLOEXEC` flag set.

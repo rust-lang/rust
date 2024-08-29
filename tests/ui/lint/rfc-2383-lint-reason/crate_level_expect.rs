@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 #![warn(unused)]
 
 #![expect(unused_mut)]

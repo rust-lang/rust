@@ -9,14 +9,15 @@
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
-use crate::*;
+use std::io::{self, BorrowedBuf, Read};
+use std::{fs, path};
+
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_macros::{Decodable, Encodable};
-use std::fs;
-use std::io::{self, BorrowedBuf, Read};
-use std::path;
 use tracing::{debug, instrument, trace};
+
+use crate::*;
 
 #[cfg(test)]
 mod tests;
@@ -330,7 +331,6 @@ impl SourceMap {
         cnum: CrateNum,
         file_local_lines: FreezeLock<SourceFileLines>,
         multibyte_chars: Vec<MultiByteChar>,
-        non_narrow_chars: Vec<NonNarrowChar>,
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
     ) -> Lrc<SourceFile> {
@@ -348,7 +348,6 @@ impl SourceMap {
             source_len,
             lines: file_local_lines,
             multibyte_chars,
-            non_narrow_chars,
             normalized_pos,
             stable_id,
             cnum,

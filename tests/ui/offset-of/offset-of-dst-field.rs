@@ -49,3 +49,7 @@ fn delta() {
 fn generic_with_maybe_sized<T: ?Sized>() -> usize {
     offset_of!(Delta<T>, z) //~ ERROR the size for values of type
 }
+
+fn illformed_tuple() {
+    offset_of!(([u8], u8), 1); //~ ERROR the size for values of type
+}

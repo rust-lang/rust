@@ -1,41 +1,53 @@
+use std::path::{Path, PathBuf};
+
+use build_helper::drop_bomb::DropBomb;
 use regex::Regex;
 use similar::TextDiff;
-use std::path::Path;
+
+use crate::fs;
 
 #[cfg(test)]
 mod tests;
 
+#[track_caller]
 pub fn diff() -> Diff {
     Diff::new()
 }
 
 #[derive(Debug)]
+#[must_use]
 pub struct Diff {
     expected: Option<String>,
     expected_name: Option<String>,
+    expected_file: Option<PathBuf>,
     actual: Option<String>,
     actual_name: Option<String>,
     normalizers: Vec<(String, String)>,
+    drop_bomb: DropBomb,
 }
 
 impl Diff {
     /// Construct a bare `diff` invocation.
+    #[track_caller]
     pub fn new() -> Self {
         Self {
             expected: None,
             expected_name: None,
+            expected_file: None,
             actual: None,
             actual_name: None,
             normalizers: Vec::new(),
+            drop_bomb: DropBomb::arm("diff"),
         }
     }
 
     /// Specify the expected output for the diff from a file.
     pub fn expected_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path).expect("failed to read file");
+        let content = fs::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
+        self.expected_file = Some(path.into());
         self.expected = Some(content);
         self.expected_name = Some(name);
         self
@@ -51,7 +63,7 @@ impl Diff {
     /// Specify the actual output for the diff from a file.
     pub fn actual_file<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path).expect("failed to read file");
+        let content = fs::read_to_string(path);
         let name = path.to_string_lossy().to_string();
 
         self.actual = Some(content);
@@ -76,9 +88,7 @@ impl Diff {
         self
     }
 
-    /// Executes the diff process, prints any differences to the standard error.
-    #[track_caller]
-    pub fn run(&self) {
+    fn run_common(&self) -> (&str, &str, String, String) {
         let expected = self.expected.as_ref().expect("expected text not set");
         let mut actual = self.actual.as_ref().expect("actual text not set").to_string();
         let expected_name = self.expected_name.as_ref().unwrap();
@@ -93,11 +103,58 @@ impl Diff {
             .header(expected_name, actual_name)
             .to_string();
 
+        (expected_name, actual_name, output, actual)
+    }
+
+    #[track_caller]
+    pub fn run(&mut self) {
+        self.drop_bomb.defuse();
+        let (expected_name, actual_name, output, actual) = self.run_common();
+
         if !output.is_empty() {
+            if self.maybe_bless_expected_file(&actual) {
+                return;
+            }
             panic!(
                 "test failed: `{}` is different from `{}`\n\n{}",
                 expected_name, actual_name, output
             )
         }
+    }
+
+    #[track_caller]
+    pub fn run_fail(&mut self) {
+        self.drop_bomb.defuse();
+        let (expected_name, actual_name, output, actual) = self.run_common();
+
+        if output.is_empty() {
+            if self.maybe_bless_expected_file(&actual) {
+                return;
+            }
+            panic!(
+                "test failed: `{}` is not different from `{}`\n\n{}",
+                expected_name, actual_name, output
+            )
+        }
+    }
+
+    /// If we have an expected file to write into, and `RUSTC_BLESS_TEST` is
+    /// set, then write the actual output into the file and return `true`.
+    ///
+    /// We assume that `RUSTC_BLESS_TEST` contains the path to the original test's
+    /// source directory. That lets us bless the original snapshot file in the
+    /// source tree, not the copy in `rmake_out` that we would normally use.
+    fn maybe_bless_expected_file(&self, actual: &str) -> bool {
+        let Some(ref expected_file) = self.expected_file else {
+            return false;
+        };
+        let Ok(bless_dir) = std::env::var("RUSTC_BLESS_TEST") else {
+            return false;
+        };
+
+        let bless_file = Path::new(&bless_dir).join(expected_file);
+        println!("Blessing `{}`", bless_file.display());
+        fs::write(bless_file, actual);
+        true
     }
 }

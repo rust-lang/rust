@@ -2,7 +2,7 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::consts::{constant_simple, Constant};
+use crate::consts::{ConstEvalCtxt, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
 
@@ -25,6 +25,8 @@ pub struct ForLoop<'tcx> {
     pub loop_id: HirId,
     /// entire `for` loop span
     pub span: Span,
+    /// label
+    pub label: Option<ast::Label>,
 }
 
 impl<'tcx> ForLoop<'tcx> {
@@ -33,7 +35,7 @@ impl<'tcx> ForLoop<'tcx> {
         if let ExprKind::DropTemps(e) = expr.kind
             && let ExprKind::Match(iterexpr, [arm], MatchSource::ForLoopDesugar) = e.kind
             && let ExprKind::Call(_, [arg]) = iterexpr.kind
-            && let ExprKind::Loop(block, ..) = arm.body.kind
+            && let ExprKind::Loop(block, label, ..) = arm.body.kind
             && let [stmt] = block.stmts
             && let hir::StmtKind::Expr(e) = stmt.kind
             && let ExprKind::Match(_, [_, some_arm], _) = e.kind
@@ -45,6 +47,7 @@ impl<'tcx> ForLoop<'tcx> {
                 body: some_arm.body,
                 loop_id: arm.body.hir_id,
                 span: expr.span.ctxt().outer_expn_data().call_site,
+                label,
             });
         }
         None
@@ -218,51 +221,56 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
+    #[allow(clippy::similar_names)]
     pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
-        /// Finds the field named `name` in the field. Always return `Some` for
-        /// convenience.
-        fn get_field<'c>(name: &str, fields: &'c [hir::ExprField<'_>]) -> Option<&'c Expr<'c>> {
-            let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
-            Some(expr)
-        }
-
         match expr.kind {
-            ExprKind::Call(path, args)
+            ExprKind::Call(path, [arg1, arg2])
                 if matches!(
                     path.kind,
                     ExprKind::Path(QPath::LangItem(hir::LangItem::RangeInclusiveNew, ..))
                 ) =>
             {
                 Some(Range {
-                    start: Some(&args[0]),
-                    end: Some(&args[1]),
+                    start: Some(arg1),
+                    end: Some(arg2),
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            ExprKind::Struct(path, fields, None) => match &path {
-                QPath::LangItem(hir::LangItem::RangeFull, ..) => Some(Range {
+            ExprKind::Struct(path, fields, None) => match (path, fields) {
+                (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 }),
-                QPath::LangItem(hir::LangItem::RangeFrom, ..) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: None,
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                QPath::LangItem(hir::LangItem::Range, ..) => Some(Range {
-                    start: Some(get_field("start", fields)?),
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::HalfOpen,
-                }),
-                QPath::LangItem(hir::LangItem::RangeToInclusive, ..) => Some(Range {
+                (QPath::LangItem(hir::LangItem::RangeFrom, ..), [field]) if field.ident.name == sym::start => {
+                    Some(Range {
+                        start: Some(field.expr),
+                        end: None,
+                        limits: ast::RangeLimits::HalfOpen,
+                    })
+                },
+                (QPath::LangItem(hir::LangItem::Range, ..), [field1, field2]) => {
+                    let (start, end) = match (field1.ident.name, field2.ident.name) {
+                        (sym::start, sym::end) => (field1.expr, field2.expr),
+                        (sym::end, sym::start) => (field2.expr, field1.expr),
+                        _ => return None,
+                    };
+                    Some(Range {
+                        start: Some(start),
+                        end: Some(end),
+                        limits: ast::RangeLimits::HalfOpen,
+                    })
+                },
+                (QPath::LangItem(hir::LangItem::RangeToInclusive, ..), [field]) if field.ident.name == sym::end => {
+                    Some(Range {
+                        start: None,
+                        end: Some(field.expr),
+                        limits: ast::RangeLimits::Closed,
+                    })
+                },
+                (QPath::LangItem(hir::LangItem::RangeTo, ..), [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
-                    end: Some(get_field("end", fields)?),
-                    limits: ast::RangeLimits::Closed,
-                }),
-                QPath::LangItem(hir::LangItem::RangeTo, ..) => Some(Range {
-                    start: None,
-                    end: Some(get_field("end", fields)?),
+                    end: Some(field.expr),
                     limits: ast::RangeLimits::HalfOpen,
                 }),
                 _ => None,
@@ -362,6 +370,7 @@ pub struct WhileLet<'hir> {
     pub let_expr: &'hir Expr<'hir>,
     /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
+    pub label: Option<ast::Label>,
     /// `while let PAT = EXPR`
     ///        ^^^^^^^^^^^^^^
     pub let_span: Span,
@@ -394,7 +403,7 @@ impl<'hir> WhileLet<'hir> {
                     }),
                 ..
             },
-            _,
+            label,
             LoopSource::While,
             _,
         ) = expr.kind
@@ -403,6 +412,7 @@ impl<'hir> WhileLet<'hir> {
                 let_pat,
                 let_expr,
                 if_then,
+                label,
                 let_span,
             });
         }
@@ -461,7 +471,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
                     let arg = args.first()?;
-                    return match constant_simple(cx, cx.typeck_results(), arg) {
+                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };

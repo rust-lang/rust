@@ -9,7 +9,7 @@
       bb0: {
           _2 = const true;
           _3 = const true;
-          switchInt(_1) -> [0: bb3, 1: bb3, 2: bb1, otherwise: bb2];
+          switchInt(copy _1) -> [0: bb3, 1: bb3, 2: bb1, otherwise: bb2];
       }
   
       bb1: {
@@ -28,11 +28,11 @@
       }
   
       bb4: {
-          switchInt(_3) -> [0: bb5, otherwise: bb7];
+          switchInt(copy _3) -> [0: bb5, otherwise: bb7];
       }
   
       bb5: {
-          switchInt(_2) -> [0: bb6, otherwise: bb8];
+          switchInt(copy _2) -> [0: bb6, otherwise: bb8];
       }
   
       bb6: {

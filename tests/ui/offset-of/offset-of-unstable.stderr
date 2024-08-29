@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:14:9
+  --> $DIR/offset-of-unstable.rs:12:9
    |
 LL |         Unstable,
    |         ^^^^^^^^
@@ -8,7 +8,7 @@ LL |         Unstable,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:23:9
+  --> $DIR/offset-of-unstable.rs:21:9
    |
 LL |         UnstableWithStableFieldType,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |         UnstableWithStableFieldType,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:28:9
+  --> $DIR/offset-of-unstable.rs:26:9
    |
 LL |         UnstableWithStableFieldType,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |         UnstableWithStableFieldType,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:12:5
+  --> $DIR/offset-of-unstable.rs:10:5
    |
 LL | /     offset_of!(
 LL | |
@@ -40,7 +40,7 @@ LL | |     );
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:18:5
+  --> $DIR/offset-of-unstable.rs:16:5
    |
 LL |     offset_of!(StableWithUnstableField, unstable);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL |     offset_of!(StableWithUnstableField, unstable);
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:20:5
+  --> $DIR/offset-of-unstable.rs:18:5
    |
 LL |     offset_of!(StableWithUnstableFieldType, stable.unstable);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |     offset_of!(StableWithUnstableFieldType, stable.unstable);
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:21:5
+  --> $DIR/offset-of-unstable.rs:19:5
    |
 LL | /     offset_of!(
 LL | |
@@ -74,7 +74,7 @@ LL | |     );
    = note: this error originates in the macro `offset_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/offset-of-unstable.rs:26:5
+  --> $DIR/offset-of-unstable.rs:24:5
    |
 LL | /     offset_of!(
 LL | |

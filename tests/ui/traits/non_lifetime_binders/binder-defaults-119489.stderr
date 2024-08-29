@@ -1,3 +1,9 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/binder-defaults-119489.rs:7:23
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |                       ^
+
 warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/binder-defaults-119489.rs:1:12
    |
@@ -27,5 +33,5 @@ error: defaults for generic parameters are not allowed in `for<...>` binders
 LL |     for<T = (), const N: usize = 1> ():,
    |                 ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to 3 previous errors; 2 warnings emitted
 

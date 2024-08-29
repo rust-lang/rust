@@ -1,15 +1,23 @@
-use super::BackendTypes;
+use std::cell::RefCell;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::Session;
-use std::cell::RefCell;
+
+use super::BackendTypes;
 
 pub trait MiscMethods<'tcx>: BackendTypes {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Self::Value>>;
-    fn check_overflow(&self) -> bool;
+    fn apply_vcall_visibility_metadata(
+        &self,
+        _ty: Ty<'tcx>,
+        _poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        _vtable: Self::Value,
+    ) {
+    }
     fn get_fn(&self, instance: Instance<'tcx>) -> Self::Function;
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> Self::Value;
     fn eh_personality(&self) -> Self::Value;

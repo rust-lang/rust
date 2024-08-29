@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Foo` in this scope
+  --> $DIR/normalization-of-unknown-type.rs:24:5
+   |
+LL |     Foo: Filter,
+   |     ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

@@ -253,14 +253,11 @@ fn lint_map_unit_fn(
 
 impl<'tcx> LateLintPass<'tcx> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
-        if stmt.span.from_expansion() {
-            return;
-        }
-
-        if let hir::StmtKind::Semi(expr) = stmt.kind {
-            if let Some(arglists) = method_chain_args(expr, &["map"]) {
-                lint_map_unit_fn(cx, stmt, expr, arglists[0]);
-            }
+        if let hir::StmtKind::Semi(expr) = stmt.kind
+            && !stmt.span.from_expansion()
+            && let Some(arglists) = method_chain_args(expr, &["map"])
+        {
+            lint_map_unit_fn(cx, stmt, expr, arglists[0]);
         }
     }
 }

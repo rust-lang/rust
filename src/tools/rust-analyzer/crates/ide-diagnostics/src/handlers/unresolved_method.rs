@@ -1,13 +1,12 @@
-use hir::{db::ExpandDatabase, AssocItem, HirDisplay, InFile};
+use hir::{db::ExpandDatabase, AssocItem, FileRange, HirDisplay, InFile};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
-    base_db::FileRange,
     label::Label,
     source_change::SourceChange,
 };
 use syntax::{
     ast::{self, make, HasArgList},
-    AstNode, SmolStr, TextRange,
+    format_smolstr, AstNode, SmolStr, TextRange, ToSmolStr,
 };
 use text_edit::TextEdit;
 
@@ -105,10 +104,10 @@ fn field_fix(
         group: None,
         target: range,
         source_change: Some(SourceChange::from_iter([
-            (file_id, TextEdit::insert(range.start(), "(".to_owned())),
-            (file_id, TextEdit::insert(range.end(), ")".to_owned())),
+            (file_id.into(), TextEdit::insert(range.start(), "(".to_owned())),
+            (file_id.into(), TextEdit::insert(range.end(), ")".to_owned())),
         ])),
-        trigger_signature_help: false,
+        command: None,
     })
 }
 
@@ -154,7 +153,8 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
             _ => false,
         };
 
-        let mut receiver_type_adt_name = receiver_type.as_adt()?.name(db).to_smol_str().to_string();
+        let mut receiver_type_adt_name =
+            receiver_type.as_adt()?.name(db).display_no_db().to_smolstr();
 
         let generic_parameters: Vec<SmolStr> = receiver_type.generic_parameters(db).collect();
         // if receiver should be pass as first arg in the assoc func,
@@ -162,11 +162,11 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         if !need_to_take_receiver_as_first_arg && !generic_parameters.is_empty() {
             let generic_parameters = generic_parameters.join(", ");
             receiver_type_adt_name =
-                format!("{}::<{}>", receiver_type_adt_name, generic_parameters);
+                format_smolstr!("{receiver_type_adt_name}::<{generic_parameters}>");
         }
 
         let method_name = call.name_ref()?;
-        let assoc_func_call = format!("{}::{}()", receiver_type_adt_name, method_name);
+        let assoc_func_call = format!("{receiver_type_adt_name}::{method_name}()");
 
         let assoc_func_call = make::expr_path(make::path_from_text(&assoc_func_call));
 
@@ -184,8 +184,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         Some(Assist {
             id: AssistId("method_call_to_assoc_func_call_fix", AssistKind::QuickFix),
             label: Label::new(format!(
-                "Use associated func call instead: `{}`",
-                assoc_func_call_expr_string
+                "Use associated func call instead: `{assoc_func_call_expr_string}`"
             )),
             group: None,
             target: range,
@@ -193,7 +192,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
                 file_id,
                 TextEdit::replace(range, assoc_func_call_expr_string),
             )),
-            trigger_signature_help: false,
+            command: None,
         })
     } else {
         None

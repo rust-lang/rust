@@ -1,7 +1,8 @@
-//@ check-pass
-//@ known-bug: #110395
+//~ ERROR the trait bound
+//@ compile-flags: -Znext-solver
 
-#![feature(const_trait_impl)]
+#![allow(incomplete_features)]
+#![feature(const_trait_impl, effects)]
 
 #[const_trait]
 trait Foo {
@@ -16,6 +17,6 @@ impl Foo for S {
 }
 
 impl const Bar for S {}
-//FIXME ~^ ERROR the trait bound
+// FIXME(effects) bad span
 
 fn main() {}

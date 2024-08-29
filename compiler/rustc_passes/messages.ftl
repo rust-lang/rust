@@ -14,7 +14,7 @@ passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
 passes_allow_incoherent_impl =
-    `rustc_allow_incoherent_impl` attribute should be applied to impl items.
+    `rustc_allow_incoherent_impl` attribute should be applied to impl items
     .label = the only currently supported targets are inherent methods
 
 passes_allow_internal_unstable =
@@ -69,9 +69,6 @@ passes_break_non_loop =
     .suggestion = use `break` on its own without a value inside this `{$kind}` loop
     .break_expr_suggestion = alternatively, you might have meant to use the available loop label
 
-passes_cannot_inline_naked_function =
-    naked functions cannot be inlined
-
 passes_cannot_stabilize_deprecated =
     an API can't be stabilized after it is deprecated
     .label = invalid version
@@ -103,18 +100,13 @@ passes_continue_labeled_block =
     .label = labeled blocks cannot be `continue`'d
     .block_label = labeled block the `continue` points to
 
-passes_coverage_fn_defn =
-    `#[coverage]` may only be applied to function definitions
+passes_coroutine_on_non_closure =
+    attribute should be applied to closures
+    .label = not a closure
 
-passes_coverage_ignored_function_prototype =
-    `#[coverage]` is ignored on function prototypes
-
-passes_coverage_not_coverable =
-    `#[coverage]` must be applied to coverable code
-    .label = not coverable code
-
-passes_coverage_propagate =
-    `#[coverage]` does not propagate into items and must be applied to the contained functions directly
+passes_coverage_not_fn_or_closure =
+    attribute should be applied to a function definition or closure
+    .label = not a function or closure
 
 passes_dead_codes =
     { $multiple ->
@@ -231,6 +223,9 @@ passes_doc_masked_only_extern_crate =
     .not_an_extern_crate_label = not an `extern crate` item
     .note = read <https://doc.rust-lang.org/unstable-book/language-features/doc-masked.html> for more information
 
+passes_doc_rust_logo =
+    the `#[doc(rust_logo)]` attribute is used for Rust branding
+
 passes_doc_test_literal = `#![doc(test(...)]` does not take a literal
 
 passes_doc_test_takes_list =
@@ -253,8 +248,8 @@ passes_doc_test_unknown_spotlight =
     .no_op_note = `doc(spotlight)` is now a no-op
 
 passes_duplicate_diagnostic_item_in_crate =
-    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`.
-    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
+    duplicate diagnostic item in crate `{$crate_name}`: `{$name}`
+    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`
 
 passes_duplicate_feature_err =
     the feature `{$feature}` has already been declared
@@ -263,27 +258,27 @@ passes_duplicate_lang_item =
     found duplicate lang item `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_duplicate_lang_item_crate =
-    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`.
+    duplicate lang item in crate `{$crate_name}`: `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
 passes_duplicate_lang_item_crate_depends =
-    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`.
+    duplicate lang item in crate `{$crate_name}` (which `{$dependency_of}` depends on): `{$lang_item_name}`
     .first_defined_span = the lang item is first defined here
     .first_defined_crate_depends = the lang item is first defined in crate `{$orig_crate_name}` (which `{$orig_dependency_of}` depends on)
-    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`.
+    .first_defined_crate = the lang item is first defined in crate `{$orig_crate_name}`
     .first_definition_local = first definition in the local crate (`{$orig_crate_name}`)
     .second_definition_local = second definition in the local crate (`{$crate_name}`)
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
@@ -299,9 +294,6 @@ passes_export_name =
 passes_extern_main =
     the `main` function cannot be declared in an `extern` block
 
-passes_feature_only_on_nightly =
-    `#![feature]` may not be used on the {$release_channel} release channel
-
 passes_feature_previously_declared =
     feature `{$feature}` is declared {$declared}, but was previously declared {$prev_declared}
 
@@ -315,7 +307,7 @@ passes_ffi_pure_invalid_target =
     `#[ffi_pure]` may only be used on foreign functions
 
 passes_has_incoherent_inherent_impl =
-    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
+    `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits
     .label = only adts, extern types and traits are supported
 
 passes_ignored_attr =
@@ -438,6 +430,10 @@ passes_link_section =
     .warn = {-passes_previously_accepted}
     .label = not a function or static
 
+passes_linkage =
+    attribute should be applied to a function or static
+    .label = not a function definition or static
+
 passes_macro_export =
     `#[macro_export]` only has an effect on macro definitions
 
@@ -447,6 +443,9 @@ passes_macro_export_on_decl_macro =
 
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
+
+passes_may_dangle =
+    `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
 
 passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
 passes_missing_const_err =
@@ -479,12 +478,8 @@ passes_multiple_start_functions =
     .previous = previous `#[start]` function here
 
 passes_must_not_suspend =
-    `must_not_suspend` attribute should be applied to a struct, enum, or trait
-    .label = is not a struct, enum, or trait
-
-passes_must_use_async =
-    `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
-    .label = this attribute does nothing, the `Future`s returned by async functions are already `must_use`
+    `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
+    .label = is not a struct, enum, union, or trait
 
 passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
@@ -497,15 +492,17 @@ passes_naked_functions_asm_block =
 passes_naked_functions_asm_options =
     asm options unsupported in naked functions: {$unsupported_options}
 
+passes_naked_functions_incompatible_attribute =
+    attribute incompatible with `#[naked]`
+    .label = the `{$attr}` attribute is incompatible with `#[naked]`
+    .naked_attribute = function marked with `#[naked]` here
+
 passes_naked_functions_must_use_noreturn =
     asm in naked functions must use `noreturn` option
     .suggestion = consider specifying that the asm block is responsible for returning from the function
 
 passes_naked_functions_operands =
     only `const` and `sym` operands are supported in naked functions
-
-passes_naked_tracked_caller =
-    cannot use `#[track_caller]` with `#[naked]`
 
 passes_no_link =
     attribute should be applied to an `extern crate` item
@@ -555,6 +552,10 @@ passes_only_has_effect_on =
         *[unspecified] (unspecified--this is a compiler bug)
     }
 
+passes_optimize_not_fn_or_closure =
+    attribute should be applied to function or closure
+    .label = not a function or closure
+
 passes_outer_crate_level_attr =
     crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
 
@@ -590,6 +591,18 @@ passes_pass_by_value =
     .label = is not a struct, enum or type alias
 
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
+
+passes_remove_fields =
+    consider removing { $num ->
+      [one] this
+     *[other] these
+    } { $num ->
+      [one] field
+     *[other] fields
+    }
+
+passes_repr_align_function =
+    `repr(align)` attributes on functions are unstable
 
 passes_repr_conflicting =
     conflicting representation hints
@@ -640,6 +653,10 @@ passes_rustc_lint_opt_ty =
     `#[rustc_lint_opt_ty]` should be applied to a struct
     .label = not a struct
 
+passes_rustc_pub_transparent =
+    attribute should be applied to `#[repr(transparent)]` types
+    .label = not a `#[repr(transparent)]` type
+
 passes_rustc_safe_intrinsic =
     attribute should be applied to intrinsic functions
     .label = not an intrinsic function
@@ -654,6 +671,10 @@ passes_should_be_applied_to_fn =
         [true] cannot be applied to crates
         *[false] not a function definition
     }
+
+passes_should_be_applied_to_fn_or_unit_struct =
+    attribute should be applied to a function definition or unit struct
+    .label = not a function definition or a unit struct
 
 passes_should_be_applied_to_static =
     attribute should be applied to a static
@@ -782,6 +803,7 @@ passes_used_compiler_linker =
 
 passes_used_static =
     attribute must be applied to a `static` variable
+    .label = but this is a {$target}
 
 passes_useless_assignment =
     useless assignment of {$is_field_assign ->

@@ -3,6 +3,11 @@ error[E0533]: expected value, found struct variant `Foo::Variant`
    |
 LL |     let f = Foo::Variant(42);
    |             ^^^^^^^^^^^^ not a value
+   |
+help: you might have meant to create a new value of the struct
+   |
+LL |     let f = Foo::Variant { x: /* value */ };
+   |                          ~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

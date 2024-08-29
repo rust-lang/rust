@@ -1,6 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::visitors::{is_local_used, local_used_once};
 use clippy_utils::{is_trait_method, path_to_local_id};
 use rustc_errors::Applicability;
@@ -51,9 +52,10 @@ pub struct ManualHashOne {
 }
 
 impl ManualHashOne {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -105,8 +107,8 @@ impl LateLintPass<'_> for ManualHashOne {
                 finish_expr.span,
                 "manual implementation of `BuildHasher::hash_one`",
                 |diag| {
-                    if let Some(build_hasher) = snippet_opt(cx, build_hasher.span)
-                        && let Some(hashed_value) = snippet_opt(cx, hashed_value.span)
+                    if let Some(build_hasher) = build_hasher.span.get_source_text(cx)
+                        && let Some(hashed_value) = hashed_value.span.get_source_text(cx)
                     {
                         diag.multipart_suggestion(
                             "try",

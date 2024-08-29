@@ -1,6 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
 use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
@@ -86,25 +87,26 @@ declare_clippy_lint! {
     "check if the same trait bounds are specified more than once during a generic declaration"
 }
 
-#[derive(Clone)]
 pub struct TraitBounds {
     max_trait_bounds: u64,
     msrv: Msrv,
 }
 
 impl TraitBounds {
-    #[must_use]
-    pub fn new(max_trait_bounds: u64, msrv: Msrv) -> Self {
-        Self { max_trait_bounds, msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            max_trait_bounds: conf.max_trait_bounds,
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
 impl_lint_pass!(TraitBounds => [TYPE_REPETITION_IN_BOUNDS, TRAIT_DUPLICATION_IN_BOUNDS]);
 
 impl<'tcx> LateLintPass<'tcx> for TraitBounds {
-    fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
-        self.check_type_repetition(cx, gen);
-        check_trait_bound_duplication(cx, gen);
+    fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {
+        self.check_type_repetition(cx, generics);
+        check_trait_bound_duplication(cx, generics);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
@@ -181,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
             // Iterate the bounds and add them to our seen hash
             // If we haven't yet seen it, add it to the fixed traits
-            for bound in bounds {
+            for (bound, _) in bounds {
                 let Some(def_id) = bound.trait_ref.trait_def_id() else {
                     continue;
                 };
@@ -196,16 +198,15 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             // If the number of unique traits isn't the same as the number of traits in the bounds,
             // there must be 1 or more duplicates
             if bounds.len() != unique_traits.len() {
-                let mut bounds_span = bounds[0].span;
+                let mut bounds_span = bounds[0].0.span;
 
-                for bound in bounds.iter().skip(1) {
+                for (bound, _) in bounds.iter().skip(1) {
                     bounds_span = bounds_span.to(bound.span);
                 }
 
                 let fixed_trait_snippet = unique_traits
                     .iter()
-                    .filter_map(|b| snippet_opt(cx, b.span))
-                    .collect::<Vec<_>>()
+                    .filter_map(|b| b.span.get_source_text(cx))
                     .join(" + ");
 
                 span_lint_and_sugg(
@@ -238,7 +239,7 @@ impl TraitBounds {
     }
 
     #[allow(clippy::mutable_key_type)]
-    fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
+    fn check_type_repetition<'tcx>(&self, cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) {
         struct SpanlessTy<'cx, 'tcx> {
             ty: &'tcx Ty<'tcx>,
             cx: &'cx LateContext<'tcx>,
@@ -258,12 +259,12 @@ impl TraitBounds {
         }
         impl Eq for SpanlessTy<'_, '_> {}
 
-        if gen.span.from_expansion() {
+        if generics.span.from_expansion() {
             return;
         }
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
-        for bound in gen.predicates {
+        for bound in generics.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
@@ -301,8 +302,8 @@ impl TraitBounds {
     }
 }
 
-fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() {
+fn check_trait_bound_duplication(cx: &LateContext<'_>, generics: &'_ Generics<'_>) {
+    if generics.span.from_expansion() {
         return;
     }
 
@@ -313,7 +314,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     //       |
     // collects each of these where clauses into a set keyed by generic name and comparable trait
     // eg. (T, Clone)
-    let where_predicates = gen
+    let where_predicates = generics
         .predicates
         .iter()
         .filter_map(|pred| {
@@ -342,7 +343,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     //            |
     // compare trait bounds keyed by generic name and comparable trait to collected where
     // predicates eg. (T, Clone)
-    for predicate in gen.predicates.iter().filter(|pred| !pred.in_where_clause()) {
+    for predicate in generics.predicates.iter().filter(|pred| !pred.in_where_clause()) {
         if let WherePredicate::BoundPredicate(bound_predicate) = predicate
             && bound_predicate.origin != PredicateOrigin::ImplTrait
             && !bound_predicate.span.from_expansion()
@@ -460,9 +461,8 @@ fn rollup_traits(
 
         let traits = comparable_bounds
             .iter()
-            .filter_map(|&(_, span)| snippet_opt(cx, span))
-            .collect::<Vec<_>>();
-        let traits = traits.join(" + ");
+            .filter_map(|&(_, span)| span.get_source_text(cx))
+            .join(" + ");
 
         span_lint_and_sugg(
             cx,

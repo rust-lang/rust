@@ -8,9 +8,42 @@ find useful.
 Check out the issues on this GitHub repository for some ideas. In particular,
 look for the green `E-*` labels which mark issues that should be rather
 well-suited for onboarding. For more ideas or help with hacking on Miri, you can
-contact us (`oli-obk` and `RalfJ`) on the [Rust Zulip].
+contact us on the [Rust Zulip]. See the [Rust website](https://www.rust-lang.org/governance/teams/compiler#team-miri)
+for a list of Miri maintainers.
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
+
+### Larger-scale contributions
+
+If you are thinking about making a larger-scale contribution -- in particular anything that needs
+more than can reasonably fit in a single PR to be feature-complete -- then please talk to us before
+writing significant amounts of code. Generally, we will ask that you follow a three-step "project"
+process for such contributions:
+
+1. Clearly define the **goal** of the project. This defines the scope of the project, i.e. which
+   part of which APIs should be supported. If this involves functions that expose a big API surface
+   with lots of flags, the project may want to support only a tiny subset of flags; that should be
+   documented. A good way to express the goal is with one or more test cases that Miri should be
+   able to successfully execute when the project is completed. It is a good idea to get feedback
+   from team members already at this stage to ensure that the project is reasonably scoped and
+   aligns with our interests.
+2. Make a **design** for how to realize the goal. A larger project will likely have to do global
+   changes to Miri, like adding new global state to the `Machine` type or new methods to the
+   `FileDescription` trait. Often we have to iterate on those changes, which can quite substantially
+   change how the final implementation looks like.
+
+    The design should be reasonably concrete, i.e. for new global state or methods the corresponding
+   Rust types and method signatures should be spelled out. We realize that it can be hard to make a
+   design without doing implementation work, in particular if you are not yet familiar with the
+   codebase. Doing draft implementations in phase 2 of this process is perfectly fine, just please
+   be aware that we might request fundamental changes that can require significantly reworking what
+   you already did. If you open a PR in this stage, please clearly indicate that this project is
+   still in the design stage.
+
+3. Finish the **implementation** and have it reviewed.
+
+This process is largely informal, and its primary goal is to more clearly communicate expectations.
+Please get in touch with us if you have any questions!
 
 ## Preparing the build environment
 
@@ -173,24 +206,24 @@ to `.vscode/settings.json` in your local Miri clone:
         "cargo-miri/Cargo.toml",
         "miri-script/Cargo.toml",
     ],
+    "rust-analyzer.check.invocationLocation": "root",
+    "rust-analyzer.check.invocationStrategy": "once",
     "rust-analyzer.check.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
-        "cargo",
         "clippy", // make this `check` when working with a locally built rustc
         "--message-format=json",
-        "--all-targets",
     ],
     // Contrary to what the name suggests, this also affects proc macros.
+    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
-        "cargo",
         "check",
         "--message-format=json",
-        "--all-targets",
     ],
 }
 ```
@@ -223,7 +256,7 @@ will eventually sync those changes back into this repository.
 When working on Miri in the rustc tree, here's how you can run tests:
 
 ```
-./x.py test miri --stage 0
+./x.py test miri
 ```
 
 `--bless` will work, too.
@@ -231,7 +264,7 @@ When working on Miri in the rustc tree, here's how you can run tests:
 You can also directly run Miri on a Rust source file:
 
 ```
-./x.py run miri --stage 0 --args src/tools/miri/tests/pass/hello.rs
+./x.py run miri --stage 1 --args src/tools/miri/tests/pass/hello.rs
 ```
 
 ## Advanced topic: Syncing with the rustc repo
@@ -287,13 +320,29 @@ https. Add the following to your `.gitconfig`:
     pushInsteadOf = https://github.com/
 ```
 
-## Internal environment variables
+## Further environment variables
+
+The following environment variables are relevant to `./miri`:
+
+* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
+  (as controlled by the `./auto-*` files) should be skipped. If it is set to `no`, they are skipped.
+  This is used to allow automated IDE actions to avoid the auto ops.
+* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during Miri executions.
+* `MIRI_TEST_THREADS` (recognized by `./miri test`) sets the number of threads to use for running
+  tests. By default, the number of cores is used.
+* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`) disables checking that the `stderr` or
+  `stdout` files match the actual output.
+
+Furthermore, the usual environment variables recognized by `cargo miri` also work for `./miri`, e.g.
+`MIRI_LIB_SRC`. Note that `MIRIFLAGS` is ignored by `./miri test` as each test controls the flags it
+is run with.
 
 The following environment variables are *internal* and must not be used by
 anyone but Miri itself. They are used to communicate between different Miri
 binaries, and as such worth documenting:
 
 * `CARGO_EXTRA_FLAGS` is understood by `./miri` and passed to all host cargo invocations.
+  It is reserved for CI usage; setting the wrong flags this way can easily confuse the script.
 * `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
   actually not interpret the code but compile it like rustc would. With `target`, Miri sets
   some compiler flags to prepare the code for interpretation; with `host`, this is not done.

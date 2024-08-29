@@ -1,5 +1,4 @@
 use super::*;
-
 use crate::{
     console::OutputLocation,
     formatters::PrettyFormatter,
@@ -237,8 +236,9 @@ fn test_should_panic_bad_message() {
 #[cfg(not(target_os = "emscripten"))]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_should_panic_non_string_message_type() {
-    use crate::tests::TrFailedMsg;
     use std::any::TypeId;
+
+    use crate::tests::TrFailedMsg;
     fn f() -> Result<(), String> {
         std::panic::panic_any(1i32);
     }

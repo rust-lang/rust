@@ -15,9 +15,13 @@ fn empty_enum(x: EmptyEnum) {
     match x {} // ok
     match x {
         _ => {} //~ ERROR unreachable pattern
+                //~^ NOTE matches no values
+                //~| NOTE to learn more about uninhabited types, see
     }
     match x {
         _ if false => {} //~ ERROR unreachable pattern
+                         //~^ NOTE matches no values
+                         //~| NOTE to learn more about uninhabited types, see
     }
 }
 
@@ -25,20 +29,24 @@ fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     match x {} // ok
     match x {
         _ => {} //~ ERROR unreachable pattern
+                //~^ NOTE matches no values
+                //~| NOTE to learn more about uninhabited types, see
     }
     match x {
         _ if false => {} //~ ERROR unreachable pattern
+                         //~^ NOTE matches no values
+                         //~| NOTE to learn more about uninhabited types, see
     }
 }
 
-fn empty_foreign_enum_private(x: Option<empty::SecretlyUninhabitedForeignStruct>) {
-    let None = x;
+fn empty_foreign_enum_private(x: &Option<empty::SecretlyUninhabitedForeignStruct>) {
+    let None = *x;
     //~^ ERROR refutable pattern in local binding
     //~| NOTE `let` bindings require an "irrefutable pattern"
     //~| NOTE for more information, visit
     //~| NOTE the matched value is of type
     //~| NOTE pattern `Some(_)` not covered
-    //[exhaustive_patterns]~| NOTE currently uninhabited, but this variant contains private fields
+    //~| NOTE currently uninhabited, but this variant contains private fields
 }
 
 fn main() {

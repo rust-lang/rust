@@ -573,19 +573,19 @@ impl<T> From<T> for RwLock<T> {
 }
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
-    /// Create a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
+    /// Creates a new instance of `RwLockReadGuard<T>` from a `RwLock<T>`.
     // SAFETY: if and only if `lock.inner.read()` (or `lock.inner.try_read()`) has been
     // successfully called from the same thread before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |()| RwLockReadGuard {
-            data: NonNull::new_unchecked(lock.data.get()),
+            data: unsafe { NonNull::new_unchecked(lock.data.get()) },
             inner_lock: &lock.inner,
         })
     }
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
-    /// Create a new instance of `RwLockWriteGuard<T>` from a `RwLock<T>`.
+    /// Creates a new instance of `RwLockWriteGuard<T>` from a `RwLock<T>`.
     // SAFETY: if and only if `lock.inner.write()` (or `lock.inner.try_write()`) has been
     // successfully called from the same thread before instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {

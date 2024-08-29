@@ -1,0 +1,15 @@
+error: item does not constrain `TE::{opaque#0}`, but has it in its signature
+  --> $DIR/type-alias-impl-trait-fns.rs:18:4
+   |
+LL | fn bla2() -> TE {
+   |    ^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/type-alias-impl-trait-fns.rs:23:11
+   |
+LL | type TE = impl MyTrait;
+   |           ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

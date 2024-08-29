@@ -1,7 +1,6 @@
 //@ build-fail
 #![feature(rustc_attrs)]
 #![feature(negative_impls)]
-#![allow(where_clauses_object_safety)]
 
 // B --> A
 

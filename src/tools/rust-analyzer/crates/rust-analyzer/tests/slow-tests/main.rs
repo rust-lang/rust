@@ -8,14 +8,11 @@
 //! specific JSON shapes here -- there's little value in such tests, as we can't
 //! be sure without a real client anyway.
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::disallowed_types)]
 
-#[cfg(not(feature = "in-rust-tree"))]
-mod sourcegen;
+mod ratoml;
 mod support;
 mod testdir;
-mod tidy;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
@@ -30,15 +27,14 @@ use lsp_types::{
     InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
     RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
 };
-use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
+use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
 use stdx::format_to_acc;
-use test_utils::skip_slow_tests;
 
-use crate::{
-    support::{project, Project},
-    testdir::TestDir,
-};
+use test_utils::skip_slow_tests;
+use testdir::TestDir;
+
+use crate::support::{project, Project};
 
 #[test]
 fn completes_items_from_standard_library() {
@@ -258,8 +254,8 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
               "executableArgs": ["test_eggs", "--exact", "--show-output"],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -279,6 +275,7 @@ fn main() {}
           {
             "args": {
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo"),
               "cargoArgs": [
                 "test",
@@ -287,7 +284,6 @@ fn main() {}
                 "--test",
                 "spam"
               ],
-              "cargoExtraArgs": [],
               "executableArgs": [
                 "",
                 "--show-output"
@@ -323,8 +319,8 @@ fn main() {}
             "args": {
               "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -334,8 +330,8 @@ fn main() {}
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--all-targets"],
               "executableArgs": [],
-              "cargoExtraArgs": [],
               "overrideCargo": null,
+              "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
@@ -415,13 +411,13 @@ mod tests {
                     "args": {
                         "overrideCargo": null,
                         "workspaceRoot": server.path().join(runnable),
+                        "cwd": server.path().join(runnable),
                         "cargoArgs": [
                             "test",
                             "--package",
                             runnable,
                             "--all-targets"
                         ],
-                        "cargoExtraArgs": [],
                         "executableArgs": []
                     },
                 },
@@ -430,6 +426,92 @@ mod tests {
             ]),
         );
     }
+}
+
+// The main fn in packages should be run from the workspace root
+#[test]
+fn test_runnables_cwd() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /foo/Cargo.toml
+[workspace]
+members = ["mainpkg", "otherpkg"]
+
+//- /foo/mainpkg/Cargo.toml
+[package]
+name = "mainpkg"
+version = "0.1.0"
+
+//- /foo/mainpkg/src/main.rs
+fn main() {}
+
+//- /foo/otherpkg/Cargo.toml
+[package]
+name = "otherpkg"
+version = "0.1.0"
+
+//- /foo/otherpkg/src/lib.rs
+#[test]
+fn otherpkg() {}
+"#,
+    )
+    .root("foo")
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.request::<Runnables>(
+        RunnablesParams { text_document: server.doc_id("foo/mainpkg/src/main.rs"), position: None },
+        json!([
+            "{...}",
+            {
+                "label": "cargo test -p mainpkg --all-targets",
+                "kind": "cargo",
+                "args": {
+                    "overrideCargo": null,
+                    "workspaceRoot": server.path().join("foo"),
+                    "cwd": server.path().join("foo"),
+                    "cargoArgs": [
+                        "test",
+                        "--package",
+                        "mainpkg",
+                        "--all-targets"
+                    ],
+                    "executableArgs": []
+                },
+            },
+            "{...}",
+            "{...}"
+        ]),
+    );
+
+    server.request::<Runnables>(
+        RunnablesParams { text_document: server.doc_id("foo/otherpkg/src/lib.rs"), position: None },
+        json!([
+            "{...}",
+            {
+                "label": "cargo test -p otherpkg --all-targets",
+                "kind": "cargo",
+                "args": {
+                    "overrideCargo": null,
+                    "workspaceRoot": server.path().join("foo"),
+                    "cwd": server.path().join("foo").join("otherpkg"),
+                    "cargoArgs": [
+                        "test",
+                        "--package",
+                        "otherpkg",
+                        "--all-targets"
+                    ],
+                    "executableArgs": []
+                },
+            },
+            "{...}",
+            "{...}"
+        ]),
+    );
 }
 
 #[test]
@@ -668,7 +750,7 @@ fn test_missing_module_code_action_in_json_project() {
 
     let code = format!(
         r#"
-//- /rust-project.json
+//- /.rust-project.json
 {project}
 
 //- /src/lib.rs
@@ -727,66 +809,6 @@ fn main() {{}}
         },
         json!([]),
     );
-}
-
-#[test]
-fn test_opening_a_file_outside_of_indexed_workspace() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let tmp_dir = TestDir::new();
-    let path = tmp_dir.path();
-
-    let project = json!({
-        "roots": [path],
-        "crates": [ {
-            "root_module": path.join("src/crate_one/lib.rs"),
-            "deps": [],
-            "edition": "2015",
-            "cfg": [ "cfg_atom_1", "feature=\"cfg_1\""],
-        } ]
-    });
-
-    let code = format!(
-        r#"
-//- /rust-project.json
-{project}
-
-//- /src/crate_one/lib.rs
-mod bar;
-
-fn main() {{}}
-"#,
-    );
-
-    let server = Project::with_fixture(&code)
-        .tmp_dir(tmp_dir)
-        .with_config(serde_json::json!({
-            "notifications": {
-                "unindexedProject": true
-            },
-        }))
-        .server()
-        .wait_until_workspace_is_loaded();
-
-    let uri = server.doc_id("src/crate_two/lib.rs").uri;
-    server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
-        text_document: TextDocumentItem {
-            uri: uri.clone(),
-            language_id: "rust".to_owned(),
-            version: 0,
-            text: "/// Docs\nfn foo() {}".to_owned(),
-        },
-    });
-    let expected = json!({
-        "textDocuments": [
-            {
-                "uri": uri
-            }
-        ]
-    });
-    server.expect_notification::<UnindexedProject>(expected);
 }
 
 #[test]
@@ -1059,11 +1081,10 @@ fn resolve_proc_macro() {
         return;
     }
 
-    let sysroot = project_model::Sysroot::discover_no_source(
+    let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
-    )
-    .unwrap();
+    );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
 
@@ -1103,7 +1124,6 @@ edition = "2021"
 proc-macro = true
 
 //- /bar/src/lib.rs
-extern crate proc_macro;
 use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
 macro_rules! t {
     ($n:literal) => {

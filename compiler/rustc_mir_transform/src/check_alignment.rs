@@ -1,10 +1,8 @@
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::mir::{
-    interpret::Scalar,
-    visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor},
-};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 
@@ -73,7 +71,7 @@ struct PointerFinder<'tcx, 'a> {
 impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         // We want to only check reads and writes to Places, so we specifically exclude
-        // Borrows and AddressOf.
+        // Borrow and RawBorrow.
         match context {
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store

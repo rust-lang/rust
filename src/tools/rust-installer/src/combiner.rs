@@ -1,13 +1,12 @@
-use super::Scripter;
-use super::Tarballer;
-use crate::{
-    compression::{CompressionFormat, CompressionFormats, CompressionProfile},
-    util::*,
-};
-use anyhow::{bail, Context, Result};
 use std::io::{Read, Write};
 use std::path::Path;
+
+use anyhow::{bail, Context, Result};
 use tar::Archive;
+
+use super::{Scripter, Tarballer};
+use crate::compression::{CompressionFormat, CompressionFormats, CompressionProfile};
+use crate::util::*;
 
 actor! {
     #[derive(Debug)]
@@ -55,6 +54,12 @@ actor! {
         /// The formats used to compress the tarball
         #[arg(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
+
+        /// Modification time that will be set for all files added to the archive.
+        /// The default is the date of the first Rust commit from 2006.
+        /// This serves for better reproducibility of the archives.
+        #[arg(value_name = "FILE_MTIME", default_value_t = 1153704088)]
+        override_file_mtime: u64,
     }
 }
 
@@ -103,7 +108,7 @@ impl Combiner {
                 .with_context(|| format!("failed to read components in '{}'", input_tarball))?;
             for component in pkg_components.split_whitespace() {
                 // All we need to do is copy the component directory. We could
-                // move it, but rustbuild wants to reuse the unpacked package
+                // move it, but bootstrap wants to reuse the unpacked package
                 // dir for OS-specific installers on macOS and Windows.
                 let component_dir = package_dir.join(component);
                 create_dir(&component_dir)?;
@@ -145,7 +150,8 @@ impl Combiner {
             .input(self.package_name)
             .output(path_to_str(&output)?.into())
             .compression_profile(self.compression_profile)
-            .compression_formats(self.compression_formats);
+            .compression_formats(self.compression_formats)
+            .override_file_mtime(self.override_file_mtime);
         tarballer.run()?;
 
         Ok(())

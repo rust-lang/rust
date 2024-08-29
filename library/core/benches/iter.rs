@@ -3,6 +3,7 @@ use core::iter::*;
 use core::mem;
 use core::num::Wrapping;
 use core::ops::Range;
+
 use test::{black_box, Bencher};
 
 #[bench]

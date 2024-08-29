@@ -1,8 +1,9 @@
 use std::{fmt, ops};
 
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::fn_has_unsatisfiable_preds;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
@@ -85,10 +86,9 @@ pub struct LargeStackFrames {
 }
 
 impl LargeStackFrames {
-    #[must_use]
-    pub fn new(size: u64) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            maximum_allowed_size: size,
+            maximum_allowed_size: conf.stack_size_threshold,
         }
     }
 }
@@ -186,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                         // TODO: Is there a cleaner, robust way to ask this question?
                         // The obvious `LocalDecl::is_user_variable()` panics on "unwrapping cross-crate data",
                         // and that doesn't get us the true name in scope rather than the span text either.
-                        if let Some(name) = snippet_opt(cx, local_span)
+                        if let Some(name) = local_span.get_source_text(cx)
                             && is_ident(&name)
                         {
                             // If the local is an ordinary named variable,

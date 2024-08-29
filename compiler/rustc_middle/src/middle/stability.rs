@@ -1,9 +1,8 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-pub use self::StabilityLevel::*;
+use std::num::NonZero;
 
-use crate::ty::{self, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
@@ -22,7 +21,10 @@ use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use std::num::NonZero;
+use tracing::debug;
+
+pub use self::StabilityLevel::*;
+use crate::ty::{self, TyCtxt};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
@@ -111,7 +113,7 @@ pub fn report_unstable(
 ) {
     let msg = match reason {
         Some(r) => format!("use of unstable library feature '{feature}': {r}"),
-        None => format!("use of unstable library feature '{}'", &feature),
+        None => format!("use of unstable library feature '{feature}'"),
     };
 
     if is_soft {
@@ -156,6 +158,13 @@ pub struct Deprecated {
 
 impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecated {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.primary_message(match &self.since_kind {
+            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
+            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
+            DeprecatedSinceKind::InVersion(_) => {
+                crate::fluent_generated::middle_deprecated_in_version
+            }
+        });
         diag.arg("kind", self.kind);
         diag.arg("path", self.path);
         if let DeprecatedSinceKind::InVersion(version) = self.since_kind {
@@ -168,17 +177,7 @@ impl<'a, G: EmissionGuarantee> rustc_errors::LintDiagnostic<'a, G> for Deprecate
             diag.arg("has_note", false);
         }
         if let Some(sub) = self.sub {
-            diag.subdiagnostic(diag.dcx, sub);
-        }
-    }
-
-    fn msg(&self) -> rustc_errors::DiagMessage {
-        match &self.since_kind {
-            DeprecatedSinceKind::InEffect => crate::fluent_generated::middle_deprecated,
-            DeprecatedSinceKind::InFuture => crate::fluent_generated::middle_deprecated_in_future,
-            DeprecatedSinceKind::InVersion(_) => {
-                crate::fluent_generated::middle_deprecated_in_version
-            }
+            diag.subdiagnostic(sub);
         }
     }
 }
@@ -597,7 +596,9 @@ impl<'tcx> TyCtxt<'tcx> {
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
+            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
+                lint.primary_message(msg);
+            })
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

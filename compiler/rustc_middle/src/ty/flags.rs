@@ -1,6 +1,6 @@
-use crate::ty::{self, InferConst, Ty, TypeFlags};
-use crate::ty::{GenericArg, GenericArgKind};
 use std::slice;
+
+use crate::ty::{self, GenericArg, GenericArgKind, InferConst, Ty, TypeFlags};
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -28,10 +28,9 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: &ty::ConstKind<'_>, t: Ty<'_>) -> FlagComputation {
+    pub fn for_const_kind(kind: &ty::ConstKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_const_kind(c);
-        result.add_ty(t);
+        result.add_const_kind(kind);
         result
     }
 
@@ -251,9 +250,8 @@ impl FlagComputation {
                 self.add_args(args);
             }
 
-            &ty::FnPtr(fn_sig) => self.bound_computation(fn_sig, |computation, fn_sig| {
-                computation.add_tys(fn_sig.inputs());
-                computation.add_ty(fn_sig.output());
+            &ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
+                computation.add_tys(sig_tys.inputs_and_output);
             }),
         }
     }
@@ -373,27 +371,8 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
-            ty::ConstKind::Value(_) => {}
-            ty::ConstKind::Expr(e) => {
-                use ty::Expr;
-                match e {
-                    Expr::Binop(_, l, r) => {
-                        self.add_const(l);
-                        self.add_const(r);
-                    }
-                    Expr::UnOp(_, v) => self.add_const(v),
-                    Expr::FunctionCall(f, args) => {
-                        self.add_const(f);
-                        for arg in args {
-                            self.add_const(arg);
-                        }
-                    }
-                    Expr::Cast(_, c, t) => {
-                        self.add_ty(t);
-                        self.add_const(c);
-                    }
-                }
-            }
+            ty::ConstKind::Value(ty, _) => self.add_ty(ty),
+            ty::ConstKind::Expr(e) => self.add_args(e.args()),
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }

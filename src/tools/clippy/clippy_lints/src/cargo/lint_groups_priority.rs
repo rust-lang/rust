@@ -71,12 +71,6 @@ struct CargoToml {
     workspace: Workspace,
 }
 
-#[derive(Default, Debug)]
-struct LintsAndGroups {
-    lints: Vec<Spanned<String>>,
-    groups: Vec<(Spanned<String>, Spanned<LintConfig>)>,
-}
-
 fn toml_span(range: Range<usize>, file: &SourceFile) -> Span {
     Span::new(
         file.start_pos + BytePos::from_usize(range.start),
@@ -86,27 +80,28 @@ fn toml_span(range: Range<usize>, file: &SourceFile) -> Span {
     )
 }
 
-fn check_table(cx: &LateContext<'_>, table: LintTable, groups: &FxHashSet<&str>, file: &SourceFile) {
-    let mut by_priority = BTreeMap::<_, LintsAndGroups>::new();
+fn check_table(cx: &LateContext<'_>, table: LintTable, known_groups: &FxHashSet<&str>, file: &SourceFile) {
+    let mut lints = Vec::new();
+    let mut groups = Vec::new();
     for (name, config) in table {
-        let lints_and_groups = by_priority.entry(config.as_ref().priority()).or_default();
-        if groups.contains(name.get_ref().as_str()) {
-            lints_and_groups.groups.push((name, config));
+        if name.get_ref() == "warnings" {
+            continue;
+        }
+
+        if known_groups.contains(name.get_ref().as_str()) {
+            groups.push((name, config));
         } else {
-            lints_and_groups.lints.push(name);
+            lints.push((name, config.into_inner()));
         }
     }
-    let low_priority = by_priority
-        .iter()
-        .find(|(_, lints_and_groups)| !lints_and_groups.lints.is_empty())
-        .map_or(-1, |(&lowest_lint_priority, _)| lowest_lint_priority - 1);
 
-    for (priority, LintsAndGroups { lints, groups }) in by_priority {
-        let Some(last_lint_alphabetically) = lints.last() else {
-            continue;
-        };
-
-        for (group, config) in groups {
+    for (group, group_config) in groups {
+        let priority = group_config.get_ref().priority();
+        let level = group_config.get_ref().level();
+        if let Some((conflict, _)) = lints
+            .iter()
+            .rfind(|(_, lint_config)| lint_config.priority() == priority && lint_config.level() != level)
+        {
             span_lint_and_then(
                 cx,
                 LINT_GROUPS_PRIORITY,
@@ -116,22 +111,23 @@ fn check_table(cx: &LateContext<'_>, table: LintTable, groups: &FxHashSet<&str>,
                     group.as_ref()
                 ),
                 |diag| {
-                    let config_span = toml_span(config.span(), file);
-                    if config.as_ref().is_implicit() {
+                    let config_span = toml_span(group_config.span(), file);
+
+                    if group_config.as_ref().is_implicit() {
                         diag.span_label(config_span, "has an implicit priority of 0");
                     }
-                    // add the label to next lint after this group that has the same priority
-                    let lint = lints
-                        .iter()
-                        .filter(|lint| lint.span().start > group.span().start)
-                        .min_by_key(|lint| lint.span().start)
-                        .unwrap_or(last_lint_alphabetically);
-                    diag.span_label(toml_span(lint.span(), file), "has the same priority as this lint");
+                    diag.span_label(toml_span(conflict.span(), file), "has the same priority as this lint");
                     diag.note("the order of the lints in the table is ignored by Cargo");
+
                     let mut suggestion = String::new();
+                    let low_priority = lints
+                        .iter()
+                        .map(|(_, config)| config.priority().saturating_sub(1))
+                        .min()
+                        .unwrap_or(-1);
                     Serialize::serialize(
                         &LintConfigTable {
-                            level: config.as_ref().level().into(),
+                            level: level.into(),
                             priority: Some(low_priority),
                         },
                         toml::ser::ValueSerializer::new(&mut suggestion),

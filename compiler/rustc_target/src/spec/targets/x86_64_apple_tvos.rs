@@ -9,10 +9,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: tvos_sim_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("x86 64-bit tvOS".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

@@ -248,8 +248,8 @@ type Os = NoSource;
 // #3313
 fn stmt_expr_attributes() {
     let foo;
-    (#[must_use]
-    foo) = false;
+    #[must_use]
+    foo = false;
 }
 
 // #3509

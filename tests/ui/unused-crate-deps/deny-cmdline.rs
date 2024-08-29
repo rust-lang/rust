@@ -5,4 +5,4 @@
 //@ aux-crate:bar=bar.rs
 
 fn main() {}
-//~^ ERROR external crate `bar` unused in
+//~^ ERROR extern crate `bar` is unused in

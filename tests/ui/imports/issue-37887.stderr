@@ -2,9 +2,12 @@ error[E0432]: unresolved import `test`
   --> $DIR/issue-37887.rs:3:9
    |
 LL |     use test::*;
-   |         ^^^^ maybe a missing crate `test`?
+   |         ^^^^ you might be missing crate `test`
    |
-   = help: consider adding `extern crate test` to use the `test` crate
+help: consider importing the `test` crate
+   |
+LL + extern crate test;
+   |
 
 error[E0658]: use of unstable library feature 'test'
   --> $DIR/issue-37887.rs:2:5

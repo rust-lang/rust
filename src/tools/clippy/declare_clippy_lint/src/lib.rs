@@ -1,5 +1,4 @@
-#![feature(let_chains)]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![feature(let_chains, proc_macro_span)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -24,6 +23,7 @@ fn parse_attr<const LEN: usize>(path: [&'static str; LEN], attr: &Attribute) -> 
 
 struct ClippyLint {
     attrs: Vec<Attribute>,
+    version: Option<LitStr>,
     explanation: String,
     name: Ident,
     category: Ident,
@@ -42,8 +42,14 @@ impl Parse for ClippyLint {
                 let value = lit.value();
                 let line = value.strip_prefix(' ').unwrap_or(&value);
 
-                if line.starts_with("```") {
-                    explanation += "```\n";
+                if let Some(lang) = line.strip_prefix("```") {
+                    let tag = lang.split_once(',').map_or(lang, |(left, _)| left);
+                    if !in_code && matches!(tag, "" | "rust" | "ignore" | "should_panic" | "no_run" | "compile_fail") {
+                        explanation += "```rust\n";
+                    } else {
+                        explanation += line;
+                        explanation.push('\n');
+                    }
                     in_code = !in_code;
                 } else if !(in_code && line.starts_with("# ")) {
                     explanation += line;
@@ -69,6 +75,7 @@ impl Parse for ClippyLint {
 
         Ok(Self {
             attrs,
+            version,
             explanation,
             name,
             category,
@@ -124,6 +131,7 @@ impl Parse for ClippyLint {
 pub fn declare_clippy_lint(input: TokenStream) -> TokenStream {
     let ClippyLint {
         attrs,
+        version,
         explanation,
         name,
         category,
@@ -147,6 +155,14 @@ pub fn declare_clippy_lint(input: TokenStream) -> TokenStream {
     (&mut category[0..1]).make_ascii_uppercase();
     let category_variant = format_ident!("{category}");
 
+    let name_span = name.span().unwrap();
+    let location = format!("{}#L{}", name_span.source_file().path().display(), name_span.line());
+
+    let version = match version {
+        Some(version) => quote!(Some(#version)),
+        None => quote!(None),
+    };
+
     let output = quote! {
         rustc_session::declare_tool_lint! {
             #(#attrs)*
@@ -160,6 +176,8 @@ pub fn declare_clippy_lint(input: TokenStream) -> TokenStream {
             lint: &#name,
             category: crate::LintCategory::#category_variant,
             explanation: #explanation,
+            location: #location,
+            version: #version,
         };
     };
 

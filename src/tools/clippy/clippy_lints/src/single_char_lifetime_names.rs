@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{GenericParam, GenericParamKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -9,11 +9,10 @@ declare_clippy_lint! {
     /// Checks for lifetimes with names which are one character
     /// long.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// A single character is likely not enough to express the
     /// purpose of a lifetime. Using a longer name can make code
-    /// easier to understand, especially for those who are new to
-    /// Rust.
+    /// easier to understand.
     ///
     /// ### Known problems
     /// Rust programmers and learning resources tend to use single
@@ -49,13 +48,15 @@ impl EarlyLintPass for SingleCharLifetimeNames {
 
         if let GenericParamKind::Lifetime = param.kind {
             if !param.is_placeholder && param.ident.as_str().len() <= 2 {
-                span_lint_and_help(
+                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                span_lint_and_then(
                     ctx,
                     SINGLE_CHAR_LIFETIME_NAMES,
                     param.ident.span,
                     "single-character lifetime names are likely uninformative",
-                    None,
-                    "use a more informative name",
+                    |diag| {
+                        diag.help("use a more informative name");
+                    },
                 );
             }
         }

@@ -1,9 +1,12 @@
 //! This module is responsible for resolving paths within rules.
 
 use hir::AsAssocItem;
-use ide_db::{base_db::FilePosition, FxHashMap};
+use ide_db::FxHashMap;
 use parsing::Placeholder;
-use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
+use syntax::{
+    ast::{self, HasGenericArgs},
+    SmolStr, SyntaxKind, SyntaxNode, SyntaxToken,
+};
 
 use crate::{errors::error, parsing, SsrError};
 
@@ -192,7 +195,7 @@ impl Resolver<'_, '_> {
 impl<'db> ResolutionScope<'db> {
     pub(crate) fn new(
         sema: &hir::Semantics<'db, ide_db::RootDatabase>,
-        resolve_context: FilePosition,
+        resolve_context: hir::FilePosition,
     ) -> Option<ResolutionScope<'db>> {
         use syntax::ast::AstNode;
         let file = sema.parse(resolve_context.file_id);
@@ -235,7 +238,7 @@ impl<'db> ResolutionScope<'db> {
                 None,
                 |assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;
-                    if item_name.to_smol_str().as_str() == name.text() {
+                    if item_name.as_str() == name.text() {
                         Some(hir::PathResolution::Def(assoc_item.into()))
                     } else {
                         None

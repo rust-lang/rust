@@ -23,11 +23,10 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::{env, iter};
 
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::output;
+use crate::utils::exec::{command, BootstrapCommand};
 use crate::{Build, CLang, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
@@ -143,15 +142,15 @@ pub fn find_target(build: &Build, target: TargetSelection) {
         build.cxx.borrow_mut().insert(target, compiler);
     }
 
-    build.verbose(|| println!("CC_{} = {:?}", &target.triple, build.cc(target)));
-    build.verbose(|| println!("CFLAGS_{} = {:?}", &target.triple, cflags));
+    build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
+    build.verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
         let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
-        build.verbose(|| println!("CXX_{} = {:?}", &target.triple, cxx));
-        build.verbose(|| println!("CXXFLAGS_{} = {:?}", &target.triple, cxxflags));
+        build.verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
+        build.verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
     if let Some(ar) = ar {
-        build.verbose(|| println!("AR_{} = {:?}", &target.triple, ar));
+        build.verbose(|| println!("AR_{} = {ar:?}", target.triple));
         build.ar.borrow_mut().insert(target, ar);
     }
 
@@ -183,14 +182,15 @@ fn default_compiler(
                 return None;
             }
 
-            let output = output(c.to_command().arg("--version"));
+            let mut cmd = BootstrapCommand::from(c.to_command());
+            let output = cmd.arg("--version").run_capture_stdout(build).stdout();
             let i = output.find(" 4.")?;
             match output[i + 3..].chars().next().unwrap() {
                 '0'..='6' => {}
                 _ => return None,
             }
             let alternative = format!("e{gnu_compiler}");
-            if Command::new(&alternative).output().is_ok() {
+            if command(&alternative).run_capture(build).is_success() {
                 Some(PathBuf::from(alternative))
             } else {
                 None
@@ -247,10 +247,8 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
         triple.to_string()
     };
 
-    // API 19 is the earliest API level supported by NDK r25b but AArch64 and x86_64 support
-    // begins at API level 21.
-    let api_level =
-        if triple.contains("aarch64") || triple.contains("x86_64") { "21" } else { "19" };
+    // The earliest API supported by NDK r26d is 21.
+    let api_level = "21";
     let compiler = format!("{}{}-{}", triple_translated, api_level, compiler.clang());
     let host_tag = if cfg!(target_os = "macos") {
         // The NDK uses universal binaries, so this is correct even on ARM.
@@ -258,7 +256,7 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
     } else if cfg!(target_os = "windows") {
         "windows-x86_64"
     } else {
-        // NDK r25b only has official releases for macOS, Windows and Linux.
+        // NDK r26d only has official releases for macOS, Windows and Linux.
         // Try the Linux directory everywhere else, on the assumption that the OS has an
         // emulation layer that can cope (e.g. BSDs).
         "linux-x86_64"

@@ -1,15 +1,14 @@
-use crate::leb128;
-use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fs::File;
 use std::io::{self, Write};
 use std::marker::PhantomData;
 use std::ops::Range;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
 use crate::int_overflow::DebugStrictAdd;
+use crate::leb128;
+use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 
 // -----------------------------------------------------------------------------
 // Encoder
@@ -155,7 +154,7 @@ impl FileEncoder {
         if std::intrinsics::unlikely(self.buffered > flush_threshold) {
             self.flush();
         }
-        // SAFETY: We checked above that that N < self.buffer_empty().len(),
+        // SAFETY: We checked above that N < self.buffer_empty().len(),
         // and if isn't, flush ensures that our empty buffer is now BUF_SIZE.
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };

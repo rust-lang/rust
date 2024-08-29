@@ -60,15 +60,14 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
+    let cfg = ctx.config.import_path_config();
+
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
             if let Some(drop_fn) = ctx.famous_defs().core_mem_drop() {
-                if let Some(path) = ctx.module.find_use_path(
-                    ctx.db,
-                    ItemInNs::Values(drop_fn.into()),
-                    ctx.config.prefer_no_std,
-                    ctx.config.prefer_prelude,
-                ) {
+                if let Some(path) =
+                    ctx.module.find_path(ctx.db, ItemInNs::Values(drop_fn.into()), cfg)
+                {
                     cov_mark::hit!(postfix_drop_completion);
                     let mut item = postfix_snippet(
                         "drop",
@@ -666,7 +665,7 @@ fn main() {
         check_edit(
             "unsafe",
             r#"fn main() { let x = true else {panic!()}.$0}"#,
-            r#"fn main() { let x = true else {panic!()}.unsafe}"#,
+            r#"fn main() { let x = true else {panic!()}.unsafe $0}"#,
         );
     }
 

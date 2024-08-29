@@ -1,4 +1,3 @@
-#![feature(const_int_from_str)]
 #![warn(clippy::from_str_radix_10)]
 
 mod some_mod {
@@ -61,7 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn issue_12732() {
+// https://github.com/rust-lang/rust-clippy/issues/12731
+fn issue_12731() {
     const A: Result<u32, std::num::ParseIntError> = u32::from_str_radix("123", 10);
     const B: () = {
         let _ = u32::from_str_radix("123", 10);

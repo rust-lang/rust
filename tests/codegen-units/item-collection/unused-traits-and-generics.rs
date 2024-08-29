@@ -1,6 +1,6 @@
 //@ compile-flags:-Zprint-mono-items=eager
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 #![deny(dead_code)]
 
 // This test asserts that no codegen items are generated for generic items that
@@ -16,7 +16,7 @@ pub fn foo<T: Copy>(x: T) -> (T, T) {
 }
 
 pub struct Struct<T> {
-    x: T
+    x: T,
 }
 
 impl<T> Struct<T> {
@@ -29,7 +29,7 @@ impl<T> Struct<T> {
 
 pub enum Enum<T> {
     A(T),
-    B { x: T }
+    B { x: T },
 }
 
 impl<T> Enum<T> {
@@ -56,7 +56,7 @@ impl<T> TupleStruct<T> {
 pub type Pair<T> = (T, T);
 
 pub struct NonGeneric {
-    x: i32
+    x: i32,
 }
 
 impl NonGeneric {

@@ -3,12 +3,17 @@
 //! fn max(x: i32, y: i32) -> i32 { x + y }
 //! _ = max(/*x*/4, /*y*/4);
 //! ```
+use std::fmt::Display;
+
 use either::Either;
 use hir::{Callable, Semantics};
-use ide_db::{base_db::FileRange, RootDatabase};
+use ide_db::RootDatabase;
 
 use stdx::to_lower_snake_case;
-use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
+use syntax::{
+    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
+    ToSmolStr,
+};
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
@@ -24,15 +29,16 @@ pub(super) fn hints(
 
     let (callable, arg_list) = get_callable(sema, &expr)?;
     let hints = callable
-        .params(sema.db)
+        .params()
         .into_iter()
         .zip(arg_list.args())
-        .filter_map(|((param, _ty), arg)| {
+        .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let (param_name, name_syntax) = match param.as_ref()? {
+            let source = sema.source(p)?;
+            let (param_name, name_syntax) = match source.value.as_ref() {
                 Either::Left(pat) => (pat.name()?, pat.name()),
-                Either::Right(pat) => match pat {
+                Either::Right(param) => match param.pat()? {
                     ast::Pat::IdentPat(it) => (it.name()?, it.name()),
                     _ => return None,
                 },
@@ -42,20 +48,10 @@ pub(super) fn hints(
         .filter(|(_, param_name, arg, _)| {
             !should_hide_param_name_hint(sema, &callable, &param_name.text(), arg)
         })
-        .map(|(param, param_name, _, FileRange { range, .. })| {
-            let mut linked_location = None;
-            if let Some(name) = param {
-                if let hir::CallableKind::Function(f) = callable.kind() {
-                    // assert the file is cached so we can map out of macros
-                    if sema.source(f).is_some() {
-                        linked_location = sema.original_range_opt(name.syntax());
-                    }
-                }
-            }
+        .map(|(param, param_name, _, hir::FileRange { range, .. })| {
+            let linked_location = param.and_then(|name| sema.original_range_opt(name.syntax()));
 
-            let colon = if config.render_colons { ":" } else { "" };
-            let label =
-                InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location);
+            let label = render_label(&param_name, config, linked_location);
             InlayHint {
                 range,
                 kind: InlayKind::Parameter,
@@ -69,6 +65,16 @@ pub(super) fn hints(
 
     acc.extend(hints);
     Some(())
+}
+
+pub(super) fn render_label(
+    param_name: impl Display,
+    config: &InlayHintsConfig,
+    linked_location: Option<hir::FileRange>,
+) -> InlayHintLabel {
+    let colon = if config.render_colons { ":" } else { "" };
+
+    InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location.map(Into::into))
 }
 
 fn get_callable(
@@ -115,12 +121,12 @@ fn should_hide_param_name_hint(
     }
 
     let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_smol_str()),
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).display_no_db().to_smolstr()),
         _ => None,
     };
     let fn_name = fn_name.as_deref();
     is_param_name_suffix_of_fn_name(param_name, callable, fn_name)
-        || is_argument_similar_to_param_name(argument, param_name)
+        || is_argument_expr_similar_to_param_name(argument, param_name)
         || param_name.starts_with("ra_fixture")
         || (callable.n_params() == 1 && is_obvious_param(param_name))
         || is_adt_constructor_similar_to_param_name(sema, argument, param_name)
@@ -150,14 +156,17 @@ fn is_param_name_suffix_of_fn_name(
     }
 }
 
-fn is_argument_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> bool {
-    // check whether param_name and argument are the same or
-    // whether param_name is a prefix/suffix of argument(split at `_`)
+fn is_argument_expr_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> bool {
     let argument = match get_string_representation(argument) {
         Some(argument) => argument,
         None => return false,
     };
+    is_argument_similar_to_param_name(&argument, param_name)
+}
 
+/// Check whether param_name and argument are the same or
+/// whether param_name is a prefix/suffix of argument(split at `_`).
+pub(super) fn is_argument_similar_to_param_name(argument: &str, param_name: &str) -> bool {
     // std is honestly too panic happy...
     let str_split_at = |str: &str, at| str.is_char_boundary(at).then(|| argument.split_at(at));
 

@@ -1,6 +1,8 @@
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use rustc_span::Symbol;
 use std::fmt;
+
+use rustc_span::Symbol;
+
+use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 
 def_reg_class! {
     Mips MipsInlineAsmRegClass {

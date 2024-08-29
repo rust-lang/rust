@@ -1,6 +1,5 @@
-use crate::fmt;
 use crate::mem::MaybeUninit;
-use crate::str;
+use crate::{fmt, str};
 
 /// Used for slow path in `Display` implementations when alignment is required.
 pub struct DisplayBuffer<const SIZE: usize> {
@@ -11,7 +10,7 @@ pub struct DisplayBuffer<const SIZE: usize> {
 impl<const SIZE: usize> DisplayBuffer<SIZE> {
     #[inline]
     pub const fn new() -> Self {
-        Self { buf: MaybeUninit::uninit_array(), len: 0 }
+        Self { buf: [MaybeUninit::uninit(); SIZE], len: 0 }
     }
 
     #[inline]

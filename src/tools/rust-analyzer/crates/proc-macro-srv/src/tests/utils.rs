@@ -2,14 +2,15 @@
 
 use expect_test::Expect;
 use proc_macro_api::msg::TokenId;
-use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
 use tt::TextRange;
 
-use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
+use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
 
-fn parse_string(call_site: TokenId, src: &str) -> crate::server::TokenStream<TokenId> {
-    crate::server::TokenStream::with_subtree(
-        mbe::parse_to_token_tree_static_span(call_site, src).unwrap(),
+fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
+    crate::server_impl::TokenStream::with_subtree(
+        syntax_bridge::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src)
+            .unwrap(),
     )
 }
 
@@ -17,9 +18,9 @@ fn parse_string_spanned(
     anchor: SpanAnchor,
     call_site: SyntaxContextId,
     src: &str,
-) -> crate::server::TokenStream<Span> {
-    crate::server::TokenStream::with_subtree(
-        mbe::parse_to_token_tree(anchor, call_site, src).unwrap(),
+) -> crate::server_impl::TokenStream<Span> {
+    crate::server_impl::TokenStream::with_subtree(
+        syntax_bridge::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src).unwrap(),
     )
 }
 
@@ -68,16 +69,16 @@ fn assert_expand_impl(
     let def_site = Span {
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
-            file_id: FileId::from_raw(41),
-            ast_id: ErasedFileAstId::from_raw(From::from(1)),
+            file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
+            ast_id: ErasedFileAstId::from_raw(1),
         },
         ctx: SyntaxContextId::ROOT,
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
-            file_id: FileId::from_raw(42),
-            ast_id: ErasedFileAstId::from_raw(From::from(2)),
+            file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
+            ast_id: ErasedFileAstId::from_raw(2),
         },
         ctx: SyntaxContextId::ROOT,
     };
@@ -96,7 +97,8 @@ fn assert_expand_impl(
 
 pub(crate) fn list() -> Vec<String> {
     let dylib_path = proc_macro_test_dylib_path();
-    let mut srv = ProcMacroSrv::default();
+    let env = EnvSnapshot::new();
+    let mut srv = ProcMacroSrv::new(&env);
     let res = srv.list_macros(&dylib_path).unwrap();
     res.into_iter().map(|(name, kind)| format!("{name} [{kind:?}]")).collect()
 }

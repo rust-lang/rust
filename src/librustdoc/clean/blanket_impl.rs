@@ -5,12 +5,11 @@ use rustc_middle::ty::{self, Upcast};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-
 use thin_vec::ThinVec;
 
 use crate::clean;
 use crate::clean::{
-    clean_middle_assoc_item, clean_middle_ty, clean_trait_ref_with_bindings, clean_ty_generics,
+    clean_middle_assoc_item, clean_middle_ty, clean_trait_ref_with_constraints, clean_ty_generics,
 };
 use crate::core::DocContext;
 
@@ -95,7 +94,7 @@ pub(crate) fn synthesize_blanket_impls(
                     ),
                     // FIXME(eddyb) compute both `trait_` and `for_` from
                     // the post-inference `trait_ref`, as it's more accurate.
-                    trait_: Some(clean_trait_ref_with_bindings(
+                    trait_: Some(clean_trait_ref_with_constraints(
                         cx,
                         ty::Binder::dummy(trait_ref.instantiate_identity()),
                         ThinVec::new(),

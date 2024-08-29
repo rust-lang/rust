@@ -3,9 +3,13 @@ use std::iter;
 
 use hir::{Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
+use itertools::Either;
 use syntax::{
-    algo::{find_node_at_offset, non_trivia_sibling},
-    ast::{self, AttrKind, HasArgList, HasGenericParams, HasLoopBody, HasName, NameOrNameRef},
+    algo::{ancestors_at_offset, find_node_at_offset, non_trivia_sibling},
+    ast::{
+        self, AttrKind, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
+        NameOrNameRef,
+    },
     match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -73,7 +77,7 @@ fn expand(
     mut fake_ident_token: SyntaxToken,
     relative_offset: TextSize,
 ) -> ExpansionResult {
-    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::expand").entered();
+    let _p = tracing::info_span!("CompletionContext::expand").entered();
     let mut derive_ctx = None;
 
     'expansion: loop {
@@ -119,20 +123,45 @@ fn expand(
         }
 
         // No attributes have been expanded, so look for macro_call! token trees or derive token trees
-        let orig_tt = match find_node_at_offset::<ast::TokenTree>(&original_file, offset) {
+        let orig_tt = match ancestors_at_offset(&original_file, offset)
+            .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
+            .last()
+        {
             Some(it) => it,
             None => break 'expansion,
         };
-        let spec_tt = match find_node_at_offset::<ast::TokenTree>(&speculative_file, offset) {
+        let spec_tt = match ancestors_at_offset(&speculative_file, offset)
+            .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
+            .last()
+        {
             Some(it) => it,
             None => break 'expansion,
         };
 
-        // Expand pseudo-derive expansion
-        if let (Some(orig_attr), Some(spec_attr)) = (
-            orig_tt.syntax().parent().and_then(ast::Meta::cast).and_then(|it| it.parent_attr()),
-            spec_tt.syntax().parent().and_then(ast::Meta::cast).and_then(|it| it.parent_attr()),
-        ) {
+        let (tts, attrs) = match (orig_tt, spec_tt) {
+            (Either::Left(orig_tt), Either::Left(spec_tt)) => {
+                let attrs = orig_tt
+                    .syntax()
+                    .parent()
+                    .and_then(ast::Meta::cast)
+                    .and_then(|it| it.parent_attr())
+                    .zip(
+                        spec_tt
+                            .syntax()
+                            .parent()
+                            .and_then(ast::Meta::cast)
+                            .and_then(|it| it.parent_attr()),
+                    );
+                (Some((orig_tt, spec_tt)), attrs)
+            }
+            (Either::Right(orig_path), Either::Right(spec_path)) => {
+                (None, orig_path.parent_attr().zip(spec_path.parent_attr()))
+            }
+            _ => break 'expansion,
+        };
+
+        // Expand pseudo-derive expansion aka `derive(Debug$0)`
+        if let Some((orig_attr, spec_attr)) = attrs {
             if let (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) = (
                 sema.expand_derive_as_pseudo_attr_macro(&orig_attr),
                 sema.speculative_expand_derive_as_pseudo_attr_macro(
@@ -147,15 +176,54 @@ fn expand(
                     fake_mapped_token.text_range().start(),
                     orig_attr,
                 ));
+                break 'expansion;
+            }
+
+            if let Some(spec_adt) =
+                spec_attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| match it {
+                    ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                    ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                    ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                    _ => None,
+                })
+            {
+                // might be the path of derive helper or a token tree inside of one
+                if let Some(helpers) = sema.derive_helper(&orig_attr) {
+                    for (_mac, file) in helpers {
+                        if let Some((fake_expansion, fake_mapped_token)) = sema
+                            .speculative_expand_raw(
+                                file,
+                                spec_adt.syntax(),
+                                fake_ident_token.clone(),
+                            )
+                        {
+                            // we are inside a derive helper token tree, treat this as being inside
+                            // the derive expansion
+                            let actual_expansion = sema.parse_or_expand(file.into());
+                            let new_offset = fake_mapped_token.text_range().start();
+                            if new_offset + relative_offset > actual_expansion.text_range().end() {
+                                // offset outside of bounds from the original expansion,
+                                // stop here to prevent problems from happening
+                                break 'expansion;
+                            }
+                            original_file = actual_expansion;
+                            speculative_file = fake_expansion;
+                            fake_ident_token = fake_mapped_token;
+                            offset = new_offset;
+                            continue 'expansion;
+                        }
+                    }
+                }
             }
             // at this point we won't have any more successful expansions, so stop
             break 'expansion;
         }
 
         // Expand fn-like macro calls
+        let Some((orig_tt, spec_tt)) = tts else { break 'expansion };
         if let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
-            orig_tt.syntax().ancestors().find_map(ast::MacroCall::cast),
-            spec_tt.syntax().ancestors().find_map(ast::MacroCall::cast),
+            orig_tt.syntax().parent().and_then(ast::MacroCall::cast),
+            spec_tt.syntax().parent().and_then(ast::MacroCall::cast),
         ) {
             let mac_call_path0 = actual_macro_call.path().as_ref().map(|s| s.syntax().text());
             let mac_call_path1 =
@@ -201,6 +269,7 @@ fn expand(
         // none of our states have changed so stop the loop
         break 'expansion;
     }
+
     ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx }
 }
 
@@ -212,7 +281,7 @@ fn analyze(
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
 ) -> Option<(CompletionAnalysis, (Option<Type>, Option<ast::NameOrNameRef>), QualifierCtx)> {
-    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::analyze").entered();
+    let _p = tracing::info_span!("CompletionContext::analyze").entered();
     let ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx } =
         expansion_result;
 
@@ -754,13 +823,13 @@ fn classify_name_ref(
                                             for item in trait_.items_with_supertraits(sema.db) {
                                                 match item {
                                                     hir::AssocItem::TypeAlias(assoc_ty) => {
-                                                        if assoc_ty.name(sema.db).as_str()? == arg_name {
+                                                        if assoc_ty.name(sema.db).as_str() == arg_name {
                                                             override_location = Some(TypeLocation::AssocTypeEq);
                                                             return None;
                                                         }
                                                     },
                                                     hir::AssocItem::Const(const_) => {
-                                                        if const_.name(sema.db)?.as_str()? == arg_name {
+                                                        if const_.name(sema.db)?.as_str() == arg_name {
                                                             override_location =  Some(TypeLocation::AssocConstEq);
                                                             return None;
                                                         }
@@ -798,7 +867,7 @@ fn classify_name_ref(
                                         let trait_items = trait_.items_with_supertraits(sema.db);
                                         let assoc_ty = trait_items.iter().find_map(|item| match item {
                                             hir::AssocItem::TypeAlias(assoc_ty) => {
-                                                (assoc_ty.name(sema.db).as_str()? == arg_name)
+                                                (assoc_ty.name(sema.db).as_str() == arg_name)
                                                     .then_some(assoc_ty)
                                             },
                                             _ => None,
@@ -1221,10 +1290,15 @@ fn classify_name_ref(
                 syntax::algo::non_trivia_sibling(top.clone().into(), syntax::Direction::Prev)
             {
                 if error_node.kind() == SyntaxKind::ERROR {
-                    qualifier_ctx.unsafe_tok = error_node
-                        .children_with_tokens()
-                        .filter_map(NodeOrToken::into_token)
-                        .find(|it| it.kind() == T![unsafe]);
+                    for token in
+                        error_node.children_with_tokens().filter_map(NodeOrToken::into_token)
+                    {
+                        match token.kind() {
+                            SyntaxKind::UNSAFE_KW => qualifier_ctx.unsafe_tok = Some(token),
+                            SyntaxKind::ASYNC_KW => qualifier_ctx.async_tok = Some(token),
+                            _ => {}
+                        }
+                    }
                     qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
                 }
             }
@@ -1268,7 +1342,7 @@ fn pattern_context_for(
         .map_or((PatternRefutability::Irrefutable, false), |node| {
             let refutability = match_ast! {
                 match node {
-                    ast::LetStmt(let_) => return (PatternRefutability::Irrefutable, let_.ty().is_some()),
+                    ast::LetStmt(let_) => return (PatternRefutability::Refutable, let_.ty().is_some()),
                     ast::Param(param) => {
                         let has_type_ascription = param.ty().is_some();
                         param_ctx = (|| {

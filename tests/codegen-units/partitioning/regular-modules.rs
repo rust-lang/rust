@@ -3,7 +3,7 @@
 //@ compile-flags:-Zprint-mono-items=eager
 
 #![allow(dead_code)]
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 //~ MONO_ITEM fn foo @@ regular_modules[Internal]
 fn foo() {}

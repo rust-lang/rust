@@ -6,38 +6,31 @@
 //!
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
+
+use std::iter;
+use std::ops::ControlFlow;
+
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::HigherRankedType;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
+use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TraitPredicate, Ty,
-    TyCtxt, Upcast,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, Ty, TyCtxt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 
+use super::SelectionCandidate::{self, *};
+use super::{BuiltinImplConditions, SelectionContext};
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
-use crate::traits::vtable::{
-    count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,
-    VtblSegment,
-};
 use crate::traits::{
     ImplDerivedCause, ImplSource, ImplSourceUserDefinedData, Normalized, Obligation,
     ObligationCause, PolyTraitObligation, PredicateObligation, Selection, SelectionError,
     SignatureMismatch, TraitNotObjectSafe, TraitObligation, Unimplemented,
 };
-
-use super::BuiltinImplConditions;
-use super::SelectionCandidate::{self, *};
-use super::SelectionContext;
-
-use std::iter;
-use std::ops::ControlFlow;
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self))]
@@ -258,16 +251,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
-        let lang_items = self.tcx().lang_items();
+        let tcx = self.tcx();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
-            let conditions = if Some(trait_def) == lang_items.sized_trait() {
+            let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
                 self.sized_conditions(obligation)
-            } else if Some(trait_def) == lang_items.copy_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.clone_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::Clone) {
                 self.copy_clone_conditions(obligation)
-            } else if Some(trait_def) == lang_items.fused_iterator_trait() {
+            } else if tcx.is_lang_item(trait_def, LangItem::FusedIterator) {
                 self.fused_iterator_conditions(obligation)
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
@@ -298,90 +291,120 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        use rustc_transmute::{Answer, Condition};
-        #[instrument(level = "debug", skip(tcx, obligation, predicate))]
+        use rustc_transmute::{Answer, Assume, Condition};
+
+        /// Generate sub-obligations for reference-to-reference transmutations.
+        fn reference_obligations<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            obligation: &PolyTraitObligation<'tcx>,
+            (src_lifetime, src_ty, src_mut): (ty::Region<'tcx>, Ty<'tcx>, Mutability),
+            (dst_lifetime, dst_ty, dst_mut): (ty::Region<'tcx>, Ty<'tcx>, Mutability),
+            assume: Assume,
+        ) -> Vec<PredicateObligation<'tcx>> {
+            let make_transmute_obl = |src, dst| {
+                let transmute_trait = obligation.predicate.def_id();
+                let assume = obligation.predicate.skip_binder().trait_ref.args.const_at(2);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    transmute_trait,
+                    [
+                        ty::GenericArg::from(dst),
+                        ty::GenericArg::from(src),
+                        ty::GenericArg::from(assume),
+                    ],
+                );
+                Obligation::with_depth(
+                    tcx,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                    obligation.predicate.rebind(trait_ref),
+                )
+            };
+
+            let make_freeze_obl = |ty| {
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Freeze, None),
+                    [ty::GenericArg::from(ty)],
+                );
+                Obligation::with_depth(
+                    tcx,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                    trait_ref,
+                )
+            };
+
+            let make_outlives_obl = |target, region| {
+                let outlives = ty::OutlivesPredicate(target, region);
+                Obligation::with_depth(
+                    tcx,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                    obligation.predicate.rebind(outlives),
+                )
+            };
+
+            // Given a transmutation from `&'a (mut) Src` and `&'dst (mut) Dst`,
+            // it is always the case that `Src` must be transmutable into `Dst`,
+            // and that that `'src` must outlive `'dst`.
+            let mut obls = vec![make_transmute_obl(src_ty, dst_ty)];
+            if !assume.lifetimes {
+                obls.push(make_outlives_obl(src_lifetime, dst_lifetime));
+            }
+
+            // Given a transmutation from `&Src`, both `Src` and `Dst` must be
+            // `Freeze`, otherwise, using the transmuted value could lead to
+            // data races.
+            if src_mut == Mutability::Not {
+                obls.extend([make_freeze_obl(src_ty), make_freeze_obl(dst_ty)])
+            }
+
+            // Given a transmutation into `&'dst mut Dst`, it also must be the
+            // case that `Dst` is transmutable into `Src`. For example,
+            // transmuting bool -> u8 is OK as long as you can't update that u8
+            // to be > 1, because you could later transmute the u8 back to a
+            // bool and get undefined behavior. It also must be the case that
+            // `'dst` lives exactly as long as `'src`.
+            if dst_mut == Mutability::Mut {
+                obls.push(make_transmute_obl(dst_ty, src_ty));
+                if !assume.lifetimes {
+                    obls.push(make_outlives_obl(dst_lifetime, src_lifetime));
+                }
+            }
+
+            obls
+        }
+
+        /// Flatten the `Condition` tree into a conjunction of obligations.
+        #[instrument(level = "debug", skip(tcx, obligation))]
         fn flatten_answer_tree<'tcx>(
             tcx: TyCtxt<'tcx>,
             obligation: &PolyTraitObligation<'tcx>,
-            predicate: TraitPredicate<'tcx>,
             cond: Condition<rustc_transmute::layout::rustc::Ref<'tcx>>,
+            assume: Assume,
         ) -> Vec<PredicateObligation<'tcx>> {
             match cond {
                 // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
                 // Not possible until the trait solver supports disjunctions of obligations
                 Condition::IfAll(conds) | Condition::IfAny(conds) => conds
                     .into_iter()
-                    .flat_map(|cond| flatten_answer_tree(tcx, obligation, predicate, cond))
+                    .flat_map(|cond| flatten_answer_tree(tcx, obligation, cond, assume))
                     .collect(),
-                Condition::IfTransmutable { src, dst } => {
-                    let transmute_trait = obligation.predicate.def_id();
-                    let assume_const = predicate.trait_ref.args.const_at(2);
-                    let make_transmute_obl = |from_ty, to_ty| {
-                        let trait_ref = ty::TraitRef::new(
-                            tcx,
-                            transmute_trait,
-                            [
-                                ty::GenericArg::from(to_ty),
-                                ty::GenericArg::from(from_ty),
-                                ty::GenericArg::from(assume_const),
-                            ],
-                        );
-                        Obligation::with_depth(
-                            tcx,
-                            obligation.cause.clone(),
-                            obligation.recursion_depth + 1,
-                            obligation.param_env,
-                            trait_ref,
-                        )
-                    };
-
-                    let make_freeze_obl = |ty| {
-                        let trait_ref = ty::TraitRef::new(
-                            tcx,
-                            tcx.lang_items().freeze_trait().unwrap(),
-                            [ty::GenericArg::from(ty)],
-                        );
-                        Obligation::with_depth(
-                            tcx,
-                            obligation.cause.clone(),
-                            obligation.recursion_depth + 1,
-                            obligation.param_env,
-                            trait_ref,
-                        )
-                    };
-
-                    let mut obls = vec![];
-
-                    // If the source is a shared reference, it must be `Freeze`;
-                    // otherwise, transmuting could lead to data races.
-                    if src.mutability == Mutability::Not {
-                        obls.extend([make_freeze_obl(src.ty), make_freeze_obl(dst.ty)])
-                    }
-
-                    // If Dst is mutable, check bidirectionally.
-                    // For example, transmuting bool -> u8 is OK as long as you can't update that u8
-                    // to be > 1, because you could later transmute the u8 back to a bool and get UB.
-                    match dst.mutability {
-                        Mutability::Not => obls.push(make_transmute_obl(src.ty, dst.ty)),
-                        Mutability::Mut => obls.extend([
-                            make_transmute_obl(src.ty, dst.ty),
-                            make_transmute_obl(dst.ty, src.ty),
-                        ]),
-                    }
-
-                    obls
-                }
+                Condition::IfTransmutable { src, dst } => reference_obligations(
+                    tcx,
+                    obligation,
+                    (src.lifetime, src.ty, src.mutability),
+                    (dst.lifetime, dst.ty, dst.mutability),
+                    assume,
+                ),
             }
         }
 
-        // We erase regions here because transmutability calls layout queries,
-        // which does not handle inference regions and doesn't particularly
-        // care about other regions. Erasing late-bound regions is equivalent
-        // to instantiating the binder with placeholders then erasing those
-        // placeholder regions.
-        let predicate = self
-            .tcx()
-            .erase_regions(self.tcx().instantiate_bound_regions_with_erased(obligation.predicate));
+        let predicate = obligation.predicate.skip_binder();
 
         let Some(assume) = rustc_transmute::Assume::from_const(
             self.infcx.tcx,
@@ -393,6 +416,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let dst = predicate.trait_ref.args.type_at(0);
         let src = predicate.trait_ref.args.type_at(1);
+
         debug!(?src, ?dst);
         let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
         let maybe_transmutable = transmute_env.is_transmutable(
@@ -403,7 +427,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let fully_flattened = match maybe_transmutable {
             Answer::No(_) => Err(Unimplemented)?,
-            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation, predicate, cond),
+            Answer::If(cond) => flatten_answer_tree(self.tcx(), obligation, cond, assume),
             Answer::Yes => vec![],
         };
 
@@ -577,7 +601,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.
         for super_trait in tcx
-            .super_predicates_of(trait_predicate.def_id())
+            .explicit_super_predicates_of(trait_predicate.def_id())
             .instantiate(tcx, trait_predicate.trait_ref.args)
             .predicates
             .into_iter()
@@ -665,9 +689,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 tcx,
                                 ty::INNERMOST,
                                 ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                tcx.type_of(param.def_id)
-                                    .no_bound_vars()
-                                    .expect("const parameter types cannot be generic"),
                             )
                             .into()
                         }
@@ -692,13 +713,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?nested, "object nested obligations");
 
-        let vtable_base = vtable_trait_first_method_offset(
-            tcx,
-            unnormalized_upcast_trait_ref,
-            ty::Binder::dummy(object_trait_ref),
-        );
-
-        Ok(ImplSource::Builtin(BuiltinImplSource::Object { vtable_base: vtable_base }, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::Object(index), nested))
     }
 
     fn confirm_fn_pointer_candidate(
@@ -1128,36 +1143,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )?
             .expect("did not expect ambiguity during confirmation");
 
-        let vtable_segment_callback = {
-            let mut vptr_offset = 0;
-            move |segment| {
-                match segment {
-                    VtblSegment::MetadataDSA => {
-                        vptr_offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
-                    }
-                    VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        vptr_offset += count_own_vtable_entries(tcx, trait_ref);
-                        if trait_ref == unnormalized_upcast_principal {
-                            if emit_vptr {
-                                return ControlFlow::Break(Some(vptr_offset));
-                            } else {
-                                return ControlFlow::Break(None);
-                            }
-                        }
-
-                        if emit_vptr {
-                            vptr_offset += 1;
-                        }
-                    }
-                }
-                ControlFlow::Continue(())
-            }
-        };
-
-        let vtable_vptr_slot =
-            prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap();
-
-        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { vtable_vptr_slot }, nested))
+        Ok(ImplSource::Builtin(BuiltinImplSource::TraitUpcasting, nested))
     }
 
     fn confirm_builtin_unsize_candidate(
@@ -1203,7 +1189,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(DefineOpaqueTypes::No, target, source_trait)
+                    .sup(DefineOpaqueTypes::Yes, target, source_trait)
                     .map_err(|_| Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.
@@ -1222,7 +1208,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `T` -> `Trait`
             (_, &ty::Dynamic(data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
-                if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
+                if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }
 
@@ -1270,7 +1256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, b, a)
+                    .eq(DefineOpaqueTypes::Yes, b, a)
                     .map_err(|_| Unimplemented)?;
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
@@ -1318,7 +1304,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, target, new_struct)
+                    .eq(DefineOpaqueTypes::Yes, target, new_struct)
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
 
@@ -1351,7 +1337,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::No, target, new_tuple)
+                    .eq(DefineOpaqueTypes::Yes, target, new_tuple)
                     .map_err(|_| Unimplemented)?;
 
                 // Add a nested `T: Unsize<U>` predicate.
@@ -1442,12 +1428,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::RawPtr(_, _)
                 | ty::Ref(..)
                 | ty::FnDef(..)
-                | ty::FnPtr(_)
+                | ty::FnPtr(..)
                 | ty::Never
                 | ty::Foreign(_) => {}
 
                 // `ManuallyDrop` is trivially drop
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().manually_drop() => {}
+                ty::Adt(def, _) if def.is_manually_drop() => {}
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituent type(s)

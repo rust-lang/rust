@@ -4,11 +4,11 @@
 #![allow(incomplete_features, unstable_features)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_transmutable<Src, Dst, Context, const ASSUME: std::mem::Assume>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME>,
+        Dst: TransmuteFrom<Src, Context, ASSUME>,
         //~^ ERROR trait takes at most 2 generic arguments but 3 generic arguments were supplied
     {
     }
@@ -24,7 +24,6 @@ fn via_associated_const() {
     trait Trait {
         const FALSE: bool = assert::is_transmutable::<Src, Dst, Context, {}>();
         //~^ ERROR mismatched types
-        //~| ERROR `Src` cannot be safely transmuted into `Dst`
         //~| ERROR mismatched types
     }
 }

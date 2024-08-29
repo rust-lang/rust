@@ -4,15 +4,15 @@
 use crate::*;
 use rustc_target::abi::Size;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn mremap(
         &mut self,
-        old_address: &OpTy<'tcx, Provenance>,
-        old_size: &OpTy<'tcx, Provenance>,
-        new_size: &OpTy<'tcx, Provenance>,
-        flags: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        old_address: &OpTy<'tcx>,
+        old_size: &OpTy<'tcx>,
+        new_size: &OpTy<'tcx>,
+        flags: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let old_address = this.read_pointer(old_address)?;
@@ -53,7 +53,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // We just allocated this, the access is definitely in-bounds and fits into our address space.
             // mmap guarantees new mappings are zero-init.
             this.write_bytes_ptr(
-                ptr.offset(Size::from_bytes(old_size), this).unwrap().into(),
+                ptr.wrapping_offset(Size::from_bytes(old_size), this).into(),
                 std::iter::repeat(0u8).take(usize::try_from(increase).unwrap()),
             )
             .unwrap();

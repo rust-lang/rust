@@ -1,8 +1,7 @@
 use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::layout;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, layout, TyCtxt};
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
 
@@ -65,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
                     let ty = func.ty(body, tcx);
                     let sig = ty.fn_sig(tcx);
                     let fn_def_id = match ty.kind() {
-                        ty::FnPtr(_) => None,
+                        ty::FnPtr(..) => None,
                         &ty::FnDef(def_id, _) => Some(def_id),
                         _ => span_bug!(span, "invalid callee of type {:?}", ty),
                     };

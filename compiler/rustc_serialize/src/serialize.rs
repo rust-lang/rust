@@ -1,6 +1,5 @@
 //! Support code for encoding and decoding types.
 
-use smallvec::{Array, SmallVec};
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
@@ -10,6 +9,8 @@ use std::num::NonZero;
 use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
+
+use smallvec::{Array, SmallVec};
 use thin_vec::ThinVec;
 
 /// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
@@ -252,7 +253,7 @@ impl<S: Encoder> Encodable<S> for () {
 }
 
 impl<D: Decoder> Decodable<D> for () {
-    fn decode(_: &mut D) -> () {}
+    fn decode(_: &mut D) {}
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {

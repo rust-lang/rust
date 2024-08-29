@@ -1,0 +1,37 @@
+From 4013baf99c38f7bca06a51f8301e8fb195ccfa33 Mon Sep 17 00:00:00 2001
+From: Jim Wilson <jimw@sifive.com>
+Date: Tue, 2 Jun 2020 11:19:39 -0700
+Subject: [PATCH] RISC-V: Make __divdi3 handle div by zero same as hardware.
+
+The ISA manual specifies that divide by zero always returns -1 as the result.
+We were failing to do that when the dividend was negative.
+
+Original patch from Virginie Moser.
+
+	libgcc/
+	* config/riscv/div.S (__divdi3): For negative arguments, change bgez
+	to bgtz.
+---
+ libgcc/config/riscv/div.S | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/libgcc/config/riscv/div.S b/libgcc/config/riscv/div.S
+index 151f8e273ac77..17234324c1e41 100644
+--- a/libgcc/config/riscv/div.S
++++ b/libgcc/config/riscv/div.S
+@@ -107,10 +107,12 @@ FUNC_END (__umoddi3)
+   /* Handle negative arguments to __divdi3.  */
+ .L10:
+   neg   a0, a0
+-  bgez  a1, .L12      /* Compute __udivdi3(-a0, a1), then negate the result.  */
++  /* Zero is handled as a negative so that the result will not be inverted.  */
++  bgtz  a1, .L12     /* Compute __udivdi3(-a0, a1), then negate the result.  */
++
+   neg   a1, a1
+-  j     __udivdi3     /* Compute __udivdi3(-a0, -a1).  */
+-.L11:                 /* Compute __udivdi3(a0, -a1), then negate the result.  */
++  j     __udivdi3    /* Compute __udivdi3(-a0, -a1).  */
++.L11:                /* Compute __udivdi3(a0, -a1), then negate the result.  */
+   neg   a1, a1
+ .L12:
+   move  t0, ra

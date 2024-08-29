@@ -2,7 +2,7 @@
 
 use hir::HirDisplay;
 use ide_db::{documentation::Documentation, SymbolKind};
-use syntax::{format_smolstr, SmolStr};
+use syntax::{format_smolstr, SmolStr, ToSmolStr};
 
 use crate::{
     context::{PathCompletionCtx, PathKind, PatternContext},
@@ -17,7 +17,7 @@ pub(crate) fn render_macro(
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_macro").entered();
+    let _p = tracing::info_span!("render_macro").entered();
     render(ctx, *kind == PathKind::Use, *has_macro_bang, *has_call_parens, name, macro_)
 }
 
@@ -27,7 +27,7 @@ pub(crate) fn render_macro_pat(
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
-    let _p = tracing::span!(tracing::Level::INFO, "render_macro_pat").entered();
+    let _p = tracing::info_span!("render_macro_pat").entered();
     render(ctx, false, false, false, name, macro_)
 }
 
@@ -46,7 +46,8 @@ fn render(
         ctx.source_range()
     };
 
-    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
+    let (name, escaped_name) =
+        (name.unescaped().display(ctx.db()).to_smolstr(), name.display(ctx.db()).to_smolstr());
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
     let is_fn_like = macro_.is_fn_like(completion.db);

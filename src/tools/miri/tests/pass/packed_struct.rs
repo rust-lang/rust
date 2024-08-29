@@ -138,7 +138,7 @@ fn test_derive() {
     assert_eq!(x.partial_cmp(&y).unwrap(), x.cmp(&y));
     x.hash(&mut DefaultHasher::new());
     P::default();
-    format!("{:?}", x);
+    let _ = format!("{:?}", x);
 }
 
 fn main() {

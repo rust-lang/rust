@@ -1,7 +1,7 @@
 //@ check-fail
 // Tests error conditions for specifying diagnostics using #[derive(Diagnostic)]
-//@ normalize-stderr-test "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
-//@ normalize-stderr-test "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
+//@ normalize-stderr-test: "the following other types implement trait `IntoDiagArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
+//@ normalize-stderr-test: "(COMPILER_DIR/.*\.rs):[0-9]+:[0-9]+" -> "$1:LL:CC"
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Diagnostic is strictly internal to the compiler
@@ -56,7 +56,7 @@ enum DiagnosticOnEnum {
 #[derive(Diagnostic)]
 #[diag(no_crate_example, code = E0123)]
 #[diag = "E0123"]
-//~^ ERROR failed to resolve: maybe a missing crate `core`
+//~^ ERROR failed to resolve: you might be missing crate `core`
 struct WrongStructAttrStyle {}
 
 #[derive(Diagnostic)]
@@ -603,7 +603,6 @@ struct LintAttributeOnSessionDiag {}
 #[derive(LintDiagnostic)]
 #[lint(no_crate_example, code = E0123)]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
-//~| ERROR `#[lint(...)]` is not a valid attribute
 //~| ERROR diagnostic slug not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnLintDiag {}
@@ -802,7 +801,7 @@ struct SuggestionsNoItem {
 struct SuggestionsInvalidItem {
     #[suggestion(code(foo))]
     //~^ ERROR `code(...)` must contain only string literals
-    //~| ERROR failed to resolve: maybe a missing crate `core`
+    //~| ERROR failed to resolve: you might be missing crate `core`
     sub: Span,
 }
 
@@ -810,7 +809,7 @@ struct SuggestionsInvalidItem {
 #[diag(no_crate_example)]
 struct SuggestionsInvalidLiteral {
     #[suggestion(code = 3)]
-    //~^ ERROR failed to resolve: maybe a missing crate `core`
+    //~^ ERROR failed to resolve: you might be missing crate `core`
     sub: Span,
 }
 

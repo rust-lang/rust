@@ -1,21 +1,22 @@
 // .debug_gdb_scripts binary section.
 
-use crate::llvm;
-
-use crate::builder::Builder;
-use crate::common::CodegenCx;
-use crate::value::Value;
 use rustc_ast::attr;
 use rustc_codegen_ssa::base::collect_debugger_visualizers_transitive;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::{bug, middle::debugger_visualizer::DebuggerVisualizerType};
+use rustc_middle::bug;
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerType;
 use rustc_session::config::{CrateType, DebugInfo};
 use rustc_span::symbol::sym;
 
+use crate::builder::Builder;
+use crate::common::CodegenCx;
+use crate::llvm;
+use crate::value::Value;
+
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
+pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_, '_, '_>) {
     if needs_gdb_debug_scripts_section(bx) {
         let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx);
         // Load just the first byte as that's all that's necessary to force
@@ -29,12 +30,13 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_,
 
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
-pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Value {
+pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+) -> &'ll Value {
     let c_section_var_name = c"__rustc_debug_gdb_scripts_section__";
     let section_var_name = c_section_var_name.to_str().unwrap();
 
-    let section_var =
-        unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, c_section_var_name.as_ptr().cast()) };
+    let section_var = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, c_section_var_name.as_ptr()) };
 
     section_var.unwrap_or_else(|| {
         let mut section_contents = Vec::new();
@@ -69,7 +71,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '
             let section_var = cx
                 .define_global(section_var_name, llvm_type)
                 .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
-            llvm::LLVMSetSection(section_var, c".debug_gdb_scripts".as_ptr().cast());
+            llvm::LLVMSetSection(section_var, c".debug_gdb_scripts".as_ptr());
             llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddress(section_var, llvm::UnnamedAddr::Global);
@@ -82,7 +84,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '
     })
 }
 
-pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
+pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     let omit_gdb_pretty_printer_section =
         attr::contains_name(cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
 

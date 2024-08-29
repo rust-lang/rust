@@ -11,7 +11,7 @@ pub fn hot_function(c: u8) {
 fn main() {
     let arg = std::env::args().skip(1).next().unwrap();
 
-    for i in 0 .. 1000_000 {
+    for i in 0..1000_000 {
         let some_value = arg.as_bytes()[i % arg.len()];
         if some_value == b'!' {
             // This branch is never taken at runtime

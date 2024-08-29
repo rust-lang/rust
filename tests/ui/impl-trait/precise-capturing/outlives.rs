@@ -2,10 +2,9 @@
 
 // Show that precise captures allow us to skip a lifetime param for outlives
 
-#![feature(lifetime_capture_rules_2024, precise_capturing)]
-//~^ WARN the feature `precise_capturing` is incomplete
+#![feature(lifetime_capture_rules_2024)]
 
-fn hello<'a: 'a, 'b: 'b>() -> impl use<'a> Sized { }
+fn hello<'a: 'a, 'b: 'b>() -> impl Sized + use<'a> { }
 
 fn outlives<'a, T: 'a>(_: T) {}
 

@@ -38,10 +38,12 @@
 //! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
-use crate::framework::BitSetExt;
+use std::iter;
+
 use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::{Idx, IndexVec};
-use std::iter;
+
+use crate::framework::BitSetExt;
 
 /// A [partially ordered set][poset] that has a [least upper bound][lub] for any pair of elements
 /// in the set.
@@ -76,6 +78,8 @@ pub trait MeetSemiLattice: Eq {
 /// A set that has a "bottom" element, which is less than or equal to any other element.
 pub trait HasBottom {
     const BOTTOM: Self;
+
+    fn is_bottom(&self) -> bool;
 }
 
 /// A set that has a "top" element, which is greater than or equal to any other element.
@@ -114,6 +118,10 @@ impl MeetSemiLattice for bool {
 
 impl HasBottom for bool {
     const BOTTOM: Self = false;
+
+    fn is_bottom(&self) -> bool {
+        !self
+    }
 }
 
 impl HasTop for bool {
@@ -267,6 +275,10 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
 
 impl<T> HasBottom for FlatSet<T> {
     const BOTTOM: Self = Self::Bottom;
+
+    fn is_bottom(&self) -> bool {
+        matches!(self, Self::Bottom)
+    }
 }
 
 impl<T> HasTop for FlatSet<T> {
@@ -291,6 +303,10 @@ impl<T> MaybeReachable<T> {
 
 impl<T> HasBottom for MaybeReachable<T> {
     const BOTTOM: Self = MaybeReachable::Unreachable;
+
+    fn is_bottom(&self) -> bool {
+        matches!(self, Self::Unreachable)
+    }
 }
 
 impl<T: HasTop> HasTop for MaybeReachable<T> {

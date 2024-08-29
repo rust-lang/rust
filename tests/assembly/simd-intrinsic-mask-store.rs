@@ -6,7 +6,7 @@
 //@ [x86-avx512] compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512dq
 //@ [x86-avx512] needs-llvm-components: x86
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O
+//@ compile-flags: --crate-type=lib -O -C panic=abort
 
 #![feature(no_core, lang_items, repr_simd, intrinsics)]
 #![no_core]
@@ -18,6 +18,7 @@ pub trait Sized {}
 
 #[lang = "copy"]
 trait Copy {}
+impl<T: ?Sized> Copy for *mut T {}
 
 #[repr(simd)]
 pub struct i8x16([i8; 16]);

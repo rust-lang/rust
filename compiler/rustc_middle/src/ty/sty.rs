@@ -2,36 +2,34 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use crate::infer::canonical::Canonical;
-use crate::ty::InferTy::*;
-use crate::ty::{
-    self, AdtDef, BoundRegionKind, Discr, Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
-};
-use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
-use crate::ty::{List, ParamEnv};
+use std::assert_matches::debug_assert_matches;
+use std::borrow::Cow;
+use std::iter;
+use std::ops::{ControlFlow, Range};
+
 use hir::def::{CtorKind, DefKind};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable};
+use rustc_macros::{extension, HashStable, TyDecodable, TyEncodable, TypeFoldable};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi;
-use std::assert_matches::debug_assert_matches;
-use std::borrow::Cow;
-use std::iter;
-use std::ops::{ControlFlow, Range};
-use ty::util::IntTypeExt;
-
+use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
-use super::fold::FnMutDelegate;
 use super::GenericParamDefKind;
+use crate::infer::canonical::Canonical;
+use crate::ty::InferTy::*;
+use crate::ty::{
+    self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
 #[rustc_diagnostic_item = "TyKind"]
@@ -40,6 +38,7 @@ pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
+pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
 
 pub trait Article {
     fn article(&self) -> &'static str;
@@ -59,670 +58,18 @@ impl<'tcx> Article for TyKind<'tcx> {
     }
 }
 
-/// A closure can be modeled as a struct that looks like:
-/// ```ignore (illustrative)
-/// struct Closure<'l0...'li, T0...Tj, CK, CS, U>(...U);
-/// ```
-/// where:
-///
-/// - 'l0...'li and T0...Tj are the generic parameters
-///   in scope on the function that defined the closure,
-/// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This
-///   is rather hackily encoded via a scalar type. See
-///   `Ty::to_opt_closure_kind` for details.
-/// - CS represents the *closure signature*, representing as a `fn()`
-///   type. For example, `fn(u32, u32) -> u32` would mean that the closure
-///   implements `CK<(u32, u32), Output = u32>`, where `CK` is the trait
-///   specified above.
-/// - U is a type parameter representing the types of its upvars, tupled up
-///   (borrowed, if appropriate; that is, if a U field represents a by-ref upvar,
-///    and the up-var has the type `Foo`, then that field of U will be `&Foo`).
-///
-/// So, for example, given this function:
-/// ```ignore (illustrative)
-/// fn foo<'a, T>(data: &'a mut T) {
-///      do(|| data.count += 1)
-/// }
-/// ```
-/// the type of the closure would be something like:
-/// ```ignore (illustrative)
-/// struct Closure<'a, T, U>(...U);
-/// ```
-/// Note that the type of the upvar is not specified in the struct.
-/// You may wonder how the impl would then be able to use the upvar,
-/// if it doesn't know it's type? The answer is that the impl is
-/// (conceptually) not fully generic over Closure but rather tied to
-/// instances with the expected upvar types:
-/// ```ignore (illustrative)
-/// impl<'b, 'a, T> FnMut() for Closure<'a, T, (&'b mut &'a mut T,)> {
-///     ...
-/// }
-/// ```
-/// You can see that the *impl* fully specified the type of the upvar
-/// and thus knows full well that `data` has type `&'b mut &'a mut T`.
-/// (Here, I am assuming that `data` is mut-borrowed.)
-///
-/// Now, the last question you may ask is: Why include the upvar types
-/// in an extra type parameter? The reason for this design is that the
-/// upvar types can reference lifetimes that are internal to the
-/// creating function. In my example above, for example, the lifetime
-/// `'b` represents the scope of the closure itself; this is some
-/// subset of `foo`, probably just the scope of the call to the to
-/// `do()`. If we just had the lifetime/type parameters from the
-/// enclosing function, we couldn't name this lifetime `'b`. Note that
-/// there can also be lifetimes in the types of the upvars themselves,
-/// if one of them happens to be a reference to something that the
-/// creating fn owns.
-///
-/// OK, you say, so why not create a more minimal set of parameters
-/// that just includes the extra lifetime parameters? The answer is
-/// primarily that it would be hard --- we don't know at the time when
-/// we create the closure type what the full types of the upvars are,
-/// nor do we know which are borrowed and which are not. In this
-/// design, we can just supply a fresh type parameter and figure that
-/// out later.
-///
-/// All right, you say, but why include the type parameters from the
-/// original function then? The answer is that codegen may need them
-/// when monomorphizing, and they may not appear in the upvars. A
-/// closure could capture no variables but still make use of some
-/// in-scope type parameter with a bound (e.g., if our example above
-/// had an extra `U: Default`, and the closure called `U::default()`).
-///
-/// There is another reason. This design (implicitly) prohibits
-/// closures from capturing themselves (except via a trait
-/// object). This simplifies closure inference considerably, since it
-/// means that when we infer the kind of a closure or its upvars, we
-/// don't have to handle cycles where the decisions we make for
-/// closure C wind up influencing the decisions we ought to make for
-/// closure C (which would then require fixed point iteration to
-/// handle). Plus it fixes an ICE. :P
-///
-/// ## Coroutines
-///
-/// Coroutines are handled similarly in `CoroutineArgs`. The set of
-/// type parameters is similar, but `CK` and `CS` are replaced by the
-/// following type parameters:
-///
-/// * `GS`: The coroutine's "resume type", which is the type of the
-///   argument passed to `resume`, and the type of `yield` expressions
-///   inside the coroutine.
-/// * `GY`: The "yield type", which is the type of values passed to
-///   `yield` inside the coroutine.
-/// * `GR`: The "return type", which is the type of value returned upon
-///   completion of the coroutine.
-/// * `GW`: The "coroutine witness".
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
-pub struct ClosureArgs<'tcx> {
-    /// Lifetime and type parameters from the enclosing function,
-    /// concatenated with a tuple containing the types of the upvars.
-    ///
-    /// These are separated out because codegen wants to pass them around
-    /// when monomorphizing.
-    pub args: GenericArgsRef<'tcx>,
-}
-
-/// Struct returned by `split()`.
-pub struct ClosureArgsParts<'tcx> {
-    /// This is the args of the typeck root.
-    pub parent_args: &'tcx [GenericArg<'tcx>],
-    /// Represents the maximum calling capability of the closure.
-    pub closure_kind_ty: Ty<'tcx>,
-    /// Captures the closure's signature. This closure signature is "tupled", and
-    /// thus has a peculiar signature of `extern "rust-call" fn((Args, ...)) -> Ty`.
-    pub closure_sig_as_fn_ptr_ty: Ty<'tcx>,
-    /// The upvars captured by the closure. Remains an inference variable
-    /// until the upvar analysis, which happens late in HIR typeck.
-    pub tupled_upvars_ty: Ty<'tcx>,
-}
-
-impl<'tcx> ClosureArgs<'tcx> {
-    /// Construct `ClosureArgs` from `ClosureArgsParts`, containing `Args`
-    /// for the closure parent, alongside additional closure-specific components.
-    pub fn new(tcx: TyCtxt<'tcx>, parts: ClosureArgsParts<'tcx>) -> ClosureArgs<'tcx> {
-        ClosureArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
-                parts.closure_kind_ty.into(),
-                parts.closure_sig_as_fn_ptr_ty.into(),
-                parts.tupled_upvars_ty.into(),
-            ])),
-        }
-    }
-
-    /// Divides the closure args into their respective components.
-    /// The ordering assumed here must match that used by `ClosureArgs::new` above.
-    fn split(self) -> ClosureArgsParts<'tcx> {
-        match self.args[..] {
-            [ref parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
-                ClosureArgsParts {
-                    parent_args,
-                    closure_kind_ty: closure_kind_ty.expect_ty(),
-                    closure_sig_as_fn_ptr_ty: closure_sig_as_fn_ptr_ty.expect_ty(),
-                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-                }
-            }
-            _ => bug!("closure args missing synthetics"),
-        }
-    }
-
-    /// Returns the generic parameters of the closure's parent.
-    pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
-        self.split().parent_args
-    }
-
-    /// Returns an iterator over the list of types of captured paths by the closure.
-    /// In case there was a type error in figuring out the types of the captured path, an
-    /// empty iterator is returned.
-    #[inline]
-    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        match *self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(tys) => tys,
-            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
-            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
-        }
-    }
-
-    /// Returns the tuple type representing the upvars for this closure.
-    #[inline]
-    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty
-    }
-
-    /// Returns the closure kind for this closure; may return a type
-    /// variable during inference. To get the closure kind during
-    /// inference, use `infcx.closure_kind(args)`.
-    pub fn kind_ty(self) -> Ty<'tcx> {
-        self.split().closure_kind_ty
-    }
-
-    /// Returns the `fn` pointer type representing the closure signature for this
-    /// closure.
-    // FIXME(eddyb) this should be unnecessary, as the shallowly resolved
-    // type is known at the time of the creation of `ClosureArgs`,
-    // see `rustc_hir_analysis::check::closure`.
-    pub fn sig_as_fn_ptr_ty(self) -> Ty<'tcx> {
-        self.split().closure_sig_as_fn_ptr_ty
-    }
-
-    /// Returns the closure kind for this closure; only usable outside
-    /// of an inference context, because in that context we know that
-    /// there are no type variables.
-    ///
-    /// If you have an inference context, use `infcx.closure_kind()`.
-    pub fn kind(self) -> ty::ClosureKind {
-        self.kind_ty().to_opt_closure_kind().unwrap()
-    }
-
-    /// Extracts the signature from the closure.
-    pub fn sig(self) -> ty::PolyFnSig<'tcx> {
-        match *self.sig_as_fn_ptr_ty().kind() {
-            ty::FnPtr(sig) => sig,
-            ty => bug!("closure_sig_as_fn_ptr_ty is not a fn-ptr: {ty:?}"),
-        }
-    }
-
-    pub fn print_as_impl_trait(self) -> ty::print::PrintClosureAsImpl<'tcx> {
-        ty::print::PrintClosureAsImpl { closure: self }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable, Lift)]
-pub struct CoroutineClosureArgs<'tcx> {
-    pub args: GenericArgsRef<'tcx>,
-}
-
-/// See docs for explanation of how each argument is used.
-///
-/// See [`CoroutineClosureSignature`] for how these arguments are put together
-/// to make a callable [`FnSig`] suitable for typeck and borrowck.
-pub struct CoroutineClosureArgsParts<'tcx> {
-    /// This is the args of the typeck root.
-    pub parent_args: &'tcx [GenericArg<'tcx>],
-    /// Represents the maximum calling capability of the closure.
-    pub closure_kind_ty: Ty<'tcx>,
-    /// Represents all of the relevant parts of the coroutine returned by this
-    /// coroutine-closure. This signature parts type will have the general
-    /// shape of `fn(tupled_inputs, resume_ty) -> (return_ty, yield_ty)`, where
-    /// `resume_ty`, `return_ty`, and `yield_ty` are the respective types for the
-    /// coroutine returned by the coroutine-closure.
-    ///
-    /// Use `coroutine_closure_sig` to break up this type rather than using it
-    /// yourself.
-    pub signature_parts_ty: Ty<'tcx>,
-    /// The upvars captured by the closure. Remains an inference variable
-    /// until the upvar analysis, which happens late in HIR typeck.
-    pub tupled_upvars_ty: Ty<'tcx>,
-    /// a function pointer that has the shape `for<'env> fn() -> (&'env T, ...)`.
-    /// This allows us to represent the binder of the self-captures of the closure.
-    ///
-    /// For example, if the coroutine returned by the closure borrows `String`
-    /// from the closure's upvars, this will be `for<'env> fn() -> (&'env String,)`,
-    /// while the `tupled_upvars_ty`, representing the by-move version of the same
-    /// captures, will be `(String,)`.
-    pub coroutine_captures_by_ref_ty: Ty<'tcx>,
-    /// Witness type returned by the generator produced by this coroutine-closure.
-    pub coroutine_witness_ty: Ty<'tcx>,
-}
-
-impl<'tcx> CoroutineClosureArgs<'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        parts: CoroutineClosureArgsParts<'tcx>,
-    ) -> CoroutineClosureArgs<'tcx> {
-        CoroutineClosureArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
-                parts.closure_kind_ty.into(),
-                parts.signature_parts_ty.into(),
-                parts.tupled_upvars_ty.into(),
-                parts.coroutine_captures_by_ref_ty.into(),
-                parts.coroutine_witness_ty.into(),
-            ])),
-        }
-    }
-
-    fn split(self) -> CoroutineClosureArgsParts<'tcx> {
-        match self.args[..] {
-            [
-                ref parent_args @ ..,
-                closure_kind_ty,
-                signature_parts_ty,
-                tupled_upvars_ty,
-                coroutine_captures_by_ref_ty,
-                coroutine_witness_ty,
-            ] => CoroutineClosureArgsParts {
-                parent_args,
-                closure_kind_ty: closure_kind_ty.expect_ty(),
-                signature_parts_ty: signature_parts_ty.expect_ty(),
-                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-                coroutine_captures_by_ref_ty: coroutine_captures_by_ref_ty.expect_ty(),
-                coroutine_witness_ty: coroutine_witness_ty.expect_ty(),
-            },
-            _ => bug!("closure args missing synthetics"),
-        }
-    }
-
-    pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
-        self.split().parent_args
-    }
-
-    #[inline]
-    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        match self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(..) => self.tupled_upvars_ty().tuple_fields(),
-            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
-            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
-        }
-    }
-
-    #[inline]
-    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty
-    }
-
-    pub fn kind_ty(self) -> Ty<'tcx> {
-        self.split().closure_kind_ty
-    }
-
-    pub fn kind(self) -> ty::ClosureKind {
-        self.kind_ty().to_opt_closure_kind().unwrap()
-    }
-
-    pub fn signature_parts_ty(self) -> Ty<'tcx> {
-        self.split().signature_parts_ty
-    }
-
-    pub fn coroutine_closure_sig(self) -> Binder<'tcx, CoroutineClosureSignature<'tcx>> {
-        let interior = self.coroutine_witness_ty();
-        let ty::FnPtr(sig) = self.signature_parts_ty().kind() else { bug!() };
-        sig.map_bound(|sig| {
-            let [resume_ty, tupled_inputs_ty] = *sig.inputs() else {
-                bug!();
-            };
-            let [yield_ty, return_ty] = **sig.output().tuple_fields() else { bug!() };
-            CoroutineClosureSignature {
-                interior,
-                tupled_inputs_ty,
-                resume_ty,
-                yield_ty,
-                return_ty,
-                c_variadic: sig.c_variadic,
-                safety: sig.safety,
-                abi: sig.abi,
-            }
-        })
-    }
-
-    pub fn coroutine_captures_by_ref_ty(self) -> Ty<'tcx> {
-        self.split().coroutine_captures_by_ref_ty
-    }
-
-    pub fn coroutine_witness_ty(self) -> Ty<'tcx> {
-        self.split().coroutine_witness_ty
-    }
-
-    pub fn has_self_borrows(&self) -> bool {
-        match self.coroutine_captures_by_ref_ty().kind() {
-            ty::FnPtr(sig) => sig
-                .skip_binder()
-                .visit_with(&mut HasRegionsBoundAt { binder: ty::INNERMOST })
-                .is_break(),
-            ty::Error(_) => true,
-            _ => bug!(),
-        }
-    }
-}
-/// Unlike `has_escaping_bound_vars` or `outermost_exclusive_binder`, this will
-/// detect only regions bound *at* the debruijn index.
-struct HasRegionsBoundAt {
-    binder: ty::DebruijnIndex,
-}
-// FIXME: Could be optimized to not walk into components with no escaping bound vars.
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRegionsBoundAt {
-    type Result = ControlFlow<()>;
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> Self::Result {
-        self.binder.shift_in(1);
-        t.super_visit_with(self)?;
-        self.binder.shift_out(1);
-        ControlFlow::Continue(())
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
-        if let ty::ReBound(binder, _) = *r
-            && self.binder == binder
-        {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
-pub struct CoroutineClosureSignature<'tcx> {
-    pub interior: Ty<'tcx>,
-    pub tupled_inputs_ty: Ty<'tcx>,
-    pub resume_ty: Ty<'tcx>,
-    pub yield_ty: Ty<'tcx>,
-    pub return_ty: Ty<'tcx>,
-
-    // Like the `fn_sig_as_fn_ptr_ty` of a regular closure, these types
-    // never actually differ. But we save them rather than recreating them
-    // from scratch just for good measure.
-    /// Always false
-    pub c_variadic: bool,
-    /// Always [`hir::Safety::Safe`]
-    pub safety: hir::Safety,
-    /// Always [`abi::Abi::RustCall`]
-    pub abi: abi::Abi,
-}
-
-impl<'tcx> CoroutineClosureSignature<'tcx> {
-    /// Construct a coroutine from the closure signature. Since a coroutine signature
-    /// is agnostic to the type of generator that is returned (by-ref/by-move),
-    /// the caller must specify what "flavor" of generator that they'd like to
-    /// create. Additionally, they must manually compute the upvars of the closure.
-    ///
-    /// This helper is not really meant to be used directly except for early on
-    /// during typeck, when we want to put inference vars into the kind and upvars tys.
-    /// When the kind and upvars are known, use the other helper functions.
-    pub fn to_coroutine(
-        self,
-        tcx: TyCtxt<'tcx>,
-        parent_args: &'tcx [GenericArg<'tcx>],
-        coroutine_kind_ty: Ty<'tcx>,
-        coroutine_def_id: DefId,
-        tupled_upvars_ty: Ty<'tcx>,
-    ) -> Ty<'tcx> {
-        let coroutine_args = ty::CoroutineArgs::new(
-            tcx,
-            ty::CoroutineArgsParts {
-                parent_args,
-                kind_ty: coroutine_kind_ty,
-                resume_ty: self.resume_ty,
-                yield_ty: self.yield_ty,
-                return_ty: self.return_ty,
-                witness: self.interior,
-                tupled_upvars_ty,
-            },
-        );
-
-        Ty::new_coroutine(tcx, coroutine_def_id, coroutine_args.args)
-    }
-
-    /// Given known upvars and a [`ClosureKind`](ty::ClosureKind), compute the coroutine
-    /// returned by that corresponding async fn trait.
-    ///
-    /// This function expects the upvars to have been computed already, and doesn't check
-    /// that the `ClosureKind` is actually supported by the coroutine-closure.
-    pub fn to_coroutine_given_kind_and_upvars(
-        self,
-        tcx: TyCtxt<'tcx>,
-        parent_args: &'tcx [GenericArg<'tcx>],
-        coroutine_def_id: DefId,
-        goal_kind: ty::ClosureKind,
-        env_region: ty::Region<'tcx>,
-        closure_tupled_upvars_ty: Ty<'tcx>,
-        coroutine_captures_by_ref_ty: Ty<'tcx>,
-    ) -> Ty<'tcx> {
-        let tupled_upvars_ty = Self::tupled_upvars_by_closure_kind(
-            tcx,
-            goal_kind,
-            self.tupled_inputs_ty,
-            closure_tupled_upvars_ty,
-            coroutine_captures_by_ref_ty,
-            env_region,
-        );
-
-        self.to_coroutine(
-            tcx,
-            parent_args,
-            Ty::from_coroutine_closure_kind(tcx, goal_kind),
-            coroutine_def_id,
-            tupled_upvars_ty,
-        )
-    }
-
-    /// Compute the tupled upvars that a coroutine-closure's output coroutine
-    /// would return for the given `ClosureKind`.
-    ///
-    /// When `ClosureKind` is `FnMut`/`Fn`, then this will use the "captures by ref"
-    /// to return a set of upvars which are borrowed with the given `env_region`.
-    ///
-    /// This ensures that the `AsyncFn::call` will return a coroutine whose upvars'
-    /// lifetimes are related to the lifetime of the borrow on the closure made for
-    /// the call. This allows borrowck to enforce the self-borrows correctly.
-    pub fn tupled_upvars_by_closure_kind(
-        tcx: TyCtxt<'tcx>,
-        kind: ty::ClosureKind,
-        tupled_inputs_ty: Ty<'tcx>,
-        closure_tupled_upvars_ty: Ty<'tcx>,
-        coroutine_captures_by_ref_ty: Ty<'tcx>,
-        env_region: ty::Region<'tcx>,
-    ) -> Ty<'tcx> {
-        match kind {
-            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
-                let ty::FnPtr(sig) = *coroutine_captures_by_ref_ty.kind() else {
-                    bug!();
-                };
-                let coroutine_captures_by_ref_ty = tcx.replace_escaping_bound_vars_uncached(
-                    sig.output().skip_binder(),
-                    FnMutDelegate {
-                        consts: &mut |c, t| ty::Const::new_bound(tcx, ty::INNERMOST, c, t),
-                        types: &mut |t| Ty::new_bound(tcx, ty::INNERMOST, t),
-                        regions: &mut |_| env_region,
-                    },
-                );
-                Ty::new_tup_from_iter(
-                    tcx,
-                    tupled_inputs_ty
-                        .tuple_fields()
-                        .iter()
-                        .chain(coroutine_captures_by_ref_ty.tuple_fields()),
-                )
-            }
-            ty::ClosureKind::FnOnce => Ty::new_tup_from_iter(
-                tcx,
-                tupled_inputs_ty
-                    .tuple_fields()
-                    .iter()
-                    .chain(closure_tupled_upvars_ty.tuple_fields()),
-            ),
-        }
-    }
-}
-/// Similar to `ClosureArgs`; see the above documentation for more.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
-pub struct CoroutineArgs<'tcx> {
-    pub args: GenericArgsRef<'tcx>,
-}
-
-pub struct CoroutineArgsParts<'tcx> {
-    /// This is the args of the typeck root.
-    pub parent_args: &'tcx [GenericArg<'tcx>],
-
-    /// The coroutines returned by a coroutine-closure's `AsyncFnOnce`/`AsyncFnMut`
-    /// implementations must be distinguished since the former takes the closure's
-    /// upvars by move, and the latter takes the closure's upvars by ref.
-    ///
-    /// This field distinguishes these fields so that codegen can select the right
-    /// body for the coroutine. This has the same type representation as the closure
-    /// kind: `i8`/`i16`/`i32`.
-    ///
-    /// For regular coroutines, this field will always just be `()`.
-    pub kind_ty: Ty<'tcx>,
-
-    pub resume_ty: Ty<'tcx>,
-    pub yield_ty: Ty<'tcx>,
-    pub return_ty: Ty<'tcx>,
-
-    /// The interior type of the coroutine.
-    /// Represents all types that are stored in locals
-    /// in the coroutine's body.
-    pub witness: Ty<'tcx>,
-
-    /// The upvars captured by the closure. Remains an inference variable
-    /// until the upvar analysis, which happens late in HIR typeck.
-    pub tupled_upvars_ty: Ty<'tcx>,
-}
-
-impl<'tcx> CoroutineArgs<'tcx> {
-    /// Construct `CoroutineArgs` from `CoroutineArgsParts`, containing `Args`
-    /// for the coroutine parent, alongside additional coroutine-specific components.
-    pub fn new(tcx: TyCtxt<'tcx>, parts: CoroutineArgsParts<'tcx>) -> CoroutineArgs<'tcx> {
-        CoroutineArgs {
-            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
-                parts.kind_ty.into(),
-                parts.resume_ty.into(),
-                parts.yield_ty.into(),
-                parts.return_ty.into(),
-                parts.witness.into(),
-                parts.tupled_upvars_ty.into(),
-            ])),
-        }
-    }
-
-    /// Divides the coroutine args into their respective components.
-    /// The ordering assumed here must match that used by `CoroutineArgs::new` above.
-    fn split(self) -> CoroutineArgsParts<'tcx> {
-        match self.args[..] {
-            [
-                ref parent_args @ ..,
-                kind_ty,
-                resume_ty,
-                yield_ty,
-                return_ty,
-                witness,
-                tupled_upvars_ty,
-            ] => CoroutineArgsParts {
-                parent_args,
-                kind_ty: kind_ty.expect_ty(),
-                resume_ty: resume_ty.expect_ty(),
-                yield_ty: yield_ty.expect_ty(),
-                return_ty: return_ty.expect_ty(),
-                witness: witness.expect_ty(),
-                tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
-            },
-            _ => bug!("coroutine args missing synthetics"),
-        }
-    }
-
-    /// Returns the generic parameters of the coroutine's parent.
-    pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
-        self.split().parent_args
-    }
-
-    // Returns the kind of the coroutine. See docs on the `kind_ty` field.
-    pub fn kind_ty(self) -> Ty<'tcx> {
-        self.split().kind_ty
-    }
-
-    /// This describes the types that can be contained in a coroutine.
-    /// It will be a type variable initially and unified in the last stages of typeck of a body.
-    /// It contains a tuple of all the types that could end up on a coroutine frame.
-    /// The state transformation MIR pass may only produce layouts which mention types
-    /// in this tuple. Upvars are not counted here.
-    pub fn witness(self) -> Ty<'tcx> {
-        self.split().witness
-    }
-
-    /// Returns an iterator over the list of types of captured paths by the coroutine.
-    /// In case there was a type error in figuring out the types of the captured path, an
-    /// empty iterator is returned.
-    #[inline]
-    pub fn upvar_tys(self) -> &'tcx List<Ty<'tcx>> {
-        match *self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => ty::List::empty(),
-            TyKind::Tuple(tys) => tys,
-            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
-            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
-        }
-    }
-
-    /// Returns the tuple type representing the upvars for this coroutine.
-    #[inline]
-    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty
-    }
-
-    /// Returns the type representing the resume type of the coroutine.
-    pub fn resume_ty(self) -> Ty<'tcx> {
-        self.split().resume_ty
-    }
-
-    /// Returns the type representing the yield type of the coroutine.
-    pub fn yield_ty(self) -> Ty<'tcx> {
-        self.split().yield_ty
-    }
-
-    /// Returns the type representing the return type of the coroutine.
-    pub fn return_ty(self) -> Ty<'tcx> {
-        self.split().return_ty
-    }
-
-    /// Returns the "coroutine signature", which consists of its resume, yield
-    /// and return types.
-    pub fn sig(self) -> GenSig<'tcx> {
-        let parts = self.split();
-        ty::GenSig {
-            resume_ty: parts.resume_ty,
-            yield_ty: parts.yield_ty,
-            return_ty: parts.return_ty,
-        }
-    }
-}
-
-impl<'tcx> CoroutineArgs<'tcx> {
+#[extension(pub trait CoroutineArgsExt<'tcx>)]
+impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
     /// Coroutine has not been resumed yet.
-    pub const UNRESUMED: usize = 0;
+    const UNRESUMED: usize = 0;
     /// Coroutine has returned or is completed.
-    pub const RETURNED: usize = 1;
+    const RETURNED: usize = 1;
     /// Coroutine has been poisoned.
-    pub const POISONED: usize = 2;
+    const POISONED: usize = 2;
+    /// Number of variants to reserve in coroutine state. Corresponds to
+    /// `UNRESUMED` (beginning of a coroutine) and `RETURNED`/`POISONED`
+    /// (end of a coroutine) states.
+    const RESERVED_VARIANTS: usize = 3;
 
     const UNRESUMED_NAME: &'static str = "Unresumed";
     const RETURNED_NAME: &'static str = "Returned";
@@ -730,7 +77,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
 
     /// The valid variant indices of this coroutine.
     #[inline]
-    pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
+    fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
         FIRST_VARIANT
             ..tcx.coroutine_layout(def_id, tcx.types.unit).unwrap().variant_fields.next_index()
@@ -739,7 +86,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The discriminant for the given variant. Panics if the `variant_index` is
     /// out of range.
     #[inline]
-    pub fn discriminant_for_variant(
+    fn discriminant_for_variant(
         &self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
@@ -754,7 +101,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The set of all discriminants for the coroutine, enumerated with their
     /// variant indices.
     #[inline]
-    pub fn discriminants(
+    fn discriminants(
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
@@ -766,18 +113,18 @@ impl<'tcx> CoroutineArgs<'tcx> {
 
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
-    pub fn variant_name(v: VariantIdx) -> Cow<'static, str> {
+    fn variant_name(v: VariantIdx) -> Cow<'static, str> {
         match v.as_usize() {
             Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
             Self::RETURNED => Cow::from(Self::RETURNED_NAME),
             Self::POISONED => Cow::from(Self::POISONED_NAME),
-            _ => Cow::from(format!("Suspend{}", v.as_usize() - 3)),
+            _ => Cow::from(format!("Suspend{}", v.as_usize() - Self::RESERVED_VARIANTS)),
         }
     }
 
     /// The type of the state discriminant used in the coroutine type.
     #[inline]
-    pub fn discr_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    fn discr_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.types.u32
     }
 
@@ -788,7 +135,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The locals are grouped by their variant number. Note that some locals may
     /// be repeated in multiple variants.
     #[inline]
-    pub fn state_tys(
+    fn state_tys(
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
@@ -804,7 +151,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// This is the types of the fields of a coroutine which are not stored in a
     /// variant.
     #[inline]
-    pub fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
+    fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
         self.upvar_tys()
     }
 }
@@ -858,7 +205,7 @@ impl<'tcx> UpvarArgs<'tcx> {
 ///
 /// When the inline const is instantiated, `R` is instantiated as the actual inferred
 /// type of the constant. The reason that `R` is represented as an extra type parameter
-/// is the same reason that [`ClosureArgs`] have `CS` and `U` as type parameters:
+/// is the same reason that [`ty::ClosureArgs`] have `CS` and `U` as type parameters:
 /// inline const can reference lifetimes that are internal to the creating function.
 #[derive(Copy, Clone, Debug)]
 pub struct InlineConstArgs<'tcx> {
@@ -937,13 +284,6 @@ impl BoundVariableKind {
     }
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
-pub struct GenSig<'tcx> {
-    pub resume_ty: Ty<'tcx>,
-    pub yield_ty: Ty<'tcx>,
-    pub return_ty: Ty<'tcx>,
-}
-
 pub type PolyFnSig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
 pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<'tcx, FnSig<'tcx>>>;
 
@@ -952,6 +292,12 @@ pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<'tcx, FnSig<'tcx>>>;
 pub struct ParamTy {
     pub index: u32,
     pub name: Symbol,
+}
+
+impl rustc_type_ir::inherent::ParamLike for ParamTy {
+    fn index(self) -> u32 {
+        self.index
+    }
 }
 
 impl<'tcx> ParamTy {
@@ -982,6 +328,12 @@ pub struct ParamConst {
     pub name: Symbol,
 }
 
+impl rustc_type_ir::inherent::ParamLike for ParamConst {
+    fn index(self) -> u32 {
+        self.index
+    }
+}
+
 impl ParamConst {
     pub fn new(index: u32, name: Symbol) -> ParamConst {
         ParamConst { index, name }
@@ -989,6 +341,27 @@ impl ParamConst {
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamConst {
         ParamConst::new(def.index, def.name)
+    }
+
+    pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
+        let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
+            // `ConstArgHasType` are never desugared to be higher ranked.
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::ConstArgHasType(param_ct, ty) => {
+                    assert!(!(param_ct, ty).has_escaping_bound_vars());
+
+                    match param_ct.kind() {
+                        ty::ConstKind::Param(param_ct) if param_ct.index == self.index => Some(ty),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        });
+
+        let ty = candidates.next().unwrap();
+        assert!(candidates.next().is_none());
+        ty
     }
 }
 
@@ -1128,7 +501,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_opaque(tcx: TyCtxt<'tcx>, def_id: DefId, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        Ty::new_alias(tcx, ty::Opaque, AliasTy::new(tcx, def_id, args))
+        Ty::new_alias(tcx, ty::Opaque, AliasTy::new_from_args(tcx, def_id, args))
     }
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
@@ -1285,7 +658,8 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, FnPtr(fty))
+        let (sig_tys, hdr) = fty.split();
+        Ty::new(tcx, FnPtr(sig_tys, hdr))
     }
 
     #[inline]
@@ -1296,6 +670,15 @@ impl<'tcx> Ty<'tcx> {
         repr: DynKind,
     ) -> Ty<'tcx> {
         Ty::new(tcx, Dynamic(obj, reg, repr))
+    }
+
+    #[inline]
+    pub fn new_projection_from_args(
+        tcx: TyCtxt<'tcx>,
+        item_def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new_alias(tcx, ty::Projection, AliasTy::new_from_args(tcx, item_def_id, args))
     }
 
     #[inline]
@@ -1415,12 +798,28 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         tcx.types.bool
     }
 
+    fn new_u8(tcx: TyCtxt<'tcx>) -> Self {
+        tcx.types.u8
+    }
+
     fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferTy) -> Self {
         Ty::new_infer(tcx, infer)
     }
 
     fn new_var(tcx: TyCtxt<'tcx>, vid: ty::TyVid) -> Self {
         Ty::new_var(tcx, vid)
+    }
+
+    fn new_param(tcx: TyCtxt<'tcx>, param: ty::ParamTy) -> Self {
+        Ty::new_param(tcx, param.index, param.name)
+    }
+
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType) -> Self {
+        Ty::new_placeholder(tcx, placeholder)
+    }
+
+    fn new_bound(interner: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundTy) -> Self {
+        Ty::new_bound(interner, debruijn, var)
     }
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
@@ -1434,10 +833,147 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     ) -> Self {
         Ty::new_alias(interner, kind, alias_ty)
     }
+
+    fn new_error(interner: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
+        Ty::new_error(interner, guar)
+    }
+
+    fn new_adt(
+        interner: TyCtxt<'tcx>,
+        adt_def: ty::AdtDef<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Self {
+        Ty::new_adt(interner, adt_def, args)
+    }
+
+    fn new_foreign(interner: TyCtxt<'tcx>, def_id: DefId) -> Self {
+        Ty::new_foreign(interner, def_id)
+    }
+
+    fn new_dynamic(
+        interner: TyCtxt<'tcx>,
+        preds: &'tcx List<ty::PolyExistentialPredicate<'tcx>>,
+        region: ty::Region<'tcx>,
+        kind: ty::DynKind,
+    ) -> Self {
+        Ty::new_dynamic(interner, preds, region, kind)
+    }
+
+    fn new_coroutine(
+        interner: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Self {
+        Ty::new_coroutine(interner, def_id, args)
+    }
+
+    fn new_coroutine_closure(
+        interner: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Self {
+        Ty::new_coroutine_closure(interner, def_id, args)
+    }
+
+    fn new_closure(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
+        Ty::new_closure(interner, def_id, args)
+    }
+
+    fn new_coroutine_witness(
+        interner: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Self {
+        Ty::new_coroutine_witness(interner, def_id, args)
+    }
+
+    fn new_ptr(interner: TyCtxt<'tcx>, ty: Self, mutbl: hir::Mutability) -> Self {
+        Ty::new_ptr(interner, ty, mutbl)
+    }
+
+    fn new_ref(
+        interner: TyCtxt<'tcx>,
+        region: ty::Region<'tcx>,
+        ty: Self,
+        mutbl: hir::Mutability,
+    ) -> Self {
+        Ty::new_ref(interner, region, ty, mutbl)
+    }
+
+    fn new_array_with_const_len(interner: TyCtxt<'tcx>, ty: Self, len: ty::Const<'tcx>) -> Self {
+        Ty::new_array_with_const_len(interner, ty, len)
+    }
+
+    fn new_slice(interner: TyCtxt<'tcx>, ty: Self) -> Self {
+        Ty::new_slice(interner, ty)
+    }
+
+    fn new_tup(interner: TyCtxt<'tcx>, tys: &[Ty<'tcx>]) -> Self {
+        Ty::new_tup(interner, tys)
+    }
+
+    fn new_tup_from_iter<It, T>(interner: TyCtxt<'tcx>, iter: It) -> T::Output
+    where
+        It: Iterator<Item = T>,
+        T: CollectAndApply<Self, Self>,
+    {
+        Ty::new_tup_from_iter(interner, iter)
+    }
+
+    fn tuple_fields(self) -> &'tcx ty::List<Ty<'tcx>> {
+        self.tuple_fields()
+    }
+
+    fn to_opt_closure_kind(self) -> Option<ty::ClosureKind> {
+        self.to_opt_closure_kind()
+    }
+
+    fn from_closure_kind(interner: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Self {
+        Ty::from_closure_kind(interner, kind)
+    }
+
+    fn from_coroutine_closure_kind(
+        interner: TyCtxt<'tcx>,
+        kind: rustc_type_ir::ClosureKind,
+    ) -> Self {
+        Ty::from_coroutine_closure_kind(interner, kind)
+    }
+
+    fn new_fn_def(interner: TyCtxt<'tcx>, def_id: DefId, args: ty::GenericArgsRef<'tcx>) -> Self {
+        Ty::new_fn_def(interner, def_id, args)
+    }
+
+    fn new_fn_ptr(interner: TyCtxt<'tcx>, sig: ty::Binder<'tcx, ty::FnSig<'tcx>>) -> Self {
+        Ty::new_fn_ptr(interner, sig)
+    }
+
+    fn new_pat(interner: TyCtxt<'tcx>, ty: Self, pat: ty::Pattern<'tcx>) -> Self {
+        Ty::new_pat(interner, ty, pat)
+    }
+
+    fn new_unit(interner: TyCtxt<'tcx>) -> Self {
+        interner.types.unit
+    }
+
+    fn new_usize(interner: TyCtxt<'tcx>) -> Self {
+        interner.types.usize
+    }
+
+    fn discriminant_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.discriminant_ty(interner)
+    }
+
+    fn async_destructor_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.async_destructor_ty(interner)
+    }
 }
 
 /// Type utilities
 impl<'tcx> Ty<'tcx> {
+    // It would be nicer if this returned the value instead of a reference,
+    // like how `Predicate::kind` and `Region::kind` do. (It would result in
+    // many fewer subsequent dereferences.) But that gives a small but
+    // noticeable performance hit. See #126069 for details.
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
         self.0.0
@@ -1651,7 +1187,7 @@ impl<'tcx> Ty<'tcx> {
                 | Float(_)
                 | Uint(_)
                 | FnDef(..)
-                | FnPtr(_)
+                | FnPtr(..)
                 | RawPtr(_, _)
                 | Infer(IntVar(_) | FloatVar(_))
         )
@@ -1802,7 +1338,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, args) => tcx.fn_sig(*def_id).instantiate(tcx, args),
-            FnPtr(f) => *f,
+            FnPtr(sig_tys, hdr) => sig_tys.with(*hdr),
             Error(_) => {
                 // ignore errors (#54954)
                 Binder::dummy(ty::FnSig {
@@ -1821,12 +1357,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_fn(self) -> bool {
-        matches!(self.kind(), FnDef(..) | FnPtr(_))
+        matches!(self.kind(), FnDef(..) | FnPtr(..))
     }
 
     #[inline]
     pub fn is_fn_ptr(self) -> bool {
-        matches!(self.kind(), FnPtr(_))
+        matches!(self.kind(), FnPtr(..))
     }
 
     #[inline]
@@ -1897,7 +1433,7 @@ impl<'tcx> Ty<'tcx> {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
                 );
-                Ty::new_projection(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
+                Ty::new_projection_from_args(tcx, assoc_items[0], tcx.mk_args(&[self.into()]))
             }
 
             ty::Pat(ty, _) => ty.discriminant_ty(tcx),
@@ -1934,11 +1470,22 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns the type of the async destructor of this type.
-    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Ty<'tcx> {
-        if self.is_async_destructor_noop(tcx, param_env) || matches!(self.kind(), ty::Error(_)) {
-            return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
-                .instantiate_identity();
+    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self.async_drop_glue_morphology(tcx) {
+            AsyncDropGlueMorphology::Noop => {
+                return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
+                    .instantiate_identity();
+            }
+            AsyncDropGlueMorphology::DeferredDropInPlace => {
+                let drop_in_place =
+                    Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDeferredDropInPlace)
+                        .instantiate(tcx, &[self.into()]);
+                return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
+                    .instantiate(tcx, &[drop_in_place.into()]);
+            }
+            AsyncDropGlueMorphology::Custom => (),
         }
+
         match *self.kind() {
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx
@@ -1957,24 +1504,18 @@ impl<'tcx> Ty<'tcx> {
                 .adt_async_destructor_ty(
                     tcx,
                     adt_def.variants().iter().map(|v| v.fields.iter().map(|f| f.ty(tcx, args))),
-                    param_env,
                 ),
-            ty::Tuple(tys) => self.adt_async_destructor_ty(tcx, iter::once(tys), param_env),
-            ty::Closure(_, args) => self.adt_async_destructor_ty(
-                tcx,
-                iter::once(args.as_closure().upvar_tys()),
-                param_env,
-            ),
-            ty::CoroutineClosure(_, args) => self.adt_async_destructor_ty(
-                tcx,
-                iter::once(args.as_coroutine_closure().upvar_tys()),
-                param_env,
-            ),
+            ty::Tuple(tys) => self.adt_async_destructor_ty(tcx, iter::once(tys)),
+            ty::Closure(_, args) => {
+                self.adt_async_destructor_ty(tcx, iter::once(args.as_closure().upvar_tys()))
+            }
+            ty::CoroutineClosure(_, args) => self
+                .adt_async_destructor_ty(tcx, iter::once(args.as_coroutine_closure().upvar_tys())),
 
             ty::Adt(adt_def, _) => {
                 assert!(adt_def.is_union());
 
-                let surface_drop = self.surface_async_dropper_ty(tcx, param_env).unwrap();
+                let surface_drop = self.surface_async_dropper_ty(tcx).unwrap();
 
                 Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
                     .instantiate(tcx, &[surface_drop.into()])
@@ -1991,17 +1532,12 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    fn adt_async_destructor_ty<I>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        variants: I,
-        param_env: ParamEnv<'tcx>,
-    ) -> Ty<'tcx>
+    fn adt_async_destructor_ty<I>(self, tcx: TyCtxt<'tcx>, variants: I) -> Ty<'tcx>
     where
         I: Iterator + ExactSizeIterator,
         I::Item: IntoIterator<Item = Ty<'tcx>>,
     {
-        debug_assert!(!self.is_async_destructor_noop(tcx, param_env));
+        debug_assert_eq!(self.async_drop_glue_morphology(tcx), AsyncDropGlueMorphology::Custom);
 
         let defer = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDefer);
         let chain = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain);
@@ -2024,7 +1560,7 @@ impl<'tcx> Ty<'tcx> {
             })
             .unwrap();
 
-        let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx, param_env) {
+        let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx) {
             Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain)
                 .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
         } else {
@@ -2035,27 +1571,19 @@ impl<'tcx> Ty<'tcx> {
             .instantiate(tcx, &[dtor.into()])
     }
 
-    fn surface_async_dropper_ty(
-        self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        if self.has_surface_async_drop(tcx, param_env) {
-            Some(LangItem::SurfaceAsyncDropInPlace)
-        } else if self.has_surface_drop(tcx, param_env) {
-            Some(LangItem::AsyncDropSurfaceDropInPlace)
-        } else {
-            None
-        }
-        .map(|dropper| {
-            Ty::async_destructor_combinator(tcx, dropper).instantiate(tcx, &[self.into()])
-        })
+    fn surface_async_dropper_ty(self, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
+        let adt_def = self.ty_adt_def()?;
+        let dropper = adt_def
+            .async_destructor(tcx)
+            .map(|_| LangItem::SurfaceAsyncDropInPlace)
+            .or_else(|| adt_def.destructor(tcx).map(|_| LangItem::AsyncDropSurfaceDropInPlace))?;
+        Some(Ty::async_destructor_combinator(tcx, dropper).instantiate(tcx, &[self.into()]))
     }
 
     fn async_destructor_combinator(
         tcx: TyCtxt<'tcx>,
         lang_item: LangItem,
-    ) -> ty::EarlyBinder<Ty<'tcx>> {
+    ) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         tcx.fn_sig(tcx.require_lang_item(lang_item, None))
             .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
     }
@@ -2067,7 +1595,7 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
-        let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
+        let tail = tcx.struct_tail_raw(self, normalize, || {});
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
@@ -2076,7 +1604,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -2091,10 +1619,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::Foreign(..)
             // `dyn*` has metadata = ().
             | ty::Dynamic(_, _, ty::DynStar)
-            // If returned by `struct_tail_with_normalize` this is a unit struct
+            // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
-            // If returned by `struct_tail_with_normalize` this is the empty tuple,
+            // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => Ok(tcx.types.unit),
 
@@ -2134,6 +1662,34 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Given a pointer or reference type, returns the type of the *pointee*'s
+    /// metadata. If it can't be determined exactly (perhaps due to still
+    /// being generic) then a projection through `ptr::Pointee` will be returned.
+    ///
+    /// This is particularly useful for getting the type of the result of
+    /// [`UnOp::PtrMetadata`](crate::mir::UnOp::PtrMetadata).
+    ///
+    /// Panics if `self` is not dereferencable.
+    #[track_caller]
+    pub fn pointee_metadata_ty_or_projection(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        let Some(pointee_ty) = self.builtin_deref(true) else {
+            bug!("Type {self:?} is not a pointer or reference type")
+        };
+        if pointee_ty.is_trivially_sized(tcx) {
+            tcx.types.unit
+        } else {
+            match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x) {
+                Ok(metadata_ty) => metadata_ty,
+                Err(tail_ty) => {
+                    let Some(metadata_def_id) = tcx.lang_items().metadata_type() else {
+                        bug!("No metadata_type lang item while looking at {self:?}")
+                    };
+                    Ty::new_projection(tcx, metadata_def_id, [tail_ty])
+                }
+            }
+        }
+    }
+
     /// When we create a closure, we record its kind (i.e., what trait
     /// it implements, constrained by how it uses its borrows) into its
     /// [`ty::ClosureArgs`] or [`ty::CoroutineClosureArgs`] using a type
@@ -2160,8 +1716,8 @@ impl<'tcx> Ty<'tcx> {
     /// }
     /// ```
     ///
-    /// After upvar analysis, you should instead use [`ClosureArgs::kind()`]
-    /// or [`CoroutineClosureArgs::kind()`] to assert that the `ClosureKind`
+    /// After upvar analysis, you should instead use [`ty::ClosureArgs::kind()`]
+    /// or [`ty::CoroutineClosureArgs::kind()`] to assert that the `ClosureKind`
     /// has been constrained instead of manually calling this method.
     ///
     /// ```rust,ignore (snippet of compiler code)
@@ -2240,7 +1796,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -2311,9 +1867,9 @@ impl<'tcx> Ty<'tcx> {
             // Definitely absolutely not copy.
             ty::Ref(_, _, hir::Mutability::Mut) => false,
 
-            // Thin pointers & thin shared references are pure-clone-copy, but for
-            // anything with custom metadata it might be more complicated.
-            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
+            // The standard library has a blanket Copy impl for shared references and raw pointers,
+            // for all unsized types.
+            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => true,
 
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
@@ -2364,7 +1920,7 @@ impl<'tcx> Ty<'tcx> {
 
     pub fn is_c_void(self, tcx: TyCtxt<'_>) -> bool {
         match self.kind() {
-            ty::Adt(adt, _) => tcx.lang_items().get(LangItem::CVoid) == Some(adt.did()),
+            ty::Adt(adt, _) => tcx.is_lang_item(adt.did(), LangItem::CVoid),
             _ => false,
         }
     }
@@ -2390,7 +1946,7 @@ impl<'tcx> Ty<'tcx> {
             | RawPtr(_, _)
             | Ref(_, _, _)
             | FnDef(_, _)
-            | FnPtr(_)
+            | FnPtr(..)
             | Dynamic(_, _, _)
             | Closure(_, _)
             | CoroutineClosure(_, _)
@@ -2404,56 +1960,23 @@ impl<'tcx> Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
-    fn split_inputs_and_output(self) -> (&'tcx [Ty<'tcx>], Ty<'tcx>) {
-        let (output, inputs) = self.split_last().unwrap();
-        (inputs, *output)
+    fn inputs(self) -> &'tcx [Ty<'tcx>] {
+        self.split_last().unwrap().1
     }
-}
 
-/// Extra information about why we ended up with a particular variance.
-/// This is only used to add more information to error messages, and
-/// has no effect on soundness. While choosing the 'wrong' `VarianceDiagInfo`
-/// may lead to confusing notes in error messages, it will never cause
-/// a miscompilation or unsoundness.
-///
-/// When in doubt, use `VarianceDiagInfo::default()`
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum VarianceDiagInfo<'tcx> {
-    /// No additional information - this is the default.
-    /// We will not add any additional information to error messages.
-    #[default]
-    None,
-    /// We switched our variance because a generic argument occurs inside
-    /// the invariant generic argument of another type.
-    Invariant {
-        /// The generic type containing the generic parameter
-        /// that changes the variance (e.g. `*mut T`, `MyStruct<T>`)
-        ty: Ty<'tcx>,
-        /// The index of the generic parameter being used
-        /// (e.g. `0` for `*mut T`, `1` for `MyStruct<'CovariantParam, 'InvariantParam>`)
-        param_index: u32,
-    },
-}
-
-impl<'tcx> VarianceDiagInfo<'tcx> {
-    /// Mirrors `Variance::xform` - used to 'combine' the existing
-    /// and new `VarianceDiagInfo`s when our variance changes.
-    pub fn xform(self, other: VarianceDiagInfo<'tcx>) -> VarianceDiagInfo<'tcx> {
-        // For now, just use the first `VarianceDiagInfo::Invariant` that we see
-        match self {
-            VarianceDiagInfo::None => other,
-            VarianceDiagInfo::Invariant { .. } => self,
-        }
+    fn output(self) -> Ty<'tcx> {
+        *self.split_last().unwrap().0
     }
 }
 
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
-    use super::*;
     use rustc_data_structures::static_assert_size;
+
+    use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
-    static_assert_size!(ty::TyKind<'_>, 32);
+    static_assert_size!(ty::TyKind<'_>, 24);
     // tidy-alphabetical-end
 }

@@ -28,9 +28,9 @@ fn main() {}
 #[cfg(FALSE)] fn e() { let _ = move || #![attr] {foo}; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = #[attr] ..#[attr] 0; }
-//~^ ERROR expected expression, found `..`
+//~^ ERROR attributes are not allowed on range expressions starting with `..`
 #[cfg(FALSE)] fn e() { let _ = #[attr] ..; }
-//~^ ERROR expected expression, found `..`
+//~^ ERROR attributes are not allowed on range expressions starting with `..`
 #[cfg(FALSE)] fn e() { let _ = #[attr] &#![attr] 0; }
 //~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = #[attr] &mut #![attr] 0; }

@@ -36,6 +36,10 @@
 //!   operations for both destructors and overloading `()`.
 //! * <code>[std::mem]::[drop]</code>, a convenience function for explicitly
 //!   dropping a value.
+//! * <code>[std::mem]::{[size_of], [size_of_val]}</code>, to get the size of
+//!   a type or value.
+//! * <code>[std::mem]::{[align_of], [align_of_val]}</code>, to get the
+//!   alignment of a type or value.
 //! * <code>[std::boxed]::[Box]</code>, a way to allocate values on the heap.
 //! * <code>[std::borrow]::[ToOwned]</code>, the conversion trait that defines
 //!   [`to_owned`], the generic method for creating an owned type from a
@@ -90,6 +94,9 @@
 //! [book-dtor]: ../../book/ch15-03-drop.html
 //! [book-enums]: ../../book/ch06-01-defining-an-enum.html
 //! [book-iter]: ../../book/ch13-02-iterators.html
+
+// No formatting: this file is nothing but re-exports, and their order is worth preserving.
+#![cfg_attr(rustfmt, rustfmt::skip)]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

@@ -1,27 +1,27 @@
-use crate::parser::ForceCollect;
-use crate::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
+use std::assert_matches::assert_matches;
+use std::io::prelude::*;
+use std::iter::Peekable;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::{io, str};
+
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::visit;
-use rustc_ast::{self as ast, PatKind};
+use rustc_ast::{self as ast, visit, PatKind};
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::create_default_session_globals_then;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, Pos, Span};
-use std::io;
-use std::io::prelude::*;
-use std::iter::Peekable;
-use std::path::{Path, PathBuf};
-use std::str;
-use std::sync::{Arc, Mutex};
+use rustc_span::{create_default_session_globals_then, BytePos, FileName, Pos, Span};
 use termcolor::WriteColor;
+
+use crate::parser::{ForceCollect, Parser};
+use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
 fn psess() -> ParseSess {
     ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE])
@@ -29,7 +29,11 @@ fn psess() -> ParseSess {
 
 /// Map string to parser (via tts).
 fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
-    new_parser_from_source_str(psess, PathBuf::from("bogofile").into(), source_str)
+    unwrap_or_emit_fatal(new_parser_from_source_str(
+        psess,
+        PathBuf::from("bogofile").into(),
+        source_str,
+    ))
 }
 
 fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
@@ -55,7 +59,7 @@ where
 {
     let mut p = string_to_parser(&psess, s);
     let x = f(&mut p).unwrap();
-    p.psess.dcx.abort_if_errors();
+    p.dcx().abort_if_errors();
     x
 }
 
@@ -82,11 +86,12 @@ where
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let psess = psess();
-    source_file_to_stream(
+    unwrap_or_emit_fatal(source_str_to_stream(
         &psess,
-        psess.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
+        PathBuf::from("bogofile").into(),
+        source_str,
         None,
-    )
+    ))
 }
 
 /// Parses a string, returns a crate.
@@ -186,7 +191,7 @@ impl<T: Write> Write for Shared<T> {
 #[allow(rustc::untranslatable_diagnostic)] // no translation needed for tests
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
     create_default_session_globals_then(|| {
-        let (handler, source_map, output) = create_test_handler();
+        let (dcx, source_map, output) = create_test_handler();
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
         let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
@@ -198,7 +203,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
-        handler.span_err(msp, "foo");
+        dcx.handle().span_err(msp, "foo");
 
         assert!(
             expected_output.chars().next() == Some('\n'),
@@ -315,9 +320,8 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |   ___^__-
-  |  |___|
-  | ||
+  |  ____^  -
+  | | ______|
 4 | ||   X1 Y1
 5 | ||   X2 Y2
   | ||____^__- `Y` is a good letter too
@@ -354,9 +358,8 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |   ___^__-
-  |  |___|
-  | ||
+  |  ____^  -
+  | | ______|
 4 | ||   Y1 X1
   | ||____-__^ `X` is a good letter
   |  |____|
@@ -438,10 +441,9 @@ error: foo
  --> test.rs:3:3
   |
 3 |       X0 Y0 Z0
-  |    ___^__-__-
-  |   |___|__|
-  |  ||___|
-  | |||
+  |  _____^  -  -
+  | | _______|  |
+  | || _________|
 4 | |||   X1 Y1 Z1
 5 | |||   X2 Y2 Z2
   | |||____^__-__- `Z` label
@@ -1068,7 +1070,8 @@ fn parse_item_from_source_str(
     source: String,
     psess: &ParseSess,
 ) -> PResult<'_, Option<P<ast::Item>>> {
-    new_parser_from_source_str(psess, name, source).parse_item(ForceCollect::No)
+    unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source))
+        .parse_item(ForceCollect::No)
 }
 
 // Produces a `rustc_span::span`.
@@ -1349,7 +1352,7 @@ fn ttdelim_span() {
         source: String,
         psess: &ParseSess,
     ) -> PResult<'_, P<ast::Expr>> {
-        new_parser_from_source_str(psess, name, source).parse_expr()
+        unwrap_or_emit_fatal(new_parser_from_source_str(psess, name, source)).parse_expr()
     }
 
     create_default_session_globals_then(|| {
@@ -1371,6 +1374,365 @@ fn ttdelim_span() {
     });
 }
 
+#[track_caller]
+fn look(p: &Parser<'_>, dist: usize, kind: rustc_ast::token::TokenKind) {
+    // Do the `assert_eq` outside the closure so that `track_caller` works.
+    // (`#![feature(closure_track_caller)]` + `#[track_caller]` on the closure
+    // doesn't give the line number in the test below if the assertion fails.)
+    let tok = p.look_ahead(dist, |tok| tok.clone());
+    assert_eq!(kind, tok.kind);
+}
+
+#[test]
+fn look_ahead() {
+    create_default_session_globals_then(|| {
+        let sym_f = Symbol::intern("f");
+        let sym_x = Symbol::intern("x");
+        #[allow(non_snake_case)]
+        let sym_S = Symbol::intern("S");
+        let raw_no = IdentIsRaw::No;
+
+        let psess = psess();
+        let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
+
+        // Current position is the `fn`.
+        look(&p, 0, token::Ident(kw::Fn, raw_no));
+        look(&p, 1, token::Ident(sym_f, raw_no));
+        look(&p, 2, token::OpenDelim(Delimiter::Parenthesis));
+        look(&p, 3, token::Ident(sym_x, raw_no));
+        look(&p, 4, token::Colon);
+        look(&p, 5, token::Ident(sym::u32, raw_no));
+        look(&p, 6, token::CloseDelim(Delimiter::Parenthesis));
+        look(&p, 7, token::OpenDelim(Delimiter::Brace));
+        look(&p, 8, token::Ident(sym_x, raw_no));
+        look(&p, 9, token::CloseDelim(Delimiter::Brace));
+        look(&p, 10, token::Ident(kw::Struct, raw_no));
+        look(&p, 11, token::Ident(sym_S, raw_no));
+        look(&p, 12, token::Semi);
+        // Any lookahead past the end of the token stream returns `Eof`.
+        look(&p, 13, token::Eof);
+        look(&p, 14, token::Eof);
+        look(&p, 15, token::Eof);
+        look(&p, 100, token::Eof);
+
+        // Move forward to the first `x`.
+        for _ in 0..3 {
+            p.bump();
+        }
+        look(&p, 0, token::Ident(sym_x, raw_no));
+        look(&p, 1, token::Colon);
+        look(&p, 2, token::Ident(sym::u32, raw_no));
+        look(&p, 3, token::CloseDelim(Delimiter::Parenthesis));
+        look(&p, 4, token::OpenDelim(Delimiter::Brace));
+        look(&p, 5, token::Ident(sym_x, raw_no));
+        look(&p, 6, token::CloseDelim(Delimiter::Brace));
+        look(&p, 7, token::Ident(kw::Struct, raw_no));
+        look(&p, 8, token::Ident(sym_S, raw_no));
+        look(&p, 9, token::Semi);
+        look(&p, 10, token::Eof);
+        look(&p, 11, token::Eof);
+        look(&p, 100, token::Eof);
+
+        // Move forward to the `;`.
+        for _ in 0..9 {
+            p.bump();
+        }
+        look(&p, 0, token::Semi);
+        // Any lookahead past the end of the token stream returns `Eof`.
+        look(&p, 1, token::Eof);
+        look(&p, 100, token::Eof);
+
+        // Move one past the `;`, i.e. past the end of the token stream.
+        p.bump();
+        look(&p, 0, token::Eof);
+        look(&p, 1, token::Eof);
+        look(&p, 100, token::Eof);
+
+        // Bumping after Eof is idempotent.
+        p.bump();
+        look(&p, 0, token::Eof);
+        look(&p, 1, token::Eof);
+        look(&p, 100, token::Eof);
+    });
+}
+
+/// There used to be some buggy behaviour when using `look_ahead` not within
+/// the outermost token stream, which this test covers.
+#[test]
+fn look_ahead_non_outermost_stream() {
+    create_default_session_globals_then(|| {
+        let sym_f = Symbol::intern("f");
+        let sym_x = Symbol::intern("x");
+        #[allow(non_snake_case)]
+        let sym_S = Symbol::intern("S");
+        let raw_no = IdentIsRaw::No;
+
+        let psess = psess();
+        let mut p = string_to_parser(&psess, "mod m { fn f(x: u32) { x } struct S; }".to_string());
+
+        // Move forward to the `fn`, which is not within the outermost token
+        // stream (because it's inside the `mod { ... }`).
+        for _ in 0..3 {
+            p.bump();
+        }
+        look(&p, 0, token::Ident(kw::Fn, raw_no));
+        look(&p, 1, token::Ident(sym_f, raw_no));
+        look(&p, 2, token::OpenDelim(Delimiter::Parenthesis));
+        look(&p, 3, token::Ident(sym_x, raw_no));
+        look(&p, 4, token::Colon);
+        look(&p, 5, token::Ident(sym::u32, raw_no));
+        look(&p, 6, token::CloseDelim(Delimiter::Parenthesis));
+        look(&p, 7, token::OpenDelim(Delimiter::Brace));
+        look(&p, 8, token::Ident(sym_x, raw_no));
+        look(&p, 9, token::CloseDelim(Delimiter::Brace));
+        look(&p, 10, token::Ident(kw::Struct, raw_no));
+        look(&p, 11, token::Ident(sym_S, raw_no));
+        look(&p, 12, token::Semi);
+        look(&p, 13, token::CloseDelim(Delimiter::Brace));
+        // Any lookahead past the end of the token stream returns `Eof`.
+        look(&p, 14, token::Eof);
+        look(&p, 15, token::Eof);
+        look(&p, 100, token::Eof);
+    });
+}
+
+// FIXME(nnethercote) All the output is currently wrong.
+#[test]
+fn debug_lookahead() {
+    create_default_session_globals_then(|| {
+        let psess = psess();
+        let mut p = string_to_parser(&psess, "fn f(x: u32) { x } struct S;".to_string());
+
+        // Current position is the `fn`.
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(0)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [],
+    approx_token_stream_pos: 0,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(7)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"fn\",
+            No,
+        ),
+        Ident(
+            \"f\",
+            No,
+        ),
+        OpenDelim(
+            Parenthesis,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        Colon,
+        Ident(
+            \"u32\",
+            No,
+        ),
+        CloseDelim(
+            Parenthesis,
+        ),
+    ],
+    approx_token_stream_pos: 0,
+    ..
+}"
+        );
+        // There are 13 tokens. We request 15, get 14; the last one is `Eof`.
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(15)),
+            "Parser {
+    prev_token: Token {
+        kind: Question,
+        span: Span {
+            lo: BytePos(
+                0,
+            ),
+            hi: BytePos(
+                0,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"fn\",
+            No,
+        ),
+        Ident(
+            \"f\",
+            No,
+        ),
+        OpenDelim(
+            Parenthesis,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        Colon,
+        Ident(
+            \"u32\",
+            No,
+        ),
+        CloseDelim(
+            Parenthesis,
+        ),
+        OpenDelim(
+            Brace,
+        ),
+        Ident(
+            \"x\",
+            No,
+        ),
+        CloseDelim(
+            Brace,
+        ),
+        Ident(
+            \"struct\",
+            No,
+        ),
+        Ident(
+            \"S\",
+            No,
+        ),
+        Semi,
+        Eof,
+    ],
+    approx_token_stream_pos: 0,
+    ..
+}"
+        );
+
+        // Move forward to the second `x`.
+        for _ in 0..8 {
+            p.bump();
+        }
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(1)),
+            "Parser {
+    prev_token: Token {
+        kind: OpenDelim(
+            Brace,
+        ),
+        span: Span {
+            lo: BytePos(
+                13,
+            ),
+            hi: BytePos(
+                14,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"x\",
+            No,
+        ),
+    ],
+    approx_token_stream_pos: 8,
+    ..
+}"
+        );
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(4)),
+            "Parser {
+    prev_token: Token {
+        kind: OpenDelim(
+            Brace,
+        ),
+        span: Span {
+            lo: BytePos(
+                13,
+            ),
+            hi: BytePos(
+                14,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Ident(
+            \"x\",
+            No,
+        ),
+        CloseDelim(
+            Brace,
+        ),
+        Ident(
+            \"struct\",
+            No,
+        ),
+        Ident(
+            \"S\",
+            No,
+        ),
+    ],
+    approx_token_stream_pos: 8,
+    ..
+}"
+        );
+
+        // Move two past the final token (the `;`).
+        for _ in 0..6 {
+            p.bump();
+        }
+        assert_eq!(
+            &format!("{:#?}", p.debug_lookahead(3)),
+            "Parser {
+    prev_token: Token {
+        kind: Eof,
+        span: Span {
+            lo: BytePos(
+                27,
+            ),
+            hi: BytePos(
+                28,
+            ),
+            ctxt: #0,
+        },
+    },
+    tokens: [
+        Eof,
+    ],
+    approx_token_stream_pos: 14,
+    ..
+}"
+        );
+    });
+}
+
 // This tests that when parsing a string (rather than a file) we don't try
 // and read in a file for a module declaration and just parse a stub.
 // See `recurse_into_file_modules` in the parser.
@@ -1386,7 +1748,7 @@ fn out_of_line_mod() {
         .unwrap();
 
         let ast::ItemKind::Mod(_, mod_kind) = &item.kind else { panic!() };
-        assert!(matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2));
+        assert_matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2);
     });
 }
 

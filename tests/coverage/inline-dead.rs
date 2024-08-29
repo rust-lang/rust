@@ -13,7 +13,7 @@ fn main() {
 #[inline]
 fn live<const B: bool>() -> u32 {
     if B {
-        dead()
+        dead() //
     } else {
         0
     }

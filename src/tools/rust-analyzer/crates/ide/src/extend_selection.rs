@@ -26,7 +26,7 @@ use crate::FileRange;
 // image::https://user-images.githubusercontent.com/48062697/113020651-b42fc800-917a-11eb-8a4f-cf1a07859fac.gif[]
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let sema = Semantics::new(db);
-    let src = sema.parse(frange.file_id);
+    let src = sema.parse_guess_edition(frange.file_id);
     try_extend_selection(&sema, src.syntax(), frange).unwrap_or(frange.range)
 }
 
@@ -210,7 +210,13 @@ fn extend_single_word_in_comment_or_string(
     let start_idx = before.rfind(non_word_char)? as u32;
     let end_idx = after.find(non_word_char).unwrap_or(after.len()) as u32;
 
-    let from: TextSize = (start_idx + 1).into();
+    // FIXME: use `ceil_char_boundary` from `std::str` when it gets stable
+    // https://github.com/rust-lang/rust/issues/93743
+    fn ceil_char_boundary(text: &str, index: u32) -> u32 {
+        (index..).find(|&index| text.is_char_boundary(index as usize)).unwrap_or(text.len() as u32)
+    }
+
+    let from: TextSize = ceil_char_boundary(text, start_idx + 1).into();
     let to: TextSize = (cursor_position + end_idx).into();
 
     let range = TextRange::new(from, to);
@@ -659,6 +665,20 @@ fn main() { let (
                 "fn hello(name:usize){}",
                 "{fn hello(name:usize){}}",
                 "foo!{fn hello(name:usize){}}",
+            ],
+        );
+    }
+
+    #[test]
+    fn extend_selection_inside_str_with_wide_char() {
+        // should not panic
+        do_check(
+            r#"fn main() { let x = "═$0═══════"; }"#,
+            &[
+                r#""════════""#,
+                r#"let x = "════════";"#,
+                r#"{ let x = "════════"; }"#,
+                r#"fn main() { let x = "════════"; }"#,
             ],
         );
     }

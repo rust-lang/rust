@@ -43,8 +43,8 @@ pub(crate) fn emit_facts<'tcx>(
     emit_universal_region_facts(
         all_facts,
         borrow_set,
-        &universal_regions,
-        &universal_region_relations,
+        universal_regions,
+        universal_region_relations,
     );
     emit_cfg_and_loan_kills_facts(all_facts, tcx, location_table, body, borrow_set);
     emit_loan_invalidations_facts(all_facts, tcx, location_table, body, borrow_set);

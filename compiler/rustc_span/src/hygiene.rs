@@ -24,10 +24,11 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
-use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
-use crate::edition::Edition;
-use crate::symbol::{kw, sym, Symbol};
-use crate::{with_session_globals, HashStableContext, Span, SpanDecoder, SpanEncoder, DUMMY_SP};
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+use std::fmt;
+use std::hash::Hash;
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
@@ -36,15 +37,22 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::cell::RefCell;
-use std::collections::hash_map::Entry;
-use std::fmt;
-use std::hash::Hash;
 use tracing::{debug, trace};
 
+use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
+use crate::edition::Edition;
+use crate::symbol::{kw, sym, Symbol};
+use crate::{with_session_globals, HashStableContext, Span, SpanDecoder, SpanEncoder, DUMMY_SP};
+
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(u32);
+
+// To ensure correctness of incremental compilation,
+// `SyntaxContext` must not implement `Ord` or `PartialOrd`.
+// See https://github.com/rust-lang/rust/issues/90317.
+impl !Ord for SyntaxContext {}
+impl !PartialOrd for SyntaxContext {}
 
 #[derive(Debug, Encodable, Decodable, Clone)]
 pub struct SyntaxContextData {
@@ -689,6 +697,11 @@ impl SyntaxContext {
     #[inline]
     pub(crate) const fn from_u32(raw: u32) -> SyntaxContext {
         SyntaxContext(raw)
+    }
+
+    #[inline]
+    pub(crate) const fn from_u16(raw: u16) -> SyntaxContext {
+        SyntaxContext(raw as u32)
     }
 
     /// Extend a syntax context with a given expansion and transparency.
@@ -1402,6 +1415,14 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 
     // Overwrite the dummy data with our decoded SyntaxContextData
     HygieneData::with(|hygiene_data| {
+        if let Some(old) = hygiene_data.syntax_context_data.get(raw_id as usize)
+            && old.outer_expn == ctxt_data.outer_expn
+            && old.outer_transparency == ctxt_data.outer_transparency
+            && old.parent == ctxt_data.parent
+        {
+            ctxt_data = old.clone();
+        }
+
         let dummy = std::mem::replace(
             &mut hygiene_data.syntax_context_data[ctxt.as_u32() as usize],
             ctxt_data,

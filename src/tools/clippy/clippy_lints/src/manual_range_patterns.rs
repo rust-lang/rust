@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -76,14 +76,11 @@ impl Num {
 
 impl LateLintPass<'_> for ManualRangePatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &'_ rustc_hir::Pat<'_>) {
-        if in_external_macro(cx.sess(), pat.span) {
-            return;
-        }
-
         // a pattern like 1 | 2 seems fine, lint if there are at least 3 alternatives
         // or at least one range
         if let PatKind::Or(pats) = pat.kind
             && (pats.len() >= 3 || pats.iter().any(|p| matches!(p.kind, PatKind::Range(..))))
+            && !in_external_macro(cx.sess(), pat.span)
         {
             let mut min = Num::dummy(i128::MAX);
             let mut max = Num::dummy(i128::MIN);
@@ -146,8 +143,8 @@ impl LateLintPass<'_> for ManualRangePatterns {
                 pat.span,
                 "this OR pattern can be rewritten using a range",
                 |diag| {
-                    if let Some(min) = snippet_opt(cx, min.span)
-                        && let Some(max) = snippet_opt(cx, max.span)
+                    if let Some(min) = min.span.get_source_text(cx)
+                        && let Some(max) = max.span.get_source_text(cx)
                     {
                         diag.span_suggestion(
                             pat.span,

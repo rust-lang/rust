@@ -5,5 +5,5 @@ fn main() {
     arr.0;
     //~^ ERROR no field `0` on type `[{integer}; 5]` [E0609]
     //~| HELP instead of using tuple indexing, use array indexing
-    //~| SUGGESTION arr[0]
+    //~| SUGGESTION [
 }

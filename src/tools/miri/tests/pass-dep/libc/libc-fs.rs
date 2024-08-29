@@ -15,6 +15,7 @@ use std::path::PathBuf;
 mod utils;
 
 fn main() {
+    test_dup();
     test_dup_stdout_stderr();
     test_canonicalize_too_long();
     test_rename();
@@ -35,6 +36,8 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_sync_file_range();
     test_isatty();
+    test_read_and_uninit();
+    test_nofollow_not_symlink();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -71,6 +74,31 @@ fn test_dup_stdout_stderr() {
         let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
         libc::write(new_stdout, bytes.as_ptr() as *const libc::c_void, bytes.len());
         libc::write(new_stderr, bytes.as_ptr() as *const libc::c_void, bytes.len());
+    }
+}
+
+fn test_dup() {
+    let bytes = b"dup and dup2";
+    let path = utils::prepare_with_content("miri_test_libc_dup.txt", bytes);
+
+    let mut name = path.into_os_string();
+    name.push("\0");
+    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
+    unsafe {
+        let fd = libc::open(name_ptr, libc::O_RDONLY);
+        let mut first_buf = [0u8; 4];
+        libc::read(fd, first_buf.as_mut_ptr() as *mut libc::c_void, 4);
+        assert_eq!(&first_buf, b"dup ");
+
+        let new_fd = libc::dup(fd);
+        let mut second_buf = [0u8; 4];
+        libc::read(new_fd, second_buf.as_mut_ptr() as *mut libc::c_void, 4);
+        assert_eq!(&second_buf, b"and ");
+
+        let new_fd2 = libc::dup2(fd, 8);
+        let mut third_buf = [0u8; 4];
+        libc::read(new_fd2, third_buf.as_mut_ptr() as *mut libc::c_void, 4);
+        assert_eq!(&third_buf, b"dup2");
     }
 }
 
@@ -361,4 +389,46 @@ fn test_isatty() {
         drop(file);
         remove_file(&path).unwrap();
     }
+}
+
+fn test_read_and_uninit() {
+    use std::mem::MaybeUninit;
+    {
+        // We test that libc::read initializes its buffer.
+        let path = utils::prepare_with_content("pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
+        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        unsafe {
+            let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
+            assert_ne!(fd, -1);
+            let mut buf: MaybeUninit<[u8; 2]> = std::mem::MaybeUninit::uninit();
+            assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 2), 2);
+            let buf = buf.assume_init();
+            assert_eq!(buf, [1, 2]);
+            assert_eq!(libc::close(fd), 0);
+        }
+        remove_file(&path).unwrap();
+    }
+    {
+        // We test that if we requested to read 4 bytes, but actually read 3 bytes, then
+        // 3 bytes (not 4) will be overwritten, and remaining byte will be left as-is.
+        let path = utils::prepare_with_content("pass-libc-read-and-uninit-2.txt", &[1u8, 2, 3]);
+        let cpath = CString::new(path.clone().into_os_string().into_encoded_bytes()).unwrap();
+        unsafe {
+            let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
+            assert_ne!(fd, -1);
+            let mut buf = [42u8; 5];
+            assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 4), 3);
+            assert_eq!(buf, [1, 2, 3, 42, 42]);
+            assert_eq!(libc::close(fd), 0);
+        }
+        remove_file(&path).unwrap();
+    }
+}
+
+fn test_nofollow_not_symlink() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("test_nofollow_not_symlink.txt", bytes);
+    let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
+    let ret = unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
+    assert!(ret >= 0);
 }

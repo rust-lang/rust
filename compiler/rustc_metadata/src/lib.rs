@@ -20,9 +20,6 @@
 
 extern crate proc_macro;
 
-#[macro_use]
-extern crate tracing;
-
 pub use rmeta::provide;
 
 mod dependency_format;

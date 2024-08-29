@@ -1,10 +1,10 @@
-use crate::ty;
-
 use rustc_hir::def::Res;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
 use smallvec::SmallVec;
+
+use crate::ty;
 
 /// A simplified version of `ImportKind` from resolve.
 /// `DefId`s here correspond to `use` and `extern crate` items themselves, not their targets.

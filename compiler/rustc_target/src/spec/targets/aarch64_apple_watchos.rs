@@ -6,10 +6,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "aarch64-apple-watchos".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("ARM64 Apple WatchOS".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "e-m:o-i64:64-i128:128-n32:64-S128-Fn32".into(),

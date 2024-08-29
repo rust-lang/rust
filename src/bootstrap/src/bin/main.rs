@@ -1,27 +1,29 @@
-//! rustbuild, the Rust build system
+//! bootstrap, the Rust build system
 //!
 //! This is the entry point for the build system used to compile the `rustc`
 //! compiler. Lots of documentation can be found in the `README.md` file in the
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::io::Write;
-use std::process;
+use std::fs::{self, OpenOptions};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 use std::str::FromStr;
-use std::{
-    env,
-    fs::{self, OpenOptions},
-    io::{self, BufRead, BufReader, IsTerminal},
-};
+use std::{env, process};
 
 use bootstrap::{
-    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Subcommand,
+    find_recent_config_change_ids, human_readable_changes, t, Build, Config, Flags, Subcommand,
     CONFIG_CHANGE_HISTORY,
 };
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let config = Config::parse(&args);
+
+    if Flags::try_parse_verbose_help(&args) {
+        return;
+    }
+
+    let flags = Flags::parse(&args);
+    let config = Config::parse(flags);
 
     let mut build_lock;
     let _build_lock_guard;
@@ -30,10 +32,7 @@ fn main() {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = match fs::read_to_string(&lock_path) {
-            Ok(contents) => contents,
-            Err(_) => String::new(),
-        };
+        let pid = fs::read_to_string(&lock_path).unwrap_or_default();
 
         build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
             .write(true)

@@ -168,11 +168,6 @@ impl CoverageCounters {
         self.counter_increment_sites.len()
     }
 
-    #[cfg(test)]
-    pub(super) fn num_expressions(&self) -> usize {
-        self.expressions.len()
-    }
-
     fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> BcbCounter {
         if let Some(replaced) = self.bcb_counters[bcb].replace(counter_kind) {
             bug!(

@@ -45,10 +45,10 @@ declare_lint_pass!(NoNegCompOpForPartialOrd => [NEG_CMP_OP_ON_PARTIAL_ORD]);
 
 impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !in_external_macro(cx.sess(), expr.span)
-            && let ExprKind::Unary(UnOp::Not, inner) = expr.kind
+        if let ExprKind::Unary(UnOp::Not, inner) = expr.kind
             && let ExprKind::Binary(ref op, left, _) = inner.kind
             && let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node
+            && !in_external_macro(cx.sess(), expr.span)
         {
             let ty = cx.typeck_results().expr_ty(left);
 

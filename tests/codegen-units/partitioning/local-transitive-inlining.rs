@@ -4,16 +4,13 @@
 //@ compile-flags:-Zinline-in-all-cgus
 
 #![allow(dead_code)]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 mod inline {
 
     //~ MONO_ITEM fn inline::inlined_function @@ local_transitive_inlining-indirect_user[Internal]
     #[inline(always)]
-    pub fn inlined_function()
-    {
-
-    }
+    pub fn inlined_function() {}
 }
 
 mod direct_user {
@@ -38,7 +35,5 @@ pub mod indirect_user {
 pub mod non_user {
 
     //~ MONO_ITEM fn non_user::baz @@ local_transitive_inlining-non_user[External]
-    pub fn baz() {
-
-    }
+    pub fn baz() {}
 }

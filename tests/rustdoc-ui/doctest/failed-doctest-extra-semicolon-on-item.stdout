@@ -9,9 +9,14 @@ error: expected item, found `;`
   --> $DIR/failed-doctest-extra-semicolon-on-item.rs:12:12
    |
 LL | struct S {}; // unexpected semicolon after struct def
-   |            ^ help: remove this semicolon
+   |            ^
    |
    = help: braced struct declarations are not followed by a semicolon
+help: remove this semicolon
+   |
+LL - struct S {}; // unexpected semicolon after struct def
+LL + struct S {} // unexpected semicolon after struct def
+   |
 
 error: aborting due to 1 previous error
 

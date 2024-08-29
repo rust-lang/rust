@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, effects)]
+#![feature(rustc_attrs)]
 
 #[rustc_intrinsic]
 #[rustc_nounwind]

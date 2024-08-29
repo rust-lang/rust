@@ -3,6 +3,11 @@ error[E0600]: cannot apply unary operator `-` to type `String`
    |
 LL | fn main() { -"foo".to_string(); }
    |             ^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
+   |
+note: the foreign item type `String` doesn't implement `Neg`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+   |
+   = note: not implement `Neg`
 
 error: aborting due to 1 previous error
 

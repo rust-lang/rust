@@ -3,7 +3,7 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 // CHECK-LABEL: define{{.*}}4core3ptr47drop_in_place$LT$dyn$u20$core..marker..Send$GT$
 // CHECK-SAME:  {{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}

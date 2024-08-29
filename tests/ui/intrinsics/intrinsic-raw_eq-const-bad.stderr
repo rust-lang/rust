@@ -8,8 +8,17 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/intrinsic-raw_eq-const-bad.rs:11:5
    |
 LL |     std::intrinsics::raw_eq(&(&0), &(&1))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `raw_eq` on bytes with provenance
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unable to turn pointer into integer
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error: aborting due to 2 previous errors
+error[E0080]: evaluation of constant value failed
+  --> $DIR/intrinsic-raw_eq-const-bad.rs:19:5
+   |
+LL |     std::intrinsics::raw_eq(aref, aref)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

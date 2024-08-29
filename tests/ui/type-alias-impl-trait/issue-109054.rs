@@ -11,6 +11,7 @@ impl std::ops::Deref for CallMe {
     type Target = FnType;
 
     fn deref(&self) -> &Self::Target {
+        //~^ ERROR: item does not constrain `ReturnType
         fn inner(val: &u32) -> ReturnType {
             async move { *val * 2 }
         }

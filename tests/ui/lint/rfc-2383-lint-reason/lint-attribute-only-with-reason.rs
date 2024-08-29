@@ -1,5 +1,3 @@
-#![feature(lint_reasons)]
-
 #![deny(unused_attributes)]
 
 #[allow(reason = "I want to allow something")]//~ ERROR unused attribute

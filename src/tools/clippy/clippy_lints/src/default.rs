@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{any_parent_is_automatically_derived, contains_name, get_parent_expr, is_from_proc_macro};
+use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_from_proc_macro};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             // Avoid cases already linted by `field_reassign_with_default`
             && !self.reassigned_linted.contains(&expr.span)
             && let ExprKind::Call(path, ..) = expr.kind
-            && !any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+            && !in_automatically_derived(cx.tcx, expr.hir_id)
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::default_fn, def_id)
@@ -113,9 +113,9 @@ impl<'tcx> LateLintPass<'tcx> for Default {
         // start from the `let mut _ = _::default();` and look at all the following
         // statements, see if they re-assign the fields of the binding
         let stmts_head = match block.stmts {
+            [] | [_] => return,
             // Skip the last statement since there cannot possibly be any following statements that re-assign fields.
-            [head @ .., _] if !head.is_empty() => head,
-            _ => return,
+            [head @ .., _] => head,
         };
         for (stmt_idx, stmt) in stmts_head.iter().enumerate() {
             // find all binding statements like `let mut _ = T::default()` where `T::default()` is the
@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             let (local, variant, binding_name, binding_type, span) = if let StmtKind::Let(local) = stmt.kind
                 // only take `let ...` statements
                 && let Some(expr) = local.init
-                && !any_parent_is_automatically_derived(cx.tcx, expr.hir_id)
+                && !in_automatically_derived(cx.tcx, expr.hir_id)
                 && !expr.span.from_expansion()
                 // only take bindings to identifiers
                 && let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind
@@ -221,7 +221,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                         .map(ToString::to_string)
                         .collect::<Vec<_>>()
                         .join(", ");
-                    format!("{adt_def_ty_name}::<{}>", &tys_str)
+                    format!("{adt_def_ty_name}::<{tys_str}>")
                 } else {
                     binding_type.to_string()
                 };

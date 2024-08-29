@@ -1,4 +1,3 @@
-use super::ResolverAstLoweringExt;
 use rustc_ast::visit::{self, BoundKind, LifetimeCtxt, Visitor};
 use rustc_ast::{GenericBounds, Lifetime, NodeId, PathSegment, PolyTraitRef, Ty, TyKind};
 use rustc_data_structures::fx::FxIndexSet;
@@ -7,6 +6,8 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::ResolverAstLowering;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+
+use super::ResolverAstLoweringExt;
 
 struct LifetimeCollectVisitor<'ast> {
     resolver: &'ast ResolverAstLowering,

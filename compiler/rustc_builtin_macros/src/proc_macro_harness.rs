@@ -1,8 +1,10 @@
-use crate::errors;
+use std::mem;
+
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, attr, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::{parse_macro_name_and_helper_attrs, ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
@@ -12,8 +14,9 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
-use std::mem;
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::errors;
 
 struct ProcMacroDerive {
     id: NodeId,
@@ -38,7 +41,7 @@ enum ProcMacro {
 struct CollectProcMacros<'a> {
     macros: Vec<ProcMacro>,
     in_root: bool,
-    dcx: &'a rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'a>,
     source_map: &'a SourceMap,
     is_proc_macro_crate: bool,
     is_test_crate: bool,
@@ -52,7 +55,7 @@ pub fn inject(
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
-    dcx: &rustc_errors::DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
 ) {
     let ecfg = ExpansionConfig::default("proc_macro".to_string(), features);
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
@@ -213,12 +216,12 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         };
 
         if !is_fn {
-            let msg = format!(
-                "the `#[{}]` attribute may only be used on bare functions",
-                pprust::path_to_string(&attr.get_normal_item().path),
-            );
-
-            self.dcx.span_err(attr.span, msg);
+            self.dcx
+                .create_err(errors::AttributeOnlyBeUsedOnBareFunctions {
+                    span: attr.span,
+                    path: &pprust::path_to_string(&attr.get_normal_item().path),
+                })
+                .emit();
             return;
         }
 
@@ -227,12 +230,12 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         }
 
         if !self.is_proc_macro_crate {
-            let msg = format!(
-                "the `#[{}]` attribute is only usable with crates of the `proc-macro` crate type",
-                pprust::path_to_string(&attr.get_normal_item().path),
-            );
-
-            self.dcx.span_err(attr.span, msg);
+            self.dcx
+                .create_err(errors::AttributeOnlyUsableWithCrateType {
+                    span: attr.span,
+                    path: &pprust::path_to_string(&attr.get_normal_item().path),
+                })
+                .emit();
             return;
         }
 

@@ -1,11 +1,10 @@
-//! lint on manually implemented checked conversions that could be transformed into `try_from`
-
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
+use clippy_utils::{is_in_const_context, is_integer_literal, SpanlessEq};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath, TyKind};
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
@@ -40,9 +39,10 @@ pub struct CheckedConversions {
 }
 
 impl CheckedConversions {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -50,59 +50,52 @@ impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
-        if !self.msrv.meets(msrvs::TRY_FROM) {
-            return;
-        }
-
-        let result = if !in_constant(cx, item.hir_id)
+        if let ExprKind::Binary(op, lhs, rhs) = item.kind
+            && let (lt1, gt1, op2) = match op.node {
+                BinOpKind::Le => (lhs, rhs, None),
+                BinOpKind::Ge => (rhs, lhs, None),
+                BinOpKind::And
+                    if let ExprKind::Binary(op1, lhs1, rhs1) = lhs.kind
+                        && let ExprKind::Binary(op2, lhs2, rhs2) = rhs.kind
+                        && let Some((lt1, gt1)) = read_le_ge(op1.node, lhs1, rhs1)
+                        && let Some((lt2, gt2)) = read_le_ge(op2.node, lhs2, rhs2) =>
+                {
+                    (lt1, gt1, Some((lt2, gt2)))
+                },
+                _ => return,
+            }
             && !in_external_macro(cx.sess(), item.span)
-            && let ExprKind::Binary(op, left, right) = &item.kind
+            && !is_in_const_context(cx)
+            && self.msrv.meets(msrvs::TRY_FROM)
+            && let Some(cv) = match op2 {
+                // todo: check for case signed -> larger unsigned == only x >= 0
+                None => check_upper_bound(lt1, gt1).filter(|cv| cv.cvt == ConversionType::FromUnsigned),
+                Some((lt2, gt2)) => {
+                    let upper_lower = |lt1, gt1, lt2, gt2| {
+                        check_upper_bound(lt1, gt1)
+                            .zip(check_lower_bound(lt2, gt2))
+                            .and_then(|(l, r)| l.combine(r, cx))
+                    };
+                    upper_lower(lt1, gt1, lt2, gt2).or_else(|| upper_lower(lt2, gt2, lt1, gt1))
+                },
+            }
+            && let Some(to_type) = cv.to_type
         {
-            match op.node {
-                BinOpKind::Ge | BinOpKind::Le => single_check(item),
-                BinOpKind::And => double_check(cx, left, right),
-                _ => None,
-            }
-        } else {
-            None
-        };
-
-        if let Some(cv) = result {
-            if let Some(to_type) = cv.to_type {
-                let mut applicability = Applicability::MachineApplicable;
-                let snippet = snippet_with_applicability(cx, cv.expr_to_cast.span, "_", &mut applicability);
-                span_lint_and_sugg(
-                    cx,
-                    CHECKED_CONVERSIONS,
-                    item.span,
-                    "checked cast can be simplified",
-                    "try",
-                    format!("{to_type}::try_from({snippet}).is_ok()"),
-                    applicability,
-                );
-            }
+            let mut applicability = Applicability::MachineApplicable;
+            let snippet = snippet_with_applicability(cx, cv.expr_to_cast.span, "_", &mut applicability);
+            span_lint_and_sugg(
+                cx,
+                CHECKED_CONVERSIONS,
+                item.span,
+                "checked cast can be simplified",
+                "try",
+                format!("{to_type}::try_from({snippet}).is_ok()"),
+                applicability,
+            );
         }
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-/// Searches for a single check from unsigned to _ is done
-/// todo: check for case signed -> larger unsigned == only x >= 0
-fn single_check<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
-    check_upper_bound(expr).filter(|cv| cv.cvt == ConversionType::FromUnsigned)
-}
-
-/// Searches for a combination of upper & lower bound checks
-fn double_check<'a>(cx: &LateContext<'_>, left: &'a Expr<'_>, right: &'a Expr<'_>) -> Option<Conversion<'a>> {
-    let upper_lower = |l, r| {
-        let upper = check_upper_bound(l);
-        let lower = check_lower_bound(r);
-
-        upper.zip(lower).and_then(|(l, r)| l.combine(r, cx))
-    };
-
-    upper_lower(left, right).or_else(|| upper_lower(right, left))
 }
 
 /// Contains the result of a tried conversion check
@@ -119,6 +112,19 @@ enum ConversionType {
     SignedToUnsigned,
     SignedToSigned,
     FromUnsigned,
+}
+
+/// Attempts to read either `<=` or `>=` with a normalized operand order.
+fn read_le_ge<'tcx>(
+    op: BinOpKind,
+    lhs: &'tcx Expr<'tcx>,
+    rhs: &'tcx Expr<'tcx>,
+) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+    match op {
+        BinOpKind::Le => Some((lhs, rhs)),
+        BinOpKind::Ge => Some((rhs, lhs)),
+        _ => None,
+    }
 }
 
 impl<'a> Conversion<'a> {
@@ -188,29 +194,17 @@ impl ConversionType {
 }
 
 /// Check for `expr <= (to_type::MAX as from_type)`
-fn check_upper_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
-    if let ExprKind::Binary(ref op, left, right) = &expr.kind
-        && let Some((candidate, check)) = normalize_le_ge(op, left, right)
-        && let Some((from, to)) = get_types_from_cast(check, INTS, "max_value", "MAX")
-    {
-        Conversion::try_new(candidate, from, to)
+fn check_upper_bound<'tcx>(lt: &'tcx Expr<'tcx>, gt: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
+    if let Some((from, to)) = get_types_from_cast(gt, INTS, "max_value", "MAX") {
+        Conversion::try_new(lt, from, to)
     } else {
         None
     }
 }
 
 /// Check for `expr >= 0|(to_type::MIN as from_type)`
-fn check_lower_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
-    fn check_function<'a>(candidate: &'a Expr<'a>, check: &'a Expr<'a>) -> Option<Conversion<'a>> {
-        (check_lower_bound_zero(candidate, check)).or_else(|| (check_lower_bound_min(candidate, check)))
-    }
-
-    // First of we need a binary containing the expression & the cast
-    if let ExprKind::Binary(ref op, left, right) = &expr.kind {
-        normalize_le_ge(op, right, left).and_then(|(l, r)| check_function(l, r))
-    } else {
-        None
-    }
+fn check_lower_bound<'tcx>(lt: &'tcx Expr<'tcx>, gt: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
+    check_lower_bound_zero(gt, lt).or_else(|| check_lower_bound_min(gt, lt))
 }
 
 /// Check for `expr >= 0`
@@ -306,15 +300,6 @@ fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
         INTS.iter().find(|c| &name == *c).copied()
     } else {
         None
-    }
-}
-
-/// Will return the expressions as if they were expr1 <= expr2
-fn normalize_le_ge<'a>(op: &BinOp, left: &'a Expr<'a>, right: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
-    match op.node {
-        BinOpKind::Le => Some((left, right)),
-        BinOpKind::Ge => Some((right, left)),
-        _ => None,
     }
 }
 

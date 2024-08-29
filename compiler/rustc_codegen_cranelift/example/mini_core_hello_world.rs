@@ -6,8 +6,7 @@
     extern_types,
     naked_functions,
     thread_local,
-    repr_simd,
-    raw_ref_op
+    repr_simd
 )]
 #![no_core]
 #![allow(dead_code, non_camel_case_types, internal_features)]
@@ -333,12 +332,7 @@ fn main() {
     #[cfg(all(not(jit), not(all(windows, target_env = "gnu"))))]
     test_tls();
 
-    #[cfg(all(
-        not(jit),
-        not(no_unstable_features),
-        target_arch = "x86_64",
-        any(target_os = "linux", target_os = "macos")
-    ))]
+    #[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "macos")))]
     unsafe {
         global_asm_test();
         naked_test();
@@ -367,17 +361,12 @@ fn stack_val_align() {
     assert_eq!(&a as *const Foo as usize % 8192, 0);
 }
 
-#[cfg(all(
-    not(jit),
-    not(no_unstable_features),
-    target_arch = "x86_64",
-    any(target_os = "linux", target_os = "macos")
-))]
+#[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "macos")))]
 extern "C" {
     fn global_asm_test();
 }
 
-#[cfg(all(not(jit), not(no_unstable_features), target_arch = "x86_64", target_os = "linux"))]
+#[cfg(all(not(jit), target_arch = "x86_64", target_os = "linux"))]
 global_asm! {
     "
     .global global_asm_test
@@ -387,7 +376,7 @@ global_asm! {
     "
 }
 
-#[cfg(all(not(jit), not(no_unstable_features), target_arch = "x86_64", target_os = "macos"))]
+#[cfg(all(not(jit), target_arch = "x86_64", target_os = "macos"))]
 global_asm! {
     "
     .global _global_asm_test
@@ -397,7 +386,7 @@ global_asm! {
     "
 }
 
-#[cfg(all(not(jit), not(no_unstable_features), target_arch = "x86_64"))]
+#[cfg(all(not(jit), target_arch = "x86_64"))]
 #[naked]
 extern "C" fn naked_test() {
     unsafe {
@@ -595,6 +584,7 @@ pub enum E2<X> {
     V4,
 }
 
+#[allow(unreachable_patterns)]
 fn check_niche_behavior() {
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
         intrinsics::abort();

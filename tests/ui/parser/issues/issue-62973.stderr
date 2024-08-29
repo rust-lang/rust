@@ -25,7 +25,7 @@ LL | fn p() { match s { v, E { [) {) }
    |        unclosed delimiter
 LL |
 LL |
-   |  ^
+   | ^
 
 error: aborting due to 3 previous errors
 

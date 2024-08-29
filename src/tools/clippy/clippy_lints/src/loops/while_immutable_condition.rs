@@ -1,5 +1,5 @@
 use super::WHILE_IMMUTABLE_CONDITION;
-use clippy_utils::consts::constant;
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
 use rustc_hir::def::{DefKind, Res};
@@ -7,9 +7,10 @@ use rustc_hir::def_id::DefIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Expr, ExprKind, HirIdSet, QPath};
 use rustc_lint::LateContext;
+use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
-    if constant(cx, cx.typeck_results(), cond).is_some() {
+    if ConstEvalCtxt::new(cx).eval(cond).is_some() {
         // A pure constant condition (e.g., `while false`) is not linted.
         return;
     }
@@ -35,11 +36,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         };
     let mutable_static_in_cond = var_visitor.def_ids.items().any(|(_, v)| *v);
 
-    let mut has_break_or_return_visitor = HasBreakOrReturnVisitor {
-        has_break_or_return: false,
-    };
-    has_break_or_return_visitor.visit_expr(expr);
-    let has_break_or_return = has_break_or_return_visitor.has_break_or_return;
+    let mut has_break_or_return_visitor = HasBreakOrReturnVisitor;
+    let has_break_or_return = has_break_or_return_visitor.visit_expr(expr).is_break();
 
     if no_cond_variable_mutated && !mutable_static_in_cond {
         span_lint_and_then(
@@ -59,25 +57,19 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
     }
 }
 
-struct HasBreakOrReturnVisitor {
-    has_break_or_return: bool,
-}
+struct HasBreakOrReturnVisitor;
 
 impl<'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.has_break_or_return {
-            return;
-        }
-
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<()> {
         match expr.kind {
             ExprKind::Ret(_) | ExprKind::Break(_, _) => {
-                self.has_break_or_return = true;
-                return;
+                return ControlFlow::Break(());
             },
             _ => {},
         }
 
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 }
 

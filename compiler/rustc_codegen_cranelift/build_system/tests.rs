@@ -3,14 +3,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::build_sysroot;
-use crate::config;
 use crate::path::{Dirs, RelPath};
 use crate::prepare::{apply_patches, GitRepo};
 use crate::rustc_info::get_default_sysroot;
 use crate::shared_utils::rustflags_from_env;
 use crate::utils::{spawn_and_wait, CargoProject, Compiler, LogGroup};
-use crate::{CodegenBackend, SysrootKind};
+use crate::{build_sysroot, config, CodegenBackend, SysrootKind};
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
 
@@ -108,6 +106,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         ]);
         runner.run_out_command("gen_block_iterate", &[]);
     }),
+    TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
@@ -329,7 +328,6 @@ pub(crate) fn run_tests(
 struct TestRunner<'a> {
     is_native: bool,
     jit_supported: bool,
-    use_unstable_features: bool,
     skip_tests: &'a [&'a str],
     dirs: Dirs,
     target_compiler: Compiler,
@@ -361,15 +359,7 @@ impl<'a> TestRunner<'a> {
             && target_compiler.triple.contains("x86_64")
             && !target_compiler.triple.contains("windows");
 
-        Self {
-            is_native,
-            jit_supported,
-            use_unstable_features,
-            skip_tests,
-            dirs,
-            target_compiler,
-            stdlib_source,
-        }
+        Self { is_native, jit_supported, skip_tests, dirs, target_compiler, stdlib_source }
     }
 
     fn run_testsuite(&self, tests: &[TestCase]) {
@@ -393,31 +383,13 @@ impl<'a> TestRunner<'a> {
             match *cmd {
                 TestCaseCmd::Custom { func } => func(self),
                 TestCaseCmd::BuildLib { source, crate_types } => {
-                    if self.use_unstable_features {
-                        self.run_rustc([source, "--crate-type", crate_types]);
-                    } else {
-                        self.run_rustc([
-                            source,
-                            "--crate-type",
-                            crate_types,
-                            "--cfg",
-                            "no_unstable_features",
-                        ]);
-                    }
+                    self.run_rustc([source, "--crate-type", crate_types]);
                 }
                 TestCaseCmd::BuildBin { source } => {
-                    if self.use_unstable_features {
-                        self.run_rustc([source]);
-                    } else {
-                        self.run_rustc([source, "--cfg", "no_unstable_features"]);
-                    }
+                    self.run_rustc([source]);
                 }
                 TestCaseCmd::BuildBinAndRun { source, args } => {
-                    if self.use_unstable_features {
-                        self.run_rustc([source]);
-                    } else {
-                        self.run_rustc([source, "--cfg", "no_unstable_features"]);
-                    }
+                    self.run_rustc([source]);
                     self.run_out_command(
                         source.split('/').last().unwrap().split('.').next().unwrap(),
                         args,
@@ -466,13 +438,12 @@ impl<'a> TestRunner<'a> {
         cmd.arg("-L");
         cmd.arg(format!("crate={}", BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).display()));
         cmd.arg("--out-dir");
-        cmd.arg(format!("{}", BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs).display()));
+        cmd.arg(BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs));
         cmd.arg("-Cdebuginfo=2");
         cmd.arg("--target");
         cmd.arg(&self.target_compiler.triple);
         cmd.arg("-Cpanic=abort");
         cmd.arg("-Zunstable-options");
-        cmd.arg("--check-cfg=cfg(no_unstable_features)");
         cmd.arg("--check-cfg=cfg(jit)");
         cmd.args(args);
         cmd

@@ -3,12 +3,12 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/enum.Foo.html'
-// @has - '//*[@id="variant.A"]' 'A'
-// @count - '//*[@id="variant.A.fields"]' 0
-// @has - '//*[@id="variant.B"]' 'B'
-// @count - '//*[@id="variant.B.fields"]' 0
-// @snapshot variants - '//*[@id="main-content"]/*[@class="variants"]'
+//@ has 'foo/enum.Foo.html'
+//@ has - '//*[@id="variant.A"]' 'A'
+//@ count - '//*[@id="variant.A.fields"]' 0
+//@ has - '//*[@id="variant.B"]' 'B'
+//@ count - '//*[@id="variant.B.fields"]' 0
+//@ snapshot variants - '//*[@id="main-content"]/*[@class="variants"]'
 
 pub enum Foo {
     /// A variant with no fields

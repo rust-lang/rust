@@ -1,13 +1,10 @@
 //! Name resolution façade.
-use std::{fmt, hash::BuildHasherDefault, iter, mem};
+use std::{fmt, iter, mem};
 
 use base_db::CrateId;
-use hir_expand::{
-    name::{name, Name},
-    MacroDefId,
-};
-use indexmap::IndexMap;
-use intern::Interned;
+use hir_expand::{name::Name, MacroDefId};
+use intern::{sym, Interned};
+use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 use triomphe::Arc;
@@ -27,10 +24,10 @@ use crate::{
     type_ref::LifetimeRef,
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
-    ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
-    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
+    ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
+    ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id,
+    MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId,
+    TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -198,12 +195,12 @@ impl Resolver {
                     }
                 }
                 &Scope::ImplDefScope(impl_) => {
-                    if first_name == &name![Self] {
+                    if *first_name == sym::Self_.clone() {
                         return Some((TypeNs::SelfType(impl_), remaining_idx(), None));
                     }
                 }
                 &Scope::AdtScope(adt) => {
-                    if first_name == &name![Self] {
+                    if *first_name == sym::Self_.clone() {
                         return Some((TypeNs::AdtSelfType(adt), remaining_idx(), None));
                     }
                 }
@@ -295,7 +292,7 @@ impl Resolver {
             }
         };
         let n_segments = path.segments().len();
-        let tmp = name![self];
+        let tmp = Name::new_symbol_root(sym::self_.clone());
         let first_name = if path.is_self() { &tmp } else { path.segments().first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         if skip_to_mod {
@@ -326,7 +323,7 @@ impl Resolver {
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
-                        if first_name == &name![Self] {
+                        if *first_name == sym::Self_.clone() {
                             return Some(ResolveValueResult::ValueNs(
                                 ValueNs::ImplSelf(impl_),
                                 None,
@@ -353,7 +350,7 @@ impl Resolver {
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
-                        if first_name == &name![Self] {
+                        if *first_name == sym::Self_.clone() {
                             return Some(ResolveValueResult::Partial(
                                 TypeNs::SelfType(impl_),
                                 1,
@@ -362,7 +359,7 @@ impl Resolver {
                         }
                     }
                     Scope::AdtScope(adt) => {
-                        if first_name == &name![Self] {
+                        if *first_name == sym::Self_.clone() {
                             let ty = TypeNs::AdtSelfType(*adt);
                             return Some(ResolveValueResult::Partial(ty, 1, None));
                         }
@@ -426,7 +423,7 @@ impl Resolver {
     }
 
     pub fn resolve_lifetime(&self, lifetime: &LifetimeRef) -> Option<LifetimeNs> {
-        if lifetime.name == name::known::STATIC_LIFETIME {
+        if lifetime.name == sym::tick_static.clone() {
             return Some(LifetimeNs::Static);
         }
 
@@ -501,9 +498,11 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)));
             })
         });
-        def_map.macro_use_prelude().for_each(|(name, (def, _extern_crate))| {
-            res.add(name, ScopeDef::ModuleDef(def.into()));
-        });
+        def_map.macro_use_prelude().iter().sorted_by_key(|&(k, _)| k.clone()).for_each(
+            |(name, &(def, _extern_crate))| {
+                res.add(name, ScopeDef::ModuleDef(def.into()));
+            },
+        );
         def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
             res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def.into())));
         });
@@ -597,7 +596,7 @@ impl Resolver {
                 Scope::GenericParams { params, def } => Some((params, def)),
                 _ => None,
             })
-            .flat_map(|(params, def)| params.where_predicates.iter().zip(iter::repeat(def)))
+            .flat_map(|(params, def)| params.where_predicates().zip(iter::repeat(def)))
     }
 
     pub fn generic_def(&self) -> Option<GenericDefId> {
@@ -759,10 +758,10 @@ impl Scope {
             }
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
-                for (local_id, param) in params.type_or_consts.iter() {
+                for (local_id, param) in params.iter_type_or_consts() {
                     if let Some(name) = &param.name() {
                         let id = TypeOrConstParamId { parent, local_id };
-                        let data = &db.generic_params(parent).type_or_consts[local_id];
+                        let data = &db.generic_params(parent)[local_id];
                         acc.add(
                             name,
                             ScopeDef::GenericParam(match data {
@@ -776,16 +775,16 @@ impl Scope {
                         );
                     }
                 }
-                for (local_id, param) in params.lifetimes.iter() {
+                for (local_id, param) in params.iter_lt() {
                     let id = LifetimeParamId { parent, local_id };
                     acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }
             }
             Scope::ImplDefScope(i) => {
-                acc.add(&name![Self], ScopeDef::ImplSelfType(*i));
+                acc.add(&Name::new_symbol_root(sym::Self_.clone()), ScopeDef::ImplSelfType(*i));
             }
             Scope::AdtScope(i) => {
-                acc.add(&name![Self], ScopeDef::AdtSelfType(*i));
+                acc.add(&Name::new_symbol_root(sym::Self_.clone()), ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(scope) => {
                 if let Some((label, name)) = scope.expr_scopes.label(scope.scope_id) {
@@ -957,7 +956,6 @@ fn to_type_ns(per_ns: PerNs) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
     Some((res, import))
 }
 
-type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
 #[derive(Default)]
 struct ScopeNames {
     map: FxIndexMap<Name, SmallVec<[ScopeDef; 1]>>,
@@ -1166,7 +1164,6 @@ impl HasResolver for GenericDefId {
             GenericDefId::TraitAliasId(inner) => inner.resolver(db),
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
-            GenericDefId::EnumVariantId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
         }
     }

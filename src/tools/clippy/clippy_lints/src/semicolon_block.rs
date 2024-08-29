@@ -1,4 +1,5 @@
-use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
+use clippy_config::Conf;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -11,8 +12,7 @@ declare_clippy_lint! {
     /// Suggests moving the semicolon after a block to the inside of the block, after its last
     /// expression.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine
     /// and this lint suggests inside the block.
     /// Take a look at `semicolon_outside_block` for the other alternative.
@@ -40,8 +40,7 @@ declare_clippy_lint! {
     ///
     /// Suggests moving the semicolon from a block's final expression outside of the block.
     ///
-    /// ### Why is this bad?
-    ///
+    /// ### Why restrict this?
     /// For consistency it's best to have the semicolon inside/outside the block. Either way is fine
     /// and this lint suggests outside the block.
     /// Take a look at `semicolon_inside_block` for the other alternative.
@@ -66,21 +65,20 @@ declare_clippy_lint! {
 }
 impl_lint_pass!(SemicolonBlock => [SEMICOLON_INSIDE_BLOCK, SEMICOLON_OUTSIDE_BLOCK]);
 
-#[derive(Copy, Clone)]
 pub struct SemicolonBlock {
     semicolon_inside_block_ignore_singleline: bool,
     semicolon_outside_block_ignore_multiline: bool,
 }
 
 impl SemicolonBlock {
-    pub fn new(semicolon_inside_block_ignore_singleline: bool, semicolon_outside_block_ignore_multiline: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            semicolon_inside_block_ignore_singleline,
-            semicolon_outside_block_ignore_multiline,
+            semicolon_inside_block_ignore_singleline: conf.semicolon_inside_block_ignore_singleline,
+            semicolon_outside_block_ignore_multiline: conf.semicolon_outside_block_ignore_multiline,
         }
     }
 
-    fn semicolon_inside_block(self, cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
+    fn semicolon_inside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail: &Expr<'_>, semi_span: Span) {
         let insert_span = tail.span.source_callsite().shrink_to_hi();
         let remove_span = semi_span.with_lo(block.span.hi());
 
@@ -94,18 +92,17 @@ impl SemicolonBlock {
             semi_span,
             "consider moving the `;` inside the block for consistent formatting",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "put the `;` here",
+                    vec![(remove_span, String::new()), (insert_span, ";".to_owned())],
                     Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
                 );
             },
         );
     }
 
     fn semicolon_outside_block(
-        self,
+        &self,
         cx: &LateContext<'_>,
         block: &Block<'_>,
         tail_stmt_expr: &Expr<'_>,
@@ -126,11 +123,10 @@ impl SemicolonBlock {
             block.span,
             "consider moving the `;` outside the block for consistent formatting",
             |diag| {
-                multispan_sugg_with_applicability(
-                    diag,
+                diag.multipart_suggestion(
                     "put the `;` here",
+                    vec![(remove_span, String::new()), (insert_span, ";".to_owned())],
                     Applicability::MachineApplicable,
-                    [(remove_span, String::new()), (insert_span, ";".to_owned())],
                 );
             },
         );

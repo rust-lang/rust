@@ -48,7 +48,7 @@ LL |     fn foo_with_qualified_path(<Bar as T>::Baz);
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_qualified_path(_: <Bar as T>::Baz);
-   |                                ~~~~~~~~~~~~~~~~~~
+   |                                ++
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:15:56
@@ -60,7 +60,7 @@ LL |     fn foo_with_qualified_path_and_ref(&<Bar as T>::Baz);
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_qualified_path_and_ref(_: &<Bar as T>::Baz);
-   |                                        ~~~~~~~~~~~~~~~~~~~
+   |                                        ++
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:18:57
@@ -72,7 +72,7 @@ LL |     fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, <Bar as T>::Baz);
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_multiple_qualified_paths(_: <Bar as T>::Baz, <Bar as T>::Baz);
-   |                                          ~~~~~~~~~~~~~~~~~~
+   |                                          ++
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:18:74
@@ -84,7 +84,7 @@ LL |     fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, <Bar as T>::Baz);
 help: explicitly ignore the parameter name
    |
 LL |     fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, _: <Bar as T>::Baz);
-   |                                                           ~~~~~~~~~~~~~~~~~~
+   |                                                           ++
 
 error: expected one of `:`, `@`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:22:36

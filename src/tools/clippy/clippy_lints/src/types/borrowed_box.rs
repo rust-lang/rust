@@ -48,15 +48,15 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                 let inner_snippet = snippet(cx, inner.span, "..");
                 let suggestion = match &inner.kind {
                     TyKind::TraitObject(bounds, lt_bound, _) if bounds.len() > 1 || !lt_bound.is_elided() => {
-                        format!("&{ltopt}({})", &inner_snippet)
+                        format!("&{ltopt}({inner_snippet})")
                     },
                     TyKind::Path(qpath)
                         if get_bounds_if_impl_trait(cx, qpath, inner.hir_id)
                             .map_or(false, |bounds| bounds.len() > 1) =>
                     {
-                        format!("&{ltopt}({})", &inner_snippet)
+                        format!("&{ltopt}({inner_snippet})")
                     },
-                    _ => format!("&{ltopt}{}", &inner_snippet),
+                    _ => format!("&{ltopt}{inner_snippet}"),
                 };
                 span_lint_and_sugg(
                     cx,
@@ -81,14 +81,15 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
 
 // Returns true if given type is `Any` trait.
 fn is_any_trait(cx: &LateContext<'_>, t: &hir::Ty<'_>) -> bool {
-    if let TyKind::TraitObject(traits, ..) = t.kind
-        && !traits.is_empty()
-        && let Some(trait_did) = traits[0].trait_ref.trait_def_id()
-        // Only Send/Sync can be used as additional traits, so it is enough to
-        // check only the first trait.
-        && cx.tcx.is_diagnostic_item(sym::Any, trait_did)
-    {
-        return true;
+    if let TyKind::TraitObject(traits, ..) = t.kind {
+        return traits.iter().any(|(bound, _)| {
+            if let Some(trait_did) = bound.trait_ref.trait_def_id()
+                && cx.tcx.is_diagnostic_item(sym::Any, trait_did)
+            {
+                return true;
+            }
+            false
+        });
     }
 
     false

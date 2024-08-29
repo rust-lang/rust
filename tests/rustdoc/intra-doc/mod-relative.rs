@@ -8,8 +8,8 @@ pub mod wrapper {
         pub fn do_test(&self) {}
     }
 
-    // @has mod_relative/wrapper/demo/index.html
-    // @has - '//a/@href' '../struct.Test.html#method.do_test'
+    //@ has mod_relative/wrapper/demo/index.html
+    //@ has - '//a/@href' '../struct.Test.html#method.do_test'
     /// [`Test::do_test`]
     pub mod demo {
     }

@@ -1,9 +1,5 @@
 use std::any::Any;
-
-use super::write::WriteBackendMethods;
-use super::CodegenObject;
-use crate::back::write::TargetMachineFactoryFn;
-use crate::{CodegenResults, ModuleCodegen};
+use std::hash::Hash;
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
@@ -15,14 +11,15 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::{
-    config::{self, OutputFilenames, PrintRequest},
-    Session,
-};
+use rustc_session::config::{self, OutputFilenames, PrintRequest};
+use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::call::FnAbi;
 
-use std::fmt;
+use super::write::WriteBackendMethods;
+use super::CodegenObject;
+use crate::back::write::TargetMachineFactoryFn;
+use crate::{CodegenResults, ModuleCodegen};
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -34,7 +31,7 @@ pub trait BackendTypes {
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).
-    type DIScope: Copy;
+    type DIScope: Copy + Hash + PartialEq + Eq;
     type DILocation: Copy;
     type DIVariable: Copy;
 }
@@ -62,7 +59,7 @@ pub trait CodegenBackend {
     fn locale_resource(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
-    fn print(&self, _req: &PrintRequest, _out: &mut dyn PrintBackendInfo, _sess: &Session) {}
+    fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }
@@ -148,21 +145,5 @@ pub trait ExtraBackendMethods:
         T: Send + 'static,
     {
         std::thread::Builder::new().name(name).spawn(f)
-    }
-}
-
-pub trait PrintBackendInfo {
-    fn infallible_write_fmt(&mut self, args: fmt::Arguments<'_>);
-}
-
-impl PrintBackendInfo for String {
-    fn infallible_write_fmt(&mut self, args: fmt::Arguments<'_>) {
-        fmt::Write::write_fmt(self, args).unwrap();
-    }
-}
-
-impl dyn PrintBackendInfo + '_ {
-    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) {
-        self.infallible_write_fmt(args);
     }
 }

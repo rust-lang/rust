@@ -1,8 +1,4 @@
 //@ ignore-lldb: FIXME(#27089)
-//@ min-lldb-version: 310
-
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
 
 //@ compile-flags:-g
 
@@ -10,29 +6,29 @@
 // gdb-command:run
 
 // gdb-command:print eight_bytes1
-// gdbr-check:$1 = generic_enum_with_different_disr_sizes::Enum<f64>::Variant1(100)
+// gdb-check:$1 = generic_enum_with_different_disr_sizes::Enum<f64>::Variant1(100)
 
 // gdb-command:print four_bytes1
-// gdbr-check:$2 = generic_enum_with_different_disr_sizes::Enum<i32>::Variant1(101)
+// gdb-check:$2 = generic_enum_with_different_disr_sizes::Enum<i32>::Variant1(101)
 
 // gdb-command:print two_bytes1
-// gdbr-check:$3 = generic_enum_with_different_disr_sizes::Enum<i16>::Variant1(102)
+// gdb-check:$3 = generic_enum_with_different_disr_sizes::Enum<i16>::Variant1(102)
 
 // gdb-command:print one_byte1
-// gdbr-check:$4 = generic_enum_with_different_disr_sizes::Enum<u8>::Variant1(65)
+// gdb-check:$4 = generic_enum_with_different_disr_sizes::Enum<u8>::Variant1(65)
 
 
 // gdb-command:print eight_bytes2
-// gdbr-check:$5 = generic_enum_with_different_disr_sizes::Enum<f64>::Variant2(100)
+// gdb-check:$5 = generic_enum_with_different_disr_sizes::Enum<f64>::Variant2(100)
 
 // gdb-command:print four_bytes2
-// gdbr-check:$6 = generic_enum_with_different_disr_sizes::Enum<i32>::Variant2(101)
+// gdb-check:$6 = generic_enum_with_different_disr_sizes::Enum<i32>::Variant2(101)
 
 // gdb-command:print two_bytes2
-// gdbr-check:$7 = generic_enum_with_different_disr_sizes::Enum<i16>::Variant2(102)
+// gdb-check:$7 = generic_enum_with_different_disr_sizes::Enum<i16>::Variant2(102)
 
 // gdb-command:print one_byte2
-// gdbr-check:$8 = generic_enum_with_different_disr_sizes::Enum<u8>::Variant2(65)
+// gdb-check:$8 = generic_enum_with_different_disr_sizes::Enum<u8>::Variant2(65)
 
 // gdb-command:continue
 

@@ -32,7 +32,12 @@ error: missing type for `static` item
   --> $DIR/issue-90873.rs:1:17
    |
 LL | #![u=||{static d=||1;}]
-   |                 ^ help: provide a type for the item: `: <type>`
+   |                 ^
+   |
+help: provide a type for the item
+   |
+LL | #![u=||{static d: <type>=||1;}]
+   |                 ++++++++
 
 error: aborting due to 6 previous errors
 

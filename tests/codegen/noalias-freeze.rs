@@ -8,7 +8,9 @@
 
 #![crate_type = "lib"]
 
-fn project<T>(x: &(T,)) -> &T { &x.0 }
+fn project<T>(x: &(T,)) -> &T {
+    &x.0
+}
 
 fn dummy() {}
 

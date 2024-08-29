@@ -4,11 +4,11 @@
 
 #![crate_name = "foo"]
 
-// @has 'foo/index.html'
-// @has - '//*[@id="main-content"]//*[@class="item-name"]/a[@href="trait.Foo.html"]' 'Foo'
+//@ has 'foo/index.html'
+//@ has - '//*[@id="main-content"]//*[@class="item-name"]/a[@href="trait.Foo.html"]' 'Foo'
 
-// @has 'foo/trait.Foo.html'
-// @has - '//*[@id="main-content"]//*[@class="code-header"]' 'fn test()'
+//@ has 'foo/trait.Foo.html'
+//@ has - '//*[@id="main-content"]//*[@class="code-header"]' 'fn test()'
 
 #[doc(hidden)]
 mod hidden {

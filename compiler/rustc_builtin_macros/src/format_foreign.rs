@@ -1,10 +1,11 @@
 pub(crate) mod printf {
-    use super::strcursor::StrCursor as Cur;
     use rustc_span::InnerSpan;
+
+    use super::strcursor::StrCursor as Cur;
 
     /// Represents a single `printf`-style substitution.
     #[derive(Clone, PartialEq, Debug)]
-    pub enum Substitution<'a> {
+    pub(crate) enum Substitution<'a> {
         /// A formatted output substitution with its internal byte offset.
         Format(Format<'a>),
         /// A literal `%%` escape, with its start and end indices.
@@ -12,21 +13,21 @@ pub(crate) mod printf {
     }
 
     impl<'a> Substitution<'a> {
-        pub fn as_str(&self) -> &str {
+        pub(crate) fn as_str(&self) -> &str {
             match self {
                 Substitution::Format(fmt) => fmt.span,
                 Substitution::Escape(_) => "%%",
             }
         }
 
-        pub fn position(&self) -> InnerSpan {
+        pub(crate) fn position(&self) -> InnerSpan {
             match self {
                 Substitution::Format(fmt) => fmt.position,
                 &Substitution::Escape((start, end)) => InnerSpan::new(start, end),
             }
         }
 
-        pub fn set_position(&mut self, start: usize, end: usize) {
+        pub(crate) fn set_position(&mut self, start: usize, end: usize) {
             match self {
                 Substitution::Format(fmt) => fmt.position = InnerSpan::new(start, end),
                 Substitution::Escape(pos) => *pos = (start, end),
@@ -37,7 +38,7 @@ pub(crate) mod printf {
         ///
         /// This ignores cases where the substitution does not have an exact equivalent, or where
         /// the substitution would be unnecessary.
-        pub fn translate(&self) -> Result<String, Option<String>> {
+        pub(crate) fn translate(&self) -> Result<String, Option<String>> {
             match self {
                 Substitution::Format(fmt) => fmt.translate(),
                 Substitution::Escape(_) => Err(None),
@@ -47,23 +48,23 @@ pub(crate) mod printf {
 
     #[derive(Clone, PartialEq, Debug)]
     /// A single `printf`-style formatting directive.
-    pub struct Format<'a> {
+    pub(crate) struct Format<'a> {
         /// The entire original formatting directive.
-        pub span: &'a str,
+        span: &'a str,
         /// The (1-based) parameter to be converted.
-        pub parameter: Option<u16>,
+        parameter: Option<u16>,
         /// Formatting flags.
-        pub flags: &'a str,
+        flags: &'a str,
         /// Minimum width of the output.
-        pub width: Option<Num>,
+        width: Option<Num>,
         /// Precision of the conversion.
-        pub precision: Option<Num>,
+        precision: Option<Num>,
         /// Length modifier for the conversion.
-        pub length: Option<&'a str>,
+        length: Option<&'a str>,
         /// Type of parameter being converted.
-        pub type_: &'a str,
+        type_: &'a str,
         /// Byte offset for the start and end of this formatting directive.
-        pub position: InnerSpan,
+        position: InnerSpan,
     }
 
     impl Format<'_> {
@@ -71,7 +72,7 @@ pub(crate) mod printf {
         ///
         /// Returns `Err` in cases where the `printf` directive does not have an exact Rust
         /// equivalent, rather than guessing.
-        pub fn translate(&self) -> Result<String, Option<String>> {
+        pub(crate) fn translate(&self) -> Result<String, Option<String>> {
             use std::fmt::Write;
 
             let (c_alt, c_zero, c_left, c_plus) = {
@@ -248,7 +249,7 @@ pub(crate) mod printf {
 
     /// A general number used in a `printf` formatting directive.
     #[derive(Copy, Clone, PartialEq, Debug)]
-    pub enum Num {
+    enum Num {
         // The range of these values is technically bounded by `NL_ARGMAX`... but, at least for GNU
         // libc, it apparently has no real fixed limit. A `u16` is used here on the basis that it
         // is *vanishingly* unlikely that *anyone* is going to try formatting something wider, or
@@ -287,12 +288,12 @@ pub(crate) mod printf {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
+    pub(crate) fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions { s, pos: start_pos }
     }
 
     /// Iterator over substitutions in a string.
-    pub struct Substitutions<'a> {
+    pub(crate) struct Substitutions<'a> {
         s: &'a str,
         pos: usize,
     }
@@ -326,7 +327,7 @@ pub(crate) mod printf {
     }
 
     /// Parse the next substitution from the input string.
-    pub fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
+    fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
         use self::State::*;
 
         let at = {
@@ -614,19 +615,20 @@ pub(crate) mod printf {
     mod tests;
 }
 
-pub mod shell {
-    use super::strcursor::StrCursor as Cur;
+pub(crate) mod shell {
     use rustc_span::InnerSpan;
 
+    use super::strcursor::StrCursor as Cur;
+
     #[derive(Clone, PartialEq, Debug)]
-    pub enum Substitution<'a> {
+    pub(crate) enum Substitution<'a> {
         Ordinal(u8, (usize, usize)),
         Name(&'a str, (usize, usize)),
         Escape((usize, usize)),
     }
 
     impl Substitution<'_> {
-        pub fn as_str(&self) -> String {
+        pub(crate) fn as_str(&self) -> String {
             match self {
                 Substitution::Ordinal(n, _) => format!("${n}"),
                 Substitution::Name(n, _) => format!("${n}"),
@@ -634,17 +636,17 @@ pub mod shell {
             }
         }
 
-        pub fn position(&self) -> InnerSpan {
+        pub(crate) fn position(&self) -> InnerSpan {
             let (Self::Ordinal(_, pos) | Self::Name(_, pos) | Self::Escape(pos)) = self;
             InnerSpan::new(pos.0, pos.1)
         }
 
-        pub fn set_position(&mut self, start: usize, end: usize) {
+        fn set_position(&mut self, start: usize, end: usize) {
             let (Self::Ordinal(_, pos) | Self::Name(_, pos) | Self::Escape(pos)) = self;
             *pos = (start, end);
         }
 
-        pub fn translate(&self) -> Result<String, Option<String>> {
+        pub(crate) fn translate(&self) -> Result<String, Option<String>> {
             match self {
                 Substitution::Ordinal(n, _) => Ok(format!("{{{}}}", n)),
                 Substitution::Name(n, _) => Ok(format!("{{{}}}", n)),
@@ -654,12 +656,12 @@ pub mod shell {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
+    pub(crate) fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions { s, pos: start_pos }
     }
 
     /// Iterator over substitutions in a string.
-    pub struct Substitutions<'a> {
+    pub(crate) struct Substitutions<'a> {
         s: &'a str,
         pos: usize,
     }
@@ -681,7 +683,7 @@ pub mod shell {
     }
 
     /// Parse the next substitution from the input string.
-    pub fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
+    fn parse_next_substitution(s: &str) -> Option<(Substitution<'_>, &str)> {
         let at = {
             let start = s.find('$')?;
             match s[start + 1..].chars().next()? {
@@ -741,24 +743,24 @@ pub mod shell {
 }
 
 mod strcursor {
-    pub struct StrCursor<'a> {
+    pub(crate) struct StrCursor<'a> {
         s: &'a str,
         pub at: usize,
     }
 
     impl<'a> StrCursor<'a> {
-        pub fn new_at(s: &'a str, at: usize) -> StrCursor<'a> {
+        pub(crate) fn new_at(s: &'a str, at: usize) -> StrCursor<'a> {
             StrCursor { s, at }
         }
 
-        pub fn at_next_cp(mut self) -> Option<StrCursor<'a>> {
+        pub(crate) fn at_next_cp(mut self) -> Option<StrCursor<'a>> {
             match self.try_seek_right_cp() {
                 true => Some(self),
                 false => None,
             }
         }
 
-        pub fn next_cp(mut self) -> Option<(char, StrCursor<'a>)> {
+        pub(crate) fn next_cp(mut self) -> Option<(char, StrCursor<'a>)> {
             let cp = self.cp_after()?;
             self.seek_right(cp.len_utf8());
             Some((cp, self))
@@ -768,11 +770,11 @@ mod strcursor {
             &self.s[0..self.at]
         }
 
-        pub fn slice_after(&self) -> &'a str {
+        pub(crate) fn slice_after(&self) -> &'a str {
             &self.s[self.at..]
         }
 
-        pub fn slice_between(&self, until: StrCursor<'a>) -> Option<&'a str> {
+        pub(crate) fn slice_between(&self, until: StrCursor<'a>) -> Option<&'a str> {
             if !str_eq_literal(self.s, until.s) {
                 None
             } else {

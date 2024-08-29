@@ -1,4 +1,4 @@
-error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `unsafe`, or `use`, found keyword `pub`
+error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `safe`, `unsafe`, or `use`, found keyword `pub`
   --> $DIR/duplicate-visibility.rs:4:9
    |
 LL | extern "C" {
@@ -6,7 +6,7 @@ LL | extern "C" {
 LL |     pub pub fn foo();
    |         ^^^
    |         |
-   |         expected one of 8 possible tokens
+   |         expected one of 9 possible tokens
    |         help: there is already a visibility modifier, remove one
 ...
 LL | }

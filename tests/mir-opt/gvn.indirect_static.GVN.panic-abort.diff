@@ -8,12 +8,10 @@
   
       bb0: {
           _1 = const {ALLOC0: &Option<u8>};
-          _2 = (((*_1) as variant#1).0: u8);
+          _2 = copy (((*_1) as variant#1).0: u8);
           return;
       }
   }
   
-  ALLOC0 (static: A, size: 2, align: 1) {
-      00 __                                           │ .░
-  }
+  ALLOC0 (static: A, size: 2, align: 1) { .. }
   

@@ -7,8 +7,6 @@ edition = "2021"
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
 std = { path = "../std" }
 core = { path = "../core" }
-panic_unwind = { path = "../panic_unwind" }
-panic_abort = { path = "../panic_abort" }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2.150", default-features = false }

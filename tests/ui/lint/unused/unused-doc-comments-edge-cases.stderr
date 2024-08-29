@@ -5,10 +5,10 @@ LL |     else {
    |     ^^^^ expected expression
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/unused-doc-comments-edge-cases.rs:23:6
+  --> $DIR/unused-doc-comments-edge-cases.rs:23:5
    |
-LL |     (/// useless doc comment
-   |      ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     /// useless doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
@@ -32,12 +32,12 @@ LL | #![deny(unused_doc_comments)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: unused doc comment
-  --> $DIR/unused-doc-comments-edge-cases.rs:23:6
+  --> $DIR/unused-doc-comments-edge-cases.rs:23:5
    |
-LL |     (/// useless doc comment
-   |      ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     /// useless doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 ...
-LL |     num) == 3
+LL |     num == 3
    |     --- rustdoc does not generate documentation for expressions
    |
    = help: use `//` for a plain comment

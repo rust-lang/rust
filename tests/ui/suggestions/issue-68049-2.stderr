@@ -19,7 +19,7 @@ help: consider changing this to be a mutable reference in the `impl` method and 
    |
 LL ~   fn example(&mut self, input: &i32);
 LL | }
- ...
+...
 LL | impl Hello for Test2 {
 LL ~   fn example(&mut self, input: &i32) {
    |

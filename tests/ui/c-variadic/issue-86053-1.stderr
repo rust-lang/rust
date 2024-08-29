@@ -46,7 +46,7 @@ error: `...` must be the last argument of a C-variadic function
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |            ^^^
 
-error: only foreign or `unsafe extern "C"` functions may be C-variadic
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
   --> $DIR/issue-86053-1.rs:11:12
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {

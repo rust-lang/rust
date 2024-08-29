@@ -71,4 +71,14 @@ impl G {
     }
 }
 
+// Check that we honor the `expect` attribute on the ADT
+#[expect(clippy::unsafe_derive_deserialize)]
+#[derive(Deserialize)]
+pub struct H;
+impl H {
+    pub fn unsafe_block(&self) {
+        unsafe {}
+    }
+}
+
 fn main() {}

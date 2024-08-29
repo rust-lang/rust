@@ -1,3 +1,4 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_hir::{intravisit, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -11,9 +12,16 @@ use rustc_span::symbol::kw;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-#[derive(Copy, Clone)]
 pub struct BoxedLocal {
-    pub too_large_for_stack: u64,
+    too_large_for_stack: u64,
+}
+
+impl BoxedLocal {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            too_large_for_stack: conf.too_large_for_stack,
+        }
+    }
 }
 
 declare_clippy_lint! {

@@ -1,0 +1,28 @@
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:23:21
+   |
+LL |     fn assoc_func(&self, _f: impl Fn()) -> usize {
+   |                              --------- change this to accept `FnMut` instead of `Fn`
+...
+LL |     s.assoc_func(|| x = ());
+   |       --------------^^^^^^-
+   |       |          |  |
+   |       |          |  cannot assign
+   |       |          in this closure
+   |       expects `Fn` instead of `FnMut`
+
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
+  --> $DIR/wrong-closure-arg-suggestion-125325.rs:25:13
+   |
+LL | fn func(_f: impl Fn()) -> usize {
+   |             --------- change this to accept `FnMut` instead of `Fn`
+...
+LL |     func(|| x = ())
+   |     ---- -- ^^^^^^ cannot assign
+   |     |    |
+   |     |    in this closure
+   |     expects `Fn` instead of `FnMut`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

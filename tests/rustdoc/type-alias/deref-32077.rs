@@ -18,25 +18,25 @@ pub trait Bar {}
 impl<T> Foo for GenericStruct<T> {}
 impl Bar for GenericStruct<u32> {}
 
-// @has 'foo/type.TypedefStruct.html'
+//@ has 'foo/type.TypedefStruct.html'
 // We check that "Aliased type" is also present as a title in the sidebar.
-// @has - '//*[@class="sidebar-elems"]//h3/a[@href="#aliased-type"]' 'Aliased type'
+//@ has - '//*[@class="sidebar-elems"]//h3/a[@href="#aliased-type"]' 'Aliased type'
 // We check that we have the implementation of the type alias itself.
-// @has - '//*[@id="impl-GenericStruct%3Cu8%3E"]/h3' 'impl TypedefStruct'
-// @has - '//*[@id="method.on_alias"]/h4' 'pub fn on_alias()'
+//@ has - '//*[@id="impl-GenericStruct%3Cu8%3E"]/h3' 'impl TypedefStruct'
+//@ has - '//*[@id="method.on_alias"]/h4' 'pub fn on_alias()'
 // This trait implementation doesn't match the type alias parameters so shouldn't appear in docs.
-// @!has - '//h3' 'impl Bar for GenericStruct<u32> {}'
+//@ !has - '//h3' 'impl Bar for GenericStruct<u32> {}'
 // Same goes for the `Deref` impl.
-// @!has - '//h2' 'Methods from Deref<Target = u32>'
-// @count - '//nav[@class="sidebar"]//a' 'on_alias' 1
-// @!has - '//nav[@class="sidebar"]//a' 'on_gen'
-// @!has - '//nav[@class="sidebar"]//a' 'Foo'
-// @!has - '//nav[@class="sidebar"]//a' 'Bar'
-// @!has - '//nav[@class="sidebar"]//a' 'on_u32'
+//@ !has - '//h2' 'Methods from Deref<Target = u32>'
+//@ count - '//nav[@class="sidebar"]//a' 'on_alias' 1
+//@ !has - '//nav[@class="sidebar"]//a' 'on_gen'
+//@ !has - '//nav[@class="sidebar"]//a' 'Foo'
+//@ !has - '//nav[@class="sidebar"]//a' 'Bar'
+//@ !has - '//nav[@class="sidebar"]//a' 'on_u32'
 // TypedefStruct inlined to GenericStruct
-// @hasraw 'type.impl/foo/struct.GenericStruct.js' 'TypedefStruct'
-// @hasraw 'type.impl/foo/struct.GenericStruct.js' 'method.on_gen'
-// @hasraw 'type.impl/foo/struct.GenericStruct.js' 'Foo'
+//@ hasraw 'type.impl/foo/struct.GenericStruct.js' 'TypedefStruct'
+//@ hasraw 'type.impl/foo/struct.GenericStruct.js' 'method.on_gen'
+//@ hasraw 'type.impl/foo/struct.GenericStruct.js' 'Foo'
 pub type TypedefStruct = GenericStruct<u8>;
 
 impl TypedefStruct {
@@ -53,12 +53,12 @@ impl std::ops::Deref for GenericStruct<u32> {
 
 pub struct Wrap<T>(GenericStruct<T>);
 
-// @has 'foo/type.Alias.html'
-// @!has - '//h2' 'Methods from Deref<Target = u32>'
-// @!has - '//*[@id="impl-Deref-for-Wrap%3CT%3E"]/h3' 'impl<T> Deref for Wrap<T>'
-// @hasraw 'type.impl/foo/struct.Wrap.js' 'impl-Deref-for-Wrap%3CT%3E'
+//@ has 'foo/type.Alias.html'
+//@ !has - '//h2' 'Methods from Deref<Target = u32>'
+//@ !has - '//*[@id="impl-Deref-for-Wrap%3CT%3E"]/h3' 'impl<T> Deref for Wrap<T>'
+//@ hasraw 'type.impl/foo/struct.Wrap.js' 'impl-Deref-for-Wrap%3CT%3E'
 // Deref Methods aren't gathered for type aliases, though the actual impl is.
-// @!hasraw 'type.impl/foo/struct.Wrap.js' 'BITS'
+//@ !hasraw 'type.impl/foo/struct.Wrap.js' 'BITS'
 pub type Alias = Wrap<u32>;
 
 impl<T> std::ops::Deref for Wrap<T> {

@@ -9,10 +9,10 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, run, rustc, static_lib};
+use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 
 fn main() {
-    let libbar_path = static_lib("bar");
+    let libbar_path = static_lib_name("bar");
     rustc().input("foo.rs").crate_type("rlib").run();
     rustc()
         .input("bar.rs")

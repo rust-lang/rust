@@ -6,7 +6,7 @@ use parser::{SyntaxKind, T};
 
 use crate::{
     algo::{self, neighbor},
-    ast::{self, edit::IndentLevel, make, HasGenericParams},
+    ast::{self, edit::IndentLevel, make, HasGenericArgs, HasGenericParams},
     ted::{self, Position},
     AstNode, AstToken, Direction, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},

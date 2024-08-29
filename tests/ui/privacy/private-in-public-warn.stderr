@@ -100,7 +100,7 @@ error: type `types::Priv` is more private than the item `types::ef1`
   --> $DIR/private-in-public-warn.rs:28:9
    |
 LL |         pub fn ef1(arg: Priv);
-   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^ function `types::ef1` is reachable at visibility `pub(crate)`
    |
 note: but type `types::Priv` is only usable at visibility `pub(self)`
   --> $DIR/private-in-public-warn.rs:9:5
@@ -112,7 +112,7 @@ error: type `types::Priv` is more private than the item `types::ef2`
   --> $DIR/private-in-public-warn.rs:29:9
    |
 LL |         pub fn ef2() -> Priv;
-   |         ^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
+   |         ^^^^^^^^^^^^^^^^^^^^^ function `types::ef2` is reachable at visibility `pub(crate)`
    |
 note: but type `types::Priv` is only usable at visibility `pub(self)`
   --> $DIR/private-in-public-warn.rs:9:5
@@ -395,30 +395,32 @@ note: but type `Priv2` is only usable at visibility `pub(self)`
 LL |     struct Priv2;
    |     ^^^^^^^^^^^^
 
-warning: bounds on generic parameters are not enforced in type aliases
+warning: bounds on generic parameters in type aliases are not enforced
   --> $DIR/private-in-public-warn.rs:41:23
    |
 LL |     pub type Alias<T: PrivTr> = T;
-   |                       ^^^^^^
+   |                     --^^^^^^
+   |                     | |
+   |                     | will not be checked at usage sites of the type alias
+   |                     help: remove this bound
    |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
    = note: `#[warn(type_alias_bounds)]` on by default
-help: the bound will not be checked when the type alias is used, and should be removed
-   |
-LL -     pub type Alias<T: PrivTr> = T;
-LL +     pub type Alias<T> = T;
-   |
 
-warning: where clauses are not enforced in type aliases
+warning: where clauses on type aliases are not enforced
   --> $DIR/private-in-public-warn.rs:59:29
    |
 LL |     pub type Alias<T> where T: PrivTr = T;
-   |                             ^^^^^^^^^
+   |                       ------^^^^^^^^^
+   |                       |     |
+   |                       |     will not be checked at usage sites of the type alias
+   |                       help: remove this where clause
    |
-help: the clause will not be checked when the type alias is used, and should be removed
-   |
-LL -     pub type Alias<T> where T: PrivTr = T;
-LL +     pub type Alias<T>  = T;
-   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
 
 error: aborting due to 34 previous errors; 2 warnings emitted
 

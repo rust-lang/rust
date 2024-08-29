@@ -10,7 +10,7 @@ use ide_db::{
             debug::{DebugQueryTable, TableEntry},
             Query, QueryTable,
         },
-        CompressedFileTextQuery, CrateData, FileId, ParseQuery, SourceDatabase, SourceRootId,
+        CompressedFileTextQuery, CrateData, ParseQuery, SourceDatabase, SourceRootId,
     },
     symbol_index::ModuleSymbolsQuery,
 };
@@ -20,7 +20,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use profile::{memory_usage, Bytes};
-use std::env;
+use span::{EditionedFileId, FileId};
 use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
 use triomphe::Arc;
@@ -44,9 +44,6 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
     format_to!(buf, "{}\n", collect_query(LibrarySymbolsQuery.in_db(db)));
     format_to!(buf, "{}\n", collect_query(ModuleSymbolsQuery.in_db(db)));
     format_to!(buf, "{} in total\n", memory_usage());
-    if env::var("RA_COUNT").is_ok() {
-        format_to!(buf, "\nCounts:\n{}", profile::countme::get_all());
-    }
 
     format_to!(buf, "\nDebug info:\n");
     format_to!(buf, "{}\n", collect_query(AttrsQuery.in_db(db)));
@@ -213,8 +210,8 @@ impl<const MACROS: bool> fmt::Display for SyntaxTreeStats<MACROS> {
     }
 }
 
-impl StatCollect<FileId, Parse<ast::SourceFile>> for SyntaxTreeStats<false> {
-    fn collect_entry(&mut self, _: FileId, value: Option<Parse<ast::SourceFile>>) {
+impl StatCollect<EditionedFileId, Parse<ast::SourceFile>> for SyntaxTreeStats<false> {
+    fn collect_entry(&mut self, _: EditionedFileId, value: Option<Parse<ast::SourceFile>>) {
         self.total += 1;
         self.retained += value.is_some() as usize;
     }

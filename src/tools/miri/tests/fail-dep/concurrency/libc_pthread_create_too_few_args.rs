@@ -1,11 +1,12 @@
 //@ignore-target-windows: No pthreads on Windows
+//~^ERROR: calling a function with more arguments than it expected
 
 //! The thread function must have exactly one argument.
 
 use std::{mem, ptr};
 
 extern "C" fn thread_start() -> *mut libc::c_void {
-    panic!() //~ ERROR: callee has fewer arguments than expected
+    panic!()
 }
 
 fn main() {

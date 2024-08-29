@@ -116,7 +116,9 @@ impl<B, C> ops::Try for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<B, C> ops::FromResidual for ControlFlow<B, C> {
+// Note: manually specifying the residual type instead of using the default to work around
+// https://github.com/rust-lang/rust/issues/99940
+impl<B, C> ops::FromResidual<ControlFlow<B, convert::Infallible>> for ControlFlow<B, C> {
     #[inline]
     fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
         match residual {
@@ -238,7 +240,7 @@ impl<B, C> ControlFlow<B, C> {
 /// They have mediocre names and non-obvious semantics, so aren't
 /// currently on a path to potential stabilization.
 impl<R: ops::Try> ControlFlow<R, R::Output> {
-    /// Create a `ControlFlow` from any type implementing `Try`.
+    /// Creates a `ControlFlow` from any type implementing `Try`.
     #[inline]
     pub(crate) fn from_try(r: R) -> Self {
         match R::branch(r) {
@@ -247,7 +249,7 @@ impl<R: ops::Try> ControlFlow<R, R::Output> {
         }
     }
 
-    /// Convert a `ControlFlow` into any type implementing `Try`;
+    /// Converts a `ControlFlow` into any type implementing `Try`.
     #[inline]
     pub(crate) fn into_try(self) -> R {
         match self {

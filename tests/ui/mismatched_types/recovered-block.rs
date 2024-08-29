@@ -10,6 +10,6 @@ pub fn foo() -> Foo {
 
     pub Foo { text }
 }
-//~^^ ERROR missing `struct` for struct definition
+//~^^ ERROR missing `enum` for enum definition
 
 fn main() {}

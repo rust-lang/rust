@@ -16,7 +16,9 @@
 //! 4. We check that the error code is actually emitted by the compiler.
 //!   - This is done by searching `compiler/` with a regex.
 
-use std::{ffi::OsStr, fs, path::Path};
+use std::ffi::OsStr;
+use std::fs;
+use std::path::Path;
 
 use regex::Regex;
 
@@ -308,18 +310,16 @@ fn check_error_codes_tests(
         for line in file.lines() {
             let s = line.trim();
             // Assuming the line starts with `error[E`, we can substring the error code out.
-            if s.starts_with("error[E") {
-                if &s[6..11] == code {
-                    found_code = true;
-                    break;
-                }
+            if s.starts_with("error[E") && &s[6..11] == code {
+                found_code = true;
+                break;
             };
         }
 
         if !found_code {
             verbose_print!(
                 verbose,
-                "warning: Error code {code}`` has a UI test file, but doesn't contain its own error code!"
+                "warning: Error code `{code}` has a UI test file, but doesn't contain its own error code!"
             );
         }
     }

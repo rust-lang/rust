@@ -20,11 +20,7 @@ fn _loop_either_way(cond: bool) {
 // Variant using regular `if` instead of let-else.
 // This doesn't trigger the original ICE, but might help detect regressions.
 fn _if(cond: bool) {
-    if cond {
-        loop {}
-    } else {
-        loop {}
-    }
+    if cond { loop {} } else { loop {} }
 }
 
 #[coverage(off)]

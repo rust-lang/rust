@@ -3,5 +3,4 @@
 
 // CHECK: main
 
-pub fn main() {
-}
+pub fn main() {}

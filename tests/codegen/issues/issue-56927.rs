@@ -1,6 +1,6 @@
 //@ compile-flags: -C no-prepopulate-passes
 
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 #[repr(align(16))]
 pub struct S {

@@ -5,7 +5,7 @@
 use std::ops::ControlFlow;
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
+use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
     data::{adt::StructFlags, ImplData},
     nameres::DefMap,
@@ -13,9 +13,9 @@ use hir_def::{
     ModuleId, TraitId,
 };
 use hir_expand::name::Name;
+use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::Edition;
 use stdx::never;
 use triomphe::Arc;
 
@@ -24,12 +24,14 @@ use crate::{
     db::HirDatabase,
     error_lifetime, from_chalk_trait_id, from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, OverloadedDeref, PointerCast},
+    lang_items::is_box,
     primitive::{FloatTy, IntTy, UintTy},
     to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, Goal, Guidance,
-    InEnvironment, Interner, Scalar, Solution, Substitution, TraitEnvironment, TraitRef,
-    TraitRefExt, Ty, TyBuilder, TyExt,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
+    Goal, Guidance, InEnvironment, Interner, Mutability, Scalar, Solution, Substitution,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind,
+    VariableKind, WhereClause,
 };
 
 /// This is used as a key for indexing impls.
@@ -127,9 +129,11 @@ pub(crate) const ALL_INT_FPS: [TyFingerprint; 12] = [
     TyFingerprint::Scalar(Scalar::Uint(UintTy::Usize)),
 ];
 
-pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
+pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 4] = [
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F16)),
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F32)),
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F64)),
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F128)),
 ];
 
 type TraitFpMap = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Box<[ImplId]>>>;
@@ -144,8 +148,7 @@ pub struct TraitImpls {
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "trait_impls_in_crate_query", ?krate).entered();
+        let _p = tracing::info_span!("trait_impls_in_crate_query", ?krate).entered();
         let mut impls = FxHashMap::default();
 
         Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
@@ -157,7 +160,7 @@ impl TraitImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let _p = tracing::span!(tracing::Level::INFO, "trait_impls_in_block_query").entered();
+        let _p = tracing::info_span!("trait_impls_in_block_query").entered();
         let mut impls = FxHashMap::default();
 
         Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
@@ -173,8 +176,7 @@ impl TraitImpls {
         db: &dyn HirDatabase,
         krate: CrateId,
     ) -> Arc<[Arc<Self>]> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "trait_impls_in_deps_query", ?krate).entered();
+        let _p = tracing::info_span!("trait_impls_in_deps_query", ?krate).entered();
         let crate_graph = db.crate_graph();
 
         Arc::from_iter(
@@ -200,7 +202,7 @@ impl TraitImpls {
                 // FIXME: Reservation impls should be considered during coherence checks. If we are
                 // (ever) to implement coherence checks, this filtering should be done by the trait
                 // solver.
-                if db.attrs(impl_id.into()).by_key("rustc_reservation_impl").exists() {
+                if db.attrs(impl_id.into()).by_key(&sym::rustc_reservation_impl).exists() {
                     continue;
                 }
                 let target_trait = match db.impl_trait(impl_id) {
@@ -280,8 +282,7 @@ pub struct InherentImpls {
 
 impl InherentImpls {
     pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "inherent_impls_in_crate_query", ?krate).entered();
+        let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let crate_def_map = db.crate_def_map(krate);
@@ -295,7 +296,7 @@ impl InherentImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let _p = tracing::span!(tracing::Level::INFO, "inherent_impls_in_block_query").entered();
+        let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let block_def_map = db.block_def_map(block);
@@ -368,7 +369,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
     krate: CrateId,
     fp: TyFingerprint,
 ) -> SmallVec<[CrateId; 2]> {
-    let _p = tracing::span!(tracing::Level::INFO, "incoherent_inherent_impl_crates").entered();
+    let _p = tracing::info_span!("incoherent_inherent_impl_crates").entered();
     let mut res = SmallVec::new();
     let crate_graph = db.crate_graph();
 
@@ -937,8 +938,7 @@ pub fn iterate_method_candidates_dyn(
     mode: LookupMode,
     callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let _p = tracing::span!(
-        tracing::Level::INFO,
+    let _p = tracing::info_span!(
         "iterate_method_candidates_dyn",
         ?mode,
         ?name,
@@ -1083,6 +1083,11 @@ fn iterate_method_candidates_by_receiver(
     table.run_in_snapshot(|table| {
         let mut autoderef = autoderef::Autoderef::new(table, receiver_ty.clone(), true);
         while let Some((self_ty, _)) = autoderef.next() {
+            if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
+                // don't try to resolve methods on unknown types
+                return ControlFlow::Continue(());
+            }
+
             iterate_trait_method_candidates(
                 &self_ty,
                 autoderef.table,
@@ -1147,17 +1152,30 @@ fn iterate_trait_method_candidates(
     'traits: for &t in traits_in_scope {
         let data = db.trait_data(t);
 
-        // Traits annotated with `#[rustc_skip_array_during_method_dispatch]` are skipped during
+        // Traits annotated with `#[rustc_skip_during_method_dispatch]` are skipped during
         // method resolution, if the receiver is an array, and we're compiling for editions before
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
         if data.skip_array_during_method_dispatch
-            && matches!(self_ty.kind(Interner), chalk_ir::TyKind::Array(..))
+            && matches!(self_ty.kind(Interner), TyKind::Array(..))
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
-            if db.crate_graph()[krate].edition < Edition::Edition2021 {
+            if !db.crate_graph()[krate].edition.at_least_2021() {
+                continue;
+            }
+        }
+        if data.skip_boxed_slice_during_method_dispatch
+            && matches!(
+                self_ty.kind(Interner), TyKind::Adt(AdtId(def), subst)
+                if is_box(table.db, *def)
+                    && matches!(subst.at(Interner, 0).assert_ty_ref(Interner).kind(Interner), TyKind::Slice(..))
+            )
+        {
+            // FIXME: this should really be using the edition of the method name's span, in case it
+            // comes from a macro
+            if !db.crate_graph()[krate].edition.at_least_2024() {
                 continue;
             }
         }
@@ -1326,7 +1344,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &item in &table.db.impl_data(impl_id).items {
+            for &item in table.db.impl_data(impl_id).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,
@@ -1504,7 +1522,7 @@ fn is_valid_impl_fn_candidate(
         }
     }
     table.run_in_snapshot(|table| {
-        let _p = tracing::span!(tracing::Level::INFO, "subst_for_def").entered();
+        let _p = tracing::info_span!("subst_for_def").entered();
         let impl_subst =
             TyBuilder::subst_for_def(db, impl_id, None).fill_with_inference_vars(table).build();
         let expect_self_ty = db.impl_self_ty(impl_id).substitute(Interner, &impl_subst);
@@ -1512,7 +1530,7 @@ fn is_valid_impl_fn_candidate(
         check_that!(table.unify(&expect_self_ty, self_ty));
 
         if let Some(receiver_ty) = receiver_ty {
-            let _p = tracing::span!(tracing::Level::INFO, "check_receiver_ty").entered();
+            let _p = tracing::info_span!("check_receiver_ty").entered();
             check_that!(data.has_self_param());
 
             let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
@@ -1620,15 +1638,11 @@ fn generic_implements_goal(
     let kinds =
         binders.iter().cloned().chain(trait_ref.substitution.iter(Interner).skip(1).map(|it| {
             let vk = match it.data(Interner) {
-                chalk_ir::GenericArgData::Ty(_) => {
-                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
-                }
-                chalk_ir::GenericArgData::Lifetime(_) => chalk_ir::VariableKind::Lifetime,
-                chalk_ir::GenericArgData::Const(c) => {
-                    chalk_ir::VariableKind::Const(c.data(Interner).ty.clone())
-                }
+                GenericArgData::Ty(_) => VariableKind::Ty(chalk_ir::TyVariableKind::General),
+                GenericArgData::Lifetime(_) => VariableKind::Lifetime,
+                GenericArgData::Const(c) => VariableKind::Const(c.data(Interner).ty.clone()),
             };
-            chalk_ir::WithKind::new(vk, UniverseIndex::ROOT)
+            WithKind::new(vk, UniverseIndex::ROOT)
         }));
     let binders = CanonicalVarKinds::from_iter(Interner, kinds);
 

@@ -1,5 +1,5 @@
 #![warn(clippy::manual_unwrap_or_default)]
-#![allow(clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::unnecessary_literal_unwrap, clippy::manual_unwrap_or)]
 
 fn main() {
     let x: Option<Vec<String>> = None;
@@ -46,6 +46,21 @@ fn main() {
     let x: &[_] = match map.get(&0) {
         Some(x) => x,
         None => &[],
+    };
+
+    let x: Result<String, i64> = Ok(String::new());
+    match x {
+        //~^ ERROR: match can be simplified with `.unwrap_or_default()`
+        Ok(v) => v,
+        Err(_) => String::new(),
+    };
+
+    let x: Result<String, i64> = Ok(String::new());
+    if let Ok(v) = x {
+        //~^ ERROR: if let can be simplified with `.unwrap_or_default()`
+        v
+    } else {
+        String::new()
     };
 }
 
@@ -95,4 +110,25 @@ fn issue_12569() {
     } else {
         0
     };
+}
+
+// Should not warn!
+fn issue_12928() {
+    let x = Some((1, 2));
+    let y = if let Some((a, _)) = x { a } else { 0 };
+    let y = if let Some((a, ..)) = x { a } else { 0 };
+    let x = Some([1, 2]);
+    let y = if let Some([a, _]) = x { a } else { 0 };
+    let y = if let Some([a, ..]) = x { a } else { 0 };
+
+    struct X {
+        a: u8,
+        b: u8,
+    }
+    let x = Some(X { a: 0, b: 0 });
+    let y = if let Some(X { a, .. }) = x { a } else { 0 };
+    struct Y(u8, u8);
+    let x = Some(Y(0, 0));
+    let y = if let Some(Y(a, _)) = x { a } else { 0 };
+    let y = if let Some(Y(a, ..)) = x { a } else { 0 };
 }

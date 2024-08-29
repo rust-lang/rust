@@ -1,10 +1,9 @@
 //! Test exhaustiveness checking.
+
 use common::*;
-use rustc_pattern_analysis::{
-    pat::{DeconstructedPat, WitnessPat},
-    usefulness::PlaceValidity,
-    MatchArm,
-};
+use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
+use rustc_pattern_analysis::usefulness::PlaceValidity;
+use rustc_pattern_analysis::MatchArm;
 
 #[macro_use]
 mod common;
@@ -73,5 +72,19 @@ fn test_nested() {
         Struct(Variant.0, _),
         Struct(_, Variant.0),
         Struct(Variant.1, Variant.1),
+    ));
+}
+
+#[test]
+fn test_empty() {
+    // `TY = Result<bool, !>`
+    const TY: Ty = Ty::Enum(&[Ty::Bool, Ty::Enum(&[])]);
+    assert_exhaustive(pats!(TY;
+        Variant.0,
+    ));
+    let ty = Ty::Tuple(&[Ty::Bool, TY]);
+    assert_exhaustive(pats!(ty;
+        (true, Variant.0),
+        (false, Variant.0),
     ));
 }

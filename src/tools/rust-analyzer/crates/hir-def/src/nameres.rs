@@ -16,8 +16,8 @@
 //!
 //! This happens in the `raw` module, which parses a single source file into a
 //! set of top-level items. Nested imports are desugared to flat imports in this
-//! phase. Macro calls are represented as a triple of (Path, Option<Name>,
-//! TokenTree).
+//! phase. Macro calls are represented as a triple of `(Path, Option<Name>,
+//! TokenTree)`.
 //!
 //! ## Collecting Modules
 //!
@@ -59,14 +59,15 @@ mod tests;
 
 use std::ops::Deref;
 
-use base_db::{CrateId, FileId};
+use base_db::CrateId;
 use hir_expand::{
     name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
 };
+use intern::Symbol;
 use itertools::Itertools;
 use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, FileAstId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -81,8 +82,16 @@ use crate::{
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
     AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
-    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
+
+const PREDEFINED_TOOLS: &[SmolStr] = &[
+    SmolStr::new_static("clippy"),
+    SmolStr::new_static("rustfmt"),
+    SmolStr::new_static("diagnostic"),
+    SmolStr::new_static("miri"),
+    SmolStr::new_static("rust_analyzer"),
+];
 
 /// Contains the results of (early) name resolution.
 ///
@@ -95,12 +104,13 @@ use crate::{
 /// is computed by the `block_def_map` query.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DefMap {
+    /// The crate this `DefMap` belongs to.
+    krate: CrateId,
     /// When this is a block def map, this will hold the block id of the block and module that
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
     pub modules: Arena<ModuleData>,
-    krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
@@ -116,6 +126,7 @@ pub struct DefMap {
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
+    // FIXME: Figure out a better way for the IDE layer to resolve these?
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
 
     /// The diagnostics that need to be emitted for this crate.
@@ -129,20 +140,18 @@ pub struct DefMap {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DefMapCrateData {
     /// The extern prelude which contains all root modules of external crates that are in scope.
-    extern_prelude: FxHashMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
+    extern_prelude: FxIndexMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
-    /// The error that occurred when failing to load the proc-macro dll.
-    proc_macro_loading_error: Option<Box<str>>,
 
     /// Custom attributes registered with `#![register_attr]`.
-    registered_attrs: Vec<SmolStr>,
+    registered_attrs: Vec<Symbol>,
     /// Custom tool modules registered with `#![register_tool]`.
-    registered_tools: Vec<SmolStr>,
+    registered_tools: Vec<Symbol>,
     /// Unstable features of Rust enabled with `#![feature(A, B)]`.
-    unstable_features: FxHashSet<SmolStr>,
+    unstable_features: FxHashSet<Symbol>,
     /// #[rustc_coherence_is_core]
     rustc_coherence_is_core: bool,
     no_core: bool,
@@ -155,12 +164,11 @@ struct DefMapCrateData {
 impl DefMapCrateData {
     fn new(edition: Edition) -> Self {
         Self {
-            extern_prelude: FxHashMap::default(),
+            extern_prelude: FxIndexMap::default(),
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
-            proc_macro_loading_error: None,
             registered_attrs: Vec::new(),
-            registered_tools: Vec::new(),
+            registered_tools: PREDEFINED_TOOLS.iter().map(|it| Symbol::intern(it)).collect(),
             unstable_features: FxHashSet::default(),
             rustc_coherence_is_core: false,
             no_core: false,
@@ -178,7 +186,6 @@ impl DefMapCrateData {
             registered_attrs,
             registered_tools,
             unstable_features,
-            proc_macro_loading_error: _,
             rustc_coherence_is_core: _,
             no_core: _,
             no_std: _,
@@ -233,14 +240,14 @@ impl std::ops::Index<LocalModuleId> for DefMap {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ModuleOrigin {
     CrateRoot {
-        definition: FileId,
+        definition: EditionedFileId,
     },
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File {
         is_mod_rs: bool,
         declaration: FileAstId<ast::Module>,
         declaration_tree_id: ItemTreeId<Mod>,
-        definition: FileId,
+        definition: EditionedFileId,
     },
     Inline {
         definition_tree_id: ItemTreeId<Mod>,
@@ -266,7 +273,7 @@ impl ModuleOrigin {
         }
     }
 
-    pub fn file_id(&self) -> Option<FileId> {
+    pub fn file_id(&self) -> Option<EditionedFileId> {
         match self {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 Some(*definition)
@@ -313,7 +320,7 @@ pub struct ModuleData {
     ///
     /// [`None`] for block modules because they are always its `DefMap`'s root.
     pub parent: Option<LocalModuleId>,
-    pub children: FxHashMap<Name, LocalModuleId>,
+    pub children: FxIndexMap<Name, LocalModuleId>,
     pub scope: ItemScope,
 }
 
@@ -325,10 +332,10 @@ impl DefMap {
         let crate_graph = db.crate_graph();
         let krate = &crate_graph[crate_id];
         let name = krate.display_name.as_deref().unwrap_or_default();
-        let _p = tracing::span!(tracing::Level::INFO, "crate_def_map_query", ?name).entered();
+        let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(
-            ModuleOrigin::CrateRoot { definition: krate.root_file_id },
+            ModuleOrigin::CrateRoot { definition: krate.root_file_id() },
             Visibility::Public,
         );
 
@@ -339,7 +346,7 @@ impl DefMap {
             None,
         );
         let def_map =
-            collector::collect_defs(db, def_map, TreeId::new(krate.root_file_id.into(), None));
+            collector::collect_defs(db, def_map, TreeId::new(krate.root_file_id().into(), None));
 
         Arc::new(def_map)
     }
@@ -422,7 +429,9 @@ impl DefMap {
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
-            .filter(move |(_id, data)| data.origin.file_id() == Some(file_id))
+            .filter(move |(_id, data)| {
+                data.origin.file_id().map(EditionedFileId::file_id) == Some(file_id)
+            })
             .map(|(id, _data)| id)
     }
 
@@ -437,15 +446,15 @@ impl DefMap {
         self.derive_helpers_in_scope.get(&id.map(|it| it.upcast())).map(Deref::deref)
     }
 
-    pub fn registered_tools(&self) -> &[SmolStr] {
+    pub fn registered_tools(&self) -> &[Symbol] {
         &self.data.registered_tools
     }
 
-    pub fn registered_attrs(&self) -> &[SmolStr] {
+    pub fn registered_attrs(&self) -> &[Symbol] {
         &self.data.registered_attrs
     }
 
-    pub fn is_unstable_feature_enabled(&self, feature: &str) -> bool {
+    pub fn is_unstable_feature_enabled(&self, feature: &Symbol) -> bool {
         self.data.unstable_features.contains(feature)
     }
 
@@ -459,10 +468,6 @@ impl DefMap {
 
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.data.fn_proc_macro_mapping.get(&id).copied()
-    }
-
-    pub fn proc_macro_loading_error(&self) -> Option<&str> {
-        self.data.proc_macro_loading_error.as_deref()
     }
 
     pub fn krate(&self) -> CrateId {
@@ -578,14 +583,13 @@ impl DefMap {
 
     pub(crate) fn extern_prelude(
         &self,
-    ) -> impl Iterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (&Name, (CrateRootModuleId, Option<ExternCrateId>))> + '_
+    {
         self.data.extern_prelude.iter().map(|(name, &def)| (name, def))
     }
 
-    pub(crate) fn macro_use_prelude(
-        &self,
-    ) -> impl Iterator<Item = (&Name, (MacroId, Option<ExternCrateId>))> + '_ {
-        self.macro_use_prelude.iter().map(|(name, &def)| (name, def))
+    pub(crate) fn macro_use_prelude(&self) -> &FxHashMap<Name, (MacroId, Option<ExternCrateId>)> {
+        &self.macro_use_prelude
     }
 
     pub(crate) fn resolve_path(
@@ -657,7 +661,7 @@ impl ModuleData {
             origin,
             visibility,
             parent: None,
-            children: FxHashMap::default(),
+            children: Default::default(),
             scope: ItemScope::default(),
         }
     }

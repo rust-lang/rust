@@ -94,10 +94,10 @@ where
         match rvalue {
             // We ignore fake borrows as these get removed after analysis and shouldn't effect
             // the layout of generators.
-            Rvalue::AddressOf(_, borrowed_place)
+            Rvalue::RawPtr(_, borrowed_place)
             | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
-                    self.trans.gen(borrowed_place.local);
+                    self.trans.gen_(borrowed_place.local);
                 }
             }
 
@@ -131,7 +131,7 @@ where
                 //
                 // [#61069]: https://github.com/rust-lang/rust/pull/61069
                 if !dropped_place.is_indirect() {
-                    self.trans.gen(dropped_place.local);
+                    self.trans.gen_(dropped_place.local);
                 }
             }
 
@@ -145,6 +145,7 @@ where
             | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => {}
@@ -158,8 +159,8 @@ pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
 
     impl GenKill<Local> for Borrowed {
         #[inline]
-        fn gen(&mut self, elem: Local) {
-            self.0.gen(elem)
+        fn gen_(&mut self, elem: Local) {
+            self.0.gen_(elem)
         }
         #[inline]
         fn kill(&mut self, _: Local) {

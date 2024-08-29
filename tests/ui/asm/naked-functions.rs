@@ -3,7 +3,7 @@
 //@ ignore-spirv
 
 #![feature(naked_functions)]
-#![feature(asm_const, asm_unwind)]
+#![feature(asm_unwind, linkage)]
 #![crate_type = "lib"]
 
 use std::arch::asm;
@@ -111,7 +111,7 @@ unsafe extern "C" fn invalid_options() {
 unsafe extern "C" fn invalid_options_continued() {
     asm!("", options(readonly, nostack), options(pure));
     //~^ ERROR asm with the `pure` option must have at least one output
-    //~| ERROR asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
+    //~| ERROR asm options unsupported in naked functions: `pure`, `readonly`, `nostack`
     //~| ERROR asm in naked functions must use `noreturn` option
 }
 
@@ -163,42 +163,6 @@ pub unsafe extern "C" fn valid_att_syntax() {
 }
 
 #[naked]
-pub unsafe extern "C" fn inline_none() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_hint() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline(always)]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_always() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline(never)]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_never() {
-    asm!("", options(noreturn));
-}
-
-#[naked]
-#[inline]
-//~^ ERROR naked functions cannot be inlined
-#[inline(always)]
-//~^ ERROR naked functions cannot be inlined
-#[inline(never)]
-//~^ ERROR naked functions cannot be inlined
-pub unsafe extern "C" fn inline_all() {
-    asm!("", options(noreturn));
-}
-
 #[naked]
 pub unsafe extern "C" fn allow_compile_error(a: u32) -> u32 {
     compile_error!("this is a user specified error")
@@ -216,4 +180,75 @@ pub unsafe extern "C" fn allow_compile_error_and_asm(a: u32) -> u32 {
 pub unsafe extern "C" fn invalid_asm_syntax(a: u32) -> u32 {
     asm!(invalid_syntax)
     //~^ ERROR asm template must be a string literal
+}
+
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(target_pointer_width = "64", no_mangle)]
+#[naked]
+pub unsafe extern "C" fn compatible_cfg_attributes() {
+    asm!("", options(noreturn, att_syntax));
+}
+
+#[allow(dead_code)]
+#[warn(dead_code)]
+#[deny(dead_code)]
+#[forbid(dead_code)]
+#[naked]
+pub unsafe extern "C" fn compatible_diagnostic_attributes() {
+    asm!("", options(noreturn, raw));
+}
+
+#[deprecated = "test"]
+#[naked]
+pub unsafe extern "C" fn compatible_deprecated_attributes() {
+    asm!("", options(noreturn, raw));
+}
+
+#[cfg(target_arch = "x86_64")]
+#[must_use]
+#[naked]
+pub unsafe extern "C" fn compatible_must_use_attributes() -> u64 {
+    asm!(
+        "
+        mov rax, 42
+        ret
+        ",
+        options(noreturn)
+    )
+}
+
+#[export_name = "exported_function_name"]
+#[link_section = ".custom_section"]
+#[no_mangle]
+#[naked]
+pub unsafe extern "C" fn compatible_ffi_attributes_1() {
+    asm!("", options(noreturn, raw));
+}
+
+#[cold]
+#[naked]
+pub unsafe extern "C" fn compatible_codegen_attributes() {
+    asm!("", options(noreturn, raw));
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "sse2")]
+#[naked]
+pub unsafe extern "C" fn compatible_target_feature() {
+    asm!("", options(noreturn));
+}
+
+#[doc = "foo bar baz"]
+/// a doc comment
+// a normal comment
+#[doc(alias = "ADocAlias")]
+#[naked]
+pub unsafe extern "C" fn compatible_doc_attributes() {
+    asm!("", options(noreturn, raw));
+}
+
+#[linkage = "external"]
+#[naked]
+pub unsafe extern "C" fn compatible_linkage() {
+    asm!("", options(noreturn, raw));
 }

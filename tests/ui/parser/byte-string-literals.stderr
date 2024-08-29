@@ -43,7 +43,7 @@ error[E0766]: unterminated double quote byte string
 LL |       b"a
    |  ______^
 LL | | }
-   | |__^
+   | |_^
 
 error: aborting due to 6 previous errors
 

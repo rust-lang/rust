@@ -1,7 +1,7 @@
 #![crate_type = "cdylib"]
 
 #[no_mangle]
-pub extern fn foo() {
+pub extern "C" fn foo() {
     println!("foo");
     panic!("test");
 }

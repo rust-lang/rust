@@ -2,4 +2,5 @@
 // Tests that we still emit an error after an item.
 
 fn main() { }
-; //~ ERROR expected item, found `;`
+;
+//~^ ERROR expected item, found `;`

@@ -1,11 +1,12 @@
+use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
+use rustc_span::ErrorGuaranteed;
+use tracing::instrument;
+
 use crate::constructor::Constructor;
 use crate::errors::{NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered};
 use crate::pat_column::PatternColumn;
 use crate::rustc::{RevealedTy, RustcPatCtxt, WitnessPat};
 use crate::MatchArm;
-use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
-use rustc_span::ErrorGuaranteed;
-use tracing::instrument;
 
 /// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
 /// in a given column.
@@ -99,7 +100,6 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
 
                 use rustc_errors::LintDiagnostic;
                 let mut err = rcx.tcx.dcx().struct_span_warn(arm.pat.data().span, "");
-                err.primary_message(decorator.msg());
                 decorator.decorate_lint(&mut err);
                 err.emit();
             }

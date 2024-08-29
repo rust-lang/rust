@@ -9,10 +9,10 @@ use crate::{utf8_stdout, ManifestPath, Sysroot};
 pub enum RustcDataLayoutConfig<'a> {
     /// Use `rustc --print target-spec-json`, either from with the binary from the sysroot or by discovering via
     /// [`toolchain::rustc`].
-    Rustc(Option<&'a Sysroot>),
+    Rustc(&'a Sysroot),
     /// Use `cargo --print target-spec-json`, either from with the binary from the sysroot or by discovering via
     /// [`toolchain::cargo`].
-    Cargo(Option<&'a Sysroot>, &'a ManifestPath),
+    Cargo(&'a Sysroot, &'a ManifestPath),
 }
 
 pub fn get(
@@ -28,7 +28,7 @@ pub fn get(
     };
     let sysroot = match config {
         RustcDataLayoutConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = Sysroot::tool(sysroot, Tool::Cargo);
+            let mut cmd = sysroot.tool(Tool::Cargo);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
                 .args([

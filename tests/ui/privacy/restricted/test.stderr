@@ -1,10 +1,13 @@
-error[E0433]: failed to resolve: maybe a missing crate `bad`?
+error[E0433]: failed to resolve: you might be missing crate `bad`
   --> $DIR/test.rs:50:12
    |
 LL |     pub(in bad::path) mod m1 {}
-   |            ^^^ maybe a missing crate `bad`?
+   |            ^^^ you might be missing crate `bad`
    |
-   = help: consider adding `extern crate bad` to use the `bad` crate
+help: consider importing the `bad` crate
+   |
+LL + extern crate bad;
+   |
 
 error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/test.rs:51:12

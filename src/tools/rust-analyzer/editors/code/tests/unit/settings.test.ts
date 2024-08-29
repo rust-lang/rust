@@ -13,7 +13,7 @@ export async function getTests(ctx: Context) {
                 USING_MY_VAR: "test test test",
                 MY_VAR: "test",
             };
-            const actualEnv = await substituteVariablesInEnv(envJson);
+            const actualEnv = substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv, expectedEnv);
         });
 
@@ -34,7 +34,7 @@ export async function getTests(ctx: Context) {
                 E_IS_ISOLATED: "test",
                 F_USES_E: "test",
             };
-            const actualEnv = await substituteVariablesInEnv(envJson);
+            const actualEnv = substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv, expectedEnv);
         });
 
@@ -47,7 +47,7 @@ export async function getTests(ctx: Context) {
                 USING_EXTERNAL_VAR: "test test test",
             };
 
-            const actualEnv = await substituteVariablesInEnv(envJson);
+            const actualEnv = substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv, expectedEnv);
             delete process.env["TEST_VARIABLE"];
         });
@@ -56,7 +56,7 @@ export async function getTests(ctx: Context) {
             const envJson = {
                 USING_VSCODE_VAR: "${workspaceFolderBasename}",
             };
-            const actualEnv = await substituteVariablesInEnv(envJson);
+            const actualEnv = substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv["USING_VSCODE_VAR"], "code");
         });
     });

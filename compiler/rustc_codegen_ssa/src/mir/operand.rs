@@ -1,21 +1,20 @@
-use super::place::{PlaceRef, PlaceValue};
-use super::{FunctionCx, LocalRef};
+use std::assert_matches::assert_matches;
+use std::fmt;
 
-use crate::size_of_val;
-use crate::traits::*;
-use crate::MemFlags;
-
+use arrayvec::ArrayVec;
+use either::Either;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{alloc_range, Pointer, Scalar};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{self, Abi, Align, Size};
+use tracing::debug;
 
-use std::fmt;
-
-use arrayvec::ArrayVec;
-use either::Either;
+use super::place::{PlaceRef, PlaceValue};
+use super::{FunctionCx, LocalRef};
+use crate::traits::*;
+use crate::{size_of_val, MemFlags};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -391,7 +390,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
             // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
             (OperandValue::Immediate(llval), Abi::Aggregate { sized: true }) => {
-                assert!(matches!(self.layout.abi, Abi::Vector { .. }));
+                assert_matches!(self.layout.abi, Abi::Vector { .. });
 
                 let llfield_ty = bx.cx().backend_type(field);
 
@@ -564,6 +563,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 for elem in place_ref.projection.iter() {
                     match elem {
                         mir::ProjectionElem::Field(ref f, _) => {
+                            assert!(
+                                !o.layout.ty.is_any_ptr(),
+                                "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
+                                 but tried to access field {f:?} of pointer {o:?}",
+                            );
                             o = o.extract_field(bx, f.index());
                         }
                         mir::ProjectionElem::Index(_)
@@ -632,7 +636,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_consume(bx, place.as_ref())
             }
 
-            mir::Operand::Constant(ref constant) => self.eval_mir_constant_to_operand(bx, constant),
+            mir::Operand::Constant(ref constant) => {
+                let constant_ty = self.monomorphize(constant.ty());
+                // Most SIMD vector constants should be passed as immediates.
+                // (In particular, some intrinsics really rely on this.)
+                if constant_ty.is_simd() {
+                    // However, some SIMD types do not actually use the vector ABI
+                    // (in particular, packed SIMD types do not). Ensure we exclude those.
+                    let layout = bx.layout_of(constant_ty);
+                    if let Abi::Vector { .. } = layout.abi {
+                        let (llval, ty) = self.immediate_const_vector(bx, constant);
+                        return OperandRef {
+                            val: OperandValue::Immediate(llval),
+                            layout: bx.layout_of(ty),
+                        };
+                    }
+                }
+                self.eval_mir_constant_to_operand(bx, constant)
+            }
         }
     }
 }

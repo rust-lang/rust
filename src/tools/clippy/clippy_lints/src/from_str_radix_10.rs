@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use clippy_utils::{in_constant, is_integer_literal};
+use clippy_utils::{is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, LangItem, PrimTy, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -22,8 +22,8 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     ///
-    /// This lint may suggest using (&<expression>).parse() instead of <expression>.parse() directly
-    /// in some cases, which is correct but adds unnecessary complexity to the code.
+    /// This lint may suggest using `(&<expression>).parse()` instead of `<expression>.parse()`
+    /// directly in some cases, which is correct but adds unnecessary complexity to the code.
     ///
     /// ### Example
     /// ```ignore
@@ -47,9 +47,13 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind
-            // do not lint in constant context, because the suggestion won't work.
-            // NB: keep this check until a new `const_trait_impl` is available and stablized.
-            && !in_constant(cx, exp.hir_id)
+
+            // check if the second argument is a primitive `10`
+            && is_integer_literal(radix, 10)
+
+            // check if the second part of the path indeed calls the associated
+            // function `from_str_radix`
+            && pathseg.ident.name.as_str() == "from_str_radix"
 
             // check if the first part of the path is some integer primitive
             && let TyKind::Path(ty_qpath) = &ty.kind
@@ -57,12 +61,9 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             && let def::Res::PrimTy(prim_ty) = ty_res
             && matches!(prim_ty, PrimTy::Int(_) | PrimTy::Uint(_))
 
-            // check if the second part of the path indeed calls the associated
-            // function `from_str_radix`
-            && pathseg.ident.name.as_str() == "from_str_radix"
-
-            // check if the second argument is a primitive `10`
-            && is_integer_literal(radix, 10)
+            // do not lint in constant context, because the suggestion won't work.
+            // NB: keep this check until a new `const_trait_impl` is available and stabilized.
+            && !is_in_const_context(cx)
         {
             let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
                 let ty = cx.typeck_results().expr_ty(expr);

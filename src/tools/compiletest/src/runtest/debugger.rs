@@ -1,11 +1,11 @@
-use crate::common::Config;
-use crate::header::line_directive;
-use crate::runtest::ProcRes;
-
 use std::fmt::Write;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+
+use crate::common::Config;
+use crate::header::line_directive;
+use crate::runtest::ProcRes;
 
 /// Representation of information to invoke a debugger and check its output
 pub(super) struct DebuggerCommands {
@@ -148,5 +148,5 @@ fn check_single_line(line: &str, check_line: &str) -> bool {
         rest = &rest[pos + current_fragment.len()..];
     }
 
-    if !can_end_anywhere && !rest.is_empty() { false } else { true }
+    can_end_anywhere || rest.is_empty()
 }

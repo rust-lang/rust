@@ -1,7 +1,8 @@
 use core::cmp::Ordering;
+use std::cmp;
+
 use rustc_index::IndexVec;
 use rustc_middle::ty::error::TypeError;
-use std::cmp;
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -16,7 +17,7 @@ rustc_index::newtype_index! {
 }
 
 impl ExpectedIdx {
-    pub fn to_provided_idx(self) -> ProvidedIdx {
+    pub(crate) fn to_provided_idx(self) -> ProvidedIdx {
         ProvidedIdx::from_usize(self.as_usize())
     }
 }

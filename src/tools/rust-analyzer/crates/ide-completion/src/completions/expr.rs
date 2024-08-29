@@ -1,6 +1,6 @@
 //! Completion of names from the current scope in expression position.
 
-use hir::ScopeDef;
+use hir::{sym, Name, ScopeDef};
 use syntax::ast;
 
 use crate::{
@@ -15,7 +15,7 @@ pub(crate) fn complete_expr_path(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     expr_ctx: &PathExprCtx,
 ) {
-    let _p = tracing::span!(tracing::Level::INFO, "complete_expr_path").entered();
+    let _p = tracing::info_span!("complete_expr_path").entered();
     if !ctx.qualifier_ctx.none() {
         return;
     }
@@ -171,11 +171,10 @@ pub(crate) fn complete_expr_path(
                     hir::Adt::Struct(strukt) => {
                         let path = ctx
                             .module
-                            .find_use_path(
+                            .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
-                                ctx.config.prefer_no_std,
-                                ctx.config.prefer_prelude,
+                                ctx.config.import_path_config(),
                             )
                             .filter(|it| it.len() > 1);
 
@@ -187,24 +186,28 @@ pub(crate) fn complete_expr_path(
                                 path_ctx,
                                 strukt,
                                 None,
-                                Some(hir::known::SELF_TYPE),
+                                Some(Name::new_symbol_root(sym::Self_.clone())),
                             );
                         }
                     }
                     hir::Adt::Union(un) => {
                         let path = ctx
                             .module
-                            .find_use_path(
+                            .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
-                                ctx.config.prefer_no_std,
-                                ctx.config.prefer_prelude,
+                                ctx.config.import_path_config(),
                             )
                             .filter(|it| it.len() > 1);
 
                         acc.add_union_literal(ctx, un, path, None);
                         if complete_self {
-                            acc.add_union_literal(ctx, un, None, Some(hir::known::SELF_TYPE));
+                            acc.add_union_literal(
+                                ctx,
+                                un,
+                                None,
+                                Some(Name::new_symbol_root(sym::Self_.clone())),
+                            );
                         }
                     }
                     hir::Adt::Enum(e) => {
@@ -330,7 +333,7 @@ pub(crate) fn complete_expr_path(
 }
 
 pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) {
-    let _p = tracing::span!(tracing::Level::INFO, "complete_expr").entered();
+    let _p = tracing::info_span!("complete_expr").entered();
 
     if !ctx.config.enable_term_search {
         return;

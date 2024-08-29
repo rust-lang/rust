@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{def_path_def_ids, path_def_id, paths};
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
         // `def_path_def_ids` will resolve through re-exports but is relatively heavy, so we only perform
         // the operation once and store the results
         let mut resolve = |path, kind| {
-            for id in def_path_def_ids(cx, path) {
+            for id in def_path_def_ids(cx.tcx, path) {
                 self.definitions.insert(id, kind);
             }
         };
@@ -122,7 +122,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
     };
 
     if let Some((primary, auxiliary, kind)) = parts
-        && let Some(literal_snippet) = snippet_opt(cx, base)
+        && let Some(literal_snippet) = base.get_source_text(cx)
         && let Some(inner) = literal_snippet.get(offset as usize..)
         // Only convert to native rustc spans if the parsed regex matches the
         // source snippet exactly, to ensure the span offsets are correct
@@ -148,7 +148,7 @@ fn lint_syntax_error(cx: &LateContext<'_>, error: &regex_syntax::Error, unescape
 }
 
 fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
-    constant(cx, cx.typeck_results(), e).and_then(|c| match c {
+    ConstEvalCtxt::new(cx).eval(e).and_then(|c| match c {
         Constant::Str(s) => Some(s),
         _ => None,
     })

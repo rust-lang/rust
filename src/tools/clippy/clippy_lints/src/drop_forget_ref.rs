@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_must_use_func_call;
 use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
@@ -52,9 +52,10 @@ declare_clippy_lint! {
     /// Checks for usage of `std::mem::forget(t)` where `t` is
     /// `Drop` or has a field that implements `Drop`.
     ///
-    /// ### Why is this bad?
-    /// `std::mem::forget(t)` prevents `t` from running its
-    /// destructor, possibly causing leaks.
+    /// ### Why restrict this?
+    /// `std::mem::forget(t)` prevents `t` from running its destructor, possibly causing leaks.
+    /// It is not possible to detect all means of creating leaks, but it may be desirable to
+    /// prohibit the simple ones.
     ///
     /// ### Example
     /// ```no_run
@@ -125,14 +126,14 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 },
                 _ => return,
             };
-            span_lint_and_note(
-                cx,
-                lint,
-                expr.span,
-                msg,
-                note_span,
-                format!("argument has type `{arg_ty}`"),
-            );
+            span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+                let note = format!("argument has type `{arg_ty}`");
+                if let Some(span) = note_span {
+                    diag.span_note(span, note);
+                } else {
+                    diag.note(note);
+                }
+            });
         }
     }
 }

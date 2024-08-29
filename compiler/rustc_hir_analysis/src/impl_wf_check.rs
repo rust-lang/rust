@@ -8,15 +8,18 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use crate::constrained_generic_params as cgp;
-use min_specialization::check_min_specialization;
+use std::assert_matches::debug_assert_matches;
 
+use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{codes::*, struct_span_code_err};
+use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::ErrorGuaranteed;
+
+use crate::constrained_generic_params as cgp;
+use crate::errors::UnconstrainedGenericParameter;
 
 mod min_specialization;
 
@@ -50,10 +53,13 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-pub fn check_impl_wf(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_impl_wf(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
     let mut res = Ok(());
-    debug_assert!(matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. }));
+    debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });
     res = res.and(enforce_impl_params_are_constrained(tcx, impl_def_id));
     if min_specialization {
         res = res.and(check_min_specialization(tcx, impl_def_id));
@@ -86,6 +92,8 @@ fn enforce_impl_params_are_constrained(
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
 
+    impl_trait_ref.error_reported()?;
+
     let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
         tcx,
@@ -115,43 +123,33 @@ fn enforce_impl_params_are_constrained(
 
     let mut res = Ok(());
     for param in &impl_generics.own_params {
-        match param.kind {
+        let err = match param.kind {
             // Disallow ANY unconstrained type parameters.
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
-                if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
-                    res = Err(report_unused_parameter(
-                        tcx,
-                        tcx.def_span(param.def_id),
-                        "type",
-                        param_ty.name,
-                    ));
-                }
+                !input_parameters.contains(&cgp::Parameter::from(param_ty))
             }
             ty::GenericParamDefKind::Lifetime => {
                 let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
-                if lifetimes_in_associated_types.contains(&param_lt) && // (*)
+                lifetimes_in_associated_types.contains(&param_lt) && // (*)
                     !input_parameters.contains(&param_lt)
-                {
-                    res = Err(report_unused_parameter(
-                        tcx,
-                        tcx.def_span(param.def_id),
-                        "lifetime",
-                        param.name,
-                    ));
-                }
             }
             ty::GenericParamDefKind::Const { .. } => {
                 let param_ct = ty::ParamConst::for_def(param);
-                if !input_parameters.contains(&cgp::Parameter::from(param_ct)) {
-                    res = Err(report_unused_parameter(
-                        tcx,
-                        tcx.def_span(param.def_id),
-                        "const",
-                        param_ct.name,
-                    ));
-                }
+                !input_parameters.contains(&cgp::Parameter::from(param_ct))
             }
+        };
+        if err {
+            let const_param_note = matches!(param.kind, ty::GenericParamDefKind::Const { .. });
+            let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
+                span: tcx.def_span(param.def_id),
+                param_name: param.name,
+                param_def_kind: tcx.def_descr(param.def_id),
+                const_param_note,
+                const_param_note2: const_param_note,
+            });
+            diag.code(E0207);
+            res = Err(diag.emit());
         }
     }
     res
@@ -174,31 +172,4 @@ fn enforce_impl_params_are_constrained(
     // permit those, so long as the lifetimes aren't used in
     // associated types. I believe this is sound, because lifetimes
     // used elsewhere are not projected back out.
-}
-
-fn report_unused_parameter(
-    tcx: TyCtxt<'_>,
-    span: Span,
-    kind: &str,
-    name: Symbol,
-) -> ErrorGuaranteed {
-    let mut err = struct_span_code_err!(
-        tcx.dcx(),
-        span,
-        E0207,
-        "the {} parameter `{}` is not constrained by the \
-        impl trait, self type, or predicates",
-        kind,
-        name
-    );
-    err.span_label(span, format!("unconstrained {kind} parameter"));
-    if kind == "const" {
-        err.note(
-            "expressions using a const parameter must map each value to a distinct output value",
-        );
-        err.note(
-            "proving the result of expressions other than the parameter are unique is not supported",
-        );
-    }
-    err.emit()
 }

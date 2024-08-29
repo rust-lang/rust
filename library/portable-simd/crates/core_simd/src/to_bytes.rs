@@ -10,7 +10,7 @@ mod sealed {
 }
 use sealed::Sealed;
 
-/// Convert SIMD vectors to vectors of bytes
+/// Converts SIMD vectors to vectors of bytes
 pub trait ToBytes: Sealed {
     /// This type, reinterpreted as bytes.
     type Bytes: Copy
@@ -22,26 +22,26 @@ pub trait ToBytes: Sealed {
         + SimdUint<Scalar = u8>
         + 'static;
 
-    /// Return the memory representation of this integer as a byte array in native byte
+    /// Returns the memory representation of this integer as a byte array in native byte
     /// order.
     fn to_ne_bytes(self) -> Self::Bytes;
 
-    /// Return the memory representation of this integer as a byte array in big-endian
+    /// Returns the memory representation of this integer as a byte array in big-endian
     /// (network) byte order.
     fn to_be_bytes(self) -> Self::Bytes;
 
-    /// Return the memory representation of this integer as a byte array in little-endian
+    /// Returns the memory representation of this integer as a byte array in little-endian
     /// byte order.
     fn to_le_bytes(self) -> Self::Bytes;
 
-    /// Create a native endian integer value from its memory representation as a byte array
+    /// Creates a native endian integer value from its memory representation as a byte array
     /// in native endianness.
     fn from_ne_bytes(bytes: Self::Bytes) -> Self;
 
-    /// Create an integer value from its representation as a byte array in big endian.
+    /// Creates an integer value from its representation as a byte array in big endian.
     fn from_be_bytes(bytes: Self::Bytes) -> Self;
 
-    /// Create an integer value from its representation as a byte array in little endian.
+    /// Creates an integer value from its representation as a byte array in little endian.
     fn from_le_bytes(bytes: Self::Bytes) -> Self;
 }
 

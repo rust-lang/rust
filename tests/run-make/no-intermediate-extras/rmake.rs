@@ -5,13 +5,14 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{rustc, tmp_dir};
 use std::fs;
+
+use run_make_support::rustc;
 
 fn main() {
     rustc().crate_type("rlib").arg("--test").input("foo.rs").run();
     assert!(
-        fs::remove_file(tmp_dir().join("foo.bc")).is_err(),
+        fs::remove_file("foo.bc").is_err(),
         "An unwanted .bc file was created by run-make/no-intermediate-extras."
     );
 }

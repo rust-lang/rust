@@ -7,8 +7,8 @@
 
 pub struct Type<T: Bound>(T);
 
-// @has supertrait_bounds/struct.Type.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has supertrait_bounds/struct.Type.html
+//@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> Send for Type<T>where T: Send,"
 
 pub trait Bound: Copy + 'static {}

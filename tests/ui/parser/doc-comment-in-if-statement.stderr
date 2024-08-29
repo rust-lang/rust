@@ -16,9 +16,14 @@ error: outer attributes are not allowed on `if` and `else` branches
    |
 LL |     if true /*!*/ {}
    |     --      ^^^^^ -- the attributes are attached to this branch
-   |     |       |
-   |     |       help: remove the attributes
+   |     |
    |     the branch belongs to this `if`
+   |
+help: remove the attributes
+   |
+LL -     if true /*!*/ {}
+LL +     if true {}
+   |
 
 error: aborting due to 2 previous errors
 

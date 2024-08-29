@@ -54,7 +54,7 @@ apt-get clean
 # This makes all those symlinks.
 for lib in $(find -name '*.so.*'); do
   target=${lib%.so.*}.so
-  [ -e $target ] || ln -s ${lib##*/} $target
+  ln -s ${lib##*/} $target || echo "warning: silenced error symlinking $lib"
 done
 
 # Remove Solaris 11 functions that are optionally used by libbacktrace.

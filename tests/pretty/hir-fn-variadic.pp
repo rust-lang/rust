@@ -9,7 +9,7 @@ use ::std::prelude::rust_2015::*;
 extern crate std;
 
 extern "C" {
-    fn foo(x: i32, va1: ...);
+    unsafe fn foo(x: i32, va1: ...);
 }
 
 unsafe extern "C" fn bar(_: i32, mut va2: ...) -> usize { va2.arg::<usize>() }

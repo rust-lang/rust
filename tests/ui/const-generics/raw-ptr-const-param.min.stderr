@@ -1,5 +1,5 @@
 error: using raw pointers as const generic parameters is forbidden
-  --> $DIR/raw-ptr-const-param.rs:6:23
+  --> $DIR/raw-ptr-const-param.rs:8:23
    |
 LL | struct Const<const P: *const u32>;
    |                       ^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | struct Const<const P: *const u32>;
    = note: the only supported types are integers, `bool` and `char`
 
 error[E0308]: mismatched types
-  --> $DIR/raw-ptr-const-param.rs:9:40
+  --> $DIR/raw-ptr-const-param.rs:11:40
    |
 LL |     let _: Const<{ 15 as *const _ }> = Const::<{ 10 as *const _ }>;
    |            -------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{0xf as *const u32}`, found `{0xa as *const u32}`

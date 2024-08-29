@@ -1,8 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArg, GenericArgKind};
+use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
 use rustc_span::Span;
 
 use super::explicit::ExplicitPredicatesMap;
@@ -15,7 +14,7 @@ use super::utils::*;
 ///     now be filled with inferred predicates.
 pub(super) fn infer_predicates(
     tcx: TyCtxt<'_>,
-) -> FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'_>>> {
+) -> FxIndexMap<DefId, ty::EarlyBinder<'_, RequiredPredicates<'_>>> {
     debug!("infer_predicates");
 
     let mut explicit_map = ExplicitPredicatesMap::new();
@@ -101,7 +100,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
+    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
@@ -249,7 +248,7 @@ fn check_explicit_predicates<'tcx>(
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
     for (outlives_predicate, &span) in explicit_predicates.as_ref().skip_binder() {
-        debug!("outlives_predicate = {:?}", &outlives_predicate);
+        debug!("outlives_predicate = {outlives_predicate:?}");
 
         // Careful: If we are inferring the effects of a `dyn Trait<..>`
         // type, then when we look up the predicates for `Trait`,
@@ -289,12 +288,12 @@ fn check_explicit_predicates<'tcx>(
             && let GenericArgKind::Type(ty) = outlives_predicate.0.unpack()
             && ty.walk().any(|arg| arg == self_ty.into())
         {
-            debug!("skipping self ty = {:?}", &ty);
+            debug!("skipping self ty = {ty:?}");
             continue;
         }
 
         let predicate = explicit_predicates.rebind(*outlives_predicate).instantiate(tcx, args);
-        debug!("predicate = {:?}", &predicate);
+        debug!("predicate = {predicate:?}");
         insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
     }
 }
@@ -322,7 +321,7 @@ fn check_inferred_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
-    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
+    global_inferred_outlives: &FxIndexMap<DefId, ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
 ) {
     // Load the current set of inferred and explicit predicates from `global_inferred_outlives`

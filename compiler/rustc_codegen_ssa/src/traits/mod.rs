@@ -28,11 +28,14 @@ mod statics;
 mod type_;
 mod write;
 
+use std::fmt;
+
+use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
+use rustc_target::spec::HasTargetSpec;
+
 pub use self::abi::AbiBuilderMethods;
 pub use self::asm::{AsmBuilderMethods, AsmMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
-pub use self::backend::{
-    Backend, BackendTypes, CodegenBackend, ExtraBackendMethods, PrintBackendInfo,
-};
+pub use self::backend::{Backend, BackendTypes, CodegenBackend, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::coverageinfo::CoverageInfoBuilderMethods;
@@ -46,11 +49,6 @@ pub use self::type_::{
     TypeMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
-
-use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt};
-use rustc_target::spec::HasTargetSpec;
-
-use std::fmt;
 
 pub trait CodegenObject: Copy + PartialEq + fmt::Debug {}
 impl<T: Copy + PartialEq + fmt::Debug> CodegenObject for T {}

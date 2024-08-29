@@ -14,9 +14,9 @@ struct S(u8);
 
 // Macro expansion works inside delegation items.
 macro_rules! u8 { () => { u8 } }
-macro_rules! self_0 { () => { &self.0 } }
+macro_rules! self_0 { ($self:ident) => { &$self.0 } }
 impl Trait for S {
-    reuse <u8!() as Trait>::{foo, bar} { self_0!() }
+    reuse <u8!() as Trait>::{foo, bar} { self_0!(self) }
 }
 
 fn main() {

@@ -16,7 +16,7 @@ In this Section, we describe how to stabilise an option of the rustfmt's configu
 Open a pull request that closes the tracking issue. The tracking issue is listed beside the option in `Configurations.md`.
 
 - Update the `Config` enum marking the option as stable.
-- Update the the `Configuration.md` file marking the option as stable.
+- Update the `Configuration.md` file marking the option as stable.
 - Update `CHANGELOG.md` marking the option as stable.
 
 ## After the stabilisation

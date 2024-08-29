@@ -79,7 +79,7 @@ fn self_hosting_parsing() {
     let crates_dir = project_root().join("crates");
 
     let mut files = Vec::new();
-    let mut work = vec![crates_dir.to_path_buf()];
+    let mut work = vec![crates_dir.into_std_path_buf()];
     while let Some(dir) = work.pop() {
         for entry in dir.read_dir().unwrap() {
             let entry = entry.unwrap();
@@ -127,7 +127,7 @@ fn self_hosting_parsing() {
 }
 
 fn test_data_dir() -> PathBuf {
-    project_root().join("crates/syntax/test_data")
+    project_root().into_std_path_buf().join("crates/syntax/test_data")
 }
 
 fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {

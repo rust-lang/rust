@@ -2,7 +2,7 @@ error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/E0057.rs:3:13
    |
 LL |     let a = f();
-   |             ^-- an argument is missing
+   |             ^-- argument #1 is missing
    |
 note: closure defined here
   --> $DIR/E0057.rs:2:13
@@ -18,16 +18,18 @@ error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/E0057.rs:5:13
    |
 LL |     let c = f(2, 3);
-   |             ^  ---
-   |                | |
-   |                | unexpected argument of type `{integer}`
-   |                help: remove the extra argument
+   |             ^    - unexpected argument #2 of type `{integer}`
    |
 note: closure defined here
   --> $DIR/E0057.rs:2:13
    |
 LL |     let f = |x| x * 3;
    |             ^^^
+help: remove the extra argument
+   |
+LL -     let c = f(2, 3);
+LL +     let c = f(2);
+   |
 
 error: aborting due to 2 previous errors
 

@@ -6,15 +6,21 @@
 //! and rustc) libtest doesn't include the rendered human-readable output as a JSON field. We had
 //! to reimplement all the rendering logic in this module because of that.
 
-use crate::core::builder::Builder;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{ChildStdout, Command, Stdio};
+use std::process::{ChildStdout, Stdio};
 use std::time::Duration;
+
 use termcolor::{Color, ColorSpec, WriteColor};
+
+use crate::core::builder::Builder;
+use crate::utils::exec::BootstrapCommand;
 
 const TERSE_TESTS_PER_LINE: usize = 88;
 
-pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
+pub(crate) fn add_flags_and_try_run_tests(
+    builder: &Builder<'_>,
+    cmd: &mut BootstrapCommand,
+) -> bool {
     if !cmd.get_args().any(|arg| arg == "--") {
         cmd.arg("--");
     }
@@ -23,8 +29,13 @@ pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Comma
     try_run_tests(builder, cmd, false)
 }
 
-pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bool) -> bool {
+pub(crate) fn try_run_tests(
+    builder: &Builder<'_>,
+    cmd: &mut BootstrapCommand,
+    stream: bool,
+) -> bool {
     if builder.config.dry_run() {
+        cmd.mark_as_executed();
         return true;
     }
 
@@ -41,7 +52,8 @@ pub(crate) fn try_run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bo
     }
 }
 
-fn run_tests(builder: &Builder<'_>, cmd: &mut Command, stream: bool) -> bool {
+fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) -> bool {
+    let cmd = cmd.as_command_mut();
     cmd.stdout(Stdio::piped());
 
     builder.verbose(|| println!("running: {cmd:?}"));

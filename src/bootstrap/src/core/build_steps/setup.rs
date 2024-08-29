@@ -5,20 +5,21 @@
 //! allows setting up things that cannot be simply captured inside the config.toml, in addition to
 //! leading people away from manually editing most of the config.toml values.
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::t;
-use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
-use crate::utils::helpers::hex_encode;
-use crate::Config;
-use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR_STR};
-use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
+
+use sha2::Digest;
+
+use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
+use crate::utils::exec::command;
+use crate::utils::helpers::{self, hex_encode};
+use crate::{t, Config};
 
 #[cfg(test)]
 mod tests;
@@ -246,9 +247,11 @@ pub struct Link;
 impl Step for Link {
     type Output = ();
     const DEFAULT: bool = true;
+
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("link")
     }
+
     fn make_run(run: RunConfig<'_>) {
         if run.builder.config.dry_run() {
             return;
@@ -261,25 +264,30 @@ impl Step for Link {
     }
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let config = &builder.config;
+
         if config.dry_run() {
             return;
         }
+
+        if !rustup_installed(builder) {
+            println!("WARNING: `rustup` is not installed; Skipping `stage1` toolchain linking.");
+            return;
+        }
+
         let stage_path =
             ["build", config.build.rustc_target_arg(), "stage1"].join(MAIN_SEPARATOR_STR);
-        if !rustup_installed() {
-            eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-        } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
-            attempt_toolchain_link(&stage_path[..]);
+
+        if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
+            attempt_toolchain_link(builder, &stage_path[..]);
         }
     }
 }
 
-fn rustup_installed() -> bool {
-    Command::new("rustup")
-        .arg("--version")
-        .stdout(std::process::Stdio::null())
-        .output()
-        .map_or(false, |output| output.status.success())
+fn rustup_installed(builder: &Builder<'_>) -> bool {
+    let mut rustup = command("rustup");
+    rustup.arg("--version");
+
+    rustup.allow_failure().run_always().run_capture_stdout(builder).is_success()
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
@@ -289,8 +297,8 @@ fn stage_dir_exists(stage_path: &str) -> bool {
     }
 }
 
-fn attempt_toolchain_link(stage_path: &str) {
-    if toolchain_is_linked() {
+fn attempt_toolchain_link(builder: &Builder<'_>, stage_path: &str) {
+    if toolchain_is_linked(builder) {
         return;
     }
 
@@ -301,7 +309,7 @@ fn attempt_toolchain_link(stage_path: &str) {
         return;
     }
 
-    if try_link_toolchain(stage_path) {
+    if try_link_toolchain(builder, stage_path) {
         println!(
             "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
         );
@@ -315,14 +323,15 @@ fn attempt_toolchain_link(stage_path: &str) {
     }
 }
 
-fn toolchain_is_linked() -> bool {
-    match Command::new("rustup")
+fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
+    match command("rustup")
+        .allow_failure()
         .args(["toolchain", "list"])
-        .stdout(std::process::Stdio::piped())
-        .output()
+        .run_capture_stdout(builder)
+        .stdout_if_ok()
     {
-        Ok(toolchain_list) => {
-            if !String::from_utf8_lossy(&toolchain_list.stdout).contains("stage1") {
+        Some(toolchain_list) => {
+            if !toolchain_list.contains("stage1") {
                 return false;
             }
             // The toolchain has already been linked.
@@ -330,7 +339,7 @@ fn toolchain_is_linked() -> bool {
                 "`stage1` toolchain already linked; not attempting to link `stage1` toolchain"
             );
         }
-        Err(_) => {
+        None => {
             // In this case, we don't know if the `stage1` toolchain has been linked;
             // but `rustup` failed, so let's not go any further.
             println!(
@@ -341,12 +350,11 @@ fn toolchain_is_linked() -> bool {
     true
 }
 
-fn try_link_toolchain(stage_path: &str) -> bool {
-    Command::new("rustup")
-        .stdout(std::process::Stdio::null())
+fn try_link_toolchain(builder: &Builder<'_>, stage_path: &str) -> bool {
+    command("rustup")
         .args(["toolchain", "link", "stage1", stage_path])
-        .output()
-        .map_or(false, |output| output.status.success())
+        .run_capture_stdout(builder)
+        .is_success()
 }
 
 fn ensure_stage1_toolchain_placeholder_exists(stage_path: &str) -> bool {
@@ -476,16 +484,17 @@ impl Step for Hook {
         if config.dry_run() {
             return;
         }
-        t!(install_git_hook_maybe(config));
+        t!(install_git_hook_maybe(builder, config));
     }
 }
 
 // install a git hook to automatically run tidy, if they want
-fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
-    let git = config.git().args(["rev-parse", "--git-common-dir"]).output().map(|output| {
-        assert!(output.status.success(), "failed to run `git`");
-        PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-    })?;
+fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<()> {
+    let git = helpers::git(Some(&config.src))
+        .args(["rev-parse", "--git-common-dir"])
+        .run_capture(builder)
+        .stdout();
+    let git = PathBuf::from(git.trim());
     let hooks_dir = git.join("hooks");
     let dst = hooks_dir.join("pre-push");
     if dst.exists() {

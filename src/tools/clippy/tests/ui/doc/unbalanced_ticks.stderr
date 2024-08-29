@@ -78,5 +78,21 @@ help: try
 LL | /// - This item needs `backticks_here`
    |                       ~~~~~~~~~~~~~~~~
 
-error: aborting due to 8 previous errors
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:53:5
+   |
+LL | /// `
+   |     ^
+   |
+   = help: a backtick may be missing a pair
+
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:63:5
+   |
+LL | /// Escaped \` ` backticks don't count, but unescaped backticks do.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: aborting due to 10 previous errors
 

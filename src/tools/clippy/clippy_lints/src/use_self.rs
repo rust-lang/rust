@@ -1,4 +1,5 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::same_type_and_consts;
@@ -60,10 +61,9 @@ pub struct UseSelf {
 }
 
 impl UseSelf {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv,
+            msrv: conf.msrv.clone(),
             stack: Vec::new(),
         }
     }
@@ -229,7 +229,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
             && same_type_and_consts(ty, impl_ty)
             // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
-            // the lifetime parameters of `ty` are ellided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
+            // the lifetime parameters of `ty` are elided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
             // which case we must still trigger the lint.
             && (has_no_lifetime(ty) || same_lifetimes(ty, impl_ty))
         {

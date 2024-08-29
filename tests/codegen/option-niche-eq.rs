@@ -4,8 +4,8 @@
 
 extern crate core;
 use core::cmp::Ordering;
-use core::ptr::NonNull;
 use core::num::NonZero;
+use core::ptr::NonNull;
 
 // CHECK-LABEL: @non_zero_eq
 #[no_mangle]

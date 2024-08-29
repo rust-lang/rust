@@ -143,14 +143,14 @@ pub struct FixtureWithProjectMeta {
     /// Specifies LLVM data layout to be used.
     ///
     /// You probably don't want to manually specify this. See LLVM manual for the
-    /// syntax, if you must: https://llvm.org/docs/LangRef.html#data-layout
+    /// syntax, if you must: <https://llvm.org/docs/LangRef.html#data-layout>
     pub target_data_layout: String,
 }
 
 impl FixtureWithProjectMeta {
     /// Parses text which looks like this:
     ///
-    ///  ```not_rust
+    ///  ```text
     ///  //- some meta
     ///  line 1
     ///  line 2
@@ -159,7 +159,7 @@ impl FixtureWithProjectMeta {
     ///
     /// Fixture can also start with a proc_macros and minicore declaration (in that order):
     ///
-    /// ```
+    /// ```text
     /// //- toolchain: nightly
     /// //- proc_macros: identity
     /// //- minicore: sized
@@ -450,7 +450,7 @@ impl MiniCore {
         }
 
         if !active_regions.is_empty() {
-            panic!("unclosed regions: {:?} Add an `endregion` comment", active_regions);
+            panic!("unclosed regions: {active_regions:?} Add an `endregion` comment");
         }
 
         for flag in &self.valid_flags {

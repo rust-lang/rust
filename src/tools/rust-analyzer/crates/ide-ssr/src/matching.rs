@@ -6,11 +6,11 @@ use crate::{
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
     SsrMatches,
 };
-use hir::Semantics;
-use ide_db::{base_db::FileRange, FxHashMap};
+use hir::{FileRange, ImportPathConfig, Semantics};
+use ide_db::FxHashMap;
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
-    ast::{self, AstNode, AstToken},
+    ast::{self, AstNode, AstToken, HasGenericArgs},
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
@@ -575,7 +575,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                             .resolve_method_call_as_callable(code)
                             .and_then(|callable| {
                                 let (self_param, _) = callable.receiver_param(self.sema.db)?;
-                                Some(self_param.source(self.sema.db)?.value.kind())
+                                Some(self.sema.source(self_param)?.value.kind())
                             })
                             .unwrap_or(ast::SelfParamKind::Owned);
                     }
@@ -663,10 +663,14 @@ impl Match {
             .module();
         for (path, resolved_path) in &template.resolved_paths {
             if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
-                let mod_path =
-                    module.find_use_path(sema.db, module_def, false, true).ok_or_else(|| {
-                        match_error!("Failed to render template path `{}` at match location")
-                    })?;
+                let cfg = ImportPathConfig {
+                    prefer_no_std: false,
+                    prefer_prelude: true,
+                    prefer_absolute: false,
+                };
+                let mod_path = module.find_path(sema.db, module_def, cfg).ok_or_else(|| {
+                    match_error!("Failed to render template path `{}` at match location")
+                })?;
                 self.rendered_template_paths.insert(path.clone(), mod_path);
             }
         }
@@ -797,7 +801,12 @@ mod tests {
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
         let (db, position, selections) = crate::tests::single_file(input);
-        let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
+        let mut match_finder = MatchFinder::in_context(
+            &db,
+            position.into(),
+            selections.into_iter().map(Into::into).collect(),
+        )
+        .unwrap();
         match_finder.add_rule(rule).unwrap();
         let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);
@@ -806,7 +815,7 @@ mod tests {
 
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
-        let edit = &edits[&position.file_id];
+        let edit = &edits[&position.file_id.into()];
         let mut after = input.to_owned();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");

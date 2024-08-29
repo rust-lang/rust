@@ -1,17 +1,17 @@
-use crate::base;
-use crate::traits::*;
+use std::iter;
+
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir;
-use rustc_middle::mir::traversal;
-use rustc_middle::mir::UnwindTerminateReason;
+use rustc_middle::mir::{traversal, UnwindTerminateReason};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_target::abi::call::{FnAbi, PassMode};
+use tracing::{debug, instrument};
 
-use std::iter;
+use crate::base;
+use crate::traits::*;
 
 mod analyze;
 mod block;
@@ -106,7 +106,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     locals: locals::Locals<'tcx, Bx::Value>,
 
     /// All `VarDebugInfo` from the MIR body, partitioned by `Local`.
-    /// This is `None` if no var`#[non_exhaustive]`iable debuginfo/names are needed.
+    /// This is `None` if no variable debuginfo/names are needed.
     per_local_var_debug_info:
         Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>>,
 
@@ -229,10 +229,20 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
-            if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {
-                debug!("alloc: {:?} (return place) -> place", local);
-                let llretptr = start_bx.get_param(0);
-                return LocalRef::Place(PlaceRef::new_sized(llretptr, layout));
+            if local == mir::RETURN_PLACE {
+                match fx.fn_abi.ret.mode {
+                    PassMode::Indirect { .. } => {
+                        debug!("alloc: {:?} (return place) -> place", local);
+                        let llretptr = start_bx.get_param(0);
+                        return LocalRef::Place(PlaceRef::new_sized(llretptr, layout));
+                    }
+                    PassMode::Cast { ref cast, .. } => {
+                        debug!("alloc: {:?} (return place) -> place", local);
+                        let size = cast.size(&start_bx);
+                        return LocalRef::Place(PlaceRef::alloca_size(&mut start_bx, size, layout));
+                    }
+                    _ => {}
+                };
             }
 
             if memory_locals.contains(local) {

@@ -5,14 +5,14 @@
 
 //@ ignore-cross-compile
 
-use run_make_support::{cc, extra_c_flags, run, rustc, static_lib};
+use run_make_support::{cc, extra_c_flags, run, rustc, static_lib_name};
 
 fn main() {
     rustc().input("checkrust.rs").run();
     cc().input("test.c")
-        .input(static_lib("checkrust"))
+        .input(static_lib_name("checkrust"))
         .out_exe("test")
-        .args(&extra_c_flags())
+        .args(extra_c_flags())
         .run();
     run("test");
 }

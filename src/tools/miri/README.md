@@ -72,11 +72,13 @@ Further caveats that Miri users should be aware of:
   when `SeqCst` fences are used that are not actually permitted by the Rust memory model, and it
   cannot produce all behaviors possibly observable on real hardware.
 
-Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
-of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
+Moreover, Miri fundamentally cannot ensure that your code is *sound*. [Soundness] is the property of
+never causing undefined behavior when invoked from arbitrary safe code, even in combination with
 other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
-code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
-coverage.
+code* (e.g., a test suite) causes any undefined behavior *in a particular execution* (of which there
+may be many, e.g. when concurrency or other forms of non-determinism are involved). When Miri finds
+UB, your code is definitely unsound, but when Miri does not find UB, then you may just have to test
+more inputs or more possible non-deterministic choices.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
@@ -151,6 +153,21 @@ platform. For example `cargo miri test --target s390x-unknown-linux-gnu`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
+### Testing multiple different executions
+
+Certain parts of the execution are picked randomly by Miri, such as the exact base address
+allocations are stored at and the interleaving of concurrently executing threads. Sometimes, it can
+be useful to explore multiple different execution, e.g. to make sure that your code does not depend
+on incidental "super-alignment" of new allocations and to test different thread interleavings.
+This can be done with the `--many-seeds` flag:
+
+```
+cargo miri test --many-seeds # tries the seeds in 0..64
+cargo miri test --many-seeds=0..16
+```
+
+The default of 64 different seeds is quite slow, so you probably want to specify a smaller range.
+
 ### Running Miri on CI
 
 When running Miri on CI, use the following snippet to install a nightly toolchain with the Miri
@@ -183,23 +200,6 @@ Here is an example job for GitHub Actions:
 The explicit `cargo miri setup` helps to keep the output of the actual test step
 clean.
 
-### Testing for alignment issues
-
-Miri can sometimes miss misaligned accesses since allocations can "happen to be"
-aligned just right. You can use `-Zmiri-symbolic-alignment-check` to definitely
-catch all such issues, but that flag will also cause false positives when code
-does manual pointer arithmetic to account for alignment. Another alternative is
-to call Miri with various values for `-Zmiri-seed`; that will alter the
-randomness that is used to determine allocation base addresses. The following
-snippet calls Miri in a loop with different values for the seed:
-
-```
-for SEED in $(seq 0 255); do
-  echo "Trying seed: $SEED"
-  MIRIFLAGS=-Zmiri-seed=$SEED cargo miri test || { echo "Failing seed: $SEED"; break; };
-done
-```
-
 ### Supported targets
 
 Miri does not support all targets supported by Rust. The good news, however, is
@@ -212,7 +212,6 @@ degree documented below):
 - All Rust [Tier 1 targets](https://doc.rust-lang.org/rustc/platform-support.html) are supported by
   Miri. They are all checked on Miri's CI, and some (at least one per OS) are even checked on every
   Rust PR, so the shipped Miri should always work on these targets.
-- `aarch64-apple-darwin` is supported.
 - `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
   make no promises and we don't run tests for such targets.
@@ -398,6 +397,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
+* `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
+  recurse below references.
 * `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
   fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
   without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
@@ -413,10 +414,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
   values, instead it appends its values to the list. Listing an id multiple times has no effect.
-* `-Zmiri-track-call-id=<id1>,<id2>,...` shows a backtrace when the given call ids are
-  assigned to a stack frame.  This helps in debugging UB related to Stacked
-  Borrows "protectors". Specifying this argument multiple times does not overwrite the previous
-  values, instead it appends its values to the list. Listing an id multiple times has no effect.
 * `-Zmiri-track-pointer-tag=<tag1>,<tag2>,...` shows a backtrace when a given pointer tag
   is created and when (if ever) it is popped from a borrow stack (which is where the tag becomes invalid
   and any future use of it will error).  This helps you in finding out why UB is
@@ -427,8 +424,12 @@ to Miri failing to detect cases of undefined behavior in a program.
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
 * `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
-  The soundness rules are already experimental without this flag, but even more
-  so with this flag.
+  Tree Borrows is even more experimental than Stacked Borrows. While Tree Borrows
+  is still sound in the sense of catching all aliasing violations that current versions
+  of the compiler might exploit, it is likely that the eventual final aliasing model
+  of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
+  even if your code is accepted today, it might be declared UB in the future.
+  This is much less likely with Stacked Borrows.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 * `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
@@ -448,28 +449,19 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for [Stacked Borrows] and [Tree Borrows].
 
-Moreover, Miri recognizes some environment variables (unless noted otherwise, these are supported
-by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
+Moreover, Miri recognizes some environment variables:
 
-* `MIRI_AUTO_OPS` indicates whether the automatic execution of rustfmt, clippy and toolchain setup
-  should be skipped. If it is set to `no`, they are skipped. This is used to allow automated IDE
-  actions to avoid the auto ops.
-* `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
-  Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
 * `MIRIFLAGS` defines extra flags to be passed to Miri.
 * `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the standard library that
   it will build and use for interpretation. This directory must point to the `library` subdirectory
   of a `rust-lang/rust` repository checkout.
-* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri`, this skips the automatic
+* `MIRI_SYSROOT` indicates the sysroot to use. When using `cargo miri test`/`cargo miri run`, this skips the automatic
   setup -- only set this if you do not want to use the automatically created sysroot. When invoking
   `cargo miri setup`, this indicates where the sysroot will be put.
-* `MIRI_TEST_THREADS` (recognized by `./miri test`): set the number of threads to use for running tests.
-  By default, the number of cores is used.
 * `MIRI_NO_STD` makes sure that the target's sysroot is built without libstd. This allows testing
-  and running no_std programs. (Miri has a heuristic to detect no-std targets based on the target
-  name; this environment variable is only needed when that heuristic fails.)
-* `MIRI_SKIP_UI_CHECKS` (recognized by `./miri test`): don't check whether the
-  `stderr` or `stdout` files match the actual output.
+  and running no_std programs. This should *not usually be used*; Miri has a heuristic to detect
+  no-std targets based on the target name. Setting this on a target that does support libstd can
+  lead to confusing results.
 
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 
@@ -478,6 +470,19 @@ by all intended entry points, i.e. `cargo miri` and `./miri {test,run}`):
 Miri provides some `extern` functions that programs can import to access
 Miri-specific functionality. They are declared in
 [/tests/utils/miri\_extern.rs](/tests/utils/miri_extern.rs).
+
+## Entry point for no-std binaries
+
+Binaries that do not use the standard library are expected to declare a function like this so that
+Miri knows where it is supposed to start execution:
+
+```rust
+#[cfg(miri)]
+#[no_mangle]
+fn miri_start(argc: isize, argv: *const *const u8) -> isize {
+    // Call the actual start function that your project implements, based on your target's conventions.
+}
+```
 
 ## Contributing and getting help
 

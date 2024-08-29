@@ -23,6 +23,7 @@ fn h(i: i32, j: i32) -> i32 {
     j * i * 7
 }
 
+#[inline(never)]
 fn i() -> i32 {
     73
 }
@@ -77,11 +78,12 @@ fn main() {
     assert_eq!(indirect_mut3(h), 210);
     assert_eq!(indirect_once3(h), 210);
     // Check that `i` always has the same address. This is not guaranteed
-    // but Miri currently uses a fixed address for monomorphic functions.
+    // but Miri currently uses a fixed address for non-inlineable monomorphic functions.
     assert!(return_fn_ptr(i) == i);
     assert!(return_fn_ptr(i) as unsafe fn() -> i32 == i as fn() -> i32 as unsafe fn() -> i32);
     // Miri gives different addresses to different reifications of a generic function.
-    assert!(return_fn_ptr(f) != f);
+    // at least if we try often enough.
+    assert!((0..256).any(|_| return_fn_ptr(f) != f));
     // However, if we only turn `f` into a function pointer and use that pointer,
     // it is equal to itself.
     let f2 = f as fn() -> i32;

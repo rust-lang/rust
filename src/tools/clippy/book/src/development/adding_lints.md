@@ -458,9 +458,8 @@ pub struct ManualStrip {
 }
 
 impl ManualStrip {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv.clone() }
     }
 }
 ```
@@ -587,6 +586,11 @@ declare_clippy_lint! {
 }
 ```
 
+If the lint is in the `restriction` group because it lints things that are not
+necessarily “bad” but are more of a style choice, then replace the
+“Why is this bad?” section heading with “Why restrict this?”, to avoid writing
+“Why is this bad? It isn't, but ...”.
+
 Once your lint is merged, this documentation will show up in the [lint
 list][lint_list].
 
@@ -684,7 +688,6 @@ for some users. Adding a configuration is done in the following steps:
        ]);
 
        // New manual definition struct
-       #[derive(Copy, Clone)]
        pub struct StructName {}
 
        impl_lint_pass!(StructName => [
@@ -695,7 +698,6 @@ for some users. Adding a configuration is done in the following steps:
     2. Next add the configuration value and a corresponding creation method like
        this:
        ```rust
-       #[derive(Copy, Clone)]
        pub struct StructName {
            configuration_ident: Type,
        }
@@ -703,9 +705,9 @@ for some users. Adding a configuration is done in the following steps:
        // ...
 
        impl StructName {
-           pub fn new(configuration_ident: Type) -> Self {
+           pub fn new(conf: &'static Conf) -> Self {
                Self {
-                   configuration_ident,
+                   configuration_ident: conf.configuration_ident,
                }
            }
        }
@@ -721,8 +723,7 @@ for some users. Adding a configuration is done in the following steps:
    store.register_*_pass(|| box module::StructName);
 
    // New registration with configuration value
-   let configuration_ident = conf.configuration_ident.clone();
-   store.register_*_pass(move || box module::StructName::new(configuration_ident));
+   store.register_*_pass(move || box module::StructName::new(conf));
    ```
 
    Congratulations the work is almost done. The configuration value can now be
@@ -738,7 +739,7 @@ for some users. Adding a configuration is done in the following steps:
 
 5. Update [Lint Configuration](../lint_configuration.md)
 
-   Run `cargo collect-metadata` to generate documentation changes for the book.
+   Run `cargo bless --test config-metadata` to generate documentation changes for the book.
 
 [`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_config/src/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs

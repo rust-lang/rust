@@ -26,5 +26,10 @@ LL | #[deny(warnings)]
    |        ^^^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(warnings)]`
 
-error: aborting due to 4 previous errors
+error: lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
+   |
+   = note: requested on the command line with `-D raw_pointer_derive`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 5 previous errors
 

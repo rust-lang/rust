@@ -4,22 +4,23 @@
 // Regression test for #80998.
 //
 //@ aux-build:metadata-sufficient-for-layout.rs
+//@ check-pass
 
 #![feature(type_alias_impl_trait, rustc_attrs)]
 #![feature(coroutine_trait)]
 
 extern crate metadata_sufficient_for_layout;
 
-use std::ops::Coroutine;
+mod helper {
+    use std::ops::Coroutine;
+    pub type F = impl Coroutine<(), Yield = (), Return = ()>;
 
-type F = impl Coroutine<(), Yield = (), Return = ()>;
-
-// Static queries the layout of the coroutine.
-static A: Option<F> = None;
-
-fn f() -> F {
-    metadata_sufficient_for_layout::g()
+    fn f() -> F {
+        metadata_sufficient_for_layout::g()
+    }
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR
+// Static queries the layout of the coroutine.
+static A: Option<helper::F> = None;
+
+fn main() {}

@@ -1,16 +1,17 @@
 //! Collects trait impls for each item in the crate. For example, if a crate
 //! defines a struct that implements a trait, this pass will note that the
 //! struct implements that trait.
-use super::Pass;
-use crate::clean::*;
-use crate::core::DocContext;
-use crate::formats::cache::Cache;
-use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_middle::ty;
 use rustc_span::symbol::sym;
+
+use super::Pass;
+use crate::clean::*;
+use crate::core::DocContext;
+use crate::formats::cache::Cache;
+use crate::visit::DocVisitor;
 
 pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
@@ -47,7 +48,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     // External trait impls.
     {
         let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
-        for &cnum in tcx.crates_including_speculative(()) {
+        for &cnum in tcx.crates(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
                 cx.with_param_env(impl_def_id, |cx| {
                     inline::build_impl(cx, impl_def_id, None, &mut new_items_external);

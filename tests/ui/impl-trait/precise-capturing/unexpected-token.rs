@@ -2,8 +2,7 @@
 // token due to a strange interaction between the sequence parsing code and the
 // param/lifetime parsing code.
 
-fn hello() -> impl use<'a {}> Sized {}
+fn hello() -> impl Sized + use<'a {}> {}
 //~^ ERROR expected one of `,` or `>`, found `{`
-//~| ERROR expected item, found `>`
 
 fn main() {}

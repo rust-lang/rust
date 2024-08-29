@@ -10,14 +10,13 @@
 //! was since renamed to `wasm32-wasip1` after the preview2 target was
 //! introduced.
 
-use crate::spec::crt_objects;
-use crate::spec::LinkSelfContainedDefault;
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{base, crt_objects, Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
+    options.env = "p1".into();
     options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
@@ -50,10 +49,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "wasm32-wasi".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("WebAssembly with WASI".into()),
+            tier: Some(2),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),

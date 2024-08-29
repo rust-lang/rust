@@ -4,7 +4,9 @@
 use std::marker::PhantomData;
 
 #[derive(Copy, Clone)]
-struct Zst { phantom: PhantomData<Zst> }
+struct Zst {
+    phantom: PhantomData<Zst>,
+}
 
 // CHECK-LABEL: @mir
 // CHECK-NOT: store{{.*}}undef

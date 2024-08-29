@@ -60,7 +60,12 @@ error: expected `,` following `match` arm
   --> $DIR/match-arm-without-braces.rs:48:29
    |
 LL |         Some(Val::Foo) => 17
-   |                             ^ help: missing a comma here to end this `match` arm: `,`
+   |                             ^
+   |
+help: missing a comma here to end this `match` arm
+   |
+LL |         Some(Val::Foo) => 17,
+   |                             +
 
 error: `match` arm body without braces
   --> $DIR/match-arm-without-braces.rs:53:11

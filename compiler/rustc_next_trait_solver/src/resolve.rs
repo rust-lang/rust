@@ -3,41 +3,43 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 
+use crate::delegate::SolverDelegate;
+
 ///////////////////////////////////////////////////////////////////////////
 // EAGER RESOLUTION
 
 /// Resolves ty, region, and const vars to their inferred values or their root vars.
-pub struct EagerResolver<
-    'a,
-    Infcx: InferCtxtLike<Interner = I>,
-    I: Interner = <Infcx as InferCtxtLike>::Interner,
-> {
-    infcx: &'a Infcx,
+pub struct EagerResolver<'a, D, I = <D as SolverDelegate>::Interner>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    delegate: &'a D,
 }
 
-impl<'a, Infcx: InferCtxtLike> EagerResolver<'a, Infcx> {
-    pub fn new(infcx: &'a Infcx) -> Self {
-        EagerResolver { infcx }
+impl<'a, D: SolverDelegate> EagerResolver<'a, D> {
+    pub fn new(delegate: &'a D) -> Self {
+        EagerResolver { delegate }
     }
 }
 
-impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, Infcx> {
-    fn interner(&self) -> I {
-        self.infcx.interner()
+impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for EagerResolver<'_, D> {
+    fn cx(&self) -> I {
+        self.delegate.cx()
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
         match t.kind() {
             ty::Infer(ty::TyVar(vid)) => {
-                let resolved = self.infcx.opportunistic_resolve_ty_var(vid);
+                let resolved = self.delegate.opportunistic_resolve_ty_var(vid);
                 if t != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
                     resolved
                 }
             }
-            ty::Infer(ty::IntVar(vid)) => self.infcx.opportunistic_resolve_int_var(vid),
-            ty::Infer(ty::FloatVar(vid)) => self.infcx.opportunistic_resolve_float_var(vid),
+            ty::Infer(ty::IntVar(vid)) => self.delegate.opportunistic_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.delegate.opportunistic_resolve_float_var(vid),
             _ => {
                 if t.has_infer() {
                     t.super_fold_with(self)
@@ -50,7 +52,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
 
     fn fold_region(&mut self, r: I::Region) -> I::Region {
         match r.kind() {
-            ty::ReVar(vid) => self.infcx.opportunistic_resolve_lt_var(vid),
+            ty::ReVar(vid) => self.delegate.opportunistic_resolve_lt_var(vid),
             _ => r,
         }
     }
@@ -58,8 +60,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
     fn fold_const(&mut self, c: I::Const) -> I::Const {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
-                let ty = c.ty().fold_with(self);
-                let resolved = self.infcx.opportunistic_resolve_ct_var(vid, ty);
+                let resolved = self.delegate.opportunistic_resolve_ct_var(vid);
                 if c != resolved && resolved.has_infer() {
                     resolved.fold_with(self)
                 } else {
@@ -67,9 +68,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
                 }
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(vid)) => {
-                let bool = Ty::new_bool(self.infcx.interner());
-                debug_assert_eq!(c.ty(), bool);
-                self.infcx.opportunistic_resolve_effect_var(vid, bool)
+                self.delegate.opportunistic_resolve_effect_var(vid)
             }
             _ => {
                 if c.has_infer() {

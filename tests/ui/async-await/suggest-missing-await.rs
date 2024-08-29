@@ -71,4 +71,11 @@ async fn suggest_await_in_generic_pattern() {
     }
 }
 
+// Issue #126903
+async fn do_async() {}
+fn dont_suggest_awaiting_closure_patterns() {
+    Some(do_async()).map(|()| {});
+    //~^ ERROR mismatched types [E0308]
+}
+
 fn main() {}

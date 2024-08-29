@@ -25,8 +25,9 @@ mod try_err;
 mod wild_in_or_pats;
 
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::{higher, in_constant, is_direct_expn_of, is_span_match, span_contains_cfg};
+use clippy_utils::{higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg};
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -260,7 +261,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for wildcard enum matches using `_`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// New enum variants added by library updates can be missed.
     ///
     /// ### Known problems
@@ -435,7 +436,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for unnecessary '..' pattern binding on struct when all fields are explicitly matched.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Correctness and readability. It's like having a wildcard pattern after
     /// matching all enum variants explicitly.
     ///
@@ -861,7 +862,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `Err(x)?`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `?` operator is designed to allow calls that
     /// can fail to be easily chained. For example, `foo()?.bar()` or
     /// `foo(bar()?)`. Because `Err(x)?` can't be used that way (it will
@@ -980,10 +981,9 @@ pub struct Matches {
 }
 
 impl Matches {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv,
+            msrv: conf.msrv.clone(),
             infallible_destructuring_match_linted: false,
         }
     }
@@ -1019,6 +1019,7 @@ impl_lint_pass!(Matches => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if is_direct_expn_of(expr.span, "matches").is_none() && in_external_macro(cx.sess(), expr.span) {
             return;
@@ -1037,7 +1038,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 return;
             }
             if matches!(source, MatchSource::Normal | MatchSource::ForLoopDesugar) {
-                significant_drop_in_scrutinee::check(cx, expr, ex, arms, source);
+                significant_drop_in_scrutinee::check_match(cx, expr, ex, arms, source);
             }
 
             collapsible_match::check_match(cx, arms, &self.msrv);
@@ -1068,8 +1069,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_str_case_mismatch::check(cx, ex, arms);
                     redundant_guards::check(cx, arms, &self.msrv);
 
-                    if !in_constant(cx, expr.hir_id) {
-                        manual_unwrap_or::check(cx, expr, ex, arms);
+                    if !is_in_const_context(cx) {
+                        manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
                     }
@@ -1084,6 +1085,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             }
         } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
             collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, &self.msrv);
+            significant_drop_in_scrutinee::check_if_let(cx, expr, if_let.let_expr, if_let.if_then, if_let.if_else);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {
                     if self.msrv.meets(msrvs::MATCHES_MACRO) {
@@ -1096,7 +1098,15 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                             else_expr,
                         );
                     }
-                    if !in_constant(cx, expr.hir_id) {
+                    if !is_in_const_context(cx) {
+                        manual_unwrap_or::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
                         manual_filter::check_if_let(
                             cx,
@@ -1118,8 +1128,13 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 );
                 needless_match::check_if_let(cx, expr, &if_let);
             }
-        } else if !from_expansion {
-            redundant_pattern_match::check(cx, expr);
+        } else {
+            if let Some(while_let) = higher::WhileLet::hir(expr) {
+                significant_drop_in_scrutinee::check_while_let(cx, expr, while_let.let_expr, while_let.if_then);
+            }
+            if !from_expansion {
+                redundant_pattern_match::check(cx, expr);
+            }
         }
     }
 

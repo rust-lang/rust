@@ -7,10 +7,9 @@
 struct Foo;
 
 impl Foo {
-// CHECK: define internal x86_stdcallcc void @{{.*}}foo{{.*}}()
+    // CHECK: define internal x86_stdcallcc void @{{.*}}foo{{.*}}()
     #[inline(never)]
-    pub extern "stdcall" fn foo<T>() {
-    }
+    pub extern "stdcall" fn foo<T>() {}
 }
 
 fn main() {

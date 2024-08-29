@@ -1,12 +1,13 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::consts::{constant, Constant};
+use clippy_config::Conf;
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    eq_expr_value, in_constant, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks,
+    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id, peel_blocks,
     peel_blocks_with_stmt, MaybePath,
 };
 use itertools::Itertools;
@@ -97,8 +98,10 @@ pub struct ManualClamp {
 }
 
 impl ManualClamp {
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -119,8 +122,9 @@ impl<'tcx> ClampSuggestion<'tcx> {
         if max_type != min_type {
             return false;
         }
-        if let Some(max) = constant(cx, cx.typeck_results(), self.params.max)
-            && let Some(min) = constant(cx, cx.typeck_results(), self.params.min)
+        let ecx = ConstEvalCtxt::new(cx);
+        if let Some(max) = ecx.eval(self.params.max)
+            && let Some(min) = ecx.eval(self.params.min)
             && let Some(ord) = Constant::partial_cmp(cx.tcx, max_type, &min, &max)
         {
             ord != Ordering::Greater
@@ -143,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
         if !self.msrv.meets(msrvs::CLAMP) {
             return;
         }
-        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
+        if !expr.span.from_expansion() && !is_in_const_context(cx) {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
@@ -156,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if !self.msrv.meets(msrvs::CLAMP) || in_constant(cx, block.hir_id) {
+        if !self.msrv.meets(msrvs::CLAMP) || is_in_const_context(cx) {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {

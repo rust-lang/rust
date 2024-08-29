@@ -10,14 +10,12 @@ use hir::{
     HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::{FilePosition, SourceDatabase},
-    famous_defs::FamousDefs,
-    helpers::is_editable_crate,
+    base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
     FxHashMap, FxHashSet, RootDatabase,
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, Edition, SmolStr,
+    AstNode, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -46,13 +44,15 @@ pub(crate) enum Visible {
 /// Existing qualifiers for the thing we are currently completing.
 #[derive(Debug, Default)]
 pub(crate) struct QualifierCtx {
+    // TODO: Add try_tok and default_tok
+    pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
     }
 }
 
@@ -452,6 +452,7 @@ pub(crate) struct CompletionContext<'a> {
     /// - crate-root
     ///  - mod foo
     ///   - mod bar
+    ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
 }
@@ -516,7 +517,7 @@ impl CompletionContext<'_> {
         I: hir::HasAttrs + Copy,
     {
         let attrs = item.attrs(self.db);
-        attrs.doc_aliases().collect()
+        attrs.doc_aliases().map(|it| it.as_str().into()).collect()
     }
 
     /// Check if an item is `#[doc(hidden)]`.
@@ -540,7 +541,7 @@ impl CompletionContext<'_> {
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
         match trait_.attrs(self.db).lang() {
-            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang),
+            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
             None => false,
         }
     }
@@ -585,8 +586,7 @@ impl CompletionContext<'_> {
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
     /// passes all doc-aliases along, to funnel it into [`Completions::add_path_resolution`].
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef, Vec<SmolStr>)) {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names").entered();
+        let _p = tracing::info_span!("CompletionContext::process_all_names").entered();
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
                 return;
@@ -597,8 +597,7 @@ impl CompletionContext<'_> {
     }
 
     pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
-        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::process_all_names_raw")
-            .entered();
+        let _p = tracing::info_span!("CompletionContext::process_all_names_raw").entered();
         self.scope.process_all_names(f);
     }
 
@@ -642,7 +641,7 @@ impl CompletionContext<'_> {
 
     pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
-            attrs.doc_aliases().collect()
+            attrs.doc_aliases().map(|it| it.as_str().into()).collect()
         } else {
             vec![]
         }
@@ -656,9 +655,10 @@ impl<'a> CompletionContext<'a> {
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
-        let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::new").entered();
+        let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
+        let file_id = sema.attach_first_edition(file_id)?;
         let original_file = sema.parse(file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
@@ -667,8 +667,7 @@ impl<'a> CompletionContext<'a> {
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
             let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            // FIXME: Edition
-            parse.reparse(&edit, Edition::CURRENT).tree()
+            parse.reparse(&edit, file_id.edition()).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually

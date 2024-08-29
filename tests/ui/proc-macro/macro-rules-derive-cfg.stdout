@@ -88,7 +88,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                         span: $DIR/macro-rules-derive-cfg.rs:19:59: 19:66 (#3),
                                     },
                                 ],
-                                span: $DIR/macro-rules-derive-cfg.rs:19:25: 19:26 (#3),
+                                span: $DIR/macro-rules-derive-cfg.rs:19:26: 19:68 (#3),
                             },
                             Punct {
                                 ch: '#',
@@ -113,7 +113,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                         span: $DIR/macro-rules-derive-cfg.rs:26:47: 26:55 (#0),
                                     },
                                 ],
-                                span: $DIR/macro-rules-derive-cfg.rs:26:13: 26:14 (#0),
+                                span: $DIR/macro-rules-derive-cfg.rs:26:14: 26:57 (#0),
                             },
                             Group {
                                 delimiter: Brace,
@@ -146,7 +146,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                                 span: $DIR/macro-rules-derive-cfg.rs:27:34: 27:42 (#0),
                                             },
                                         ],
-                                        span: $DIR/macro-rules-derive-cfg.rs:27:5: 27:6 (#0),
+                                        span: $DIR/macro-rules-derive-cfg.rs:27:7: 27:44 (#0),
                                     },
                                     Literal {
                                         kind: Integer,

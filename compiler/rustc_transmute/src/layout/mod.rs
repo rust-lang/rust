@@ -60,9 +60,12 @@ impl Ref for ! {
 
 #[cfg(feature = "rustc")]
 pub mod rustc {
-    use rustc_middle::mir::Mutability;
-    use rustc_middle::ty::{self, Ty};
     use std::fmt::{self, Write};
+
+    use rustc_middle::mir::Mutability;
+    use rustc_middle::ty::layout::{LayoutCx, LayoutError};
+    use rustc_middle::ty::{self, Ty, TyCtxt};
+    use rustc_target::abi::Layout;
 
     /// A reference in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
@@ -118,5 +121,14 @@ pub mod rustc {
             // primitive types carry safety invariants.
             self != &Self::Primitive
         }
+    }
+
+    pub(crate) fn layout_of<'tcx>(
+        cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
+        ty: Ty<'tcx>,
+    ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
+        use rustc_middle::ty::layout::LayoutOf;
+        let ty = cx.tcx.erase_regions(ty);
+        cx.layout_of(ty).map(|tl| tl.layout)
     }
 }

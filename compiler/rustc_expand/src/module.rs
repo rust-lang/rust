@@ -1,19 +1,20 @@
-use crate::base::ModuleData;
-use crate::errors::{
-    ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
-};
+use std::iter::once;
+use std::path::{self, Path, PathBuf};
+
 use rustc_ast::ptr::P;
 use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::new_parser_from_file;
-use rustc_parse::validate_attr;
+use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
-use std::iter::once;
-use std::path::{self, Path, PathBuf};
 use thin_vec::ThinVec;
+
+use crate::base::ModuleData;
+use crate::errors::{
+    ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
+};
 
 #[derive(Copy, Clone)]
 pub enum DirOwnership {
@@ -66,7 +67,8 @@ pub(crate) fn parse_external_mod(
         }
 
         // Actually parse the external file as a module.
-        let mut parser = new_parser_from_file(&sess.psess, &mp.file_path, Some(span));
+        let mut parser =
+            unwrap_or_emit_fatal(new_parser_from_file(&sess.psess, &mp.file_path, Some(span)));
         let (inner_attrs, items, inner_span) =
             parser.parse_mod(&token::Eof).map_err(|err| ModError::ParserError(err))?;
         attrs.extend(inner_attrs);

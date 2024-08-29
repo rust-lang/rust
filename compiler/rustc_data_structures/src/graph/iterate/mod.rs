@@ -1,7 +1,9 @@
-use super::{DirectedGraph, StartNode, Successors};
+use std::ops::ControlFlow;
+
 use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
-use std::ops::ControlFlow;
+
+use super::{DirectedGraph, StartNode, Successors};
 
 #[cfg(test)]
 mod tests;
@@ -48,7 +50,7 @@ fn post_order_walk<G: DirectedGraph + Successors>(
         let node = frame.node;
         visited[node] = true;
 
-        while let Some(successor) = frame.iter.next() {
+        for successor in frame.iter.by_ref() {
             if !visited[successor] {
                 stack.push(PostOrderFrame { node: successor, iter: graph.successors(successor) });
                 continue 'recurse;
@@ -112,7 +114,7 @@ where
     /// This is equivalent to just invoke `next` repeatedly until
     /// you get a `None` result.
     pub fn complete_search(&mut self) {
-        while let Some(_) = self.next() {}
+        for _ in self.by_ref() {}
     }
 
     /// Returns true if node has been visited thus far.

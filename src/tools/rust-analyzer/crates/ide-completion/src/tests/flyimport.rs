@@ -473,6 +473,47 @@ fn main() {
 }
 
 #[test]
+fn trait_completions_handle_associated_types() {
+    let fixture = r#"
+//- /foo.rs crate:foo
+pub trait NotInScope {
+    fn not_in_scope(&self);
+}
+
+pub trait Wrapper {
+    type Inner: NotInScope;
+    fn inner(&self) -> Self::Inner;
+}
+
+//- /main.rs crate:main deps:foo
+use foo::Wrapper;
+
+fn completion<T: Wrapper>(whatever: T) {
+    whatever.inner().$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+        me not_in_scope() (use foo::NotInScope) fn(&self)
+    "#]],
+    );
+
+    check_edit(
+        "not_in_scope",
+        fixture,
+        r#"
+use foo::{NotInScope, Wrapper};
+
+fn completion<T: Wrapper>(whatever: T) {
+    whatever.inner().not_in_scope()$0
+}
+"#,
+    );
+}
+
+#[test]
 fn trait_method_fuzzy_completion_aware_of_unit_type() {
     let fixture = r#"
 //- /test_trait.rs crate:test_trait
@@ -726,8 +767,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
+            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
@@ -822,6 +863,38 @@ mod foo {
 use foo::bar::Item;
 
 use crate::foo::bar;
+
+fn main() {
+    Item
+}"#,
+    );
+}
+
+#[test]
+fn config_prefer_absolute() {
+    let fixture = r#"
+//- /lib.rs crate:dep
+pub mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+//- /main.rs crate:main deps:dep
+use ::dep::foo::bar;
+
+fn main() {
+    Ite$0
+}"#;
+    let mut config = TEST_CONFIG;
+    config.prefer_absolute = true;
+
+    check_edit_with_config(
+        config.clone(),
+        "Item",
+        fixture,
+        r#"
+use ::dep::foo::bar::{self, Item};
 
 fn main() {
     Item
@@ -1542,6 +1615,21 @@ pub struct FooStruct;
 "#,
         expect![[r#"
             tt FooTrait (use dep::FooTrait)
+        "#]],
+    );
+}
+
+#[test]
+fn primitive_mod() {
+    check(
+        r#"
+//- minicore: str
+fn main() {
+    str::from$0
+}
+"#,
+        expect![[r#"
+            fn from_utf8_unchecked(…) (use core::str) const unsafe fn(&[u8]) -> &str
         "#]],
     );
 }

@@ -19,6 +19,8 @@ mod install;
 mod metrics;
 mod publish;
 mod release;
+mod tidy;
+mod util;
 
 use anyhow::bail;
 use std::{env, path::PathBuf};
@@ -51,6 +53,7 @@ fn main() -> anyhow::Result<()> {
             )?;
             Ok(())
         }
+        flags::XtaskCmd::Tidy(cmd) => cmd.run(sh),
     }
 }
 

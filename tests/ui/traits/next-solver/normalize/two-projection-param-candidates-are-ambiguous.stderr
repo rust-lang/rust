@@ -1,8 +1,8 @@
-error[E0284]: type annotations needed: cannot satisfy `<T as Foo>::Assoc == i32`
+error[E0284]: type annotations needed: cannot normalize `<T as Foo>::Assoc`
   --> $DIR/two-projection-param-candidates-are-ambiguous.rs:26:17
    |
 LL |     needs_bar::<T>();
-   |                 ^ cannot satisfy `<T as Foo>::Assoc == i32`
+   |                 ^ cannot normalize `<T as Foo>::Assoc`
    |
 note: required for `T` to implement `Bar`
   --> $DIR/two-projection-param-candidates-are-ambiguous.rs:21:9

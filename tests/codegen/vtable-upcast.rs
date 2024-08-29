@@ -8,15 +8,15 @@ pub trait Base {
     fn base(&self);
 }
 
-pub trait A : Base {
+pub trait A: Base {
     fn a(&self);
 }
 
-pub trait B : Base {
+pub trait B: Base {
     fn b(&self);
 }
 
-pub trait Diamond : A + B {
+pub trait Diamond: A + B {
     fn diamond(&self);
 }
 

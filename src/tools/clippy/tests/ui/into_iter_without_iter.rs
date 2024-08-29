@@ -185,3 +185,42 @@ pub mod issue11635 {
         }
     }
 }
+
+pub mod issue12964 {
+    pub struct MyIter<'a, T: 'a> {
+        iter: std::slice::Iter<'a, T>,
+    }
+
+    impl<'a, T> Iterator for MyIter<'a, T> {
+        type Item = &'a T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.iter.next()
+        }
+    }
+
+    pub struct MyContainer<T> {
+        inner: Vec<T>,
+    }
+
+    impl<T> MyContainer<T> {}
+
+    impl<T> MyContainer<T> {
+        #[must_use]
+        pub fn iter(&self) -> MyIter<'_, T> {
+            <&Self as IntoIterator>::into_iter(self)
+        }
+    }
+
+    impl<'a, T> IntoIterator for &'a MyContainer<T> {
+        type Item = &'a T;
+
+        type IntoIter = MyIter<'a, T>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            Self::IntoIter {
+                iter: self.inner.as_slice().iter(),
+            }
+        }
+    }
+}

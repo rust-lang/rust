@@ -16,22 +16,24 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/basic.rs:21:5
    |
 LL |     extra("");
-   |     ^^^^^ --
-   |           |
-   |           unexpected argument of type `&'static str`
-   |           help: remove the extra argument
+   |     ^^^^^ -- unexpected argument of type `&'static str`
    |
 note: function defined here
   --> $DIR/basic.rs:14:4
    |
 LL | fn extra() {}
    |    ^^^^^
+help: remove the extra argument
+   |
+LL -     extra("");
+LL +     extra();
+   |
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/basic.rs:22:5
    |
 LL |     missing();
-   |     ^^^^^^^-- an argument of type `u32` is missing
+   |     ^^^^^^^-- argument #1 of type `u32` is missing
    |
 note: function defined here
   --> $DIR/basic.rs:15:4
@@ -84,7 +86,7 @@ error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/basic.rs:27:5
    |
 LL |     closure();
-   |     ^^^^^^^-- an argument is missing
+   |     ^^^^^^^-- argument #1 is missing
    |
 note: closure defined here
   --> $DIR/basic.rs:26:19

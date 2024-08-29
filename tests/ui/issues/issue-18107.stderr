@@ -4,11 +4,11 @@ error[E0746]: return type cannot have an unboxed trait object
 LL |     dyn AbstractRenderer
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: return an `impl Trait` instead of a `dyn Trait`, if all returned values are the same type
+help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
 LL |     impl AbstractRenderer
    |     ~~~~
-help: box the return type, and wrap all of the returned values in `Box::new`
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~     Box<dyn AbstractRenderer>
 LL |

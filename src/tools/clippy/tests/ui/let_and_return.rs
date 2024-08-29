@@ -210,4 +210,38 @@ fn issue9150() -> usize {
     x
 }
 
+fn issue12801() {
+    fn left_is_if() -> String {
+        let s = if true { "a".to_string() } else { "b".to_string() } + "c";
+        s
+        //~^ ERROR: returning the result of a `let` binding from a block
+    }
+
+    fn no_par_needed() -> String {
+        let s = "c".to_string() + if true { "a" } else { "b" };
+        s
+        //~^ ERROR: returning the result of a `let` binding from a block
+    }
+
+    fn conjunctive_blocks() -> String {
+        let s = { "a".to_string() } + "b" + { "c" } + "d";
+        s
+        //~^ ERROR: returning the result of a `let` binding from a block
+    }
+
+    #[allow(clippy::overly_complex_bool_expr)]
+    fn other_ops() {
+        let _ = || {
+            let s = if true { 2 } else { 3 } << 4;
+            s
+            //~^ ERROR: returning the result of a `let` binding from a block
+        };
+        let _ = || {
+            let s = { true } || { false } && { 2 <= 3 };
+            s
+            //~^ ERROR: returning the result of a `let` binding from a block
+        };
+    }
+}
+
 fn main() {}

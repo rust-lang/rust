@@ -6,12 +6,12 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::ty::fold::{FnMutDelegate, TypeFoldable};
-use rustc_middle::ty::GenericArgKind;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, TyCtxt};
+
+use crate::infer::canonical::{Canonical, CanonicalVarValues};
 
 /// FIXME(-Znext-solver): This or public because it is shared with the
 /// new trait solver implementation. We should deduplicate canonicalization.
@@ -70,7 +70,7 @@ where
                 GenericArgKind::Type(ty) => ty,
                 r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
             },
-            consts: &mut |bound_ct: ty::BoundVar, _| match var_values[bound_ct].unpack() {
+            consts: &mut |bound_ct: ty::BoundVar| match var_values[bound_ct].unpack() {
                 GenericArgKind::Const(ct) => ct,
                 c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
             },

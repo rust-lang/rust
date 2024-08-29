@@ -1,3 +1,5 @@
+use tracing::debug;
+
 use crate::query::Providers;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
@@ -36,7 +38,7 @@ struct RegionEraserVisitor<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
-    fn interner(&self) -> TyCtxt<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

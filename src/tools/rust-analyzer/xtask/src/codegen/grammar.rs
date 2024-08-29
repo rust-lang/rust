@@ -17,31 +17,47 @@ use quote::{format_ident, quote};
 use ungrammar::{Grammar, Rule};
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, reformat},
+    codegen::{add_preamble, ensure_file_contents, grammar::ast_src::generate_kind_src, reformat},
     project_root,
 };
 
 mod ast_src;
-use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC};
+use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc};
 
 pub(crate) fn generate(check: bool) {
-    let syntax_kinds = generate_syntax_kinds(KINDS_SRC);
-    let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
-    ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds, check);
-
     let grammar = fs::read_to_string(project_root().join("crates/syntax/rust.ungram"))
         .unwrap()
         .parse()
         .unwrap();
     let ast = lower(&grammar);
+    let kinds_src = generate_kind_src(&ast.nodes, &ast.enums, &grammar);
+
+    let syntax_kinds = generate_syntax_kinds(kinds_src);
+    let syntax_kinds_file = project_root().join("crates/parser/src/syntax_kind/generated.rs");
+    ensure_file_contents(
+        crate::flags::CodegenType::Grammar,
+        syntax_kinds_file.as_path(),
+        &syntax_kinds,
+        check,
+    );
 
     let ast_tokens = generate_tokens(&ast);
     let ast_tokens_file = project_root().join("crates/syntax/src/ast/generated/tokens.rs");
-    ensure_file_contents(ast_tokens_file.as_path(), &ast_tokens, check);
+    ensure_file_contents(
+        crate::flags::CodegenType::Grammar,
+        ast_tokens_file.as_path(),
+        &ast_tokens,
+        check,
+    );
 
-    let ast_nodes = generate_nodes(KINDS_SRC, &ast);
+    let ast_nodes = generate_nodes(kinds_src, &ast);
     let ast_nodes_file = project_root().join("crates/syntax/src/ast/generated/nodes.rs");
-    ensure_file_contents(ast_nodes_file.as_path(), &ast_nodes, check);
+    ensure_file_contents(
+        crate::flags::CodegenType::Grammar,
+        ast_nodes_file.as_path(),
+        &ast_nodes,
+        check,
+    );
 }
 
 fn generate_tokens(grammar: &AstSrc) -> String {
@@ -69,7 +85,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
     });
 
     add_preamble(
-        "sourcegen_ast",
+        crate::flags::CodegenType::Grammar,
         reformat(
             quote! {
                 use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
@@ -81,7 +97,7 @@ fn generate_tokens(grammar: &AstSrc) -> String {
     .replace("#[derive", "\n#[derive")
 }
 
-fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
+fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
     let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
@@ -102,23 +118,26 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 });
 
             let methods = node.fields.iter().map(|field| {
-                let method_name = field.method_name();
+                let method_name = format_ident!("{}", field.method_name());
                 let ty = field.ty();
 
                 if field.is_many() {
                     quote! {
+                        #[inline]
                         pub fn #method_name(&self) -> AstChildren<#ty> {
                             support::children(&self.syntax)
                         }
                     }
                 } else if let Some(token_kind) = field.token_kind() {
                     quote! {
+                        #[inline]
                         pub fn #method_name(&self) -> Option<#ty> {
                             support::token(&self.syntax, #token_kind)
                         }
                     }
                 } else {
                     quote! {
+                        #[inline]
                         pub fn #method_name(&self) -> Option<#ty> {
                             support::child(&self.syntax)
                         }
@@ -141,12 +160,15 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 },
                 quote! {
                     impl AstNode for #name {
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
+                        #[inline]
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                         }
+                        #[inline]
                         fn syntax(&self) -> &SyntaxNode { &self.syntax }
                     }
                 },
@@ -175,9 +197,11 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
             } else {
                 quote! {
                     impl AstNode for #name {
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
+                        #[inline]
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             let res = match syntax.kind() {
                                 #(
@@ -187,6 +211,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             };
                             Some(res)
                         }
+                        #[inline]
                         fn syntax(&self) -> &SyntaxNode {
                             match self {
                                 #(
@@ -211,6 +236,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 quote! {
                     #(
                         impl From<#variants> for #name {
+                            #[inline]
                             fn from(node: #variants) -> #name {
                                 #name::#variants(node)
                             }
@@ -235,7 +261,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 .iter()
                 .map(|name| format_ident!("{}", to_upper_snake_case(&name.name.to_string())))
                 .collect();
-
+            let nodes = nodes.iter().map(|node| format_ident!("{}", node.name));
             (
                 quote! {
                     #[pretty_doc_comment_placeholder_workaround]
@@ -255,16 +281,28 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                         }
                     }
                     impl AstNode for #name {
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             matches!(kind, #(#kinds)|*)
                         }
+                        #[inline]
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
                             Self::can_cast(syntax.kind()).then_some(#name { syntax })
                         }
+                        #[inline]
                         fn syntax(&self) -> &SyntaxNode {
                             &self.syntax
                         }
                     }
+
+                    #(
+                        impl From<#nodes> for #name {
+                            #[inline]
+                            fn from(node: #nodes) -> #name {
+                                #name { syntax: node.syntax }
+                            }
+                        }
+                    )*
                 },
             )
         })
@@ -328,7 +366,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
         }
     }
 
-    let res = add_preamble("sourcegen_ast", reformat(res));
+    let res = add_preamble(crate::flags::CodegenType::Grammar, reformat(res));
     res.replace("#[derive", "\n#[derive")
 }
 
@@ -338,7 +376,7 @@ fn write_doc_comment(contents: &[String], dest: &mut String) {
     }
 }
 
-fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
+fn generate_syntax_kinds(grammar: KindsSrc) -> String {
     let (single_byte_tokens_values, single_byte_tokens): (Vec<_>, Vec<_>) = grammar
         .punct
         .iter()
@@ -453,12 +491,14 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
             #([#all_keywords_idents] => { $crate::SyntaxKind::#all_keywords };)*
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
+            [int_number] => { $crate::SyntaxKind::INT_NUMBER };
             [ident] => { $crate::SyntaxKind::IDENT };
+            [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
     };
 
-    add_preamble("sourcegen_ast", reformat(ast.to_string()))
+    add_preamble(crate::flags::CodegenType::Grammar, reformat(ast.to_string()))
 }
 
 fn to_upper_snake_case(s: &str) -> String {
@@ -522,7 +562,7 @@ impl Field {
             _ => None,
         }
     }
-    fn method_name(&self) -> proc_macro2::Ident {
+    fn method_name(&self) -> String {
         match self {
             Field::Token(name) => {
                 let name = match name.as_str() {
@@ -557,13 +597,13 @@ impl Field {
                     "~" => "tilde",
                     _ => name,
                 };
-                format_ident!("{}_token", name)
+                format!("{name}_token",)
             }
             Field::Node { name, .. } => {
                 if name == "type" {
-                    format_ident!("ty")
+                    String::from("ty")
                 } else {
-                    format_ident!("{}", name)
+                    name.to_owned()
                 }
             }
         }
@@ -573,6 +613,15 @@ impl Field {
             Field::Token(_) => format_ident!("SyntaxToken"),
             Field::Node { ty, .. } => format_ident!("{}", ty),
         }
+    }
+}
+
+fn clean_token_name(name: &str) -> String {
+    let cleaned = name.trim_start_matches(['@', '#', '?']);
+    if cleaned.is_empty() {
+        name.to_owned()
+    } else {
+        cleaned.to_owned()
     }
 }
 
@@ -655,14 +704,12 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
         }
         Rule::Token(token) => {
             assert!(label.is_none());
-            let mut name = grammar[*token].name.clone();
-            if name != "int_number" && name != "string" {
-                if "[]{}()".contains(&name) {
-                    name = format!("'{name}'");
-                }
-                let field = Field::Token(name);
-                acc.push(field);
+            let mut name = clean_token_name(&grammar[*token].name);
+            if "[]{}()".contains(&name) {
+                name = format!("'{name}'");
             }
+            let field = Field::Token(name);
+            acc.push(field);
         }
         Rule::Rep(inner) => {
             if let Rule::Node(node) = &**inner {
@@ -692,6 +739,8 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                     | "self_ty"
                     | "iterable"
                     | "condition"
+                    | "args"
+                    | "body"
             );
             if manually_implemented {
                 return;
@@ -780,20 +829,21 @@ fn extract_enums(ast: &mut AstSrc) {
     }
 }
 
-fn extract_struct_traits(ast: &mut AstSrc) {
-    let traits: &[(&str, &[&str])] = &[
-        ("HasAttrs", &["attrs"]),
-        ("HasName", &["name"]),
-        ("HasVisibility", &["visibility"]),
-        ("HasGenericParams", &["generic_param_list", "where_clause"]),
-        ("HasTypeBounds", &["type_bound_list", "colon_token"]),
-        ("HasModuleItem", &["items"]),
-        ("HasLoopBody", &["label", "loop_body"]),
-        ("HasArgList", &["arg_list"]),
-    ];
+const TRAITS: &[(&str, &[&str])] = &[
+    ("HasAttrs", &["attrs"]),
+    ("HasName", &["name"]),
+    ("HasVisibility", &["visibility"]),
+    ("HasGenericParams", &["generic_param_list", "where_clause"]),
+    ("HasGenericArgs", &["generic_arg_list"]),
+    ("HasTypeBounds", &["type_bound_list", "colon_token"]),
+    ("HasModuleItem", &["items"]),
+    ("HasLoopBody", &["label", "loop_body"]),
+    ("HasArgList", &["arg_list"]),
+];
 
+fn extract_struct_traits(ast: &mut AstSrc) {
     for node in &mut ast.nodes {
-        for (name, methods) in traits {
+        for (name, methods) in TRAITS {
             extract_struct_trait(node, name, methods);
         }
     }
@@ -832,7 +882,7 @@ fn extract_struct_traits(ast: &mut AstSrc) {
 fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str]) {
     let mut to_remove = Vec::new();
     for (i, field) in node.fields.iter().enumerate() {
-        let method_name = field.method_name().to_string();
+        let method_name = field.method_name();
         if methods.iter().any(|&it| it == method_name) {
             to_remove.push(i);
         }
@@ -872,4 +922,9 @@ impl AstNodeSrc {
             self.fields.remove(idx);
         });
     }
+}
+
+#[test]
+fn test() {
+    generate(true);
 }

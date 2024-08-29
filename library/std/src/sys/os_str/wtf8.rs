@@ -1,13 +1,15 @@
-/// The underlying OsString/OsStr implementation on Windows is a
-/// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
+//! The underlying OsString/OsStr implementation on Windows is a
+//! wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
+use core::clone::CloneToUninit;
+use core::ptr::addr_of_mut;
+
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
-use crate::fmt;
-use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::wtf8::{check_utf8_boundary, Wtf8, Wtf8Buf};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::{fmt, mem};
 
 #[derive(Clone, Hash)]
 pub struct Buf {
@@ -70,7 +72,7 @@ impl Buf {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: Vec<u8>) -> Self {
-        Self { inner: Wtf8Buf::from_bytes_unchecked(s) }
+        unsafe { Self { inner: Wtf8Buf::from_bytes_unchecked(s) } }
     }
 
     pub fn with_capacity(capacity: usize) -> Buf {
@@ -139,6 +141,11 @@ impl Buf {
     }
 
     #[inline]
+    pub fn leak<'a>(self) -> &'a mut Slice {
+        unsafe { mem::transmute(self.inner.leak()) }
+    }
+
+    #[inline]
     pub fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }
@@ -159,10 +166,20 @@ impl Buf {
         self.as_slice().into_rc()
     }
 
-    /// Part of a hack to make PathBuf::push/pop more efficient.
+    /// Provides plumbing to core `Vec::truncate`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
     #[inline]
-    pub(crate) fn as_mut_vec_for_path_buf(&mut self) -> &mut Vec<u8> {
-        self.inner.as_mut_vec_for_path_buf()
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.inner.truncate(len);
+    }
+
+    /// Provides plumbing to core `Vec::extend_from_slice`.
+    /// More well behaving alternative to allowing outer types
+    /// full mutable access to the core `Vec`.
+    #[inline]
+    pub(crate) fn extend_from_slice(&mut self, other: &[u8]) {
+        self.inner.extend_from_slice(other);
     }
 }
 
@@ -174,7 +191,7 @@ impl Slice {
 
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
-        mem::transmute(Wtf8::from_bytes_unchecked(s))
+        unsafe { mem::transmute(Wtf8::from_bytes_unchecked(s)) }
     }
 
     #[track_caller]
@@ -252,5 +269,15 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Slice {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: we're just a wrapper around Wtf8
+        unsafe { self.inner.clone_to_uninit(addr_of_mut!((*dst).inner)) }
     }
 }

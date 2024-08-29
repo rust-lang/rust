@@ -10,11 +10,13 @@ trait Trait {
 }
 
 struct Struct<T> {
-    _a: T
+    _a: T,
 }
 
 impl<T> Trait for Struct<T> {
-    fn foo(&self) -> u32 { 0 }
+    fn foo(&self) -> u32 {
+        0
+    }
     fn bar(&self) {}
 }
 

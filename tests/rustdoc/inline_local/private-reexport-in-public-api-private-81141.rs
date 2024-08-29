@@ -12,22 +12,22 @@ mod bar {
 }
 
 // It's a fully private re-export so it should not be displayed.
-// @has 'foo/fn.bar.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar() -> Bar'
+//@ has 'foo/fn.bar.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar() -> Bar'
 pub fn bar() -> Alias {
     Alias
 }
 
 // It's public re-export inside a private module so it should be visible.
-// @has 'foo/fn.bar2.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar2() -> Inner'
+//@ has 'foo/fn.bar2.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar2() -> Inner'
 pub fn bar2() -> crate::bar::Inner {
     Alias
 }
 
 // It's a non-public, so it doesn't appear in documentation so it should not be visible.
-// @has 'foo/fn.bar3.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar3() -> Bar'
+//@ has 'foo/fn.bar3.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar3() -> Bar'
 pub fn bar3() -> CrateAlias {
     Alias
 }

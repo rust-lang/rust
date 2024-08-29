@@ -1,5 +1,4 @@
-#![feature(rustc_private, let_chains)]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![feature(rustc_private, array_windows, let_chains)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -15,7 +14,7 @@
 )]
 
 extern crate rustc_ast;
-extern crate rustc_data_structures;
+extern crate rustc_attr;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 extern crate rustc_errors;

@@ -6,7 +6,8 @@ pub struct S([usize; 8]);
 
 #[no_mangle]
 pub fn outer_function(x: S, y: S) -> usize {
-    (#[inline(always)]|| {
+    (#[inline(always)]
+    || {
         let _z = x;
         y.0[0]
     })()

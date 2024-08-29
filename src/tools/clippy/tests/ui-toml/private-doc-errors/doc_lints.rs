@@ -47,7 +47,7 @@ pub mod __macro {
     pub struct T;
     impl T {
         pub unsafe fn f() {}
-        //~^ ERROR: unsafe function's docs miss `# Safety` section
+        //~^ ERROR: unsafe function's docs are missing a `# Safety` section
     }
 }
 

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{expr_or_init, in_constant, std_or_core};
+use clippy_utils::{expr_or_init, is_in_const_context, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -40,11 +40,11 @@ declare_lint_pass!(ManualSliceSizeCalculation => [MANUAL_SLICE_SIZE_CALCULATION]
 
 impl<'tcx> LateLintPass<'tcx> for ManualSliceSizeCalculation {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        // Does not apply inside const because size_of_val is not cost in stable.
-        if !in_constant(cx, expr.hir_id)
-            && let ExprKind::Binary(ref op, left, right) = expr.kind
+        if let ExprKind::Binary(ref op, left, right) = expr.kind
             && BinOpKind::Mul == op.node
             && !expr.span.from_expansion()
+            // Does not apply inside const because size_of_val is not cost in stable.
+            && !is_in_const_context(cx)
             && let Some(receiver) = simplify(cx, left, right)
         {
             let ctxt = expr.span.ctxt();

@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
             lit.span,
             "calling `push` with '/' or '\\' (file system root) will overwrite the previous path definition",
             "try",
-            format!("\"{}\"", pushed_path_lit.trim_start_matches(|c| c == '/' || c == '\\')),
+            format!("\"{}\"", pushed_path_lit.trim_start_matches(['/', '\\'])),
             Applicability::MachineApplicable,
         );
     }

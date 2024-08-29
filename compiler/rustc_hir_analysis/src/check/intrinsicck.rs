@@ -1,8 +1,10 @@
+use std::assert_matches::debug_assert_matches;
+
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
+use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Symbol;
@@ -62,9 +64,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Some(InlineAsmType::I64),
             ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Some(InlineAsmType::I128),
             ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(asm_ty_isize),
+            ty::Float(FloatTy::F16) => Some(InlineAsmType::F16),
             ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
             ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
-            ty::FnPtr(_) => Some(asm_ty_isize),
+            ty::Float(FloatTy::F128) => Some(InlineAsmType::F128),
+            ty::FnPtr(..) => Some(asm_ty_isize),
             ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Some(asm_ty_isize),
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
@@ -105,8 +109,10 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             width => bug!("unsupported pointer width: {width}"),
                         })
                     }
+                    ty::Float(FloatTy::F16) => Some(InlineAsmType::VecF16(size)),
                     ty::Float(FloatTy::F32) => Some(InlineAsmType::VecF32(size)),
                     ty::Float(FloatTy::F64) => Some(InlineAsmType::VecF64(size)),
+                    ty::Float(FloatTy::F128) => Some(InlineAsmType::VecF128(size)),
                     _ => None,
                 }
             }
@@ -134,7 +140,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
-            ty::Adt(adt, args) if Some(adt.did()) == self.tcx.lang_items().maybe_uninit() => {
+            ty::Adt(adt, args) if self.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
                 let fields = &adt.non_enum_variant().fields;
                 let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx, args);
                 // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
@@ -281,8 +287,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
-                    "formatting may not be suitable for sub-register argument",
                     |lint| {
+                        lint.primary_message("formatting may not be suitable for sub-register argument");
                         lint.span_label(expr.span, "for this argument");
                         lint.help(format!(
                             "use `{{{idx}:{suggested_modifier}}}` to have the register formatted as `{suggested_result}` (for {suggested_size}-bit values)",
@@ -451,32 +457,22 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                // No special checking is needed for these:
-                // - Typeck has checked that Const operands are integers.
-                // - AST lowering guarantees that SymStatic points to a static.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymStatic { .. } => {}
-                // Check that sym actually points to a function. Later passes
-                // depend on this.
-                hir::InlineAsmOperand::SymFn { anon_const } => {
-                    let ty = self.tcx.type_of(anon_const.def_id).instantiate_identity();
-                    match ty.kind() {
-                        ty::Never | ty::Error(_) => {}
-                        ty::FnDef(..) => {}
-                        _ => {
-                            self.tcx
-                                .dcx()
-                                .struct_span_err(*op_sp, "invalid `sym` operand")
-                                .with_span_label(
-                                    self.tcx.def_span(anon_const.def_id),
-                                    format!("is {} `{}`", ty.kind().article(), ty),
-                                )
-                                .with_help(
-                                    "`sym` operands must refer to either a function or a static",
-                                )
-                                .emit();
-                        }
-                    };
+                // Typeck has checked that Const operands are integers.
+                hir::InlineAsmOperand::Const { anon_const } => {
+                    debug_assert_matches!(
+                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
+                        ty::Error(_) | ty::Int(_) | ty::Uint(_)
+                    );
                 }
+                // Typeck has checked that SymFn refers to a function.
+                hir::InlineAsmOperand::SymFn { anon_const } => {
+                    debug_assert_matches!(
+                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
+                        ty::Error(_) | ty::FnDef(..)
+                    );
+                }
+                // AST lowering guarantees that SymStatic points to a static.
+                hir::InlineAsmOperand::SymStatic { .. } => {}
                 // No special checking is needed for labels.
                 hir::InlineAsmOperand::Label { .. } => {}
             }

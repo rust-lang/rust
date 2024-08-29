@@ -5,19 +5,16 @@
 //! generic parameters are unused (and eventually, in what ways generic parameters are used - only
 //! for their size, offset of a field, etc.).
 
-use rustc_hir::{def::DefKind, def_id::DefId, ConstContext};
-use rustc_middle::mir::{
-    self,
-    visit::{TyContext, Visitor},
-    Local, LocalDecl, Location,
-};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefId;
+use rustc_hir::ConstContext;
+use rustc_middle::mir::visit::{TyContext, Visitor};
+use rustc_middle::mir::{self, Local, LocalDecl, Location};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{
-    self,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor},
-    GenericArgsRef, Ty, TyCtxt, UnusedGenericParams,
-};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, UnusedGenericParams};
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
 use crate::errors::UnusedGenericParamsHint;
 
@@ -32,7 +29,7 @@ pub fn provide(providers: &mut Providers) {
 /// parameters are used).
 fn unused_generic_params<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: ty::InstanceDef<'tcx>,
+    instance: ty::InstanceKind<'tcx>,
 ) -> UnusedGenericParams {
     assert!(instance.def_id().is_local());
 
@@ -87,7 +84,7 @@ fn unused_generic_params<'tcx>(
 fn should_polymorphize<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    instance: ty::InstanceDef<'tcx>,
+    instance: ty::InstanceKind<'tcx>,
 ) -> bool {
     // If an instance's MIR body is not polymorphic then the modified generic parameters that are
     // derived from polymorphization's result won't make any difference.
@@ -96,7 +93,7 @@ fn should_polymorphize<'tcx>(
     }
 
     // Don't polymorphize intrinsics or virtual calls - calling `instance_mir` will panic.
-    if matches!(instance, ty::InstanceDef::Intrinsic(..) | ty::InstanceDef::Virtual(..)) {
+    if matches!(instance, ty::InstanceKind::Intrinsic(..) | ty::InstanceKind::Virtual(..)) {
         return false;
     }
 
@@ -130,7 +127,7 @@ fn mark_used_by_default_parameters<'tcx>(
     unused_parameters: &mut UnusedGenericParams,
 ) {
     match tcx.def_kind(def_id) {
-        DefKind::Closure => {
+        DefKind::Closure | DefKind::SyntheticCoroutineBody => {
             for param in &generics.own_params {
                 debug!(?param, "(closure/gen)");
                 unused_parameters.mark_used(param.index);
@@ -229,7 +226,7 @@ impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// a closure, coroutine or constant).
     #[instrument(level = "debug", skip(self, def_id, args))]
     fn visit_child_body(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) {
-        let instance = ty::InstanceDef::Item(def_id);
+        let instance = ty::InstanceKind::Item(def_id);
         let unused = self.tcx.unused_generic_params(instance);
         debug!(?self.unused_parameters, ?unused);
         for (i, arg) in args.iter().enumerate() {
@@ -260,9 +257,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         self.super_local_decl(local, local_decl);
     }
 
-    fn visit_constant(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, ct: &mir::ConstOperand<'tcx>, location: Location) {
         match ct.const_ {
-            mir::Const::Ty(c) => {
+            mir::Const::Ty(_, c) => {
                 c.visit_with(self);
             }
             mir::Const::Unevaluated(mir::UnevaluatedConst { def, args: _, promoted }, ty) => {

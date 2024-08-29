@@ -1,0 +1,33 @@
+warning: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:15:1
+   |
+LL | fn m() {
+   | ^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Default` will fail
+  --> $DIR/never-type-fallback-breaking.rs:19:17
+   |
+LL |         true => Default::default(),
+   |                 ^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+
+warning: this function depends on never type fallback being `()`
+  --> $DIR/never-type-fallback-breaking.rs:27:1
+   |
+LL | fn q() -> Option<()> {
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = help: specify the types explicitly
+note: in edition 2024, the requirement `!: Default` will fail
+  --> $DIR/never-type-fallback-breaking.rs:34:5
+   |
+LL |     deserialize()?;
+   |     ^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

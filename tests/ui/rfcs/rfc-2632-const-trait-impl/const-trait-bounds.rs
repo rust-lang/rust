@@ -1,5 +1,6 @@
-//@ check-pass
-
+//@ known-bug: #110395
+//@ compile-flags: -Znext-solver
+// FIXME(effects): check-pass
 #![feature(const_trait_impl, effects, generic_const_exprs)]
 #![allow(incomplete_features)]
 

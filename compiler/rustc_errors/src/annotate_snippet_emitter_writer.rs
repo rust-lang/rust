@@ -5,6 +5,12 @@
 //!
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
+use annotate_snippets::{Renderer, Snippet};
+use rustc_data_structures::sync::Lrc;
+use rustc_error_messages::FluentArgs;
+use rustc_span::source_map::SourceMap;
+use rustc_span::SourceFile;
+
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
 use crate::translation::{to_fluent_args, Translate};
@@ -12,11 +18,6 @@ use crate::{
     CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, FluentBundle, LazyFallbackBundle,
     Level, MultiSpan, Style, Subdiag,
 };
-use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
-use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
-use rustc_span::source_map::SourceMap;
-use rustc_span::SourceFile;
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitter {
@@ -82,15 +83,17 @@ fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
     file.get_line(line.line_index - 1).map(|a| a.to_string()).unwrap_or_default()
 }
 
-/// Maps `diagnostic::Level` to `snippet::AnnotationType`
-fn annotation_type_for_level(level: Level) -> AnnotationType {
+/// Maps [`crate::Level`] to [`annotate_snippets::Level`]
+fn annotation_level_for_level(level: Level) -> annotate_snippets::Level {
     match level {
-        Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => AnnotationType::Error,
-        Level::ForceWarning(_) | Level::Warning => AnnotationType::Warning,
-        Level::Note | Level::OnceNote => AnnotationType::Note,
-        Level::Help | Level::OnceHelp => AnnotationType::Help,
+        Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => {
+            annotate_snippets::Level::Error
+        }
+        Level::ForceWarning(_) | Level::Warning => annotate_snippets::Level::Warning,
+        Level::Note | Level::OnceNote => annotate_snippets::Level::Note,
+        Level::Help | Level::OnceHelp => annotate_snippets::Level::Help,
         // FIXME(#59346): Not sure how to map this level
-        Level::FailureNote => AnnotationType::Error,
+        Level::FailureNote => annotate_snippets::Level::Error,
         Level::Allow => panic!("Should not call with Allow"),
         Level::Expect(_) => panic!("Should not call with Expect"),
     }
@@ -179,42 +182,29 @@ impl AnnotateSnippetEmitter {
                 })
                 .collect();
             let code = code.map(|code| code.to_string());
-            let snippet = Snippet {
-                title: Some(Annotation {
-                    label: Some(&message),
-                    id: code.as_deref(),
-                    annotation_type: annotation_type_for_level(*level),
-                }),
-                footer: vec![],
-                slices: annotated_files
-                    .iter()
-                    .map(|(file_name, source, line_index, annotations)| {
-                        Slice {
-                            source,
-                            line_start: *line_index,
-                            origin: Some(file_name),
-                            // FIXME(#59346): Not really sure when `fold` should be true or false
-                            fold: false,
-                            annotations: annotations
-                                .iter()
-                                .map(|annotation| SourceAnnotation {
-                                    range: (
-                                        annotation.start_col.display,
-                                        annotation.end_col.display,
-                                    ),
-                                    label: annotation.label.as_deref().unwrap_or_default(),
-                                    annotation_type: annotation_type_for_level(*level),
-                                })
-                                .collect(),
-                        }
-                    })
-                    .collect(),
-            };
+
+            let snippets =
+                annotated_files.iter().map(|(file_name, source, line_index, annotations)| {
+                    Snippet::source(source)
+                        .line_start(*line_index)
+                        .origin(file_name)
+                        // FIXME(#59346): Not really sure when `fold` should be true or false
+                        .fold(false)
+                        .annotations(annotations.iter().map(|annotation| {
+                            annotation_level_for_level(*level)
+                                .span(annotation.start_col.display..annotation.end_col.display)
+                                .label(annotation.label.as_deref().unwrap_or_default())
+                        }))
+                });
+            let mut message = annotation_level_for_level(*level).title(&message).snippets(snippets);
+            if let Some(code) = code.as_deref() {
+                message = message.id(code)
+            }
             // FIXME(#59346): Figure out if we can _always_ print to stderr or not.
             // `emitter.rs` has the `Destination` enum that lists various possible output
             // destinations.
             let renderer = Renderer::plain().anonymized_line_numbers(self.ui_testing);
-            eprintln!("{}", renderer.render(snippet))
+            eprintln!("{}", renderer.render(message))
         }
         // FIXME(#59346): Is it ok to return None if there's no source_map?
     }

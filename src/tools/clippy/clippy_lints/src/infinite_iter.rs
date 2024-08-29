@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::higher;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
 use rustc_hir::{BorrowKind, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -41,7 +41,6 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// let infinite_iter = 0..;
-    /// # #[allow(unused)]
     /// [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -211,28 +210,17 @@ const COMPLETING_METHODS: [(&str, usize); 12] = [
     ("product", 0),
 ];
 
-/// the paths of types that are known to be infinitely allocating
-const INFINITE_COLLECTORS: &[Symbol] = &[
-    sym::BinaryHeap,
-    sym::BTreeMap,
-    sym::BTreeSet,
-    sym::HashMap,
-    sym::HashSet,
-    sym::LinkedList,
-    sym::Vec,
-    sym::VecDeque,
-];
-
 fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
         ExprKind::MethodCall(method, receiver, args, _) => {
+            let method_str = method.ident.name.as_str();
             for &(name, len) in &COMPLETING_METHODS {
-                if method.ident.name.as_str() == name && args.len() == len {
+                if method_str == name && args.len() == len {
                     return is_infinite(cx, receiver);
                 }
             }
             for &(name, len) in &POSSIBLY_COMPLETING_METHODS {
-                if method.ident.name.as_str() == name && args.len() == len {
+                if method_str == name && args.len() == len {
                     return MaybeInfinite.and(is_infinite(cx, receiver));
                 }
             }
@@ -248,10 +236,19 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             } else if method.ident.name == sym!(collect) {
                 let ty = cx.typeck_results().expr_ty(expr);
-                if INFINITE_COLLECTORS
-                    .iter()
-                    .any(|diag_item| is_type_diagnostic_item(cx, ty, *diag_item))
-                {
+                if matches!(
+                    get_type_diagnostic_name(cx, ty),
+                    Some(
+                        sym::BinaryHeap
+                            | sym::BTreeMap
+                            | sym::BTreeSet
+                            | sym::HashMap
+                            | sym::HashSet
+                            | sym::LinkedList
+                            | sym::Vec
+                            | sym::VecDeque,
+                    )
+                ) {
                     return is_infinite(cx, receiver);
                 }
             }

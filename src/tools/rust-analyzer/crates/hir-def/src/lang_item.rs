@@ -3,8 +3,8 @@
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
 use hir_expand::name::Name;
+use intern::{sym, Symbol};
 use rustc_hash::FxHashMap;
-use syntax::SmolStr;
 use triomphe::Arc;
 
 use crate::{
@@ -91,7 +91,7 @@ impl LangItems {
         db: &dyn DefDatabase,
         krate: CrateId,
     ) -> Option<Arc<LangItems>> {
-        let _p = tracing::span!(tracing::Level::INFO, "crate_lang_items_query").entered();
+        let _p = tracing::info_span!("crate_lang_items_query").entered();
 
         let mut lang_items = LangItems::default();
 
@@ -163,7 +163,7 @@ impl LangItems {
         start_crate: CrateId,
         item: LangItem,
     ) -> Option<LangItemTarget> {
-        let _p = tracing::span!(tracing::Level::INFO, "lang_item_query").entered();
+        let _p = tracing::info_span!("lang_item_query").entered();
         if let Some(target) =
             db.crate_lang_items(start_crate).and_then(|it| it.items.get(&item).copied())
         {
@@ -183,7 +183,7 @@ impl LangItems {
     ) where
         T: Into<AttrDefId> + Copy,
     {
-        let _p = tracing::span!(tracing::Level::INFO, "collect_lang_item").entered();
+        let _p = tracing::info_span!("collect_lang_item").entered();
         if let Some(lang_item) = lang_attr(db, item.into()) {
             self.items.entry(lang_item).or_insert_with(|| constructor(item));
         }
@@ -191,15 +191,14 @@ impl LangItems {
 }
 
 pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
-    let attrs = db.attrs(item);
-    attrs.by_key("lang").string_value().and_then(LangItem::from_str)
+    db.attrs(item).lang_item()
 }
 
 pub(crate) fn notable_traits_in_deps(
     db: &dyn DefDatabase,
     krate: CrateId,
 ) -> Arc<[Arc<[TraitId]>]> {
-    let _p = tracing::span!(tracing::Level::INFO, "notable_traits_in_deps", ?krate).entered();
+    let _p = tracing::info_span!("notable_traits_in_deps", ?krate).entered();
     let crate_graph = db.crate_graph();
 
     Arc::from_iter(
@@ -208,7 +207,7 @@ pub(crate) fn notable_traits_in_deps(
 }
 
 pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Option<Arc<[TraitId]>> {
-    let _p = tracing::span!(tracing::Level::INFO, "crate_notable_traits", ?krate).entered();
+    let _p = tracing::info_span!("crate_notable_traits", ?krate).entered();
 
     let mut traits = Vec::new();
 
@@ -253,17 +252,16 @@ macro_rules! language_item_table {
         }
 
         impl LangItem {
-            pub fn name(self) -> SmolStr {
+            pub fn name(self) -> &'static str {
                 match self {
-                    $( LangItem::$variant => SmolStr::new(stringify!($name)), )*
+                    $( LangItem::$variant => stringify!($name), )*
                 }
             }
 
             /// Opposite of [`LangItem::name`]
-            #[allow(clippy::should_implement_trait)]
-            pub fn from_str(name: &str) -> Option<Self> {
-                match name {
-                    $( stringify!($name) => Some(LangItem::$variant), )*
+            pub fn from_symbol(sym: &Symbol) -> Option<Self> {
+                match sym {
+                    $(sym if *sym == $module::$name => Some(LangItem::$variant), )*
                     _ => None,
                 }
             }
@@ -274,7 +272,7 @@ macro_rules! language_item_table {
 impl LangItem {
     /// Opposite of [`LangItem::name`]
     pub fn from_name(name: &hir_expand::name::Name) -> Option<Self> {
-        Self::from_str(name.as_str()?)
+        Self::from_symbol(name.symbol())
     }
 
     pub fn path(&self, db: &dyn DefDatabase, start_crate: CrateId) -> Option<Path> {
@@ -360,7 +358,7 @@ language_item_table! {
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
 
-    Fn,                      kw::fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    Fn,                      sym::fn_,                 fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
     FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
 

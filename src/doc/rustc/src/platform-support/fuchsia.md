@@ -10,9 +10,9 @@ updatable, and performant.
 The [Fuchsia team]:
 
 - Tyler Mandry ([@tmandry](https://github.com/tmandry))
-- Dan Johnson ([@computerdruid](https://github.com/computerdruid))
 - David Koloski ([@djkoloski](https://github.com/djkoloski))
-- Joseph Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
+- Julia Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
+- Erick Tryzelaar ([@erickt](https://github.com/erickt))
 
 As the team evolves over time, the specific members listed here may differ from
 the members reported by the API. The API should be considered to be

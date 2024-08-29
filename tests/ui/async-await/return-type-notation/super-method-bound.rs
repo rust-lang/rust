@@ -16,7 +16,7 @@ impl Foo for () {}
 
 fn test<T>()
 where
-    T: Foo<test(): Send>,
+    T: Foo<test(..): Send>,
 {
 }
 

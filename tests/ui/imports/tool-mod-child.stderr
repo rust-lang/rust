@@ -1,34 +1,46 @@
-error[E0433]: failed to resolve: maybe a missing crate `clippy`?
+error[E0433]: failed to resolve: you might be missing crate `clippy`
   --> $DIR/tool-mod-child.rs:2:5
    |
 LL | use clippy::a::b;
-   |     ^^^^^^ maybe a missing crate `clippy`?
+   |     ^^^^^^ you might be missing crate `clippy`
    |
-   = help: consider adding `extern crate clippy` to use the `clippy` crate
+help: consider importing the `clippy` crate
+   |
+LL + extern crate clippy;
+   |
 
 error[E0432]: unresolved import `clippy`
   --> $DIR/tool-mod-child.rs:1:5
    |
 LL | use clippy::a;
-   |     ^^^^^^ maybe a missing crate `clippy`?
+   |     ^^^^^^ you might be missing crate `clippy`
    |
-   = help: consider adding `extern crate clippy` to use the `clippy` crate
+help: consider importing the `clippy` crate
+   |
+LL + extern crate clippy;
+   |
 
-error[E0433]: failed to resolve: maybe a missing crate `rustdoc`?
+error[E0433]: failed to resolve: you might be missing crate `rustdoc`
   --> $DIR/tool-mod-child.rs:5:5
    |
 LL | use rustdoc::a::b;
-   |     ^^^^^^^ maybe a missing crate `rustdoc`?
+   |     ^^^^^^^ you might be missing crate `rustdoc`
    |
-   = help: consider adding `extern crate rustdoc` to use the `rustdoc` crate
+help: consider importing the `rustdoc` crate
+   |
+LL + extern crate rustdoc;
+   |
 
 error[E0432]: unresolved import `rustdoc`
   --> $DIR/tool-mod-child.rs:4:5
    |
 LL | use rustdoc::a;
-   |     ^^^^^^^ maybe a missing crate `rustdoc`?
+   |     ^^^^^^^ you might be missing crate `rustdoc`
    |
-   = help: consider adding `extern crate rustdoc` to use the `rustdoc` crate
+help: consider importing the `rustdoc` crate
+   |
+LL + extern crate rustdoc;
+   |
 
 error: aborting due to 4 previous errors
 

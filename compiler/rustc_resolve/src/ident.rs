@@ -1,29 +1,28 @@
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::bug;
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
-use rustc_span::sym;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use tracing::{debug, instrument};
-
-use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
-use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
-use crate::macros::{sub_namespace_match, MacroRulesScope};
-use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
-use crate::{BindingKey, Used};
-use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
-use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
-
 use Determinacy::*;
 use Namespace::*;
+
+use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
+use crate::imports::Import;
+use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
+use crate::macros::{sub_namespace_match, MacroRulesScope};
+use crate::{
+    errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, Determinacy, Finalize,
+    ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot, NameBinding,
+    NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope,
+    ScopeSet, Segment, ToNameBinding, Used, Weak,
+};
 
 type Visibility = ty::Visibility<LocalDefId>;
 
@@ -353,6 +352,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 parent_scope,
                 finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                 ignore_binding,
+                None,
             );
             if let Ok(binding) = item {
                 // The ident resolves to an item.
@@ -366,6 +366,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             finalize,
             finalize.is_some(),
             ignore_binding,
+            None,
         )
         .ok()
         .map(LexicalScopeBinding::Item)
@@ -385,6 +386,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         finalize: Option<Finalize>,
         force: bool,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
             #[derive(Clone, Copy)]
@@ -457,6 +459,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 parent_scope,
                                 true,
                                 force,
+                                ignore_import,
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {
@@ -498,6 +501,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             parent_scope,
                             finalize,
                             ignore_binding,
+                            ignore_import,
                         );
                         match binding {
                             Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
@@ -520,6 +524,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             !matches!(scope_set, ScopeSet::Late(..)),
                             finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                             ignore_binding,
+                            ignore_import,
                         );
                         match binding {
                             Ok(binding) => {
@@ -587,6 +592,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 parent_scope,
                                 None,
                                 ignore_binding,
+                                ignore_import,
                             ) {
                                 if matches!(use_prelude, UsePrelude::Yes)
                                     || this.is_builtin_macro(binding.res())
@@ -740,8 +746,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, None)
+        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, None, ignore_import)
             .map_err(|(determinacy, _)| determinacy)
     }
 
@@ -754,9 +761,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, finalize, ignore_binding)
-            .map_err(|(determinacy, _)| determinacy)
+        self.resolve_ident_in_module_ext(
+            module,
+            ident,
+            ns,
+            parent_scope,
+            finalize,
+            ignore_binding,
+            ignore_import,
+        )
+        .map_err(|(determinacy, _)| determinacy)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -768,6 +784,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<NameBinding<'a>, (Determinacy, Weak)> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
@@ -794,6 +811,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             false,
             finalize,
             ignore_binding,
+            ignore_import,
         )
     }
 
@@ -806,6 +824,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
             module,
@@ -815,6 +834,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             false,
             finalize,
             ignore_binding,
+            ignore_import,
         )
         .map_err(|(determinacy, _)| determinacy)
     }
@@ -833,6 +853,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation and checking.
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> Result<NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
@@ -845,6 +866,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     finalize,
                     finalize.is_some(),
                     ignore_binding,
+                    ignore_import,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -881,6 +903,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     finalize,
                     finalize.is_some(),
                     ignore_binding,
+                    ignore_import,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -964,10 +987,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
         for single_import in &resolution.single_imports {
-            let Some(import_vis) = single_import.vis.get() else {
+            if ignore_import == Some(*single_import) {
+                // This branch handles a cycle in single imports.
+                //
+                // For example:
+                // ```
+                // use a::b;
+                // use b as a;
+                // ```
+                // 1. Record `use a::b` as the `ignore_import` and attempt to locate `a` in the
+                //    current module.
+                // 2. Encounter the import `use b as a`, which is a `single_import` for `a`,
+                //    and try to find `b` in the current module.
+                // 3. Re-encounter the `use a::b` import since it's a `single_import` of `b`.
+                //    This leads to entering this branch.
                 continue;
-            };
-            if !self.is_accessible_from(import_vis, parent_scope.module) {
+            }
+            if !self.is_accessible_from(single_import.vis, parent_scope.module) {
                 continue;
             }
             if let Some(ignored) = ignore_binding
@@ -979,19 +1015,37 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // named imports.
                 continue;
             }
+
             let Some(module) = single_import.imported_module.get() else {
                 return Err((Undetermined, Weak::No));
             };
-            let ImportKind::Single { source: ident, .. } = single_import.kind else {
+            let ImportKind::Single { source, target, target_bindings, .. } = &single_import.kind
+            else {
                 unreachable!();
             };
+            if source != target {
+                // This branch allows the binding to be defined or updated later if the target name
+                // can hide the source.
+                if target_bindings.iter().all(|binding| binding.get().is_none()) {
+                    // None of the target bindings are available, so we can't determine
+                    // if this binding is correct or not.
+                    // See more details in #124840
+                    return Err((Undetermined, Weak::No));
+                } else if target_bindings[ns].get().is_none() && binding.is_some() {
+                    // `binding.is_some()` avoids the condition where the binding
+                    // truly doesn't exist in this namespace and should return `Err(Determined)`.
+                    return Err((Undetermined, Weak::No));
+                }
+            }
+
             match self.resolve_ident_in_module(
                 module,
-                ident,
+                *source,
                 ns,
                 &single_import.parent_scope,
                 None,
                 ignore_binding,
+                ignore_import,
             ) {
                 Err(Determined) => continue,
                 Ok(binding)
@@ -1040,10 +1094,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         for glob_import in module.globs.borrow().iter() {
-            let Some(import_vis) = glob_import.vis.get() else {
+            if ignore_import == Some(*glob_import) {
                 continue;
-            };
-            if !self.is_accessible_from(import_vis, parent_scope.module) {
+            }
+            if !self.is_accessible_from(glob_import.vis, parent_scope.module) {
                 continue;
             }
             let module = match glob_import.imported_module.get() {
@@ -1070,6 +1124,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 adjusted_parent_scope,
                 None,
                 ignore_binding,
+                ignore_import,
             );
 
             match result {
@@ -1146,21 +1201,41 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if let Some(span) = finalize {
                                 let (span, resolution_error) = match item {
                                     None if rib_ident.as_str() == "self" => (span, LowercaseSelf),
-                                    None => (
-                                        rib_ident.span,
-                                        AttemptToUseNonConstantValueInConstant(
-                                            original_rib_ident_def,
-                                            "const",
-                                            "let",
-                                        ),
-                                    ),
+                                    None => {
+                                        // If we have a `let name = expr;`, we have the span for
+                                        // `name` and use that to see if it is followed by a type
+                                        // specifier. If not, then we know we need to suggest
+                                        // `const name: Ty = expr;`. This is a heuristic, it will
+                                        // break down in the presence of macros.
+                                        let sm = self.tcx.sess.source_map();
+                                        let type_span = match sm.span_look_ahead(
+                                            original_rib_ident_def.span,
+                                            ":",
+                                            None,
+                                        ) {
+                                            None => {
+                                                Some(original_rib_ident_def.span.shrink_to_hi())
+                                            }
+                                            Some(_) => None,
+                                        };
+                                        (
+                                            rib_ident.span,
+                                            AttemptToUseNonConstantValueInConstant {
+                                                ident: original_rib_ident_def,
+                                                suggestion: "const",
+                                                current: "let",
+                                                type_span,
+                                            },
+                                        )
+                                    }
                                     Some((ident, kind)) => (
                                         span,
-                                        AttemptToUseNonConstantValueInConstant(
+                                        AttemptToUseNonConstantValueInConstant {
                                             ident,
-                                            "let",
-                                            kind.as_str(),
-                                        ),
+                                            suggestion: "let",
+                                            current: kind.as_str(),
+                                            type_span: None,
+                                        },
                                     ),
                                 };
                                 self.report_error(span, resolution_error);
@@ -1362,8 +1437,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
+        ignore_import: Option<Import<'a>>,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, None, None, None)
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, None, None, None, ignore_import)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1374,8 +1450,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None, ignore_binding)
+        self.resolve_path_with_ribs(
+            path,
+            opt_ns,
+            parent_scope,
+            finalize,
+            None,
+            ignore_binding,
+            ignore_import,
+        )
     }
 
     pub(crate) fn resolve_path_with_ribs(
@@ -1386,6 +1471,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         finalize: Option<Finalize>,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         ignore_binding: Option<NameBinding<'a>>,
+        ignore_import: Option<Import<'a>>,
     ) -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
@@ -1488,10 +1574,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     parent_scope,
                     finalize,
                     ignore_binding,
+                    ignore_import,
                 )
             } else if let Some(ribs) = ribs
                 && let Some(TypeNS | ValueNS) = opt_ns
             {
+                assert!(ignore_import.is_none());
                 match self.resolve_ident_in_lexical_scope(
                     ident,
                     ns,
@@ -1520,6 +1608,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     finalize,
                     finalize.is_some(),
                     ignore_binding,
+                    ignore_import,
                 )
             };
 
@@ -1594,6 +1683,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             parent_scope,
                             ribs,
                             ignore_binding,
+                            ignore_import,
                             module,
                             segment_idx,
                             ident,

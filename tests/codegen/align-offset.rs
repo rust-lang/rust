@@ -53,7 +53,6 @@ pub fn align_offset_word_slice(slice: &[Align4]) -> usize {
     slice.as_ptr().align_offset(32)
 }
 
-
 // CHECK-LABEL: @align_offset_word_ptr(ptr{{.+}}%ptr
 #[no_mangle]
 pub fn align_offset_word_ptr(ptr: *const Align4) -> usize {

@@ -1,19 +1,17 @@
-use std::{
-    env,
-    ffi::OsString,
-    fs::{self, File},
-    io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-    sync::OnceLock,
-};
+use std::env;
+use std::ffi::OsString;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader, BufWriter, ErrorKind, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
-use build_helper::stage0_parser::VersionMetadata;
 use xz2::bufread::XzDecoder;
 
-use crate::utils::helpers::{check_run, exe, move_file, program_out_of_date};
-use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
+use crate::core::config::BUILDER_CONFIG_FILENAME;
+use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
 use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -22,6 +20,24 @@ static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
     #[allow(deprecated)]
     config.try_run(cmd)
+}
+
+fn extract_curl_version(out: &[u8]) -> semver::Version {
+    let out = String::from_utf8_lossy(out);
+    // The output should look like this: "curl <major>.<minor>.<patch> ..."
+    out.lines()
+        .next()
+        .and_then(|line| line.split(" ").nth(1))
+        .and_then(|version| semver::Version::parse(version).ok())
+        .unwrap_or(semver::Version::new(1, 0, 0))
+}
+
+fn curl_version() -> semver::Version {
+    let mut curl = Command::new("curl");
+    curl.arg("-V");
+    let Ok(out) = curl.output() else { return semver::Version::new(1, 0, 0) };
+    let out = out.stdout;
+    extract_curl_version(&out)
 }
 
 /// Generic helpers that are useful anywhere in bootstrap.
@@ -57,8 +73,8 @@ impl Config {
     /// Runs a command, printing out nice contextual information if it fails.
     /// Returns false if do not execute at all, otherwise returns its
     /// `status.success()`.
-    pub(crate) fn check_run(&self, cmd: &mut Command) -> bool {
-        if self.dry_run() {
+    pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
+        if self.dry_run() && !cmd.run_always {
             return true;
         }
         self.verbose(|| println!("running: {cmd:?}"));
@@ -174,15 +190,10 @@ impl Config {
         }
 
         let mut patchelf = Command::new(nix_deps_dir.join("bin/patchelf"));
-        let rpath_entries = {
-            // ORIGIN is a relative default, all binary and dynamic libraries we ship
-            // appear to have this (even when `../lib` is redundant).
-            // NOTE: there are only two paths here, delimited by a `:`
-            let mut entries = OsString::from("$ORIGIN/../lib:");
-            entries.push(t!(fs::canonicalize(nix_deps_dir)).join("lib"));
-            entries
-        };
-        patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
+        patchelf.args(&[
+            OsString::from("--add-rpath"),
+            OsString::from(t!(fs::canonicalize(nix_deps_dir)).join("lib")),
+        ]);
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
@@ -217,7 +228,7 @@ impl Config {
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
-        let mut curl = Command::new("curl");
+        let mut curl = command("curl");
         curl.args([
             "-y",
             "30",
@@ -227,6 +238,8 @@ impl Config {
             "30", // timeout if cannot connect within 30 seconds
             "-o",
             tempfile.to_str().unwrap(),
+            "--continue-at",
+            "-",
             "--retry",
             "3",
             "-SRf",
@@ -236,6 +249,10 @@ impl Config {
             curl.arg("-s");
         } else {
             curl.arg("--progress-bar");
+        }
+        // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
+        if curl_version() >= semver::Version::new(7, 71, 0) {
+            curl.arg("--retry-all-errors");
         }
         curl.arg(url);
         if !self.check_run(&mut curl) {
@@ -281,11 +298,12 @@ impl Config {
 
         let mut tar = tar::Archive::new(decompressor);
 
+        let is_ci_rustc = dst.ends_with("ci-rustc");
+
         // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
         // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
         // Cache the entries when we extract it so we only have to read it once.
-        let mut recorded_entries =
-            if dst.ends_with("ci-rustc") { recorded_entries(dst, pattern) } else { None };
+        let mut recorded_entries = if is_ci_rustc { recorded_entries(dst, pattern) } else { None };
 
         for member in t!(tar.entries()) {
             let mut member = t!(member);
@@ -295,10 +313,12 @@ impl Config {
                 continue;
             }
             let mut short_path = t!(original_path.strip_prefix(directory_prefix));
-            if !short_path.starts_with(pattern) {
+            let is_builder_config = short_path.to_str() == Some(BUILDER_CONFIG_FILENAME);
+
+            if !(short_path.starts_with(pattern) || (is_ci_rustc && is_builder_config)) {
                 continue;
             }
-            short_path = t!(short_path.strip_prefix(pattern));
+            short_path = short_path.strip_prefix(pattern).unwrap_or(short_path);
             let dst_path = dst.join(short_path);
             self.verbose(|| {
                 println!("extracting {} to {}", original_path.display(), dst.display())
@@ -387,7 +407,7 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let bin_root = self.out.join(host.triple).join("stage0");
+        let bin_root = self.out.join(host).join("stage0");
         let clippy_stamp = bin_root.join(".clippy-stamp");
         let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
@@ -405,14 +425,22 @@ impl Config {
         cargo_clippy
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
+        None
+    }
+
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
     /// reuse target directories or artifacts
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
+        use build_helper::stage0_parser::VersionMetadata;
+
         let VersionMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
 
         let host = self.build;
-        let bin_root = self.out.join(host.triple).join("rustfmt");
+        let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
@@ -487,6 +515,10 @@ impl Config {
         );
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn download_beta_toolchain(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn download_beta_toolchain(&self) {
         self.verbose(|| println!("downloading stage0 beta artifacts"));
 
@@ -588,7 +620,7 @@ impl Config {
             t!(fs::create_dir_all(&cache_dir));
         }
 
-        let bin_root = self.out.join(self.build.triple).join(destination);
+        let bin_root = self.out.join(self.build).join(destination);
         let tarball = cache_dir.join(&filename);
         let (base_url, url, should_verify) = match mode {
             DownloadSource::CI => {
@@ -612,8 +644,6 @@ impl Config {
         };
 
         // For the beta compiler, put special effort into ensuring the checksums are valid.
-        // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
-        // this on each and every nightly ...
         let checksum = if should_verify {
             let error = format!(
                 "src/stage0 doesn't contain a checksum for {url}. \
@@ -665,7 +695,13 @@ download-rustc = false
         self.unpack(&tarball, &bin_root, prefix);
     }
 
+    #[cfg(feature = "bootstrap-self-test")]
+    pub(crate) fn maybe_download_ci_llvm(&self) {}
+
+    #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
+        use crate::core::build_steps::llvm::detect_llvm_sha;
+
         if !self.llvm_from_ci {
             return;
         }
@@ -689,9 +725,11 @@ download-rustc = false
             // time `rustc_llvm` build script ran. However, the timestamps of the
             // files in the tarball are in the past, so it doesn't trigger a
             // rebuild.
-            let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
+            let now = std::time::SystemTime::now();
+            let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
+
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            t!(filetime::set_file_times(llvm_config, now, now));
+            t!(crate::utils::helpers::set_file_times(llvm_config, file_times));
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");
@@ -707,6 +745,7 @@ download-rustc = false
         }
     }
 
+    #[cfg(not(feature = "bootstrap-self-test"))]
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 

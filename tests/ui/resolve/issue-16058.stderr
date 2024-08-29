@@ -4,7 +4,7 @@ error[E0574]: expected struct, variant or union type, found enum `Result`
 LL |         Result {
    |         ^^^^^^ not a struct, variant or union type
    |
-help: consider importing one of these items instead
+help: consider importing one of these type aliases instead
    |
 LL + use std::fmt::Result;
    |

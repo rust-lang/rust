@@ -19,17 +19,17 @@ error[E0412]: cannot find type `x` in this scope
 LL |     <x as Fn(&usize)>::call
    |      ^ not found in this scope
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-83693.rs:9:18
    |
 LL |         <Self as Fn(&TestResult)>::call
-   |                  ^^^^^^^^^^^^^^^ associated type not allowed here
+   |                  ^^^^^^^^^^^^^^^ associated item constraint not allowed here
 
-error[E0229]: associated type bindings are not allowed here
+error[E0229]: associated item constraints are not allowed here
   --> $DIR/issue-83693.rs:16:11
    |
 LL |     <x as Fn(&usize)>::call
-   |           ^^^^^^^^^^ associated type not allowed here
+   |           ^^^^^^^^^^ associated item constraint not allowed here
 
 error: aborting due to 5 previous errors
 

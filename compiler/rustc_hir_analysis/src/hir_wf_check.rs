@@ -1,4 +1,3 @@
-use crate::collect::ItemCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ForeignItem, ForeignItemKind};
@@ -10,7 +9,9 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
-pub fn provide(providers: &mut Providers) {
+use crate::collect::ItemCtxt;
+
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
 }
 
@@ -67,7 +68,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             let infcx = self.tcx.infer_ctxt().build();
-            let ocx = ObligationCtxt::new(&infcx);
+            let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
             let tcx_ty = self.icx.lower_ty(ty);
             // This visitor can walk into binders, resulting in the `tcx_ty` to
@@ -158,7 +159,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             },
             hir::Node::Field(field) => vec![field.ty],
             hir::Node::ForeignItem(ForeignItem {
-                kind: ForeignItemKind::Static(ty, _), ..
+                kind: ForeignItemKind::Static(ty, _, _), ..
             }) => vec![*ty],
             hir::Node::GenericParam(hir::GenericParam {
                 kind: hir::GenericParamKind::Type { default: Some(ty), .. },

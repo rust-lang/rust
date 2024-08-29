@@ -3,7 +3,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 
 use clippy_utils::comparisons::{normalize_comparison, Rel};
-use clippy_utils::consts::{constant, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_isize_or_usize;
@@ -121,7 +121,7 @@ fn detect_absurd_comparison<'tcx>(
 fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<ExtremeExpr<'tcx>> {
     let ty = cx.typeck_results().expr_ty(expr);
 
-    let cv = constant(cx, cx.typeck_results(), expr)?;
+    let cv = ConstEvalCtxt::new(cx).eval(expr)?;
 
     let which = match (ty.kind(), cv) {
         (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => ExtremeType::Minimum,

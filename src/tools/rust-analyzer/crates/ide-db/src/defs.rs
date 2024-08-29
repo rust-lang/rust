@@ -17,7 +17,7 @@ use hir::{
 use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, AstNode},
-    match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
+    match_ast, SyntaxKind, SyntaxNode, SyntaxToken, ToSmolStr,
 };
 
 use crate::documentation::{Documentation, HasDocs};
@@ -144,7 +144,7 @@ impl Definition {
             Definition::Local(it) => it.name(db),
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
-            Definition::BuiltinLifetime(StaticLifetime) => hir::known::STATIC_LIFETIME,
+            Definition::BuiltinLifetime(it) => it.name(),
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
             Definition::DeriveHelper(it) => it.name(db),
@@ -192,13 +192,13 @@ impl Definition {
                 let AttributeTemplate { word, list, name_value_str } = it.template(db)?;
                 let mut docs = "Valid forms are:".to_owned();
                 if word {
-                    format_to!(docs, "\n - #\\[{}]", name);
+                    format_to!(docs, "\n - #\\[{}]", name.display(db));
                 }
                 if let Some(list) = list {
-                    format_to!(docs, "\n - #\\[{}({})]", name, list);
+                    format_to!(docs, "\n - #\\[{}({})]", name.display(db), list);
                 }
                 if let Some(name_value_str) = name_value_str {
-                    format_to!(docs, "\n - #\\[{} = {}]", name, name_value_str);
+                    format_to!(docs, "\n - #\\[{} = {}]", name.display(db), name_value_str);
                 }
                 Some(Documentation::new(docs.replace('*', "\\*")))
             }
@@ -256,8 +256,8 @@ impl Definition {
             Definition::GenericParam(it) => it.display(db).to_string(),
             Definition::Label(it) => it.name(db).display(db).to_string(),
             Definition::ExternCrateDecl(it) => it.display(db).to_string(),
-            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db)),
-            Definition::ToolModule(it) => it.name(db).to_string(),
+            Definition::BuiltinAttr(it) => format!("#[{}]", it.name(db).display(db)),
+            Definition::ToolModule(it) => it.name(db).display(db).to_string(),
             Definition::DeriveHelper(it) => format!("derive_helper {}", it.name(db).display(db)),
         }
     }
@@ -413,7 +413,7 @@ impl NameClass {
     }
 
     pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameClass::classify").entered();
+        let _p = tracing::info_span!("NameClass::classify").entered();
 
         let parent = name.syntax().parent()?;
 
@@ -505,8 +505,7 @@ impl NameClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameClass::classify_lifetime", ?lifetime)
-            .entered();
+        let _p = tracing::info_span!("NameClass::classify_lifetime", ?lifetime).entered();
         let parent = lifetime.syntax().parent()?;
 
         if let Some(it) = ast::LifetimeParam::cast(parent.clone()) {
@@ -597,8 +596,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         name_ref: &ast::NameRef,
     ) -> Option<NameRefClass> {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "NameRefClass::classify", ?name_ref).entered();
+        let _p = tracing::info_span!("NameRefClass::classify", ?name_ref).entered();
 
         let parent = name_ref.syntax().parent()?;
 
@@ -672,7 +670,7 @@ impl NameRefClass {
                                 hir::AssocItem::TypeAlias(it) => Some(it),
                                 _ => None,
                             })
-                            .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
+                            .find(|alias| alias.name(sema.db).display_no_db().to_smolstr() == name_ref.text().as_str())
                         {
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
                         }
@@ -697,8 +695,7 @@ impl NameRefClass {
         sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameRefClass> {
-        let _p = tracing::span!(tracing::Level::INFO, "NameRefClass::classify_lifetime", ?lifetime)
-            .entered();
+        let _p = tracing::info_span!("NameRefClass::classify_lifetime", ?lifetime).entered();
         if lifetime.text() == "'static" {
             return Some(NameRefClass::Definition(Definition::BuiltinLifetime(StaticLifetime)));
         }

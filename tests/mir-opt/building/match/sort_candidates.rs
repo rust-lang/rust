@@ -5,9 +5,9 @@ fn constant_eq(s: &str, b: bool) -> u32 {
     // Check that we only test "a" once
 
     // CHECK-LABEL: fn constant_eq(
-    // CHECK: bb0: {
-    // CHECK: [[a:_.*]] = const "a";
-    // CHECK-NOT: {{_.*}} = const "a";
+    // CHECK-NOT: const "a"
+    // CHECK: {{_[0-9]+}} = const "a" as &[u8] (Transmute);
+    // CHECK-NOT: const "a"
     match (s, b) {
         ("a", _) if true => 1,
         ("b", true) => 2,
@@ -25,7 +25,7 @@ fn disjoint_ranges(x: i32, b: bool) -> u32 {
     // CHECK-LABEL: fn disjoint_ranges(
     // CHECK: debug b => _2;
     // CHECK: bb0: {
-    // CHECK: switchInt(_2) -> [0: [[jump:bb.*]], otherwise: {{bb.*}}];
+    // CHECK: switchInt(copy _2) -> [0: [[jump:bb.*]], otherwise: {{bb.*}}];
     // CHECK: [[jump]]: {
     // CHECK-NEXT: _0 = const 3_u32;
     // CHECK-NEXT: return;

@@ -19,7 +19,6 @@
 #![feature(never_type)]
 #![feature(pattern_types)]
 #![feature(prelude_import)]
-#![feature(raw_ref_op)]
 #![feature(specialization)]
 #![feature(trace_macros)]
 #![feature(trait_alias)]
@@ -473,8 +472,8 @@ mod items {
 
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        extern "C++" {}
-        extern {}
+        unsafe extern "C++" {}
+        unsafe extern {}
     }
 
     /// ItemKind::GlobalAsm

@@ -119,7 +119,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75930-derive-cfg.rs:50:29: 50:40 (#0),
             },
         ],
-        span: $DIR/issue-75930-derive-cfg.rs:50:1: 50:2 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:50:2: 50:42 (#0),
     },
     Punct {
         ch: '#',
@@ -1395,7 +1395,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75930-derive-cfg.rs:50:29: 50:40 (#0),
             },
         ],
-        span: $DIR/issue-75930-derive-cfg.rs:50:1: 50:2 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:50:2: 50:42 (#0),
     },
     Punct {
         ch: '#',
@@ -1571,7 +1571,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                                 span: $DIR/issue-75930-derive-cfg.rs:63:41: 63:51 (#0),
                                             },
                                         ],
-                                        span: $DIR/issue-75930-derive-cfg.rs:63:13: 63:14 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:63:14: 63:53 (#0),
                                     },
                                     Ident {
                                         ident: "false",

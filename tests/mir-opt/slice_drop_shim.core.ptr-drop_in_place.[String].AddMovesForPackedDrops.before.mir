@@ -28,7 +28,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
     }
 
     bb4 (cleanup): {
-        _5 = Eq(_3, _2);
+        _5 = Eq(copy _3, copy _2);
         switchInt(move _5) -> [0: bb3, otherwise: bb2];
     }
 
@@ -39,7 +39,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
     }
 
     bb6: {
-        _7 = Eq(_3, _2);
+        _7 = Eq(copy _3, copy _2);
         switchInt(move _7) -> [0: bb5, otherwise: bb1];
     }
 

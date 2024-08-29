@@ -215,7 +215,7 @@ help: move the declaration `x` here
    |
 LL ~     
 LL |     // types that should be considered insignificant
- ...
+...
 LL |     let y = Box::new(4);
 LL ~     let x = SignificantDrop;
    |

@@ -79,6 +79,11 @@ def get(base, url, path, checksums, verbose=False):
                 eprint("removing", temp_path)
             os.unlink(temp_path)
 
+def curl_version():
+    m = re.match(bytes("^curl ([0-9]+)\\.([0-9]+)", "utf8"), require(["curl", "-V"]))
+    if m is None:
+        return (0, 0)
+    return (int(m[1]), int(m[2]))
 
 def download(path, url, probably_big, verbose):
     for _ in range(4):
@@ -107,11 +112,15 @@ def _download(path, url, probably_big, verbose, exception):
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32())
-        run(["curl", option,
+        extra_flags = []
+        if curl_version() > (7, 70):
+            extra_flags = [ "--retry-all-errors" ]
+        run(["curl", option] + extra_flags + [
             "-L", # Follow redirect.
             "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
             "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
             "-o", path,
+            "--continue-at", "-",
             "--retry", "3", "-SRf", url],
             verbose=verbose,
             exception=True, # Will raise RuntimeError on failure
@@ -533,9 +542,13 @@ class RustBuild(object):
         bin_root = self.bin_root()
 
         key = self.stage0_compiler.date
-        if self.rustc().startswith(bin_root) and \
-                (not os.path.exists(self.rustc()) or
-                 self.program_out_of_date(self.rustc_stamp(), key)):
+        is_outdated = self.program_out_of_date(self.rustc_stamp(), key)
+        need_rustc = self.rustc().startswith(bin_root) and (not os.path.exists(self.rustc()) \
+            or is_outdated)
+        need_cargo = self.cargo().startswith(bin_root) and (not os.path.exists(self.cargo()) \
+            or is_outdated)
+
+        if need_rustc or need_cargo:
             if os.path.exists(bin_root):
                 # HACK: On Windows, we can't delete rust-analyzer-proc-macro-server while it's
                 # running. Kill it.
@@ -556,7 +569,6 @@ class RustBuild(object):
                     run_powershell([script])
                 shutil.rmtree(bin_root)
 
-            key = self.stage0_compiler.date
             cache_dst = (self.get_toml('bootstrap-cache-path', 'build') or
                 os.path.join(self.build_dir, "cache"))
 
@@ -568,11 +580,16 @@ class RustBuild(object):
 
             toolchain_suffix = "{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
 
-            tarballs_to_download = [
-                ("rust-std-{}".format(toolchain_suffix), "rust-std-{}".format(self.build)),
-                ("rustc-{}".format(toolchain_suffix), "rustc"),
-                ("cargo-{}".format(toolchain_suffix), "cargo"),
-            ]
+            tarballs_to_download = []
+
+            if need_rustc:
+                tarballs_to_download.append(
+                    ("rust-std-{}".format(toolchain_suffix), "rust-std-{}".format(self.build))
+                )
+                tarballs_to_download.append(("rustc-{}".format(toolchain_suffix), "rustc"))
+
+            if need_cargo:
+                tarballs_to_download.append(("cargo-{}".format(toolchain_suffix), "cargo"))
 
             tarballs_download_info = [
                 DownloadInfo(
@@ -599,6 +616,12 @@ class RustBuild(object):
                 print('Choosing a pool size of', pool_size, 'for the unpacking of the tarballs')
             p = Pool(pool_size)
             try:
+                # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
+                # remove this once the issue is closed.
+                bootstrap_out = self.bootstrap_out()
+                if os.path.exists(bootstrap_out):
+                    shutil.rmtree(bootstrap_out)
+
                 p.map(unpack_component, tarballs_download_info)
             finally:
                 p.close()
@@ -611,6 +634,9 @@ class RustBuild(object):
                 self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
                 self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
                 lib_dir = "{}/lib".format(bin_root)
+                rustlib_bin_dir = "{}/rustlib/{}/bin".format(lib_dir, self.build)
+                self.fix_bin_or_dylib("{}/rust-lld".format(rustlib_bin_dir))
+                self.fix_bin_or_dylib("{}/gcc-ld/ld.lld".format(rustlib_bin_dir))
                 for lib in os.listdir(lib_dir):
                     # .so is not necessarily the suffix, there can be version numbers afterwards.
                     if ".so" in lib:
@@ -725,12 +751,9 @@ class RustBuild(object):
 
         patchelf = "{}/bin/patchelf".format(nix_deps_dir)
         rpath_entries = [
-            # Relative default, all binary and dynamic libraries we ship
-            # appear to have this (even when `../lib` is redundant).
-            "$ORIGIN/../lib",
             os.path.join(os.path.realpath(nix_deps_dir), "lib")
         ]
-        patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
+        patchelf_args = ["--add-rpath", ":".join(rpath_entries)]
         if ".so" not in fname:
             # Finally, set the correct .interp for binaries
             with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
@@ -864,6 +887,16 @@ class RustBuild(object):
             return line[start + 1:end]
         return None
 
+    def bootstrap_out(self):
+        """Return the path of the bootstrap build artifacts
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap")
+        True
+        """
+        return os.path.join(self.build_dir, "bootstrap")
+
     def bootstrap_binary(self):
         """Return the path of the bootstrap binary
 
@@ -873,7 +906,7 @@ class RustBuild(object):
         ... "debug", "bootstrap")
         True
         """
-        return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
+        return os.path.join(self.bootstrap_out(), "debug", "bootstrap")
 
     def build_bootstrap(self):
         """Build bootstrap"""
@@ -1022,7 +1055,7 @@ class RustBuild(object):
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
-        # keep this consistent with the equivalent check in rustbuild:
+        # keep this consistent with the equivalent check in bootstrap:
         # https://github.com/rust-lang/rust/blob/a8a33cf27166d3eabaffc58ed3799e054af3b0c6/src/bootstrap/lib.rs#L399-L405
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:

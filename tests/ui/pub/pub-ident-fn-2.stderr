@@ -1,10 +1,10 @@
 error: missing `fn` for function definition
-  --> $DIR/pub-ident-fn-2.rs:3:4
+  --> $DIR/pub-ident-fn-2.rs:3:1
    |
 LL | pub foo(_s: usize) { bar() }
-   |    ^
+   | ^^^^^^^
    |
-help: add `fn` here to parse `foo` as a public function
+help: add `fn` here to parse `foo` as a function
    |
 LL | pub fn foo(_s: usize) { bar() }
    |     ++

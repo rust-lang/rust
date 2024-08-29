@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
@@ -45,10 +45,10 @@ declare_clippy_lint! {
     /// `String`, but only if [`string_add_assign`](#string_add_assign) does *not*
     /// match.
     ///
-    /// ### Why is this bad?
-    /// It's not bad in and of itself. However, this particular
+    /// ### Why restrict this?
+    /// This particular
     /// `Add` implementation is asymmetric (the other operand need not be `String`,
-    /// but `x` does), while addition as mathematically defined is symmetric, also
+    /// but `x` does), while addition as mathematically defined is symmetric, and
     /// the `String::push_str(_)` function is a perfectly good replacement.
     /// Therefore, some dislike it and wish not to have it in their code.
     ///
@@ -123,7 +123,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for slice operations on strings
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// UTF-8 characters span multiple bytes, and it is easy to inadvertently confuse character
     /// counts and string indices. This may lead to panics, and should warrant some test cases
     /// containing wide UTF-8 characters. This lint is most useful in code that should avoid
@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 }
             },
             ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
+                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
                 if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,
@@ -364,10 +364,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// This lint checks for `.to_string()` method calls on values of type `&str`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `to_string` method is also used on other types to convert them to a string.
-    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be better
-    /// expressed with `.to_owned()`.
+    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be
+    /// more specifically expressed with `.to_owned()`.
     ///
     /// ### Example
     /// ```no_run
@@ -399,13 +399,16 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && let ty::Ref(_, ty, ..) = ty.kind()
             && ty.is_str()
         {
-            span_lint_and_help(
+            span_lint_and_then(
                 cx,
                 STR_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `&str`",
-                None,
-                "consider using `.to_owned()`",
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let snippet = snippet_with_applicability(cx, self_arg.span, "..", &mut applicability);
+                    diag.span_suggestion(expr.span, "try", format!("{snippet}.to_owned()"), applicability);
+                },
             );
         }
     }
@@ -415,9 +418,10 @@ declare_clippy_lint! {
     /// ### What it does
     /// This lint checks for `.to_string()` method calls on values of type `String`.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `to_string` method is also used on other types to convert them to a string.
-    /// When called on a `String` it only clones the `String`, which can be better expressed with `.clone()`.
+    /// When called on a `String` it only clones the `String`, which can be more specifically
+    /// expressed with `.clone()`.
     ///
     /// ### Example
     /// ```no_run
@@ -450,13 +454,15 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
             && let ty = cx.typeck_results().expr_ty(self_arg)
             && is_type_lang_item(cx, ty, LangItem::String)
         {
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 STRING_TO_STRING,
                 expr.span,
                 "`to_string()` called on a `String`",
-                None,
-                "consider using `.clone()`",
+                |diag| {
+                    diag.help("consider using `.clone()`");
+                },
             );
         }
     }

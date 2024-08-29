@@ -1,10 +1,9 @@
 use std::cell::OnceCell;
 
-use crate::{errors, FnCtxt, TypeckRootCtxt};
-use rustc_data_structures::{
-    graph::{self, iterate::DepthFirstSearch, vec_graph::VecGraph},
-    unord::{UnordBag, UnordMap, UnordSet},
-};
+use rustc_data_structures::graph::iterate::DepthFirstSearch;
+use rustc_data_structures::graph::vec_graph::VecGraph;
+use rustc_data_structures::graph::{self};
+use rustc_data_structures::unord::{UnordBag, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::HirId;
@@ -12,18 +11,21 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
-use rustc_span::DUMMY_SP;
-use rustc_span::{def_id::LocalDefId, Span};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
+
+use crate::{errors, FnCtxt, TypeckRootCtxt};
 
 #[derive(Copy, Clone)]
-pub enum DivergingFallbackBehavior {
+pub(crate) enum DivergingFallbackBehavior {
     /// Always fallback to `()` (aka "always spontaneous decay")
-    FallbackToUnit,
+    ToUnit,
     /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
-    FallbackToNiko,
+    ContextDependent,
     /// Always fallback to `!` (which should be equivalent to never falling back + not making
     /// never-to-any coercions unless necessary)
-    FallbackToNever,
+    ToNever,
     /// Don't fallback at all
     NoFallback,
 }
@@ -174,7 +176,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
 
-        let span = self.infcx.type_var_origin(ty).map(|origin| origin.span).unwrap_or(DUMMY_SP);
+        let span = ty.ty_vid().map_or(DUMMY_SP, |vid| self.infcx.type_var_origin(vid).span);
         self.demand_eqtype(span, ty, fallback);
         self.fallback_has_occurred.set(true);
         true
@@ -344,6 +346,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // `!`.
         let mut diverging_fallback = UnordMap::with_capacity(diverging_vids.len());
         let unsafe_infer_vars = OnceCell::new();
+
+        self.lint_obligations_broken_by_never_type_fallback_change(behavior, &diverging_vids);
+
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
             let root_vid = self.root_var(diverging_vid);
@@ -373,13 +378,12 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 diverging_fallback.insert(diverging_ty, ty);
             };
 
-            use DivergingFallbackBehavior::*;
             match behavior {
-                FallbackToUnit => {
+                DivergingFallbackBehavior::ToUnit => {
                     debug!("fallback to () - legacy: {:?}", diverging_vid);
                     fallback_to(self.tcx.types.unit);
                 }
-                FallbackToNiko => {
+                DivergingFallbackBehavior::ContextDependent => {
                     if found_infer_var_info.self_in_trait && found_infer_var_info.output {
                         // This case falls back to () to ensure that the code pattern in
                         // tests/ui/never_type/fallback-closure-ret.rs continues to
@@ -415,14 +419,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         fallback_to(self.tcx.types.never);
                     }
                 }
-                FallbackToNever => {
+                DivergingFallbackBehavior::ToNever => {
                     debug!(
                         "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",
                         diverging_vid
                     );
                     fallback_to(self.tcx.types.never);
                 }
-                NoFallback => {
+                DivergingFallbackBehavior::NoFallback => {
                     debug!(
                         "no fallback - `rustc_never_type_mode = \"no_fallback\"`: {:?}",
                         diverging_vid
@@ -466,6 +470,56 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     UnsafeUseReason::Deref => errors::NeverTypeFallbackFlowingIntoUnsafe::Deref,
                 },
             );
+        }
+    }
+
+    fn lint_obligations_broken_by_never_type_fallback_change(
+        &self,
+        behavior: DivergingFallbackBehavior,
+        diverging_vids: &[ty::TyVid],
+    ) {
+        let DivergingFallbackBehavior::ToUnit = behavior else { return };
+
+        // Fallback happens if and only if there are diverging variables
+        if diverging_vids.is_empty() {
+            return;
+        }
+
+        // Returns errors which happen if fallback is set to `fallback`
+        let remaining_errors_if_fallback_to = |fallback| {
+            self.probe(|_| {
+                let obligations = self.fulfillment_cx.borrow().pending_obligations();
+                let ocx = ObligationCtxt::new_with_diagnostics(&self.infcx);
+                ocx.register_obligations(obligations.iter().cloned());
+
+                for &diverging_vid in diverging_vids {
+                    let diverging_ty = Ty::new_var(self.tcx, diverging_vid);
+
+                    ocx.eq(&ObligationCause::dummy(), self.param_env, diverging_ty, fallback)
+                        .expect("expected diverging var to be unconstrained");
+                }
+
+                ocx.select_where_possible()
+            })
+        };
+
+        // If we have no errors with `fallback = ()`, but *do* have errors with `fallback = !`,
+        // then this code will be broken by the never type fallback change.qba
+        let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
+        if unit_errors.is_empty()
+            && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
+            && let [ref mut never_error, ..] = never_errors.as_mut_slice()
+        {
+            self.adjust_fulfillment_error_for_expr_obligation(never_error);
+            self.tcx.emit_node_span_lint(
+                lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
+                self.tcx.local_def_id_to_hir_id(self.body_id),
+                self.tcx.def_span(self.body_id),
+                errors::DependencyOnUnitNeverTypeFallback {
+                    obligation_span: never_error.obligation.cause.span,
+                    obligation: never_error.obligation.predicate,
+                },
+            )
         }
     }
 
@@ -544,9 +598,8 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
     root_ctxt: &'a TypeckRootCtxt<'tcx>,
     body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body_id =
+    let body =
         root_ctxt.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
-    let body = root_ctxt.tcx.hir().body(body_id);
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx, 'r> {

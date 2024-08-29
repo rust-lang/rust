@@ -1,13 +1,11 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
-use std::{
-    borrow::Cow,
-    num::{ParseFloatError, ParseIntError},
-};
+use std::{borrow::Cow, num::ParseIntError};
 
 use rustc_lexer::unescape::{
     unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
 };
+use stdx::always;
 
 use crate::{
     ast::{self, AstToken},
@@ -181,25 +179,25 @@ pub trait IsString: AstToken {
         self.quote_offsets().map(|it| it.quotes.1)
     }
     fn escaped_char_ranges(&self, cb: &mut dyn FnMut(TextRange, Result<char, EscapeError>)) {
-        let text_range_no_quotes = match self.text_range_between_quotes() {
-            Some(it) => it,
-            None => return,
-        };
+        let Some(text_range_no_quotes) = self.text_range_between_quotes() else { return };
 
         let start = self.syntax().text_range().start();
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
         unescape_unicode(text, Self::MODE, &mut |range, unescaped_char| {
-            let text_range =
-                TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
-            cb(text_range + offset, unescaped_char);
+            if let Some((s, e)) = range.start.try_into().ok().zip(range.end.try_into().ok()) {
+                cb(TextRange::new(s, e) + offset, unescaped_char);
+            }
         });
     }
     fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
         let contents_range = self.text_range_between_quotes()?;
-        assert!(TextRange::up_to(contents_range.len()).contains_range(range));
-        Some(range + contents_range.start())
+        if always!(TextRange::up_to(contents_range.len()).contains_range(range)) {
+            Some(range + contents_range.start())
+        } else {
+            None
+        }
     }
 }
 
@@ -392,9 +390,9 @@ impl ast::IntNumber {
         }
     }
 
-    pub fn float_value(&self) -> Option<f64> {
+    pub fn value_string(&self) -> String {
         let (_, text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f64>().ok()
+        text.replace('_', "")
     }
 }
 
@@ -431,14 +429,9 @@ impl ast::FloatNumber {
         }
     }
 
-    pub fn value(&self) -> Result<f64, ParseFloatError> {
+    pub fn value_string(&self) -> String {
         let (text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f64>()
-    }
-
-    pub fn value_f32(&self) -> Result<f32, ParseFloatError> {
-        let (text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f32>()
+        text.replace('_', "")
     }
 }
 
@@ -496,6 +489,8 @@ impl ast::Byte {
 
 #[cfg(test)]
 mod tests {
+    use rustc_apfloat::ieee::Quad as f128;
+
     use crate::ast::{self, make, FloatNumber, IntNumber};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
@@ -506,12 +501,17 @@ mod tests {
         assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
     }
 
-    fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
+    // FIXME(#17451) Use `expected: f128` once `f128` is stabilised.
+    fn check_float_value(lit: &str, expected: &str) {
+        let expected = Some(expected.parse::<f128>().unwrap());
         assert_eq!(
-            FloatNumber { syntax: make::tokens::literal(lit) }.value().ok(),
-            expected.into()
+            FloatNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f128>().ok(),
+            expected
         );
-        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.float_value(), expected.into());
+        assert_eq!(
+            IntNumber { syntax: make::tokens::literal(lit) }.value_string().parse::<f128>().ok(),
+            expected
+        );
     }
 
     fn check_int_value(lit: &str, expected: impl Into<Option<u128>>) {
@@ -524,9 +524,9 @@ mod tests {
         check_float_suffix("123f32", "f32");
         check_float_suffix("123.0e", None);
         check_float_suffix("123.0e4", None);
-        check_float_suffix("123.0ef32", "f32");
+        check_float_suffix("123.0ef16", "f16");
         check_float_suffix("123.0E4f32", "f32");
-        check_float_suffix("1_2_3.0_f32", "f32");
+        check_float_suffix("1_2_3.0_f128", "f128");
     }
 
     #[test]
@@ -593,8 +593,10 @@ bcde", b"abcde",
 
     #[test]
     fn test_value_underscores() {
-        check_float_value("1.234567891011121_f64", 1.234567891011121_f64);
-        check_float_value("1__0.__0__f32", 10.0);
+        check_float_value("1.3_4665449586950493453___6_f128", "1.346654495869504934536");
+        check_float_value("1.234567891011121_f64", "1.234567891011121");
+        check_float_value("1__0.__0__f32", "10.0");
+        check_float_value("3._0_f16", "3.0");
         check_int_value("0b__1_0_", 2);
         check_int_value("1_1_1_1_1_1", 111111);
     }

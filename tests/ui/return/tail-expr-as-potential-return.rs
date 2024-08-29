@@ -1,3 +1,5 @@
+//@ edition:2018
+
 // > Suggest returning tail expressions that match return type
 // >
 // > Some newcomers are confused by the behavior of tail expressions,
@@ -8,24 +10,24 @@
 //
 // This test was amended to also serve as a regression test for #92308, where
 // this suggestion would not trigger with async functions.
-//
-//@ edition:2018
 
 fn main() {
 }
 
 fn foo(x: bool) -> Result<f64, i32> {
     if x {
-        Err(42) //~ ERROR mismatched types
-                //| HELP you might have meant to return this value
+        Err(42)
+        //~^ ERROR mismatched types
+        //~| HELP you might have meant to return this value
     }
     Ok(42.0)
 }
 
 async fn bar(x: bool) -> Result<f64, i32> {
     if x {
-        Err(42) //~ ERROR mismatched types
-                //| HELP you might have meant to return this value
+        Err(42)
+        //~^ ERROR mismatched types
+        //~| HELP you might have meant to return this value
     }
     Ok(42.0)
 }
@@ -40,8 +42,26 @@ impl<T> Identity for T {
 
 async fn foo2() -> i32 {
     if true {
-        1i32 //~ ERROR mismatched types
-            //| HELP you might have meant to return this value
+        1i32
+        //~^ ERROR mismatched types
+        //~| HELP you might have meant to return this value
     }
     0
+}
+
+struct Receiver;
+impl Receiver {
+    fn generic<T>(self) -> Option<T> {
+        None
+    }
+}
+fn method() -> Option<i32> {
+    if true {
+        Receiver.generic();
+        //~^ ERROR type annotations needed
+        //~| HELP consider specifying the generic argument
+        //~| HELP you might have meant to return this to infer its type parameters
+    }
+
+    None
 }

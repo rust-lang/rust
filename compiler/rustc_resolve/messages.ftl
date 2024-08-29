@@ -11,6 +11,10 @@ resolve_added_macro_use =
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
+resolve_anonymous_livetime_non_gat_report_error =
+    in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+    .label = this lifetime must come from the implemented type
+
 resolve_arguments_macro_use_not_allowed = arguments to `macro_use` are not allowed here
 
 resolve_associated_const_with_similar_name_exists =
@@ -228,11 +232,17 @@ resolve_is_private =
 resolve_item_was_behind_feature =
     the item is gated behind the `{$feature}` feature
 
+resolve_item_was_cfg_out = the item is gated here
+
 resolve_items_in_traits_are_not_importable =
     items in traits are not importable
 
 resolve_label_with_similar_name_reachable =
     a label with a similar name is reachable
+
+resolve_lending_iterator_report_error =
+    associated type `Iterator::Item` is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+    .note = you can't create an `Iterator` that borrows each `Item` from itself, but you can instead create a new type that borrows your existing type and implement `Iterator` for that new type
 
 resolve_lifetime_param_in_enum_discriminant =
     lifetime parameters may not be used in enum discriminant values

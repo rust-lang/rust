@@ -1,8 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::ConstParamTy;
-use crate::marker::StructuralPartialEq;
+use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -49,8 +48,15 @@ macro_rules! tuple_impls {
 
         maybe_tuple_doc! {
             $($T)+ @
-            #[unstable(feature = "structural_match", issue = "31434")]
-            impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
+            #[unstable(feature = "adt_const_params", issue = "95174")]
+            impl<$($T: ConstParamTy_),+> ConstParamTy_ for ($($T,)+)
+            {}
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "unsized_const_params", issue = "95174")]
+            impl<$($T: UnsizedConstParamTy),+> UnsizedConstParamTy for ($($T,)+)
             {}
         }
 
@@ -116,23 +122,29 @@ macro_rules! tuple_impls {
             }
         }
 
-        #[stable(feature = "array_tuple_conv", since = "1.71.0")]
-        impl<T> From<[T; ${count($T)}]> for ($(${ignore($T)} T,)+) {
-            #[inline]
-            #[allow(non_snake_case)]
-            fn from(array: [T; ${count($T)}]) -> Self {
-                let [$($T,)+] = array;
-                ($($T,)+)
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+            impl<T> From<[T; ${count($T)}]> for ($(${ignore($T)} T,)+) {
+                #[inline]
+                #[allow(non_snake_case)]
+                fn from(array: [T; ${count($T)}]) -> Self {
+                    let [$($T,)+] = array;
+                    ($($T,)+)
+                }
             }
         }
 
-        #[stable(feature = "array_tuple_conv", since = "1.71.0")]
-        impl<T> From<($(${ignore($T)} T,)+)> for [T; ${count($T)}] {
-            #[inline]
-            #[allow(non_snake_case)]
-            fn from(tuple: ($(${ignore($T)} T,)+)) -> Self {
-                let ($($T,)+) = tuple;
-                [$($T,)+]
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[stable(feature = "array_tuple_conv", since = "1.71.0")]
+            impl<T> From<($(${ignore($T)} T,)+)> for [T; ${count($T)}] {
+                #[inline]
+                #[allow(non_snake_case)]
+                fn from(tuple: ($(${ignore($T)} T,)+)) -> Self {
+                    let ($($T,)+) = tuple;
+                    [$($T,)+]
+                }
             }
         }
     }
@@ -142,7 +154,7 @@ macro_rules! tuple_impls {
 // Otherwise, it hides the docs entirely.
 macro_rules! maybe_tuple_doc {
     ($a:ident @ #[$meta:meta] $item:item) => {
-        #[doc(fake_variadic)]
+        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
         #[doc = "This trait is implemented for tuples up to twelve items long."]
         #[$meta]
         $item

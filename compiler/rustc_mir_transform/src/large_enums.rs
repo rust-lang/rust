@@ -214,7 +214,7 @@ impl EnumSizeOpt {
                         source_info,
                         kind: StatementKind::Assign(Box::new((
                             dst,
-                            Rvalue::AddressOf(Mutability::Mut, *lhs),
+                            Rvalue::RawPtr(Mutability::Mut, *lhs),
                         ))),
                     };
 
@@ -238,7 +238,7 @@ impl EnumSizeOpt {
                         source_info,
                         kind: StatementKind::Assign(Box::new((
                             src,
-                            Rvalue::AddressOf(Mutability::Not, *rhs),
+                            Rvalue::RawPtr(Mutability::Not, *rhs),
                         ))),
                     };
 

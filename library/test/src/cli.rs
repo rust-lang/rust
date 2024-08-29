@@ -1,11 +1,11 @@
 //! Module converting command-line arguments into test configuration.
 
 use std::env;
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
 use super::time::TestTimeOptions;
-use std::io::{self, IsTerminal};
 
 #[derive(Debug)]
 pub struct TestOpts {
@@ -200,7 +200,7 @@ Test Attributes:
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
     let opts = optgroups();
-    let binary = args.get(0).map(|c| &**c).unwrap_or("...");
+    let binary = args.first().map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
         Ok(m) => m,

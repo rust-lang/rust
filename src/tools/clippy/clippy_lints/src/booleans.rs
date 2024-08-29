@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::eq_expr_value;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -134,28 +134,30 @@ fn check_inverted_bool_in_condition(
 
     let suggestion = match (left.kind, right.kind) {
         (ExprKind::Unary(UnOp::Not, left_sub), ExprKind::Unary(UnOp::Not, right_sub)) => {
-            let Some(left) = snippet_opt(cx, left_sub.span) else {
+            let Some(left) = left_sub.span.get_source_text(cx) else {
                 return;
             };
-            let Some(right) = snippet_opt(cx, right_sub.span) else {
+            let Some(right) = right_sub.span.get_source_text(cx) else {
                 return;
             };
             let Some(op) = bin_op_eq_str(op) else { return };
             format!("{left} {op} {right}")
         },
         (ExprKind::Unary(UnOp::Not, left_sub), _) => {
-            let Some(left) = snippet_opt(cx, left_sub.span) else {
+            let Some(left) = left_sub.span.get_source_text(cx) else {
                 return;
             };
-            let Some(right) = snippet_opt(cx, right.span) else {
+            let Some(right) = right.span.get_source_text(cx) else {
                 return;
             };
             let Some(op) = inverted_bin_op_eq_str(op) else { return };
             format!("{left} {op} {right}")
         },
         (_, ExprKind::Unary(UnOp::Not, right_sub)) => {
-            let Some(left) = snippet_opt(cx, left.span) else { return };
-            let Some(right) = snippet_opt(cx, right_sub.span) else {
+            let Some(left) = left.span.get_source_text(cx) else {
+                return;
+            };
+            let Some(right) = right_sub.span.get_source_text(cx) else {
                 return;
             };
             let Some(op) = inverted_bin_op_eq_str(op) else { return };
@@ -172,6 +174,25 @@ fn check_inverted_bool_in_condition(
         suggestion,
         Applicability::MachineApplicable,
     );
+}
+
+fn check_simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
+        && !expr.span.from_expansion()
+        && !inner.span.from_expansion()
+        && let Some(suggestion) = simplify_not(cx, inner)
+        && cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+    {
+        span_lint_and_sugg(
+            cx,
+            NONMINIMAL_BOOL,
+            expr.span,
+            "this boolean expression can be simplified",
+            "try",
+            suggestion,
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 struct NonminimalBoolVisitor<'a, 'tcx> {
@@ -232,6 +253,11 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => (),
             }
         }
+
+        if self.cx.typeck_results().expr_ty(e).is_never() {
+            return Err("contains never type".to_owned());
+        }
+
         for (n, expr) in self.terminals.iter().enumerate() {
             if eq_expr_value(self.cx, e, expr) {
                 #[expect(clippy::cast_possible_truncation)]
@@ -289,8 +315,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                         self.output.push_str(&str);
                     } else {
                         self.output.push('!');
-                        let snip = snippet_opt(self.cx, terminal.span)?;
-                        self.output.push_str(&snip);
+                        self.output.push_str(&terminal.span.get_source_text(self.cx)?);
                     }
                 },
                 True | False | Not(_) => {
@@ -321,8 +346,12 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }
             },
             &Term(n) => {
-                let snip = snippet_opt(self.cx, self.terminals[n as usize].span.source_callsite())?;
-                self.output.push_str(&snip);
+                self.output.push_str(
+                    &self.terminals[n as usize]
+                        .span
+                        .source_callsite()
+                        .get_source_text(self.cx)?,
+                );
             },
         }
         Some(())
@@ -346,8 +375,8 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                 _ => None,
             }
             .and_then(|op| {
-                let lhs_snippet = snippet_opt(cx, lhs.span)?;
-                let rhs_snippet = snippet_opt(cx, rhs.span)?;
+                let lhs_snippet = lhs.span.get_source_text(cx)?;
+                let rhs_snippet = rhs.span.get_source_text(cx)?;
 
                 if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')')) {
                     if let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node) {
@@ -375,7 +404,7 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
                     let path: &str = path.ident.name.as_str();
                     a == path
                 })
-                .and_then(|(_, neg_method)| Some(format!("{}.{neg_method}()", snippet_opt(cx, receiver.span)?)))
+                .and_then(|(_, neg_method)| Some(format!("{}.{neg_method}()", receiver.span.get_source_text(cx)?)))
         },
         _ => None,
     }
@@ -453,14 +482,12 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             cx: self.cx,
         };
         if let Ok(expr) = h2q.run(e) {
-            if h2q.terminals.len() > 8 {
-                // QMC has exponentially slow behavior as the number of terminals increases
-                // 8 is reasonable, it takes approximately 0.2 seconds.
-                // See #825
+            let stats = terminal_stats(&expr);
+            if stats.ops > 7 {
+                // QMC has exponentially slow behavior as the number of ops increases.
+                // See #825, #13206
                 return;
             }
-
-            let stats = terminal_stats(&expr);
             let mut simplified = expr.simplify();
             for simple in Bool::Not(Box::new(expr)).simplify() {
                 match simple {
@@ -542,8 +569,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
             };
             if improvements.is_empty() {
-                let mut visitor = NotSimplificationVisitor { cx: self.cx };
-                visitor.visit_expr(e);
+                check_simplify_not(self.cx, e);
             } else {
                 nonminimal_bool_lint(
                     improvements
@@ -585,31 +611,4 @@ fn implements_ord(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     cx.tcx
         .get_diagnostic_item(sym::Ord)
         .map_or(false, |id| implements_trait(cx, ty, id, &[]))
-}
-
-struct NotSimplificationVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
-            && !expr.span.from_expansion()
-            && !inner.span.from_expansion()
-            && let Some(suggestion) = simplify_not(self.cx, inner)
-            && self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
-        {
-            span_lint_and_sugg(
-                self.cx,
-                NONMINIMAL_BOOL,
-                expr.span,
-                "this boolean expression can be simplified",
-                "try",
-                suggestion,
-                Applicability::MachineApplicable,
-            );
-        }
-
-        walk_expr(self, expr);
-    }
 }

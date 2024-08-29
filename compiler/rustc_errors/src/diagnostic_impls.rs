@@ -1,12 +1,11 @@
-use crate::diagnostic::DiagLocation;
-use crate::{fluent_generated as fluent, Subdiagnostic};
-use crate::{
-    Diag, DiagArgValue, DiagCtxt, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
-    SubdiagMessageOp,
-};
-use rustc_ast as ast;
+use std::backtrace::Backtrace;
+use std::borrow::Cow;
+use std::fmt;
+use std::num::ParseIntError;
+use std::path::{Path, PathBuf};
+use std::process::ExitStatus;
+
 use rustc_ast_pretty::pprust;
-use rustc_hir as hir;
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
@@ -14,12 +13,13 @@ use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use rustc_type_ir::{ClosureKind, FloatTy};
-use std::backtrace::Backtrace;
-use std::borrow::Cow;
-use std::fmt;
-use std::num::ParseIntError;
-use std::path::{Path, PathBuf};
-use std::process::ExitStatus;
+use {rustc_ast as ast, rustc_hir as hir};
+
+use crate::diagnostic::DiagLocation;
+use crate::{
+    fluent_generated as fluent, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee,
+    ErrCode, IntoDiagArg, Level, SubdiagMessageOp, Subdiagnostic,
+};
 
 pub struct DiagArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
@@ -66,6 +66,7 @@ macro_rules! into_diag_arg_for_number {
             impl IntoDiagArg for $ty {
                 fn into_diag_arg(self) -> DiagArgValue {
                     // Convert to a string if it won't fit into `Number`.
+                    #[allow(irrefutable_let_patterns)]
                     if let Ok(n) = TryInto::<i32>::try_into(self) {
                         DiagArgValue::Number(n)
                     } else {
@@ -298,15 +299,21 @@ impl IntoDiagArg for hir::def::Namespace {
 }
 
 #[derive(Clone)]
-pub struct DiagSymbolList(Vec<Symbol>);
+pub struct DiagSymbolList<S = Symbol>(Vec<S>);
 
-impl From<Vec<Symbol>> for DiagSymbolList {
-    fn from(v: Vec<Symbol>) -> Self {
+impl<S> From<Vec<S>> for DiagSymbolList<S> {
+    fn from(v: Vec<S>) -> Self {
         DiagSymbolList(v)
     }
 }
 
-impl IntoDiagArg for DiagSymbolList {
+impl<S> FromIterator<S> for DiagSymbolList<S> {
+    fn from_iter<T: IntoIterator<Item = S>>(iter: T) -> Self {
+        iter.into_iter().collect::<Vec<_>>().into()
+    }
+}
+
+impl<S: std::fmt::Display> IntoDiagArg for DiagSymbolList<S> {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::StrListSepByAnd(
             self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),
@@ -315,7 +322,7 @@ impl IntoDiagArg for DiagSymbolList {
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetDataLayoutErrors<'_> {
-    fn into_diag(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 Diag::new(dcx, level, fluent::errors_target_invalid_address_space)

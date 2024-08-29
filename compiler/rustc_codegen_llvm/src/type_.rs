@@ -1,12 +1,6 @@
-pub use crate::llvm::Type;
+use std::{fmt, ptr};
 
-use crate::abi::{FnAbiLlvmExt, LlvmType};
-use crate::common;
-use crate::context::CodegenCx;
-use crate::llvm;
-use crate::llvm::{Bool, False, True};
-use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
+use libc::{c_char, c_uint};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -16,10 +10,13 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
-use std::fmt;
-use std::ptr;
-
-use libc::{c_char, c_uint};
+use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::context::CodegenCx;
+pub(crate) use crate::llvm::Type;
+use crate::llvm::{Bool, False, True};
+use crate::type_of::LayoutLlvmExt;
+use crate::value::Value;
+use crate::{common, llvm};
 
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {
@@ -127,13 +124,24 @@ impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
-}
 
-impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn type_i1(&self) -> &'ll Type {
+    pub(crate) fn type_i1(&self) -> &'ll Type {
         unsafe { llvm::LLVMInt1TypeInContext(self.llcx) }
     }
 
+    pub(crate) fn type_struct(&self, els: &[&'ll Type], packed: bool) -> &'ll Type {
+        unsafe {
+            llvm::LLVMStructTypeInContext(
+                self.llcx,
+                els.as_ptr(),
+                els.len() as c_uint,
+                packed as Bool,
+            )
+        }
+    }
+}
+
+impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_i8(&self) -> &'ll Type {
         unsafe { llvm::LLVMInt8TypeInContext(self.llcx) }
     }
@@ -176,17 +184,6 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn type_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, False) }
-    }
-
-    fn type_struct(&self, els: &[&'ll Type], packed: bool) -> &'ll Type {
-        unsafe {
-            llvm::LLVMStructTypeInContext(
-                self.llcx,
-                els.as_ptr(),
-                els.len() as c_uint,
-                packed as Bool,
-            )
-        }
     }
 
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {

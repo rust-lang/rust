@@ -2,6 +2,7 @@
 
 use base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase};
 use hir::{Crate, Enum, Function, Macro, Module, ScopeDef, Semantics, Trait};
+use syntax::ToSmolStr;
 
 use crate::RootDatabase;
 
@@ -15,7 +16,7 @@ use crate::RootDatabase;
 /// you'd want to include minicore (see `test_utils::MiniCore`) declaration at
 /// the start of your tests:
 ///
-/// ```
+/// ```text
 /// //- minicore: iterator, ord, derive
 /// ```
 pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Crate);
@@ -106,6 +107,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:marker:Copy")
     }
 
+    pub fn core_future_Future(&self) -> Option<Trait> {
+        self.find_trait("core:future:Future")
+    }
+
     pub fn core_macros_builtin_derive(&self) -> Option<Macro> {
         self.find_macro("core:macros:builtin:derive")
     }
@@ -194,15 +199,18 @@ impl FamousDefs<'_, '_> {
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;
-                if name.to_smol_str() == segment {
+                if name.display_no_db().to_smolstr() == segment {
                     Some(child)
                 } else {
                     None
                 }
             })?;
         }
-        let def =
-            module.scope(db, None).into_iter().find(|(name, _def)| name.to_smol_str() == trait_)?.1;
+        let def = module
+            .scope(db, None)
+            .into_iter()
+            .find(|(name, _def)| name.display_no_db().to_smolstr() == trait_)?
+            .1;
         Some(def)
     }
 }

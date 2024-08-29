@@ -5,9 +5,9 @@
 
 extern crate issue_53689;
 
-// @has foo/trait.MyTrait.html
-// @!hasraw - 'MyStruct'
-// @count - '//*[h3="impl<T> MyTrait for T"]' 1
+//@ has foo/trait.MyTrait.html
+//@ !hasraw - 'MyStruct'
+//@ count - '//*[h3="impl<T> MyTrait for T"]' 1
 pub trait MyTrait {}
 
 impl<T> MyTrait for T {}

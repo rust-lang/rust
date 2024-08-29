@@ -1,14 +1,17 @@
-use crate::errors;
+use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{self as ast, attr, ptr::P, token, AttrStyle, Attribute, MetaItem};
+use rustc_ast::{self as ast, attr, token, AttrStyle, Attribute, MetaItem};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
 use rustc_feature::AttributeTemplate;
-use rustc_lint_defs::{builtin::DUPLICATE_MACRO_ATTRIBUTES, BuiltinLintDiag};
+use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::{parser, validate_attr};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
+
+use crate::errors;
 
 pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, name: Symbol) {
     // All the built-in macro attributes are "words" at the moment.
@@ -19,6 +22,7 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
         AttrStyle::Outer,
         name,
         template,
+        true,
     );
 }
 
@@ -27,8 +31,7 @@ pub(crate) fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaI
 pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable, name: Symbol) {
     let attrs: Option<&[Attribute]> = match item {
         Annotatable::Item(item) => Some(&item.attrs),
-        Annotatable::TraitItem(item) => Some(&item.attrs),
-        Annotatable::ImplItem(item) => Some(&item.attrs),
+        Annotatable::AssocItem(item, _) => Some(&item.attrs),
         Annotatable::ForeignItem(item) => Some(&item.attrs),
         Annotatable::Expr(expr) => Some(&expr.attrs),
         Annotatable::Arm(arm) => Some(&arm.attrs),

@@ -16,7 +16,7 @@ alloc = { path = "../alloc" }
 core = { path = "../core" }
 unwind = { path = "../unwind" }
 compiler_builtins = "0.1.0"
-cfg-if = "1.0"
+cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2", default-features = false }

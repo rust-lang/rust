@@ -1,0 +1,51 @@
+- // MIR for `slice_from_raw_parts_as_ptr` before GVN
++ // MIR for `slice_from_raw_parts_as_ptr` after GVN
+  
+  fn slice_from_raw_parts_as_ptr(_1: *const u16, _2: usize) -> (*const u16, *const f32) {
+      debug x => _1;
+      debug n => _2;
+      let mut _0: (*const u16, *const f32);
+      let _3: *const [u16];
+      let mut _4: *const u16;
+      let mut _5: usize;
+      let mut _6: *const u16;
+      let mut _7: *const [u16];
+      let mut _8: *const f32;
+      let mut _9: *const [u16];
+      scope 1 {
+          debug ptr => _3;
+      }
+  
+      bb0: {
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+          StorageLive(_5);
+          _5 = copy _2;
+-         _3 = *const [u16] from (move _4, move _5);
++         _3 = *const [u16] from (copy _1, copy _2);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _3;
+-         _6 = move _7 as *const u16 (PtrToPtr);
++         _6 = copy _1;
+          StorageDead(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = copy _3;
+-         _8 = move _9 as *const f32 (PtrToPtr);
++         _8 = copy _1 as *const f32 (PtrToPtr);
+          StorageDead(_9);
+-         _0 = (move _6, move _8);
++         _0 = (copy _1, move _8);
+          StorageDead(_8);
+          StorageDead(_6);
+-         StorageDead(_3);
++         nop;
+          return;
+      }
+  }
+  

@@ -1,3 +1,4 @@
+<!-- homu-ignore:start -->
 <!--
 If this PR is related to an unstable feature or an otherwise tracked effort,
 please link to the relevant tracking issue here. If you don't know of a related
@@ -8,3 +9,4 @@ a specific user to review your work, you can assign it to them by using
 
     r​? <reviewer name>
 -->
+<!-- homu-ignore:end -->

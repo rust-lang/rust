@@ -1,4 +1,4 @@
-use crate::spec::{cvs, RelroLevel, TargetOptions};
+use crate::spec::{cvs, Cc, LinkerFlavor, Lld, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
@@ -12,6 +12,8 @@ pub fn opts() -> TargetOptions {
         has_thread_local: true,
         crt_static_default: true,
         crt_static_respected: true,
+        crt_static_allows_dylibs: true,
+        late_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-lgcc"]),
         ..Default::default()
     }
 }

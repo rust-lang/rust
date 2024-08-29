@@ -18,6 +18,26 @@ pub struct LowerCtx<'a> {
     span_map: OnceCell<SpanMap>,
     ast_id_map: OnceCell<Arc<AstIdMap>>,
     impl_trait_bounds: RefCell<Vec<Vec<Interned<TypeBound>>>>,
+    // Prevent nested impl traits like `impl Foo<impl Bar>`.
+    outer_impl_trait: RefCell<bool>,
+}
+
+pub(crate) struct OuterImplTraitGuard<'a> {
+    ctx: &'a LowerCtx<'a>,
+    old: bool,
+}
+
+impl<'a> OuterImplTraitGuard<'a> {
+    fn new(ctx: &'a LowerCtx<'a>, impl_trait: bool) -> Self {
+        let old = ctx.outer_impl_trait.replace(impl_trait);
+        Self { ctx, old }
+    }
+}
+
+impl<'a> Drop for OuterImplTraitGuard<'a> {
+    fn drop(&mut self) {
+        self.ctx.outer_impl_trait.replace(self.old);
+    }
 }
 
 impl<'a> LowerCtx<'a> {
@@ -28,6 +48,7 @@ impl<'a> LowerCtx<'a> {
             span_map: OnceCell::new(),
             ast_id_map: OnceCell::new(),
             impl_trait_bounds: RefCell::new(Vec::new()),
+            outer_impl_trait: RefCell::default(),
         }
     }
 
@@ -42,6 +63,7 @@ impl<'a> LowerCtx<'a> {
             span_map,
             ast_id_map: OnceCell::new(),
             impl_trait_bounds: RefCell::new(Vec::new()),
+            outer_impl_trait: RefCell::default(),
         }
     }
 
@@ -66,5 +88,13 @@ impl<'a> LowerCtx<'a> {
 
     pub fn take_impl_traits_bounds(&self) -> Vec<Vec<Interned<TypeBound>>> {
         self.impl_trait_bounds.take()
+    }
+
+    pub(crate) fn outer_impl_trait(&self) -> bool {
+        *self.outer_impl_trait.borrow()
+    }
+
+    pub(crate) fn outer_impl_trait_scope(&'a self, impl_trait: bool) -> OuterImplTraitGuard<'a> {
+        OuterImplTraitGuard::new(self, impl_trait)
     }
 }

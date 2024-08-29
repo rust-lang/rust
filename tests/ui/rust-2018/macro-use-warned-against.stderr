@@ -1,9 +1,10 @@
-warning: deprecated `#[macro_use]` attribute used to import macros should be replaced at use sites with a `use` item to import the macro instead
+warning: applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
   --> $DIR/macro-use-warned-against.rs:7:1
    |
 LL | #[macro_use]
    | ^^^^^^^^^^^^
    |
+   = help: remove it and import macros at use sites with a `use` item instead
 note: the lint level is defined here
   --> $DIR/macro-use-warned-against.rs:5:9
    |

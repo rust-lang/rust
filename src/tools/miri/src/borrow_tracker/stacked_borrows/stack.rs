@@ -2,6 +2,7 @@
 use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashSet;
+use tracing::trace;
 
 use crate::borrow_tracker::{
     stacked_borrows::{Item, Permission},
@@ -135,8 +136,16 @@ impl StackCache {
 
 impl PartialEq for Stack {
     fn eq(&self, other: &Self) -> bool {
-        // All the semantics of Stack are in self.borrows, everything else is caching
-        self.borrows == other.borrows
+        let Stack {
+            borrows,
+            unknown_bottom,
+            // The cache is ignored for comparison.
+            #[cfg(feature = "stack-cache")]
+                cache: _,
+            #[cfg(feature = "stack-cache")]
+                unique_range: _,
+        } = self;
+        *borrows == other.borrows && *unknown_bottom == other.unknown_bottom
     }
 }
 

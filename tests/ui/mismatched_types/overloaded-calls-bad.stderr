@@ -16,7 +16,7 @@ error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:35:15
    |
 LL |     let ans = s();
-   |               ^-- an argument of type `isize` is missing
+   |               ^-- argument #1 of type `isize` is missing
    |
 note: implementation defined here
   --> $DIR/overloaded-calls-bad.rs:10:1
@@ -32,7 +32,7 @@ error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:37:15
    |
 LL |     let ans = s("burma", "shave");
-   |               ^ -------  ------- unexpected argument of type `&'static str`
+   |               ^ -------  ------- unexpected argument #2 of type `&'static str`
    |                 |
    |                 expected `isize`, found `&str`
    |

@@ -4,7 +4,7 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 extern crate core;
 
@@ -16,8 +16,7 @@ pub trait Trait1 {
 pub struct Type1;
 
 impl Trait1 for Type1 {
-    fn foo(&self) {
-    }
+    fn foo(&self) {}
 }
 
 pub trait Trait2<T> {
@@ -27,8 +26,7 @@ pub trait Trait2<T> {
 pub struct Type2;
 
 impl Trait2<i32> for Type2 {
-    fn bar(&self) {
-    }
+    fn bar(&self) {}
 }
 
 pub trait Trait3<T> {
@@ -38,8 +36,7 @@ pub trait Trait3<T> {
 pub struct Type3;
 
 impl<T, U> Trait3<U> for T {
-    fn baz(&self, _: &U) {
-    }
+    fn baz(&self, _: &U) {}
 }
 
 pub trait Trait4<'a, T> {
@@ -64,71 +61,88 @@ pub trait Trait5<T, const N: usize> {
 pub struct Type5;
 
 impl<T, U, const N: usize> Trait5<U, N> for T {
-    fn quux(&self, _: &[U; N]) {
-    }
+    fn quux(&self, _: &[U; N]) {}
 }
 
-pub fn foo1(_: &dyn Send) { }
+pub fn foo1(_: &dyn Send) {}
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo2(_: &dyn Send, _: &dyn Send) { }
+pub fn foo2(_: &dyn Send, _: &dyn Send) {}
 // CHECK: define{{.*}}4foo2{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo3(_: &dyn Send, _: &dyn Send, _: &dyn Send) { }
+pub fn foo3(_: &dyn Send, _: &dyn Send, _: &dyn Send) {}
 // CHECK: define{{.*}}4foo3{{.*}}!type ![[TYPE3:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo4(_: &(dyn Send + Sync)) { }
+pub fn foo4(_: &(dyn Send + Sync)) {}
 // CHECK: define{{.*}}4foo4{{.*}}!type ![[TYPE4:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo5(_: &(dyn Send + Sync), _: &(dyn Sync + Send)) { }
+pub fn foo5(_: &(dyn Send + Sync), _: &(dyn Sync + Send)) {}
 // CHECK: define{{.*}}4foo5{{.*}}!type ![[TYPE5:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo6(_: &(dyn Send + Sync), _: &(dyn Sync + Send), _: &(dyn Sync + Send)) { }
+pub fn foo6(_: &(dyn Send + Sync), _: &(dyn Sync + Send), _: &(dyn Sync + Send)) {}
 // CHECK: define{{.*}}4foo6{{.*}}!type ![[TYPE6:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo7(_: &(dyn Trait1 + Send)) { }
+pub fn foo7(_: &(dyn Trait1 + Send)) {}
 // CHECK: define{{.*}}4foo7{{.*}}!type ![[TYPE7:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo8(_: &(dyn Trait1 + Send), _: &(dyn Trait1 + Send)) { }
+pub fn foo8(_: &(dyn Trait1 + Send), _: &(dyn Trait1 + Send)) {}
 // CHECK: define{{.*}}4foo8{{.*}}!type ![[TYPE8:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo9(_: &(dyn Trait1 + Send), _: &(dyn Trait1 + Send), _: &(dyn Trait1 + Send)) { }
+pub fn foo9(_: &(dyn Trait1 + Send), _: &(dyn Trait1 + Send), _: &(dyn Trait1 + Send)) {}
 // CHECK: define{{.*}}4foo9{{.*}}!type ![[TYPE9:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo10(_: &(dyn Trait1 + Send + Sync)) { }
+pub fn foo10(_: &(dyn Trait1 + Send + Sync)) {}
 // CHECK: define{{.*}}5foo10{{.*}}!type ![[TYPE10:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo11(_: &(dyn Trait1 + Send + Sync), _: &(dyn Trait1 + Sync + Send)) { }
+pub fn foo11(_: &(dyn Trait1 + Send + Sync), _: &(dyn Trait1 + Sync + Send)) {}
 // CHECK: define{{.*}}5foo11{{.*}}!type ![[TYPE11:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo12(_: &(dyn Trait1 + Send + Sync),
-             _: &(dyn Trait1 + Sync + Send),
-             _: &(dyn Trait1 + Sync + Send)) { }
+pub fn foo12(
+    _: &(dyn Trait1 + Send + Sync),
+    _: &(dyn Trait1 + Sync + Send),
+    _: &(dyn Trait1 + Sync + Send),
+) {
+}
 // CHECK: define{{.*}}5foo12{{.*}}!type ![[TYPE12:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo13(_: &dyn Trait1) { }
+pub fn foo13(_: &dyn Trait1) {}
 // CHECK: define{{.*}}5foo13{{.*}}!type ![[TYPE13:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo14(_: &dyn Trait1, _: &dyn Trait1) { }
+pub fn foo14(_: &dyn Trait1, _: &dyn Trait1) {}
 // CHECK: define{{.*}}5foo14{{.*}}!type ![[TYPE14:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo15(_: &dyn Trait1, _: &dyn Trait1, _: &dyn Trait1) { }
+pub fn foo15(_: &dyn Trait1, _: &dyn Trait1, _: &dyn Trait1) {}
 // CHECK: define{{.*}}5foo15{{.*}}!type ![[TYPE15:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo16<T>(_: &dyn Trait2<T>) { }
-pub fn bar16() { let a = Type2; foo16(&a); }
+pub fn foo16<T>(_: &dyn Trait2<T>) {}
+pub fn bar16() {
+    let a = Type2;
+    foo16(&a);
+}
 // CHECK: define{{.*}}5foo16{{.*}}!type ![[TYPE16:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo17<T>(_: &dyn Trait2<T>, _: &dyn Trait2<T>) { }
-pub fn bar17() { let a = Type2; foo17(&a, &a); }
+pub fn foo17<T>(_: &dyn Trait2<T>, _: &dyn Trait2<T>) {}
+pub fn bar17() {
+    let a = Type2;
+    foo17(&a, &a);
+}
 // CHECK: define{{.*}}5foo17{{.*}}!type ![[TYPE17:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo18<T>(_: &dyn Trait2<T>, _: &dyn Trait2<T>, _: &dyn Trait2<T>) { }
-pub fn bar18() { let a = Type2; foo18(&a, &a, &a); }
+pub fn foo18<T>(_: &dyn Trait2<T>, _: &dyn Trait2<T>, _: &dyn Trait2<T>) {}
+pub fn bar18() {
+    let a = Type2;
+    foo18(&a, &a, &a);
+}
 // CHECK: define{{.*}}5foo18{{.*}}!type ![[TYPE18:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo19(_: &dyn Trait3<Type3>) { }
+pub fn foo19(_: &dyn Trait3<Type3>) {}
 // CHECK: define{{.*}}5foo19{{.*}}!type ![[TYPE19:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo20(_: &dyn Trait3<Type3>, _: &dyn Trait3<Type3>) { }
+pub fn foo20(_: &dyn Trait3<Type3>, _: &dyn Trait3<Type3>) {}
 // CHECK: define{{.*}}5foo20{{.*}}!type ![[TYPE20:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo21(_: &dyn Trait3<Type3>, _: &dyn Trait3<Type3>, _: &dyn Trait3<Type3>) { }
+pub fn foo21(_: &dyn Trait3<Type3>, _: &dyn Trait3<Type3>, _: &dyn Trait3<Type3>) {}
 // CHECK: define{{.*}}5foo21{{.*}}!type ![[TYPE21:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo22<'a>(_: &dyn Trait4<'a, Type4, Output = &'a i32>) { }
+pub fn foo22<'a>(_: &dyn Trait4<'a, Type4, Output = &'a i32>) {}
 // CHECK: define{{.*}}5foo22{{.*}}!type ![[TYPE22:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo23<'a>(_: &dyn Trait4<'a, Type4, Output = &'a i32>,
-                 _: &dyn Trait4<'a, Type4, Output = &'a i32>) { }
+pub fn foo23<'a>(
+    _: &dyn Trait4<'a, Type4, Output = &'a i32>,
+    _: &dyn Trait4<'a, Type4, Output = &'a i32>,
+) {
+}
 // CHECK: define{{.*}}5foo23{{.*}}!type ![[TYPE23:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo24<'a>(_: &dyn Trait4<'a, Type4, Output = &'a i32>,
-                 _: &dyn Trait4<'a, Type4, Output = &'a i32>,
-                 _: &dyn Trait4<'a, Type4, Output = &'a i32>) { }
+pub fn foo24<'a>(
+    _: &dyn Trait4<'a, Type4, Output = &'a i32>,
+    _: &dyn Trait4<'a, Type4, Output = &'a i32>,
+    _: &dyn Trait4<'a, Type4, Output = &'a i32>,
+) {
+}
 // CHECK: define{{.*}}5foo24{{.*}}!type ![[TYPE24:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo25(_: &dyn Trait5<Type5, 32>) { }
+pub fn foo25(_: &dyn Trait5<Type5, 32>) {}
 // CHECK: define{{.*}}5foo25{{.*}}!type ![[TYPE25:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo26(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>) { }
+pub fn foo26(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>) {}
 // CHECK: define{{.*}}5foo26{{.*}}!type ![[TYPE26:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo27(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>) { }
+pub fn foo27(_: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>, _: &dyn Trait5<Type5, 32>) {}
 // CHECK: define{{.*}}5foo27{{.*}}!type ![[TYPE27:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
 // CHECK: ![[TYPE13]] = !{i64 0, !"_ZTSFvu3refIu3dynIu{{[0-9]+}}NtC{{[[:print:]]+}}_{{[[:print:]]+}}6Trait1u6regionEEE"}

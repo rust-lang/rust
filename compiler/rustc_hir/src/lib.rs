@@ -2,13 +2,16 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
+// tidy-alphabetical-start
+#![allow(internal_features)]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
-#![allow(internal_features)]
+#![warn(unreachable_pub)]
+// tidy-alphabetical-end
 
 extern crate self as rustc_hir;
 

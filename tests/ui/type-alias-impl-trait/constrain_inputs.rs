@@ -5,6 +5,7 @@ mod lifetime_params {
     fn defining(s: &str) -> Ty<'_> { s }
     fn execute(ty: Ty<'_>) -> &str { todo!() }
     //~^ ERROR return type references an anonymous lifetime, which is not constrained by the fn input types
+    //~| ERROR item does not constrain
 
     type BadFnSig = fn(Ty<'_>) -> &str;
     //~^ ERROR return type references an anonymous lifetime, which is not constrained by the fn input types
@@ -17,6 +18,7 @@ mod lifetime_params_2 {
     fn defining(s: &str) -> Ty<'_> { move || s }
     fn execute(ty: Ty<'_>) -> &str { ty() }
     //~^ ERROR return type references an anonymous lifetime, which is not constrained by the fn input types
+    //~| ERROR item does not constrain
 }
 
 // regression test for https://github.com/rust-lang/rust/issues/97104

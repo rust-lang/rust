@@ -20,7 +20,8 @@ mod utils;
 mod wrong_transmute;
 
 use clippy_config::msrvs::Msrv;
-use clippy_utils::in_constant;
+use clippy_config::Conf;
+use clippy_utils::is_in_const_context;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -546,7 +547,7 @@ declare_clippy_lint! {
     /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
     /// # }
     /// ```
-    #[clippy::version = "1.77.0"]
+    #[clippy::version = "1.79.0"]
     pub MISSING_TRANSMUTE_ANNOTATIONS,
     suspicious,
     "warns if a transmute call doesn't have all generics specified"
@@ -577,9 +578,10 @@ impl_lint_pass!(Transmute => [
     MISSING_TRANSMUTE_ANNOTATIONS,
 ]);
 impl Transmute {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 impl<'tcx> LateLintPass<'tcx> for Transmute {
@@ -593,7 +595,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
             // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
             // - char conversions (https://github.com/rust-lang/rust/issues/89259)
-            let const_context = in_constant(cx, e.hir_id);
+            let const_context = is_in_const_context(cx);
 
             let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
                 [] => (cx.typeck_results().expr_ty(arg), false),
@@ -615,7 +617,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | missing_transmute_annotations::check(cx, path, from_ty, to_ty, e.hir_id)
                 | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
-                | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
+                | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg, &self.msrv)
                 | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
                 | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)

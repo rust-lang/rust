@@ -31,20 +31,22 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 77, 1) to (start + 11, 2)
 
 Function name: no_cov_crate::nested_fns::outer
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 31, 05, 0c, 06]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 31, 05, 02, 23, 01, 0c, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 49, 5) to (start + 12, 6)
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 49, 5) to (start + 2, 35)
+- Code(Counter(0)) at (prev + 12, 5) to (start + 0, 6)
 
 Function name: no_cov_crate::nested_fns::outer_both_covered
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 3f, 05, 0b, 06]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 3f, 05, 02, 17, 01, 0b, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 63, 5) to (start + 11, 6)
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 63, 5) to (start + 2, 23)
+- Code(Counter(0)) at (prev + 11, 5) to (start + 0, 6)
 
 Function name: no_cov_crate::nested_fns::outer_both_covered::inner
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 43, 09, 01, 17, 05, 01, 18, 02, 0e, 02, 02, 14, 02, 0e, 01, 03, 09, 00, 0a]
@@ -54,19 +56,6 @@ Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 4
 - Code(Counter(0)) at (prev + 67, 9) to (start + 1, 23)
-- Code(Counter(1)) at (prev + 1, 24) to (start + 2, 14)
-- Code(Expression(0, Sub)) at (prev + 2, 20) to (start + 2, 14)
-    = (c0 - c1)
-- Code(Counter(0)) at (prev + 3, 9) to (start + 0, 10)
-
-Function name: no_cov_crate::nested_fns::outer_not_covered::inner
-Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 26, 09, 01, 17, 05, 01, 18, 02, 0e, 02, 02, 14, 02, 0e, 01, 03, 09, 00, 0a]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 1
-- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 38, 9) to (start + 1, 23)
 - Code(Counter(1)) at (prev + 1, 24) to (start + 2, 14)
 - Code(Expression(0, Sub)) at (prev + 2, 20) to (start + 2, 14)
     = (c0 - c1)

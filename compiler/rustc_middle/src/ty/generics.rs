@@ -1,19 +1,20 @@
-use crate::ty;
-use crate::ty::{EarlyBinder, GenericArgsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use crate::ty;
+use crate::ty::{EarlyBinder, GenericArgsRef};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool, is_host_effect: bool },
+    Const { has_default: bool, is_host_effect: bool, synthetic: bool },
 }
 
 impl GenericParamDefKind {
@@ -65,7 +66,7 @@ pub struct GenericParamDef {
 impl GenericParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyParamRegion {
         if let GenericParamDefKind::Lifetime = self.kind {
-            ty::EarlyParamRegion { def_id: self.def_id, index: self.index, name: self.name }
+            ty::EarlyParamRegion { index: self.index, name: self.name }
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
@@ -87,7 +88,7 @@ impl GenericParamDef {
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Option<EarlyBinder<ty::GenericArg<'tcx>>> {
+    ) -> Option<EarlyBinder<'tcx, ty::GenericArg<'tcx>>> {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
                 Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))
@@ -99,19 +100,11 @@ impl GenericParamDef {
         }
     }
 
-    pub fn to_error<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        preceding_args: &[ty::GenericArg<'tcx>],
-    ) -> ty::GenericArg<'tcx> {
+    pub fn to_error<'tcx>(&self, tcx: TyCtxt<'tcx>) -> ty::GenericArg<'tcx> {
         match &self.kind {
             ty::GenericParamDefKind::Lifetime => ty::Region::new_error_misc(tcx).into(),
             ty::GenericParamDefKind::Type { .. } => Ty::new_misc_error(tcx).into(),
-            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(
-                tcx,
-                tcx.type_of(self.def_id).instantiate(tcx, preceding_args),
-            )
-            .into(),
+            ty::GenericParamDefKind::Const { .. } => ty::Const::new_misc_error(tcx).into(),
         }
     }
 }
@@ -244,20 +237,6 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` with the given index if available.
-    pub fn opt_param_at(
-        &'tcx self,
-        param_index: usize,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<&'tcx GenericParamDef> {
-        if let Some(index) = param_index.checked_sub(self.parent_count) {
-            self.own_params.get(index)
-        } else {
-            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
-                .opt_param_at(param_index, tcx)
-        }
-    }
-
     pub fn params_to(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx [GenericParamDef] {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
             &self.own_params[..index]
@@ -289,22 +268,8 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` associated with this `ParamTy` if it belongs to this
-    /// `Generics`.
-    pub fn opt_type_param(
-        &'tcx self,
-        param: ParamTy,
-        tcx: TyCtxt<'tcx>,
-    ) -> Option<&'tcx GenericParamDef> {
-        let param = self.opt_param_at(param.index as usize, tcx)?;
-        match param.kind {
-            GenericParamDefKind::Type { .. } => Some(param),
-            _ => None,
-        }
-    }
-
     /// Returns the `GenericParamDef` associated with this `ParamConst`.
-    pub fn const_param(&'tcx self, param: ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
+    pub fn const_param(&'tcx self, param: ParamConst, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
             GenericParamDefKind::Const { .. } => param,
@@ -406,11 +371,12 @@ impl<'tcx> Generics {
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Clause<'tcx>, Span)],
+    pub effects_min_tys: &'tcx ty::List<Ty<'tcx>>,
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> InstantiatedPredicates<'tcx> {
@@ -420,16 +386,20 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     pub fn instantiate_own(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
         EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
     }
 
+    pub fn instantiate_own_identity(self) -> impl Iterator<Item = (Clause<'tcx>, Span)> {
+        EarlyBinder::bind(self.predicates).iter_identity_copied()
+    }
+
     #[instrument(level = "debug", skip(self, tcx))]
     fn instantiate_into(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
         args: GenericArgsRef<'tcx>,
@@ -443,14 +413,14 @@ impl<'tcx> GenericPredicates<'tcx> {
         instantiated.spans.extend(self.predicates.iter().map(|(_, sp)| *sp));
     }
 
-    pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
+    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
         self.instantiate_identity_into(tcx, &mut instantiated);
         instantiated
     }
 
     fn instantiate_identity_into(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
     ) {

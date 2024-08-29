@@ -1,7 +1,9 @@
-use super::node::{ForceResult::*, Root};
-use super::search::SearchResult::*;
 use core::alloc::Allocator;
 use core::borrow::Borrow;
+
+use super::node::ForceResult::*;
+use super::node::Root;
+use super::search::SearchResult::*;
 
 impl<K, V> Root<K, V> {
     /// Calculates the length of both trees that result from splitting up

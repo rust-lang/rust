@@ -12,9 +12,9 @@ fn c(_1: &[T]) -> &[T] {
     bb0: {
         StorageLive(_2);
         StorageLive(_3);
-        _3 = &(*_1);
-        _2 = _3;
-        _0 = &(*_2);
+        _3 = copy _1;
+        _2 = copy _3;
+        _0 = copy _2;
         StorageDead(_3);
         StorageDead(_2);
         return;

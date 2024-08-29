@@ -2,7 +2,7 @@
 //@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel
 //@ only-x86_64
 //@ ignore-sgx
-//@ ignore-macos (manipulates rsp too)
+//@ ignore-apple (manipulates rsp too)
 
 // Depending on various codegen choices, this might end up copying
 // a `<2 x i8>`, an `i16`, or two `i8`s.

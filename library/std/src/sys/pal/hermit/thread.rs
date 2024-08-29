@@ -1,13 +1,11 @@
 #![allow(dead_code)]
 
 use super::hermit_abi;
-use super::thread_local_dtor::run_dtors;
 use crate::ffi::CStr;
-use crate::io;
-use crate::mem;
+use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
-use crate::ptr;
 use crate::time::Duration;
+use crate::{io, ptr};
 
 pub type Tid = hermit_abi::Tid;
 
@@ -27,18 +25,22 @@ impl Thread {
         core_id: isize,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
-        let tid = hermit_abi::spawn2(
-            thread_start,
-            p.expose_provenance(),
-            hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
-            stack,
-            core_id,
-        );
+        let tid = unsafe {
+            hermit_abi::spawn2(
+                thread_start,
+                p.expose_provenance(),
+                hermit_abi::Priority::into(hermit_abi::NORMAL_PRIO),
+                stack,
+                core_id,
+            )
+        };
 
         return if tid == 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            unsafe {
+                drop(Box::from_raw(p));
+            }
             Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })
@@ -50,13 +52,15 @@ impl Thread {
                 Box::from_raw(ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
-                run_dtors();
+                crate::sys::thread_local::destructors::run();
             }
         }
     }
 
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
+        unsafe {
+            Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
+        }
     }
 
     #[inline]
@@ -73,8 +77,11 @@ impl Thread {
 
     #[inline]
     pub fn sleep(dur: Duration) {
+        let micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
+        let micros = u64::try_from(micros).unwrap_or(u64::MAX);
+
         unsafe {
-            hermit_abi::usleep(dur.as_micros() as u64);
+            hermit_abi::usleep(micros);
         }
     }
 
@@ -91,12 +98,10 @@ impl Thread {
 
     #[inline]
     pub fn into_id(self) -> Tid {
-        let id = self.tid;
-        mem::forget(self);
-        id
+        ManuallyDrop::new(self).tid
     }
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    unsafe { Ok(NonZero::new_unchecked(hermit_abi::get_processor_count())) }
+    unsafe { Ok(NonZero::new_unchecked(hermit_abi::available_parallelism())) }
 }

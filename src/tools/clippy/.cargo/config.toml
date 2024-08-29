@@ -1,10 +1,10 @@
 [alias]
+bless = "test --config env.RUSTC_BLESS='1'"
 uitest = "test --test compile-test"
-uibless = "test --test compile-test -- -- --bless"
-bless = "test -- -- --bless"
+uibless = "bless --test compile-test"
 dev = "run --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
 lintcheck = "run --package lintcheck --bin lintcheck --manifest-path lintcheck/Cargo.toml  -- "
-collect-metadata = "test --test dogfood --features internal -- run_metadata_collection_lint --ignored"
+collect-metadata = "test --test compile-test --config env.COLLECT_METADATA='1'"
 
 [build]
 # -Zbinary-dep-depinfo allows us to track which rlib files to use for compiling UI tests
@@ -13,6 +13,13 @@ target-dir = "target"
 
 [unstable]
 binary-dep-depinfo = true
+profile-rustflags = true
 
 [profile.dev]
 split-debuginfo = "unpacked"
+
+# Add back the containing directory of the packages we have to refer to using --manifest-path
+[profile.dev.package.clippy_dev]
+rustflags = ["--remap-path-prefix", "=clippy_dev"]
+[profile.dev.package.lintcheck]
+rustflags = ["--remap-path-prefix", "=lintcheck"]

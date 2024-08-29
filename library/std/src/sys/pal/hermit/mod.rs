@@ -13,17 +13,16 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-#![allow(missing_docs, nonstandard_style, unsafe_op_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
+#![allow(missing_docs, nonstandard_style)]
 
 use crate::os::raw::c_char;
 
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;
 pub mod fs;
 pub mod futex;
-#[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod net;
 pub mod os;
@@ -33,9 +32,6 @@ pub mod pipe;
 pub mod process;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local_dtor;
-#[path = "../unsupported/thread_local_key.rs"]
-pub mod thread_local_key;
 pub mod time;
 
 use crate::io::ErrorKind;
@@ -53,9 +49,7 @@ pub fn unsupported_err() -> crate::io::Error {
 }
 
 pub fn abort_internal() -> ! {
-    unsafe {
-        hermit_abi::abort();
-    }
+    unsafe { hermit_abi::abort() }
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
@@ -84,7 +78,9 @@ pub extern "C" fn __rust_abort() {
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
-    args::init(argc, argv);
+    unsafe {
+        args::init(argc, argv);
+    }
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -98,7 +94,6 @@ pub unsafe extern "C" fn runtime_entry(
     argv: *const *const c_char,
     env: *const *const c_char,
 ) -> ! {
-    use thread_local_dtor::run_dtors;
     extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
@@ -106,10 +101,12 @@ pub unsafe extern "C" fn runtime_entry(
     // initialize environment
     os::init_environment(env as *const *const i8);
 
-    let result = main(argc as isize, argv);
+    let result = unsafe { main(argc as isize, argv) };
 
-    run_dtors();
-    hermit_abi::exit(result);
+    unsafe {
+        crate::sys::thread_local::destructors::run();
+    }
+    unsafe { hermit_abi::exit(result) }
 }
 
 #[inline]

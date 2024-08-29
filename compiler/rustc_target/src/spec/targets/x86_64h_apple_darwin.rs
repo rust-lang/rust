@@ -1,6 +1,5 @@
 use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet};
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64h;
@@ -35,10 +34,10 @@ pub fn target() -> Target {
         // correctly, we do too.
         llvm_target: macos_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("macOS with late-gen Intel (at least Haswell)".into()),
+            tier: Some(3),
+            host_tools: Some(true),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

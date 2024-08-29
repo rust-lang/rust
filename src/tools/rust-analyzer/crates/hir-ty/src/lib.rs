@@ -1,6 +1,6 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
-#![warn(rust_2018_idioms, unused_lifetimes)]
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
@@ -15,13 +15,16 @@ extern crate rustc_abi;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
-// Use the crates.io version unconditionally until the API settles enough that we can switch to
-// using the in-tree one.
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+mod generics;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -52,26 +55,26 @@ use std::{
     hash::{BuildHasherDefault, Hash},
 };
 
-use base_db::salsa::impl_intern_value_trivial;
+use base_db::salsa::InternValueTrivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
     NoSolution,
 };
 use either::Either;
-use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId};
-use hir_expand::name;
+use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
+use hir_expand::name::Name;
+use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
-use utils::Generics;
 
 use crate::{
-    consteval::unknown_const, db::HirDatabase, display::HirDisplay, infer::unify::InferenceTable,
-    utils::generics,
+    consteval::unknown_const, db::HirDatabase, display::HirDisplay, generics::Generics,
+    infer::unify::InferenceTable,
 };
 
 pub use autoderef::autoderef;
@@ -84,8 +87,8 @@ pub use infer::{
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, CallableDefId, ImplTraitLoweringMode, ParamLoweringMode,
-    TyDefId, TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, ImplTraitLoweringMode, ParamLoweringMode, TyDefId,
+    TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -289,7 +292,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics(db.upcast(), id.parent).type_or_const_param_idx(id)
+    generics::generics(db.upcast(), id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
@@ -330,18 +333,15 @@ pub(crate) fn make_single_type_binders<T: HasInterner<Interner = Interner>>(
     )
 }
 
-pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
+pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     db: &dyn HirDatabase,
-    count: usize,
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    let it = generics.iter_id().take(count);
-
     Binders::new(
         VariableKinds::from_iter(
             Interner,
-            it.map(|x| match x {
+            generics.iter_id().map(|x| match x {
                 hir_def::GenericParamId::ConstParamId(id) => {
                     chalk_ir::VariableKind::Const(db.const_param_ty(id))
                 }
@@ -353,14 +353,6 @@ pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
         ),
         value,
     )
-}
-
-pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
-    db: &dyn HirDatabase,
-    generics: &Generics,
-    value: T,
-) -> Binders<T> {
-    make_binders_with_count(db, usize::MAX, generics, value)
 }
 
 // FIXME: get rid of this, just replace it by FnPointer
@@ -433,45 +425,45 @@ impl Hash for FnAbi {
 }
 
 impl FnAbi {
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> FnAbi {
+    #[rustfmt::skip]
+    pub fn from_symbol(s: &Symbol) -> FnAbi {
         match s {
-            "aapcs-unwind" => FnAbi::AapcsUnwind,
-            "aapcs" => FnAbi::Aapcs,
-            "avr-interrupt" => FnAbi::AvrInterrupt,
-            "avr-non-blocking-interrupt" => FnAbi::AvrNonBlockingInterrupt,
-            "C-cmse-nonsecure-call" => FnAbi::CCmseNonsecureCall,
-            "C-unwind" => FnAbi::CUnwind,
-            "C" => FnAbi::C,
-            "cdecl-unwind" => FnAbi::CDeclUnwind,
-            "cdecl" => FnAbi::CDecl,
-            "efiapi" => FnAbi::Efiapi,
-            "fastcall-unwind" => FnAbi::FastcallUnwind,
-            "fastcall" => FnAbi::Fastcall,
-            "msp430-interrupt" => FnAbi::Msp430Interrupt,
-            "platform-intrinsic" => FnAbi::PlatformIntrinsic,
-            "ptx-kernel" => FnAbi::PtxKernel,
-            "riscv-interrupt-m" => FnAbi::RiscvInterruptM,
-            "riscv-interrupt-s" => FnAbi::RiscvInterruptS,
-            "rust-call" => FnAbi::RustCall,
-            "rust-cold" => FnAbi::RustCold,
-            "rust-intrinsic" => FnAbi::RustIntrinsic,
-            "Rust" => FnAbi::Rust,
-            "stdcall-unwind" => FnAbi::StdcallUnwind,
-            "stdcall" => FnAbi::Stdcall,
-            "system-unwind" => FnAbi::SystemUnwind,
-            "system" => FnAbi::System,
-            "sysv64-unwind" => FnAbi::Sysv64Unwind,
-            "sysv64" => FnAbi::Sysv64,
-            "thiscall-unwind" => FnAbi::ThiscallUnwind,
-            "thiscall" => FnAbi::Thiscall,
-            "unadjusted" => FnAbi::Unadjusted,
-            "vectorcall-unwind" => FnAbi::VectorcallUnwind,
-            "vectorcall" => FnAbi::Vectorcall,
-            "wasm" => FnAbi::Wasm,
-            "win64-unwind" => FnAbi::Win64Unwind,
-            "win64" => FnAbi::Win64,
-            "x86-interrupt" => FnAbi::X86Interrupt,
+            s if *s == sym::aapcs_dash_unwind => FnAbi::AapcsUnwind,
+            s if *s == sym::aapcs => FnAbi::Aapcs,
+            s if *s == sym::avr_dash_interrupt => FnAbi::AvrInterrupt,
+            s if *s == sym::avr_dash_non_dash_blocking_dash_interrupt => FnAbi::AvrNonBlockingInterrupt,
+            s if *s == sym::C_dash_cmse_dash_nonsecure_dash_call => FnAbi::CCmseNonsecureCall,
+            s if *s == sym::C_dash_unwind => FnAbi::CUnwind,
+            s if *s == sym::C => FnAbi::C,
+            s if *s == sym::cdecl_dash_unwind => FnAbi::CDeclUnwind,
+            s if *s == sym::cdecl => FnAbi::CDecl,
+            s if *s == sym::efiapi => FnAbi::Efiapi,
+            s if *s == sym::fastcall_dash_unwind => FnAbi::FastcallUnwind,
+            s if *s == sym::fastcall => FnAbi::Fastcall,
+            s if *s == sym::msp430_dash_interrupt => FnAbi::Msp430Interrupt,
+            s if *s == sym::platform_dash_intrinsic => FnAbi::PlatformIntrinsic,
+            s if *s == sym::ptx_dash_kernel => FnAbi::PtxKernel,
+            s if *s == sym::riscv_dash_interrupt_dash_m => FnAbi::RiscvInterruptM,
+            s if *s == sym::riscv_dash_interrupt_dash_s => FnAbi::RiscvInterruptS,
+            s if *s == sym::rust_dash_call => FnAbi::RustCall,
+            s if *s == sym::rust_dash_cold => FnAbi::RustCold,
+            s if *s == sym::rust_dash_intrinsic => FnAbi::RustIntrinsic,
+            s if *s == sym::Rust => FnAbi::Rust,
+            s if *s == sym::stdcall_dash_unwind => FnAbi::StdcallUnwind,
+            s if *s == sym::stdcall => FnAbi::Stdcall,
+            s if *s == sym::system_dash_unwind => FnAbi::SystemUnwind,
+            s if *s == sym::system => FnAbi::System,
+            s if *s == sym::sysv64_dash_unwind => FnAbi::Sysv64Unwind,
+            s if *s == sym::sysv64 => FnAbi::Sysv64,
+            s if *s == sym::thiscall_dash_unwind => FnAbi::ThiscallUnwind,
+            s if *s == sym::thiscall => FnAbi::Thiscall,
+            s if *s == sym::unadjusted => FnAbi::Unadjusted,
+            s if *s == sym::vectorcall_dash_unwind => FnAbi::VectorcallUnwind,
+            s if *s == sym::vectorcall => FnAbi::Vectorcall,
+            s if *s == sym::wasm => FnAbi::Wasm,
+            s if *s == sym::win64_dash_unwind => FnAbi::Win64Unwind,
+            s if *s == sym::win64 => FnAbi::Win64,
+            s if *s == sym::x86_dash_interrupt => FnAbi::X86Interrupt,
             _ => FnAbi::Unknown,
         }
     }
@@ -524,14 +516,16 @@ pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
     pub fn from_params_and_return(
-        mut params: Vec<Ty>,
+        params: impl ExactSizeIterator<Item = Ty>,
         ret: Ty,
         is_varargs: bool,
         safety: Safety,
         abi: FnAbi,
     ) -> CallableSig {
-        params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs, safety, abi }
+        let mut params_and_return = Vec::with_capacity(params.len() + 1);
+        params_and_return.extend(params);
+        params_and_return.push(ret);
+        CallableSig { params_and_return: params_and_return.into(), is_varargs, safety, abi }
     }
 
     pub fn from_def(db: &dyn HirDatabase, def: FnDefId, substs: &Substitution) -> CallableSig {
@@ -570,6 +564,10 @@ impl CallableSig {
         }
     }
 
+    pub fn abi(&self) -> FnAbi {
+        self.abi
+    }
+
     pub fn params(&self) -> &[Ty] {
         &self.params_and_return[0..self.params_and_return.len() - 1]
     }
@@ -599,10 +597,10 @@ impl TypeFoldable<Interner> for CallableSig {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, ImplTraitIdx),
-    AssociatedTypeImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
+    TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
-impl_intern_value_trivial!(ImplTraitId);
+impl InternValueTrivial for ImplTraitId {}
 
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTraits {
@@ -892,20 +890,18 @@ where
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
 }
 
-pub fn callable_sig_from_fnonce(
-    mut self_ty: &Ty,
-    env: Arc<TraitEnvironment>,
+pub fn callable_sig_from_fn_trait(
+    self_ty: &Ty,
+    trait_env: Arc<TraitEnvironment>,
     db: &dyn HirDatabase,
-) -> Option<CallableSig> {
-    if let Some((ty, _, _)) = self_ty.as_reference() {
-        // This will happen when it implements fn or fn mut, since we add a autoborrow adjustment
-        self_ty = ty;
-    }
-    let krate = env.krate;
+) -> Option<(FnTrait, CallableSig)> {
+    let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
-    let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+    let output_assoc_type = db
+        .trait_data(fn_once_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
 
-    let mut table = InferenceTable::new(db, env);
+    let mut table = InferenceTable::new(db, trait_env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);
     if b.remaining() != 2 {
         return None;
@@ -915,23 +911,55 @@ pub fn callable_sig_from_fnonce(
     // - Self: FnOnce<?args_ty>
     // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
     let args_ty = table.new_type_var();
-    let trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
+    let mut trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
     let projection = TyBuilder::assoc_type_projection(
         db,
         output_assoc_type,
         Some(trait_ref.substitution.clone()),
     )
     .build();
-    table.register_obligation(trait_ref.cast(Interner));
-    let ret_ty = table.normalize_projection_ty(projection);
 
-    let ret_ty = table.resolve_completely(ret_ty);
-    let args_ty = table.resolve_completely(args_ty);
+    let block = trait_env.block;
+    let trait_env = trait_env.env.clone();
+    let obligation =
+        InEnvironment { goal: trait_ref.clone().cast(Interner), environment: trait_env.clone() };
+    let canonical = table.canonicalize(obligation.clone());
+    if db.trait_solve(krate, block, canonical.cast(Interner)).is_some() {
+        table.register_obligation(obligation.goal);
+        let return_ty = table.normalize_projection_ty(projection);
+        for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
+            let fn_x_trait = fn_x.get_id(db, krate)?;
+            trait_ref.trait_id = to_chalk_trait_id(fn_x_trait);
+            let obligation: chalk_ir::InEnvironment<chalk_ir::Goal<Interner>> = InEnvironment {
+                goal: trait_ref.clone().cast(Interner),
+                environment: trait_env.clone(),
+            };
+            let canonical = table.canonicalize(obligation.clone());
+            if db.trait_solve(krate, block, canonical.cast(Interner)).is_some() {
+                let ret_ty = table.resolve_completely(return_ty);
+                let args_ty = table.resolve_completely(args_ty);
+                let params = args_ty
+                    .as_tuple()?
+                    .iter(Interner)
+                    .map(|it| it.assert_ty_ref(Interner))
+                    .cloned();
 
-    let params =
-        args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
-
-    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe, FnAbi::RustCall))
+                return Some((
+                    fn_x,
+                    CallableSig::from_params_and_return(
+                        params,
+                        ret_ty,
+                        false,
+                        Safety::Safe,
+                        FnAbi::RustCall,
+                    ),
+                ));
+            }
+        }
+        unreachable!("It should at least implement FnOnce at this point");
+    } else {
+        None
+    }
 }
 
 struct PlaceholderCollector<'db> {

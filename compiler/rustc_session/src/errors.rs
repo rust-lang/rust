@@ -2,15 +2,17 @@ use std::num::NonZero;
 
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
+use rustc_errors::codes::*;
 use rustc_errors::{
-    codes::*, Diag, DiagCtxt, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
+    Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
     MultiSpan,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
 
-use crate::{config::CrateType, parse::ParseSess};
+use crate::config::CrateType;
+use crate::parse::ParseSess;
 
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,
@@ -19,7 +21,7 @@ pub(crate) struct FeatureGateError {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for FeatureGateError {
     #[track_caller]
-    fn into_diag(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         Diag::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
@@ -162,6 +164,16 @@ pub(crate) struct UnstableVirtualFunctionElimination;
 pub(crate) struct UnsupportedDwarfVersion {
     pub(crate) dwarf_version: u32,
 }
+
+#[derive(Diagnostic)]
+#[diag(session_embed_source_insufficient_dwarf_version)]
+pub(crate) struct EmbedSourceInsufficientDwarfVersion {
+    pub(crate) dwarf_version: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_embed_source_requires_debug_info)]
+pub(crate) struct EmbedSourceRequiresDebugInfo;
 
 #[derive(Diagnostic)]
 #[diag(session_target_stack_protector_not_supported)]
@@ -401,7 +413,7 @@ pub fn report_lit_error(
         valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
     }
 
-    let dcx = &psess.dcx;
+    let dcx = psess.dcx();
     match err {
         LitError::InvalidSuffix(suffix) => {
             dcx.emit_err(InvalidLiteralSuffix { span, kind: lit.kind.descr(), suffix })

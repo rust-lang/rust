@@ -17,9 +17,13 @@ error: unexpected `=` after inclusive range
   --> $DIR/issue-90993.rs:2:5
    |
 LL |     ...=.
-   |     ^^^^ help: use `..=` instead
+   |     ^^^^
    |
    = note: inclusive ranges end with a single equals sign (`..=`)
+help: use `..=` instead
+   |
+LL |     ..=.
+   |     ~~~
 
 error: expected one of `-`, `;`, `}`, or path, found `.`
   --> $DIR/issue-90993.rs:2:9

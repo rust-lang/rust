@@ -5,15 +5,14 @@
 //! In uplifting, a tarball from Stage N captures essential components
 //! to assemble Stage N + 1 compiler.
 
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::path::{Path, PathBuf};
 
-use crate::core::builder::Builder;
-use crate::core::{build_steps::dist::distdir, builder::Kind};
-use crate::utils::channel;
+use crate::core::build_steps::dist::distdir;
+use crate::core::builder::{Builder, Kind};
+use crate::core::config::BUILDER_CONFIG_FILENAME;
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{move_file, t};
+use crate::utils::{channel, helpers};
 
 #[derive(Copy, Clone)]
 pub(crate) enum OverlayKind {
@@ -23,7 +22,6 @@ pub(crate) enum OverlayKind {
     Clippy,
     Miri,
     Rustfmt,
-    RustDemangler,
     Rls,
     RustAnalyzer,
     RustcCodegenCranelift,
@@ -58,9 +56,6 @@ impl OverlayKind {
                 "src/tools/rustfmt/LICENSE-APACHE",
                 "src/tools/rustfmt/LICENSE-MIT",
             ],
-            OverlayKind::RustDemangler => {
-                &["src/tools/rust-demangler/README.md", "LICENSE-APACHE", "LICENSE-MIT"]
-            }
             OverlayKind::Rls => &["src/tools/rls/README.md", "LICENSE-APACHE", "LICENSE-MIT"],
             OverlayKind::RustAnalyzer => &[
                 "src/tools/rust-analyzer/README.md",
@@ -85,7 +80,6 @@ impl OverlayKind {
         match self {
             OverlayKind::Rust => builder.rust_version(),
             OverlayKind::Llvm => builder.rust_version(),
-            OverlayKind::RustDemangler => builder.release_num("rust-demangler"),
             OverlayKind::Cargo => {
                 builder.cargo_info.version(builder, &builder.release_num("cargo"))
             }
@@ -251,7 +245,7 @@ impl<'a> Tarball<'a> {
             cmd.arg("generate")
                 .arg("--image-dir")
                 .arg(&this.image_dir)
-                .arg(format!("--component-name={}", &component_name));
+                .arg(format!("--component-name={component_name}"));
 
             if let Some((dir, dirs)) = this.bulk_dirs.split_first() {
                 let mut arg = dir.as_os_str().to_os_string();
@@ -305,7 +299,7 @@ impl<'a> Tarball<'a> {
         }
     }
 
-    fn non_bare_args(&self, cmd: &mut Command) {
+    fn non_bare_args(&self, cmd: &mut BootstrapCommand) {
         cmd.arg("--rel-manifest-dir=rustlib")
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg(format!("--product-name={}", self.product_name))
@@ -317,13 +311,19 @@ impl<'a> Tarball<'a> {
             .arg(distdir(self.builder));
     }
 
-    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
+    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut BootstrapCommand)) -> GeneratedTarball {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(info) = self.builder.rust_info().info() {
             channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
             channel::write_commit_info_file(&self.overlay_dir, info);
         }
+
+        // Add config file if present.
+        if let Some(config) = &self.builder.config.config {
+            self.add_renamed_file(config, &self.overlay_dir, BUILDER_CONFIG_FILENAME);
+        }
+
         for file in self.overlay.legal_and_readme() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
@@ -358,7 +358,34 @@ impl<'a> Tarball<'a> {
         };
 
         cmd.args(["--compression-profile", compression_profile]);
-        self.builder.run(&mut cmd);
+
+        // We want to use a pinned modification time for files in the archive
+        // to achieve better reproducibility. However, using the same mtime for all
+        // releases is not ideal, because it can break e.g. Cargo mtime checking
+        // (https://github.com/rust-lang/rust/issues/125578).
+        // Therefore, we set mtime to the date of the latest commit (if we're managed
+        // by git). In this way, the archive will still be always the same for a given commit
+        // (achieving reproducibility), but it will also change between different commits and
+        // Rust versions, so that it won't break mtime-based caches.
+        //
+        // Note that this only overrides the mtime of files, not directories, due to the
+        // limitations of the tarballer tool. Directories will have their mtime set to 2006.
+
+        // Get the UTC timestamp of the last git commit, if we're under git.
+        // We need to use UTC, so that anyone who tries to rebuild from the same commit
+        // gets the same timestamp.
+        if self.builder.rust_info().is_managed_git_subrepository() {
+            // %ct means committer date
+            let timestamp = helpers::git(Some(&self.builder.src))
+                .arg("log")
+                .arg("-1")
+                .arg("--format=%ct")
+                .run_capture_stdout(self.builder)
+                .stdout();
+            cmd.args(["--override-file-mtime", timestamp.trim()]);
+        }
+
+        cmd.run(self.builder);
 
         // Ensure there are no symbolic links in the tarball. In particular,
         // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.

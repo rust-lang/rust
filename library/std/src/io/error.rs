@@ -11,10 +11,7 @@ mod repr_unpacked;
 #[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
 use repr_unpacked::Repr;
 
-use crate::error;
-use crate::fmt;
-use crate::result;
-use crate::sys;
+use crate::{error, fmt, result, sys};
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -167,7 +164,7 @@ impl SimpleMessage {
     }
 }
 
-/// Create and return an `io::Error` for a given `ErrorKind` and constant
+/// Creates and returns an `io::Error` for a given `ErrorKind` and constant
 /// message. This doesn't allocate.
 pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
     $crate::io::error::Error::from_static_message({
@@ -775,7 +772,7 @@ impl Error {
     ///
     /// impl Display for MyError {
     ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "MyError: {}", &self.v)
+    ///         write!(f, "MyError: {}", self.v)
     ///     }
     /// }
     ///
@@ -852,7 +849,7 @@ impl Error {
         }
     }
 
-    /// Attempt to downcast the custom boxed error to `E`.
+    /// Attempts to downcast the custom boxed error to `E`.
     ///
     /// If this [`Error`] contains a custom boxed error,
     /// then it would attempt downcasting on the boxed error,

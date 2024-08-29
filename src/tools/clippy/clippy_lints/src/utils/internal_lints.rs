@@ -1,10 +1,8 @@
 pub mod almost_standard_lint_formulation;
 pub mod collapsible_calls;
-pub mod compiler_lint_functions;
 pub mod interning_defined_symbol;
 pub mod invalid_paths;
 pub mod lint_without_lint_pass;
-pub mod metadata_collector;
 pub mod msrv_attr_impl;
 pub mod outer_expn_data_pass;
 pub mod produce_ice;

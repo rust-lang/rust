@@ -2,8 +2,7 @@
 //@ edition:2021
 
 const PATTERN_REF: &str = "Hello World";
-const NUMBER: i32 = 30;
-const NUMBER_POINTER: *const i32 = &NUMBER;
+const NUMBER_POINTER: *const i32 = 30 as *const i32;
 
 pub fn edge_case_ref(event: &str) {
     let _ = || {
@@ -26,8 +25,7 @@ pub fn edge_case_str(event: String) {
 pub fn edge_case_raw_ptr(event: *const i32) {
     let _ = || {
         match event {
-            NUMBER_POINTER => (), //~WARN behave unpredictably
-            //~| previously accepted
+            NUMBER_POINTER => (),
             _ => (),
         };
     };

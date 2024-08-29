@@ -11,9 +11,9 @@ use regex::Regex;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
-use crate::header::cfg::parse_cfg_name_directive;
-use crate::header::cfg::MatchOutcome;
+use crate::header::cfg::{parse_cfg_name_directive, MatchOutcome};
 use crate::header::needs::CachedNeedsConditions;
+use crate::util::static_regex;
 use crate::{extract_cdb_version, extract_gdb_version};
 
 mod cfg;
@@ -81,7 +81,7 @@ impl EarlyProps {
             panic!("errors encountered during EarlyProps parsing");
         }
 
-        return props;
+        props
     }
 }
 
@@ -94,7 +94,9 @@ pub struct TestProps {
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
-    pub run_flags: Option<String>,
+    pub run_flags: Vec<String>,
+    /// Extra flags to pass to rustdoc but not the compiler.
+    pub doc_flags: Vec<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
@@ -107,6 +109,9 @@ pub struct TestProps {
     // Similar to `aux_builds`, but a list of NAME=somelib.rs of dependencies
     // to build and pass with the `--extern` flag.
     pub aux_crates: Vec<(String, String)>,
+    /// Similar to `aux_builds`, but also passes the resulting dylib path to
+    /// `-Zcodegen-backend`.
+    pub aux_codegen_backend: Option<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment variables to unset prior to compiling.
@@ -119,6 +124,9 @@ pub struct TestProps {
     pub unset_exec_env: Vec<String>,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
+    /// Build the documentation for each crate in a unique output directory.
+    /// Uses <root output directory>/docs/<test name>/doc
+    pub unique_doc_out_dir: bool,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -217,8 +225,10 @@ mod directives {
     pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
     pub const COMPILE_FLAGS: &'static str = "compile-flags";
     pub const RUN_FLAGS: &'static str = "run-flags";
+    pub const DOC_FLAGS: &'static str = "doc-flags";
     pub const SHOULD_ICE: &'static str = "should-ice";
     pub const BUILD_AUX_DOCS: &'static str = "build-aux-docs";
+    pub const UNIQUE_DOC_OUT_DIR: &'static str = "unique-doc-out-dir";
     pub const FORCE_HOST: &'static str = "force-host";
     pub const CHECK_STDOUT: &'static str = "check-stdout";
     pub const CHECK_RUN_RESULTS: &'static str = "check-run-results";
@@ -231,6 +241,7 @@ mod directives {
     pub const AUX_BIN: &'static str = "aux-bin";
     pub const AUX_BUILD: &'static str = "aux-build";
     pub const AUX_CRATE: &'static str = "aux-crate";
+    pub const AUX_CODEGEN_BACKEND: &'static str = "aux-codegen-backend";
     pub const EXEC_ENV: &'static str = "exec-env";
     pub const RUSTC_ENV: &'static str = "rustc-env";
     pub const UNSET_EXEC_ENV: &'static str = "unset-exec-env";
@@ -262,11 +273,13 @@ impl TestProps {
             error_patterns: vec![],
             regex_error_patterns: vec![],
             compile_flags: vec![],
-            run_flags: None,
+            run_flags: vec![],
+            doc_flags: vec![],
             pp_exact: None,
             aux_builds: vec![],
             aux_bins: vec![],
             aux_crates: vec![],
+            aux_codegen_backend: None,
             revisions: vec![],
             rustc_env: vec![
                 ("RUSTC_ICE".to_string(), "0".to_string()),
@@ -276,6 +289,7 @@ impl TestProps {
             exec_env: vec![],
             unset_exec_env: vec![],
             build_aux_docs: false,
+            unique_doc_out_dir: false,
             force_host: false,
             check_stdout: false,
             check_run_results: false,
@@ -325,6 +339,7 @@ impl TestProps {
     pub fn from_file(testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
         props.load_from(testfile, revision, config);
+        props.exec_env.push(("RUSTC".to_string(), config.rustc_path.display().to_string()));
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
@@ -372,11 +387,13 @@ impl TestProps {
                         |r| r,
                     );
 
+                    config.push_name_value_directive(ln, DOC_FLAGS, &mut self.doc_flags, |r| r);
+
                     fn split_flags(flags: &str) -> Vec<String> {
                         // Individual flags can be single-quoted to preserve spaces; see
                         // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
                         flags
-                            .split("'")
+                            .split('\'')
                             .enumerate()
                             .flat_map(|(i, f)| {
                                 if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() }
@@ -399,7 +416,9 @@ impl TestProps {
 
                     config.parse_and_update_revisions(ln, &mut self.revisions);
 
-                    config.set_name_value_directive(ln, RUN_FLAGS, &mut self.run_flags, |r| r);
+                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
+                        self.run_flags.extend(split_flags(&flags));
+                    }
 
                     if self.pp_exact.is_none() {
                         self.pp_exact = config.parse_pp_exact(ln, testfile);
@@ -407,6 +426,8 @@ impl TestProps {
 
                     config.set_name_directive(ln, SHOULD_ICE, &mut self.should_ice);
                     config.set_name_directive(ln, BUILD_AUX_DOCS, &mut self.build_aux_docs);
+                    config.set_name_directive(ln, UNIQUE_DOC_OUT_DIR, &mut self.unique_doc_out_dir);
+
                     config.set_name_directive(ln, FORCE_HOST, &mut self.force_host);
                     config.set_name_directive(ln, CHECK_STDOUT, &mut self.check_stdout);
                     config.set_name_directive(ln, CHECK_RUN_RESULTS, &mut self.check_run_results);
@@ -444,6 +465,9 @@ impl TestProps {
                         &mut self.aux_crates,
                         Config::parse_aux_crate,
                     );
+                    if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
+                        self.aux_codegen_backend = Some(r.trim().to_owned());
+                    }
                     config.push_name_value_directive(
                         ln,
                         EXEC_ENV,
@@ -602,7 +626,7 @@ impl TestProps {
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
-                if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
+                if !self.exec_env.iter().any(|&(ref x, _)| x == key) {
                     self.exec_env.push(((*key).to_owned(), val))
                 }
             }
@@ -712,230 +736,33 @@ pub fn line_directive<'line>(
     }
 }
 
-/// This was originally generated by collecting directives from ui tests and then extracting their
-/// directive names. This is **not** an exhaustive list of all possible directives. Instead, this is
-/// a best-effort approximation for diagnostics. Add new headers to this list when needed.
-const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
-    // tidy-alphabetical-start
-    "assembly-output",
-    "aux-bin",
-    "aux-build",
-    "aux-crate",
-    "build-aux-docs",
-    "build-fail",
-    "build-pass",
-    "check-fail",
-    "check-pass",
-    "check-run-results",
-    "check-stdout",
-    "check-test-line-numbers-match",
-    "compare-output-lines-by-subset",
-    "compile-flags",
-    "dont-check-compiler-stderr",
-    "dont-check-compiler-stdout",
-    "dont-check-failure-status",
-    "edition",
-    "error-pattern",
-    "exec-env",
-    "failure-status",
-    "filecheck-flags",
-    "forbid-output",
-    "force-host",
-    "ignore-16bit",
-    "ignore-32bit",
-    "ignore-64bit",
-    "ignore-aarch64",
-    "ignore-aarch64-unknown-linux-gnu",
-    "ignore-android",
-    "ignore-arm",
-    "ignore-avr",
-    "ignore-beta",
-    "ignore-cdb",
-    "ignore-compare-mode-next-solver",
-    "ignore-compare-mode-polonius",
-    "ignore-cross-compile",
-    "ignore-debug",
-    "ignore-eabi",
-    "ignore-emscripten",
-    "ignore-endian-big",
-    "ignore-freebsd",
-    "ignore-fuchsia",
-    "ignore-gdb",
-    "ignore-gdb-version",
-    "ignore-gnu",
-    "ignore-haiku",
-    "ignore-horizon",
-    "ignore-i686-pc-windows-msvc",
-    "ignore-ios",
-    "ignore-linux",
-    "ignore-lldb",
-    "ignore-llvm-version",
-    "ignore-loongarch64",
-    "ignore-macabi",
-    "ignore-macos",
-    "ignore-mode-assembly",
-    "ignore-mode-codegen",
-    "ignore-mode-codegen-units",
-    "ignore-mode-coverage-map",
-    "ignore-mode-coverage-run",
-    "ignore-mode-crashes",
-    "ignore-mode-debuginfo",
-    "ignore-mode-incremental",
-    "ignore-mode-js-doc-test",
-    "ignore-mode-mir-opt",
-    "ignore-mode-pretty",
-    "ignore-mode-run-make",
-    "ignore-mode-run-pass-valgrind",
-    "ignore-mode-rustdoc",
-    "ignore-mode-rustdoc-json",
-    "ignore-mode-ui",
-    "ignore-mode-ui-fulldeps",
-    "ignore-msp430",
-    "ignore-msvc",
-    "ignore-musl",
-    "ignore-netbsd",
-    "ignore-nightly",
-    "ignore-none",
-    "ignore-nto",
-    "ignore-nvptx64",
-    "ignore-openbsd",
-    "ignore-pass",
-    "ignore-remote",
-    "ignore-riscv64",
-    "ignore-s390x",
-    "ignore-sgx",
-    "ignore-spirv",
-    "ignore-stable",
-    "ignore-stage1",
-    "ignore-stage2",
-    "ignore-test",
-    "ignore-thumb",
-    "ignore-thumbv8m.base-none-eabi",
-    "ignore-thumbv8m.main-none-eabi",
-    "ignore-tvos",
-    "ignore-unix",
-    "ignore-unknown",
-    "ignore-uwp",
-    "ignore-visionos",
-    "ignore-vxworks",
-    "ignore-wasi",
-    "ignore-wasm",
-    "ignore-wasm32",
-    "ignore-wasm32-bare",
-    "ignore-wasm64",
-    "ignore-watchos",
-    "ignore-windows",
-    "ignore-windows-gnu",
-    "ignore-x32",
-    "ignore-x86",
-    "ignore-x86_64",
-    "ignore-x86_64-apple-darwin",
-    "ignore-x86_64-unknown-linux-gnu",
-    "incremental",
-    "known-bug",
-    "llvm-cov-flags",
-    "min-cdb-version",
-    "min-gdb-version",
-    "min-lldb-version",
-    "min-llvm-version",
-    "min-system-llvm-version",
-    "needs-asm-support",
-    "needs-dlltool",
-    "needs-dynamic-linking",
-    "needs-git-hash",
-    "needs-llvm-components",
-    "needs-matching-clang",
-    "needs-profiler-support",
-    "needs-relocation-model-pic",
-    "needs-run-enabled",
-    "needs-rust-lld",
-    "needs-rust-lldb",
-    "needs-sanitizer-address",
-    "needs-sanitizer-cfi",
-    "needs-sanitizer-dataflow",
-    "needs-sanitizer-hwaddress",
-    "needs-sanitizer-kcfi",
-    "needs-sanitizer-leak",
-    "needs-sanitizer-memory",
-    "needs-sanitizer-memtag",
-    "needs-sanitizer-safestack",
-    "needs-sanitizer-shadow-call-stack",
-    "needs-sanitizer-support",
-    "needs-sanitizer-thread",
-    "needs-threads",
-    "needs-unwind",
-    "needs-wasmtime",
-    "needs-xray",
-    "no-auto-check-cfg",
-    "no-prefer-dynamic",
-    "normalize-stderr-32bit",
-    "normalize-stderr-64bit",
-    "normalize-stderr-test",
-    "normalize-stdout-test",
-    "only-16bit",
-    "only-32bit",
-    "only-64bit",
-    "only-aarch64",
-    "only-arm",
-    "only-avr",
-    "only-beta",
-    "only-bpf",
-    "only-cdb",
-    "only-gnu",
-    "only-i686-pc-windows-msvc",
-    "only-ios",
-    "only-linux",
-    "only-loongarch64",
-    "only-loongarch64-unknown-linux-gnu",
-    "only-macos",
-    "only-mips",
-    "only-mips64",
-    "only-msp430",
-    "only-msvc",
-    "only-nightly",
-    "only-nvptx64",
-    "only-riscv64",
-    "only-sparc",
-    "only-sparc64",
-    "only-stable",
-    "only-thumb",
-    "only-tvos",
-    "only-unix",
-    "only-visionos",
-    "only-wasm32",
-    "only-wasm32-bare",
-    "only-wasm32-wasip1",
-    "only-watchos",
-    "only-windows",
-    "only-x86",
-    "only-x86_64",
-    "only-x86_64-fortanix-unknown-sgx",
-    "only-x86_64-pc-windows-gnu",
-    "only-x86_64-pc-windows-msvc",
-    "only-x86_64-unknown-linux-gnu",
-    "pp-exact",
-    "pretty-compare-only",
-    "pretty-expanded",
-    "pretty-mode",
-    "regex-error-pattern",
-    "remap-src-base",
-    "revisions",
-    "run-fail",
-    "run-flags",
-    "run-pass",
-    "run-rustfix",
-    "rustc-env",
-    "rustfix-only-machine-applicable",
-    "should-fail",
-    "should-ice",
-    "stderr-per-bitwidth",
-    "test-mir-pass",
-    "unset-exec-env",
-    "unset-rustc-env",
-    // Used by the tidy check `unknown_revision`.
-    "unused-revision-names",
-    // tidy-alphabetical-end
+// To prevent duplicating the list of commmands between `compiletest`,`htmldocck` and `jsondocck`,
+// we put it into a common file which is included in rust code and parsed here.
+// FIXME: This setup is temporary until we figure out how to improve this situation.
+//        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
+include!("command-list.rs");
+
+const KNOWN_HTMLDOCCK_DIRECTIVE_NAMES: &[&str] = &[
+    "count",
+    "!count",
+    "files",
+    "!files",
+    "has",
+    "!has",
+    "has-dir",
+    "!has-dir",
+    "hasraw",
+    "!hasraw",
+    "matches",
+    "!matches",
+    "matchesraw",
+    "!matchesraw",
+    "snapshot",
+    "!snapshot",
 ];
+
+const KNOWN_JSONDOCCK_DIRECTIVE_NAMES: &[&str] =
+    &["count", "!count", "has", "!has", "is", "!is", "ismany", "!ismany", "set", "!set"];
 
 /// The broken-down contents of a line containing a test header directive,
 /// which [`iter_header`] passes to its callback function.
@@ -971,20 +798,39 @@ pub(crate) struct CheckDirectiveResult<'ln> {
     trailing_directive: Option<&'ln str>,
 }
 
-pub(crate) fn check_directive(directive_ln: &str) -> CheckDirectiveResult<'_> {
+pub(crate) fn check_directive<'a>(
+    directive_ln: &'a str,
+    mode: Mode,
+    original_line: &str,
+) -> CheckDirectiveResult<'a> {
     let (directive_name, post) = directive_ln.split_once([':', ' ']).unwrap_or((directive_ln, ""));
 
     let trailing = post.trim().split_once(' ').map(|(pre, _)| pre).unwrap_or(post);
+    let is_known = |s: &str| {
+        KNOWN_DIRECTIVE_NAMES.contains(&s)
+            || match mode {
+                Mode::Rustdoc | Mode::RustdocJson => {
+                    original_line.starts_with("//@")
+                        && match mode {
+                            Mode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES,
+                            Mode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
+                            _ => unreachable!(),
+                        }
+                        .contains(&s)
+                }
+                _ => false,
+            }
+    };
     let trailing_directive = {
         // 1. is the directive name followed by a space? (to exclude `:`)
-        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(" "))
+        matches!(directive_ln.get(directive_name.len()..), Some(s) if s.starts_with(' '))
             // 2. is what is after that directive also a directive (ex: "only-x86 only-arm")
-            && KNOWN_DIRECTIVE_NAMES.contains(&trailing)
+            && is_known(trailing)
     }
     .then_some(trailing);
 
     CheckDirectiveResult {
-        is_known_directive: KNOWN_DIRECTIVE_NAMES.contains(&directive_name),
+        is_known_directive: is_known(&directive_name),
         directive_name: directive_ln,
         trailing_directive,
     }
@@ -1009,9 +855,6 @@ fn iter_header(
     if mode == Mode::CoverageRun {
         let extra_directives: &[&str] = &[
             "needs-profiler-support",
-            // FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
-            // properly. Since we only have GCC on the CI ignore the test for now.
-            "ignore-windows-gnu",
             // FIXME(pietroalbini): this test currently does not work on cross-compiled
             // targets because remote-test is not capable of sending back the *.profraw
             // files generated by the LLVM instrumentation.
@@ -1058,7 +901,7 @@ fn iter_header(
                 let directive_ln = non_revisioned_directive_line.trim();
 
                 let CheckDirectiveResult { is_known_directive, trailing_directive, .. } =
-                    check_directive(directive_ln);
+                    check_directive(directive_ln, mode, ln);
 
                 if !is_known_directive {
                     *poisoned = true;
@@ -1111,7 +954,7 @@ fn iter_header(
             let rest = rest.trim_start();
 
             let CheckDirectiveResult { is_known_directive, directive_name, .. } =
-                check_directive(rest);
+                check_directive(rest, mode, ln);
 
             if is_known_directive {
                 *poisoned = true;
@@ -1173,14 +1016,20 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
-        if parse_cfg_name_directive(self, line, prefix).outcome == MatchOutcome::Match {
-            let from = parse_normalization_string(&mut line)?;
-            let to = parse_normalization_string(&mut line)?;
-            Some((from, to))
-        } else {
-            None
+    fn parse_custom_normalization(&self, line: &str, prefix: &str) -> Option<(String, String)> {
+        let parsed = parse_cfg_name_directive(self, line, prefix);
+        if parsed.outcome != MatchOutcome::Match {
+            return None;
         }
+        let name = parsed.name.expect("successful match always has a name");
+
+        let Some((regex, replacement)) = parse_normalize_rule(line) else {
+            panic!(
+                "couldn't parse custom normalization rule: `{line}`\n\
+                help: expected syntax is: `{prefix}-{name}: \"REGEX\" -> \"REPLACEMENT\"`"
+            );
+        };
+        Some((regex, replacement))
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
@@ -1266,6 +1115,9 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
     const BUILD_BASE: &str = "{{build-base}}";
+    const SYSROOT_BASE: &str = "{{sysroot-base}}";
+    const TARGET_LINKER: &str = "{{target-linker}}";
+    const TARGET: &str = "{{target}}";
 
     if value.contains(CWD) {
         let cwd = env::current_dir().unwrap();
@@ -1280,27 +1132,42 @@ fn expand_variables(mut value: String, config: &Config) -> String {
         value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
     }
 
+    if value.contains(SYSROOT_BASE) {
+        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_string_lossy());
+    }
+
+    if value.contains(TARGET_LINKER) {
+        value = value.replace(TARGET_LINKER, config.target_linker.as_deref().unwrap_or(""));
+    }
+
+    if value.contains(TARGET) {
+        value = value.replace(TARGET, &config.target);
+    }
+
     value
 }
 
-/// Finds the next quoted string `"..."` in `line`, and extract the content from it. Move the `line`
-/// variable after the end of the quoted string.
-///
-/// # Examples
-///
+/// Parses the regex and replacement values of a `//@ normalize-*` header,
+/// in the format:
+/// ```text
+/// normalize-*: "REGEX" -> "REPLACEMENT"
 /// ```
-/// let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
-/// let first = parse_normalization_string(&mut s);
-/// assert_eq!(first, Some("something (32 bits)".to_owned()));
-/// assert_eq!(s, " -> \"something ($WORD bits)\".");
-/// ```
-fn parse_normalization_string(line: &mut &str) -> Option<String> {
-    // FIXME support escapes in strings.
-    let begin = line.find('"')? + 1;
-    let end = line[begin..].find('"')? + begin;
-    let result = line[begin..end].to_owned();
-    *line = &line[end + 1..];
-    Some(result)
+fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
+    // FIXME: Support escaped double-quotes in strings.
+    let captures = static_regex!(
+        r#"(?x) # (verbose mode regex)
+        ^
+        [^:\s]+:\s*             # (header name followed by colon)
+        "(?<regex>[^"]*)"       # "REGEX"
+        \s+->\s+                # ->
+        "(?<replacement>[^"]*)" # "REPLACEMENT"
+        $
+        "#
+    )
+    .captures(header)?;
+    let regex = captures["regex"].to_owned();
+    let replacement = captures["replacement"].to_owned();
+    Some((regex, replacement))
 }
 
 pub fn extract_llvm_version(version: &str) -> Option<u32> {
@@ -1329,11 +1196,112 @@ pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<u32> {
     }
     let version = String::from_utf8(output.stdout).ok()?;
     for line in version.lines() {
-        if let Some(version) = line.split("LLVM version ").skip(1).next() {
+        if let Some(version) = line.split("LLVM version ").nth(1) {
             return extract_llvm_version(version);
         }
     }
     None
+}
+
+/// For tests using the `needs-llvm-zstd` directive:
+/// - for local LLVM builds, try to find the static zstd library in the llvm-config system libs.
+/// - for `download-ci-llvm`, see if `lld` was built with zstd support.
+pub fn llvm_has_libzstd(config: &Config) -> bool {
+    // Strategy 1: works for local builds but not with `download-ci-llvm`.
+    //
+    // We check whether `llvm-config` returns the zstd library. Bootstrap's `llvm.libzstd` will only
+    // ask to statically link it when building LLVM, so we only check if the list of system libs
+    // contains a path to that static lib, and that it exists.
+    //
+    // See compiler/rustc_llvm/build.rs for more details and similar expectations.
+    fn is_zstd_in_config(llvm_bin_dir: &Path) -> Option<()> {
+        let llvm_config_path = llvm_bin_dir.join("llvm-config");
+        let output = Command::new(llvm_config_path).arg("--system-libs").output().ok()?;
+        assert!(output.status.success(), "running llvm-config --system-libs failed");
+
+        let libs = String::from_utf8(output.stdout).ok()?;
+        for lib in libs.split_whitespace() {
+            if lib.ends_with("libzstd.a") && Path::new(lib).exists() {
+                return Some(());
+            }
+        }
+
+        None
+    }
+
+    // Strategy 2: `download-ci-llvm`'s `llvm-config --system-libs` will not return any libs to
+    // use.
+    //
+    // The CI artifacts also don't contain the bootstrap config used to build them: otherwise we
+    // could have looked at the `llvm.libzstd` config.
+    //
+    // We infer whether `LLVM_ENABLE_ZSTD` was used to build LLVM as a byproduct of testing whether
+    // `lld` supports it. If not, an error will be emitted: "LLVM was not built with
+    // LLVM_ENABLE_ZSTD or did not find zstd at build time".
+    #[cfg(unix)]
+    fn is_lld_built_with_zstd(llvm_bin_dir: &Path) -> Option<()> {
+        let lld_path = llvm_bin_dir.join("lld");
+        if lld_path.exists() {
+            // We can't call `lld` as-is, it expects to be invoked by a compiler driver using a
+            // different name. Prepare a temporary symlink to do that.
+            let lld_symlink_path = llvm_bin_dir.join("ld.lld");
+            if !lld_symlink_path.exists() {
+                std::os::unix::fs::symlink(lld_path, &lld_symlink_path).ok()?;
+            }
+
+            // Run `lld` with a zstd flag. We expect this command to always error here, we don't
+            // want to link actual files and don't pass any.
+            let output = Command::new(&lld_symlink_path)
+                .arg("--compress-debug-sections=zstd")
+                .output()
+                .ok()?;
+            assert!(!output.status.success());
+
+            // Look for a specific error caused by LLVM not being built with zstd support. We could
+            // also look for the "no input files" message, indicating the zstd flag was accepted.
+            let stderr = String::from_utf8(output.stderr).ok()?;
+            let zstd_available = !stderr.contains("LLVM was not built with LLVM_ENABLE_ZSTD");
+
+            // We don't particularly need to clean the link up (so the previous commands could fail
+            // in theory but won't in practice), but we can try.
+            std::fs::remove_file(lld_symlink_path).ok()?;
+
+            if zstd_available {
+                return Some(());
+            }
+        }
+
+        None
+    }
+
+    #[cfg(not(unix))]
+    fn is_lld_built_with_zstd(_llvm_bin_dir: &Path) -> Option<()> {
+        None
+    }
+
+    if let Some(llvm_bin_dir) = &config.llvm_bin_dir {
+        // Strategy 1: for local LLVM builds.
+        if is_zstd_in_config(llvm_bin_dir).is_some() {
+            return true;
+        }
+
+        // Strategy 2: for LLVM artifacts built on CI via `download-ci-llvm`.
+        //
+        // It doesn't work for cases where the artifacts don't contain the linker, but it's
+        // best-effort: CI has `llvm.libzstd` and `lld` enabled on the x64 linux artifacts, so it
+        // will at least work there.
+        //
+        // If this can be improved and expanded to less common cases in the future, it should.
+        if config.target == "x86_64-unknown-linux-gnu"
+            && config.host == config.target
+            && is_lld_built_with_zstd(llvm_bin_dir).is_some()
+        {
+            return true;
+        }
+    }
+
+    // Otherwise, all hope is lost.
+    false
 }
 
 /// Takes a directive of the form "<version1> [- <version2>]",
@@ -1360,7 +1328,7 @@ where
 
     let min = parse(min)?;
     let max = match max {
-        Some(max) if max.is_empty() => return None,
+        Some("") => return None,
         Some(max) => parse(max)?,
         _ => min,
     };
@@ -1432,12 +1400,12 @@ pub fn make_test_description<R: Read>(
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
 
-            if config.target == "wasm32-unknown-unknown" {
-                if config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS) {
-                    decision!(IgnoreDecision::Ignore {
-                        reason: "ignored when checking the run results on WASM".into(),
-                    });
-                }
+            if config.target == "wasm32-unknown-unknown"
+                && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)
+            {
+                decision!(IgnoreDecision::Ignore {
+                    reason: "ignored on WASM as the run results cannot be checked there".into(),
+                });
             }
 
             should_fail |= config.parse_name_directive(ln, "should-fail");
@@ -1576,8 +1544,11 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
             .split_whitespace()
             .find(|needed_component| !components.contains(needed_component))
         {
-            if env::var_os("COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS").is_some() {
-                panic!("missing LLVM component: {}", missing_component);
+            if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
+                panic!(
+                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set",
+                    missing_component
+                );
             }
             return IgnoreDecision::Ignore {
                 reason: format!("ignored when the {missing_component} LLVM component is missing"),

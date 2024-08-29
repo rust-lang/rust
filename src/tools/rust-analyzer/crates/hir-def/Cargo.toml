@@ -1,7 +1,8 @@
 [package]
 name = "hir-def"
 version = "0.0.0"
-description = "TBD"
+repository.workspace = true
+description = "RPC Api for the `proc-macro-srv` crate of rust-analyzer."
 
 authors.workspace = true
 edition.workspace = true
@@ -28,6 +29,7 @@ tracing.workspace = true
 smallvec.workspace = true
 hashbrown.workspace = true
 triomphe.workspace = true
+rustc_apfloat = "0.2.0"
 
 ra-ap-rustc_parse_format.workspace = true
 ra-ap-rustc_abi.workspace = true
@@ -37,7 +39,6 @@ stdx.workspace = true
 intern.workspace = true
 base-db.workspace = true
 syntax.workspace = true
-profile.workspace = true
 hir-expand.workspace = true
 mbe.workspace = true
 cfg.workspace = true
@@ -52,7 +53,7 @@ expect-test.workspace = true
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
-
+syntax-bridge.workspace = true
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]
 

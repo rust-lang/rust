@@ -1,7 +1,8 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::is_in_test;
 use clippy_utils::macros::{format_arg_removal_span, root_macro_call_first_node, FormatArgsStorage, MacroCall};
-use clippy_utils::source::{expand_past_previous_comma, snippet_opt};
-use clippy_utils::{is_in_cfg_test, is_in_test_function};
+use clippy_utils::source::{expand_past_previous_comma, SpanRangeExt};
 use rustc_ast::token::LitKind;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder,
@@ -66,7 +67,7 @@ declare_clippy_lint! {
     /// Checks for printing on *stdout*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// People often print on *stdout* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
@@ -88,7 +89,7 @@ declare_clippy_lint! {
     /// Checks for printing on *stderr*. The purpose of this lint
     /// is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// People often print on *stderr* while debugging an
     /// application and might forget to remove those prints afterward.
     ///
@@ -110,15 +111,18 @@ declare_clippy_lint! {
     /// Checks for usage of `Debug` formatting. The purpose of this
     /// lint is to catch debugging remnants.
     ///
-    /// ### Why is this bad?
-    /// The purpose of the `Debug` trait is to facilitate
-    /// debugging Rust code. It should not be used in user-facing output.
+    /// ### Why restrict this?
+    /// The purpose of the `Debug` trait is to facilitate debugging Rust code,
+    /// and [no guarantees are made about its output][stability].
+    /// It should not be used in user-facing output.
     ///
     /// ### Example
     /// ```no_run
     /// # let foo = "bar";
     /// println!("{:?}", foo);
     /// ```
+    ///
+    /// [stability]: https://doc.rust-lang.org/stable/std/fmt/trait.Debug.html#stability
     #[clippy::version = "pre 1.29.0"]
     pub USE_DEBUG,
     restriction,
@@ -234,7 +238,6 @@ declare_clippy_lint! {
     "writing a literal with a format string"
 }
 
-#[derive(Default)]
 pub struct Write {
     format_args: FormatArgsStorage,
     in_debug_impl: bool,
@@ -242,11 +245,11 @@ pub struct Write {
 }
 
 impl Write {
-    pub fn new(format_args: FormatArgsStorage, allow_print_in_tests: bool) -> Self {
+    pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
         Self {
             format_args,
-            allow_print_in_tests,
-            ..Default::default()
+            allow_print_in_tests: conf.allow_print_in_tests,
+            in_debug_impl: false,
         }
     }
 }
@@ -294,8 +297,7 @@ impl<'tcx> LateLintPass<'tcx> for Write {
             .as_ref()
             .map_or(false, |crate_name| crate_name == "build_script_build");
 
-        let allowed_in_tests = self.allow_print_in_tests
-            && (is_in_test_function(cx.tcx, expr.hir_id) || is_in_cfg_test(cx.tcx, expr.hir_id));
+        let allowed_in_tests = self.allow_print_in_tests && is_in_test(cx.tcx, expr.hir_id);
         match diag_name {
             sym::print_macro | sym::println_macro if !allowed_in_tests => {
                 if !is_build_script {
@@ -395,7 +397,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &Ma
             format!("using `{name}!()` with a format string that ends in a single newline"),
             |diag| {
                 let name_span = cx.sess().source_map().span_until_char(macro_call.span, '!');
-                let Some(format_snippet) = snippet_opt(cx, format_string_span) else {
+                let Some(format_snippet) = format_string_span.get_source_text(cx) else {
                     return;
                 };
 
@@ -490,7 +492,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
             && let Some(arg) = format_args.arguments.by_index(index)
             && let rustc_ast::ExprKind::Lit(lit) = &arg.expr.kind
             && !arg.expr.span.from_expansion()
-            && let Some(value_string) = snippet_opt(cx, arg.expr.span)
+            && let Some(value_string) = arg.expr.span.get_source_text(cx)
         {
             let (replacement, replace_raw) = match lit.kind {
                 LitKind::Str | LitKind::StrRaw(_) => match extract_str_literal(&value_string) {
@@ -513,7 +515,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                 _ => continue,
             };
 
-            let Some(format_string_snippet) = snippet_opt(cx, format_args.span) else {
+            let Some(format_string_snippet) = format_args.span.get_source_text(cx) else {
                 continue;
             };
             let format_string_is_raw = format_string_snippet.starts_with('r');

@@ -1,14 +1,15 @@
+use std::fmt;
+
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
-use std::fmt;
 
 use crate::{self as ty, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ClauseKind<I: Interner> {
@@ -38,29 +39,7 @@ pub enum ClauseKind<I: Interner> {
     ConstEvaluatable(I::Const),
 }
 
-impl<I: Interner> PartialEq for ClauseKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Trait(l0), Self::Trait(r0)) => l0 == r0,
-            (Self::RegionOutlives(l0), Self::RegionOutlives(r0)) => l0 == r0,
-            (Self::TypeOutlives(l0), Self::TypeOutlives(r0)) => l0 == r0,
-            (Self::Projection(l0), Self::Projection(r0)) => l0 == r0,
-            (Self::ConstArgHasType(l0, l1), Self::ConstArgHasType(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::WellFormed(l0), Self::WellFormed(r0)) => l0 == r0,
-            (Self::ConstEvaluatable(l0), Self::ConstEvaluatable(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
-}
-
-#[derive(derivative::Derivative)]
-#[derivative(
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Hash(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {
@@ -127,7 +106,6 @@ impl std::fmt::Display for AliasRelationDirection {
     }
 }
 
-// FIXME: Convert to DebugWithInfcx impl
 impl<I: Interner> fmt::Debug for ClauseKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -144,7 +122,6 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
     }
 }
 
-// FIXME: Convert to DebugWithInfcx impl
 impl<I: Interner> fmt::Debug for PredicateKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

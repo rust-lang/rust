@@ -11,7 +11,7 @@ LL |     let ptr = unsafe { &mut BB };
 help: use `addr_of_mut!` instead to create a raw pointer
    |
 LL |     let ptr = unsafe { addr_of_mut!(BB) };
-   |                        ~~~~~~~~~~~~~~~~
+   |                        ~~~~~~~~~~~~~  +
 
 warning: 1 warning emitted
 

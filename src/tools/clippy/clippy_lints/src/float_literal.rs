@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_errors::Applicability;
@@ -38,9 +38,9 @@ declare_clippy_lint! {
     /// Checks for whole number float literals that
     /// cannot be represented as the underlying type without loss.
     ///
-    /// ### Why is this bad?
-    /// Rust will silently lose precision during
-    /// conversion to a float.
+    /// ### Why restrict this?
+    /// If the value was intended to be exact, it will not be.
+    /// This may be especially surprising when the lost precision is to the left of the decimal point.
     ///
     /// ### Example
     /// ```no_run
@@ -62,10 +62,9 @@ declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 
 impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        let ty = cx.typeck_results().expr_ty(expr);
-        if let ty::Float(fty) = *ty.kind()
-            && let hir::ExprKind::Lit(lit) = expr.kind
+        if let hir::ExprKind::Lit(lit) = expr.kind
             && let LitKind::Float(sym, lit_float_ty) = lit.node
+            && let ty::Float(fty) = *cx.typeck_results().expr_ty(expr).kind()
         {
             let sym_str = sym.as_str();
             let formatter = FloatFormat::new(sym_str);
@@ -103,35 +102,44 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 return;
             }
 
-            if is_whole && !sym_str.contains(|c| c == 'e' || c == 'E') {
+            if is_whole && !sym_str.contains(['e', 'E']) {
                 // Normalize the literal by stripping the fractional portion
                 if sym_str.split('.').next().unwrap() != float_str {
-                    // If the type suffix is missing the suggestion would be
-                    // incorrectly interpreted as an integer so adding a `.0`
-                    // suffix to prevent that.
-                    if type_suffix.is_none() {
-                        float_str.push_str(".0");
-                    }
-
-                    span_lint_and_sugg(
+                    span_lint_and_then(
                         cx,
                         LOSSY_FLOAT_LITERAL,
                         expr.span,
                         "literal cannot be represented as the underlying type without loss of precision",
-                        "consider changing the type or replacing it with",
-                        numeric_literal::format(&float_str, type_suffix, true),
-                        Applicability::MachineApplicable,
+                        |diag| {
+                            // If the type suffix is missing the suggestion would be
+                            // incorrectly interpreted as an integer so adding a `.0`
+                            // suffix to prevent that.
+                            if type_suffix.is_none() {
+                                float_str.push_str(".0");
+                            }
+                            diag.span_suggestion_verbose(
+                                expr.span,
+                                "consider changing the type or replacing it with",
+                                numeric_literal::format(&float_str, type_suffix, true),
+                                Applicability::MachineApplicable,
+                            );
+                        },
                     );
                 }
             } else if digits > max as usize && float_str.len() < sym_str.len() {
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     EXCESSIVE_PRECISION,
                     expr.span,
                     "float has excessive precision",
-                    "consider changing the type or truncating it to",
-                    numeric_literal::format(&float_str, type_suffix, true),
-                    Applicability::MachineApplicable,
+                    |diag| {
+                        diag.span_suggestion_verbose(
+                            expr.span,
+                            "consider changing the type or truncating it to",
+                            numeric_literal::format(&float_str, type_suffix, true),
+                            Applicability::MachineApplicable,
+                        );
+                    },
                 );
             }
         }
@@ -141,18 +149,17 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
 #[must_use]
 fn max_digits(fty: FloatTy) -> u32 {
     match fty {
-        // FIXME(f16_f128): replace the magic numbers once `{f16,f128}::DIGITS` are available
-        FloatTy::F16 => 3,
+        FloatTy::F16 => f16::DIGITS,
         FloatTy::F32 => f32::DIGITS,
         FloatTy::F64 => f64::DIGITS,
-        FloatTy::F128 => 33,
+        FloatTy::F128 => f128::DIGITS,
     }
 }
 
 /// Counts the digits excluding leading zeros
 #[must_use]
 fn count_digits(s: &str) -> usize {
-    // Note that s does not contain the f32/64 suffix, and underscores have been stripped
+    // Note that s does not contain the `f{16,32,64,128}` suffix, and underscores have been stripped
     s.chars()
         .filter(|c| *c != '-' && *c != '.')
         .take_while(|c| *c != 'e' && *c != 'E')

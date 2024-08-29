@@ -1,11 +1,13 @@
 error[E0384]: cannot assign twice to immutable variable `v`
   --> $DIR/liveness-assign-imm-local-in-loop.rs:6:9
    |
-LL |     let v: isize;
-   |         - help: consider making this binding mutable: `mut v`
-...
 LL |         v = 1;
    |         ^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let mut v: isize;
+   |         +++
 
 error: aborting due to 1 previous error
 

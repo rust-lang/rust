@@ -3,13 +3,13 @@
 
 #![feature(doc_cfg)]
 
-// @has 'foo/trait.Foo.html'
-// @count   - '//*[@class="stab portability"]' 6
-// @matches - '//*[@class="stab portability"]' 'crate feature foo-root'
-// @matches - '//*[@class="stab portability"]' 'crate feature foo-public-mod'
-// @matches - '//*[@class="stab portability"]' 'crate feature foo-private-mod'
-// @matches - '//*[@class="stab portability"]' 'crate feature foo-fn'
-// @matches - '//*[@class="stab portability"]' 'crate feature foo-method'
+//@ has 'foo/trait.Foo.html'
+//@ count   - '//*[@class="stab portability"]' 6
+//@ matches - '//*[@class="stab portability"]' 'crate feature foo-root'
+//@ matches - '//*[@class="stab portability"]' 'crate feature foo-public-mod'
+//@ matches - '//*[@class="stab portability"]' 'crate feature foo-private-mod'
+//@ matches - '//*[@class="stab portability"]' 'crate feature foo-fn'
+//@ matches - '//*[@class="stab portability"]' 'crate feature foo-method'
 
 pub trait Foo {}
 

@@ -1,8 +1,11 @@
-use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
+use std::fmt::{self, Debug};
+
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::{def_id::DefPathHash, HashStableContext};
-use std::fmt::{self, Debug};
+use rustc_span::def_id::DefPathHash;
+use rustc_span::HashStableContext;
+
+use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct OwnerId {
@@ -165,10 +168,12 @@ impl ItemLocalId {
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
-// Safety: Ord is implement as just comparing the ItemLocalId's numerical
-// values and these are not changed by (de-)serialization.
-unsafe impl StableOrd for ItemLocalId {
+impl StableOrd for ItemLocalId {
     const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // `Ord` is implemented as just comparing the ItemLocalId's numerical
+    // values and these are not changed by (de-)serialization.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.

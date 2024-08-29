@@ -2,7 +2,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/seq-args.rs:4:13
    |
 LL |     impl<T> Seq<T> for Vec<T> {
-   |             ^^^--- help: remove these generics
+   |             ^^^--- help: remove the unnecessary generics
    |             |
    |             expected 0 generic arguments
    |
@@ -16,7 +16,7 @@ error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplie
   --> $DIR/seq-args.rs:9:10
    |
 LL |     impl Seq<bool> for u32 {
-   |          ^^^------ help: remove these generics
+   |          ^^^------ help: remove the unnecessary generics
    |          |
    |          expected 0 generic arguments
    |

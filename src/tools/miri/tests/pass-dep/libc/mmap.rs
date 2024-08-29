@@ -69,36 +69,6 @@ fn test_mmap<Offset: Default>(
     assert_eq!(ptr, libc::MAP_FAILED);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 
-    let ptr = unsafe {
-        mmap(
-            ptr::without_provenance_mut(page_size * 64),
-            page_size,
-            libc::PROT_READ | libc::PROT_WRITE,
-            // We don't support MAP_FIXED
-            libc::MAP_PRIVATE | libc::MAP_ANONYMOUS | libc::MAP_FIXED,
-            -1,
-            Default::default(),
-        )
-    };
-    assert_eq!(ptr, libc::MAP_FAILED);
-    assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::ENOTSUP);
-
-    // We don't support protections other than read+write
-    for prot in [libc::PROT_NONE, libc::PROT_EXEC, libc::PROT_READ, libc::PROT_WRITE] {
-        let ptr = unsafe {
-            mmap(
-                ptr::null_mut(),
-                page_size,
-                prot,
-                libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
-                -1,
-                Default::default(),
-            )
-        };
-        assert_eq!(ptr, libc::MAP_FAILED);
-        assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::ENOTSUP);
-    }
-
     // We report an error for mappings whose length cannot be rounded up to a multiple of
     // the page size.
     let ptr = unsafe {

@@ -10,7 +10,7 @@
 extern crate proc_macro;
 
 mod cmp;
-mod parse;
+mod literal;
 
 use proc_macro::TokenStream;
 
@@ -19,7 +19,7 @@ pub fn run(input: TokenStream) -> TokenStream {
     assert!(input.is_empty());
 
     cmp::test();
-    parse::test();
+    literal::test();
 
     TokenStream::new()
 }

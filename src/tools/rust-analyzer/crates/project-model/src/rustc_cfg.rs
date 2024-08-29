@@ -1,34 +1,36 @@
 //! Runs `rustc --print cfg` to get built-in cfg flags.
 
 use anyhow::Context;
+use cfg::CfgAtom;
+use intern::Symbol;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{cfg::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
+use crate::{utf8_stdout, ManifestPath, Sysroot};
 
 /// Determines how `rustc --print cfg` is discovered and invoked.
 pub(crate) enum RustcCfgConfig<'a> {
     /// Use `rustc --print cfg`, either from with the binary from the sysroot or by discovering via
     /// [`toolchain::rustc`].
-    Rustc(Option<&'a Sysroot>),
+    Rustc(&'a Sysroot),
     /// Use `cargo --print cfg`, either from with the binary from the sysroot or by discovering via
     /// [`toolchain::cargo`].
-    Cargo(Option<&'a Sysroot>, &'a ManifestPath),
+    Cargo(&'a Sysroot, &'a ManifestPath),
 }
 
 pub(crate) fn get(
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
     config: RustcCfgConfig<'_>,
-) -> Vec<CfgFlag> {
-    let _p = tracing::span!(tracing::Level::INFO, "rustc_cfg::get").entered();
-    let mut res = Vec::with_capacity(6 * 2 + 1);
+) -> Vec<CfgAtom> {
+    let _p = tracing::info_span!("rustc_cfg::get").entered();
+    let mut res: Vec<_> = Vec::with_capacity(6 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib
-    res.push(CfgFlag::Atom("target_thread_local".into()));
+    res.push(CfgAtom::Flag(Symbol::intern("target_thread_local")));
     for ty in ["8", "16", "32", "64", "cas", "ptr"] {
         for key in ["target_has_atomic", "target_has_atomic_load_store"] {
-            res.push(CfgFlag::KeyValue { key: key.to_owned(), value: ty.into() });
+            res.push(CfgAtom::KeyValue { key: Symbol::intern(key), value: Symbol::intern(ty) });
         }
     }
 
@@ -42,8 +44,7 @@ pub(crate) fn get(
         }
     };
 
-    let rustc_cfgs =
-        rustc_cfgs.lines().map(|it| it.parse::<CfgFlag>()).collect::<Result<Vec<_>, _>>();
+    let rustc_cfgs = rustc_cfgs.lines().map(crate::parse_cfg).collect::<Result<Vec<_>, _>>();
 
     match rustc_cfgs {
         Ok(rustc_cfgs) => {
@@ -65,7 +66,7 @@ fn get_rust_cfgs(
 ) -> anyhow::Result<String> {
     let sysroot = match config {
         RustcCfgConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = Sysroot::tool(sysroot, Tool::Cargo);
+            let mut cmd = sysroot.tool(Tool::Cargo);
 
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
@@ -86,7 +87,7 @@ fn get_rust_cfgs(
         RustcCfgConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc);
+    let mut cmd = sysroot.tool(Tool::Rustc);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {

@@ -2,7 +2,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/mixed_cases.rs:10:3
    |
 LL |   two_args(1, "", X {});
-   |   ^^^^^^^^    --  ---- unexpected argument of type `X`
+   |   ^^^^^^^^    --  ---- unexpected argument #3 of type `X`
    |               |
    |               expected `f32`, found `&str`
    |
@@ -21,10 +21,10 @@ error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/mixed_cases.rs:11:3
    |
 LL |   three_args(1, "", X {}, "");
-   |   ^^^^^^^^^^    --  ----  -- unexpected argument of type `&'static str`
+   |   ^^^^^^^^^^    --  ----  -- unexpected argument #4 of type `&'static str`
    |                 |   |
-   |                 |   unexpected argument of type `X`
-   |                 an argument of type `f32` is missing
+   |                 |   unexpected argument #3 of type `X`
+   |                 argument #2 of type `f32` is missing
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -43,7 +43,7 @@ LL |   three_args(1, X {});
    |   ^^^^^^^^^^---------
    |             |   |
    |             |   expected `f32`, found `X`
-   |             an argument of type `&str` is missing
+   |             argument #3 of type `&str` is missing
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -59,9 +59,9 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:17:3
    |
 LL |   three_args(1, "", X {});
-   |   ^^^^^^^^^^    --  ---- unexpected argument of type `X`
+   |   ^^^^^^^^^^    --  ---- unexpected argument #3 of type `X`
    |                 |
-   |                 an argument of type `f32` is missing
+   |                 argument #2 of type `f32` is missing
    |
 note: function defined here
   --> $DIR/mixed_cases.rs:6:4
@@ -98,7 +98,7 @@ error[E0061]: this function takes 3 arguments but 2 arguments were supplied
 LL |   three_args("", 1);
    |   ^^^^^^^^^^ --  -
    |              |   |
-   |              |   an argument of type `f32` is missing
+   |              |   argument #2 of type `f32` is missing
    |              |   expected `&str`, found `{integer}`
    |              expected `i32`, found `&'static str`
    |

@@ -3,7 +3,7 @@ mod foo {
 }
 
 mod bar {
-    pub trait Bar{}
+    pub trait Bar {}
 
     pub fn bar() -> Box<Bar> {
         unimplemented!()
@@ -12,5 +12,5 @@ mod bar {
 
 // This makes the publicly accessible path
 // differ from the internal one.
+pub use bar::{bar, Bar};
 pub use foo::Foo;
-pub use bar::{Bar, bar};

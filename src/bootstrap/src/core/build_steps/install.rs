@@ -3,14 +3,13 @@
 //! This module is responsible for installing the standard library,
 //! compiler, and documentation.
 
-use std::env;
-use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::{env, fs};
 
 use crate::core::build_steps::dist;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::exec::command;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
 use crate::{Compiler, Kind};
@@ -102,7 +101,7 @@ fn install_sh(
     let empty_dir = builder.out.join("tmp/empty_dir");
     t!(fs::create_dir_all(&empty_dir));
 
-    let mut cmd = Command::new(SHELL);
+    let mut cmd = command(SHELL);
     cmd.current_dir(&empty_dir)
         .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh")))
         .arg(format!("--prefix={}", prepare_dir(&destdir_env, prefix)))
@@ -113,7 +112,7 @@ fn install_sh(
         .arg(format!("--libdir={}", prepare_dir(&destdir_env, libdir)))
         .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir)))
         .arg("--disable-ldconfig");
-    builder.run(&mut cmd);
+    cmd.run(builder);
     t!(fs::remove_dir_all(&empty_dir));
 }
 
@@ -262,22 +261,6 @@ install!((self, builder, _config),
         } else {
             builder.info(
                 &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target),
-            );
-        }
-    };
-    RustDemangler, alias = "rust-demangler", Self::should_build(_config), only_hosts: true, {
-        // NOTE: Even though `should_build` may return true for `extended` default tools,
-        // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
-        // is also true, or the `tools` array explicitly includes "rust-demangler".
-        if let Some(tarball) = builder.ensure(dist::RustDemangler {
-            compiler: self.compiler,
-            target: self.target
-        }) {
-            install_sh(builder, "rust-demangler", self.compiler.stage, Some(self.target), &tarball);
-        } else {
-            builder.info(
-                &format!("skipping Install RustDemangler stage{} ({})",
-                         self.compiler.stage, self.target),
             );
         }
     };

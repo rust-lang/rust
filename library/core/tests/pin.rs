@@ -29,3 +29,49 @@ fn pin_const() {
 
     pin_mut_const();
 }
+
+#[allow(unused)]
+mod pin_coerce_unsized {
+    use core::cell::{Cell, RefCell, UnsafeCell};
+    use core::pin::Pin;
+    use core::ptr::NonNull;
+
+    pub trait MyTrait {}
+    impl MyTrait for String {}
+
+    // These Pins should continue to compile.
+    // Do note that these instances of Pin types cannot be used
+    // meaningfully because all methods require a Deref/DerefMut
+    // bounds on the pointer type and Cell, RefCell and UnsafeCell
+    // do not implement Deref/DerefMut.
+
+    pub fn cell(arg: Pin<Cell<Box<String>>>) -> Pin<Cell<Box<dyn MyTrait>>> {
+        arg
+    }
+    pub fn ref_cell(arg: Pin<RefCell<Box<String>>>) -> Pin<RefCell<Box<dyn MyTrait>>> {
+        arg
+    }
+    pub fn unsafe_cell(arg: Pin<UnsafeCell<Box<String>>>) -> Pin<UnsafeCell<Box<dyn MyTrait>>> {
+        arg
+    }
+
+    // These sensible Pin coercions are possible.
+    pub fn pin_mut_ref(arg: Pin<&mut String>) -> Pin<&mut dyn MyTrait> {
+        arg
+    }
+    pub fn pin_ref(arg: Pin<&String>) -> Pin<&dyn MyTrait> {
+        arg
+    }
+    pub fn pin_ptr(arg: Pin<*const String>) -> Pin<*const dyn MyTrait> {
+        arg
+    }
+    pub fn pin_ptr_mut(arg: Pin<*mut String>) -> Pin<*mut dyn MyTrait> {
+        arg
+    }
+    pub fn pin_non_null(arg: Pin<NonNull<String>>) -> Pin<NonNull<dyn MyTrait>> {
+        arg
+    }
+    pub fn nesting_pins(arg: Pin<Pin<&String>>) -> Pin<Pin<&dyn MyTrait>> {
+        arg
+    }
+}

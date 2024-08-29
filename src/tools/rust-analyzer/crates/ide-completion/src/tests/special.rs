@@ -1017,6 +1017,7 @@ fn here_we_go() {
             fn here_we_go()    fn()
             st Foo (alias Bar) Foo
             bt u32             u32
+            kw async
             kw const
             kw crate::
             kw enum
@@ -1066,6 +1067,7 @@ fn here_we_go() {
             fn here_we_go()           fn()
             st Foo (alias Bar, Qux, Baz) Foo
             bt u32                    u32
+            kw async
             kw const
             kw crate::
             kw enum
@@ -1188,6 +1190,7 @@ fn bar() { qu$0 }
             fn bar()             fn()
             fn foo() (alias qux) fn()
             bt u32               u32
+            kw async
             kw const
             kw crate::
             kw enum
@@ -1443,6 +1446,7 @@ fn foo() {
         expect![[r#"
             fn foo()       fn()
             bt u32         u32
+            kw async
             kw const
             kw crate::
             kw enum

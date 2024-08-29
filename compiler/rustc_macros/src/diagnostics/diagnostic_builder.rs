@@ -1,5 +1,12 @@
 #![deny(unused_must_use)]
 
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::{format_ident, quote, quote_spanned};
+use syn::spanned::Spanned;
+use syn::{parse_quote, Attribute, Meta, Path, Token, Type};
+use synstructure::{BindingInfo, Structure, VariantInfo};
+
+use super::utils::SubdiagnosticVariant;
 use crate::diagnostics::error::{
     span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
@@ -8,13 +15,6 @@ use crate::diagnostics::utils::{
     should_generate_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy,
     FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
-use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned};
-use syn::Token;
-use syn::{parse_quote, spanned::Spanned, Attribute, Meta, Path, Type};
-use synstructure::{BindingInfo, Structure, VariantInfo};
-
-use super::utils::SubdiagnosticVariant;
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -269,6 +269,7 @@ impl DiagnosticDeriveVariantBuilder {
         let field_binding = &binding_info.binding;
 
         let inner_ty = FieldInnerTy::from_type(&field.ty);
+        let mut seen_label = false;
 
         field
             .attrs
@@ -280,6 +281,14 @@ impl DiagnosticDeriveVariantBuilder {
                 }
 
                 let name = attr.path().segments.last().unwrap().ident.to_string();
+
+                if name == "primary_span" && seen_label {
+                    span_err(attr.span().unwrap(), format!("`#[primary_span]` must be placed before labels, since it overwrites the span of the diagnostic")).emit();
+                }
+                if name == "label" {
+                    seen_label = true;
+                }
+
                 let needs_clone =
                     name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
                 let (binding, needs_destructure) = if needs_clone {
@@ -335,7 +344,7 @@ impl DiagnosticDeriveVariantBuilder {
                 }
             }
             (Meta::Path(_), "subdiagnostic") => {
-                return Ok(quote! { diag.subdiagnostic(diag.dcx, #binding); });
+                return Ok(quote! { diag.subdiagnostic(#binding); });
             }
             _ => (),
         }

@@ -8,7 +8,6 @@ note: if you're trying to build a new `Backtrace` consider using one of the foll
       Backtrace::capture
       Backtrace::force_capture
       Backtrace::disabled
-      Backtrace::create
   --> $SRC_DIR/std/src/backtrace.rs:LL:COL
 help: there is an associated function `force_capture` with a similar name
    |

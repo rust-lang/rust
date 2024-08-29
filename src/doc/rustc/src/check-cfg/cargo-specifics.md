@@ -3,12 +3,12 @@
 <!--
 This page is currently (as of May 2024) the canonical place for describing the interaction
 between Cargo and --check-cfg. It is placed in the rustc book rather than the Cargo book
-since check-cfg is primarely a Rust/rustc feature and is therefor consider by T-cargo to
+since check-cfg is primarily a Rust/rustc feature and is therefore considered by T-cargo to
 be an implementation detail, at least --check-cfg and the unexpected_cfgs are owned by
 rustc, not Cargo.
 -->
 
-This document is intented to summarize the principal ways Cargo interacts with
+This document is intended to summarize the principal ways Cargo interacts with
 the `unexpected_cfgs` lint and `--check-cfg` flag. It is not intended to provide
 individual details, for that refer to the [`--check-cfg` documentation](../check-cfg.md) and
 to the [Cargo book](../../cargo/index.html).
@@ -17,7 +17,7 @@ to the [Cargo book](../../cargo/index.html).
 
 *See the [`[features]` section in the Cargo book][cargo-features] for more details.*
 
-With the `[features]` table Cargo provides a mechanism to express conditional compilation and
+With the `[features]` table, Cargo provides a mechanism to express conditional compilation and
 optional dependencies. Cargo *automatically* declares corresponding cfgs for every feature as
 expected.
 
@@ -32,16 +32,16 @@ my_feature = []
 
 ## `check-cfg` in `[lints.rust]` table
 
-<!-- Note that T-Cargo considers `[lints.rust.unexpected_cfgs.check-cfg]` to be an
-implementation detail and is therefor not documented in Cargo, we therefor do that ourself -->
+<!-- Note that T-Cargo considers `lints.rust.unexpected_cfgs.check-cfg` to be an
+implementation detail and is therefore documented here and not in Cargo. -->
 
 *See the [`[lints]` section in the Cargo book][cargo-lints-table] for more details.*
 
-When using a staticlly known custom config (ie. not dependant on a build-script), Cargo provides
+When using a statically known custom config (i.e., not dependent on a build-script), Cargo provides
 the custom lint config `check-cfg` under `[lints.rust.unexpected_cfgs]`.
 
 It can be used to set custom static [`--check-cfg`](../check-cfg.md) args, it is mainly useful when
-the list of expected cfgs is known is advance.
+the list of expected cfgs is known in advance.
 
 `Cargo.toml`:
 ```toml

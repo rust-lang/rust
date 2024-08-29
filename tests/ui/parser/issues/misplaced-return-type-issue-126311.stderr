@@ -1,0 +1,14 @@
+error: return type should be specified after the function parameters
+  --> $DIR/misplaced-return-type-issue-126311.rs:1:30
+   |
+LL | fn foo<T>() where T: Default -> u8 {}
+   |                              ^^ expected one of `(`, `+`, `,`, `::`, `<`, or `{`
+   |
+help: place the return type after the function parameters
+   |
+LL - fn foo<T>() where T: Default -> u8 {}
+LL + fn foo<T>() -> u8 where T: Default  {}
+   |
+
+error: aborting due to 1 previous error
+

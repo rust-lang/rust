@@ -2,7 +2,7 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-62554.rs:5:89
    |
 LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s loo mod u8 {
-   |               -                       -         -                  -                  - ^
+   |               -                       -         -                  -                  -^
    |               |                       |         |                  |                  |
    |               |                       |         |                  |                  unclosed delimiter
    |               |                       |         |                  unclosed delimiter

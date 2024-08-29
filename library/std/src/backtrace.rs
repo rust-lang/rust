@@ -89,13 +89,13 @@ mod tests;
 // a backtrace or actually symbolizing it.
 
 use crate::backtrace_rs::{self, BytesOrWideString};
-use crate::env;
 use crate::ffi::c_void;
-use crate::fmt;
 use crate::panic::UnwindSafe;
-use crate::sync::atomic::{AtomicU8, Ordering::Relaxed};
+use crate::sync::atomic::AtomicU8;
+use crate::sync::atomic::Ordering::Relaxed;
 use crate::sync::LazyLock;
-use crate::sys_common::backtrace::{lock, output_filename, set_image_base};
+use crate::sys::backtrace::{lock, output_filename, set_image_base};
+use crate::{env, fmt};
 
 /// A captured OS thread stack backtrace.
 ///
@@ -271,7 +271,7 @@ impl Backtrace {
         enabled
     }
 
-    /// Capture a stack backtrace of the current thread.
+    /// Captures a stack backtrace of the current thread.
     ///
     /// This function will capture a stack backtrace of the current OS thread of
     /// execution, returning a `Backtrace` type which can be later used to print
@@ -428,39 +428,43 @@ impl fmt::Display for Backtrace {
     }
 }
 
-type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync + UnwindSafe;
+mod helper {
+    use super::*;
+    pub(super) type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync + UnwindSafe;
 
-fn lazy_resolve(mut capture: Capture) -> LazyResolve {
-    move || {
-        // Use the global backtrace lock to synchronize this as it's a
-        // requirement of the `backtrace` crate, and then actually resolve
-        // everything.
-        let _lock = lock();
-        for frame in capture.frames.iter_mut() {
-            let symbols = &mut frame.symbols;
-            let frame = match &frame.frame {
-                RawFrame::Actual(frame) => frame,
-                #[cfg(test)]
-                RawFrame::Fake => unimplemented!(),
-            };
-            unsafe {
-                backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
-                    symbols.push(BacktraceSymbol {
-                        name: symbol.name().map(|m| m.as_bytes().to_vec()),
-                        filename: symbol.filename_raw().map(|b| match b {
-                            BytesOrWideString::Bytes(b) => BytesOrWide::Bytes(b.to_owned()),
-                            BytesOrWideString::Wide(b) => BytesOrWide::Wide(b.to_owned()),
-                        }),
-                        lineno: symbol.lineno(),
-                        colno: symbol.colno(),
+    pub(super) fn lazy_resolve(mut capture: Capture) -> LazyResolve {
+        move || {
+            // Use the global backtrace lock to synchronize this as it's a
+            // requirement of the `backtrace` crate, and then actually resolve
+            // everything.
+            let _lock = lock();
+            for frame in capture.frames.iter_mut() {
+                let symbols = &mut frame.symbols;
+                let frame = match &frame.frame {
+                    RawFrame::Actual(frame) => frame,
+                    #[cfg(test)]
+                    RawFrame::Fake => unimplemented!(),
+                };
+                unsafe {
+                    backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
+                        symbols.push(BacktraceSymbol {
+                            name: symbol.name().map(|m| m.as_bytes().to_vec()),
+                            filename: symbol.filename_raw().map(|b| match b {
+                                BytesOrWideString::Bytes(b) => BytesOrWide::Bytes(b.to_owned()),
+                                BytesOrWideString::Wide(b) => BytesOrWide::Wide(b.to_owned()),
+                            }),
+                            lineno: symbol.lineno(),
+                            colno: symbol.colno(),
+                        });
                     });
-                });
+                }
             }
-        }
 
-        capture
+            capture
+        }
     }
 }
+use helper::*;
 
 impl RawFrame {
     fn ip(&self) -> *mut c_void {

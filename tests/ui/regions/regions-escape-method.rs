@@ -2,6 +2,7 @@
 // inferred to a region bound in the method argument. If this program
 // were accepted, then the closure passed to `s.f` could escape its
 // argument.
+//@ run-rustfix
 
 struct S;
 

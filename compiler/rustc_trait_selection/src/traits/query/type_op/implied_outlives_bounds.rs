@@ -1,10 +1,4 @@
-use crate::solve;
-use crate::traits::query::NoSolution;
-use crate::traits::wf;
-use crate::traits::ObligationCtxt;
-
 use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::infer::outlives::components::{push_outlives_components, Component};
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::traits::query::OutlivesBound;
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
@@ -13,7 +7,11 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::DUMMY_SP;
+use rustc_type_ir::outlives::{push_outlives_components, Component};
 use smallvec::{smallvec, SmallVec};
+
+use crate::traits::query::NoSolution;
+use crate::traits::{wf, ObligationCtxt};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ImpliedOutlivesBounds<'tcx> {
@@ -262,11 +260,9 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
                 let mut ty_a = ocx.infcx.resolve_vars_if_possible(ty_a);
                 // Need to manually normalize in the new solver as `wf::obligations` does not.
                 if ocx.infcx.next_trait_solver() {
-                    ty_a = solve::deeply_normalize(
-                        ocx.infcx.at(&ObligationCause::dummy(), param_env),
-                        ty_a,
-                    )
-                    .map_err(|_errs| NoSolution)?;
+                    ty_a = ocx
+                        .deeply_normalize(&ObligationCause::dummy(), param_env, ty_a)
+                        .map_err(|_| NoSolution)?;
                 }
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_a, &mut components);
@@ -287,7 +283,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
 /// those relationships.
 fn implied_bounds_from_components<'tcx>(
     sub_region: ty::Region<'tcx>,
-    sup_components: SmallVec<[Component<'tcx>; 4]>,
+    sup_components: SmallVec<[Component<TyCtxt<'tcx>>; 4]>,
 ) -> Vec<OutlivesBound<'tcx>> {
     sup_components
         .into_iter()

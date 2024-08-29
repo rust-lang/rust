@@ -8,7 +8,6 @@
 //! Clippy doesn't produce an ICE. Lint warnings are ignored by this test.
 
 #![cfg(feature = "integration")]
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
@@ -29,8 +28,10 @@ fn integration_test() {
         .nth(1)
         .expect("repo name should have format `<org>/<name>`");
 
-    let mut repo_dir = tempfile::tempdir().expect("couldn't create temp dir").into_path();
-    repo_dir.push(crate_name);
+    let repo_dir = tempfile::tempdir()
+        .expect("couldn't create temp dir")
+        .into_path()
+        .join(crate_name);
 
     let st = Command::new("git")
         .args([
@@ -55,6 +56,7 @@ fn integration_test() {
             "clippy",
             "--all-targets",
             "--all-features",
+            "--message-format=short",
             "--",
             "--cap-lints",
             "warn",

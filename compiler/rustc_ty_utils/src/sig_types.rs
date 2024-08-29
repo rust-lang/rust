@@ -3,11 +3,13 @@
 
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
-use rustc_hir::{def::DefKind, def_id::LocalDefId};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
+use tracing::{instrument, trace};
 
 pub trait SpannedTypeVisitor<'tcx> {
     type Result: VisitorResult = ();
@@ -61,7 +63,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             }
         }
         DefKind::OpaqueTy => {
-            for (pred, span) in tcx.explicit_item_bounds(item).instantiate_identity_iter_copied() {
+            for (pred, span) in tcx.explicit_item_bounds(item).iter_identity_copied() {
                 try_visit!(visitor.visit(span, pred));
             }
         }
@@ -85,7 +87,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // These are not part of a public API, they can only appear as hidden types, and there
         // the interesting parts are solely in the signature of the containing item's opaque type
         // or dyn type.
-        DefKind::InlineConst | DefKind::Closure => {}
+        DefKind::InlineConst | DefKind::Closure | DefKind::SyntheticCoroutineBody => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
                 let span = tcx.hir_node_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;

@@ -3,10 +3,10 @@
 #![cfg_attr(generic_const_items, feature(generic_const_items), allow(incomplete_features))]
 
 trait ZstAssert: Sized {
-    const A: &str = ""; //~ ERROR missing lifetime specifier
-    const B: S = S { s: &() }; //~ ERROR missing lifetime specifier
-    const C: &'_ str = ""; //~ ERROR missing lifetime specifier
-    const D: T = T { a: &(), b: &() }; //~ ERROR missing lifetime specifier
+    const A: &str = "";
+    const B: S = S { s: &() }; //~ ERROR implicit elided lifetime not allowed here
+    const C: &'_ str = "";
+    const D: T = T { a: &(), b: &() }; //~ ERROR implicit elided lifetime not allowed here
 }
 
 struct S<'a> {

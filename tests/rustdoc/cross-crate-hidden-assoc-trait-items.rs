@@ -10,14 +10,14 @@
 // visible items instead and assert that there are *exactly two* associated items
 // (by counting the number of `section`s). This is more robust and future-proof.
 
-// @has dependent/struct.Ty.html
-// @has - '//*[@id="associatedtype.VisibleAssoc"]' 'type VisibleAssoc = ()'
-// @has - '//*[@id="associatedconstant.VISIBLE_ASSOC"]' 'const VISIBLE_ASSOC: ()'
-// @count - '//*[@class="impl-items"]/section' 2
+//@ has dependent/struct.Ty.html
+//@ has - '//*[@id="associatedtype.VisibleAssoc"]' 'type VisibleAssoc = ()'
+//@ has - '//*[@id="associatedconstant.VISIBLE_ASSOC"]' 'const VISIBLE_ASSOC: ()'
+//@ count - '//*[@class="impl-items"]/section' 2
 
-// @has dependent/trait.Tr.html
-// @has - '//*[@id="associatedtype.VisibleAssoc-1"]' 'type VisibleAssoc = ()'
-// @has - '//*[@id="associatedconstant.VISIBLE_ASSOC-1"]' 'const VISIBLE_ASSOC: ()'
-// @count - '//*[@class="impl-items"]/section' 2
+//@ has dependent/trait.Tr.html
+//@ has - '//*[@id="associatedtype.VisibleAssoc-1"]' 'type VisibleAssoc = ()'
+//@ has - '//*[@id="associatedconstant.VISIBLE_ASSOC-1"]' 'const VISIBLE_ASSOC: ()'
+//@ count - '//*[@class="impl-items"]/section' 2
 
 pub use dependency::{Tr, Ty};

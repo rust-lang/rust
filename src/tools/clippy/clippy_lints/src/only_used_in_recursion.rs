@@ -221,7 +221,7 @@ pub struct OnlyUsedInRecursion {
 }
 
 impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         if body.value.span.from_expansion() {
             return;
         }
@@ -243,7 +243,6 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 owner_id,
                 ..
             }) => {
-                #[allow(trivial_casts)]
                 if let Node::Item(item) = cx.tcx.parent_hir_node(owner_id.into())
                     && let Some(trait_ref) = cx
                         .tcx
@@ -350,7 +349,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         }
     }
 
-    fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'tcx>) {
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
         if self.entered_body == Some(body.value.hir_id) {
             self.entered_body = None;
             self.params.flag_for_linting();

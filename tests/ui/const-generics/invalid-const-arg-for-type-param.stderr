@@ -8,7 +8,7 @@ help: consider moving this generic argument to the `TryInto` trait, which takes 
    |
 LL |     let _: u32 = TryInto::<32>::try_into(5i32).unwrap();
    |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: remove these generics
+help: remove the unnecessary generics
    |
 LL -     let _: u32 = 5i32.try_into::<32>().unwrap();
 LL +     let _: u32 = 5i32.try_into().unwrap();
@@ -27,7 +27,7 @@ error[E0107]: struct takes 0 generic arguments but 1 generic argument was suppli
   --> $DIR/invalid-const-arg-for-type-param.rs:12:5
    |
 LL |     S::<0>;
-   |     ^----- help: remove these generics
+   |     ^----- help: remove the unnecessary generics
    |     |
    |     expected 0 generic arguments
    |

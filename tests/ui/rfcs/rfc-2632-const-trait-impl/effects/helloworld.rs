@@ -1,9 +1,14 @@
 //@ check-pass
-
+//@ compile-flags: -Znext-solver
 // gate-test-effects
 // ^ effects doesn't have a gate so we will trick tidy into thinking this is a gate test
-
-#![feature(const_trait_impl, effects, core_intrinsics, const_eval_select)]
+#![allow(incomplete_features)]
+#![feature(
+    const_trait_impl,
+    effects,
+    core_intrinsics,
+    const_eval_select
+)]
 
 // ensure we are passing in the correct host effect in always const contexts.
 

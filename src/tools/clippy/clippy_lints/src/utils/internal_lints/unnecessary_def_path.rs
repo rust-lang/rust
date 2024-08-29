@@ -108,7 +108,7 @@ impl UnnecessaryDefPath {
             // Extract the path to the matched type
             && let Some(segments) = path_to_matched_type(cx, item_arg)
             && let segments = segments.iter().map(|sym| &**sym).collect::<Vec<_>>()
-            && let Some(def_id) = def_path_def_ids(cx, &segments[..]).next()
+            && let Some(def_id) = def_path_def_ids(cx.tcx, &segments[..]).next()
         {
             // Check if the target item is a diagnostic item or LangItem.
             #[rustfmt::skip]
@@ -206,7 +206,7 @@ impl UnnecessaryDefPath {
     fn check_array(&mut self, cx: &LateContext<'_>, elements: &[Expr<'_>], span: Span) {
         let Some(path) = path_from_array(elements) else { return };
 
-        for def_id in def_path_def_ids(cx, &path.iter().map(AsRef::as_ref).collect::<Vec<_>>()) {
+        for def_id in def_path_def_ids(cx.tcx, &path.iter().map(AsRef::as_ref).collect::<Vec<_>>()) {
             self.array_def_ids.insert((def_id, span));
         }
     }

@@ -72,46 +72,41 @@ pub mod intrinsicck;
 mod region;
 pub mod wfcheck;
 
-pub use check::check_abi;
-
 use std::num::NonZero;
 
+pub use check::check_abi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::ErrorGuaranteed;
-use rustc_errors::{pluralize, struct_span_code_err, Diag};
+use rustc_errors::{pluralize, struct_span_code_err, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::error_reporting::ObligationCauseExt as _;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgs, GenericArgsRef};
+use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
+use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{def_id::CRATE_DEF_ID, BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::suggestions::{
-    ReturnsVisitor, TypeErrCtxtExt as _,
-};
-use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
+use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
-
-use crate::errors;
-use crate::require_c_abi_if_c_variadic;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
+use crate::{errors, require_c_abi_if_c_variadic};
 
 pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
     *providers = Providers {
         adt_destructor,
+        adt_async_destructor,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
@@ -122,6 +117,10 @@ pub fn provide(providers: &mut Providers) {
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
     tcx.calculate_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+}
+
+fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
+    tcx.calculate_async_dtor(def_id.to_def_id(), dropck::check_drop_impl)
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -161,21 +160,42 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
         return;
     }
 
-    // For the wasm32 target statics with `#[link_section]` are placed into custom
-    // sections of the final output file, but this isn't link custom sections of
-    // other executable formats. Namely we can only embed a list of bytes,
-    // nothing with provenance (pointers to anything else). If any provenance
-    // show up, reject it here.
+    // For the wasm32 target statics with `#[link_section]` other than `.init_array`
+    // are placed into custom sections of the final output file, but this isn't like
+    // custom sections of other executable formats. Namely we can only embed a list
+    // of bytes, nothing with provenance (pointers to anything else). If any
+    // provenance show up, reject it here.
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
+    //
+    // The `.init_array` section is left to go through the normal custom section code path.
+    // When dealing with `.init_array` wasm-ld currently has several limitations. This manifests
+    // in workarounds in user-code.
+    //
+    //   * The linker fails to merge multiple items in a crate into the .init_array section.
+    //     To work around this, a single array can be used placing multiple items in the array.
+    //     #[link_section = ".init_array"]
+    //     static FOO: [unsafe extern "C" fn(); 2] = [ctor, ctor];
+    //   * Even symbols marked used get gc'd from dependant crates unless at least one symbol
+    //     in the crate is marked with an `#[export_name]`
+    //
+    //  Once `.init_array` support in wasm-ld is complete, the user code workarounds should
+    //  continue to work, but would no longer be necessary.
+
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
         && alloc.inner().provenance().ptrs().len() != 0
     {
-        let msg = "statics with a custom `#[link_section]` must be a \
+        if attrs
+            .link_section
+            .map(|link_section| !link_section.as_str().starts_with(".init_array"))
+            .unwrap()
+        {
+            let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-        tcx.dcx().span_err(tcx.def_span(id), msg);
+            tcx.dcx().span_err(tcx.def_span(id), msg);
+        }
     }
 }
 
@@ -206,11 +226,18 @@ fn missing_items_err(
         .collect::<Vec<_>>()
         .join("`, `");
 
-    // `Span` before impl block closing brace.
-    let hi = full_impl_span.hi() - BytePos(1);
-    // Point at the place right before the closing brace of the relevant `impl` to suggest
-    // adding the associated item at the end of its body.
-    let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
+    let sugg_sp = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
+        && snippet.ends_with("}")
+    {
+        // `Span` before impl block closing brace.
+        let hi = full_impl_span.hi() - BytePos(1);
+        // Point at the place right before the closing brace of the relevant `impl` to suggest
+        // adding the associated item at the end of its body.
+        full_impl_span.with_lo(hi).with_hi(hi)
+    } else {
+        full_impl_span.shrink_to_hi()
+    };
+
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding =
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
@@ -436,7 +463,9 @@ fn fn_sig_suggestion<'tcx>(
         output = if let ty::Alias(_, alias_ty) = *output.kind() {
             tcx.explicit_item_super_predicates(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
-                .find_map(|(bound, _)| bound.as_projection_clause()?.no_bound_vars()?.term.ty())
+                .find_map(|(bound, _)| {
+                    bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
+                })
                 .unwrap_or_else(|| {
                     span_bug!(
                         ident.span,
@@ -594,7 +623,7 @@ pub fn check_function_signature<'tcx>(
     let param_env = ty::ParamEnv::empty();
 
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
 

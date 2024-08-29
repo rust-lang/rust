@@ -1,5 +1,6 @@
-use crate::io as std_io;
-use crate::mem;
+#![forbid(unsafe_op_in_unsafe_fn)]
+
+use crate::{io as std_io, mem};
 
 #[inline]
 pub fn is_interrupted(errno: i32) -> bool {

@@ -15,5 +15,5 @@
 /// ```
 pub fn foo() {}
 
-// @!hasraw hidden_line/fn.foo.html invisible
-// @matches - //pre "#\[derive\(PartialEq\)\] // Bar"
+//@ !hasraw hidden_line/fn.foo.html invisible
+//@ matches - //pre "#\[derive\(PartialEq\)\] // Bar"

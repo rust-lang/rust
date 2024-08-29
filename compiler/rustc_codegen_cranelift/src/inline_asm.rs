@@ -4,6 +4,7 @@ use std::fmt::Write;
 
 use cranelift_codegen::isa::CallConv;
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_hir::LangItem;
 use rustc_span::sym;
 use rustc_target::asm::*;
 use target_lexicon::BinaryFormat;
@@ -45,9 +46,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     // Used by panic_abort on Windows, but uses a syntax which only happens to work with
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
-    if template.len() == 1
-        && template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string())
-    {
+    if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
         fx.bcx.ins().trap(TrapCode::User(1));
         return;
     }
@@ -112,13 +111,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     );
                     let sig =
                         get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
-                    create_wrapper_function(
-                        fx.module,
-                        &mut fx.cx.unwind_context,
-                        sig,
-                        &wrapper_name,
-                        symbol.name,
-                    );
+                    create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
 
                     CInlineAsmOperand::Symbol { symbol: wrapper_name }
                 } else {
@@ -282,13 +275,7 @@ pub(crate) fn codegen_naked_asm<'tcx>(
                     );
                     let sig =
                         get_function_sig(tcx, module.target_config().default_call_conv, instance);
-                    create_wrapper_function(
-                        module,
-                        &mut cx.unwind_context,
-                        sig,
-                        &wrapper_name,
-                        symbol.name,
-                    );
+                    create_wrapper_function(module, sig, &wrapper_name, symbol.name);
 
                     CInlineAsmOperand::Symbol { symbol: wrapper_name }
                 } else {
@@ -927,7 +914,7 @@ fn call_inline_asm<'tcx>(
 fn asm_clif_type<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
     match ty.kind() {
         // Adapted from https://github.com/rust-lang/rust/blob/f3c66088610c1b80110297c2d9a8b5f9265b013f/compiler/rustc_hir_analysis/src/check/intrinsicck.rs#L136-L151
-        ty::Adt(adt, args) if Some(adt.did()) == fx.tcx.lang_items().maybe_uninit() => {
+        ty::Adt(adt, args) if fx.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
             let fields = &adt.non_enum_variant().fields;
             let ty = fields[FieldIdx::from_u32(1)].ty(fx.tcx, args);
             let ty::Adt(ty, args) = ty.kind() else {

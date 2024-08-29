@@ -3,11 +3,210 @@
 #![stable(feature = "std_panic", since = "1.9.0")]
 
 use crate::any::Any;
-use crate::collections;
-use crate::panicking;
 use crate::sync::atomic::{AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
+use crate::{collections, fmt, panicking};
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[deprecated(
+    since = "1.82.0",
+    note = "use `PanicHookInfo` instead",
+    suggestion = "std::panic::PanicHookInfo"
+)]
+/// A struct providing information about a panic.
+///
+/// `PanicInfo` has been renamed to [`PanicHookInfo`] to avoid confusion with
+/// [`core::panic::PanicInfo`].
+pub type PanicInfo<'a> = PanicHookInfo<'a>;
+
+/// A struct providing information about a panic.
+///
+/// `PanicHookInfo` structure is passed to a panic hook set by the [`set_hook`] function.
+///
+/// # Examples
+///
+/// ```should_panic
+/// use std::panic;
+///
+/// panic::set_hook(Box::new(|panic_info| {
+///     println!("panic occurred: {panic_info}");
+/// }));
+///
+/// panic!("critical system failure");
+/// ```
+///
+/// [`set_hook`]: ../../std/panic/fn.set_hook.html
+#[stable(feature = "panic_hook_info", since = "1.81.0")]
+#[derive(Debug)]
+pub struct PanicHookInfo<'a> {
+    payload: &'a (dyn Any + Send),
+    location: &'a Location<'a>,
+    can_unwind: bool,
+    force_no_backtrace: bool,
+}
+
+impl<'a> PanicHookInfo<'a> {
+    #[inline]
+    pub(crate) fn new(
+        location: &'a Location<'a>,
+        payload: &'a (dyn Any + Send),
+        can_unwind: bool,
+        force_no_backtrace: bool,
+    ) -> Self {
+        PanicHookInfo { payload, location, can_unwind, force_no_backtrace }
+    }
+
+    /// Returns the payload associated with the panic.
+    ///
+    /// This will commonly, but not always, be a `&'static str` or [`String`].
+    ///
+    /// A invocation of the `panic!()` macro in Rust 2021 or later will always result in a
+    /// panic payload of type `&'static str` or `String`.
+    ///
+    /// Only an invocation of [`panic_any`]
+    /// (or, in Rust 2018 and earlier, `panic!(x)` where `x` is something other than a string)
+    /// can result in a panic payload other than a `&'static str` or `String`.
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+    ///         println!("panic occurred: {s:?}");
+    ///     } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+    ///         println!("panic occurred: {s:?}");
+    ///     } else {
+    ///         println!("panic occurred");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[must_use]
+    #[inline]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn payload(&self) -> &(dyn Any + Send) {
+        self.payload
+    }
+
+    /// Returns the payload associated with the panic, if it is a string.
+    ///
+    /// This returns the payload if it is of type `&'static str` or `String`.
+    ///
+    /// A invocation of the `panic!()` macro in Rust 2021 or later will always result in a
+    /// panic payload where `payload_as_str` returns `Some`.
+    ///
+    /// Only an invocation of [`panic_any`]
+    /// (or, in Rust 2018 and earlier, `panic!(x)` where `x` is something other than a string)
+    /// can result in a panic payload where `payload_as_str` returns `None`.
+    ///
+    /// # Example
+    ///
+    /// ```should_panic
+    /// #![feature(panic_payload_as_str)]
+    ///
+    /// std::panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(s) = panic_info.payload_as_str() {
+    ///         println!("panic occurred: {s:?}");
+    ///     } else {
+    ///         println!("panic occurred");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "panic_payload_as_str", issue = "125175")]
+    pub fn payload_as_str(&self) -> Option<&str> {
+        if let Some(s) = self.payload.downcast_ref::<&str>() {
+            Some(s)
+        } else if let Some(s) = self.payload.downcast_ref::<String>() {
+            Some(s)
+        } else {
+            None
+        }
+    }
+
+    /// Returns information about the location from which the panic originated,
+    /// if available.
+    ///
+    /// This method will currently always return [`Some`], but this may change
+    /// in future versions.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occurred in file '{}' at line {}",
+    ///             location.file(),
+    ///             location.line(),
+    ///         );
+    ///     } else {
+    ///         println!("panic occurred but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[must_use]
+    #[inline]
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    pub fn location(&self) -> Option<&Location<'_>> {
+        // NOTE: If this is changed to sometimes return None,
+        // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
+        Some(&self.location)
+    }
+
+    /// Returns whether the panic handler is allowed to unwind the stack from
+    /// the point where the panic occurred.
+    ///
+    /// This is true for most kinds of panics with the exception of panics
+    /// caused by trying to unwind out of a `Drop` implementation or a function
+    /// whose ABI does not support unwinding.
+    ///
+    /// It is safe for a panic handler to unwind even when this function returns
+    /// false, however this will simply cause the panic handler to be called
+    /// again.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "panic_can_unwind", issue = "92988")]
+    pub fn can_unwind(&self) -> bool {
+        self.can_unwind
+    }
+
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    #[doc(hidden)]
+    #[inline]
+    pub fn force_no_backtrace(&self) -> bool {
+        self.force_no_backtrace
+    }
+}
+
+#[stable(feature = "panic_hook_display", since = "1.26.0")]
+impl fmt::Display for PanicHookInfo<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("panicked at ")?;
+        self.location.fmt(formatter)?;
+        if let Some(payload) = self.payload_as_str() {
+            formatter.write_str(":\n")?;
+            formatter.write_str(payload)?;
+        }
+        Ok(())
+    }
+}
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
@@ -35,25 +234,22 @@ pub macro panic_2015 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 pub use core::panic::panic_2021;
-
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use crate::panicking::{set_hook, take_hook};
-
-#[unstable(feature = "panic_update_hook", issue = "92649")]
-pub use crate::panicking::update_hook;
-
-#[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::{Location, PanicInfo};
-
+pub use core::panic::Location;
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub use core::panic::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
-/// Panic the current thread with the given message as the panic payload.
+#[unstable(feature = "panic_update_hook", issue = "92649")]
+pub use crate::panicking::update_hook;
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use crate::panicking::{set_hook, take_hook};
+
+/// Panics the current thread with the given message as the panic payload.
 ///
 /// The message can be of any (`Any + Send`) type, not just strings.
 ///
 /// The message is wrapped in a `Box<'static + Any + Send>`, which can be
-/// accessed later using [`PanicInfo::payload`].
+/// accessed later using [`PanicHookInfo::payload`].
 ///
 /// See the [`panic!`] macro for more information about panicking.
 #[stable(feature = "panic_any", since = "1.51.0")]
@@ -179,7 +375,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
 }
 
-/// Make all future panics abort directly without running the panic hook or unwinding.
+/// Makes all future panics abort directly without running the panic hook or unwinding.
 ///
 /// There is no way to undo this; the effect lasts until the process exits or
 /// execs (or the equivalent).
@@ -244,13 +440,12 @@ impl BacktraceStyle {
     }
 
     fn from_u8(s: u8) -> Option<Self> {
-        Some(match s {
-            0 => return None,
-            1 => BacktraceStyle::Short,
-            2 => BacktraceStyle::Full,
-            3 => BacktraceStyle::Off,
-            _ => unreachable!(),
-        })
+        match s {
+            1 => Some(BacktraceStyle::Short),
+            2 => Some(BacktraceStyle::Full),
+            3 => Some(BacktraceStyle::Off),
+            _ => None,
+        }
     }
 }
 
@@ -260,18 +455,17 @@ impl BacktraceStyle {
 // Internally stores equivalent of an Option<BacktraceStyle>.
 static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 
-/// Configure whether the default panic hook will capture and display a
+/// Configures whether the default panic hook will capture and display a
 /// backtrace.
 ///
 /// The default value for this setting may be set by the `RUST_BACKTRACE`
 /// environment variable; see the details in [`get_backtrace_style`].
 #[unstable(feature = "panic_backtrace_config", issue = "93346")]
 pub fn set_backtrace_style(style: BacktraceStyle) {
-    if !cfg!(feature = "backtrace") {
-        // If the `backtrace` feature of this crate isn't enabled, skip setting.
-        return;
+    if cfg!(feature = "backtrace") {
+        // If the `backtrace` feature of this crate is enabled, set the backtrace style.
+        SHOULD_CAPTURE.store(style.as_u8(), Ordering::Relaxed);
     }
-    SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
 }
 
 /// Checks whether the standard library's panic hook will capture and print a
@@ -303,27 +497,24 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         // to optimize away callers.
         return None;
     }
-    if let Some(style) = BacktraceStyle::from_u8(SHOULD_CAPTURE.load(Ordering::Acquire)) {
+
+    let current = SHOULD_CAPTURE.load(Ordering::Relaxed);
+    if let Some(style) = BacktraceStyle::from_u8(current) {
         return Some(style);
     }
 
-    let format = crate::env::var_os("RUST_BACKTRACE")
-        .map(|x| {
-            if &x == "0" {
-                BacktraceStyle::Off
-            } else if &x == "full" {
-                BacktraceStyle::Full
-            } else {
-                BacktraceStyle::Short
-            }
-        })
-        .unwrap_or(if crate::sys::FULL_BACKTRACE_DEFAULT {
-            BacktraceStyle::Full
-        } else {
-            BacktraceStyle::Off
-        });
-    set_backtrace_style(format);
-    Some(format)
+    let format = match crate::env::var_os("RUST_BACKTRACE") {
+        Some(x) if &x == "0" => BacktraceStyle::Off,
+        Some(x) if &x == "full" => BacktraceStyle::Full,
+        Some(_) => BacktraceStyle::Short,
+        None if crate::sys::FULL_BACKTRACE_DEFAULT => BacktraceStyle::Full,
+        None => BacktraceStyle::Off,
+    };
+
+    match SHOULD_CAPTURE.compare_exchange(0, format.as_u8(), Ordering::Relaxed, Ordering::Relaxed) {
+        Ok(_) => Some(format),
+        Err(new) => BacktraceStyle::from_u8(new),
+    }
 }
 
 #[cfg(test)]

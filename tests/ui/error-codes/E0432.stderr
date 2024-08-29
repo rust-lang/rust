@@ -2,9 +2,12 @@ error[E0432]: unresolved import `something`
   --> $DIR/E0432.rs:1:5
    |
 LL | use something::Foo;
-   |     ^^^^^^^^^ maybe a missing crate `something`?
+   |     ^^^^^^^^^ you might be missing crate `something`
    |
-   = help: consider adding `extern crate something` to use the `something` crate
+help: consider importing the `something` crate
+   |
+LL + extern crate something;
+   |
 
 error: aborting due to 1 previous error
 

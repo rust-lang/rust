@@ -4,10 +4,12 @@
 #![feature(custom_mir, core_intrinsics, freeze)]
 #![allow(unused_assignments)]
 extern crate core;
-use core::marker::Freeze;
 use core::intrinsics::mir::*;
+use core::marker::Freeze;
 
-fn opaque(_: impl Sized) -> bool { true }
+fn opaque(_: impl Sized) -> bool {
+    true
+}
 
 fn cmp_ref(a: &u8, b: &u8) -> bool {
     std::ptr::eq(a as *const u8, b as *const u8)
@@ -19,12 +21,12 @@ fn compare_address() -> bool {
     // CHECK: bb0: {
     // CHECK-NEXT: _1 = const 5_u8;
     // CHECK-NEXT: _2 = &_1;
-    // CHECK-NEXT: _3 = _1;
+    // CHECK-NEXT: _3 = copy _1;
     // CHECK-NEXT: _4 = &_3;
-    // CHECK-NEXT: _0 = cmp_ref(_2, _4)
+    // CHECK-NEXT: _0 = cmp_ref(copy _2, copy _4)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<u8>(_3)
-    mir!(
+    // CHECK-NEXT: _0 = opaque::<u8>(copy _3)
+    mir! {
         {
             let a = 5_u8;
             let r1 = &a;
@@ -40,7 +42,7 @@ fn compare_address() -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is `Freeze`, so shared borrows are immutable.
@@ -49,10 +51,10 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
     // CHECK-NEXT: _3 = &_1;
-    // CHECK-NEXT: _0 = opaque::<&T>(_3)
+    // CHECK-NEXT: _0 = opaque::<&T>(copy _3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<T>(_1)
-    mir!(
+    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -64,7 +66,7 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 /// Generic type `T` is not known to be `Freeze`, so shared borrows may be mutable.
@@ -72,12 +74,12 @@ fn borrowed<T: Copy + Freeze>(x: T) -> bool {
 fn non_freeze<T: Copy>(x: T) -> bool {
     // CHECK-LABEL: fn non_freeze(
     // CHECK: bb0: {
-    // CHECK-NEXT: _2 = _1;
+    // CHECK-NEXT: _2 = copy _1;
     // CHECK-NEXT: _3 = &_1;
-    // CHECK-NEXT: _0 = opaque::<&T>(_3)
+    // CHECK-NEXT: _0 = opaque::<&T>(copy _3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<T>(_2)
-    mir!(
+    // CHECK-NEXT: _0 = opaque::<T>(copy _2)
+    mir! {
         {
             let a = x;
             let r1 = &x;
@@ -89,7 +91,7 @@ fn non_freeze<T: Copy>(x: T) -> bool {
         ret = {
             Return()
         }
-    )
+    }
 }
 
 fn main() {

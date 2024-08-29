@@ -11,10 +11,14 @@ LL |         drop(x);
 LL |         return f(y);
    |                  - borrow later used here
    |
-help: consider cloning the value if the performance cost is acceptable
+help: if `T` implemented `Clone`, you could clone the value
+  --> $DIR/associated-types-outlives.rs:17:21
    |
-LL |         's: loop { y = denormalise(&x).clone(); break }
-   |                                       ++++++++
+LL | pub fn free_and_use<T: for<'a> Foo<'a>,
+   |                     ^ consider constraining this type parameter with `Clone`
+...
+LL |         's: loop { y = denormalise(&x); break }
+   |                                     - you could clone this value
 
 error: aborting due to 1 previous error
 

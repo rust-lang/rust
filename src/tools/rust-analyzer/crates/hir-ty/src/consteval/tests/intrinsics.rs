@@ -411,6 +411,7 @@ fn likely() {
 
 #[test]
 fn floating_point() {
+    // FIXME(#17451): Add `f16` and `f128` tests once intrinsics are added.
     check_number(
         r#"
         extern "rust-intrinsic" {
@@ -426,6 +427,7 @@ fn floating_point() {
             true,
         )),
     );
+    #[allow(unknown_lints, clippy::unnecessary_min_or_max)]
     check_number(
         r#"
         extern "rust-intrinsic" {

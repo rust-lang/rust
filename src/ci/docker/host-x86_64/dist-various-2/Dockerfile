@@ -24,7 +24,8 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   # Needed for apt-key to work:
   dirmngr \
   gpg-agent \
-  g++-9-arm-linux-gnueabi
+  g++-9-arm-linux-gnueabi \
+  g++-11-riscv64-linux-gnu
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
 RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
@@ -73,6 +74,10 @@ RUN env \
     CC=arm-linux-gnueabi-gcc-9 CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabi-g++-9 CXXFLAGS="-march=armv7-a" \
     bash musl.sh armv7 && \
+    env \
+    CC=riscv64-linux-gnu-gcc-11 \
+    CXX=riscv64-linux-gnu-g++-11 \
+    bash musl.sh riscv64gc && \
     rm -rf /build/*
 
 WORKDIR /tmp
@@ -85,9 +90,9 @@ RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc sun
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-23/wasi-sdk-23.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/tmp/wasi-sdk-22.0
+ENV WASI_SDK_PATH=/tmp/wasi-sdk-23.0-x86_64-linux
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686
@@ -112,6 +117,7 @@ ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,wasm32-wasip1
 ENV TARGETS=$TARGETS,wasm32-wasip1-threads
+ENV TARGETS=$TARGETS,wasm32-wasip2
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
@@ -121,11 +127,10 @@ ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,i686-unknown-freebsd
 ENV TARGETS=$TARGETS,x86_64-unknown-none
-ENV TARGETS=$TARGETS,loongarch64-unknown-none
-ENV TARGETS=$TARGETS,loongarch64-unknown-none-softfloat
 ENV TARGETS=$TARGETS,aarch64-unknown-uefi
 ENV TARGETS=$TARGETS,i686-unknown-uefi
 ENV TARGETS=$TARGETS,x86_64-unknown-uefi
+ENV TARGETS=$TARGETS,riscv64gc-unknown-linux-musl
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-9 (for gnux32) but not in the search path of the
@@ -133,7 +138,11 @@ ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 # Luckily one of the folders is /usr/local/include so symlink /usr/include/x86_64-linux-gnu/asm there
 RUN ln -s /usr/include/x86_64-linux-gnu/asm /usr/local/include/asm
 
+# musl-gcc can't find libgcc_s.so.1 since it doesn't use the standard search paths.
+RUN ln -s /usr/riscv64-linux-gnu/lib/libgcc_s.so.1 /usr/lib/gcc-cross/riscv64-linux-gnu/11/
+
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-llvm-bitcode-linker --disable-docs \
-  --musl-root-armv7=/musl-armv7
+  --musl-root-armv7=/musl-armv7 \
+  --musl-root-riscv64gc=/musl-riscv64gc
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS

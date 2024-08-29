@@ -11,6 +11,8 @@
 //   within the brackets).
 // * `"` is treated as the start of a string.
 
+use std::fmt::Write;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
@@ -18,13 +20,12 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
-use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
+use rustc_middle::ty::{
+    self, ExistentialProjection, GenericArgKind, GenericArgsRef, ParamEnv, Ty, TyCtxt,
+};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Integer;
 use smallvec::SmallVec;
-
-use std::fmt::Write;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
 
@@ -84,7 +85,7 @@ fn push_debuginfo_type_name<'tcx>(
             let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
                 match tcx.layout_of(ParamEnv::reveal_all().and(t)) {
                     Ok(layout) => {
-                        if !wants_c_like_enum_debuginfo(layout) {
+                        if !wants_c_like_enum_debuginfo(tcx, layout) {
                             Some(layout)
                         } else {
                             // This is a C-like enum so we don't want to use the fallback encoding
@@ -105,6 +106,7 @@ fn push_debuginfo_type_name<'tcx>(
 
             if let Some(ty_and_layout) = layout_for_cpp_like_fallback {
                 msvc_enum_fallback(
+                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
@@ -263,7 +265,7 @@ fn push_debuginfo_type_name<'tcx>(
                         let ExistentialProjection { def_id: item_def_id, term, .. } =
                             tcx.instantiate_bound_regions_with_erased(bound);
                         // FIXME(associated_const_equality): allow for consts here
-                        (item_def_id, term.ty().unwrap())
+                        (item_def_id, term.expect_type())
                     })
                     .collect();
 
@@ -330,7 +332,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(')');
             }
         }
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             // We've encountered a weird 'recursive type'
             // Currently, the only way to generate such a type
             // is by using 'impl trait':
@@ -420,6 +422,7 @@ fn push_debuginfo_type_name<'tcx>(
             if cpp_like_debuginfo && t.is_coroutine() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
+                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_closure_or_coroutine_name(tcx, def_id, args, true, output, visited);
@@ -454,12 +457,13 @@ fn push_debuginfo_type_name<'tcx>(
     // debugger. For more information, look in
     // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
+        tcx: TyCtxt<'tcx>,
         ty_and_layout: TyAndLayout<'tcx>,
         push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
-        debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
+        assert!(!wants_c_like_enum_debuginfo(tcx, ty_and_layout));
         output.push_str("enum2$<");
         push_inner(output, visited);
         push_close_angle_bracket(true, output);
@@ -660,7 +664,7 @@ fn push_generic_params_internal<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    debug_assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
+    assert_eq!(args, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), args));
     let mut args = args.non_erasable_generics(tcx, def_id).peekable();
     if args.peek().is_none() {
         return false;
@@ -693,41 +697,46 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        _ => match ct.ty().kind() {
-            ty::Int(ity) => {
-                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
-                let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
-                write!(output, "{val}")
-            }
-            ty::Uint(_) => {
-                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
-                write!(output, "{val}")
-            }
-            ty::Bool => {
-                let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
-                write!(output, "{val}")
-            }
-            _ => {
-                // If we cannot evaluate the constant to a known type, we fall back
-                // to emitting a stable hash value of the constant. This isn't very pretty
-                // but we get a deterministic, virtually unique value for the constant.
-                //
-                // Let's only emit 64 bits of the hash value. That should be plenty for
-                // avoiding collisions and will make the emitted type names shorter.
-                let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
-                    let mut hasher = StableHasher::new();
-                    let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
-                    hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
-                    hasher.finish::<Hash64>()
-                });
+        ty::ConstKind::Value(ty, _) => {
+            match ty.kind() {
+                ty::Int(ity) => {
+                    // FIXME: directly extract the bits from a valtree instead of evaluating an
+                    // alreay evaluated `Const` in order to get the bits.
+                    let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                    write!(output, "{val}")
+                }
+                ty::Uint(_) => {
+                    let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    write!(output, "{val}")
+                }
+                ty::Bool => {
+                    let val = ct.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                    write!(output, "{val}")
+                }
+                _ => {
+                    // If we cannot evaluate the constant to a known type, we fall back
+                    // to emitting a stable hash value of the constant. This isn't very pretty
+                    // but we get a deterministic, virtually unique value for the constant.
+                    //
+                    // Let's only emit 64 bits of the hash value. That should be plenty for
+                    // avoiding collisions and will make the emitted type names shorter.
+                    let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
+                        let mut hasher = StableHasher::new();
+                        let ct = ct.eval(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP).unwrap();
+                        hcx.while_hashing_spans(false, |hcx| ct.hash_stable(hcx, &mut hasher));
+                        hasher.finish::<Hash64>()
+                    });
 
-                if cpp_like_debuginfo(tcx) {
-                    write!(output, "CONST${hash_short:x}")
-                } else {
-                    write!(output, "{{CONST#{hash_short:x}}}")
+                    if cpp_like_debuginfo(tcx) {
+                        write!(output, "CONST${hash_short:x}")
+                    } else {
+                        write!(output, "{{CONST#{hash_short:x}}}")
+                    }
                 }
             }
-        },
+        }
+        _ => bug!("Invalid `Const` during codegen: {:?}", ct),
     }
     .unwrap();
 }

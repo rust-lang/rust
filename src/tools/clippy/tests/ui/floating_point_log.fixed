@@ -1,6 +1,8 @@
 #![allow(dead_code, clippy::double_parens, clippy::unnecessary_cast)]
 #![warn(clippy::suboptimal_flops, clippy::imprecise_flops)]
 
+// FIXME(f16_f128): add tests for these types once math functions are available
+
 const TWO: f32 = 2.0;
 const E: f32 = std::f32::consts::E;
 
@@ -53,6 +55,21 @@ fn check_ln1p() {
     let _ = (x + 1.0 + 2.0).ln();
     let _ = (x + 1.0 / 2.0).ln();
     let _ = (1.0 + x - 2.0).ln();
+}
+
+fn issue12881() {
+    pub trait MyLog {
+        fn log(&self) -> Self;
+    }
+
+    impl MyLog for f32 {
+        fn log(&self) -> Self {
+            4.
+        }
+    }
+
+    let x = 2.0;
+    x.log();
 }
 
 fn main() {}

@@ -1,9 +1,10 @@
 use std::ops::ControlFlow;
 
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_config::Conf;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
+use clippy_utils::visitors::{for_each_expr, Descend};
 use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -38,10 +39,9 @@ declare_clippy_lint! {
     /// );
     /// ```
     ///
-    /// ### Why is this bad?
-    /// Undocumented unsafe blocks and impls can make it difficult to
-    /// read and maintain code, as well as uncover unsoundness
-    /// and bugs.
+    /// ### Why restrict this?
+    /// Undocumented unsafe blocks and impls can make it difficult to read and maintain code.
+    /// Writing out the safety justification may help in discovering unsoundness or bugs.
     ///
     /// ### Example
     /// ```no_run
@@ -67,7 +67,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for `// SAFETY: ` comments on safe code.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Safe code has no safety requirements, so there is no need to
     /// describe safety invariants.
     ///
@@ -92,17 +92,16 @@ declare_clippy_lint! {
     "annotating safe code with a safety comment"
 }
 
-#[derive(Copy, Clone)]
 pub struct UndocumentedUnsafeBlocks {
     accept_comment_above_statement: bool,
     accept_comment_above_attributes: bool,
 }
 
 impl UndocumentedUnsafeBlocks {
-    pub fn new(accept_comment_above_statement: bool, accept_comment_above_attributes: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            accept_comment_above_statement,
-            accept_comment_above_attributes,
+            accept_comment_above_statement: conf.accept_comment_above_statement,
+            accept_comment_above_attributes: conf.accept_comment_above_attributes,
         }
     }
 }
@@ -130,13 +129,15 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                 block.span
             };
 
-            span_lint_and_help(
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
                 cx,
                 UNDOCUMENTED_UNSAFE_BLOCKS,
                 span,
                 "unsafe block missing a safety comment",
-                None,
-                "consider adding a safety comment on the preceding line",
+                |diag| {
+                    diag.help("consider adding a safety comment on the preceding line");
+                },
             );
         }
 
@@ -146,13 +147,14 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, tail.span, tail.hir_id)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, tail, pos)
         {
-            span_lint_and_help(
+            span_lint_and_then(
                 cx,
                 UNNECESSARY_SAFETY_COMMENT,
                 tail.span,
                 "expression has unnecessary safety comment",
-                Some(help_span),
-                "consider removing the safety comment",
+                |diag| {
+                    diag.span_help(help_span, "consider removing the safety comment");
+                },
             );
         }
     }
@@ -169,13 +171,14 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, expr, pos)
         {
-            span_lint_and_help(
+            span_lint_and_then(
                 cx,
                 UNNECESSARY_SAFETY_COMMENT,
                 stmt.span,
                 "statement has unnecessary safety comment",
-                Some(help_span),
-                "consider removing the safety comment",
+                |diag| {
+                    diag.span_help(help_span, "consider removing the safety comment");
+                },
             );
         }
     }
@@ -211,13 +214,15 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                         item.span
                     };
 
-                    span_lint_and_help(
+                    #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                    span_lint_and_then(
                         cx,
                         UNDOCUMENTED_UNSAFE_BLOCKS,
                         span,
                         "unsafe impl missing a safety comment",
-                        None,
-                        "consider adding a safety comment on the preceding line",
+                        |diag| {
+                            diag.help("consider adding a safety comment on the preceding line");
+                        },
                     );
                 }
             },
@@ -226,13 +231,14 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
                     let (span, help_span) = mk_spans(pos);
 
-                    span_lint_and_help(
+                    span_lint_and_then(
                         cx,
                         UNNECESSARY_SAFETY_COMMENT,
                         span,
                         "impl has unnecessary safety comment",
-                        Some(help_span),
-                        "consider removing the safety comment",
+                        |diag| {
+                            diag.span_help(help_span, "consider removing the safety comment");
+                        },
                     );
                 }
             },
@@ -247,13 +253,14 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                     ) {
                         let (span, help_span) = mk_spans(pos);
 
-                        span_lint_and_help(
+                        span_lint_and_then(
                             cx,
                             UNNECESSARY_SAFETY_COMMENT,
                             span,
                             format!("{} has unnecessary safety comment", item.kind.descr()),
-                            Some(help_span),
-                            "consider removing the safety comment",
+                            |diag| {
+                                diag.span_help(help_span, "consider removing the safety comment");
+                            },
                         );
                     }
                 }
@@ -264,13 +271,14 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
                     let (span, help_span) = mk_spans(pos);
 
-                    span_lint_and_help(
+                    span_lint_and_then(
                         cx,
                         UNNECESSARY_SAFETY_COMMENT,
                         span,
                         format!("{} has unnecessary safety comment", item.kind.descr()),
-                        Some(help_span),
-                        "consider removing the safety comment",
+                        |diag| {
+                            diag.span_help(help_span, "consider removing the safety comment");
+                        },
                     );
                 }
             },
@@ -297,7 +305,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     }
 
     // this should roughly be the reverse of `block_parents_have_safety_comment`
-    if for_each_expr_with_closures(cx, expr, |expr| match expr.kind {
+    if for_each_expr(cx, expr, |expr| match expr.kind {
         hir::ExprKind::Block(
             Block {
                 rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),

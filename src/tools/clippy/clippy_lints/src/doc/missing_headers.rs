@@ -37,7 +37,7 @@ pub fn check(
             cx,
             MISSING_SAFETY_DOC,
             span,
-            "unsafe function's docs miss `# Safety` section",
+            "unsafe function's docs are missing a `# Safety` section",
         ),
         (true, Safety::Safe) => span_lint(
             cx,

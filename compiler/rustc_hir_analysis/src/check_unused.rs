@@ -5,7 +5,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_unused_traits, ..*providers };
 }
 
@@ -35,11 +35,12 @@ fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
             continue;
         }
         let (path, _) = item.expect_use();
-        let msg = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
-            format!("unused import: `{snippet}`")
-        } else {
-            "unused import".to_owned()
-        };
-        tcx.node_span_lint(lint::builtin::UNUSED_IMPORTS, item.hir_id(), path.span, msg, |_| {});
+        tcx.node_span_lint(lint::builtin::UNUSED_IMPORTS, item.hir_id(), path.span, |lint| {
+            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(path.span) {
+                lint.primary_message(format!("unused import: `{snippet}`"));
+            } else {
+                lint.primary_message("unused import");
+            }
+        });
     }
 }

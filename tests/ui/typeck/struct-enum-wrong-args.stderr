@@ -2,21 +2,23 @@ error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:6:13
    |
 LL |     let _ = Some(3, 2);
-   |             ^^^^  ---
-   |                   | |
-   |                   | unexpected argument of type `{integer}`
-   |                   help: remove the extra argument
+   |             ^^^^    - unexpected argument #2 of type `{integer}`
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
+help: remove the extra argument
+   |
+LL -     let _ = Some(3, 2);
+LL +     let _ = Some(3);
+   |
 
 error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:7:13
    |
 LL |     let _ = Ok(3, 6, 2);
-   |             ^^    -  - unexpected argument of type `{integer}`
+   |             ^^    -  - unexpected argument #3 of type `{integer}`
    |                   |
-   |                   unexpected argument of type `{integer}`
+   |                   unexpected argument #2 of type `{integer}`
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -30,7 +32,7 @@ error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:8:13
    |
 LL |     let _ = Ok();
-   |             ^^-- an argument is missing
+   |             ^^-- argument #1 is missing
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
@@ -43,7 +45,7 @@ error[E0061]: this struct takes 1 argument but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:9:13
    |
 LL |     let _ = Wrapper();
-   |             ^^^^^^^-- an argument of type `i32` is missing
+   |             ^^^^^^^-- argument #1 of type `i32` is missing
    |
 note: tuple struct defined here
   --> $DIR/struct-enum-wrong-args.rs:2:8
@@ -59,16 +61,18 @@ error[E0061]: this struct takes 1 argument but 2 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:10:13
    |
 LL |     let _ = Wrapper(5, 2);
-   |             ^^^^^^^  ---
-   |                      | |
-   |                      | unexpected argument of type `{integer}`
-   |                      help: remove the extra argument
+   |             ^^^^^^^    - unexpected argument #2 of type `{integer}`
    |
 note: tuple struct defined here
   --> $DIR/struct-enum-wrong-args.rs:2:8
    |
 LL | struct Wrapper(i32);
    |        ^^^^^^^
+help: remove the extra argument
+   |
+LL -     let _ = Wrapper(5, 2);
+LL +     let _ = Wrapper(5);
+   |
 
 error[E0061]: this struct takes 2 arguments but 0 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:11:13
@@ -90,7 +94,7 @@ error[E0061]: this struct takes 2 arguments but 1 argument was supplied
   --> $DIR/struct-enum-wrong-args.rs:12:13
    |
 LL |     let _ = DoubleWrapper(5);
-   |             ^^^^^^^^^^^^^--- an argument of type `i32` is missing
+   |             ^^^^^^^^^^^^^--- argument #2 of type `i32` is missing
    |
 note: tuple struct defined here
   --> $DIR/struct-enum-wrong-args.rs:3:8
@@ -106,16 +110,18 @@ error[E0061]: this struct takes 2 arguments but 3 arguments were supplied
   --> $DIR/struct-enum-wrong-args.rs:13:13
    |
 LL |     let _ = DoubleWrapper(5, 2, 7);
-   |             ^^^^^^^^^^^^^     ---
-   |                               | |
-   |                               | unexpected argument of type `{integer}`
-   |                               help: remove the extra argument
+   |             ^^^^^^^^^^^^^       - unexpected argument #3 of type `{integer}`
    |
 note: tuple struct defined here
   --> $DIR/struct-enum-wrong-args.rs:3:8
    |
 LL | struct DoubleWrapper(i32, i32);
    |        ^^^^^^^^^^^^^
+help: remove the extra argument
+   |
+LL -     let _ = DoubleWrapper(5, 2, 7);
+LL +     let _ = DoubleWrapper(5, 2);
+   |
 
 error: aborting due to 8 previous errors
 

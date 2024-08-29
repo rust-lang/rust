@@ -2,7 +2,7 @@ error: this file contains an unclosed delimiter
   --> $DIR/issue-107423-unused-delim-only-one-no-pair.rs:7:11
    |
 LL | fn a(){{{
-   |       --- ^
+   |       ---^
    |       |||
    |       ||unclosed delimiter
    |       |unclosed delimiter

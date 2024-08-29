@@ -89,6 +89,10 @@ const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 // of permutations we need to check.
 const UNBOXING_LIMIT = 5;
 
+// used for search query verification
+const REGEX_IDENT = /\p{ID_Start}\p{ID_Continue}*|_\p{ID_Continue}+/uy;
+const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
+
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
     let iter = 0;
@@ -410,18 +414,21 @@ function initSearch(rawSearchIndex) {
     }
 
     /**
-     * Returns `true` if the given `c` character is valid for an ident.
+     * If the current parser position is at the beginning of an identifier,
+     * move the position to the end of it and return `true`. Otherwise, return `false`.
      *
-     * @param {string} c
+     * @param {ParserState} parserState
      *
      * @return {boolean}
      */
-    function isIdentCharacter(c) {
-        return (
-            c === "_" ||
-            (c >= "0" && c <= "9") ||
-            (c >= "a" && c <= "z") ||
-            (c >= "A" && c <= "Z"));
+    function consumeIdent(parserState) {
+        REGEX_IDENT.lastIndex = parserState.pos;
+        const match = parserState.userQuery.match(REGEX_IDENT);
+        if (match) {
+            parserState.pos += match[0].length;
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -618,70 +625,62 @@ function initSearch(rawSearchIndex) {
      * @return {integer}
      */
     function getIdentEndPosition(parserState) {
-        const start = parserState.pos;
+        let afterIdent = consumeIdent(parserState);
         let end = parserState.pos;
-        let foundExclamation = -1;
+        let macroExclamation = -1;
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
-            if (!isIdentCharacter(c)) {
-                if (c === "!") {
-                    if (foundExclamation !== -1) {
-                        throw ["Cannot have more than one ", "!", " in an ident"];
-                    } else if (parserState.pos + 1 < parserState.length &&
-                        isIdentCharacter(parserState.userQuery[parserState.pos + 1])
-                    ) {
+            if (c === "!") {
+                if (macroExclamation !== -1) {
+                    throw ["Cannot have more than one ", "!", " in an ident"];
+                } else if (parserState.pos + 1 < parserState.length) {
+                    const pos = parserState.pos;
+                    parserState.pos++;
+                    const beforeIdent = consumeIdent(parserState);
+                    parserState.pos = pos;
+                    if (beforeIdent) {
                         throw ["Unexpected ", "!", ": it can only be at the end of an ident"];
                     }
-                    foundExclamation = parserState.pos;
-                } else if (isPathSeparator(c)) {
-                    if (c === ":") {
-                        if (!isPathStart(parserState)) {
+                }
+                if (afterIdent) macroExclamation = parserState.pos;
+            } else if (isPathSeparator(c)) {
+                if (c === ":") {
+                    if (!isPathStart(parserState)) {
+                        break;
+                    }
+                    // Skip current ":".
+                    parserState.pos += 1;
+                } else {
+                    while (parserState.pos + 1 < parserState.length) {
+                        const next_c = parserState.userQuery[parserState.pos + 1];
+                        if (next_c !== " ") {
                             break;
                         }
-                        // Skip current ":".
                         parserState.pos += 1;
-                    } else {
-                        while (parserState.pos + 1 < parserState.length) {
-                            const next_c = parserState.userQuery[parserState.pos + 1];
-                            if (next_c !== " ") {
-                                break;
-                            }
-                            parserState.pos += 1;
-                        }
                     }
-                    if (foundExclamation !== -1) {
-                        if (foundExclamation !== start &&
-                            isIdentCharacter(parserState.userQuery[foundExclamation - 1])
-                        ) {
-                            throw ["Cannot have associated items in macros"];
-                        } else {
-                            // while the never type has no associated macros, we still
-                            // can parse a path like that
-                            foundExclamation = -1;
-                        }
-                    }
-                } else if (
-                    c === "[" ||
-                    c === "(" ||
-                    isEndCharacter(c) ||
-                    isSpecialStartCharacter(c) ||
-                    isSeparatorCharacter(c)
-                ) {
-                    break;
-                } else if (parserState.pos > 0) {
-                    throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
-                } else {
-                    throw ["Unexpected ", c];
                 }
+                if (macroExclamation !== -1) {
+                    throw ["Cannot have associated items in macros"];
+                }
+            } else if (
+                c === "[" ||
+                c === "(" ||
+                isEndCharacter(c) ||
+                isSpecialStartCharacter(c) ||
+                isSeparatorCharacter(c)
+            ) {
+                break;
+            } else if (parserState.pos > 0) {
+                throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1],
+                    " (not a valid identifier)"];
+            } else {
+                throw ["Unexpected ", c, " (not a valid identifier)"];
             }
             parserState.pos += 1;
+            afterIdent = consumeIdent(parserState);
             end = parserState.pos;
         }
-        // if start == end - 1, we got the never type
-        if (foundExclamation !== -1 &&
-            foundExclamation !== start &&
-            isIdentCharacter(parserState.userQuery[foundExclamation - 1])
-        ) {
+        if (macroExclamation !== -1) {
             if (parserState.typeFilter === null) {
                 parserState.typeFilter = "macro";
             } else if (parserState.typeFilter !== "macro") {
@@ -693,7 +692,7 @@ function initSearch(rawSearchIndex) {
                     " both specified",
                 ];
             }
-            end = foundExclamation;
+            end = macroExclamation;
         }
         return end;
     }
@@ -1071,16 +1070,15 @@ function initSearch(rawSearchIndex) {
     function checkExtraTypeFilterCharacters(start, parserState) {
         const query = parserState.userQuery.slice(start, parserState.pos).trim();
 
-        for (const c in query) {
-            if (!isIdentCharacter(query[c])) {
-                throw [
-                    "Unexpected ",
-                    query[c],
-                    " in type filter (before ",
-                    ":",
-                    ")",
-                ];
-            }
+        const match = query.match(REGEX_INVALID_TYPE_FILTER);
+        if (match) {
+            throw [
+                "Unexpected ",
+                match[0],
+                " in type filter (before ",
+                ":",
+                ")",
+            ];
         }
     }
 
@@ -1395,6 +1393,7 @@ function initSearch(rawSearchIndex) {
          */
         async function sortResults(results, isType, preferredCrate) {
             const userQuery = parsedQuery.userQuery;
+            const casedUserQuery = parsedQuery.original;
             const result_list = [];
             for (const result of results.values()) {
                 result.item = searchIndex[result.id];
@@ -1404,6 +1403,13 @@ function initSearch(rawSearchIndex) {
 
             result_list.sort((aaa, bbb) => {
                 let a, b;
+
+                // sort by exact case-sensitive match
+                a = (aaa.item.name !== casedUserQuery);
+                b = (bbb.item.name !== casedUserQuery);
+                if (a !== b) {
+                    return a - b;
+                }
 
                 // sort by exact match with regard to the last word (mismatch goes later)
                 a = (aaa.word !== userQuery);
@@ -2127,7 +2133,7 @@ function initSearch(rawSearchIndex) {
             };
         }
 
-        function handleAliases(ret, query, filterCrates, currentCrate) {
+        async function handleAliases(ret, query, filterCrates, currentCrate) {
             const lowerQuery = query.toLowerCase();
             // We separate aliases and crate aliases because we want to have current crate
             // aliases to be before the others in the displayed results.
@@ -2163,6 +2169,15 @@ function initSearch(rawSearchIndex) {
             crateAliases.sort(sortFunc);
             aliases.sort(sortFunc);
 
+            const fetchDesc = alias => {
+                return searchIndexEmptyDesc.get(alias.crate).contains(alias.bitIndex) ?
+                    "" : searchState.loadDesc(alias);
+            };
+            const [crateDescs, descs] = await Promise.all([
+                Promise.all(crateAliases.map(fetchDesc)),
+                Promise.all(aliases.map(fetchDesc)),
+            ]);
+
             const pushFunc = alias => {
                 alias.alias = query;
                 const res = buildHrefAndPath(alias);
@@ -2176,7 +2191,13 @@ function initSearch(rawSearchIndex) {
                 }
             };
 
+            aliases.forEach((alias, i) => {
+                alias.desc = descs[i];
+            });
             aliases.forEach(pushFunc);
+            crateAliases.forEach((alias, i) => {
+                alias.desc = crateDescs[i];
+            });
             crateAliases.forEach(pushFunc);
         }
 
@@ -2386,15 +2407,19 @@ function initSearch(rawSearchIndex) {
              * @param {boolean} isAssocType
              */
             function convertNameToId(elem, isAssocType) {
-                if (typeNameIdMap.has(elem.normalizedPathLast) &&
-                    (isAssocType || !typeNameIdMap.get(elem.normalizedPathLast).assocOnly)) {
-                    elem.id = typeNameIdMap.get(elem.normalizedPathLast).id;
+                const loweredName = elem.pathLast.toLowerCase();
+                if (typeNameIdMap.has(loweredName) &&
+                    (isAssocType || !typeNameIdMap.get(loweredName).assocOnly)) {
+                    elem.id = typeNameIdMap.get(loweredName).id;
                 } else if (!parsedQuery.literalSearch) {
                     let match = null;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
                     for (const [name, {id, assocOnly}] of typeNameIdMap) {
-                        const dist = editDistance(name, elem.normalizedPathLast, maxEditDistance);
+                        const dist = Math.min(
+                            editDistance(name, loweredName, maxEditDistance),
+                            editDistance(name, elem.normalizedPathLast, maxEditDistance),
+                        );
                         if (dist <= matchDist && dist <= maxEditDistance &&
                             (isAssocType || !assocOnly)) {
                             if (dist === matchDist && matchName > name) {
@@ -2538,7 +2563,8 @@ function initSearch(rawSearchIndex) {
             sorted_returned,
             sorted_others,
             parsedQuery);
-        handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
+        await handleAliases(ret, parsedQuery.original.replace(/"/g, ""),
+            filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
                 return searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
@@ -2914,7 +2940,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
 
         // Update document title to maintain a meaningful browser history
-        searchState.title = "Results for " + query.original + " - Rust";
+        searchState.title = "\"" + query.original + "\" Search - Rust";
 
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
@@ -3275,10 +3301,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         // call after consuming `{`
         decodeList() {
-            const cb = "}".charCodeAt(0);
             let c = this.string.charCodeAt(this.offset);
             const ret = [];
-            while (c !== cb) {
+            while (c !== 125) { // 125 = "}"
                 ret.push(this.decode());
                 c = this.string.charCodeAt(this.offset);
             }
@@ -3287,14 +3312,13 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         // consumes and returns a list or integer
         decode() {
-            const [ob, la] = ["{", "`"].map(c => c.charCodeAt(0));
             let n = 0;
             let c = this.string.charCodeAt(this.offset);
-            if (c === ob) {
+            if (c === 123) { // 123 = "{"
                 this.offset += 1;
                 return this.decodeList();
             }
-            while (c < la) {
+            while (c < 96) { // 96 = "`"
                 n = (n << 4) | (c & 0xF);
                 this.offset += 1;
                 c = this.string.charCodeAt(this.offset);
@@ -3307,15 +3331,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         next() {
             const c = this.string.charCodeAt(this.offset);
-            const [zero, ua, la] = ["0", "@", "`"].map(c => c.charCodeAt(0));
             // sixteen characters after "0" are backref
-            if (c >= zero && c < ua) {
+            if (c >= 48 && c < 64) { // 48 = "0", 64 = "@"
                 this.offset += 1;
-                return this.backrefQueue[c - zero];
+                return this.backrefQueue[c - 48];
             }
             // special exception: 0 doesn't use backref encoding
             // it's already one character, and it's always nullish
-            if (c === la) {
+            if (c === 96) { // 96 = "`"
                 this.offset += 1;
                 return this.cons(0);
             }
@@ -3454,7 +3477,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         searchIndex = [];
         searchIndexDeprecated = new Map();
         searchIndexEmptyDesc = new Map();
-        const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
 
@@ -3532,7 +3554,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // Used to de-duplicate inlined and re-exported stuff
             const itemReexports = new Map(crateCorpus.r);
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
-            const itemParentIdxs = crateCorpus.i;
+            const itemParentIdxDecoder = new VlqHexDecoder(crateCorpus.i, noop => noop);
             // a map Number, string for impl disambiguators
             const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
@@ -3579,6 +3601,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // faster analysis operations
             lastPath = "";
             len = itemTypes.length;
+            let lastName = "";
+            let lastWord = "";
             for (let i = 0; i < len; ++i) {
                 const bitIndex = i + 1;
                 if (descIndex >= descShard.len &&
@@ -3594,10 +3618,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     descIndex = 0;
                     descShardList.push(descShard);
                 }
-                let word = "";
-                if (typeof itemNames[i] === "string") {
-                    word = itemNames[i].toLowerCase();
-                }
+                const name = itemNames[i] === "" ? lastName : itemNames[i];
+                const word = itemNames[i] === "" ? lastWord : itemNames[i].toLowerCase();
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
                 const type = itemFunctionDecoder.next();
                 if (type !== null) {
@@ -3619,15 +3641,16 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 }
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
+                const itemParentIdx = itemParentIdxDecoder.next();
                 const row = {
                     crate,
-                    ty: itemTypes.charCodeAt(i) - charA,
-                    name: itemNames[i],
+                    ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"
+                    name,
                     path,
                     descShard,
                     descIndex,
                     exactPath: itemReexports.has(i) ? itemPaths.get(itemReexports.get(i)) : path,
-                    parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
+                    parent: itemParentIdx > 0 ? paths[itemParentIdx - 1] : undefined,
                     type,
                     id,
                     word,
@@ -3641,6 +3664,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 if (!searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descIndex += 1;
                 }
+                lastName = name;
+                lastWord = word;
             }
 
             if (aliases) {

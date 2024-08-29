@@ -12,25 +12,21 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
-use either::{Left, Right};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir as hir;
-use rustc_middle::mir;
-use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::*;
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{self, List, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
-
-use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_span::source_map::Spanned;
-
 use std::assert_matches::assert_matches;
 use std::cell::Cell;
 use std::{cmp, iter, mem};
 
-use rustc_const_eval::transform::check_consts::{qualifs, ConstCx};
+use either::{Left, Right};
+use rustc_const_eval::check_consts::{qualifs, ConstCx};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
+use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, GenericArgs, List, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::{bug, mir, span_bug};
+use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 
 /// A `MirPass` for promotion.
 ///
@@ -60,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let ccx = ConstCx::new(tcx, body);
         let (mut temps, all_candidates) = collect_temps_and_candidates(&ccx);
 
-        let promotable_candidates = validate_candidates(&ccx, &mut temps, &all_candidates);
+        let promotable_candidates = validate_candidates(&ccx, &mut temps, all_candidates);
 
         let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -98,8 +94,8 @@ struct Collector<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn visit_local(&mut self, index: Local, context: PlaceContext, location: Location) {
-        debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
         match self.ccx.body.local_kind(index) {
             LocalKind::Arg => return,
@@ -111,20 +107,15 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         // then it's constant and thus drop is noop.
         // Non-uses are also irrelevant.
         if context.is_drop() || !context.is_use() {
-            debug!(
-                "visit_local: context.is_drop={:?} context.is_use={:?}",
-                context.is_drop(),
-                context.is_use(),
-            );
+            debug!(is_drop = context.is_drop(), is_use = context.is_use());
             return;
         }
 
         let temp = &mut self.temps[index];
-        debug!("visit_local: temp={:?}", temp);
+        debug!(?temp);
         *temp = match *temp {
             TempState::Undefined => match context {
-                PlaceContext::MutatingUse(MutatingUseContext::Store)
-                | PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+                PlaceContext::MutatingUse(MutatingUseContext::Store | MutatingUseContext::Call) => {
                     TempState::Defined { location, uses: 0, valid: Err(()) }
                 }
                 _ => TempState::Unpromotable,
@@ -137,7 +128,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                     | PlaceContext::NonMutatingUse(_) => true,
                     PlaceContext::MutatingUse(_) | PlaceContext::NonUse(_) => false,
                 };
-                debug!("visit_local: allowed_use={:?}", allowed_use);
+                debug!(?allowed_use);
                 if allowed_use {
                     *uses += 1;
                     return;
@@ -146,6 +137,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             }
             TempState::Unpromotable | TempState::PromotedOut => TempState::Unpromotable,
         };
+        debug!(?temp);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -464,7 +456,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             Rvalue::UnaryOp(op, operand) => {
                 match op {
                     // These operations can never fail.
-                    UnOp::Neg | UnOp::Not => {}
+                    UnOp::Neg | UnOp::Not | UnOp::PtrMetadata => {}
                 }
 
                 self.validate_operand(operand)?;
@@ -476,7 +468,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 if let ty::RawPtr(_, _) | ty::FnPtr(..) = lhs_ty.kind() {
                     // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
-                    assert!(matches!(
+                    assert_matches!(
                         op,
                         BinOp::Eq
                             | BinOp::Ne
@@ -485,7 +477,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             | BinOp::Ge
                             | BinOp::Gt
                             | BinOp::Offset
-                    ));
+                    );
                     return Err(Unpromotable);
                 }
 
@@ -500,14 +492,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 }
                                 _ => None,
                             };
-                            match rhs_val.map(|x| x.assert_uint(sz)) {
+                            match rhs_val.map(|x| x.to_uint(sz)) {
                                 // for the zero test, int vs uint does not matter
                                 Some(x) if x != 0 => {}        // okay
                                 _ => return Err(Unpromotable), // value not known or 0 -- not okay
                             }
                             // Furthermore, for signed divison, we also have to exclude `int::MIN / -1`.
                             if lhs_ty.is_signed() {
-                                match rhs_val.map(|x| x.assert_int(sz)) {
+                                match rhs_val.map(|x| x.to_int(sz)) {
                                     Some(-1) | None => {
                                         // The RHS is -1 or unknown, so we have to be careful.
                                         // But is the LHS int::MIN?
@@ -518,7 +510,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                             _ => None,
                                         };
                                         let lhs_min = sz.signed_int_min();
-                                        match lhs_val.map(|x| x.assert_int(sz)) {
+                                        match lhs_val.map(|x| x.to_int(sz)) {
                                             Some(x) if x != lhs_min => {}  // okay
                                             _ => return Err(Unpromotable), // value not known or int::MIN -- not okay
                                         }
@@ -559,7 +551,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(rhs)?;
             }
 
-            Rvalue::AddressOf(_, place) => {
+            Rvalue::RawPtr(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
                 // no problem, only using it is.
                 if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection()
@@ -695,15 +687,12 @@ impl<'tcx> Validator<'_, 'tcx> {
 fn validate_candidates(
     ccx: &ConstCx<'_, '_>,
     temps: &mut IndexSlice<Local, TempState>,
-    candidates: &[Candidate],
+    mut candidates: Vec<Candidate>,
 ) -> Vec<Candidate> {
     let mut validator = Validator { ccx, temps, promotion_safe_blocks: None };
 
+    candidates.retain(|&candidate| validator.validate_candidate(candidate).is_ok());
     candidates
-        .iter()
-        .copied()
-        .filter(|&candidate| validator.validate_candidate(candidate).is_ok())
-        .collect()
 }
 
 struct Promoter<'a, 'tcx> {
@@ -712,6 +701,9 @@ struct Promoter<'a, 'tcx> {
     promoted: Body<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
     extra_statements: &'a mut Vec<(Location, Statement<'tcx>)>,
+
+    /// Used to assemble the required_consts list while building the promoted.
+    required_consts: Vec<ConstOperand<'tcx>>,
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
@@ -823,7 +815,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     mut func, mut args, call_source: desugar, fn_span, ..
                 } => {
                     // This promoted involves a function call, so it may fail to evaluate.
-                    // Let's make sure it is added to `required_consts` so that that failure cannot get lost.
+                    // Let's make sure it is added to `required_consts` so that failure cannot get lost.
                     self.add_to_required = true;
 
                     self.visit_operand(&mut func, loc);
@@ -935,10 +927,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
 
-        // Now that we did promotion, we know whether we'll want to add this to `required_consts`.
+        // Now that we did promotion, we know whether we'll want to add this to `required_consts` of
+        // the surrounding MIR body.
         if self.add_to_required {
-            self.source.required_consts.push(promoted_op);
+            self.source.required_consts.as_mut().unwrap().push(promoted_op);
         }
+
+        self.promoted.set_required_consts(self.required_consts);
 
         self.promoted
     }
@@ -956,9 +951,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
         }
     }
 
-    fn visit_constant(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
+    fn visit_const_operand(&mut self, constant: &mut ConstOperand<'tcx>, _location: Location) {
         if constant.const_.is_required_const() {
-            self.promoted.required_consts.push(*constant);
+            self.required_consts.push(*constant);
         }
 
         // Skipping `super_constant` as the visitor is otherwise only looking for locals.
@@ -972,7 +967,12 @@ fn promote_candidates<'tcx>(
     candidates: Vec<Candidate>,
 ) -> IndexVec<Promoted, Body<'tcx>> {
     // Visit candidates in reverse, in case they're nested.
-    debug!("promote_candidates({:?})", candidates);
+    debug!(promote_candidates = ?candidates);
+
+    // eagerly fail fast
+    if candidates.is_empty() {
+        return IndexVec::new();
+    }
 
     let mut promotions = IndexVec::new();
 
@@ -1017,9 +1017,9 @@ fn promote_candidates<'tcx>(
             extra_statements: &mut extra_statements,
             keep_original: false,
             add_to_required: false,
+            required_consts: Vec::new(),
         };
 
-        // `required_consts` of the promoted itself gets filled while building the MIR body.
         let mut promoted = promoter.promote_candidate(candidate, promotions.len());
         promoted.source.promoted = Some(promotions.next_index());
         promotions.push(promoted);

@@ -1,14 +1,14 @@
-use crate::dep_graph::DepNodeIndex;
+use std::fmt::Debug;
+use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::sync::{Lock, OnceLock};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::{Idx, IndexVec};
-use rustc_span::def_id::DefId;
-use rustc_span::def_id::DefIndex;
-use std::fmt::Debug;
-use std::hash::Hash;
+use rustc_span::def_id::{DefId, DefIndex};
+
+use crate::dep_graph::DepNodeIndex;
 
 pub trait QueryCache: Sized {
     type Key: Hash + Eq + Copy + Debug;

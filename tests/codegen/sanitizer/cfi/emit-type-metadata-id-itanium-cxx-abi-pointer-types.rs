@@ -4,37 +4,37 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
-pub fn foo1(_: &mut i32) { }
+pub fn foo1(_: &mut i32) {}
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo2(_: &mut i32, _: &i32) { }
+pub fn foo2(_: &mut i32, _: &i32) {}
 // CHECK: define{{.*}}4foo2{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo3(_: &mut i32, _: &i32, _: &i32) { }
+pub fn foo3(_: &mut i32, _: &i32, _: &i32) {}
 // CHECK: define{{.*}}4foo3{{.*}}!type ![[TYPE3:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo4(_: &i32) { }
+pub fn foo4(_: &i32) {}
 // CHECK: define{{.*}}4foo4{{.*}}!type ![[TYPE4:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo5(_: &i32, _: &mut i32) { }
+pub fn foo5(_: &i32, _: &mut i32) {}
 // CHECK: define{{.*}}4foo5{{.*}}!type ![[TYPE5:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo6(_: &i32, _: &mut i32, _: &mut i32) { }
+pub fn foo6(_: &i32, _: &mut i32, _: &mut i32) {}
 // CHECK: define{{.*}}4foo6{{.*}}!type ![[TYPE6:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo7(_: *mut i32) { }
+pub fn foo7(_: *mut i32) {}
 // CHECK: define{{.*}}4foo7{{.*}}!type ![[TYPE7:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo8(_: *mut i32, _: *const i32) { }
+pub fn foo8(_: *mut i32, _: *const i32) {}
 // CHECK: define{{.*}}4foo8{{.*}}!type ![[TYPE8:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo9(_: *mut i32, _: *const i32, _: *const i32) { }
+pub fn foo9(_: *mut i32, _: *const i32, _: *const i32) {}
 // CHECK: define{{.*}}4foo9{{.*}}!type ![[TYPE9:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo10(_: *const i32) { }
+pub fn foo10(_: *const i32) {}
 // CHECK: define{{.*}}5foo10{{.*}}!type ![[TYPE10:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo11(_: *const i32, _: *mut i32) { }
+pub fn foo11(_: *const i32, _: *mut i32) {}
 // CHECK: define{{.*}}5foo11{{.*}}!type ![[TYPE11:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo12(_: *const i32, _: *mut i32, _: *mut i32) { }
+pub fn foo12(_: *const i32, _: *mut i32, _: *mut i32) {}
 // CHECK: define{{.*}}5foo12{{.*}}!type ![[TYPE12:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo13(_: fn(i32) -> i32) { }
+pub fn foo13(_: fn(i32) -> i32) {}
 // CHECK: define{{.*}}5foo13{{.*}}!type ![[TYPE13:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo14(_: fn(i32) -> i32, _: fn(i32) -> i32) { }
+pub fn foo14(_: fn(i32) -> i32, _: fn(i32) -> i32) {}
 // CHECK: define{{.*}}5foo14{{.*}}!type ![[TYPE14:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
-pub fn foo15(_: fn(i32) -> i32, _: fn(i32) -> i32, _: fn(i32) -> i32) { }
+pub fn foo15(_: fn(i32) -> i32, _: fn(i32) -> i32, _: fn(i32) -> i32) {}
 // CHECK: define{{.*}}5foo15{{.*}}!type ![[TYPE15:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvU3mutu3refIu3i32EE"}

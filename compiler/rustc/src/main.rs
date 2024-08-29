@@ -1,3 +1,6 @@
+// We need this feature as it changes `dylib` linking behavior and allows us to link to `rustc_driver`.
+#![feature(rustc_private)]
+
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`
 // mechanism. However, for complicated reasons (see
@@ -34,7 +37,7 @@
 
 fn main() {
     // See the comment at the top of this file for an explanation of this.
-    #[cfg(feature = "jemalloc-sys")]
+    #[cfg(feature = "jemalloc")]
     {
         use std::os::raw::{c_int, c_void};
 

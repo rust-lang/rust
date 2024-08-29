@@ -64,9 +64,9 @@ fn test_abbreviate_filterss_are_detected() {
 #[test]
 fn test_abbreviate_filters_avoid_abbreviations() {
     let mut out = ProcOutput::new();
-    let filters = &[std::iter::repeat('a').take(64).collect::<String>()];
+    let filters = &["a".repeat(64)];
 
-    let mut expected = vec![b'.'; MAX_OUT_LEN - FILTERED_PATHS_PLACEHOLDER_LEN as usize];
+    let mut expected = vec![b'.'; MAX_OUT_LEN - FILTERED_PATHS_PLACEHOLDER_LEN];
     expected.extend_from_slice(filters[0].as_bytes());
 
     out.extend(&expected, filters);
@@ -81,7 +81,7 @@ fn test_abbreviate_filters_avoid_abbreviations() {
 #[test]
 fn test_abbreviate_filters_can_still_cause_abbreviations() {
     let mut out = ProcOutput::new();
-    let filters = &[std::iter::repeat('a').take(64).collect::<String>()];
+    let filters = &["a".repeat(64)];
 
     let mut input = vec![b'.'; MAX_OUT_LEN];
     input.extend_from_slice(filters[0].as_bytes());

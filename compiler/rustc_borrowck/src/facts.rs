@@ -1,16 +1,17 @@
-use crate::location::{LocationIndex, LocationTable};
-use crate::BorrowIndex;
-use polonius_engine::AllFacts as PoloniusFacts;
-use polonius_engine::Atom;
-use rustc_macros::extension;
-use rustc_middle::mir::Local;
-use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_mir_dataflow::move_paths::MovePathIndex;
 use std::error::Error;
 use std::fmt::Debug;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
+
+use polonius_engine::{AllFacts as PoloniusFacts, Atom};
+use rustc_macros::extension;
+use rustc_middle::mir::Local;
+use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_mir_dataflow::move_paths::MovePathIndex;
+
+use crate::location::{LocationIndex, LocationTable};
+use crate::BorrowIndex;
 
 #[derive(Copy, Clone, Debug)]
 pub struct RustcFacts;
@@ -213,8 +214,32 @@ trait FactCell {
     fn to_string(&self, location_table: &LocationTable) -> String;
 }
 
-impl<A: Debug> FactCell for A {
-    default fn to_string(&self, _location_table: &LocationTable) -> String {
+impl FactCell for BorrowIndex {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for Local {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for MovePathIndex {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for PoloniusRegionVid {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
+        format!("{self:?}")
+    }
+}
+
+impl FactCell for RegionVid {
+    fn to_string(&self, _location_table: &LocationTable) -> String {
         format!("{self:?}")
     }
 }

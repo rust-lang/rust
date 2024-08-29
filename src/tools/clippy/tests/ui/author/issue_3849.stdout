@@ -1,4 +1,4 @@
-if let StmtKind::Local(local) = stmt.kind
+if let StmtKind::Let(local) = stmt.kind
     && let Some(init) = local.init
     && let ExprKind::Call(func, args) = init.kind
     && let ExprKind::Path(ref qpath) = func.kind

@@ -4,6 +4,7 @@
 //! we should still try to minimize those calls over time rather than regress them.
 
 use std::fmt::{self, Write};
+
 use test::{black_box, Bencher};
 
 #[derive(Default)]
@@ -44,7 +45,7 @@ fn ascii_escapes(b: &mut Bencher) {
     assert_fmt(
         s,
         r#""some\tmore\tascii\ttext\nthis time with some \"escapes\", also 64 byte""#,
-        21,
+        15,
     );
     b.iter(|| {
         black_box(format!("{:?}", black_box(s)));
@@ -72,7 +73,7 @@ fn mostly_unicode(b: &mut Bencher) {
 #[bench]
 fn mixed(b: &mut Bencher) {
     let s = "\"❤️\"\n\"hűha ez betű\"\n\"кириллических букв\".";
-    assert_fmt(s, r#""\"❤\u{fe0f}\"\n\"hűha ez betű\"\n\"кириллических букв\".""#, 36);
+    assert_fmt(s, r#""\"❤\u{fe0f}\"\n\"hűha ez betű\"\n\"кириллических букв\".""#, 21);
     b.iter(|| {
         black_box(format!("{:?}", black_box(s)));
     });

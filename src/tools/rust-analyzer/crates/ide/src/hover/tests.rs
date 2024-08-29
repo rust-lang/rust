@@ -1,5 +1,5 @@
 use expect_test::{expect, Expect};
-use ide_db::base_db::{FileLoader, FileRange};
+use ide_db::{base_db::SourceDatabase, FileRange};
 use syntax::TextRange;
 
 use crate::{
@@ -2358,17 +2358,17 @@ fn test_hover_trait_show_qualifiers() {
     check_actions(
         r"unsafe trait foo$0() {}",
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 13,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 13,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2925,17 +2925,17 @@ fn test_hover_trait_has_impl_action() {
     check_actions(
         r#"trait foo$0() {}"#,
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 6,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 6,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2944,17 +2944,17 @@ fn test_hover_struct_has_impl_action() {
     check_actions(
         r"struct foo$0() {}",
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 7,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 7,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2963,17 +2963,17 @@ fn test_hover_union_has_impl_action() {
     check_actions(
         r#"union foo$0() {}"#,
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 6,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 6,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -2982,17 +2982,17 @@ fn test_hover_enum_has_impl_action() {
     check_actions(
         r"enum foo$0() { A, B }",
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 5,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 5,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3001,17 +3001,17 @@ fn test_hover_self_has_impl_action() {
     check_actions(
         r#"struct foo where Self$0:;"#,
         expect![[r#"
-                [
-                    Implementation(
-                        FilePosition {
-                            file_id: FileId(
-                                0,
-                            ),
-                            offset: 7,
-                        },
-                    ),
-                ]
-            "#]],
+            [
+                Implementation(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 7,
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -3025,7 +3025,7 @@ fn foo_$0test() {}
         expect![[r#"
             [
                 Reference(
-                    FilePosition {
+                    FilePositionWrapper {
                         file_id: FileId(
                             0,
                         ),
@@ -5310,6 +5310,71 @@ const FOO$0: f64 = expf64(1.2);
             ```
         "#]],
     );
+    // check `f32` isn't double rounded via `f64`
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f32 = 1.9999999403953552_f32;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f32 = 1.9999999
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // Check `f16` and `f128`
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f16 = -1.0f16;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f16 = -1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: f128 = -1.0f128;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: f128 = -1.0
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]
@@ -6138,7 +6203,7 @@ fn hover_feature() {
             by the codegen backend, but not the MIR inliner.
 
             ```rust
-            #![feature(rustc_attrs, effects)]
+            #![feature(rustc_attrs)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6148,7 +6213,7 @@ fn hover_feature() {
             Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
             ```rust
-            #![feature(rustc_attrs, effects)]
+            #![feature(rustc_attrs)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6172,11 +6237,22 @@ fn hover_feature() {
             Various intrinsics have native MIR operations that they correspond to. Instead of requiring
             backends to implement both the intrinsic and the MIR operation, the `lower_intrinsics` pass
             will convert the calls to the MIR operation. Backends do not need to know about these intrinsics
-            at all.
+            at all. These intrinsics only make sense without a body, and can either be declared as a "rust-intrinsic"
+            or as a `#[rustc_intrinsic]`. The body is never used, as calls to the intrinsic do not exist
+            anymore after MIR analyses.
 
             ## Intrinsics without fallback logic
 
             These must be implemented by all backends.
+
+            ### `#[rustc_intrinsic]` declarations
+
+            These are written like intrinsics with fallback bodies, but the body is irrelevant.
+            Use `loop {}` for the body or call the intrinsic recursively and add
+            `#[rustc_intrinsic_must_be_overridden]` to the function to ensure that backends don't
+            invoke the body.
+
+            ### Legacy extern ABI based intrinsics
 
             These are imported as if they were FFI functions, with the special
             `rust-intrinsic` ABI. For example, if one was in a freestanding
@@ -8013,6 +8089,22 @@ fn main() {
     check(
         r#"
 fn main() {
+    $01.0f16;
+}
+"#,
+        expect![[r#"
+            *1.0f16*
+            ```rust
+            f16
+            ```
+            ___
+
+            value of literal: 1 (bits: 0x3C00)
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
     $01.0f32;
 }
 "#,
@@ -8024,6 +8116,22 @@ fn main() {
             ___
 
             value of literal: 1 (bits: 0x3F800000)
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01.0f128;
+}
+"#,
+        expect![[r#"
+            *1.0f128*
+            ```rust
+            f128
+            ```
+            ___
+
+            value of literal: 1 (bits: 0x3FFF0000000000000000000000000000)
         "#]],
     );
     check(
@@ -8342,7 +8450,7 @@ impl Iterator for S {
         expect![[r#"
             [
                 Implementation(
-                    FilePosition {
+                    FilePositionWrapper {
                         file_id: FileId(
                             0,
                         ),
@@ -8357,8 +8465,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 7791..7999,
-                                focus_range: 7856..7862,
+                                full_range: 7800..8008,
+                                focus_range: 7865..7871,
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
@@ -8371,8 +8479,8 @@ impl Iterator for S {
                                 file_id: FileId(
                                     1,
                                 ),
-                                full_range: 8629..9095,
-                                focus_range: 8673..8681,
+                                full_range: 8638..9104,
+                                focus_range: 8682..8690,
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
@@ -8467,6 +8575,29 @@ fn main(a$0: T) {}
             ```rust
             // size = 0, align = 1
             a: T
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_fn_with_impl_trait_arg() {
+    check(
+        r#"
+trait Foo {}
+impl Foo for bool {}
+fn bar<const WIDTH: u8>(_: impl Foo) {}
+fn test() {
+    let f = bar::<3>;
+    f$0(true);
+}
+"#,
+        expect![[r#"
+            *f*
+
+            ```rust
+            // size = 0, align = 1
+            let f: fn bar<3>(bool)
             ```
         "#]],
     );

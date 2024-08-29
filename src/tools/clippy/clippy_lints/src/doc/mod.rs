@@ -1,15 +1,19 @@
 mod lazy_continuation;
+mod too_long_first_doc_paragraph;
+
+use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
-use clippy_utils::{in_constant, is_entrypoint_fn, is_trait_impl_item, method_chain_args};
+use clippy_utils::{is_entrypoint_fn, is_trait_impl_item, method_chain_args};
 use pulldown_cmark::Event::{
-    Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
+    Code, DisplayMath, End, FootnoteReference, HardBreak, Html, InlineHtml, InlineMath, Rule, SoftBreak, Start,
+    TaskListMarker, Text,
 };
 use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
-use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
+use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::intravisit::{self, Visitor};
@@ -261,7 +265,7 @@ declare_clippy_lint! {
     /// Checks for the doc comments of publicly visible
     /// safe functions and traits and warns if there is a `# Safety` section.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Safe functions and traits are safe to implement and therefore do not
     /// need to describe safety preconditions that users are required to uphold.
     ///
@@ -307,7 +311,7 @@ declare_clippy_lint! {
     /// ### Known problems
     /// Inner doc comments can only appear before items, so there are certain cases where the suggestion
     /// made by this lint is not valid code. For example:
-    /// ```rs
+    /// ```rust
     /// fn foo() {}
     /// ///!
     /// fn bar() {}
@@ -420,6 +424,37 @@ declare_clippy_lint! {
     "require every line of a paragraph to be indented and marked"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks if the first line in the documentation of items listed in module page is too long.
+    ///
+    /// ### Why is this bad?
+    /// Documentation will show the first paragraph of the doscstring in the summary page of a
+    /// module, so having a nice, short summary in the first paragraph is part of writing good docs.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// A very short summary.
+    /// /// A much longer explanation that goes into a lot more detail about
+    /// /// how the thing works, possibly with doclinks and so one,
+    /// /// and probably spanning a many rows.
+    /// struct Foo {}
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// /// A very short summary.
+    /// ///
+    /// /// A much longer explanation that goes into a lot more detail about
+    /// /// how the thing works, possibly with doclinks and so one,
+    /// /// and probably spanning a many rows.
+    /// struct Foo {}
+    /// ```
+    #[clippy::version = "1.81.0"]
+    pub TOO_LONG_FIRST_DOC_PARAGRAPH,
+    style,
+    "ensure that the first line of a documentation paragraph isn't too long"
+}
+
 #[derive(Clone)]
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
@@ -427,10 +462,10 @@ pub struct Documentation {
 }
 
 impl Documentation {
-    pub fn new(valid_idents: &[String], check_private_items: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
-            valid_idents: valid_idents.iter().cloned().collect(),
-            check_private_items,
+            valid_idents: conf.doc_valid_idents.iter().cloned().collect(),
+            check_private_items: conf.check_private_items,
         }
     }
 }
@@ -447,6 +482,7 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
+    TOO_LONG_FIRST_DOC_PARAGRAPH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
@@ -456,39 +492,50 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         };
 
         match cx.tcx.hir_node(cx.last_node_with_lint_attrs) {
-            Node::Item(item) => match item.kind {
-                ItemKind::Fn(sig, _, body_id) => {
-                    if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
-                        let body = cx.tcx.hir().body(body_id);
+            Node::Item(item) => {
+                too_long_first_doc_paragraph::check(
+                    cx,
+                    item,
+                    attrs,
+                    headers.first_paragraph_len,
+                    self.check_private_items,
+                );
+                match item.kind {
+                    ItemKind::Fn(sig, _, body_id) => {
+                        if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
+                            || in_external_macro(cx.tcx.sess, item.span))
+                        {
+                            let body = cx.tcx.hir().body(body_id);
 
-                        let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
-                        missing_headers::check(
+                            let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
+                            missing_headers::check(
+                                cx,
+                                item.owner_id,
+                                sig,
+                                headers,
+                                Some(body_id),
+                                panic_info,
+                                self.check_private_items,
+                            );
+                        }
+                    },
+                    ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                        (false, Safety::Unsafe) => span_lint(
                             cx,
-                            item.owner_id,
-                            sig,
-                            headers,
-                            Some(body_id),
-                            panic_info,
-                            self.check_private_items,
-                        );
-                    }
-                },
-                ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
-                    (false, Safety::Unsafe) => span_lint(
-                        cx,
-                        MISSING_SAFETY_DOC,
-                        cx.tcx.def_span(item.owner_id),
-                        "docs for unsafe trait missing `# Safety` section",
-                    ),
-                    (true, Safety::Safe) => span_lint(
-                        cx,
-                        UNNECESSARY_SAFETY_DOC,
-                        cx.tcx.def_span(item.owner_id),
-                        "docs for safe trait have unnecessary `# Safety` section",
-                    ),
+                            MISSING_SAFETY_DOC,
+                            cx.tcx.def_span(item.owner_id),
+                            "docs for unsafe trait missing `# Safety` section",
+                        ),
+                        (true, Safety::Safe) => span_lint(
+                            cx,
+                            UNNECESSARY_SAFETY_DOC,
+                            cx.tcx.def_span(item.owner_id),
+                            "docs for safe trait have unnecessary `# Safety` section",
+                        ),
+                        _ => (),
+                    },
                     _ => (),
-                },
-                _ => (),
+                }
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
@@ -546,6 +593,7 @@ struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
+    first_paragraph_len: usize,
 }
 
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
@@ -652,6 +700,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut paragraph_range = 0..0;
     let mut code_level = 0;
     let mut blockquote_level = 0;
+    let mut is_first_paragraph = true;
 
     let mut containers = Vec::new();
 
@@ -659,7 +708,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
     while let Some((event, range)) = events.next() {
         match event {
-            Html(tag) => {
+            Html(tag) | InlineHtml(tag) => {
                 if tag.starts_with("<code") {
                     code_level += 1;
                 } else if tag.starts_with("</code") {
@@ -670,11 +719,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     blockquote_level -= 1;
                 }
             },
-            Start(BlockQuote) => {
+            Start(BlockQuote(_)) => {
                 blockquote_level += 1;
                 containers.push(Container::Blockquote);
             },
-            End(BlockQuote) => {
+            End(TagEnd::BlockQuote) => {
                 blockquote_level -= 1;
                 containers.pop();
             },
@@ -699,15 +748,15 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                 }
             },
-            End(CodeBlock(_)) => {
+            End(TagEnd::CodeBlock) => {
                 in_code = false;
                 is_rust = false;
                 ignore = false;
             },
-            Start(Link(_, url, _)) => in_link = Some(url),
-            End(Link(..)) => in_link = None,
-            Start(Heading(_, _, _) | Paragraph | Item) => {
-                if let Start(Heading(_, _, _)) = event {
+            Start(Link { dest_url, .. }) => in_link = Some(dest_url),
+            End(TagEnd::Link) => in_link = None,
+            Start(Heading { .. } | Paragraph | Item) => {
+                if let Start(Heading { .. }) = event {
                     in_heading = true;
                 }
                 if let Start(Item) = event {
@@ -719,12 +768,16 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 }
                 ticks_unbalanced = false;
                 paragraph_range = range;
+                if is_first_paragraph {
+                    headers.first_paragraph_len = doc[paragraph_range.clone()].chars().count();
+                    is_first_paragraph = false;
+                }
             },
-            End(Heading(_, _, _) | Paragraph | Item) => {
-                if let End(Heading(_, _, _)) = event {
+            End(TagEnd::Heading(_) | TagEnd::Paragraph | TagEnd::Item) => {
+                if let End(TagEnd::Heading(_)) = event {
                     in_heading = false;
                 }
-                if let End(Item) = event {
+                if let End(TagEnd::Item) = event {
                     containers.pop();
                 }
                 if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
@@ -746,8 +799,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 text_to_check = Vec::new();
             },
             Start(FootnoteDefinition(..)) => in_footnote_definition = true,
-            End(FootnoteDefinition(..)) => in_footnote_definition = false,
-            Start(_tag) | End(_tag) => (), // We don't care about other tags
+            End(TagEnd::FootnoteDefinition) => in_footnote_definition = false,
+            Start(_) | End(_)  // We don't care about other tags
+            | TaskListMarker(_) | Code(_) | Rule | InlineMath(..) | DisplayMath(..) => (),
             SoftBreak | HardBreak => {
                 if !containers.is_empty()
                     && let Some((next_event, next_range)) = events.peek()
@@ -762,13 +816,24 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         range.end..next_range.start,
                         Span::new(span.hi(), next_span.lo(), span.ctxt(), span.parent()),
                         &containers[..],
+                        span,
                     );
                 }
             },
-            TaskListMarker(_) | Code(_) | Rule => (),
-            FootnoteReference(text) | Text(text) => {
+            Text(text) => {
                 paragraph_range.end = range.end;
-                ticks_unbalanced |= text.contains('`') && !in_code;
+                let range_ = range.clone();
+                ticks_unbalanced |= text.contains('`')
+                    && !in_code
+                    && doc[range.clone()].bytes().enumerate().any(|(i, c)| {
+                        // scan the markdown source code bytes for backquotes that aren't preceded by backslashes
+                        // - use bytes, instead of chars, to avoid utf8 decoding overhead (special chars are ascii)
+                        // - relevant backquotes are within doc[range], but backslashes are not, because they're not
+                        //   actually part of the rendered text (pulldown-cmark doesn't emit any events for escapes)
+                        // - if `range_.start + i == 0`, then `range_.start + i - 1 == -1`, and since we're working in
+                        //   usize, that would underflow and maybe panic
+                        c == b'`' && (range_.start + i == 0 || doc.as_bytes().get(range_.start + i - 1) != Some(&b'\\'))
+                    });
                 if Some(&text) == in_link.as_ref() || ticks_unbalanced {
                     // Probably a link of the form `<http://example.com>`
                     // Which are represented as a link to "http://example.com" with
@@ -799,7 +864,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     }
                     text_to_check.push((text, range, code_level));
                 }
-            },
+            }
+            FootnoteReference(_) => {}
         }
     }
     headers
@@ -844,7 +910,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne"
                 )
             {
-                self.is_const = in_constant(self.cx, expr.hir_id);
+                self.is_const = self.cx.tcx.hir().is_inside_const_context(expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }

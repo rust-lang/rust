@@ -1,0 +1,21 @@
+warning: the feature `effects` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:11:30
+   |
+LL | #![feature(const_trait_impl, effects)]
+   |                              ^^^^^^^
+   |
+   = note: see issue #102090 <https://github.com/rust-lang/rust/issues/102090> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0049]: method `foo` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:20:12
+   |
+LL |     fn foo(self);
+   |           - expected 0 type parameters
+...
+LL |     fn foo<T>(self) {
+   |            ^ found 1 type parameter
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0049`.

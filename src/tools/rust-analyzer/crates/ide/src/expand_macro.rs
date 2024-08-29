@@ -1,7 +1,7 @@
 use hir::{DescendPreference, InFile, MacroFileIdExt, Semantics};
 use ide_db::{
-    base_db::FileId, helpers::pick_best_token,
-    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
+    helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into, FileId,
+    RootDatabase,
 };
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
@@ -25,7 +25,7 @@ pub struct ExpandedMacro {
 // image::https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif[]
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id);
+    let file = sema.parse_guess_edition(position.file_id);
 
     let tok = pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
         SyntaxKind::IDENT => 1,
@@ -111,9 +111,10 @@ fn expand_macro_recur(
     macro_call: &ast::Item,
 ) -> Option<SyntaxNode> {
     let expanded = match macro_call {
-        item @ ast::Item::MacroCall(macro_call) => {
-            sema.expand_attr_macro(item).or_else(|| sema.expand(macro_call))?.clone_for_update()
-        }
+        item @ ast::Item::MacroCall(macro_call) => sema
+            .expand_attr_macro(item)
+            .or_else(|| sema.expand_allowed_builtins(macro_call))?
+            .clone_for_update(),
         item => sema.expand_attr_macro(item)?.clone_for_update(),
     };
     expand(sema, expanded)
@@ -226,6 +227,29 @@ mod tests {
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);
         expect.assert_eq(&actual);
+    }
+
+    #[test]
+    fn expand_allowed_builtin_macro() {
+        check(
+            r#"
+//- minicore: concat
+$0concat!("test", 10, 'b', true);"#,
+            expect![[r#"
+                concat!
+                "test10btrue""#]],
+        );
+    }
+
+    #[test]
+    fn do_not_expand_disallowed_macro() {
+        let (analysis, pos) = fixture::position(
+            r#"
+//- minicore: asm
+$0asm!("0x300, x0");"#,
+        );
+        let expansion = analysis.expand_macro(pos).unwrap();
+        assert!(expansion.is_none());
     }
 
     #[test]

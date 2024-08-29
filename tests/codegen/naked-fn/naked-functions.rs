@@ -14,8 +14,7 @@ pub unsafe extern "C" fn naked_empty() {
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: call void asm
     // CHECK-NEXT: unreachable
-    asm!("ret",
-         options(noreturn));
+    asm!("ret", options(noreturn));
 }
 
 // CHECK: Function Attrs: naked
@@ -26,7 +25,5 @@ pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize
     // CHECK-NEXT: {{.+}}:
     // CHECK-NEXT: call void asm
     // CHECK-NEXT: unreachable
-    asm!("lea rax, [rdi + rsi]",
-         "ret",
-         options(noreturn));
+    asm!("lea rax, [rdi + rsi]", "ret", options(noreturn));
 }

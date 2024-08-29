@@ -53,3 +53,17 @@ This target is not tested in CI at this time. Locally it can be tested with a
 ```text
 ./x.py test --target wasm32-wasip2 tests/ui
 ```
+
+## Conditionally compiling code
+
+It's recommended to conditionally compile code for this target with:
+
+```text
+#[cfg(all(target_os = "wasi", target_env = "p2"))]
+```
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation is currently the
+same as [`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md). See the
+documentation there for more information.

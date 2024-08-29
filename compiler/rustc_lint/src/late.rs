@@ -14,21 +14,23 @@
 //! upon. As the ast is traversed, this keeps track of the current lint level
 //! for all lint attributes.
 
-use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
+use std::any::Any;
+use std::cell::Cell;
+
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
-use rustc_hir::intravisit as hir_visit;
-use rustc_hir::HirId;
+use rustc_hir::{intravisit as hir_visit, HirId};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
 use rustc_session::Session;
 use rustc_span::Span;
+use tracing::debug;
 
-use std::any::Any;
-use std::cell::Cell;
+use crate::passes::LateLintPassObject;
+use crate::{LateContext, LateLintPass, LintStore};
 
 /// Extract the [`LintStore`] from [`Session`].
 ///
@@ -45,7 +47,7 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 
 /// Implements the AST traversal for late lint passes. `T` provides the
 /// `check_*` methods.
-pub struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>> {
+struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>> {
     context: LateContext<'tcx>,
     pass: T,
 }
@@ -125,7 +127,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         });
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         lint_callback!(self, check_body, body);
         hir_visit::walk_body(self, body);
         lint_callback!(self, check_body_post, body);

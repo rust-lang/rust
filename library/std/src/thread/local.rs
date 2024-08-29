@@ -62,7 +62,7 @@ use crate::fmt;
 /// FOO.set(2);
 ///
 /// // each thread starts out with the initial value of 1
-/// let t = thread::spawn(move|| {
+/// let t = thread::spawn(move || {
 ///     assert_eq!(FOO.get(), 1);
 ///     FOO.set(3);
 /// });
@@ -123,7 +123,7 @@ pub struct LocalKey<T: 'static> {
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: unsafe fn(Option<&mut Option<T>>) -> Option<&'static T>,
+    inner: fn(Option<&mut Option<T>>) -> *const T,
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -238,9 +238,7 @@ impl<T: 'static> LocalKey<T> {
         issue = "none"
     )]
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
-    pub const unsafe fn new(
-        inner: unsafe fn(Option<&mut Option<T>>) -> Option<&'static T>,
-    ) -> LocalKey<T> {
+    pub const unsafe fn new(inner: fn(Option<&mut Option<T>>) -> *const T) -> LocalKey<T> {
         LocalKey { inner }
     }
 
@@ -281,8 +279,7 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(&T) -> R,
     {
-        // SAFETY: `inner` is safe to call within the lifetime of the thread
-        let thread_local = unsafe { (self.inner)(None).ok_or(AccessError)? };
+        let thread_local = unsafe { (self.inner)(None).as_ref().ok_or(AccessError)? };
         Ok(f(thread_local))
     }
 
@@ -304,9 +301,8 @@ impl<T: 'static> LocalKey<T> {
     {
         let mut init = Some(init);
 
-        // SAFETY: `inner` is safe to call within the lifetime of the thread
         let reference = unsafe {
-            (self.inner)(Some(&mut init)).expect(
+            (self.inner)(Some(&mut init)).as_ref().expect(
                 "cannot access a Thread Local Storage value \
                  during or after destruction",
             )

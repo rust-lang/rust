@@ -12,8 +12,6 @@
 //@ ignore-cross-compile
 //@ ignore-wasm
 
-use std::io::BufRead;
-
 use run_make_support::{is_msvc, rustc};
 
 fn main() {
@@ -30,9 +28,7 @@ fn main() {
         .run();
 
     let mut found_note = false;
-    for l in output.stderr.lines() {
-        let l = l.expect("utf-8 string");
-
+    for l in output.stderr_utf8().lines() {
         let Some(args) = l.strip_prefix("note: native-static-libs:") else {
             continue;
         };

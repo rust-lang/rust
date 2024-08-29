@@ -81,7 +81,7 @@ pub trait RawFloat:
     // Maximum mantissa for the fast-path (`1 << 53` for f64).
     const MAX_MANTISSA_FAST_PATH: u64 = 2_u64 << Self::MANTISSA_EXPLICIT_BITS;
 
-    /// Convert integer into float through an as cast.
+    /// Converts integer into float through an as cast.
     /// This is only called in the fast-path algorithm, and therefore
     /// will not lose precision, since the value will always have
     /// only if the value is <= Self::MAX_MANTISSA_FAST_PATH.
@@ -90,7 +90,7 @@ pub trait RawFloat:
     /// Performs a raw transmutation from an integer.
     fn from_u64_bits(v: u64) -> Self;
 
-    /// Get a small power-of-ten for fast-path multiplication.
+    /// Gets a small power-of-ten for fast-path multiplication.
     fn pow10_fast_path(exponent: usize) -> Self;
 
     /// Returns the category that this number falls into.

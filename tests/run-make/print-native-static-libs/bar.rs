@@ -17,3 +17,9 @@ extern "C" {
 extern "C" {
     fn g_free2(p: *mut ());
 }
+
+#[cfg(windows)]
+#[link(name = "glib-2.0", kind = "raw-dylib")]
+extern "C" {
+    fn g_free3(p: *mut ());
+}

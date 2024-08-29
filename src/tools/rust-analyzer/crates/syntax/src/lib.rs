@@ -20,7 +20,6 @@
 //! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
-#![warn(rust_2018_idioms, unused_lifetimes)]
 
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_lexer as rustc_lexer;
@@ -66,7 +65,7 @@ pub use rowan::{
     TokenAtOffset, WalkEvent,
 };
 pub use rustc_lexer::unescape;
-pub use smol_str::{format_smolstr, SmolStr};
+pub use smol_str::{format_smolstr, SmolStr, ToSmolStr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.
@@ -107,14 +106,22 @@ impl<T> Parse<T> {
 }
 
 impl<T: AstNode> Parse<T> {
+    /// Converts this parse result into a parse result for an untyped syntax tree.
     pub fn to_syntax(self) -> Parse<SyntaxNode> {
         Parse { green: self.green, errors: self.errors, _ty: PhantomData }
     }
 
+    /// Gets the parsed syntax tree as a typed ast node.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the root node cannot be casted into the typed ast node
+    /// (e.g. if it's an `ERROR` node).
     pub fn tree(&self) -> T {
         T::cast(self.syntax_node()).unwrap()
     }
 
+    /// Converts from `Parse<T>` to [`Result<T, Vec<SyntaxError>>`].
     pub fn ok(self) -> Result<T, Vec<SyntaxError>> {
         match self.errors() {
             errors if !errors.is_empty() => Err(errors),
@@ -143,15 +150,17 @@ impl Parse<SourceFile> {
     }
 
     pub fn reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
-        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel, edition))
+        self.incremental_reparse(indel, edition)
+            .unwrap_or_else(|| self.full_reparse(indel, edition))
     }
 
-    fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
+    fn incremental_reparse(&self, indel: &Indel, edition: Edition) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
         parsing::incremental_reparse(
             self.tree().syntax(),
             indel,
             self.errors.as_deref().unwrap_or_default().iter().cloned(),
+            edition,
         )
         .map(|(green_node, errors, _reparsed_range)| Parse {
             green: green_node,
@@ -167,135 +176,40 @@ impl Parse<SourceFile> {
     }
 }
 
+impl ast::Expr {
+    /// Parses an `ast::Expr` from `text`.
+    ///
+    /// Note that if the parsed root node is not a valid expression, [`Parse::tree`] will panic.
+    /// For example:
+    /// ```rust,should_panic
+    /// # use syntax::{ast, Edition};
+    /// ast::Expr::parse("let fail = true;", Edition::CURRENT).tree();
+    /// ```
+    pub fn parse(text: &str, edition: Edition) -> Parse<ast::Expr> {
+        let _p = tracing::info_span!("Expr::parse").entered();
+        let (green, errors) = parsing::parse_text_at(text, parser::TopEntryPoint::Expr, edition);
+        let root = SyntaxNode::new_root(green.clone());
+
+        assert!(
+            ast::Expr::can_cast(root.kind()) || root.kind() == SyntaxKind::ERROR,
+            "{:?} isn't an expression",
+            root.kind()
+        );
+        Parse::new(green, errors)
+    }
+}
+
 /// `SourceFile` represents a parse tree for a single Rust file.
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
     pub fn parse(text: &str, edition: Edition) -> Parse<SourceFile> {
-        let _p = tracing::span!(tracing::Level::INFO, "SourceFile::parse").entered();
+        let _p = tracing::info_span!("SourceFile::parse").entered();
         let (green, errors) = parsing::parse_text(text, edition);
         let root = SyntaxNode::new_root(green.clone());
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        Parse {
-            green,
-            errors: if errors.is_empty() { None } else { Some(errors.into()) },
-            _ty: PhantomData,
-        }
-    }
-}
-
-impl ast::TokenTree {
-    pub fn reparse_as_comma_separated_expr(
-        self,
-        edition: parser::Edition,
-    ) -> Parse<ast::MacroEagerInput> {
-        let tokens = self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
-
-        let mut parser_input = parser::Input::default();
-        let mut was_joint = false;
-        for t in tokens {
-            let kind = t.kind();
-            if kind.is_trivia() {
-                was_joint = false
-            } else if kind == SyntaxKind::IDENT {
-                let token_text = t.text();
-                let contextual_kw =
-                    SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
-                parser_input.push_ident(contextual_kw);
-            } else {
-                if was_joint {
-                    parser_input.was_joint();
-                }
-                parser_input.push(kind);
-                // Tag the token as joint if it is float with a fractional part
-                // we use this jointness to inform the parser about what token split
-                // event to emit when we encounter a float literal in a field access
-                if kind == SyntaxKind::FLOAT_NUMBER {
-                    if !t.text().ends_with('.') {
-                        parser_input.was_joint();
-                    } else {
-                        was_joint = false;
-                    }
-                } else {
-                    was_joint = true;
-                }
-            }
-        }
-
-        let parser_output = parser::TopEntryPoint::MacroEagerInput.parse(&parser_input, edition);
-
-        let mut tokens =
-            self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
-        let mut text = String::new();
-        let mut pos = TextSize::from(0);
-        let mut builder = SyntaxTreeBuilder::default();
-        for event in parser_output.iter() {
-            match event {
-                parser::Step::Token { kind, n_input_tokens } => {
-                    let mut token = tokens.next().unwrap();
-                    while token.kind().is_trivia() {
-                        let text = token.text();
-                        pos += TextSize::from(text.len() as u32);
-                        builder.token(token.kind(), text);
-
-                        token = tokens.next().unwrap();
-                    }
-                    text.push_str(token.text());
-                    for _ in 1..n_input_tokens {
-                        let token = tokens.next().unwrap();
-                        text.push_str(token.text());
-                    }
-
-                    pos += TextSize::from(text.len() as u32);
-                    builder.token(kind, &text);
-                    text.clear();
-                }
-                parser::Step::FloatSplit { ends_in_dot: has_pseudo_dot } => {
-                    let token = tokens.next().unwrap();
-                    let text = token.text();
-
-                    match text.split_once('.') {
-                        Some((left, right)) => {
-                            assert!(!left.is_empty());
-                            builder.start_node(SyntaxKind::NAME_REF);
-                            builder.token(SyntaxKind::INT_NUMBER, left);
-                            builder.finish_node();
-
-                            // here we move the exit up, the original exit has been deleted in process
-                            builder.finish_node();
-
-                            builder.token(SyntaxKind::DOT, ".");
-
-                            if has_pseudo_dot {
-                                assert!(right.is_empty(), "{left}.{right}");
-                            } else {
-                                assert!(!right.is_empty(), "{left}.{right}");
-                                builder.start_node(SyntaxKind::NAME_REF);
-                                builder.token(SyntaxKind::INT_NUMBER, right);
-                                builder.finish_node();
-
-                                // the parser creates an unbalanced start node, we are required to close it here
-                                builder.finish_node();
-                            }
-                        }
-                        None => unreachable!(),
-                    }
-                    pos += TextSize::from(text.len() as u32);
-                }
-                parser::Step::Enter { kind } => builder.start_node(kind),
-                parser::Step::Exit => builder.finish_node(),
-                parser::Step::Error { msg } => builder.error(msg.to_owned(), pos),
-            }
-        }
-
-        let (green, errors) = builder.finish_raw();
-
-        Parse {
-            green,
-            errors: if errors.is_empty() { None } else { Some(errors.into()) },
-            _ty: PhantomData,
-        }
+        Parse::new(green, errors)
     }
 }
 
@@ -420,7 +334,7 @@ fn api_walkthrough() {
     assert!(expr_syntax.siblings_with_tokens(Direction::Next).any(|it| it.kind() == T!['}']));
     assert_eq!(
         expr_syntax.descendants_with_tokens().count(),
-        8, // 5 tokens `1`, ` `, `+`, ` `, `!`
+        8, // 5 tokens `1`, ` `, `+`, ` `, `1`
            // 2 child literal expressions: `1`, `1`
            // 1 the node itself: `1 + 1`
     );

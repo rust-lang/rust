@@ -14,11 +14,11 @@ fn a(_1: &mut [T]) -> &mut [T] {
         StorageLive(_2);
         StorageLive(_3);
         StorageLive(_4);
-        _4 = &mut (*_1);
-        _3 = _4;
-        _2 = &mut (*_3);
+        _4 = copy _1;
+        _3 = copy _4;
+        _2 = copy _3;
         StorageDead(_4);
-        _0 = &mut (*_2);
+        _0 = copy _2;
         StorageDead(_3);
         StorageDead(_2);
         return;

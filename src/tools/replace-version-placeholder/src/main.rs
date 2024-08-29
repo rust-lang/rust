@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+
 use tidy::{t, walk};
 
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";

@@ -1,4 +1,4 @@
-use ide_db::{base_db::FileId, defs::Definition, search::FileReference};
+use ide_db::{defs::Definition, search::FileReference, EditionedFileId};
 use syntax::{
     algo::find_node_at_range,
     ast::{self, HasArgList},
@@ -90,7 +90,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 fn process_usages(
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
-    file_id: FileId,
+    file_id: EditionedFileId,
     references: Vec<FileReference>,
     arg_to_remove: usize,
     is_self_present: bool,

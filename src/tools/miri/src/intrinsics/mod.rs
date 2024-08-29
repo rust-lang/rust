@@ -1,3 +1,5 @@
+#![warn(clippy::arithmetic_side_effects)]
+
 mod atomic;
 mod simd;
 
@@ -18,20 +20,20 @@ use atomic::EvalContextExt as _;
 use helpers::{check_arg_count, ToHost, ToSoft};
 use simd::EvalContextExt as _;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
 
         // See if the core engine can handle this intrinsic.
-        if this.emulate_intrinsic(instance, args, dest, ret)? {
+        if this.eval_intrinsic(instance, args, dest, ret)? {
             return Ok(None);
         }
         let intrinsic_name = this.tcx.item_name(instance.def_id());
@@ -46,10 +48,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let intrinsic_fallback_is_spec = Symbol::intern("intrinsic_fallback_is_spec");
                 if this
                     .tcx
-                    .get_attrs_by_path(
-                        instance.def_id(),
-                        &[sym::miri, intrinsic_fallback_is_spec],
-                    )
+                    .get_attrs_by_path(instance.def_id(), &[sym::miri, intrinsic_fallback_is_spec])
                     .next()
                     .is_none()
                 {
@@ -58,7 +57,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     );
                 }
                 Ok(Some(ty::Instance {
-                    def: ty::InstanceDef::Item(instance.def_id()),
+                    def: ty::InstanceKind::Item(instance.def_id()),
                     args: instance.args,
                 }))
             }
@@ -82,8 +81,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         &mut self,
         intrinsic_name: &str,
         generic_args: ty::GenericArgsRef<'tcx>,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
@@ -154,7 +153,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
             "is_val_statically_known" => {
                 let [arg] = check_arg_count(args)?;
-                this.validate_operand(arg)?;
+                this.validate_operand(arg, /*recursive*/ false)?;
                 let branch: bool = this.machine.rng.get_mut().gen();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
@@ -388,15 +387,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
-                let float_finite = |x: &ImmTy<'tcx, _>| -> InterpResult<'tcx, bool> {
+                let float_finite = |x: &ImmTy<'tcx>| -> InterpResult<'tcx, bool> {
                     let ty::Float(fty) = x.layout.ty.kind() else {
                         bug!("float_finite: non-float input type {}", x.layout.ty)
                     };
                     Ok(match fty {
-                        FloatTy::F16 => unimplemented!("f16_f128"),
+                        FloatTy::F16 => x.to_scalar().to_f16()?.is_finite(),
                         FloatTy::F32 => x.to_scalar().to_f32()?.is_finite(),
                         FloatTy::F64 => x.to_scalar().to_f64()?.is_finite(),
-                        FloatTy::F128 => unimplemented!("f16_f128"),
+                        FloatTy::F128 => x.to_scalar().to_f128()?.is_finite(),
                     })
                 };
                 match (float_finite(&a)?, float_finite(&b)?) {

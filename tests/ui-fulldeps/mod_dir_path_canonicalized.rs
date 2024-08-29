@@ -16,7 +16,7 @@ extern crate rustc_span;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
-use rustc_parse::new_parser_from_file;
+use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use std::path::Path;
 
@@ -34,6 +34,6 @@ fn parse() {
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();
-    let mut parser = new_parser_from_file(&psess, &path, None);
+    let mut parser = unwrap_or_emit_fatal(new_parser_from_file(&psess, &path, None));
     let _ = parser.parse_crate_mod();
 }

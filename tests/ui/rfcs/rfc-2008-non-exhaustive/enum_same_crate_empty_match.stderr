@@ -2,8 +2,9 @@ error: unreachable pattern
   --> $DIR/enum_same_crate_empty_match.rs:28:9
    |
 LL |         _ => {}
-   |         ^
+   |         ^ matches no values because `EmptyNonExhaustiveEnum` is uninhabited
    |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
   --> $DIR/enum_same_crate_empty_match.rs:1:9
    |

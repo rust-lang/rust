@@ -1,7 +1,6 @@
 //@aux-build:proc_macros.rs
 #![allow(unused)]
 #![warn(clippy::allow_attributes)]
-#![feature(lint_reasons)]
 #![no_main]
 
 extern crate proc_macros;
@@ -46,4 +45,16 @@ fn ignore_proc_macro() {
 
 fn ignore_inner_attr() {
     #![allow(unused)] // Should not lint
+}
+
+#[clippy::msrv = "1.81"]
+fn msrv_1_81() {
+    #[allow(unused)]
+    let x = 1;
+}
+
+#[clippy::msrv = "1.80"]
+fn msrv_1_80() {
+    #[allow(unused)]
+    let x = 1;
 }

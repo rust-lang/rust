@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{ExprKind, Node};
+use rustc_hir::{ArrayLen, ConstArgKind, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, ConstKind, Ty};
+use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -36,7 +37,7 @@ declare_clippy_lint! {
     /// side_effect();
     /// let a: [i32; 0] = [];
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.79.0"]
     pub ZERO_REPEAT_SIDE_EFFECTS,
     suspicious,
     "usage of zero-sized initializations of arrays or vecs causing side effects"
@@ -45,19 +46,27 @@ declare_clippy_lint! {
 declare_lint_pass!(ZeroRepeatSideEffects => [ZERO_REPEAT_SIDE_EFFECTS]);
 
 impl LateLintPass<'_> for ZeroRepeatSideEffects {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &rustc_hir::Expr<'_>) {
+        let hir_map = cx.tcx.hir();
         if let Some(args) = VecArgs::hir(cx, expr)
             && let VecArgs::Repeat(inner_expr, len) = args
             && let ExprKind::Lit(l) = len.kind
-            && let LitKind::Int(i, _) = l.node
-            && i.0 == 0
+            && let LitKind::Int(Pu128(0), _) = l.node
         {
             inner_check(cx, expr, inner_expr, true);
-        } else if let ExprKind::Repeat(inner_expr, _) = expr.kind
-            && let ty::Array(_, cst) = cx.typeck_results().expr_ty(expr).kind()
-            && let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind()
-            && let Ok(element_count) = element_count.try_to_target_usize(cx.tcx)
-            && element_count == 0
+        }
+        // Lint only if the length is a literal zero, and not a path to any constants.
+        // NOTE(@y21): When reading `[f(); LEN]`, I intuitively expect that the function is called and it
+        // doesn't seem as confusing as `[f(); 0]`. It would also have false positives when eg.
+        // the const item depends on `#[cfg]s` and has different values in different compilation
+        // sessions).
+        else if let ExprKind::Repeat(inner_expr, length) = expr.kind
+            && let ArrayLen::Body(const_arg) = length
+            && let ConstArgKind::Anon(anon_const) = const_arg.kind
+            && let length_expr = hir_map.body(anon_const.body).value
+            && !length_expr.span.from_expansion()
+            && let ExprKind::Lit(literal) = length_expr.kind
+            && let LitKind::Int(Pu128(0), _) = literal.node
         {
             inner_check(cx, expr, inner_expr, false);
         }
@@ -66,7 +75,7 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
 
 fn inner_check(cx: &LateContext<'_>, expr: &'_ rustc_hir::Expr<'_>, inner_expr: &'_ rustc_hir::Expr<'_>, is_vec: bool) {
     // check if expr is a call or has a call inside it
-    if for_each_expr(inner_expr, |x| {
+    if for_each_expr_without_closures(inner_expr, |x| {
         if let ExprKind::Call(_, _) | ExprKind::MethodCall(_, _, _, _) = x.kind {
             std::ops::ControlFlow::Break(())
         } else {

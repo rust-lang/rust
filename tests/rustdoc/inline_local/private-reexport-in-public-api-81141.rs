@@ -16,57 +16,57 @@ mod bar {
     pub use self::Bar as Inner;
 }
 
-// @has 'foo/fn.bar.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar() -> Bar'
+//@ has 'foo/fn.bar.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar() -> Bar'
 pub fn bar() -> Alias {
     Alias
 }
 
-// @has 'foo/fn.bar2.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar2() -> Whatever'
+//@ has 'foo/fn.bar2.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar2() -> Whatever'
 pub fn bar2() -> Whatever3 {
     Whatever
 }
 
-// @has 'foo/fn.bar3.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar3() -> Whatever4'
+//@ has 'foo/fn.bar3.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar3() -> Whatever4'
 pub fn bar3() -> Whatever4 {
     Whatever
 }
 
-// @has 'foo/fn.bar4.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar4() -> Bar'
+//@ has 'foo/fn.bar4.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar4() -> Bar'
 pub fn bar4() -> crate::Alias {
     Alias
 }
 
-// @has 'foo/fn.bar5.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar5() -> Whatever'
+//@ has 'foo/fn.bar5.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar5() -> Whatever'
 pub fn bar5() -> crate::Whatever3 {
     Whatever
 }
 
-// @has 'foo/fn.bar6.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar6() -> Whatever4'
+//@ has 'foo/fn.bar6.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar6() -> Whatever4'
 pub fn bar6() -> crate::Whatever4 {
     Whatever
 }
 
 
-// @has 'foo/fn.bar7.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar7() -> Bar'
+//@ has 'foo/fn.bar7.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar7() -> Bar'
 pub fn bar7() -> self::Alias {
     Alias
 }
 
-// @has 'foo/fn.bar8.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar8() -> Whatever'
+//@ has 'foo/fn.bar8.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar8() -> Whatever'
 pub fn bar8() -> self::Whatever3 {
     Whatever
 }
 
-// @has 'foo/fn.bar9.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar9() -> Whatever4'
+//@ has 'foo/fn.bar9.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar9() -> Whatever4'
 pub fn bar9() -> self::Whatever4 {
     Whatever
 }
@@ -78,38 +78,38 @@ mod nested {
     pub(crate) use crate::nested as nested2;
 }
 
-// @has 'foo/fn.bar10.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar10() -> Bar'
+//@ has 'foo/fn.bar10.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar10() -> Bar'
 pub fn bar10() -> nested::Alias {
     Alias
 }
 
-// @has 'foo/fn.bar11.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar11() -> Whatever'
+//@ has 'foo/fn.bar11.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar11() -> Whatever'
 pub fn bar11() -> nested::Whatever3 {
     Whatever
 }
 
-// @has 'foo/fn.bar12.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar12() -> Whatever4'
+//@ has 'foo/fn.bar12.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar12() -> Whatever4'
 pub fn bar12() -> nested::Whatever4 {
     Whatever
 }
 
-// @has 'foo/fn.bar13.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar13() -> Bar'
+//@ has 'foo/fn.bar13.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar13() -> Bar'
 pub fn bar13() -> nested::nested2::Alias {
     Alias
 }
 
-// @has 'foo/fn.bar14.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar14() -> Whatever'
+//@ has 'foo/fn.bar14.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar14() -> Whatever'
 pub fn bar14() -> nested::nested2::Whatever3 {
     Whatever
 }
 
-// @has 'foo/fn.bar15.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar15() -> Whatever4'
+//@ has 'foo/fn.bar15.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar15() -> Whatever4'
 pub fn bar15() -> nested::nested2::Whatever4 {
     Whatever
 }
@@ -119,7 +119,7 @@ use external::Public as Private;
 pub mod external {
     pub struct Public;
 
-    // @has 'foo/external/fn.make.html'
-    // @has - '//*[@class="rust item-decl"]/code' 'pub fn make() -> Public'
+    //@ has 'foo/external/fn.make.html'
+    //@ has - '//*[@class="rust item-decl"]/code' 'pub fn make() -> Public'
     pub fn make() -> super::Private { super::Private }
 }

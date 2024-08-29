@@ -2,16 +2,20 @@
 
 //@ check-pass
 
-trait Trait {}
+mod foo {
+    pub trait Trait {}
 
-type TAIT = impl Trait;
+    pub type TAIT = impl Trait;
 
-struct Concrete;
-impl Trait for Concrete {}
+    pub struct Concrete;
+    impl Trait for Concrete {}
 
-fn tait() -> TAIT {
-    Concrete
+    pub fn tait() -> TAIT {
+        Concrete
+    }
 }
+
+use foo::*;
 
 trait OuterTrait {
     type Item;
@@ -24,9 +28,7 @@ impl<T> OuterTrait for Dummy<T> {
 }
 
 fn tait_and_impl_trait() -> impl OuterTrait<Item = (TAIT, impl Trait)> {
-    Dummy {
-        t: (tait(), Concrete),
-    }
+    Dummy { t: (tait(), Concrete) }
 }
 
 fn tait_and_dyn_trait() -> impl OuterTrait<Item = (TAIT, Box<dyn Trait>)> {

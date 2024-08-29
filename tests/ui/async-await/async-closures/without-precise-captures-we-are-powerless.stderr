@@ -29,22 +29,6 @@ LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
 
-error[E0505]: cannot move out of `c` because it is borrowed
-  --> $DIR/without-precise-captures-we-are-powerless.rs:22:30
-   |
-LL | fn simple<'a>(x: &'a i32) {
-   |           -- lifetime `'a` defined here
-...
-LL |     let c = async move || { println!("{}", *x); };
-   |         - binding `c` declared here
-LL |     outlives::<'a>(c());
-   |                    ---
-   |                    |
-   |                    borrow of `c` occurs here
-   |                    argument requires that `c` is borrowed for `'a`
-LL |     outlives::<'a>(call_once(c));
-   |                              ^ move out of `c` occurs here
-
 error[E0597]: `x` does not live long enough
   --> $DIR/without-precise-captures-we-are-powerless.rs:28:13
    |
@@ -146,7 +130,7 @@ LL |     // outlives::<'a>(call_once(c)); // FIXME(async_closures): Figure out w
 LL | }
    | - `c` dropped here while still borrowed
 
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0505, E0597, E0621.
 For more information about an error, try `rustc --explain E0505`.

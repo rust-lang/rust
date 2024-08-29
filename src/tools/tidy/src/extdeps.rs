@@ -4,12 +4,20 @@ use std::fs;
 use std::path::Path;
 
 /// List of allowed sources for packages.
-const ALLOWED_SOURCES: &[&str] = &["\"registry+https://github.com/rust-lang/crates.io-index\""];
+const ALLOWED_SOURCES: &[&str] = &[
+    r#""registry+https://github.com/rust-lang/crates.io-index""#,
+    // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
+    r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
+];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
 /// workspace `Cargo.toml`.
 pub fn check(root: &Path, bad: &mut bool) {
-    for &(workspace, _, _) in crate::deps::WORKSPACES {
+    for &(workspace, _, _, submodules) in crate::deps::WORKSPACES {
+        if crate::deps::has_missing_submodule(root, submodules) {
+            continue;
+        }
+
         // FIXME check other workspaces too
         // `Cargo.lock` of rust.
         let path = root.join(workspace).join("Cargo.lock");

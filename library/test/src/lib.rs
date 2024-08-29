@@ -24,47 +24,41 @@
 #![feature(panic_can_unwind)]
 #![feature(test)]
 #![allow(internal_features)]
+#![warn(rustdoc::unescaped_backticks)]
 
-// Public reexports
+pub use cli::TestOpts;
+
 pub use self::bench::{black_box, Bencher};
 pub use self::console::run_tests_console;
 pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};
 pub use self::types::TestName::*;
 pub use self::types::*;
 pub use self::ColorConfig::*;
-pub use cli::TestOpts;
 
 // Module to be used by rustc to compile tests in libtest
 pub mod test {
-    pub use crate::{
-        assert_test_result,
-        bench::Bencher,
-        cli::{parse_opts, TestOpts},
-        filter_tests,
-        helpers::metrics::{Metric, MetricMap},
-        options::{Options, RunIgnored, RunStrategy, ShouldPanic},
-        run_test, test_main, test_main_static,
-        test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk},
-        time::{TestExecTime, TestTimeOptions},
-        types::{
-            DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
-            TestDescAndFn, TestId, TestName, TestType,
-        },
+    pub use crate::bench::Bencher;
+    pub use crate::cli::{parse_opts, TestOpts};
+    pub use crate::helpers::metrics::{Metric, MetricMap};
+    pub use crate::options::{Options, RunIgnored, RunStrategy, ShouldPanic};
+    pub use crate::test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
+    pub use crate::time::{TestExecTime, TestTimeOptions};
+    pub use crate::types::{
+        DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
+        TestDescAndFn, TestId, TestName, TestType,
     };
+    pub use crate::{assert_test_result, filter_tests, run_test, test_main, test_main_static};
 }
 
-use std::{
-    collections::VecDeque,
-    env, io,
-    io::prelude::Write,
-    mem::ManuallyDrop,
-    panic::{self, catch_unwind, AssertUnwindSafe, PanicInfo},
-    process::{self, Command, Termination},
-    sync::mpsc::{channel, Sender},
-    sync::{Arc, Mutex},
-    thread,
-    time::{Duration, Instant},
-};
+use std::collections::VecDeque;
+use std::io::prelude::Write;
+use std::mem::ManuallyDrop;
+use std::panic::{self, catch_unwind, AssertUnwindSafe, PanicHookInfo};
+use std::process::{self, Command, Termination};
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use std::{env, io, thread};
 
 pub mod bench;
 mod cli;
@@ -83,6 +77,7 @@ mod types;
 mod tests;
 
 use core::any::Any;
+
 use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
 use helpers::shuffle::{get_shuffle_seed, shuffle_tests};
@@ -123,7 +118,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             // from interleaving with the panic message or appearing after it.
             let builtin_panic_hook = panic::take_hook();
             let hook = Box::new({
-                move |info: &'_ PanicInfo<'_>| {
+                move |info: &'_ PanicHookInfo<'_>| {
                     if !info.can_unwind() {
                         std::mem::forget(std::io::stderr().lock());
                         let mut stdout = ManuallyDrop::new(std::io::stdout().lock());
@@ -726,7 +721,7 @@ fn spawn_test_subprocess(
 
 fn run_test_in_spawned_subprocess(desc: TestDesc, runnable_test: RunnableTest) -> ! {
     let builtin_panic_hook = panic::take_hook();
-    let record_result = Arc::new(move |panic_info: Option<&'_ PanicInfo<'_>>| {
+    let record_result = Arc::new(move |panic_info: Option<&'_ PanicHookInfo<'_>>| {
         let test_result = match panic_info {
             Some(info) => calc_result(&desc, Err(info.payload()), &None, &None),
             None => calc_result(&desc, Ok(()), &None, &None),

@@ -1,13 +1,10 @@
-//! checks for `#[inline]` on trait methods without bodies
-
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::DiagExt;
-use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
 use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Symbol};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -34,27 +31,23 @@ declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 
 impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind {
-            let attrs = cx.tcx.hir().attrs(item.hir_id());
-            check_attrs(cx, item.ident.name, attrs);
+        if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind
+            && let Some(attr) = cx
+                .tcx
+                .hir()
+                .attrs(item.hir_id())
+                .iter()
+                .find(|a| a.has_name(sym::inline))
+        {
+            span_lint_and_then(
+                cx,
+                INLINE_FN_WITHOUT_BODY,
+                attr.span,
+                format!("use of `#[inline]` on trait method `{}` which has no body", item.ident),
+                |diag| {
+                    diag.suggest_remove_item(cx, attr.span, "remove", Applicability::MachineApplicable);
+                },
+            );
         }
-    }
-}
-
-fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &[Attribute]) {
-    for attr in attrs {
-        if !attr.has_name(sym::inline) {
-            continue;
-        }
-
-        span_lint_and_then(
-            cx,
-            INLINE_FN_WITHOUT_BODY,
-            attr.span,
-            format!("use of `#[inline]` on trait method `{name}` which has no body"),
-            |diag| {
-                diag.suggest_remove_item(cx, attr.span, "remove", Applicability::MachineApplicable);
-            },
-        );
     }
 }

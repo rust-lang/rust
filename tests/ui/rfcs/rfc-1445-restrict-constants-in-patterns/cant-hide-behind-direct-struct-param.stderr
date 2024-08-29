@@ -1,5 +1,5 @@
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
-  --> $DIR/cant-hide-behind-direct-struct-param.rs:22:9
+  --> $DIR/cant-hide-behind-direct-struct-param.rs:21:9
    |
 LL |         WRAP_DIRECT_PARAM => { panic!("WRAP_DIRECT_PARAM matched itself"); }
    |         ^^^^^^^^^^^^^^^^^

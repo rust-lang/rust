@@ -22,11 +22,11 @@ where
 {
 }
 
-// @has project/struct.Foo.html
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has project/struct.Foo.html
+//@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'c, K> Send for Foo<'c, K>where 'c: 'static, K: MyTrait<MyItem = bool>,"
 //
-// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'c, K> Sync for Foo<'c, K>where 'c: 'static, K: MyTrait, \
 // <K as MyTrait>::MyItem: OtherTrait,"
 pub struct Foo<'c, K: 'c> {

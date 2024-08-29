@@ -10,16 +10,15 @@ use hir::{
 };
 use ide_db::{
     active_parameter::{callable_for_node, generic_def_for_node},
-    base_db::FilePosition,
     documentation::{Documentation, HasDocs},
-    FxIndexMap,
+    FilePosition, FxIndexMap,
 };
 use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, AstChildren, HasArgList},
     match_ast, AstNode, Direction, NodeOrToken, SyntaxElementChildren, SyntaxNode, SyntaxToken,
-    TextRange, TextSize, T,
+    TextRange, TextSize, ToSmolStr, T,
 };
 
 use crate::RootDatabase;
@@ -74,7 +73,7 @@ pub(crate) fn signature_help(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<SignatureHelp> {
     let sema = Semantics::new(db);
-    let file = sema.parse(file_id);
+    let file = sema.parse_guess_edition(file_id);
     let file = file.syntax();
     let token = file
         .token_at_offset(offset)
@@ -201,7 +200,21 @@ fn signature_help_for_call(
                 variant.name(db).display(db)
             );
         }
-        hir::CallableKind::Closure | hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
+        hir::CallableKind::Closure(closure) => {
+            let fn_trait = closure.fn_trait(db);
+            format_to!(res.signature, "impl {fn_trait}")
+        }
+        hir::CallableKind::FnPtr => format_to!(res.signature, "fn"),
+        hir::CallableKind::FnImpl(fn_trait) => match callable.ty().as_adt() {
+            // FIXME: Render docs of the concrete trait impl function
+            Some(adt) => format_to!(
+                res.signature,
+                "<{} as {fn_trait}>::{}",
+                adt.name(db).display(db),
+                fn_trait.function_name()
+            ),
+            None => format_to!(res.signature, "impl {fn_trait}"),
+        },
     }
 
     res.signature.push('(');
@@ -210,12 +223,15 @@ fn signature_help_for_call(
             format_to!(res.signature, "{}", self_param.display(db))
         }
         let mut buf = String::new();
-        for (idx, (pat, ty)) in callable.params(db).into_iter().enumerate() {
+        for (idx, p) in callable.params().into_iter().enumerate() {
             buf.clear();
-            if let Some(pat) = pat {
-                match pat {
-                    Either::Left(_self) => format_to!(buf, "self: "),
-                    Either::Right(pat) => format_to!(buf, "{}: ", pat),
+            if let Some(param) = sema.source(p.clone()) {
+                match param.value {
+                    Either::Right(param) => match param.pat() {
+                        Some(pat) => format_to!(buf, "{}: ", pat),
+                        None => format_to!(buf, "?: "),
+                    },
+                    Either::Left(_) => format_to!(buf, "self: "),
                 }
             }
             // APITs (argument position `impl Trait`s) are inferred as {unknown} as the user is
@@ -223,9 +239,9 @@ fn signature_help_for_call(
             // In that case, fall back to render definitions of the respective parameters.
             // This is overly conservative: we do not substitute known type vars
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
-            match (ty.contains_unknown(), fn_params.as_deref()) {
+            match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => format_to!(buf, "{}", fn_params[idx].ty().display(db)),
-                _ => format_to!(buf, "{}", ty.display(db)),
+                _ => format_to!(buf, "{}", p.ty().display(db)),
             }
             res.push_call_param(&buf);
         }
@@ -242,9 +258,9 @@ fn signature_help_for_call(
             render(func.ret_type(db))
         }
         hir::CallableKind::Function(_)
-        | hir::CallableKind::Closure
+        | hir::CallableKind::Closure(_)
         | hir::CallableKind::FnPtr
-        | hir::CallableKind::Other => render(callable.return_type()),
+        | hir::CallableKind::FnImpl(_) => render(callable.return_type()),
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
     Some(res)
@@ -255,7 +271,7 @@ fn signature_help_for_generics(
     arg_list: ast::GenericArgList,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let (mut generics_def, mut active_parameter, first_arg_is_non_lifetime) =
+    let (generics_def, mut active_parameter, first_arg_is_non_lifetime, variant) =
         generic_def_for_node(sema, &arg_list, &token)?;
     let mut res = SignatureHelp {
         doc: None,
@@ -273,6 +289,12 @@ fn signature_help_for_generics(
         hir::GenericDef::Adt(hir::Adt::Enum(it)) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "enum {}", it.name(db).display(db));
+            if let Some(variant) = variant {
+                // In paths, generics of an enum can be specified *after* one of its variants.
+                // eg. `None::<u8>`
+                // We'll use the signature of the enum, but include the docs of the variant.
+                res.doc = variant.docs(db);
+            }
         }
         hir::GenericDef::Adt(hir::Adt::Struct(it)) => {
             res.doc = it.docs(db);
@@ -293,15 +315,6 @@ fn signature_help_for_generics(
         hir::GenericDef::TypeAlias(it) => {
             res.doc = it.docs(db);
             format_to!(res.signature, "type {}", it.name(db).display(db));
-        }
-        hir::GenericDef::Variant(it) => {
-            // In paths, generics of an enum can be specified *after* one of its variants.
-            // eg. `None::<u8>`
-            // We'll use the signature of the enum, but include the docs of the variant.
-            res.doc = it.docs(db);
-            let enum_ = it.parent_enum(db);
-            format_to!(res.signature, "enum {}", enum_.name(db).display(db));
-            generics_def = enum_.into();
         }
         // These don't have generic args that can be specified
         hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
@@ -365,7 +378,7 @@ fn add_assoc_type_bindings(
 
     for item in tr.items_with_supertraits(db) {
         if let AssocItem::TypeAlias(ty) = item {
-            let name = ty.name(db).to_smol_str();
+            let name = ty.name(db).display_no_db().to_smolstr();
             if !present_bindings.contains(&*name) {
                 buf.clear();
                 format_to!(buf, "{} = …", name);
@@ -646,7 +659,7 @@ mod tests {
     use std::iter;
 
     use expect_test::{expect, Expect};
-    use ide_db::base_db::FilePosition;
+    use ide_db::FilePosition;
     use stdx::format_to;
     use test_fixture::ChangeFixture;
 
@@ -660,7 +673,7 @@ mod tests {
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
         let offset = range_or_offset.expect_offset();
-        (database, FilePosition { file_id, offset })
+        (database, FilePosition { file_id: file_id.into(), offset })
     }
 
     #[track_caller]
@@ -1346,14 +1359,42 @@ fn test() { S.foo($0); }
 struct S;
 fn foo(s: S) -> i32 { 92 }
 fn main() {
+    let _move = S;
+    (|s| {{_move}; foo(s)})($0)
+}
+        "#,
+            expect![[r#"
+                impl FnOnce(s: S) -> i32
+                            ^^^^
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
     (|s| foo(s))($0)
 }
         "#,
             expect![[r#"
-                (s: S) -> i32
-                 ^^^^
+                impl Fn(s: S) -> i32
+                        ^^^^
             "#]],
-        )
+        );
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
+    let mut mutate = 0;
+    (|s| { mutate = 1; foo(s) })($0)
+}
+        "#,
+            expect![[r#"
+                impl FnMut(s: S) -> i32
+                           ^^^^
+            "#]],
+        );
     }
 
     #[test]
@@ -1383,10 +1424,79 @@ fn main(f: fn(i32, f64) -> char) {
 }
         "#,
             expect![[r#"
-                (i32, f64) -> char
-                 ---  ^^^
+                fn(i32, f64) -> char
+                   ---  ^^^
             "#]],
         )
+    }
+
+    #[test]
+    fn call_info_for_fn_impl() {
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnMut<(i32, f64)> for S {}
+impl core::ops::Fn<(i32, f64)> for S {}
+fn main() {
+    S($0);
+}
+        "#,
+            expect![[r#"
+                <S as Fn>::call(i32, f64) -> char
+                                ^^^  ---
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnMut<(i32, f64)> for S {}
+impl core::ops::Fn<(i32, f64)> for S {}
+fn main() {
+    S(1, $0);
+}
+        "#,
+            expect![[r#"
+                <S as Fn>::call(i32, f64) -> char
+                                ---  ^^^
+            "#]],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnOnce<(char, char)> for S {
+    type Output = f64;
+}
+fn main() {
+    S($0);
+}
+        "#,
+            expect![""],
+        );
+        check(
+            r#"
+struct S;
+impl core::ops::FnOnce<(i32, f64)> for S {
+    type Output = char;
+}
+impl core::ops::FnOnce<(char, char)> for S {
+    type Output = f64;
+}
+fn main() {
+    // FIXME: The ide layer loses the calling info here so we get an ambiguous trait solve result
+    S(0i32, $0);
+}
+        "#,
+            expect![""],
+        );
     }
 
     #[test]
@@ -1794,19 +1904,19 @@ fn f<F: FnOnce(u8, u16) -> i32>(f: F) {
 }
 "#,
             expect![[r#"
-                (u8, u16) -> i32
-                 ^^  ---
+                impl FnOnce(u8, u16) -> i32
+                            ^^  ---
             "#]],
         );
         check(
             r#"
-fn f<T, F: FnOnce(&T, u16) -> &T>(f: F) {
+fn f<T, F: FnMut(&T, u16) -> &T>(f: F) {
     f($0)
 }
 "#,
             expect![[r#"
-                (&T, u16) -> &T
-                 ^^  ---
+                impl FnMut(&T, u16) -> &T
+                           ^^  ---
             "#]],
         );
     }
@@ -1826,7 +1936,7 @@ fn take<C, Error>(
 }
 "#,
             expect![[r#"
-                () -> i32
+                impl Fn() -> i32
             "#]],
         );
     }

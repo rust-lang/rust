@@ -72,7 +72,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     def_file_references = Some(references);
                     continue;
                 }
-                builder.edit_file(file_id);
+                builder.edit_file(file_id.file_id());
                 let processed = process_references(
                     ctx,
                     builder,
@@ -386,12 +386,11 @@ fn process_references(
             let segment = builder.make_mut(segment);
             let scope_node = builder.make_syntax_mut(scope_node);
             if !visited_modules.contains(&module) {
-                let mod_path = module.find_use_path_prefixed(
+                let mod_path = module.find_use_path(
                     ctx.sema.db,
                     *enum_module_def,
                     ctx.config.insert_use.prefix_kind,
-                    ctx.config.prefer_no_std,
-                    ctx.config.prefer_prelude,
+                    ctx.config.import_path_config(),
                 );
                 if let Some(mut mod_path) = mod_path {
                     mod_path.pop_segment();
@@ -881,7 +880,7 @@ fn another_fn() {
             r#"use my_mod::my_other_mod::MyField;
 
 mod my_mod {
-    use self::my_other_mod::MyField;
+    use my_other_mod::MyField;
 
     fn another_fn() {
         let m = my_other_mod::MyEnum::MyField(MyField(1, 1));

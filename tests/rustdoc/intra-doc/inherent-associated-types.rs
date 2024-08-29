@@ -3,9 +3,9 @@
 #![allow(incomplete_features)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
-// @has inherent_associated_types/index.html
+//@ has inherent_associated_types/index.html
 
-// @has - '//a/@href' 'enum.Simple.html#associatedtype.Type'
+//@ has - '//a/@href' 'enum.Simple.html#associatedtype.Type'
 //! [`Simple::Type`]
 
 pub enum Simple {}
@@ -16,7 +16,7 @@ impl Simple {
 
 ////////////////////////////////////////
 
-// @has 'inherent_associated_types/type.Test0.html' '//a/@href' \
+//@ has 'inherent_associated_types/type.Test0.html' '//a/@href' \
 //          'struct.Parametrized.html#associatedtype.Proj'
 /// [`Parametrized<bool>::Proj`]
 pub type Test0 = ();
@@ -28,9 +28,9 @@ pub type Test0 = ();
 // Further, at some point we should reject the intra-doc link `Parametrized::Proj`.
 // It currently links to `Parametrized<bool>::Proj`.
 
-// @has 'inherent_associated_types/type.Test1.html'
-// @has - '//a/@href' 'struct.Parametrized.html#associatedtype.Proj'
-// @!has - '//a/@href' 'struct.Parametrized.html#associatedtype.Proj-1'
+//@ has 'inherent_associated_types/type.Test1.html'
+//@ has - '//a/@href' 'struct.Parametrized.html#associatedtype.Proj'
+//@ !has - '//a/@href' 'struct.Parametrized.html#associatedtype.Proj-1'
 /// [`Parametrized<i32>::Proj`]
 pub type Test1 = ();
 

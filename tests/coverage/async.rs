@@ -54,15 +54,7 @@ fn j(x: u8) {
     // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.
     fn c(x: u8) -> u8 {
         if x == 8 {
-            1 // This line appears covered, but the 1-character expression span covering the `1`
-              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because
-              // `fn j()` executes the open brace for the function body, followed by the function's
-              // first executable statement, `match x`. Inner function declarations are not
-              // "visible" to the MIR for `j()`, so the code region counts all lines between the
-              // open brace and the first statement as executed, which is, in a sense, true.
-              // `llvm-cov show` overcomes this kind of situation by showing the actual counts
-              // of the enclosed coverages, (that is, the `1` expression was not executed, and
-              // accurately displays a `0`).
+            1
         } else {
             0
         }

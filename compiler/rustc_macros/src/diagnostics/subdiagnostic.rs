@@ -1,5 +1,12 @@
 #![deny(unused_must_use)]
 
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+use syn::spanned::Spanned;
+use syn::{Attribute, Meta, MetaList, Path};
+use synstructure::{BindingInfo, Structure, VariantInfo};
+
+use super::utils::SubdiagnosticVariant;
 use crate::diagnostics::error::{
     invalid_attr, span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
@@ -9,12 +16,6 @@ use crate::diagnostics::utils::{
     should_generate_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap,
     SetOnce, SpannedOption, SubdiagnosticKind,
 };
-use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
-use synstructure::{BindingInfo, Structure, VariantInfo};
-
-use super::utils::SubdiagnosticVariant;
 
 /// The central struct for constructing the `add_to_diag` method from an annotated struct.
 pub(crate) struct SubdiagnosticDerive {
@@ -86,6 +87,9 @@ impl SubdiagnosticDerive {
 
         let diag = &self.diag;
         let f = &self.f;
+
+        // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
+        #[allow(keyword_idents_2024)]
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::Subdiagnostic for @Self {
                 fn add_to_diag_with<__G, __F>(
@@ -100,6 +104,7 @@ impl SubdiagnosticDerive {
                 }
             }
         });
+
         ret
     }
 }

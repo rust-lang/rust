@@ -3,19 +3,17 @@
 
 //@ compile-flags: -O -C no-prepopulate-passes
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 struct S;
 
 impl Drop for S {
     #[inline(never)]
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 #[inline(never)]
-fn might_unwind() {
-}
+fn might_unwind() {}
 
 // CHECK-LABEL: @test
 #[no_mangle]

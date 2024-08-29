@@ -3,13 +3,15 @@
 //! queries come with a lot of machinery for caching and incremental compilation, whereas hooks are
 //! just plain function pointers without any of the query magic.
 
-use crate::mir;
-use crate::query::TyCtxtAt;
-use crate::ty::{Ty, TyCtxt};
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{ExpnHash, ExpnId, DUMMY_SP};
+use tracing::instrument;
+
+use crate::mir;
+use crate::query::TyCtxtAt;
+use crate::ty::{Ty, TyCtxt};
 
 macro_rules! declare_hooks {
     ($($(#[$attr:meta])*hook $name:ident($($arg:ident: $K:ty),*) -> $V:ty;)*) => {
@@ -102,6 +104,10 @@ declare_hooks! {
 
     /// Create a list-like THIR representation for debugging.
     hook thir_flat(key: LocalDefId) -> String;
+
+    /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
+    /// can just link to the upstream crate and therefore don't need a mono item.
+    hook should_codegen_locally(instance: crate::ty::Instance<'tcx>) -> bool;
 }
 
 #[cold]

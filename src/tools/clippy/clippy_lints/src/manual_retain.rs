@@ -1,14 +1,14 @@
 use clippy_config::msrvs::{self, Msrv};
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
+use clippy_utils::ty::{get_type_diagnostic_name, is_type_lang_item};
 use clippy_utils::{match_def_path, paths, SpanlessEq};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::ExprKind::Assign;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -20,16 +20,6 @@ const ACCEPTABLE_METHODS: [&[&str]; 5] = [
     &paths::SLICE_INTO,
     &paths::VEC_DEQUE_ITER,
 ];
-const ACCEPTABLE_TYPES: [(rustc_span::Symbol, Option<RustcVersion>); 7] = [
-    (sym::BinaryHeap, Some(msrvs::BINARY_HEAP_RETAIN)),
-    (sym::BTreeSet, Some(msrvs::BTREE_SET_RETAIN)),
-    (sym::BTreeMap, Some(msrvs::BTREE_MAP_RETAIN)),
-    (sym::HashSet, Some(msrvs::HASH_SET_RETAIN)),
-    (sym::HashMap, Some(msrvs::HASH_MAP_RETAIN)),
-    (sym::Vec, None),
-    (sym::VecDeque, None),
-];
-const MAP_TYPES: [rustc_span::Symbol; 2] = [sym::BTreeMap, sym::HashMap];
 
 declare_clippy_lint! {
     /// ### What it does
@@ -59,9 +49,10 @@ pub struct ManualRetain {
 }
 
 impl ManualRetain {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -70,9 +61,8 @@ impl_lint_pass!(ManualRetain => [MANUAL_RETAIN]);
 impl<'tcx> LateLintPass<'tcx> for ManualRetain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Assign(left_expr, collect_expr, _) = &expr.kind
-            && let hir::ExprKind::MethodCall(seg, ..) = &collect_expr.kind
+            && let hir::ExprKind::MethodCall(seg, target_expr, [], _) = &collect_expr.kind
             && seg.args.is_none()
-            && let hir::ExprKind::MethodCall(_, target_expr, [], _) = &collect_expr.kind
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::iterator_collect_fn, collect_def_id)
         {
@@ -264,16 +254,22 @@ fn match_acceptable_def_path(cx: &LateContext<'_>, collect_def_id: DefId) -> boo
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>, msrv: &Msrv) -> bool {
-    let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
-    ACCEPTABLE_TYPES.iter().any(|(ty, acceptable_msrv)| {
-        is_type_diagnostic_item(cx, expr_ty, *ty)
-            && acceptable_msrv.map_or(true, |acceptable_msrv| msrv.meets(acceptable_msrv))
-    })
+    let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    let required = match get_type_diagnostic_name(cx, ty) {
+        Some(sym::BinaryHeap) => msrvs::BINARY_HEAP_RETAIN,
+        Some(sym::BTreeSet) => msrvs::BTREE_SET_RETAIN,
+        Some(sym::BTreeMap) => msrvs::BTREE_MAP_RETAIN,
+        Some(sym::HashSet) => msrvs::HASH_SET_RETAIN,
+        Some(sym::HashMap) => msrvs::HASH_MAP_RETAIN,
+        Some(sym::Vec | sym::VecDeque) => return true,
+        _ => return false,
+    };
+    msrv.meets(required)
 }
 
 fn match_map_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    let expr_ty = cx.typeck_results().expr_ty(expr).peel_refs();
-    MAP_TYPES.iter().any(|ty| is_type_diagnostic_item(cx, expr_ty, *ty))
+    let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+    matches!(get_type_diagnostic_name(cx, ty), Some(sym::BTreeMap | sym::HashMap))
 }
 
 fn make_span_lint_and_sugg(cx: &LateContext<'_>, span: Span, sugg: String) {

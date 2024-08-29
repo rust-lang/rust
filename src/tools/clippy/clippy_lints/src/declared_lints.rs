@@ -2,21 +2,17 @@
 // Use that command to update this file and do not edit by hand.
 // Manual edits will be overwritten.
 
-pub(crate) static LINTS: &[&crate::LintInfo] = &[
+pub static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::compiler_lint_functions::COMPILER_LINT_FUNCTIONS_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::interning_defined_symbol::INTERNING_DEFINED_SYMBOL_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::interning_defined_symbol::UNNECESSARY_SYMBOL_STR_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::invalid_paths::INVALID_PATHS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_DEPRECATION_REASON_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_LINT_INFO,
     #[cfg(feature = "internal")]
@@ -25,8 +21,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::metadata_collector::METADATA_COLLECTOR_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
     #[cfg(feature = "internal")]
@@ -38,7 +32,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS_INFO,
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
-    crate::allow_attributes::ALLOW_ATTRIBUTES_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
     crate::arc_with_non_send_sync::ARC_WITH_NON_SEND_SYNC_INFO,
@@ -49,6 +42,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES_INFO,
     crate::assigning_clones::ASSIGNING_CLONES_INFO,
     crate::async_yields_async::ASYNC_YIELDS_ASYNC_INFO,
+    crate::attrs::ALLOW_ATTRIBUTES_INFO,
     crate::attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON_INFO,
     crate::attrs::BLANKET_CLIPPY_RESTRICTION_LINTS_INFO,
     crate::attrs::DEPRECATED_CFG_ATTR_INFO,
@@ -58,8 +52,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::attrs::EMPTY_LINE_AFTER_DOC_COMMENTS_INFO,
     crate::attrs::EMPTY_LINE_AFTER_OUTER_ATTR_INFO,
     crate::attrs::INLINE_ALWAYS_INFO,
-    crate::attrs::MAYBE_MISUSED_CFG_INFO,
-    crate::attrs::MISMATCHED_TARGET_OS_INFO,
     crate::attrs::MIXED_ATTRIBUTES_STYLE_INFO,
     crate::attrs::NON_MINIMAL_CFG_INFO,
     crate::attrs::SHOULD_PANIC_WITHOUT_EXPECT_INFO,
@@ -75,6 +67,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::booleans::OVERLY_COMPLEX_BOOL_EXPR_INFO,
     crate::borrow_deref_ref::BORROW_DEREF_REF_INFO,
     crate::box_default::BOX_DEFAULT_INFO,
+    crate::byte_char_slices::BYTE_CHAR_SLICES_INFO,
     crate::cargo::CARGO_COMMON_METADATA_INFO,
     crate::cargo::LINT_GROUPS_PRIORITY_INFO,
     crate::cargo::MULTIPLE_CRATE_VERSIONS_INFO,
@@ -105,6 +98,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::casts::REF_AS_PTR_INFO,
     crate::casts::UNNECESSARY_CAST_INFO,
     crate::casts::ZERO_PTR_INFO,
+    crate::cfg_not_test::CFG_NOT_TEST_INFO,
     crate::checked_conversions::CHECKED_CONVERSIONS_INFO,
     crate::cognitive_complexity::COGNITIVE_COMPLEXITY_INFO,
     crate::collapsible_if::COLLAPSIBLE_ELSE_IF_INFO,
@@ -150,6 +144,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::doc::NEEDLESS_DOCTEST_MAIN_INFO,
     crate::doc::SUSPICIOUS_DOC_COMMENTS_INFO,
     crate::doc::TEST_ATTR_IN_DOCTEST_INFO,
+    crate::doc::TOO_LONG_FIRST_DOC_PARAGRAPH_INFO,
     crate::doc::UNNECESSARY_SAFETY_DOC_INFO,
     crate::double_parens::DOUBLE_PARENS_INFO,
     crate::drop_forget_ref::DROP_NON_DROP_INFO,
@@ -180,6 +175,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::explicit_write::EXPLICIT_WRITE_INFO,
     crate::extra_unused_type_parameters::EXTRA_UNUSED_TYPE_PARAMETERS_INFO,
     crate::fallible_impl_from::FALLIBLE_IMPL_FROM_INFO,
+    crate::field_scoped_visibility_modifiers::FIELD_SCOPED_VISIBILITY_MODIFIERS_INFO,
     crate::float_literal::EXCESSIVE_PRECISION_INFO,
     crate::float_literal::LOSSY_FLOAT_LITERAL_INFO,
     crate::floating_point_arithmetic::IMPRECISE_FLOPS_INFO,
@@ -314,6 +310,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::manual_range_patterns::MANUAL_RANGE_PATTERNS_INFO,
     crate::manual_rem_euclid::MANUAL_REM_EUCLID_INFO,
     crate::manual_retain::MANUAL_RETAIN_INFO,
+    crate::manual_rotate::MANUAL_ROTATE_INFO,
     crate::manual_slice_size_calculation::MANUAL_SLICE_SIZE_CALCULATION_INFO,
     crate::manual_string_new::MANUAL_STRING_NEW_INFO,
     crate::manual_strip::MANUAL_STRIP_INFO,
@@ -404,6 +401,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::MANUAL_C_STR_LITERALS_INFO,
     crate::methods::MANUAL_FILTER_MAP_INFO,
     crate::methods::MANUAL_FIND_MAP_INFO,
+    crate::methods::MANUAL_INSPECT_INFO,
     crate::methods::MANUAL_IS_VARIANT_AND_INFO,
     crate::methods::MANUAL_NEXT_BACK_INFO,
     crate::methods::MANUAL_OK_OR_INFO,
@@ -419,6 +417,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::MAP_UNWRAP_OR_INFO,
     crate::methods::MUT_MUTEX_LOCK_INFO,
     crate::methods::NAIVE_BYTECOUNT_INFO,
+    crate::methods::NEEDLESS_CHARACTER_ITERATION_INFO,
     crate::methods::NEEDLESS_COLLECT_INFO,
     crate::methods::NEEDLESS_OPTION_AS_DEREF_INFO,
     crate::methods::NEEDLESS_OPTION_TAKE_INFO,
@@ -449,7 +448,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::SEEK_TO_START_INSTEAD_OF_REWIND_INFO,
     crate::methods::SHOULD_IMPLEMENT_TRAIT_INFO,
     crate::methods::SINGLE_CHAR_ADD_STR_INFO,
-    crate::methods::SINGLE_CHAR_PATTERN_INFO,
     crate::methods::SKIP_WHILE_NEXT_INFO,
     crate::methods::STABLE_SORT_PRIMITIVE_INFO,
     crate::methods::STRING_EXTEND_CHARS_INFO,
@@ -471,6 +469,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::UNNECESSARY_JOIN_INFO,
     crate::methods::UNNECESSARY_LAZY_EVALUATIONS_INFO,
     crate::methods::UNNECESSARY_LITERAL_UNWRAP_INFO,
+    crate::methods::UNNECESSARY_MIN_OR_MAX_INFO,
     crate::methods::UNNECESSARY_RESULT_MAP_OR_ELSE_INFO,
     crate::methods::UNNECESSARY_SORT_BY_INFO,
     crate::methods::UNNECESSARY_TO_OWNED_INFO,
@@ -502,6 +501,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::missing_assert_message::MISSING_ASSERT_MESSAGE_INFO,
     crate::missing_asserts_for_indexing::MISSING_ASSERTS_FOR_INDEXING_INFO,
     crate::missing_const_for_fn::MISSING_CONST_FOR_FN_INFO,
+    crate::missing_const_for_thread_local::MISSING_CONST_FOR_THREAD_LOCAL_INFO,
     crate::missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS_INFO,
     crate::missing_enforced_import_rename::MISSING_ENFORCED_IMPORT_RENAMES_INFO,
     crate::missing_fields_in_debug::MISSING_FIELDS_IN_DEBUG_INFO,
@@ -531,6 +531,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::needless_for_each::NEEDLESS_FOR_EACH_INFO,
     crate::needless_if::NEEDLESS_IF_INFO,
     crate::needless_late_init::NEEDLESS_LATE_INIT_INFO,
+    crate::needless_maybe_sized::NEEDLESS_MAYBE_SIZED_INFO,
     crate::needless_parens_on_range_literals::NEEDLESS_PARENS_ON_RANGE_LITERALS_INFO,
     crate::needless_pass_by_ref_mut::NEEDLESS_PASS_BY_REF_MUT_INFO,
     crate::needless_pass_by_value::NEEDLESS_PASS_BY_VALUE_INFO,
@@ -583,17 +584,18 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::operators::VERBOSE_BIT_MASK_INFO,
     crate::option_env_unwrap::OPTION_ENV_UNWRAP_INFO,
     crate::option_if_let_else::OPTION_IF_LET_ELSE_INFO,
-    crate::overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL_INFO,
     crate::panic_in_result_fn::PANIC_IN_RESULT_FN_INFO,
     crate::panic_unimplemented::PANIC_INFO,
     crate::panic_unimplemented::TODO_INFO,
     crate::panic_unimplemented::UNIMPLEMENTED_INFO,
     crate::panic_unimplemented::UNREACHABLE_INFO,
+    crate::panicking_overflow_checks::PANICKING_OVERFLOW_CHECKS_INFO,
     crate::partial_pub_fields::PARTIAL_PUB_FIELDS_INFO,
     crate::partialeq_ne_impl::PARTIALEQ_NE_IMPL_INFO,
     crate::partialeq_to_none::PARTIALEQ_TO_NONE_INFO,
     crate::pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE_INFO,
     crate::pass_by_ref_or_value::TRIVIALLY_COPY_PASS_BY_REF_INFO,
+    crate::pathbuf_init_then_push::PATHBUF_INIT_THEN_PUSH_INFO,
     crate::pattern_type_mismatch::PATTERN_TYPE_MISMATCH_INFO,
     crate::permissions_set_readonly_false::PERMISSIONS_SET_READONLY_FALSE_INFO,
     crate::precedence::PRECEDENCE_INFO,
@@ -642,6 +644,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::semicolon_block::SEMICOLON_OUTSIDE_BLOCK_INFO,
     crate::semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED_INFO,
     crate::serde_api::SERDE_API_MISUSE_INFO,
+    crate::set_contains_or_insert::SET_CONTAINS_OR_INSERT_INFO,
     crate::shadow::SHADOW_REUSE_INFO,
     crate::shadow::SHADOW_SAME_INFO,
     crate::shadow::SHADOW_UNRELATED_INFO,
@@ -656,6 +659,8 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::std_instead_of_core::ALLOC_INSTEAD_OF_CORE_INFO,
     crate::std_instead_of_core::STD_INSTEAD_OF_ALLOC_INFO,
     crate::std_instead_of_core::STD_INSTEAD_OF_CORE_INFO,
+    crate::string_patterns::MANUAL_PATTERN_CHAR_COMPARISON_INFO,
+    crate::string_patterns::SINGLE_CHAR_PATTERN_INFO,
     crate::strings::STRING_ADD_INFO,
     crate::strings::STRING_ADD_ASSIGN_INFO,
     crate::strings::STRING_FROM_UTF8_AS_BYTES_INFO,
@@ -675,7 +680,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::tabs_in_doc_comments::TABS_IN_DOC_COMMENTS_INFO,
     crate::temporary_assignment::TEMPORARY_ASSIGNMENT_INFO,
     crate::tests_outside_test_module::TESTS_OUTSIDE_TEST_MODULE_INFO,
-    crate::thread_local_initializer_can_be_made_const::THREAD_LOCAL_INITIALIZER_CAN_BE_MADE_CONST_INFO,
     crate::to_digit_is_some::TO_DIGIT_IS_SOME_INFO,
     crate::to_string_trait_impl::TO_STRING_TRAIT_IMPL_INFO,
     crate::trailing_empty_array::TRAILING_EMPTY_ARRAY_INFO,
@@ -734,6 +738,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::unused_async::UNUSED_ASYNC_INFO,
     crate::unused_io_amount::UNUSED_IO_AMOUNT_INFO,
     crate::unused_peekable::UNUSED_PEEKABLE_INFO,
+    crate::unused_result_ok::UNUSED_RESULT_OK_INFO,
     crate::unused_rounding::UNUSED_ROUNDING_INFO,
     crate::unused_self::UNUSED_SELF_INFO,
     crate::unused_unit::UNUSED_UNIT_INFO,

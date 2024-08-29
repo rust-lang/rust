@@ -1,5 +1,5 @@
-use crate::common::{Config, Debugger, Sanitizer};
-use crate::header::IgnoreDecision;
+use crate::common::{Config, Sanitizer};
+use crate::header::{llvm_has_libzstd, IgnoreDecision};
 
 pub(super) fn handle_needs(
     cache: &CachedNeedsConditions,
@@ -100,9 +100,9 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
-            name: "needs-matching-clang",
+            name: "needs-force-clang-based-tests",
             condition: config.run_clang_based_tests_with.is_some(),
-            ignore_reason: "ignored when the used clang does not match the built LLVM",
+            ignore_reason: "ignored when RUSTBUILD_FORCE_CLANG_BASED_TESTS is not set",
         },
         Need {
             name: "needs-xray",
@@ -113,11 +113,6 @@ pub(super) fn handle_needs(
             name: "needs-rust-lld",
             condition: cache.rust_lld,
             ignore_reason: "ignored on targets without Rust's LLD",
-        },
-        Need {
-            name: "needs-rust-lldb",
-            condition: config.debugger != Some(Debugger::Lldb) || config.lldb_native_rust,
-            ignore_reason: "ignored on targets without Rust's LLDB",
         },
         Need {
             name: "needs-dlltool",
@@ -144,6 +139,16 @@ pub(super) fn handle_needs(
             condition: config.runner.as_ref().is_some_and(|r| r.contains("wasmtime")),
             ignore_reason: "ignored when wasmtime runner is not available",
         },
+        Need {
+            name: "needs-symlink",
+            condition: cache.symlinks,
+            ignore_reason: "ignored if symlinks are unavailable",
+        },
+        Need {
+            name: "needs-llvm-zstd",
+            condition: cache.llvm_zstd,
+            ignore_reason: "ignored if LLVM wasn't build with zstd for ELF section compression",
+        },
     ];
 
     let (name, comment) = match ln.split_once([':', ' ']) {
@@ -169,7 +174,7 @@ pub(super) fn handle_needs(
             } else {
                 return IgnoreDecision::Ignore {
                     reason: if let Some(comment) = comment {
-                        format!("{} ({comment})", need.ignore_reason)
+                        format!("{} ({})", need.ignore_reason, comment.trim())
                     } else {
                         need.ignore_reason.into()
                     },
@@ -209,6 +214,9 @@ pub(super) struct CachedNeedsConditions {
     xray: bool,
     rust_lld: bool,
     dlltool: bool,
+    symlinks: bool,
+    /// Whether LLVM built with zstd, for the `needs-llvm-zstd` directive.
+    llvm_zstd: bool,
 }
 
 impl CachedNeedsConditions {
@@ -252,7 +260,9 @@ impl CachedNeedsConditions {
                 .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
                 .exists(),
 
+            llvm_zstd: llvm_has_libzstd(&config),
             dlltool: find_dlltool(&config),
+            symlinks: has_symlinks(),
         }
     }
 }
@@ -278,4 +288,23 @@ fn find_dlltool(config: &Config) -> bool {
         false
     };
     dlltool_found
+}
+
+#[cfg(windows)]
+fn has_symlinks() -> bool {
+    if std::env::var_os("CI").is_some() {
+        return true;
+    }
+    let link = std::env::temp_dir().join("RUST_COMPILETEST_SYMLINK_CHECK");
+    if std::os::windows::fs::symlink_file("DOES NOT EXIST", &link).is_ok() {
+        std::fs::remove_file(&link).unwrap();
+        true
+    } else {
+        false
+    }
+}
+
+#[cfg(not(windows))]
+fn has_symlinks() -> bool {
+    true
 }

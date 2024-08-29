@@ -4,6 +4,12 @@ error: expected identifier, found keyword `Self`
 LL |   struct Self;
    |          ^^^^ expected identifier, found keyword
 
+error: lifetimes cannot use keyword names
+  --> $DIR/self_type_keyword.rs:6:12
+   |
+LL | struct Bar<'Self>;
+   |            ^^^^^
+
 error: expected identifier, found keyword `Self`
   --> $DIR/self_type_keyword.rs:14:13
    |
@@ -14,9 +20,14 @@ error: `mut` must be followed by a named binding
   --> $DIR/self_type_keyword.rs:16:9
    |
 LL |         mut Self => (),
-   |         ^^^^ help: remove the `mut` prefix
+   |         ^^^^
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
+help: remove the `mut` prefix
+   |
+LL -         mut Self => (),
+LL +         Self => (),
+   |
 
 error: expected identifier, found keyword `Self`
   --> $DIR/self_type_keyword.rs:19:17
@@ -47,12 +58,6 @@ error: expected identifier, found keyword `Self`
    |
 LL |     trait Self {}
    |           ^^^^ expected identifier, found keyword
-
-error: lifetimes cannot use keyword names
-  --> $DIR/self_type_keyword.rs:6:12
-   |
-LL | struct Bar<'Self>;
-   |            ^^^^^
 
 error: cannot find macro `Self` in this scope
   --> $DIR/self_type_keyword.rs:21:9

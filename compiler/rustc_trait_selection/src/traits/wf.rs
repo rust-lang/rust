@@ -1,17 +1,18 @@
-use crate::infer::InferCtxt;
-use crate::traits;
+use std::iter;
+
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{Span, DUMMY_SP};
 
-use std::iter;
+use crate::infer::InferCtxt;
+use crate::traits;
 /// Returns the set of obligations needed to make `arg` well-formed.
 /// If `arg` contains unresolved inference variables, this may include
 /// further WF obligations. However, if `arg` IS an unresolved
@@ -286,7 +287,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // implemented, but rather from a "second order" obligation, where an associated
             // type has a projection coming from another associated type.
             // See `tests/ui/traits/assoc-type-in-superbad.rs` for an example.
-            if let Some(term_ty) = proj.term.ty()
+            if let Some(term_ty) = proj.term.as_type()
                 && let Some(impl_item_span) = ty_to_impl_span(term_ty)
             {
                 cause.span = impl_item_span;
@@ -437,12 +438,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
-    fn compute_alias_ty(&mut self, data: ty::AliasTy<'tcx>) {
-        self.compute_alias_term(data.into());
-    }
-
-    /// Pushes the obligations required for an alias (except inherent) to be WF
-    /// into `self.out`.
     fn compute_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
         // A projection is well-formed if
         //
@@ -498,7 +493,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             self.out.extend(obligations);
         }
 
-        self.compute_projection_args(data.args);
+        data.args.visit_with(self);
     }
 
     fn compute_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
@@ -646,8 +641,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
-    type Result = ();
-
     fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
         debug!("wf bounds for t={:?} t.kind={:#?}", t, t.kind());
 
@@ -680,9 +673,21 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
             }
 
-            ty::Array(subty, _) => {
+            ty::Array(subty, len) => {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
-                // Note that we handle the len is implicitly checked while walking `arg`.
+                // Note that the len being WF is implicitly checked while visiting.
+                // Here we just check that it's of type usize.
+                let cause = self.cause(ObligationCauseCode::Misc);
+                self.out.push(traits::Obligation::with_depth(
+                    tcx,
+                    cause,
+                    self.recursion_depth,
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
+                        len,
+                        tcx.types.usize,
+                    ))),
+                ));
             }
 
             ty::Pat(subty, _) => {
@@ -702,8 +707,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Alias(ty::Projection | ty::Opaque | ty::Weak, data) => {
-                self.compute_alias_ty(data);
-                return; // Subtree handled by compute_projection.
+                let obligations = self.nominal_obligations(data.def_id, data.args);
+                self.out.extend(obligations);
             }
             ty::Alias(ty::Inherent, data) => {
                 self.compute_inherent_projection(data);
@@ -807,7 +812,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 return upvars.visit_with(self);
             }
 
-            ty::FnPtr(_) => {
+            ty::FnPtr(..) => {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
             }

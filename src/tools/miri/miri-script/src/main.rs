@@ -48,6 +48,11 @@ pub enum Command {
         /// Flags that are passed through to `miri`.
         flags: Vec<String>,
     },
+    /// Build documentation
+    Doc {
+        /// Flags that are passed through to `cargo doc`.
+        flags: Vec<String>,
+    },
     /// Format all sources and tests.
     Fmt {
         /// Flags that are passed through to `rustfmt`.
@@ -58,9 +63,6 @@ pub enum Command {
         /// Flags that are passed through to `cargo clippy`.
         flags: Vec<String>,
     },
-    /// Runs just `cargo <flags>` with the Miri-specific environment variables.
-    /// Mainly meant to be invoked by rust-analyzer.
-    Cargo { flags: Vec<String> },
     /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
     Bench {
         target: Option<String>,
@@ -98,7 +100,7 @@ Build miri, set up a sysroot and then run the test suite.
 Build miri, set up a sysroot and then run the driver with the given <flags>.
 (Also respects MIRIFLAGS environment variable.)
 If `--many-seeds` is present, Miri is run many times in parallel with different seeds.
-The range defaults to `0..256`.
+The range defaults to `0..64`.
 
 ./miri fmt <flags>:
 Format all sources and tests. <flags> are passed to `rustfmt`.
@@ -151,6 +153,7 @@ fn main() -> Result<()> {
     let command = match args.next_raw().as_deref() {
         Some("build") => Command::Build { flags: args.remainder() },
         Some("check") => Command::Check { flags: args.remainder() },
+        Some("doc") => Command::Doc { flags: args.remainder() },
         Some("test") => {
             let mut target = None;
             let mut bless = false;
@@ -180,17 +183,16 @@ fn main() -> Result<()> {
                     dep = true;
                 } else if args.get_long_flag("verbose")? || args.get_short_flag('v')? {
                     verbose = true;
-                } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..256")? {
+                } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..64")? {
                     let (from, to) = val.split_once("..").ok_or_else(|| {
-                        anyhow!("invalid format for `--many-seeds-range`: expected `from..to`")
+                        anyhow!("invalid format for `--many-seeds`: expected `from..to`")
                     })?;
                     let from: u32 = if from.is_empty() {
                         0
                     } else {
-                        from.parse().context("invalid `from` in `--many-seeds-range=from..to")?
+                        from.parse().context("invalid `from` in `--many-seeds=from..to")?
                     };
-                    let to: u32 =
-                        to.parse().context("invalid `to` in `--many-seeds-range=from..to")?;
+                    let to: u32 = to.parse().context("invalid `to` in `--many-seeds=from..to")?;
                     many_seeds = Some(from..to);
                 } else if let Some(val) = args.get_long_opt("target")? {
                     target = Some(val);
@@ -206,7 +208,6 @@ fn main() -> Result<()> {
         }
         Some("fmt") => Command::Fmt { flags: args.remainder() },
         Some("clippy") => Command::Clippy { flags: args.remainder() },
-        Some("cargo") => Command::Cargo { flags: args.remainder() },
         Some("install") => Command::Install { flags: args.remainder() },
         Some("bench") => {
             let mut target = None;

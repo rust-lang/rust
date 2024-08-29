@@ -10,8 +10,8 @@
   
       bb0: {
           StorageLive(_2);
--         _2 = use_both(_1, _1) -> [return: bb1, unwind continue];
-+         _2 = use_both(_1, move _1) -> [return: bb1, unwind continue];
+-         _2 = use_both(copy _1, copy _1) -> [return: bb1, unwind continue];
++         _2 = use_both(copy _1, move _1) -> [return: bb1, unwind continue];
       }
   
       bb1: {

@@ -4,13 +4,10 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
-use crate::iter;
 use crate::marker::PhantomData;
-use crate::mem;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
-use crate::result;
-use crate::str;
+use crate::{iter, mem, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -36,11 +33,10 @@ pub enum Alignment {
     Center,
 }
 
+#[unstable(feature = "debug_closure_helpers", issue = "117729")]
+pub use self::builders::{from_fn, FromFn};
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
-
-#[unstable(feature = "debug_closure_helpers", issue = "117729")]
-pub use self::builders::FormatterFn;
 
 /// The type returned by formatter methods.
 ///
@@ -338,24 +334,23 @@ pub struct Arguments<'a> {
 impl<'a> Arguments<'a> {
     #[inline]
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
-    pub const fn new_const(pieces: &'a [&'static str]) -> Self {
-        if pieces.len() > 1 {
-            panic!("invalid args");
-        }
+    pub const fn new_const<const N: usize>(pieces: &'a [&'static str; N]) -> Self {
+        const { assert!(N <= 1) };
         Arguments { pieces, fmt: None, args: &[] }
     }
 
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[inline]
-    pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
-        if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
-        }
+    pub fn new_v1<const P: usize, const A: usize>(
+        pieces: &'a [&'static str; P],
+        args: &'a [rt::Argument<'a>; A],
+    ) -> Arguments<'a> {
+        const { assert!(P >= A && P <= A + 1, "invalid args") }
         Arguments { pieces, fmt: None, args }
     }
 
-    /// This function is used to specify nonstandard formatting parameters.
+    /// Specifies nonstandard formatting parameters.
     ///
     /// An `rt::UnsafeArg` is required because the following invariants must be held
     /// in order for this function to be safe:
@@ -397,7 +392,7 @@ impl<'a> Arguments<'a> {
 }
 
 impl<'a> Arguments<'a> {
-    /// Get the formatted string, if it has no arguments to be formatted at runtime.
+    /// Gets the formatted string, if it has no arguments to be formatted at runtime.
     ///
     /// This can be used to avoid allocations in some cases.
     ///
@@ -460,6 +455,12 @@ impl<'a> Arguments<'a> {
     }
 }
 
+// Manually implementing these results in better error messages.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Send for Arguments<'_> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !Sync for Arguments<'_> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
@@ -512,7 +513,10 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(
+///     format!("The origin is: {origin:?}"),
+///     "The origin is: Point { x: 0, y: 0 }",
+/// );
 /// ```
 ///
 /// Manually implementing:
@@ -536,7 +540,10 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:?}"), "The origin is: Point { x: 0, y: 0 }");
+/// assert_eq!(
+///     format!("The origin is: {origin:?}"),
+///     "The origin is: Point { x: 0, y: 0 }",
+/// );
 /// ```
 ///
 /// There are a number of helper methods on the [`Formatter`] struct to help you with manual
@@ -577,11 +584,11 @@ impl Display for Arguments<'_> {
 ///
 /// let origin = Point { x: 0, y: 0 };
 ///
-/// assert_eq!(format!("The origin is: {origin:#?}"),
-/// "The origin is: Point {
+/// let expected = "The origin is: Point {
 ///     x: 0,
 ///     y: 0,
-/// }");
+/// }";
+/// assert_eq!(format!("The origin is: {origin:#?}"), expected);
 /// ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -733,8 +740,10 @@ pub trait Display {
     ///     }
     /// }
     ///
-    /// assert_eq!("(1.987, 2.983)",
-    ///            format!("{}", Position { longitude: 1.987, latitude: 2.983, }));
+    /// assert_eq!(
+    ///     "(1.987, 2.983)",
+    ///     format!("{}", Position { longitude: 1.987, latitude: 2.983, }),
+    /// );
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
@@ -1116,8 +1125,8 @@ pub trait UpperExp {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 
-/// The `write` function takes an output stream, and an `Arguments` struct
-/// that can be precompiled with the `format_args!` macro.
+/// Takes an output stream and an `Arguments` struct that can be precompiled with
+/// the `format_args!` macro.
 ///
 /// The arguments will be formatted according to the specified format string
 /// into the output stream provided.
@@ -1244,7 +1253,7 @@ impl PostPadding {
         PostPadding { fill, padding }
     }
 
-    /// Write this post padding.
+    /// Writes this post padding.
     pub(crate) fn write(self, f: &mut Formatter<'_>) -> Result {
         for _ in 0..self.padding {
             f.buf.write_char(self.fill)?;
@@ -1385,9 +1394,10 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// This function takes a string slice and emits it to the internal buffer
-    /// after applying the relevant formatting flags specified. The flags
-    /// recognized for generic strings are:
+    /// Takes a string slice and emits it to the internal buffer after applying
+    /// the relevant formatting flags specified.
+    ///
+    /// The flags recognized for generic strings are:
     ///
     /// * width - the minimum width of what to emit
     /// * fill/align - what to emit and where to emit it if the string
@@ -1461,9 +1471,10 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Write the pre-padding and return the unwritten post-padding. Callers are
-    /// responsible for ensuring post-padding is written after the thing that is
-    /// being padded.
+    /// Writes the pre-padding and returns the unwritten post-padding.
+    ///
+    /// Callers are responsible for ensuring post-padding is written after the
+    /// thing that is being padded.
     pub(crate) fn padding(
         &mut self,
         padding: usize,
@@ -1490,6 +1501,7 @@ impl<'a> Formatter<'a> {
     }
 
     /// Takes the formatted parts and applies the padding.
+    ///
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
     ///
@@ -1614,6 +1626,11 @@ impl<'a> Formatter<'a> {
         self.buf.write_str(data)
     }
 
+    /// Glue for usage of the [`write!`] macro with implementors of this trait.
+    ///
+    /// This method should generally not be invoked manually, but rather through
+    /// the [`write!`] macro itself.
+    ///
     /// Writes some formatted information into this instance.
     ///
     /// # Examples
@@ -1642,7 +1659,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Flags for formatting
+    /// Returns flags for formatting.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(
@@ -1654,7 +1671,7 @@ impl<'a> Formatter<'a> {
         self.flags
     }
 
-    /// Character used as 'fill' whenever there is alignment.
+    /// Returns the character used as 'fill' whenever there is alignment.
     ///
     /// # Examples
     ///
@@ -1687,7 +1704,7 @@ impl<'a> Formatter<'a> {
         self.fill
     }
 
-    /// Flag indicating what form of alignment was requested.
+    /// Returns a flag indicating what form of alignment was requested.
     ///
     /// # Examples
     ///
@@ -1727,7 +1744,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Optionally specified integer width that the output should be.
+    /// Returns the optionally specified integer width that the output should be.
     ///
     /// # Examples
     ///
@@ -1757,8 +1774,8 @@ impl<'a> Formatter<'a> {
         self.width
     }
 
-    /// Optionally specified precision for numeric types. Alternatively, the
-    /// maximum width for string types.
+    /// Returns the optionally specified precision for numeric types.
+    /// Alternatively, the maximum width for string types.
     ///
     /// # Examples
     ///
@@ -1954,8 +1971,9 @@ impl<'a> Formatter<'a> {
         builders::debug_struct_new(self, name)
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 1 field.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 1 field.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field1_finish<'b>(
@@ -1969,8 +1987,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 2 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 2 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field2_finish<'b>(
@@ -1987,8 +2006,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 3 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 3 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field3_finish<'b>(
@@ -2008,8 +2028,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 4 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 4 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field4_finish<'b>(
@@ -2032,8 +2053,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_struct_fields_finish` is more general, but this is faster for 5 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_struct_fields_finish` is more general, but this is
+    /// faster for 5 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field5_finish<'b>(
@@ -2059,7 +2081,7 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
     /// For the cases not covered by `debug_struct_field[12345]_finish`.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
@@ -2108,8 +2130,9 @@ impl<'a> Formatter<'a> {
         builders::debug_tuple_new(self, name)
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 1 field.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 1 field.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field1_finish<'b>(&'b mut self, name: &str, value1: &dyn Debug) -> Result {
@@ -2118,8 +2141,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 2 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 2 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field2_finish<'b>(
@@ -2134,8 +2158,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 3 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 3 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field3_finish<'b>(
@@ -2152,8 +2177,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 4 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 4 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field4_finish<'b>(
@@ -2172,8 +2198,9 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// `debug_tuple_fields_finish` is more general, but this is faster for 5 fields.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
+    /// for 5 fields.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_field5_finish<'b>(
@@ -2194,8 +2221,8 @@ impl<'a> Formatter<'a> {
         builder.finish()
     }
 
-    /// Used to shrink `derive(Debug)` code, for faster compilation and smaller binaries.
-    /// For the cases not covered by `debug_tuple_field[12345]_finish`.
+    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
+    /// binaries. For the cases not covered by `debug_tuple_field[12345]_finish`.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_tuple_fields_finish<'b>(
@@ -2399,23 +2426,47 @@ impl Display for bool {
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('"')?;
-        let mut from = 0;
-        for (i, c) in self.char_indices() {
-            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
-                escape_grapheme_extended: true,
-                escape_single_quote: false,
-                escape_double_quote: true,
-            });
-            // If char needs escaping, flush backlog so far and write, else skip
-            if esc.len() != 1 {
-                f.write_str(&self[from..i])?;
-                for c in esc {
-                    f.write_char(c)?;
-                }
-                from = i + c.len_utf8();
-            }
+
+        // substring we know is printable
+        let mut printable_range = 0..0;
+
+        fn needs_escape(b: u8) -> bool {
+            b > 0x7E || b < 0x20 || b == b'\\' || b == b'"'
         }
-        f.write_str(&self[from..])?;
+
+        // the loop here first skips over runs of printable ASCII as a fast path.
+        // other chars (unicode, or ASCII that needs escaping) are then handled per-`char`.
+        let mut rest = self;
+        while rest.len() > 0 {
+            let Some(non_printable_start) = rest.as_bytes().iter().position(|&b| needs_escape(b))
+            else {
+                printable_range.end += rest.len();
+                break;
+            };
+
+            printable_range.end += non_printable_start;
+            // SAFETY: the position was derived from an iterator, so is known to be within bounds, and at a char boundary
+            rest = unsafe { rest.get_unchecked(non_printable_start..) };
+
+            let mut chars = rest.chars();
+            if let Some(c) = chars.next() {
+                let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                    escape_grapheme_extended: true,
+                    escape_single_quote: false,
+                    escape_double_quote: true,
+                });
+                if esc.len() != 1 {
+                    f.write_str(&self[printable_range.clone()])?;
+                    Display::fmt(&esc, f)?;
+                    printable_range.start = printable_range.end + c.len_utf8();
+                }
+                printable_range.end += c.len_utf8();
+            }
+            rest = chars.as_str();
+        }
+
+        f.write_str(&self[printable_range])?;
+
         f.write_char('"')
     }
 }
@@ -2431,13 +2482,12 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_debug_ext(EscapeDebugExtArgs {
+        let esc = self.escape_debug_ext(EscapeDebugExtArgs {
             escape_grapheme_extended: true,
             escape_single_quote: true,
             escape_double_quote: false,
-        }) {
-            f.write_char(c)?
-        }
+        });
+        Display::fmt(&esc, f)?;
         f.write_char('\'')
     }
 }
@@ -2456,13 +2506,13 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.expose_provenance()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).expose_provenance(), f)
+        pointer_fmt_inner(self.expose_provenance(), f)
     }
 }
 
-/// Since the formatting will be identical for all pointer types, use a non-monomorphized
-/// implementation for the actual formatting to reduce the amount of codegen work needed.
+/// Since the formatting will be identical for all pointer types, uses a
+/// non-monomorphized implementation for the actual formatting to reduce the
+/// amount of codegen work needed.
 ///
 /// This uses `ptr_addr: usize` and not `ptr: *const ()` to be able to use this for
 /// `fn(...) -> ...` without using [problematic] "Oxford Casts".

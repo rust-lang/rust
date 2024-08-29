@@ -1,8 +1,8 @@
-use crate::middle::resolve_bound_vars as rbv;
-use hir::{
-    intravisit::{self, Visitor},
-    GenericParamKind, HirId, Node,
-};
+use std::assert_matches::assert_matches;
+use std::ops::ControlFlow;
+
+use hir::intravisit::{self, Visitor};
+use hir::{GenericParamKind, HirId, Node};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -11,6 +11,10 @@ use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
+use crate::delegation::inherit_generics_for_delegation_item;
+use crate::middle::resolve_bound_vars as rbv;
+
+#[instrument(level = "debug", skip(tcx), ret)]
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
@@ -66,19 +70,29 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         // FIXME(#43408) always enable this once `lazy_normalization` is
         // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
-            let parent_def_id = tcx.hir().get_parent_item(hir_id);
+            let parent_did = tcx.parent(def_id.to_def_id());
+
+            // We don't do this unconditionally because the `DefId` parent of an anon const
+            // might be an implicitly created closure during `async fn` desugaring. This would
+            // have the wrong generics.
+            //
+            // i.e. `async fn foo<'a>() { let a = [(); { 1 + 2 }]; bar().await() }`
+            // would implicitly have a closure in its body that would be the parent of
+            // the `{ 1 + 2 }` anon const. This closure's generics is simply a witness
+            // instead of `['a]`.
+            let parent_did = if let DefKind::AnonConst = tcx.def_kind(parent_did) {
+                parent_did
+            } else {
+                tcx.hir().get_parent_item(hir_id).to_def_id()
+            };
+            debug!(?parent_did);
 
             let mut in_param_ty = false;
             for (_parent, node) in tcx.hir().parent_iter(hir_id) {
                 if let Some(generics) = node.generics() {
-                    let mut visitor = AnonConstInParamTyDetector {
-                        in_param_ty: false,
-                        found_anon_const_in_param_ty: false,
-                        ct: hir_id,
-                    };
+                    let mut visitor = AnonConstInParamTyDetector { in_param_ty: false, ct: hir_id };
 
-                    visitor.visit_generics(generics);
-                    in_param_ty = visitor.found_anon_const_in_param_ty;
+                    in_param_ty = visitor.visit_generics(generics).is_break();
                     break;
                 }
             }
@@ -89,6 +103,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 None
             } else if tcx.features().generic_const_exprs {
                 let parent_node = tcx.parent_hir_node(hir_id);
+                debug!(?parent_node);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
                 {
@@ -121,7 +136,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // This has some implications for how we get the predicates available to the anon const
                     // see `explicit_predicates_of` for more information on this
-                    let generics = tcx.generics_of(parent_def_id.to_def_id());
+                    let generics = tcx.generics_of(parent_did);
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
@@ -147,19 +162,23 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // Note that we do not supply the parent generics when using
                     // `min_const_generics`.
-                    Some(parent_def_id.to_def_id())
+                    Some(parent_did)
                 }
             } else {
                 let parent_node = tcx.parent_hir_node(hir_id);
+                let parent_node = match parent_node {
+                    Node::ConstArg(ca) => tcx.parent_hir_node(ca.hir_id),
+                    _ => parent_node,
+                };
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
                     // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
                     // as they shouldn't be able to cause query cycle errors.
-                    Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
-                        if constant.hir_id() == hir_id =>
+                    Node::Expr(Expr { kind: ExprKind::Repeat(_, ArrayLen::Body(ct)), .. })
+                        if ct.anon_const_hir_id() == Some(hir_id) =>
                     {
-                        Some(parent_def_id.to_def_id())
+                        Some(parent_did)
                     }
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
@@ -171,7 +190,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                             _ => false,
                         }) =>
                     {
-                        Some(parent_def_id.to_def_id())
+                        Some(parent_did)
                     }
                     _ => None,
                 }
@@ -189,9 +208,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_trait {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn);
                 } else {
-                    assert!(matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn))
+                    assert_matches!(tcx.def_kind(fn_def_id), DefKind::AssocFn | DefKind::Fn);
                 }
                 Some(fn_def_id.to_def_id())
             }
@@ -200,14 +219,24 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ..
             }) => {
                 if in_assoc_ty {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::AssocTy));
+                    assert_matches!(tcx.def_kind(parent), DefKind::AssocTy);
                 } else {
-                    assert!(matches!(tcx.def_kind(parent), DefKind::TyAlias));
+                    assert_matches!(tcx.def_kind(parent), DefKind::TyAlias);
                 }
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent);
                 // Opaque types are always nested within another item, and
                 // inherit the generics of the item.
                 Some(parent.to_def_id())
+            }
+            ItemKind::Fn(sig, _, _) => {
+                // For a delegation item inherit generics from callee.
+                if let Some(sig_id) = sig.decl.opt_delegation_sig_id()
+                    && let Some(generics) =
+                        inherit_generics_for_delegation_item(tcx, def_id, sig_id)
+                {
+                    return generics;
+                }
+                None
             }
             _ => None,
         },
@@ -310,15 +339,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             if default.is_some() {
                 match allow_defaults {
                     Defaults::Allowed => {}
-                    Defaults::FutureCompatDisallowed
-                        if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
                         tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                             param.hir_id,
                             param.span,
-                            TYPE_DEFAULT_NOT_ALLOWED,
-                            |_| {},
+                            |lint| {
+                                lint.primary_message(TYPE_DEFAULT_NOT_ALLOWED);
+                            },
                         );
                     }
                     Defaults::Deny => {
@@ -337,7 +365,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind,
             })
         }
-        GenericParamKind::Const { ty: _, default, is_host_effect } => {
+        GenericParamKind::Const { ty: _, default, is_host_effect, synthetic } => {
             if !matches!(allow_defaults, Defaults::Allowed)
                 && default.is_some()
                 // `host` effect params are allowed to have defaults.
@@ -371,6 +399,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind: ty::GenericParamDefKind::Const {
                     has_default: default.is_some(),
                     is_host_effect,
+                    synthetic,
                 },
             })
         }
@@ -442,50 +471,45 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     struct LateBoundRegionsDetector<'tcx> {
         tcx: TyCtxt<'tcx>,
         outer_index: ty::DebruijnIndex,
-        has_late_bound_regions: Option<Span>,
     }
 
     impl<'tcx> Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
+        type Result = ControlFlow<Span>;
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<Span> {
             match ty.kind {
                 hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
-                    intravisit::walk_ty(self, ty);
+                    let res = intravisit::walk_ty(self, ty);
                     self.outer_index.shift_out(1);
+                    res
                 }
                 _ => intravisit::walk_ty(self, ty),
             }
         }
 
-        fn visit_poly_trait_ref(&mut self, tr: &'tcx hir::PolyTraitRef<'tcx>) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
+        fn visit_poly_trait_ref(&mut self, tr: &'tcx hir::PolyTraitRef<'tcx>) -> ControlFlow<Span> {
             self.outer_index.shift_in(1);
-            intravisit::walk_poly_trait_ref(self, tr);
+            let res = intravisit::walk_poly_trait_ref(self, tr);
             self.outer_index.shift_out(1);
+            res
         }
 
-        fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
-
+        fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) -> ControlFlow<Span> {
             match self.tcx.named_bound_var(lt.hir_id) {
-                Some(rbv::ResolvedArg::StaticLifetime | rbv::ResolvedArg::EarlyBound(..)) => {}
+                Some(rbv::ResolvedArg::StaticLifetime | rbv::ResolvedArg::EarlyBound(..)) => {
+                    ControlFlow::Continue(())
+                }
                 Some(rbv::ResolvedArg::LateBound(debruijn, _, _))
-                    if debruijn < self.outer_index => {}
+                    if debruijn < self.outer_index =>
+                {
+                    ControlFlow::Continue(())
+                }
                 Some(
                     rbv::ResolvedArg::LateBound(..)
                     | rbv::ResolvedArg::Free(..)
                     | rbv::ResolvedArg::Error(_),
                 )
-                | None => {
-                    self.has_late_bound_regions = Some(lt.ident.span);
-                }
+                | None => ControlFlow::Break(lt.ident.span),
             }
         }
     }
@@ -495,11 +519,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         generics: &'tcx hir::Generics<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
     ) -> Option<Span> {
-        let mut visitor = LateBoundRegionsDetector {
-            tcx,
-            outer_index: ty::INNERMOST,
-            has_late_bound_regions: None,
-        };
+        let mut visitor = LateBoundRegionsDetector { tcx, outer_index: ty::INNERMOST };
         for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
                 if tcx.is_late_bound(param.hir_id) {
@@ -507,8 +527,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
                 }
             }
         }
-        visitor.visit_fn_decl(decl);
-        visitor.has_late_bound_regions
+        visitor.visit_fn_decl(decl).break_value()
     }
 
     let decl = node.fn_decl()?;
@@ -518,25 +537,29 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
 struct AnonConstInParamTyDetector {
     in_param_ty: bool,
-    found_anon_const_in_param_ty: bool,
     ct: HirId,
 }
 
 impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
-    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
-        if let GenericParamKind::Const { ty, default: _, is_host_effect: _ } = p.kind {
+    type Result = ControlFlow<()>;
+
+    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) -> Self::Result {
+        if let GenericParamKind::Const { ty, default: _, is_host_effect: _, synthetic: _ } = p.kind
+        {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
-            self.visit_ty(ty);
+            let res = self.visit_ty(ty);
             self.in_param_ty = prev;
+            res
+        } else {
+            ControlFlow::Continue(())
         }
     }
 
-    fn visit_anon_const(&mut self, c: &'v hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'v hir::AnonConst) -> Self::Result {
         if self.in_param_ty && self.ct == c.hir_id {
-            self.found_anon_const_in_param_ty = true;
-        } else {
-            intravisit::walk_anon_const(self, c)
+            return ControlFlow::Break(());
         }
+        intravisit::walk_anon_const(self, c)
     }
 }

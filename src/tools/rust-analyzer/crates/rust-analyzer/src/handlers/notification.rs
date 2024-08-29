@@ -1,7 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles notifications.
 
-use std::ops::Deref;
+use std::ops::{Deref, Not as _};
 
 use itertools::Itertools;
 use lsp_types::{
@@ -9,12 +9,13 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, WorkDoneProgressCancelParams,
 };
+use paths::Utf8PathBuf;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
 use crate::{
-    config::Config,
-    global_state::GlobalState,
+    config::{Config, ConfigChange},
+    global_state::{FetchWorkspaceRequest, GlobalState},
     lsp::{from_proto, utils::apply_document_changes},
     lsp_ext::{self, RunFlycheckParams},
     mem_docs::DocumentData,
@@ -54,7 +55,7 @@ pub(crate) fn handle_did_open_text_document(
     state: &mut GlobalState,
     params: DidOpenTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_open_text_document").entered();
+    let _p = tracing::info_span!("handle_did_open_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let already_exists = state
@@ -71,8 +72,9 @@ pub(crate) fn handle_did_open_text_document(
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
 
+        tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
-        if state.config.notifications().unindexed_project {
+        if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state
                 .deferred_task_queue
@@ -87,7 +89,7 @@ pub(crate) fn handle_did_change_text_document(
     state: &mut GlobalState,
     params: DidChangeTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_change_text_document").entered();
+    let _p = tracing::info_span!("handle_did_change_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         let Some(DocumentData { version, data }) = state.mem_docs.get_mut(&path) else {
@@ -99,7 +101,7 @@ pub(crate) fn handle_did_change_text_document(
         *version = params.text_document.version;
 
         let new_contents = apply_document_changes(
-            state.config.position_encoding(),
+            state.config.negotiated_encoding(),
             std::str::from_utf8(data).unwrap(),
             params.content_changes,
         )
@@ -116,7 +118,7 @@ pub(crate) fn handle_did_close_text_document(
     state: &mut GlobalState,
     params: DidCloseTextDocumentParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_did_close_text_document").entered();
+    let _p = tracing::info_span!("handle_did_close_text_document").entered();
 
     if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
         if state.mem_docs.remove(&path).is_err() {
@@ -149,15 +151,31 @@ pub(crate) fn handle_did_save_text_document(
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         // Re-fetch workspaces if a workspace related file has changed
-        if let Some(abs_path) = vfs_path.as_path() {
-            if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
-                state
-                    .fetch_workspaces_queue
-                    .request_op(format!("workspace vfs file change saved {abs_path}"), false);
-            } else if state.detached_files.contains(abs_path) {
-                state
-                    .fetch_workspaces_queue
-                    .request_op(format!("detached file saved {abs_path}"), false);
+        if let Some(path) = vfs_path.as_path() {
+            let additional_files = &state
+                .config
+                .discover_workspace_config()
+                .map(|cfg| cfg.files_to_watch.iter().map(String::as_str).collect::<Vec<&str>>())
+                .unwrap_or_default();
+
+            // FIXME: We should move this check into a QueuedTask and do semantic resolution of
+            // the files. There is only so much we can tell syntactically from the path.
+            if reload::should_refresh_for_change(path, ChangeKind::Modify, additional_files) {
+                state.fetch_workspaces_queue.request_op(
+                    format!("workspace vfs file change saved {path}"),
+                    FetchWorkspaceRequest {
+                        path: Some(path.to_owned()),
+                        force_crate_graph_reload: false,
+                    },
+                );
+            } else if state.detached_files.contains(path) {
+                state.fetch_workspaces_queue.request_op(
+                    format!("detached file saved {path}"),
+                    FetchWorkspaceRequest {
+                        path: Some(path.to_owned()),
+                        force_crate_graph_reload: false,
+                    },
+                );
             }
         }
 
@@ -196,10 +214,14 @@ pub(crate) fn handle_did_change_configuration(
                 }
                 (None, Some(mut configs)) => {
                     if let Some(json) = configs.get_mut(0) {
-                        // Note that json can be null according to the spec if the client can't
-                        // provide a configuration. This is handled in Config::update below.
-                        let mut config = Config::clone(&*this.config);
-                        this.config_errors = config.update(json.take()).err();
+                        let config = Config::clone(&*this.config);
+                        let mut change = ConfigChange::default();
+                        change.change_client_config(json.take());
+
+                        let (config, e, _) = config.apply_change(change);
+                        this.config_errors = e.is_empty().not().then_some(e);
+
+                        // Client config changes neccesitates .update_config method to be called.
                         this.update_configuration(config);
                     }
                 }
@@ -221,6 +243,7 @@ pub(crate) fn handle_did_change_workspace_folders(
 
     for workspace in params.event.removed {
         let Ok(path) = workspace.uri.to_file_path() else { continue };
+        let Ok(path) = Utf8PathBuf::from_path_buf(path) else { continue };
         let Ok(path) = AbsPathBuf::try_from(path) else { continue };
         config.remove_workspace(&path);
     }
@@ -230,12 +253,15 @@ pub(crate) fn handle_did_change_workspace_folders(
         .added
         .into_iter()
         .filter_map(|it| it.uri.to_file_path().ok())
+        .filter_map(|it| Utf8PathBuf::from_path_buf(it).ok())
         .filter_map(|it| AbsPathBuf::try_from(it).ok());
     config.add_workspaces(added);
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();
-        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), false)
+
+        let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
+        state.fetch_workspaces_queue.request_op("client workspaces changed".to_owned(), req);
     }
 
     Ok(())
@@ -254,7 +280,7 @@ pub(crate) fn handle_did_change_watched_files(
 }
 
 fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
-    let _p = tracing::span!(tracing::Level::INFO, "run_flycheck").entered();
+    let _p = tracing::info_span!("run_flycheck").entered();
 
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
@@ -269,7 +295,6 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 .into_iter()
                 .flat_map(|id| world.analysis.transitive_rev_deps(id))
                 .flatten()
-                .sorted()
                 .unique()
                 .collect();
 
@@ -349,13 +374,13 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
 }
 
 pub(crate) fn handle_cancel_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_cancel_flycheck").entered();
+    let _p = tracing::info_span!("handle_cancel_flycheck").entered();
     state.flycheck.iter().for_each(|flycheck| flycheck.cancel());
     Ok(())
 }
 
 pub(crate) fn handle_clear_flycheck(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_clear_flycheck").entered();
+    let _p = tracing::info_span!("handle_clear_flycheck").entered();
     state.diagnostics.clear_check_all();
     Ok(())
 }
@@ -364,7 +389,7 @@ pub(crate) fn handle_run_flycheck(
     state: &mut GlobalState,
     params: RunFlycheckParams,
 ) -> anyhow::Result<()> {
-    let _p = tracing::span!(tracing::Level::INFO, "handle_run_flycheck").entered();
+    let _p = tracing::info_span!("handle_run_flycheck").entered();
     if let Some(text_document) = params.text_document {
         if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
             if run_flycheck(state, vfs_path) {

@@ -4,7 +4,7 @@ This tool generates the manifests uploaded to static.rust-lang.org and used by r
 You can see a full list of all manifests at <https://static.rust-lang.org/manifests.txt>.
 This listing is updated by <https://github.com/rust-lang/generate-manifest-list> every 7 days.
 
-This gets called by `promote-release` <https://github.com/rust-lang/promote-release> via `x.py dist hash-and-sign`.
+This gets called by `promote-release` <https://github.com/rust-lang/promote-release>. `promote-release` downloads a pre-built binary of `build-manifest` which is generated in the dist-x86_64-linux builder and uploaded to s3.
 
 ## Adding a new component
 

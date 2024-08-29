@@ -23,12 +23,12 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
+use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
-    base_db::{FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
-    RootDatabase, SnippetCap,
+    FilePosition, RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
@@ -66,11 +66,10 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_self_on_the_fly: true,
     enable_private_editable: false,
     enable_term_search: true,
+    term_search_fuel: 200,
     full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
-    prefer_no_std: false,
-    prefer_prelude: true,
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,
         prefix_kind: PrefixKind::Plain,
@@ -78,9 +77,11 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
         group: true,
         skip_glob_imports: true,
     },
+    prefer_no_std: false,
+    prefer_prelude: true,
+    prefer_absolute: false,
     snippets: Vec::new(),
     limit: None,
-    term_search_fuel: 200,
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {
@@ -130,7 +131,7 @@ pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
-    (database, FilePosition { file_id, offset })
+    (database, FilePosition { file_id: file_id.file_id(), offset })
 }
 
 pub(crate) fn do_completion(code: &str, kind: CompletionItemKind) -> Vec<CompletionItem> {

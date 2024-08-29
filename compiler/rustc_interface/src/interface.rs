@@ -1,21 +1,21 @@
-use crate::util;
+use std::path::PathBuf;
+use std::result;
+use std::sync::Arc;
 
-use rustc_ast::token;
-use rustc_ast::{LitKind, MetaItemKind};
+use rustc_ast::{token, LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::{defer, jobserver};
 use rustc_errors::registry::Registry;
-use rustc_errors::{DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
-
 use rustc_middle::ty;
 use rustc_middle::ty::CurrentGcx;
 use rustc_middle::util::Providers;
-use rustc_parse::maybe_new_parser_from_source_str;
+use rustc_parse::new_parser_from_source_str;
+use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
@@ -25,9 +25,9 @@ use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
-use std::path::PathBuf;
-use std::result;
-use std::sync::Arc;
+use tracing::trace;
+
+use crate::util;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
@@ -46,7 +46,7 @@ pub struct Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
+pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let psess = ParseSess::with_silent_emitter(
@@ -67,8 +67,8 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                 };
             }
 
-            match maybe_new_parser_from_source_str(&psess, filename, s.to_string()) {
-                Ok(mut parser) => match parser.parse_meta_item() {
+            match new_parser_from_source_str(&psess, filename, s.to_string()) {
+                Ok(mut parser) => match parser.parse_meta_item(AllowLeadingUnsafe::No) {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if meta_item.path.segments.len() != 1 {
                             error!("argument key must be an identifier");
@@ -105,7 +105,7 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
+pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
@@ -166,7 +166,7 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
-        let mut parser = match maybe_new_parser_from_source_str(&psess, filename, s.to_string()) {
+        let mut parser = match new_parser_from_source_str(&psess, filename, s.to_string()) {
             Ok(parser) => parser,
             Err(errs) => {
                 errs.into_iter().for_each(|err| err.cancel());
@@ -174,7 +174,7 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             }
         };
 
-        let meta_item = match parser.parse_meta_item() {
+        let meta_item = match parser.parse_meta_item(AllowLeadingUnsafe::Yes) {
             Ok(meta_item) if parser.token == token::Eof => meta_item,
             Ok(..) => expected_error(),
             Err(err) => {
@@ -451,12 +451,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             codegen_backend.init(&sess);
 
-            let cfg = parse_cfg(&sess.dcx(), config.crate_cfg);
+            let cfg = parse_cfg(sess.dcx(), config.crate_cfg);
             let mut cfg = config::build_configuration(&sess, cfg);
             util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
             sess.psess.config = cfg;
 
-            let mut check_cfg = parse_check_cfg(&sess.dcx(), config.crate_check_cfg);
+            let mut check_cfg = parse_check_cfg(sess.dcx(), config.crate_check_cfg);
             check_cfg.fill_well_known(&sess.target);
             sess.psess.check_config = check_cfg;
 
@@ -495,9 +495,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let res = {
                 // If `f` panics, `finish_diagnostics` will run during
                 // unwinding because of the `defer`.
-                let mut guar = None;
                 let sess_abort_guard = defer(|| {
-                    guar = compiler.sess.finish_diagnostics(&config.registry);
+                    compiler.sess.finish_diagnostics(&config.registry);
                 });
 
                 let res = f(&compiler);
@@ -506,16 +505,14 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 // normally when `sess_abort_guard` is dropped.
                 drop(sess_abort_guard);
 
-                // If `finish_diagnostics` emits errors (e.g. stashed
-                // errors) we can't return an error directly, because the
-                // return type of this function is `R`, not `Result<R, E>`.
-                // But we need to communicate the errors' existence to the
-                // caller, otherwise the caller might mistakenly think that
-                // no errors occurred and return a zero exit code. So we
-                // abort (panic) instead, similar to if `f` had panicked.
-                if guar.is_some() {
-                    compiler.sess.dcx().abort_if_errors();
-                }
+                // If error diagnostics have been emitted, we can't return an
+                // error directly, because the return type of this function
+                // is `R`, not `Result<R, E>`. But we need to communicate the
+                // errors' existence to the caller, otherwise the caller might
+                // mistakenly think that no errors occurred and return a zero
+                // exit code. So we abort (panic) instead, similar to if `f`
+                // had panicked.
+                compiler.sess.dcx().abort_if_errors();
 
                 res
             };
@@ -529,7 +526,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 }
 
 pub fn try_print_query_stack(
-    dcx: &DiagCtxt,
+    dcx: DiagCtxtHandle<'_>,
     num_frames: Option<usize>,
     file: Option<std::fs::File>,
 ) {

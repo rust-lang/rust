@@ -1,10 +1,19 @@
-//
-//@ compile-flags: -C no-prepopulate-passes
-//@ only-riscv64
-//@ only-linux
-#![crate_type = "lib"]
+//@ compile-flags: -O -C no-prepopulate-passes --target riscv64gc-unknown-linux-gnu
+//@ needs-llvm-components: riscv
 
-// CHECK: define void @f_fpr_tracking(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, i8 zeroext %i)
+#![feature(no_core, lang_items)]
+#![crate_type = "lib"]
+#![no_std]
+#![no_core]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "freeze"]
+trait Freeze {}
+#[lang = "copy"]
+trait Copy {}
+
+// CHECK: define void @f_fpr_tracking(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, i8 noundef zeroext %i)
 #[no_mangle]
 pub extern "C" fn f_fpr_tracking(
     a: f64,
@@ -144,7 +153,7 @@ pub extern "C" fn f_ret_double_int64_s() -> DoubleInt64 {
     DoubleInt64 { f: 1., i: 2 }
 }
 
-// CHECK: define void @f_double_int8_s_arg_insufficient_gprs(i32 signext %a, i32 signext %b, i32 signext %c, i32 signext %d, i32 signext %e, i32 signext %f, i32 signext %g, i32 signext %h, [2 x i64] %0)
+// CHECK: define void @f_double_int8_s_arg_insufficient_gprs(i32 noundef signext %a, i32 noundef signext %b, i32 noundef signext %c, i32 noundef signext %d, i32 noundef signext %e, i32 noundef signext %f, i32 noundef signext %g, i32 noundef signext %h, [2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_double_int8_s_arg_insufficient_gprs(
     a: i32,
@@ -250,11 +259,11 @@ pub struct IntDoubleInt {
     c: i32,
 }
 
-// CHECK: define void @f_int_double_int_s_arg(%IntDoubleInt* {{.*}}%a)
+// CHECK: define void @f_int_double_int_s_arg(ptr {{.*}} %a)
 #[no_mangle]
 pub extern "C" fn f_int_double_int_s_arg(a: IntDoubleInt) {}
 
-// CHECK: define void @f_ret_int_double_int_s(%IntDoubleInt* {{.*}}sret
+// CHECK: define void @f_ret_int_double_int_s(ptr {{.*}} sret([24 x i8]) align 8 dereferenceable(24) %_0)
 #[no_mangle]
 pub extern "C" fn f_ret_int_double_int_s() -> IntDoubleInt {
     IntDoubleInt { a: 1, b: 2., c: 3 }

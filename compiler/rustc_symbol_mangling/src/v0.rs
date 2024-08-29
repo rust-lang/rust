@@ -1,3 +1,7 @@
+use std::fmt::Write;
+use std::iter;
+use std::ops::Range;
+
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -9,17 +13,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, ReifyReason, Ty, TyCtxt, TypeVisitable,
-    TypeVisitableExt, UintTy,
+    self, EarlyBinder, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty,
+    TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
-
-use std::fmt::Write;
-use std::iter;
-use std::ops::Range;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -43,14 +42,20 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
-        ty::InstanceDef::VTableShim(_) => Some("vtable"),
-        ty::InstanceDef::ReifyShim(_, None) => Some("reify"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
+        ty::InstanceKind::ThreadLocalShim(_) => Some("tls"),
+        ty::InstanceKind::VTableShim(_) => Some("vtable"),
+        ty::InstanceKind::ReifyShim(_, None) => Some("reify"),
+        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
+        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
 
-        ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceDef::CoroutineKindShim { .. } => Some("fn_once"),
+        // FIXME(async_closures): This shouldn't be needed when we fix
+        // `Instance::ty`/`Instance::def_id`.
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: true, .. } => {
+            Some("by_move")
+        }
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
+            Some("by_ref")
+        }
 
         _ => None,
     };
@@ -421,7 +426,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 self.print_def_path(def_id, &[])?;
             }
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
                     if sig.safety == hir::Safety::Unsafe {
@@ -541,8 +547,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.normalize(self.tcx, ty::ParamEnv::reveal_all());
-        match ct.kind() {
-            ty::ConstKind::Value(_) => {}
+        let (ct_ty, valtree) = match ct.kind() {
+            ty::ConstKind::Value(ty, val) => (ty, val),
 
             // Placeholders (should be demangled as `_`).
             // NOTE(eddyb) despite `Unevaluated` having a `DefId` (and therefore
@@ -559,7 +565,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 self.push("p");
                 return Ok(());
             }
-        }
+        };
 
         if let Some(&i) = self.consts.get(&ct) {
             self.print_backref(i)?;
@@ -567,16 +573,15 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         }
 
         let start = self.out.len();
-        let ty = ct.ty();
 
-        match ty.kind() {
+        match ct_ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
-                ty.print(self)?;
+                ct_ty.print(self)?;
 
                 let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all());
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
-                if let ty::Int(ity) = ty.kind() {
+                if let ty::Int(ity) = ct_ty.kind() {
                     let val =
                         Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -598,40 +603,32 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
                 match inner_ty.kind() {
                     ty::Str if mutbl.is_not() => {
-                        match ct.kind() {
-                            ty::ConstKind::Value(valtree) => {
-                                let slice =
-                                    valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
-                                        bug!(
-                                        "expected to get raw bytes from valtree {:?} for type {:}",
-                                        valtree, ty
-                                    )
-                                    });
-                                let s = std::str::from_utf8(slice)
-                                    .expect("non utf8 str from MIR interpreter");
+                        let slice =
+                            valtree.try_to_raw_bytes(self.tcx(), ct_ty).unwrap_or_else(|| {
+                                bug!(
+                                    "expected to get raw bytes from valtree {:?} for type {:}",
+                                    valtree,
+                                    ct_ty
+                                )
+                            });
+                        let s =
+                            std::str::from_utf8(slice).expect("non utf8 str from MIR interpreter");
 
-                                self.push("e");
+                        self.push("e");
 
-                                // FIXME(eddyb) use a specialized hex-encoding loop.
-                                for byte in s.bytes() {
-                                    let _ = write!(self.out, "{byte:02x}");
-                                }
-
-                                self.push("_");
-                            }
-
-                            _ => {
-                                bug!("symbol_names: unsupported `&str` constant: {:?}", ct);
-                            }
+                        // FIXME(eddyb) use a specialized hex-encoding loop.
+                        for byte in s.bytes() {
+                            let _ = write!(self.out, "{byte:02x}");
                         }
+
+                        self.push("_");
                     }
                     _ => {
-                        let pointee_ty = ct
-                            .ty()
+                        let pointee_ty = ct_ty
                             .builtin_deref(true)
                             .expect("tried to dereference on non-ptr type");
-                        // FIXME(const_generics): add an assert that we only do this for valtrees.
-                        let dereferenced_const = self.tcx.mk_ct_from_kind(ct.kind(), pointee_ty);
+                        let dereferenced_const =
+                            ty::Const::new_value(self.tcx, valtree, pointee_ty);
                         dereferenced_const.print(self)?;
                     }
                 }
@@ -649,7 +646,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     Ok(())
                 };
 
-                match *ct.ty().kind() {
+                match *ct_ty.kind() {
                     ty::Array(..) | ty::Slice(_) => {
                         self.push("A");
                         print_field_list(self)?;
@@ -698,7 +695,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 }
             }
             _ => {
-                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty(), ct);
+                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct_ty, ct);
             }
         }
 

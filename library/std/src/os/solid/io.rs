@@ -44,15 +44,12 @@
 //!
 //! [`BorrowedFd<'a>`]: crate::os::solid::io::BorrowedFd
 
-#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "solid_ext", issue = "none")]
 
-use crate::fmt;
 use crate::marker::PhantomData;
-use crate::mem::forget;
-use crate::net;
-use crate::sys;
+use crate::mem::ManuallyDrop;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::{fmt, net, sys};
 
 /// Raw file descriptors.
 pub type RawFd = i32;
@@ -99,7 +96,7 @@ pub struct OwnedFd {
 }
 
 impl BorrowedFd<'_> {
-    /// Return a `BorrowedFd` holding the given raw file descriptor.
+    /// Returns a `BorrowedFd` holding the given raw file descriptor.
     ///
     /// # Safety
     ///
@@ -149,9 +146,7 @@ impl AsRawFd for OwnedFd {
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        let fd = self.fd;
-        forget(self);
-        fd
+        ManuallyDrop::new(self).fd
     }
 }
 
@@ -347,6 +342,7 @@ pub trait IntoRawFd {
     /// This function **transfers ownership** of the underlying file descriptor
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
+    #[must_use = "losing the raw file descriptor may leak resources"]
     fn into_raw_fd(self) -> RawFd;
 }
 

@@ -1,15 +1,20 @@
-use super::api;
-use crate::sys::c;
-use crate::sys::dur2timeout;
 use core::ffi::c_void;
-use core::mem;
-use core::ptr;
 use core::sync::atomic::{
     AtomicBool, AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, AtomicPtr, AtomicU16,
     AtomicU32, AtomicU64, AtomicU8, AtomicUsize,
 };
 use core::time::Duration;
+use core::{mem, ptr};
 
+use super::api::{self, WinError};
+use crate::sys::{c, dur2timeout};
+
+/// An atomic for use as a futex that is at least 8-bits but may be larger.
+pub type SmallAtomic = AtomicU8;
+/// Must be the underlying type of SmallAtomic
+pub type SmallPrimitive = u8;
+
+pub unsafe trait Futex {}
 pub unsafe trait Waitable {
     type Atomic;
 }
@@ -19,6 +24,7 @@ macro_rules! unsafe_waitable_int {
             unsafe impl Waitable for $int {
                 type Atomic = $atomic;
             }
+            unsafe impl Futex for $atomic {}
         )*
     };
 }
@@ -41,6 +47,7 @@ unsafe impl<T> Waitable for *const T {
 unsafe impl<T> Waitable for *mut T {
     type Atomic = AtomicPtr<T>;
 }
+unsafe impl<T> Futex for AtomicPtr<T> {}
 
 pub fn wait_on_address<W: Waitable>(
     address: &W::Atomic,
@@ -56,14 +63,14 @@ pub fn wait_on_address<W: Waitable>(
     }
 }
 
-pub fn wake_by_address_single<T>(address: &T) {
+pub fn wake_by_address_single<T: Futex>(address: &T) {
     unsafe {
         let addr = ptr::from_ref(address).cast::<c_void>();
         c::WakeByAddressSingle(addr);
     }
 }
 
-pub fn wake_by_address_all<T>(address: &T) {
+pub fn wake_by_address_all<T: Futex>(address: &T) {
     unsafe {
         let addr = ptr::from_ref(address).cast::<c_void>();
         c::WakeByAddressAll(addr);
@@ -72,14 +79,14 @@ pub fn wake_by_address_all<T>(address: &T) {
 
 pub fn futex_wait<W: Waitable>(futex: &W::Atomic, expected: W, timeout: Option<Duration>) -> bool {
     // return false only on timeout
-    wait_on_address(futex, expected, timeout) || api::get_last_error().code != c::ERROR_TIMEOUT
+    wait_on_address(futex, expected, timeout) || api::get_last_error() != WinError::TIMEOUT
 }
 
-pub fn futex_wake<T>(futex: &T) -> bool {
+pub fn futex_wake<T: Futex>(futex: &T) -> bool {
     wake_by_address_single(futex);
     false
 }
 
-pub fn futex_wake_all<T>(futex: &T) {
+pub fn futex_wake_all<T: Futex>(futex: &T) {
     wake_by_address_all(futex)
 }

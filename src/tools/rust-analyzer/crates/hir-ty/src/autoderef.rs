@@ -5,7 +5,8 @@
 
 use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItem;
-use hir_expand::name::name;
+use hir_expand::name::Name;
+use intern::sym;
 use limit::Limit;
 use triomphe::Arc;
 
@@ -143,7 +144,7 @@ pub(crate) fn deref_by_trait(
     table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
     ty: Ty,
 ) -> Option<Ty> {
-    let _p = tracing::span!(tracing::Level::INFO, "deref_by_trait").entered();
+    let _p = tracing::info_span!("deref_by_trait").entered();
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables
         return None;
@@ -151,7 +152,9 @@ pub(crate) fn deref_by_trait(
 
     let deref_trait =
         db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())?;
-    let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;
+    let target = db
+        .trait_data(deref_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Target.clone()))?;
 
     let projection = {
         let b = TyBuilder::subst_for_def(db, deref_trait, None);

@@ -1,4 +1,6 @@
 use super::*;
+use crate::mem::MaybeUninit;
+use crate::ptr;
 
 #[test]
 fn test_os_string_with_capacity() {
@@ -21,6 +23,15 @@ fn test_os_string_clear() {
     os_string.clear();
     assert_eq!(&os_string, "");
     assert_eq!(0, os_string.inner.as_inner().len());
+}
+
+#[test]
+fn test_os_string_leak() {
+    let os_string = OsString::from("have a cake");
+    let (len, cap) = (os_string.len(), os_string.capacity());
+    let leaked = os_string.leak();
+    assert_eq!(leaked.as_encoded_bytes(), b"have a cake");
+    unsafe { drop(String::from_raw_parts(leaked as *mut OsStr as _, len, cap)) }
 }
 
 #[test]
@@ -276,4 +287,19 @@ fn slice_surrogate_edge() {
     post_crab.push(&surrogate);
     assert_eq!(post_crab.slice_encoded_bytes(..4), "🦀");
     assert_eq!(post_crab.slice_encoded_bytes(4..), surrogate);
+}
+
+#[test]
+fn clone_to_uninit() {
+    let a = OsStr::new("hello.txt");
+
+    let mut storage = vec![MaybeUninit::<u8>::uninit(); size_of_val::<OsStr>(a)];
+    unsafe { a.clone_to_uninit(ptr::from_mut::<[_]>(storage.as_mut_slice()) as *mut OsStr) };
+    assert_eq!(a.as_encoded_bytes(), unsafe { MaybeUninit::slice_assume_init_ref(&storage) });
+
+    let mut b: Box<OsStr> = OsStr::new("world.exe").into();
+    assert_eq!(size_of_val::<OsStr>(a), size_of_val::<OsStr>(&b));
+    assert_ne!(a, &*b);
+    unsafe { a.clone_to_uninit(ptr::from_mut::<OsStr>(&mut b)) };
+    assert_eq!(a, &*b);
 }

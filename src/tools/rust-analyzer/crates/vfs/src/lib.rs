@@ -38,8 +38,6 @@
 //! [`Handle`]: loader::Handle
 //! [`Entries`]: loader::Entry
 
-#![warn(rust_2018_idioms, unused_lifetimes)]
-
 mod anchored_path;
 pub mod file_set;
 pub mod loader;
@@ -69,19 +67,16 @@ pub struct FileId(u32);
 // pub struct FileId(NonMaxU32);
 
 impl FileId {
-    /// Think twice about using this outside of tests. If this ends up in a wrong place it will cause panics!
-    // FIXME: To be removed once we get rid of all `SpanData::DUMMY` usages.
-    pub const BOGUS: FileId = FileId(0xe4e4e);
-    pub const MAX_FILE_ID: u32 = 0x7fff_ffff;
+    pub const MAX: u32 = 0x7fff_ffff;
 
     #[inline]
     pub const fn from_raw(raw: u32) -> FileId {
-        assert!(raw <= Self::MAX_FILE_ID);
+        assert!(raw <= Self::MAX);
         FileId(raw)
     }
 
     #[inline]
-    pub fn index(self) -> u32 {
+    pub const fn index(self) -> u32 {
         self.0
     }
 }
@@ -206,8 +201,8 @@ impl Vfs {
     pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
         let _p = span!(Level::INFO, "Vfs::set_file_contents").entered();
         let file_id = self.alloc_file_id(path);
-        let state = self.get(file_id);
-        let change_kind = match (state, contents) {
+        let state: FileState = self.get(file_id);
+        let change = match (state, contents) {
             (FileState::Deleted, None) => return false,
             (FileState::Deleted, Some(v)) => {
                 let hash = hash_once::<FxHasher>(&*v);
@@ -230,7 +225,7 @@ impl Vfs {
             };
         };
 
-        let changed_file = ChangedFile { file_id, change: change_kind };
+        let changed_file = ChangedFile { file_id, change };
         match self.changes.entry(file_id) {
             // two changes to the same file in one cycle, merge them appropriately
             Entry::Occupied(mut o) => {
@@ -282,7 +277,7 @@ impl Vfs {
     /// Returns the id associated with `path`
     ///
     /// - If `path` does not exists in the `Vfs`, allocate a new id for it, associated with a
-    /// deleted file;
+    ///   deleted file;
     /// - Else, returns `path`'s id.
     ///
     /// Does not record a change.

@@ -1,6 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.80"
+version = "0.1.82"
 edition = "2021"
 publish = false
 
@@ -8,10 +8,8 @@ publish = false
 clippy_config = { path = "../clippy_config" }
 arrayvec = { version = "0.7", default-features = false }
 itertools = "0.12"
-rustc-semver = "1.1"
-
-[features]
-deny-warnings = ["clippy_config/deny-warnings"]
+# FIXME(f16_f128): remove when no longer needed for parsing
+rustc_apfloat = "0.2.0"
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

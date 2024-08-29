@@ -1,22 +1,23 @@
 //! Tidy check to ensure below in UI test directories:
 //! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
-use ignore::Walk;
+
 use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use ignore::Walk;
+
 // FIXME: GitHub's UI truncates file lists that exceed 1000 entries, so these
 // should all be 1000 or lower. Limits significantly smaller than 1000 are also
 // desirable, because large numbers of files are unwieldy in general. See issue
 // #73494.
-const ENTRY_LIMIT: usize = 900;
+const ENTRY_LIMIT: u32 = 901;
 // FIXME: The following limits should be reduced eventually.
 
-const ISSUES_ENTRY_LIMIT: usize = 1676;
-const ROOT_ENTRY_LIMIT: usize = 757;
+const ISSUES_ENTRY_LIMIT: u32 = 1673;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files
@@ -54,7 +55,7 @@ const EXTENSION_EXCEPTION_PATHS: &[&str] = &[
 ];
 
 fn check_entries(tests_path: &Path, bad: &mut bool) {
-    let mut directories: HashMap<PathBuf, usize> = HashMap::new();
+    let mut directories: HashMap<PathBuf, u32> = HashMap::new();
 
     for dir in Walk::new(&tests_path.join("ui")) {
         if let Ok(entry) = dir {
@@ -63,14 +64,10 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
         }
     }
 
-    let (mut max, mut max_root, mut max_issues) = (0usize, 0usize, 0usize);
+    let (mut max, mut max_issues) = (0, 0);
     for (dir_path, count) in directories {
-        // Use special values for these dirs.
-        let is_root = tests_path.join("ui") == dir_path;
         let is_issues_dir = tests_path.join("ui/issues") == dir_path;
-        let (limit, maxcnt) = if is_root {
-            (ROOT_ENTRY_LIMIT, &mut max_root)
-        } else if is_issues_dir {
+        let (limit, maxcnt) = if is_issues_dir {
             (ISSUES_ENTRY_LIMIT, &mut max_issues)
         } else {
             (ENTRY_LIMIT, &mut max)
@@ -86,12 +83,6 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
                 dir_path.display()
             );
         }
-    }
-    if ROOT_ENTRY_LIMIT > max_root {
-        tidy_error!(
-            bad,
-            "`ROOT_ENTRY_LIMIT` is too high (is {ROOT_ENTRY_LIMIT}, should be {max_root})"
-        );
     }
     if ISSUES_ENTRY_LIMIT > max_issues {
         tidy_error!(

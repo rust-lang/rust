@@ -4,18 +4,14 @@ error[E0700]: hidden type for `impl Future<Output = impl Sized>` captures lifeti
 LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized> {
    |         --                     --------------------------------------------- opaque type defined here
    |         |
-   |         hidden type `{async block@$DIR/nested-return-type4.rs:4:5: 4:31}` captures the lifetime `'s` as defined here
+   |         hidden type `{async block@$DIR/nested-return-type4.rs:4:5: 4:15}` captures the lifetime `'s` as defined here
 LL |     async move { let _s = s; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: to declare that `impl Future<Output = impl Sized>` captures `'s`, you can add an explicit `'s` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'s`
    |
-LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized> + 's {
-   |                                                                              ++++
-help: to declare that `impl Sized` captures `'s`, you can add an explicit `'s` lifetime bound
-   |
-LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized + 's> {
-   |                                                                             ++++
+LL | fn test<'s: 's>(s: &'s str) -> impl std::future::Future<Output = impl Sized> + use<'s> {
+   |                                                                              +++++++++
 
 error: aborting due to 1 previous error
 

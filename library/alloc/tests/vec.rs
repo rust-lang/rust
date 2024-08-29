@@ -8,15 +8,14 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::fmt::Debug;
-use std::hint;
 use std::iter::InPlaceIterable;
-use std::mem;
 use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter};
+use std::{hint, mem};
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -2572,7 +2571,8 @@ fn test_into_flattened_size_overflow() {
 
 #[test]
 fn test_box_zero_allocator() {
-    use core::{alloc::AllocError, cell::RefCell};
+    use core::alloc::AllocError;
+    use core::cell::RefCell;
     use std::collections::HashSet;
 
     // Track ZST allocations and ensure that they all have a matching free.

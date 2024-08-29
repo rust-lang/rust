@@ -1,4 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_config::Conf;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
 use clippy_utils::macros::{macro_backtrace, MacroCall};
 use clippy_utils::source::snippet_with_applicability;
@@ -14,7 +15,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of the [`dbg!`](https://doc.rust-lang.org/std/macro.dbg.html) macro.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// The `dbg!` macro is intended as a debugging tool. It should not be present in released
     /// software or committed to a version control system.
     ///
@@ -33,7 +34,6 @@ declare_clippy_lint! {
     "`dbg!` macro is intended as a debugging tool"
 }
 
-#[derive(Clone)]
 pub struct DbgMacro {
     allow_dbg_in_tests: bool,
     /// Tracks the `dbg!` macro callsites that are already checked.
@@ -45,9 +45,9 @@ pub struct DbgMacro {
 impl_lint_pass!(DbgMacro => [DBG_MACRO]);
 
 impl DbgMacro {
-    pub fn new(allow_dbg_in_tests: bool) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         DbgMacro {
-            allow_dbg_in_tests,
+            allow_dbg_in_tests: conf.allow_dbg_in_tests,
             checked_dbg_call_site: FxHashSet::default(),
             prev_ctxt: SyntaxContext::root(),
         }
@@ -65,61 +65,67 @@ impl LateLintPass<'_> for DbgMacro {
             // allows `dbg!` in test code if allow-dbg-in-test is set to true in clippy.toml
             !(self.allow_dbg_in_tests && is_in_test(cx.tcx, expr.hir_id))
         {
-            let mut applicability = Applicability::MachineApplicable;
-
-            let (sugg_span, suggestion) = match expr.peel_drop_temps().kind {
-                // dbg!()
-                ExprKind::Block(..) => {
-                    // If the `dbg!` macro is a "free" statement and not contained within other expressions,
-                    // remove the whole statement.
-                    if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
-                        && let Some(semi_span) = cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
-                    {
-                        (macro_call.span.to(semi_span), String::new())
-                    } else {
-                        (macro_call.span, String::from("()"))
-                    }
-                },
-                // dbg!(1)
-                ExprKind::Match(val, ..) => (
-                    macro_call.span,
-                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability).to_string(),
-                ),
-                // dbg!(2, 3)
-                ExprKind::Tup(
-                    [
-                        Expr {
-                            kind: ExprKind::Match(first, ..),
-                            ..
-                        },
-                        ..,
-                        Expr {
-                            kind: ExprKind::Match(last, ..),
-                            ..
-                        },
-                    ],
-                ) => {
-                    let snippet = snippet_with_applicability(
-                        cx,
-                        first.span.source_callsite().to(last.span.source_callsite()),
-                        "..",
-                        &mut applicability,
-                    );
-                    (macro_call.span, format!("({snippet})"))
-                },
-                _ => return,
-            };
-
             self.prev_ctxt = cur_syntax_ctxt;
 
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 DBG_MACRO,
-                sugg_span,
+                macro_call.span,
                 "the `dbg!` macro is intended as a debugging tool",
-                "remove the invocation before committing it to a version control system",
-                suggestion,
-                applicability,
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+
+                    let (sugg_span, suggestion) = match expr.peel_drop_temps().kind {
+                        // dbg!()
+                        ExprKind::Block(..) => {
+                            // If the `dbg!` macro is a "free" statement and not contained within other expressions,
+                            // remove the whole statement.
+                            if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
+                                && let Some(semi_span) = cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
+                            {
+                                (macro_call.span.to(semi_span), String::new())
+                            } else {
+                                (macro_call.span, String::from("()"))
+                            }
+                        },
+                        // dbg!(1)
+                        ExprKind::Match(val, ..) => (
+                            macro_call.span,
+                            snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability)
+                                .to_string(),
+                        ),
+                        // dbg!(2, 3)
+                        ExprKind::Tup(
+                            [
+                                Expr {
+                                    kind: ExprKind::Match(first, ..),
+                                    ..
+                                },
+                                ..,
+                                Expr {
+                                    kind: ExprKind::Match(last, ..),
+                                    ..
+                                },
+                            ],
+                        ) => {
+                            let snippet = snippet_with_applicability(
+                                cx,
+                                first.span.source_callsite().to(last.span.source_callsite()),
+                                "..",
+                                &mut applicability,
+                            );
+                            (macro_call.span, format!("({snippet})"))
+                        },
+                        _ => unreachable!(),
+                    };
+
+                    diag.span_suggestion(
+                        sugg_span,
+                        "remove the invocation before committing it to a version control system",
+                        suggestion,
+                        applicability,
+                    );
+                },
             );
         }
     }

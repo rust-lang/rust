@@ -1,7 +1,6 @@
 //@ check-pass
 // ignore-tidy-linelength
 
-#![feature(lint_reasons)]
 #![warn(unused_mut)]
 
 #![expect(unfulfilled_lint_expectations, reason = "idk why you would expect this")]

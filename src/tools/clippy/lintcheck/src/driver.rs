@@ -11,7 +11,6 @@ use std::{env, mem};
 fn run_clippy(addr: &str) -> Option<i32> {
     let driver_info = DriverInfo {
         package_name: env::var("CARGO_PKG_NAME").ok()?,
-        crate_name: env::var("CARGO_CRATE_NAME").ok()?,
         version: env::var("CARGO_PKG_VERSION").ok()?,
     };
 

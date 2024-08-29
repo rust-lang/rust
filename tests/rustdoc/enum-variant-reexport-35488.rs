@@ -8,9 +8,9 @@ mod foo {
     pub use self::Foo::*;
 }
 
-// @has 'foo/index.html' '//code' 'pub use self::Foo::*;'
-// @has 'foo/enum.Foo.html'
+//@ has 'foo/index.html' '//code' 'pub use self::Foo::*;'
+//@ has 'foo/enum.Foo.html'
 pub use self::foo::*;
 
-// @has 'foo/index.html' '//code' 'pub use std::option::Option::None;'
+//@ has 'foo/index.html' '//code' 'pub use std::option::Option::None;'
 pub use std::option::Option::None;

@@ -2,7 +2,7 @@ use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, make_normalized_projection, make_projection};
+use clippy_utils::ty::{get_type_diagnostic_name, make_normalized_projection, make_projection};
 use clippy_utils::{
     can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local, path_to_local_id,
     CaptureKind,
@@ -88,9 +88,10 @@ pub(super) fn check<'tcx>(
         Node::LetStmt(l) => {
             if let PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None) = l.pat.kind
                 && let ty = cx.typeck_results().expr_ty(collect_expr)
-                && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList]
-                    .into_iter()
-                    .any(|item| is_type_diagnostic_item(cx, ty, item))
+                && matches!(
+                    get_type_diagnostic_name(cx, ty),
+                    Some(sym::Vec | sym::VecDeque | sym::BinaryHeap | sym::LinkedList)
+                )
                 && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
                 && let Some(block) = get_enclosing_block(cx, l.hir_id)
                 && let Some(iter_calls) = detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty))
@@ -206,7 +207,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.param_env,
-            Ty::new_projection(cx.tcx, into_iter_item_proj.def_id, into_iter_item_proj.args),
+            Ty::new_projection_from_args(cx.tcx, into_iter_item_proj.def_id, into_iter_item_proj.args),
         )
     {
         iter_item_ty == into_iter_item_ty
@@ -235,7 +236,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             iter_trait,
         )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
-        && let proj_ty = Ty::new_projection(cx.tcx, iter_item.def_id, args)
+        && let proj_ty = Ty::new_projection_from_args(cx.tcx, iter_item.def_id, args)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
     {
         item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id))

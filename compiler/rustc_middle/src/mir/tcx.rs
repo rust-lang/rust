@@ -3,8 +3,10 @@
  * building is complete.
  */
 
-use crate::mir::*;
 use rustc_hir as hir;
+use tracing::{debug, instrument};
+
+use crate::mir::*;
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -168,7 +170,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
-            Rvalue::AddressOf(mutability, ref place) => {
+            Rvalue::RawPtr(mutability, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, mutability)
             }
@@ -179,7 +181,10 @@ impl<'tcx> Rvalue<'tcx> {
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
-            Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
+            Rvalue::UnaryOp(op, ref operand) => {
+                let arg_ty = operand.ty(local_decls, tcx);
+                op.ty(tcx, arg_ty)
+            }
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
@@ -277,6 +282,15 @@ impl<'tcx> BinOp {
                 assert_eq!(lhs_ty, rhs_ty);
                 tcx.ty_ordering_enum(None)
             }
+        }
+    }
+}
+
+impl<'tcx> UnOp {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, arg_ty: Ty<'tcx>) -> Ty<'tcx> {
+        match self {
+            UnOp::Not | UnOp::Neg => arg_ty,
+            UnOp::PtrMetadata => arg_ty.pointee_metadata_ty_or_projection(tcx),
         }
     }
 }

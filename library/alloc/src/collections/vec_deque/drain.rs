@@ -4,9 +4,8 @@ use core::mem::{self, SizedTypeProperties};
 use core::ptr::NonNull;
 use core::{fmt, ptr};
 
-use crate::alloc::{Allocator, Global};
-
 use super::VecDeque;
+use crate::alloc::{Allocator, Global};
 
 /// A draining iterator over the elements of a `VecDeque`.
 ///

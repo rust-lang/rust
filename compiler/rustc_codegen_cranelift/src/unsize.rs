@@ -22,7 +22,7 @@ pub(crate) fn unsized_info<'tcx>(
     old_info: Option<Value>,
 ) -> Value {
     let (source, target) =
-        fx.tcx.struct_lockstep_tails_erasing_lifetimes(source, target, ParamEnv::reveal_all());
+        fx.tcx.struct_lockstep_tails_for_codegen(source, target, ParamEnv::reveal_all());
     match (&source.kind(), &target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => fx
             .bcx
@@ -39,8 +39,7 @@ pub(crate) fn unsized_info<'tcx>(
             }
 
             // trait upcasting coercion
-            let vptr_entry_idx =
-                fx.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
+            let vptr_entry_idx = fx.tcx.supertrait_vtable_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
                 let entry_idx = u32::try_from(entry_idx).unwrap();

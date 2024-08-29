@@ -1,4 +1,5 @@
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[allow(unused_extern_crates)]
 #[stable(feature = "rust1", since = "1.0.0")]

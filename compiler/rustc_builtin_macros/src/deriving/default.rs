@@ -1,16 +1,17 @@
-use crate::deriving::generic::ty::*;
-use crate::deriving::generic::*;
-use crate::errors;
 use core::ops::ControlFlow;
+
 use rustc_ast as ast;
 use rustc_ast::visit::visit_opt;
 use rustc_ast::{attr, EnumDef, VariantData};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
-use rustc_span::symbol::Ident;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 use thin_vec::{thin_vec, ThinVec};
+
+use crate::deriving::generic::ty::*;
+use crate::deriving::generic::*;
+use crate::errors;
 
 pub(crate) fn expand_deriving_default(
     cx: &ExtCtxt<'_>,
@@ -240,7 +241,7 @@ fn has_a_default_variant(item: &Annotatable) -> bool {
             if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
                 ControlFlow::Break(())
             } else {
-                // no need to subrecurse.
+                // no need to walk the variant, we are only looking for top level variants
                 ControlFlow::Continue(())
             }
         }

@@ -1,18 +1,17 @@
-use super::misc::MiscMethods;
-use super::Backend;
-use super::HasCodegen;
-use crate::common::TypeKind;
-use crate::mir::place::PlaceRef;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Float, Integer};
 
+use super::misc::MiscMethods;
+use super::{Backend, HasCodegen};
+use crate::common::TypeKind;
+use crate::mir::place::PlaceRef;
+
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
 pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
-    fn type_i1(&self) -> Self::Type;
     fn type_i8(&self) -> Self::Type;
     fn type_i16(&self) -> Self::Type;
     fn type_i32(&self) -> Self::Type;
@@ -27,7 +26,6 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
 
     fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
-    fn type_struct(&self, els: &[Self::Type], packed: bool) -> Self::Type;
     fn type_kind(&self, ty: Self::Type) -> TypeKind;
     fn type_ptr(&self) -> Self::Type;
     fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
@@ -93,7 +91,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
             return false;
         }
 
-        let tail = self.tcx().struct_tail_erasing_lifetimes(ty, param_env);
+        let tail = self.tcx().struct_tail_for_codegen(ty, param_env);
         match tail.kind() {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -115,8 +113,8 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     /// The backend type used for a rust type when it's in an SSA register.
     ///
     /// For nearly all types this is the same as the [`Self::backend_type`], however
-    /// `bool` (and other `0`-or-`1` values) are kept as [`BaseTypeMethods::type_i1`]
-    /// in registers but as [`BaseTypeMethods::type_i8`] in memory.
+    /// `bool` (and other `0`-or-`1` values) are kept as `i1` in registers but as
+    /// [`BaseTypeMethods::type_i8`] in memory.
     ///
     /// Converting values between the two different backend types is done using
     /// [`from_immediate`](super::BuilderMethods::from_immediate) and

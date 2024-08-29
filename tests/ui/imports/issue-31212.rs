@@ -6,5 +6,5 @@ mod foo {
 }
 
 fn main() {
-    foo::f(); //~ ERROR cannot find function `f` in module `foo`
+    foo::f(); // cannot find function `f` in module `foo`, but silenced
 }

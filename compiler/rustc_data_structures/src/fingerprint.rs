@@ -1,7 +1,10 @@
-use crate::stable_hasher::impl_stable_traits_for_trivial_type;
-use crate::stable_hasher::{Hash64, StableHasher, StableHasherResult};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::hash::{Hash, Hasher};
+
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+
+use crate::stable_hasher::{
+    impl_stable_traits_for_trivial_type, FromStableHash, Hash64, StableHasherHash,
+};
 
 #[cfg(test)]
 mod tests;
@@ -154,10 +157,11 @@ impl FingerprintHasher for crate::unhash::Unhasher {
     }
 }
 
-impl StableHasherResult for Fingerprint {
+impl FromStableHash for Fingerprint {
+    type Hash = StableHasherHash;
+
     #[inline]
-    fn finish(hasher: StableHasher) -> Self {
-        let (_0, _1) = hasher.finalize();
+    fn from(StableHasherHash([_0, _1]): Self::Hash) -> Self {
         Fingerprint(_0, _1)
     }
 }

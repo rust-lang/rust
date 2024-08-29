@@ -1,9 +1,10 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::consts::{constant, Constant};
+use clippy_config::Conf;
+use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
+use clippy_utils::{get_parent_expr, higher, is_in_const_context, is_integer_const, path_to_local};
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
@@ -164,9 +165,10 @@ pub struct Ranges {
 }
 
 impl Ranges {
-    #[must_use]
-    pub fn new(msrv: Msrv) -> Self {
-        Self { msrv }
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
     }
 }
 
@@ -200,7 +202,7 @@ fn check_possible_range_contains(
     expr: &Expr<'_>,
     span: Span,
 ) {
-    if in_constant(cx, expr.hir_id) {
+    if is_in_const_context(cx) {
         return;
     }
 
@@ -285,9 +287,10 @@ fn check_possible_range_contains(
     if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind
         && op == lhs_op.node
         && let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent())
-        && let Some(snip) = &snippet_opt(cx, new_span)
-        // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
-        && snip.matches('(').count() == snip.matches(')').count()
+        && new_span.check_source_text(cx, |src| {
+            // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
+            src.matches('(').count() == src.matches(')').count()
+        })
     {
         check_possible_range_contains(cx, op, new_lhs, right, expr, new_span);
     }
@@ -316,7 +319,7 @@ fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> 
             _ => return None,
         };
         if let Some(id) = path_to_local(l) {
-            if let Some(c) = constant(cx, cx.typeck_results(), r) {
+            if let Some(c) = ConstEvalCtxt::new(cx).eval(r) {
                 return Some(RangeBounds {
                     val: c,
                     expr: r,
@@ -328,7 +331,7 @@ fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> 
                 });
             }
         } else if let Some(id) = path_to_local(r) {
-            if let Some(c) = constant(cx, cx.typeck_results(), l) {
+            if let Some(c) = ConstEvalCtxt::new(cx).eval(l) {
                 return Some(RangeBounds {
                     val: c,
                     expr: l,
@@ -363,17 +366,19 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             |diag| {
                 let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
                 let end = Sugg::hir(cx, y, "y").maybe_par();
-                if let Some(is_wrapped) = &snippet_opt(cx, span) {
-                    if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
+                match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
+                    Some(true) => {
                         diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
-                    } else {
+                    },
+                    Some(false) => {
                         diag.span_suggestion(
                             span,
                             "use",
                             format!("{start}..={end}"),
                             Applicability::MachineApplicable, // snippet
                         );
-                    }
+                    },
+                    None => {},
                 }
             },
         );
@@ -446,8 +451,9 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }) = higher::Range::hir(expr)
         && let ty = cx.typeck_results().expr_ty(start)
         && let ty::Int(_) | ty::Uint(_) = ty.kind()
-        && let Some(start_idx) = constant(cx, cx.typeck_results(), start)
-        && let Some(end_idx) = constant(cx, cx.typeck_results(), end)
+        && let ecx = ConstEvalCtxt::new(cx)
+        && let Some(start_idx) = ecx.eval(start)
+        && let Some(end_idx) = ecx.eval(end)
         && let Some(ordering) = Constant::partial_cmp(cx.tcx, ty, &start_idx, &end_idx)
         && is_empty_range(limits, ordering)
     {

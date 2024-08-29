@@ -1,13 +1,11 @@
-use clippy_utils::higher::If;
-use rustc_ast::LitKind;
-use rustc_hir::{Block, ExprKind};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{in_constant, is_else_clause, is_integer_literal};
+use clippy_utils::{is_else_clause, is_in_const_context};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
+use rustc_hir::{Expr, ExprKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,80 +45,64 @@ declare_clippy_lint! {
 declare_lint_pass!(BoolToIntWithIf => [BOOL_TO_INT_WITH_IF]);
 
 impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        if !expr.span.from_expansion() && !in_constant(cx, expr.hir_id) {
-            check_if_else(cx, expr);
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        if let ExprKind::If(cond, then, Some(else_)) = expr.kind
+            && matches!(cond.kind, ExprKind::DropTemps(_))
+            && let Some(then_lit) = as_int_bool_lit(then)
+            && let Some(else_lit) = as_int_bool_lit(else_)
+            && then_lit != else_lit
+            && !expr.span.from_expansion()
+            && !is_in_const_context(cx)
+        {
+            let ty = cx.typeck_results().expr_ty(then);
+            let mut applicability = Applicability::MachineApplicable;
+            let snippet = {
+                let mut sugg = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
+                if !then_lit {
+                    sugg = !sugg;
+                }
+                sugg
+            };
+            let suggestion = {
+                let mut s = Sugg::NonParen(format!("{ty}::from({snippet})").into());
+                // when used in else clause if statement should be wrapped in curly braces
+                if is_else_clause(cx.tcx, expr) {
+                    s = s.blockify();
+                }
+                s
+            };
+
+            let into_snippet = snippet.clone().maybe_par();
+            let as_snippet = snippet.as_ty(ty);
+
+            span_lint_and_then(
+                cx,
+                BOOL_TO_INT_WITH_IF,
+                expr.span,
+                "boolean to int conversion using if",
+                |diag| {
+                    diag.span_suggestion(expr.span, "replace with from", suggestion, applicability);
+                    diag.note(format!(
+                        "`{as_snippet}` or `{into_snippet}.into()` can also be valid options"
+                    ));
+                },
+            );
         }
     }
 }
 
-fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-    if let Some(If {
-        cond,
-        then,
-        r#else: Some(r#else),
-    }) = If::hir(expr)
-        && let Some(then_lit) = int_literal(then)
-        && let Some(else_lit) = int_literal(r#else)
+fn as_int_bool_lit(e: &Expr<'_>) -> Option<bool> {
+    if let ExprKind::Block(b, _) = e.kind
+        && b.stmts.is_empty()
+        && let Some(e) = b.expr
+        && let ExprKind::Lit(lit) = e.kind
+        && let LitKind::Int(x, _) = lit.node
     {
-        let inverted = if is_integer_literal(then_lit, 1) && is_integer_literal(else_lit, 0) {
-            false
-        } else if is_integer_literal(then_lit, 0) && is_integer_literal(else_lit, 1) {
-            true
-        } else {
-            // Expression isn't boolean, exit
-            return;
-        };
-        let mut applicability = Applicability::MachineApplicable;
-        let snippet = {
-            let mut sugg = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
-            if inverted {
-                sugg = !sugg;
-            }
-            sugg
-        };
-
-        let ty = cx.typeck_results().expr_ty(then_lit); // then and else must be of same type
-
-        let suggestion = {
-            let wrap_in_curly = is_else_clause(cx.tcx, expr);
-            let mut s = Sugg::NonParen(format!("{ty}::from({snippet})").into());
-            if wrap_in_curly {
-                s = s.blockify();
-            }
-            s
-        }; // when used in else clause if statement should be wrapped in curly braces
-
-        let into_snippet = snippet.clone().maybe_par();
-        let as_snippet = snippet.as_ty(ty);
-
-        span_lint_and_then(
-            cx,
-            BOOL_TO_INT_WITH_IF,
-            expr.span,
-            "boolean to int conversion using if",
-            |diag| {
-                diag.span_suggestion(expr.span, "replace with from", suggestion, applicability);
-                diag.note(format!(
-                    "`{as_snippet}` or `{into_snippet}.into()` can also be valid options"
-                ));
-            },
-        );
-    };
-}
-
-// If block contains only a int literal expression, return literal expression
-fn int_literal<'tcx>(expr: &'tcx rustc_hir::Expr<'tcx>) -> Option<&'tcx rustc_hir::Expr<'tcx>> {
-    if let ExprKind::Block(block, _) = expr.kind
-        && let Block {
-            stmts: [], // Shouldn't lint if statements with side effects
-            expr: Some(expr),
-            ..
-        } = block
-        && let ExprKind::Lit(lit) = &expr.kind
-        && let LitKind::Int(_, _) = lit.node
-    {
-        Some(expr)
+        match x.get() {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        }
     } else {
         None
     }

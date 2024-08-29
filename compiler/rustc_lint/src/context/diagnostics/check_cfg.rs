@@ -1,5 +1,6 @@
 use rustc_middle::bug;
-use rustc_session::{config::ExpectedValues, Session};
+use rustc_session::config::ExpectedValues;
+use rustc_session::Session;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{sym, Span, Symbol};
 
@@ -39,6 +40,22 @@ fn to_check_cfg_arg(name: Symbol, value: Option<Symbol>, quotes: EscapeQuotes) -
         format!("cfg({name}, values({values}))")
     } else {
         format!("cfg({name})")
+    }
+}
+
+fn cargo_help_sub(
+    sess: &Session,
+    inst: &impl Fn(EscapeQuotes) -> String,
+) -> lints::UnexpectedCfgCargoHelp {
+    // We don't want to suggest the `build.rs` way to expected cfgs if we are already in a
+    // `build.rs`. We therefor do a best effort check (looking if the `--crate-name` is
+    // `build_script_build`) to try to figure out if we are building a Cargo build script
+
+    let unescaped = &inst(EscapeQuotes::No);
+    if matches!(&sess.opts.crate_name, Some(crate_name) if crate_name == "build_script_build") {
+        lints::UnexpectedCfgCargoHelp::lint_cfg(unescaped)
+    } else {
+        lints::UnexpectedCfgCargoHelp::lint_cfg_and_build_rs(unescaped, &inst(EscapeQuotes::Yes))
     }
 }
 
@@ -162,14 +179,7 @@ pub(super) fn unexpected_cfg_name(
     let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
     let invocation_help = if is_from_cargo {
-        let sub = if !is_feature_cfg {
-            Some(lints::UnexpectedCfgCargoHelp::new(
-                &inst(EscapeQuotes::No),
-                &inst(EscapeQuotes::Yes),
-            ))
-        } else {
-            None
-        };
+        let sub = if !is_feature_cfg { Some(cargo_help_sub(sess, &inst)) } else { None };
         lints::unexpected_cfg_name::InvocationHelp::Cargo { sub }
     } else {
         lints::unexpected_cfg_name::InvocationHelp::Rustc(lints::UnexpectedCfgRustcHelp::new(
@@ -252,10 +262,16 @@ pub(super) fn unexpected_cfg_value(
         lints::unexpected_cfg_value::CodeSuggestion::RemoveCondition { suggestion, name }
     };
 
-    // We don't want to suggest adding values to well known names
-    // since those are defined by rustc it-self. Users can still
-    // do it if they want, but should not encourage them.
-    let is_cfg_a_well_know_name = sess.psess.check_config.well_known_names.contains(&name);
+    // We don't want to encourage people to add values to a well-known names, as these are
+    // defined by rustc/Rust itself. Users can still do this if they wish, but should not be
+    // encouraged to do so.
+    let can_suggest_adding_value = !sess.psess.check_config.well_known_names.contains(&name)
+        // Except when working on rustc or the standard library itself, in which case we want to
+        // suggest adding these cfgs to the "normal" place because of bootstraping reasons. As a
+        // basic heuristic, we use the "cheat" unstable feature enable method and the
+        // non-ui-testing enabled option.
+        || (matches!(sess.psess.unstable_features, rustc_feature::UnstableFeatures::Cheat)
+            && !sess.opts.unstable_opts.ui_testing);
 
     let inst = |escape_quotes| to_check_cfg_arg(name, value.map(|(v, _s)| v), escape_quotes);
 
@@ -266,17 +282,14 @@ pub(super) fn unexpected_cfg_value(
             } else {
                 Some(lints::unexpected_cfg_value::CargoHelp::DefineFeatures)
             }
-        } else if !is_cfg_a_well_know_name {
-            Some(lints::unexpected_cfg_value::CargoHelp::Other(lints::UnexpectedCfgCargoHelp::new(
-                &inst(EscapeQuotes::No),
-                &inst(EscapeQuotes::Yes),
-            )))
+        } else if can_suggest_adding_value {
+            Some(lints::unexpected_cfg_value::CargoHelp::Other(cargo_help_sub(sess, &inst)))
         } else {
             None
         };
         lints::unexpected_cfg_value::InvocationHelp::Cargo(help)
     } else {
-        let help = if !is_cfg_a_well_know_name {
+        let help = if can_suggest_adding_value {
             Some(lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No)))
         } else {
             None

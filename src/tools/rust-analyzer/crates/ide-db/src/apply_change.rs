@@ -15,13 +15,12 @@ use crate::{symbol_index::SymbolsDatabase, ChangeWithProcMacros, RootDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
-        let _p =
-            tracing::span!(tracing::Level::INFO, "RootDatabase::request_cancellation").entered();
+        let _p = tracing::info_span!("RootDatabase::request_cancellation").entered();
         self.synthetic_write(Durability::LOW);
     }
 
     pub fn apply_change(&mut self, change: ChangeWithProcMacros) {
-        let _p = tracing::span!(tracing::Level::INFO, "RootDatabase::apply_change").entered();
+        let _p = tracing::info_span!("RootDatabase::apply_change").entered();
         self.request_cancellation();
         tracing::trace!("apply_change {:?}", change);
         if let Some(roots) = &change.source_change.roots {

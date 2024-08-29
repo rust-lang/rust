@@ -1,12 +1,13 @@
 //! Implementation of the `#[cfg_accessible(path)]` attribute macro.
 
-use crate::errors;
 use rustc_ast as ast;
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+
+use crate::errors;
 
 pub(crate) struct Expander;
 
@@ -51,6 +52,7 @@ impl MultiItemModifier for Expander {
             ast::AttrStyle::Outer,
             sym::cfg_accessible,
             template,
+            true,
         );
 
         let Some(path) = validate_input(ecx, meta_item) else {

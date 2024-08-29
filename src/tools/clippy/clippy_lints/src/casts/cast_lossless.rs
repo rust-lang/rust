@@ -1,86 +1,78 @@
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_constant;
-use clippy_utils::source::{snippet_opt, snippet_with_applicability};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_in_const_context;
+use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_isize_or_usize;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath, TyKind};
+use rustc_hir::{Expr, QPath, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, FloatTy, Ty, UintTy};
+use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_span::hygiene;
 
 use super::{utils, CAST_LOSSLESS};
 
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,
-    cast_op: &Expr<'_>,
+    cast_from_expr: &Expr<'_>,
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
     cast_to_hir: &rustc_hir::Ty<'_>,
     msrv: &Msrv,
 ) {
-    if !should_lint(cx, expr, cast_from, cast_to, msrv) {
+    if !should_lint(cx, cast_from, cast_to, msrv) {
         return;
     }
 
-    // The suggestion is to use a function call, so if the original expression
-    // has parens on the outside, they are no longer needed.
-    let mut app = Applicability::MachineApplicable;
-    let opt = snippet_opt(cx, cast_op.span.source_callsite());
-    let sugg = opt.as_ref().map_or_else(
-        || {
-            app = Applicability::HasPlaceholders;
-            ".."
-        },
-        |snip| {
-            if should_strip_parens(cast_op, snip) {
-                &snip[1..snip.len() - 1]
-            } else {
-                snip.as_str()
-            }
-        },
-    );
-
-    // Display the type alias instead of the aliased type. Fixes #11285
-    //
-    // FIXME: Once `lazy_type_alias` is stabilized(?) we should use `rustc_middle` types instead,
-    // this will allow us to display the right type with `cast_from` as well.
-    let cast_to_fmt = if let TyKind::Path(QPath::Resolved(None, path)) = cast_to_hir.kind
-        // It's a bit annoying but the turbofish is optional for types. A type in an `as` cast
-        // shouldn't have these if they're primitives, which are the only things we deal with.
-        //
-        // This could be removed for performance if this check is determined to have a pretty major
-        // effect.
-        && path.segments.iter().all(|segment| segment.args.is_none())
-    {
-        snippet_with_applicability(cx, cast_to_hir.span, "..", &mut app)
-    } else {
-        cast_to.to_string().into()
-    };
-
-    let message = if cast_from.is_bool() {
-        format!("casting `{cast_from}` to `{cast_to_fmt}` is more cleanly stated with `{cast_to_fmt}::from(_)`")
-    } else {
-        format!("casting `{cast_from}` to `{cast_to_fmt}` may become silently lossy if you later change the type")
-    };
-
-    span_lint_and_sugg(
+    span_lint_and_then(
         cx,
         CAST_LOSSLESS,
         expr.span,
-        message,
-        "try",
-        format!("{cast_to_fmt}::from({sugg})"),
-        app,
+        format!("casts from `{cast_from}` to `{cast_to}` can be expressed infallibly using `From`"),
+        |diag| {
+            diag.help("an `as` cast can become silently lossy if the types change in the future");
+            let mut applicability = Applicability::MachineApplicable;
+            let from_sugg = Sugg::hir_with_context(cx, cast_from_expr, expr.span.ctxt(), "<from>", &mut applicability);
+            let Some(ty) = hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt()).get_source_text(cx) else {
+                return;
+            };
+            match cast_to_hir.kind {
+                TyKind::Infer => {
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        "use `Into::into` instead",
+                        format!("{}.into()", from_sugg.maybe_par()),
+                        applicability,
+                    );
+                },
+                // Don't suggest `A<_>::B::From(x)` or `macro!()::from(x)`
+                kind if matches!(kind, TyKind::Path(QPath::Resolved(_, path)) if path.segments.iter().any(|s| s.args.is_some()))
+                    || !cast_to_hir.span.eq_ctxt(expr.span) =>
+                {
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        format!("use `<{ty}>::from` instead"),
+                        format!("<{ty}>::from({from_sugg})"),
+                        applicability,
+                    );
+                },
+                _ => {
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        format!("use `{ty}::from` instead"),
+                        format!("{ty}::from({from_sugg})"),
+                        applicability,
+                    );
+                },
+            }
+        },
     );
 }
 
-fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
+fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
-    //
-    // If destination is u128, do not lint because source type cannot be larger
-    // If source is bool, still lint due to the lint message differing (refers to style)
-    if in_constant(cx, expr.hir_id) || (!cast_from.is_bool() && matches!(cast_to.kind(), ty::Uint(UintTy::U128))) {
+    if is_in_const_context(cx) {
         return false;
     }
 
@@ -109,13 +101,4 @@ fn should_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to
             matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
         },
     }
-}
-
-fn should_strip_parens(cast_expr: &Expr<'_>, snip: &str) -> bool {
-    if let ExprKind::Binary(_, _, _) = cast_expr.kind {
-        if snip.starts_with('(') && snip.ends_with(')') {
-            return true;
-        }
-    }
-    false
 }

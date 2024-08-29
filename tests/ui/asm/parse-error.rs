@@ -1,7 +1,5 @@
 //@ needs-asm-support
 
-#![feature(asm_const)]
-
 use std::arch::{asm, global_asm};
 
 fn main() {
@@ -111,11 +109,15 @@ global_asm!("{}", const);
 global_asm!("{}", const(reg) FOO);
 //~^ ERROR expected one of
 global_asm!("", options(FOO));
-//~^ ERROR expected one of
+//~^ ERROR expected one of `)`, `att_syntax`, or `raw`, found `FOO`
+global_asm!("", options(FOO,));
+//~^ ERROR expected one of `)`, `att_syntax`, or `raw`, found `FOO`
 global_asm!("", options(nomem FOO));
-//~^ ERROR expected one of
+//~^ ERROR the `nomem` option cannot be used with `global_asm!`
+//~| ERROR expected one of `)` or `,`, found `FOO`
 global_asm!("", options(nomem, FOO));
-//~^ ERROR expected one of
+//~^ ERROR the `nomem` option cannot be used with `global_asm!`
+//~| ERROR expected one of `)`, `att_syntax`, or `raw`, found `FOO`
 global_asm!("{}", options(), const FOO);
 global_asm!("", clobber_abi(FOO));
 //~^ ERROR expected string literal
@@ -142,5 +144,16 @@ global_asm!(format!("{{{}}}", 0), const FOO);
 //~^ ERROR asm template must be a string literal
 global_asm!("{1}", format!("{{{}}}", 0), const FOO, const BAR);
 //~^ ERROR asm template must be a string literal
-global_asm!("{}", label {});
-//~^ ERROR expected operand, options, or additional template string
+
+global_asm!("{}", in(reg));
+//~^ ERROR the `in` operand cannot be used with `global_asm!`
+global_asm!("{}", out(reg));
+//~^ ERROR the `out` operand cannot be used with `global_asm!`
+global_asm!("{}", lateout(reg));
+//~^ ERROR the `lateout` operand cannot be used with `global_asm!`
+global_asm!("{}", inout(reg));
+//~^ ERROR the `inout` operand cannot be used with `global_asm!`
+global_asm!("{}", inlateout(reg));
+//~^ ERROR the `inlateout` operand cannot be used with `global_asm!`
+global_asm!("{}", label(reg));
+//~^ ERROR the `label` operand cannot be used with `global_asm!`

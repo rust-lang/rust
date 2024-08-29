@@ -448,7 +448,7 @@ LL | const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:198:1
+  --> $DIR/raw-bytes.rs:199:1
    |
 LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC27<imm>, but expected a vtable pointer
@@ -459,7 +459,7 @@ LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transm
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:202:1
+  --> $DIR/raw-bytes.rs:204:1
    |
 LL | const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) };
    | ^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to uninhabited type [!; 1]
@@ -470,7 +470,7 @@ LL | const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:203:1
+  --> $DIR/raw-bytes.rs:205:1
    |
 LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 1]) };
    | ^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a value of the never type `!`
@@ -481,7 +481,7 @@ LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 1]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:204:1
+  --> $DIR/raw-bytes.rs:206:1
    |
 LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 42]) };
    | ^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a value of the never type `!`
@@ -492,7 +492,7 @@ LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 42]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:208:1
+  --> $DIR/raw-bytes.rs:210:1
    |
 LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
@@ -503,7 +503,7 @@ LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:211:1
+  --> $DIR/raw-bytes.rs:213:1
    |
 LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, mem::size_of::<&u32>()) };
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
@@ -516,7 +516,7 @@ LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, mem:
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:214:1
+  --> $DIR/raw-bytes.rs:216:1
    |
 LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) };
    | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered 0x11, but expected a boolean
@@ -527,7 +527,7 @@ LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4)
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:218:1
+  --> $DIR/raw-bytes.rs:220:1
    |
 LL | pub static S7: &[u16] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[1]: encountered uninitialized memory, but expected an integer
@@ -538,7 +538,7 @@ LL | pub static S7: &[u16] = unsafe {
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:225:1
+  --> $DIR/raw-bytes.rs:227:1
    |
 LL | pub static R4: &[u8] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered uninitialized memory, but expected an integer
@@ -549,7 +549,7 @@ LL | pub static R4: &[u8] = unsafe {
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:230:1
+  --> $DIR/raw-bytes.rs:232:1
    |
 LL | pub static R5: &[u8] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered a pointer, but expected an integer
@@ -562,7 +562,7 @@ LL | pub static R5: &[u8] = unsafe {
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/raw-bytes.rs:235:1
+  --> $DIR/raw-bytes.rs:237:1
    |
 LL | pub static R6: &[bool] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>[0]: encountered 0x11, but expected a boolean

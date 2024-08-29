@@ -6,8 +6,12 @@ FROM centos:7
 
 WORKDIR /build
 
+# CentOS 7 EOL is June 30, 2024, but the repos remain in the vault.
+RUN sed -i /etc/yum.repos.d/*.repo -e 's!^mirrorlist!#mirrorlist!' \
+  -e 's!^#baseurl=http://mirror.centos.org/!baseurl=https://vault.centos.org/!'
+RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
+
 RUN yum upgrade -y && \
-    yum install -y epel-release && \
     yum install -y \
       automake \
       bzip2 \

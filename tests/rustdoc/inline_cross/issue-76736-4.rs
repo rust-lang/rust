@@ -10,10 +10,10 @@
 extern crate issue_76736_1;
 extern crate issue_76736_2;
 
-// @has foo/struct.Foo.html
-// @has - '//*[@class="impl"]//h3[@class="code-header"]' 'MaybeResult'
+//@ has foo/struct.Foo.html
+//@ has - '//*[@class="impl"]//h3[@class="code-header"]' 'MaybeResult'
 pub struct Foo;
 
-// @has foo/struct.Bar.html
-// @has - '//*[@class="impl"]//h3[@class="code-header"]' 'MaybeResult'
+//@ has foo/struct.Bar.html
+//@ has - '//*[@class="impl"]//h3[@class="code-header"]' 'MaybeResult'
 pub use issue_76736_2::Bar;

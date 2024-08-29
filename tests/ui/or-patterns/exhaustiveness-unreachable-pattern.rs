@@ -29,6 +29,11 @@ fn main() {
         (1, 4 | 5) => {} //~ ERROR unreachable pattern
         _ => {}
     }
+    match (0u8, 0u8, 0u8) {
+        (0, 0, 0) => {}
+        (0, 0 | 1, 0) => {} //~ ERROR unreachable pattern
+        _ => {}
+    }
     match (true, true) {
         (false | true, false | true) => (),
     }

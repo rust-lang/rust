@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, effects, min_specialization, rustc_attrs)]
+#![feature(const_trait_impl, effects, min_specialization, rustc_attrs)] //~ WARN the feature `effects` is incomplete
 
 #[rustc_specialization_trait]
 #[const_trait]
@@ -22,6 +22,8 @@ impl<T: ~const Spec> const A for T {
 
 impl<T: Spec + Sup> A for T {
 //~^ ERROR: cannot specialize
+//~| ERROR: cannot specialize
+//~| ERROR: cannot specialize
 //FIXME(effects) ~| ERROR: missing `~const` qualifier
     fn a() -> u32 {
         3

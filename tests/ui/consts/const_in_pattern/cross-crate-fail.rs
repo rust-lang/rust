@@ -1,7 +1,5 @@
 //@ aux-build:consts.rs
 
-#![warn(indirect_structural_match)]
-
 extern crate consts;
 
 struct Defaulted;

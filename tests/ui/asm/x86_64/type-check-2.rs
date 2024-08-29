@@ -13,27 +13,19 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
+        //~^ ERROR isn't initialized
         let mut y: u64;
         asm!("{}", inout(reg) y);
+        //~^ ERROR isn't initialized
         let _ = y;
 
         // Outputs require mutable places
 
         let v: Vec<u64> = vec![0, 1, 2];
+        //~^ ERROR is not declared as mutable
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
         asm!("{}", inout(reg) v[0]);
-
-        // Sym operands must point to a function or static
-
-        const C: i32 = 0;
-        static S: i32 = 0;
-        asm!("{}", sym S);
-        asm!("{}", sym main);
-        asm!("{}", sym C);
-        //~^ ERROR invalid `sym` operand
-        asm!("{}", sym x);
-        //~^ ERROR invalid `sym` operand
 
         // Register operands must be Copy
 
@@ -76,12 +68,3 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
-
-// Sym operands must point to a function or static
-
-const C: i32 = 0;
-static S: i32 = 0;
-global_asm!("{}", sym S);
-global_asm!("{}", sym main);
-global_asm!("{}", sym C);
-//~^ ERROR invalid `sym` operand

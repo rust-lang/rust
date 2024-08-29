@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 
+use rinja::Template;
 use rustc_data_structures::fx::FxHashMap;
 
+use super::static_files::{StaticFiles, STATIC_FILES};
 use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
-
-use askama::Template;
-
-use super::static_files::{StaticFiles, STATIC_FILES};
 
 #[derive(Clone)]
 pub(crate) struct Layout {
@@ -70,6 +68,8 @@ struct PageLayout<'a> {
     display_krate_version_number: &'a str,
     display_krate_version_extra: &'a str,
 }
+
+pub(crate) use crate::html::render::sidebar::filters;
 
 pub(crate) fn render<T: Print, S: Print>(
     layout: &Layout,

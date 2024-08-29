@@ -2,8 +2,8 @@
 #![deny(warnings)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
-// @has no_std/fn.foo.html '//a/[@href="{{channel}}/core/primitive.u8.html"]' 'u8'
-// @has no_std/fn.foo.html '//a/[@href="{{channel}}/core/primitive.u8.html"]' 'primitive link'
+//@ has no_std/fn.foo.html '//a/[@href="{{channel}}/core/primitive.u8.html"]' 'u8'
+//@ has no_std/fn.foo.html '//a/[@href="{{channel}}/core/primitive.u8.html"]' 'primitive link'
 /// Link to [primitive link][u8]
 pub fn foo() -> u8 {}
 

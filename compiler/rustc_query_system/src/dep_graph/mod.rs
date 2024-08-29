@@ -5,18 +5,19 @@ mod graph;
 mod query;
 mod serialized;
 
+use std::panic;
+
 pub use dep_node::{DepKind, DepKindStruct, DepNode, DepNodeParams, WorkProductId};
 pub(crate) use graph::DepGraphData;
 pub use graph::{hash_result, DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap};
 pub use query::DepGraphQuery;
+use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_session::Session;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
+use tracing::instrument;
 
 use self::graph::{print_markframe_trace, MarkFrame};
 use crate::ich::StableHashingContext;
-use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_session::Session;
-use std::panic;
-use tracing::instrument;
 
 pub trait DepContext: Copy {
     type Deps: Deps;
@@ -51,20 +52,24 @@ pub trait DepContext: Copy {
     }
 
     /// Try to force a dep node to execute and see if it's green.
+    ///
+    /// Returns true if the query has actually been forced. It is valid that a query
+    /// fails to be forced, e.g. when the query key cannot be reconstructed from the
+    /// dep-node or when the query kind outright does not support it.
     #[inline]
     #[instrument(skip(self, frame), level = "debug")]
     fn try_force_from_dep_node(self, dep_node: DepNode, frame: Option<&MarkFrame<'_>>) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
-            if let Err(value) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                f(self, dep_node);
-            })) {
-                if !value.is::<rustc_errors::FatalErrorMarker>() {
-                    print_markframe_trace(self.dep_graph(), frame);
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node))) {
+                Err(value) => {
+                    if !value.is::<rustc_errors::FatalErrorMarker>() {
+                        print_markframe_trace(self.dep_graph(), frame);
+                    }
+                    panic::resume_unwind(value)
                 }
-                panic::resume_unwind(value)
+                Ok(query_has_been_forced) => query_has_been_forced,
             }
-            true
         } else {
             false
         }

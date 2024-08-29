@@ -19,7 +19,7 @@ LL |     println!("{:p}", unsafe { &symbol });
 help: use `addr_of!` instead to create a raw pointer
    |
 LL |     println!("{:p}", unsafe { addr_of!(symbol) });
-   |                               ~~~~~~~~~~~~~~~~
+   |                               ~~~~~~~~~      +
 
 error: aborting due to 1 previous error; 1 warning emitted
 

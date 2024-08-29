@@ -11,23 +11,23 @@ pub enum E {
 // CHECK-LABEL: @exhaustive_match
 #[no_mangle]
 pub fn exhaustive_match(e: E) -> u8 {
-// CHECK: switch{{.*}}, label %[[OTHERWISE:[a-zA-Z0-9_]+]] [
-// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[A:[a-zA-Z0-9_]+]]
-// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[B:[a-zA-Z0-9_]+]]
-// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[C:[a-zA-Z0-9_]+]]
-// CHECK-NEXT: ]
-// CHECK: [[OTHERWISE]]:
-// CHECK-NEXT: unreachable
-//
-// CHECK: [[A]]:
-// CHECK-NEXT: store i8 0, ptr %_0, align 1
-// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
-// CHECK: [[B]]:
-// CHECK-NEXT: store i8 1, ptr %_0, align 1
-// CHECK-NEXT: br label %[[EXIT]]
-// CHECK: [[C]]:
-// CHECK-NEXT: store i8 3, ptr %_0, align 1
-// CHECK-NEXT: br label %[[EXIT]]
+    // CHECK: switch{{.*}}, label %[[OTHERWISE:[a-zA-Z0-9_]+]] [
+    // CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[A:[a-zA-Z0-9_]+]]
+    // CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[B:[a-zA-Z0-9_]+]]
+    // CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[C:[a-zA-Z0-9_]+]]
+    // CHECK-NEXT: ]
+    // CHECK: [[OTHERWISE]]:
+    // CHECK-NEXT: unreachable
+    //
+    // CHECK: [[A]]:
+    // CHECK-NEXT: store i8 0, ptr %_0, align 1
+    // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
+    // CHECK: [[B]]:
+    // CHECK-NEXT: store i8 1, ptr %_0, align 1
+    // CHECK-NEXT: br label %[[EXIT]]
+    // CHECK: [[C]]:
+    // CHECK-NEXT: store i8 3, ptr %_0, align 1
+    // CHECK-NEXT: br label %[[EXIT]]
     match e {
         E::A => 0,
         E::B => 1,

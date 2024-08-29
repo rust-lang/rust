@@ -1,11 +1,11 @@
-error: reached the recursion limit while instantiating `A::matches::$CLOSURE`
-  --> $DIR/issue-22638.rs:57:9
+error: reached the recursion limit while instantiating `A::matches::<{closure@$DIR/issue-22638.rs:42:23: 42:25}>`
+  --> $DIR/issue-22638.rs:54:9
    |
 LL |         a.matches(f)
    |         ^^^^^^^^^^^^
    |
 note: `A::matches` defined here
-  --> $DIR/issue-22638.rs:16:5
+  --> $DIR/issue-22638.rs:13:5
    |
 LL |     pub fn matches<F: Fn()>(&self, f: &F) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

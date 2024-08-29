@@ -1,12 +1,10 @@
-use rustc_middle::mir::{
-    interpret::{alloc_range, AllocRange, Pointer},
-    ConstValue,
-};
+use rustc_middle::mir::interpret::{alloc_range, AllocRange, Pointer};
+use rustc_middle::mir::ConstValue;
+use stable_mir::mir::Mutability;
+use stable_mir::ty::{Allocation, ProvenanceMap};
 use stable_mir::Error;
 
 use crate::rustc_smir::{Stable, Tables};
-use stable_mir::mir::Mutability;
-use stable_mir::ty::{Allocation, ProvenanceMap};
 
 /// Creates new empty `Allocation` from given `Align`.
 fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
@@ -134,7 +132,7 @@ pub(super) fn allocation_filter<'tcx>(
         ));
     }
     Allocation {
-        bytes: bytes,
+        bytes,
         provenance: ProvenanceMap { ptrs },
         align: alloc.align.bytes(),
         mutability: alloc.mutability.stable(tables),

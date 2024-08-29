@@ -8,6 +8,7 @@ use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::Path
 use hir::{ChangeWithProcMacros, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
+use paths::Utf8PathBuf;
 use profile::StopWatch;
 use project_model::target_data_layout::RustcDataLayoutConfig;
 use project_model::{
@@ -64,16 +65,14 @@ impl Tester {
     fn new() -> Result<Self> {
         let mut path = std::env::temp_dir();
         path.push("ra-rustc-test.rs");
-        let tmp_file = AbsPathBuf::try_from(path).unwrap();
+        let tmp_file = AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).unwrap()).unwrap();
         std::fs::write(&tmp_file, "")?;
         let cargo_config =
             CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
 
-        let sysroot =
-            Ok(Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env, false)
-                .unwrap());
+        let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
         let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(sysroot.as_ref().ok()),
+            RustcDataLayoutConfig::Rustc(&sysroot),
             None,
             &cargo_config.extra_env,
         );
@@ -156,7 +155,7 @@ impl Tester {
                     let root_file = self.root_file;
                     move || {
                         let res = std::panic::catch_unwind(move || {
-                            analysis.diagnostics(
+                            analysis.full_diagnostics(
                                 diagnostic_config,
                                 ide::AssistResolveStrategy::None,
                                 root_file,
@@ -222,8 +221,8 @@ impl Tester {
             self.pass_count += 1;
         } else {
             println!("{p:?} FAIL");
-            println!("actual   (r-a)   = {:?}", actual);
-            println!("expected (rustc) = {:?}", expected);
+            println!("actual   (r-a)   = {actual:?}");
+            println!("expected (rustc) = {expected:?}");
             self.fail_count += 1;
         }
     }

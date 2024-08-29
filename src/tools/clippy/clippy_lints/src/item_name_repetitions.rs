@@ -1,5 +1,4 @@
-//! lint on enum variants that are prefixed or suffixed by the same characters
-
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
 use clippy_utils::is_bool;
 use clippy_utils::macros::span_is_local;
@@ -152,21 +151,14 @@ pub struct ItemNameRepetitions {
 }
 
 impl ItemNameRepetitions {
-    #[must_use]
-    pub fn new(
-        enum_threshold: u64,
-        struct_threshold: u64,
-        avoid_breaking_exported_api: bool,
-        allow_private_module_inception: bool,
-        allowed_prefixes: &[String],
-    ) -> Self {
+    pub fn new(conf: &'static Conf) -> Self {
         Self {
             modules: Vec::new(),
-            enum_threshold,
-            struct_threshold,
-            avoid_breaking_exported_api,
-            allow_private_module_inception,
-            allowed_prefixes: allowed_prefixes.iter().map(|s| to_camel_case(s)).collect(),
+            enum_threshold: conf.enum_variant_name_threshold,
+            struct_threshold: conf.struct_field_name_threshold,
+            avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
+            allow_private_module_inception: conf.allow_private_module_inception,
+            allowed_prefixes: conf.allowed_prefixes.iter().map(|s| to_camel_case(s)).collect(),
         }
     }
 

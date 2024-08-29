@@ -12,8 +12,8 @@ LL |     type F<'a>: Fn() -> u32;
    |                 ^^^^^^^^^^^ required by this bound in `Fun::F`
 help: consider restricting type parameter `T`
    |
-LL | impl<T: std::ops::Fn<()>> Fun for T {
-   |       ++++++++++++++++++
+LL | impl<T: Fn()> Fun for T {
+   |       ++++++
 
 error: aborting due to 1 previous error
 

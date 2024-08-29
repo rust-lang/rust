@@ -1,10 +1,10 @@
 //! Metadata from source code coverage analysis and instrumentation.
 
+use std::fmt::{self, Debug, Formatter};
+
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
-
-use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
     /// Used by [`CoverageKind::BlockMarker`] to mark blocks during THIR-to-MIR
@@ -103,7 +103,7 @@ pub enum CoverageKind {
     SpanMarker,
 
     /// Marks its enclosing basic block with an ID that can be referred to by
-    /// side data in [`BranchInfo`].
+    /// side data in [`CoverageInfoHi`].
     ///
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
@@ -163,7 +163,7 @@ impl Debug for CoverageKind {
 
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct CodeRegion {
+pub struct SourceRegion {
     pub file_name: Symbol,
     pub start_line: u32,
     pub start_col: u32,
@@ -171,7 +171,7 @@ pub struct CodeRegion {
     pub end_col: u32,
 }
 
-impl Debug for CodeRegion {
+impl Debug for SourceRegion {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(
             fmt,
@@ -220,19 +220,6 @@ pub enum MappingKind {
 }
 
 impl MappingKind {
-    /// Iterator over all coverage terms in this mapping kind.
-    pub fn terms(&self) -> impl Iterator<Item = CovTerm> {
-        let zero = || None.into_iter().chain(None);
-        let one = |a| Some(a).into_iter().chain(None);
-        let two = |a, b| Some(a).into_iter().chain(Some(b));
-        match *self {
-            Self::Code(term) => one(term),
-            Self::Branch { true_term, false_term } => two(true_term, false_term),
-            Self::MCDCBranch { true_term, false_term, .. } => two(true_term, false_term),
-            Self::MCDCDecision(_) => zero(),
-        }
-    }
-
     /// Returns a copy of this mapping kind, in which all coverage terms have
     /// been replaced with ones returned by the given function.
     pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {
@@ -255,7 +242,7 @@ impl MappingKind {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub kind: MappingKind,
-    pub code_region: CodeRegion,
+    pub source_region: SourceRegion,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,
@@ -274,10 +261,15 @@ pub struct FunctionCoverageInfo {
     pub mcdc_num_condition_bitmaps: usize,
 }
 
-/// Branch information recorded during THIR-to-MIR lowering, and stored in MIR.
+/// Coverage information for a function, recorded during MIR building and
+/// attached to the corresponding `mir::Body`. Used by the `InstrumentCoverage`
+/// MIR pass.
+///
+/// ("Hi" indicates that this is "high-level" information collected at the
+/// THIR/MIR boundary, before the MIR-based coverage instrumentation pass.)
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct BranchInfo {
+pub struct CoverageInfoHi {
     /// 1 more than the highest-numbered [`CoverageKind::BlockMarker`] that was
     /// injected into the MIR body. This makes it possible to allocate per-ID
     /// data structures without having to scan the entire body first.
@@ -329,14 +321,14 @@ pub struct MCDCBranchSpan {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct DecisionInfo {
     pub bitmap_idx: u32,
-    pub conditions_num: u16,
+    pub num_conditions: u16,
 }
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct MCDCDecisionSpan {
     pub span: Span,
-    pub conditions_num: usize,
+    pub num_conditions: usize,
     pub end_markers: Vec<BlockMarkerId>,
     pub decision_depth: u16,
 }

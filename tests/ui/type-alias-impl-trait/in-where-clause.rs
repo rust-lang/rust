@@ -4,13 +4,13 @@
 #![feature(type_alias_impl_trait)]
 type Bar = impl Sized;
 //~^ ERROR: cycle
-//~| ERROR: cycle
 
 fn foo() -> Bar
 where
     Bar: Send,
 {
     [0; 1 + 2]
+    //~^ ERROR: type annotations needed: cannot satisfy `Bar: Send`
 }
 
 fn main() {}

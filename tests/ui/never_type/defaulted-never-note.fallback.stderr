@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `!: ImplementedForUnitButNotNever` is not satisfied
-  --> $DIR/defaulted-never-note.rs:30:9
+  --> $DIR/defaulted-never-note.rs:32:9
    |
 LL |     foo(_x);
    |     --- ^^ the trait `ImplementedForUnitButNotNever` is not implemented for `!`

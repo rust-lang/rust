@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::iter;
 
 use hir::AsAssocItem;
@@ -6,6 +7,7 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::import_assets::{ImportCandidate, LocatedImport},
 };
+use syntax::ast::HasGenericArgs;
 use syntax::{
     ast,
     ast::{make, HasArgList},
@@ -37,19 +39,16 @@ use crate::{
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let mut proposed_imports: Vec<_> = import_assets
-        .search_for_relative_paths(&ctx.sema, ctx.config.prefer_no_std, ctx.config.prefer_prelude)
-        .collect();
+    let cfg = ctx.config.import_path_config();
+
+    let mut proposed_imports: Vec<_> =
+        import_assets.search_for_relative_paths(&ctx.sema, cfg).collect();
     if proposed_imports.is_empty() {
         return None;
     }
 
-    let range = match &syntax_under_caret {
-        NodeOrToken::Node(node) => ctx.sema.original_range(node).range,
-        NodeOrToken::Token(token) => token.text_range(),
-    };
     let candidate = import_assets.import_candidate();
-    let qualify_candidate = match syntax_under_caret {
+    let qualify_candidate = match syntax_under_caret.clone() {
         NodeOrToken::Node(syntax_under_caret) => match candidate {
             ImportCandidate::Path(candidate) if candidate.qualifier.is_some() => {
                 cov_mark::hit!(qualify_path_qualifier_start);
@@ -82,6 +81,22 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     // we aren't interested in different namespaces
     proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
+
+    let range = match &syntax_under_caret {
+        NodeOrToken::Node(node) => ctx.sema.original_range(node).range,
+        NodeOrToken::Token(token) => token.text_range(),
+    };
+    let current_module = ctx
+        .sema
+        .scope(&match syntax_under_caret {
+            NodeOrToken::Node(node) => node.clone(),
+            NodeOrToken::Token(t) => t.parent()?,
+        })
+        .map(|scope| scope.module());
+    // prioritize more relevant imports
+    proposed_imports.sort_by_key(|import| {
+        Reverse(super::auto_import::relevance_score(ctx, import, current_module.as_ref()))
+    });
 
     let group_label = group_label(candidate);
     for import in proposed_imports {

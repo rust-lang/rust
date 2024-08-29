@@ -17,18 +17,16 @@ fn new<T, E>(x: Result<T, E>) -> Result<T, E> {
         } {
             ControlFlow::Continue(v) => v,
             ControlFlow::Break(e) => return Err(e),
-        }
+        },
     )
 }
 
 // EMIT_MIR try_identity.old.PreCodegen.after.mir
 fn old<T, E>(x: Result<T, E>) -> Result<T, E> {
-    Ok(
-        match x {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        }
-    )
+    Ok(match x {
+        Ok(v) => v,
+        Err(e) => return Err(e),
+    })
 }
 
 fn main() {

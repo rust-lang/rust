@@ -1,11 +1,18 @@
 //! The entry point of the NLL borrow checker.
 
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::str::FromStr;
+use std::{env, io};
+
 use polonius_engine::{Algorithm, Output};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
-use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
-use rustc_middle::mir::{Body, ClosureOutlivesSubject, ClosureRegionRequirements, Promoted};
+use rustc_middle::mir::{
+    create_dump_file, dump_enabled, dump_mir, Body, ClosureOutlivesSubject,
+    ClosureRegionRequirements, PassWhere, Promoted,
+};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -13,25 +20,16 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::symbol::sym;
-use std::env;
-use std::io;
-use std::path::PathBuf;
-use std::rc::Rc;
-use std::str::FromStr;
 
-use crate::{
-    borrow_set::BorrowSet,
-    consumers::ConsumerOptions,
-    diagnostics::RegionErrors,
-    facts::{AllFacts, AllFactsExt, RustcFacts},
-    location::LocationTable,
-    polonius,
-    region_infer::RegionInferenceContext,
-    renumber,
-    type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
-    universal_regions::UniversalRegions,
-    BorrowckInferCtxt,
-};
+use crate::borrow_set::BorrowSet;
+use crate::consumers::ConsumerOptions;
+use crate::diagnostics::RegionErrors;
+use crate::facts::{AllFacts, AllFactsExt, RustcFacts};
+use crate::location::LocationTable;
+use crate::region_infer::RegionInferenceContext;
+use crate::type_check::{self, MirTypeckRegionConstraints, MirTypeckResults};
+use crate::universal_regions::UniversalRegions;
+use crate::{polonius, renumber, BorrowckInferCtxt};
 
 pub type PoloniusOutput = Output<RustcFacts>;
 
@@ -81,7 +79,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
+    flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'_, 'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[&ty::CapturedPlace<'tcx>],
@@ -114,7 +112,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
-            polonius_input,
         );
 
     // Create the region inference context, taking ownership of the
@@ -125,8 +122,8 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         placeholder_indices,
         placeholder_index_to_region: _,
         liveness_constraints,
-        outlives_constraints,
-        member_constraints,
+        mut outlives_constraints,
+        mut member_constraints,
         universe_causes,
         type_tests,
     } = constraints;
@@ -143,6 +140,16 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         &universal_regions,
         &universal_region_relations,
     );
+
+    if let Some(guar) = universal_regions.tainted_by_errors() {
+        // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
+        // outlives bounds that we may end up checking.
+        outlives_constraints = Default::default();
+        member_constraints = Default::default();
+
+        // Also taint the entire scope.
+        infcx.set_tainted_by_errors(guar);
+    }
 
     let mut regioncx = RegionInferenceContext::new(
         infcx,
@@ -253,13 +260,13 @@ pub(super) fn dump_mir_results<'tcx>(
 
 #[allow(rustc::diagnostic_outside_of_impl)]
 #[allow(rustc::untranslatable_diagnostic)]
-pub(super) fn dump_annotation<'tcx>(
-    infcx: &BorrowckInferCtxt<'tcx>,
+pub(super) fn dump_annotation<'tcx, 'cx>(
+    infcx: &'cx BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    diags: &mut crate::diags::BorrowckDiags<'tcx>,
+    diags: &mut crate::diags::BorrowckDiags<'cx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -276,7 +283,7 @@ pub(super) fn dump_annotation<'tcx>(
 
     let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.dcx().struct_span_note(def_span, "external requirements");
+        let mut err = infcx.dcx().struct_span_note(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -295,7 +302,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         err
     } else {
-        let mut err = tcx.dcx().struct_span_note(def_span, "no external requirements");
+        let mut err = infcx.dcx().struct_span_note(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

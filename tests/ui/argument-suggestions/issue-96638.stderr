@@ -4,7 +4,7 @@ error[E0061]: this function takes 3 arguments but 2 arguments were supplied
 LL |     f(&x, "");
    |     ^ --  -- expected `usize`, found `&str`
    |       |
-   |       an argument of type `usize` is missing
+   |       argument #1 of type `usize` is missing
    |
 note: function defined here
   --> $DIR/issue-96638.rs:1:4

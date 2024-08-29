@@ -1,4 +1,5 @@
-use crate::base::ExtCtxt;
+use std::ops::{Bound, Range};
+
 use ast::token::IdentIsRaw;
 use pm::bridge::{
     server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
@@ -13,13 +14,15 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
-use rustc_parse::parse_stream_from_source_str;
+use rustc_parse::parser::Parser;
+use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
-use std::ops::{Bound, Range};
+
+use crate::base::ExtCtxt;
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -276,21 +279,20 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
                 Interpolated(nt) => {
                     let stream = TokenStream::from_nonterminal_ast(&nt);
-                    // A hack used to pass AST fragments to attribute and derive
-                    // macros as a single nonterminal token instead of a token
-                    // stream. Such token needs to be "unwrapped" and not
-                    // represented as a delimited group.
-                    // FIXME: It needs to be removed, but there are some
-                    // compatibility issues (see #73345).
-                    if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.ecx.sess) {
-                        trees.extend(Self::from_internal((stream, rustc)));
-                    } else {
-                        trees.push(TokenTree::Group(Group {
-                            delimiter: pm::Delimiter::None,
-                            stream: Some(stream),
-                            span: DelimSpan::from_single(span),
-                        }))
-                    }
+                    // We used to have an alternative behaviour for crates that
+                    // needed it: a hack used to pass AST fragments to
+                    // attribute and derive macros as a single nonterminal
+                    // token instead of a token stream. Such token needs to be
+                    // "unwrapped" and not represented as a delimited group. We
+                    // had a lint for a long time, but now we just emit a hard
+                    // error. Eventually we might remove the special case hard
+                    // error check altogether. See #73345.
+                    crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.ecx.sess);
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::None,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }))
                 }
 
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),
@@ -412,7 +414,7 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
-pub struct FreeFunctions;
+pub(crate) struct FreeFunctions;
 
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
@@ -424,7 +426,7 @@ pub(crate) struct Rustc<'a, 'b> {
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
-    pub fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
@@ -467,7 +469,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
         let name = FileName::proc_macro_source_code(s);
-        let mut parser = rustc_parse::new_parser_from_source_str(self.psess(), name, s.to_owned());
+        let mut parser =
+            unwrap_or_emit_fatal(new_parser_from_source_str(self.psess(), name, s.to_owned()));
 
         let first_span = parser.token.span.data();
         let minus_present = parser.eat(&token::BinOp(token::Minus));
@@ -521,7 +524,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let message = rustc_errors::DiagMessage::from(diagnostic.message);
         let mut diag: Diag<'_, ()> =
-            Diag::new(&self.psess().dcx, diagnostic.level.to_internal(), message);
+            Diag::new(self.psess().dcx(), diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             // This message comes from another diagnostic, and we are just reconstructing the
@@ -539,12 +542,12 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse_stream_from_source_str(
+        unwrap_or_emit_fatal(source_str_to_stream(
+            self.psess(),
             FileName::proc_macro_source_code(src),
             src.to_string(),
-            self.psess(),
             Some(self.call_site),
-        )
+        ))
     }
 
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
@@ -554,11 +557,7 @@ impl server::TokenStream for Rustc<'_, '_> {
     fn expand_expr(&mut self, stream: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         // Parse the expression from our tokenstream.
         let expr: PResult<'_, _> = try {
-            let mut p = rustc_parse::stream_to_parser(
-                self.psess(),
-                stream.clone(),
-                Some("proc_macro expand expr"),
-            );
+            let mut p = Parser::new(self.psess(), stream.clone(), Some("proc_macro expand expr"));
             let expr = p.parse_expr()?;
             if p.token != token::Eof {
                 p.unexpected()?;

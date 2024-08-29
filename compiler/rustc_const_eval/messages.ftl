@@ -41,13 +41,15 @@ const_eval_const_context = {$kind ->
     *[other] {""}
 }
 
+const_eval_const_stable = const-stable functions can only call other const-stable functions
+
 const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 
 const_eval_dangling_int_pointer =
-    {$bad_pointer_message}: {$pointer} is a dangling pointer (it has no provenance)
+    {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got {$pointer} which is a dangling pointer (it has no provenance)
 const_eval_dangling_null_pointer =
-    {$bad_pointer_message}: null pointer is a dangling pointer (it has no provenance)
+    {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got a null pointer
 
 const_eval_dangling_ptr_in_final = encountered dangling pointer in final value of {const_eval_intern_kind}
 const_eval_dead_local =
@@ -73,8 +75,6 @@ const_eval_division_by_zero =
     dividing by zero
 const_eval_division_overflow =
     overflow in signed division (dividing MIN by -1)
-const_eval_double_storage_live =
-    StorageLive on a local that was already live
 
 const_eval_dyn_call_not_a_method =
     `dyn` call trying to call something that is not a method
@@ -89,8 +89,25 @@ const_eval_error = {$error_kind ->
 const_eval_exact_div_has_remainder =
     exact_div: {$a} cannot be divided by {$b} without remainder
 
+const_eval_expected_inbounds_pointer =
+    expected a pointer to {$inbounds_size_abs ->
+        [0] some allocation
+        *[x] {$inbounds_size_is_neg ->
+            [false] {$inbounds_size_abs ->
+                    [1] 1 byte of memory
+                    *[x] {$inbounds_size_abs} bytes of memory
+                }
+            *[true] the end of {$inbounds_size_abs ->
+                    [1] 1 byte of memory
+                    *[x] {$inbounds_size_abs} bytes of memory
+                }
+        }
+    }
+
 const_eval_extern_static =
     cannot access extern static ({$did})
+const_eval_extern_type_field = `extern type` field does not have a known offset
+
 const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_for_loop_into_iter_non_const =
@@ -186,6 +203,9 @@ const_eval_invalid_vtable_pointer =
 const_eval_invalid_vtable_trait =
     using vtable for trait `{$vtable_trait}` but trait `{$expected_trait}` was expected
 
+const_eval_lazy_lock =
+    consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
+
 const_eval_live_drop =
     destructor of `{$dropped_ty}` cannot be evaluated at compile-time
     .label = the destructor for this type cannot be evaluated in {const_eval_const_context}s
@@ -233,16 +253,17 @@ const_eval_nullary_intrinsic_fail =
 
 const_eval_offset_from_different_allocations =
     `{$name}` called on pointers into different allocations
-const_eval_offset_from_different_integers =
-    `{$name}` called on different pointers without provenance (i.e., without an associated allocation)
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
 const_eval_offset_from_test =
-    out-of-bounds `offset_from`
+    out-of-bounds `offset_from` origin
 const_eval_offset_from_underflow =
     `{$name}` called when first pointer is too far before second
 const_eval_offset_from_unsigned_overflow =
-    `ptr_offset_from_unsigned` called when first pointer has smaller offset than second: {$a_offset} < {$b_offset}
+    `ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
+        [true] address
+        *[false] offset
+    } than second: {$a_offset} < {$b_offset}
 
 const_eval_operator_non_const =
     cannot call non-const operator in {const_eval_const_context}s
@@ -261,13 +282,26 @@ const_eval_partial_pointer_copy =
 const_eval_partial_pointer_overwrite =
     unable to overwrite parts of a pointer in memory at {$ptr}
 const_eval_pointer_arithmetic_overflow =
-    overflowing in-bounds pointer arithmetic
+    overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
 const_eval_pointer_arithmetic_test = out-of-bounds pointer arithmetic
 const_eval_pointer_out_of_bounds =
-    {$bad_pointer_message}: {$alloc_id} has size {$alloc_size}, so pointer to {$ptr_size} {$ptr_size ->
-        [1] byte
-        *[many] bytes
-    } starting at offset {$ptr_offset} is out-of-bounds
+    {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got {$pointer} {$ptr_offset_is_neg ->
+        [true] which points to before the beginning of the allocation
+        *[false] {$inbounds_size_is_neg ->
+            [true] {$ptr_offset_abs ->
+                [0] which is at the beginning of the allocation
+                *[other] which does not have enough space to the beginning of the allocation
+            }
+            *[false] {$alloc_size_minus_ptr_offset ->
+                [0] which is at or beyond the end of the allocation of size {$alloc_size ->
+                    [1] 1 byte
+                    *[x] {$alloc_size} bytes
+                }
+                [1] which is only 1 byte from the end of the allocation
+                *[x] which is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+            }
+        }
+    }
 const_eval_pointer_use_after_free =
     {$bad_pointer_message}: {$alloc_id} has been freed, so this pointer is dangling
 const_eval_ptr_as_bytes_1 =
@@ -286,9 +320,6 @@ const_eval_range_singular = equal to {$lo}
 const_eval_range_upper = less or equal to {$hi}
 const_eval_range_wrapping = less or equal to {$hi}, or greater or equal to {$lo}
 const_eval_raw_bytes = the raw bytes of the constant (size: {$size}, align: {$align}) {"{"}{$bytes}{"}"}
-
-const_eval_raw_eq_with_provenance =
-    `raw_eq` on bytes with provenance
 
 const_eval_raw_ptr_comparison =
     pointers cannot be reliably compared during const eval
@@ -343,8 +374,7 @@ const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in
 const_eval_unallowed_heap_allocations =
     allocations are not allowed in {const_eval_const_context}s
     .label = allocation not allowed in {const_eval_const_context}s
-    .teach_note =
-        The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
+    .teach_note = The value of statics and constants must be known at compile time, and they live for the entire lifetime of a program. Creating a boxed value allocates memory on the heap at runtime, and therefore cannot be done at compile time.
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
@@ -372,9 +402,6 @@ const_eval_unallowed_mutable_refs =
 const_eval_unallowed_op_in_const_context =
     {$msg}
 
-const_eval_unavailable_target_features_for_fn =
-    calling a function that requires unavailable target features: {$unavailable_feats}
-
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
@@ -389,7 +416,7 @@ const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 const_eval_unstable_in_stable =
     const-stable function cannot use `#[feature({$gate})]`
     .unstable_sugg = if it is not part of the public API, make this function unstably const
-    .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+    .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (but requires team approval)
 
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation
@@ -399,7 +426,6 @@ const_eval_unwind_past_top =
 
 ## The `front_matter`s here refer to either `const_eval_front_matter_invalid_value` or `const_eval_front_matter_invalid_value_with_path`.
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
-const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 
 const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`
@@ -454,7 +480,6 @@ const_eval_validation_out_of_range = {$front_matter}: encountered {$value}, but 
 const_eval_validation_partial_pointer = {$front_matter}: encountered a partial pointer or a mix of pointers
 const_eval_validation_pointer_as_int = {$front_matter}: encountered a pointer, but {$expected}
 const_eval_validation_ptr_out_of_range = {$front_matter}: encountered a pointer, but expected something that cannot possibly fail to be {$in_range}
-const_eval_validation_ref_to_static = {$front_matter}: encountered a reference pointing to a static variable in a constant
 const_eval_validation_ref_to_uninhabited = {$front_matter}: encountered a reference pointing to uninhabited type {$ty}
 const_eval_validation_unaligned_box = {$front_matter}: encountered an unaligned box (required {$required_bytes} byte alignment but found {$found_bytes})
 const_eval_validation_unaligned_ref = {$front_matter}: encountered an unaligned reference (required {$required_bytes} byte alignment but found {$found_bytes})
@@ -468,5 +493,3 @@ const_eval_write_through_immutable_pointer =
 
 const_eval_write_to_read_only =
     writing to {$allocation} which is read-only
-const_eval_zst_pointer_out_of_bounds =
-    {$bad_pointer_message}: {$alloc_id} has size {$alloc_size}, so pointer at offset {$ptr_offset} is out-of-bounds

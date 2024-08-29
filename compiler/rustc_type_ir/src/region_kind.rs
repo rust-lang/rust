@@ -1,12 +1,13 @@
+use std::fmt;
+
+use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use std::fmt;
-
-use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::RegionKind::*;
+use crate::{DebruijnIndex, Interner};
 
 rustc_index::newtype_index! {
     /// A **region** **v**ariable **ID**.
@@ -16,18 +17,6 @@ rustc_index::newtype_index! {
     #[gate_rustc_only]
     #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     pub struct RegionVid {}
-}
-
-impl<I: Interner> DebugWithInfcx<I> for RegionVid {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match this.infcx.universe_of_lt(*this.data) {
-            Some(universe) => write!(f, "'?{}_{}", this.data.index(), universe.index()),
-            None => write!(f, "{:?}", this.data),
-        }
-    }
 }
 
 /// Representation of regions. Note that the NLL checker uses a distinct
@@ -136,8 +125,7 @@ impl<I: Interner> DebugWithInfcx<I> for RegionVid {
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), Hash(bound = ""), Eq(bound = ""))]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
@@ -166,7 +154,7 @@ pub enum RegionKind<I: Interner> {
     /// parameters via `tcx.liberate_late_bound_regions`. They are then treated
     /// the same way as `ReEarlyParam` while inside of the function.
     ///
-    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-summary.html> for
+    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-params/early-late-bound-summary.html> for
     /// more info about early and late bound lifetime parameters.
     ReLateParam(I::LateParamRegion),
 
@@ -189,53 +177,9 @@ pub enum RegionKind<I: Interner> {
     ReError(I::ErrorGuaranteed),
 }
 
-// This is manually implemented for `RegionKind` because `std::mem::discriminant`
-// returns an opaque value that is `PartialEq` but not `PartialOrd`
-#[inline]
-const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
-    match value {
-        ReEarlyParam(_) => 0,
-        ReBound(_, _) => 1,
-        ReLateParam(_) => 2,
-        ReStatic => 3,
-        ReVar(_) => 4,
-        RePlaceholder(_) => 5,
-        ReErased => 6,
-        ReError(_) => 7,
-    }
-}
-
-// This is manually implemented because a derive would require `I: PartialEq`
-impl<I: Interner> PartialEq for RegionKind<I> {
-    #[inline]
-    fn eq(&self, other: &RegionKind<I>) -> bool {
-        regionkind_discriminant(self) == regionkind_discriminant(other)
-            && match (self, other) {
-                (ReEarlyParam(a_r), ReEarlyParam(b_r)) => a_r == b_r,
-                (ReBound(a_d, a_r), ReBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
-                (ReLateParam(a_r), ReLateParam(b_r)) => a_r == b_r,
-                (ReStatic, ReStatic) => true,
-                (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
-                (ReErased, ReErased) => true,
-                (ReError(_), ReError(_)) => true,
-                _ => {
-                    debug_assert!(
-                        false,
-                        "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
-                    );
-                    true
-                }
-            }
-    }
-}
-
-impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
-    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        match this.data {
+impl<I: Interner> fmt::Debug for RegionKind<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             ReEarlyParam(data) => write!(f, "{data:?}"),
 
             ReBound(binder_id, bound_region) => {
@@ -247,7 +191,7 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 
             ReStatic => f.write_str("'static"),
 
-            ReVar(vid) => write!(f, "{:?}", &this.wrap(vid)),
+            ReVar(vid) => write!(f, "{vid:?}"),
 
             RePlaceholder(placeholder) => write!(f, "{placeholder:?}"),
 
@@ -258,11 +202,6 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 
             ReError(_) => f.write_str("'{region error}"),
         }
-    }
-}
-impl<I: Interner> fmt::Debug for RegionKind<I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 

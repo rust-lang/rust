@@ -15,6 +15,7 @@ mod tests;
 
 use hir::{DescendPreference, Name, Semantics};
 use ide_db::{FxHashMap, RootDatabase, SymbolKind};
+use span::EditionedFileId;
 use syntax::{
     ast::{self, IsString},
     AstNode, AstToken, NodeOrToken,
@@ -186,13 +187,16 @@ pub(crate) fn highlight(
     file_id: FileId,
     range_to_highlight: Option<TextRange>,
 ) -> Vec<HlRange> {
-    let _p = tracing::span!(tracing::Level::INFO, "highlight").entered();
+    let _p = tracing::info_span!("highlight").entered();
     let sema = Semantics::new(db);
+    let file_id = sema
+        .attach_first_edition(file_id)
+        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
 
     // Determine the root based on the given range.
     let (root, range_to_highlight) = {
-        let source_file = sema.parse(file_id);
-        let source_file = source_file.syntax();
+        let file = sema.parse(file_id);
+        let source_file = file.syntax();
         match range_to_highlight {
             Some(range) => {
                 let node = match source_file.covering_element(range) {
@@ -218,7 +222,7 @@ fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightConfig,
-    file_id: FileId,
+    file_id: EditionedFileId,
     root: &SyntaxNode,
     krate: hir::Crate,
     range_to_highlight: TextRange,

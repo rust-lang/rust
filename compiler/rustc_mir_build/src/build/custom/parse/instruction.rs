@@ -1,18 +1,19 @@
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::mir::*;
+use rustc_middle::thir::*;
+use rustc_middle::ty;
 use rustc_middle::ty::cast::mir_cast_kind;
-use rustc_middle::{mir::*, thir::*, ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
+use super::{parse_by_kind, PResult, ParseCtxt};
 use crate::build::custom::ParseError;
 use crate::build::expr::as_constant::as_constant_inner;
 
-use super::{parse_by_kind, PResult, ParseCtxt};
-
 impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
-    pub fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
+    pub(crate) fn parse_statement(&self, expr_id: ExprId) -> PResult<StatementKind<'tcx>> {
         parse_by_kind!(self, expr_id, _, "statement",
             @call(mir_storage_live, args) => {
                 Ok(StatementKind::StorageLive(self.parse_local(args[0])?))
@@ -46,7 +47,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    pub fn parse_terminator(&self, expr_id: ExprId) -> PResult<TerminatorKind<'tcx>> {
+    pub(crate) fn parse_terminator(&self, expr_id: ExprId) -> PResult<TerminatorKind<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "terminator",
             @call(mir_return, _args) => {
                 Ok(TerminatorKind::Return)
@@ -73,6 +74,9 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             },
             @call(mir_call, args) => {
                 self.parse_call(args)
+            },
+            @call(mir_tail_call, args) => {
+                self.parse_tail_call(args)
             },
             ExprKind::Match { scrutinee, arms, .. } => {
                 let discr = self.parse_operand(*scrutinee)?;
@@ -170,7 +174,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     .map(|arg|
                         Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
                     )
-                    .collect::<PResult<Vec<_>>>()?;
+                    .collect::<PResult<Box<[_]>>>()?;
                 Ok(TerminatorKind::Call {
                     func: fun,
                     args,
@@ -186,12 +190,35 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
+    fn parse_tail_call(&self, args: &[ExprId]) -> PResult<TerminatorKind<'tcx>> {
+        parse_by_kind!(self, args[0], _, "tail call",
+            ExprKind::Call { fun, args, fn_span, .. } => {
+                let fun = self.parse_operand(*fun)?;
+                let args = args
+                    .iter()
+                    .map(|arg|
+                        Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
+                    )
+                    .collect::<PResult<Box<[_]>>>()?;
+                Ok(TerminatorKind::TailCall {
+                    func: fun,
+                    args,
+                    fn_span: *fn_span,
+                })
+            },
+        )
+    }
+
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "rvalue",
             @call(mir_discriminant, args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
             @call(mir_cast_transmute, args) => {
                 let source = self.parse_operand(args[0])?;
                 Ok(Rvalue::Cast(CastKind::Transmute, source, expr.ty))
+            },
+            @call(mir_cast_ptr_to_ptr, args) => {
+                let source = self.parse_operand(args[0])?;
+                Ok(Rvalue::Cast(CastKind::PtrToPtr, source, expr.ty))
             },
             @call(mir_checked, args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
@@ -212,12 +239,13 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                 Ok(Rvalue::BinaryOp(BinOp::Offset, Box::new((ptr, offset))))
             },
             @call(mir_len, args) => Ok(Rvalue::Len(self.parse_place(args[0])?)),
+            @call(mir_ptr_metadata, args) => Ok(Rvalue::UnaryOp(UnOp::PtrMetadata, self.parse_operand(args[0])?)),
             @call(mir_copy_for_deref, args) => Ok(Rvalue::CopyForDeref(self.parse_place(args[0])?)),
             ExprKind::Borrow { borrow_kind, arg } => Ok(
                 Rvalue::Ref(self.tcx.lifetimes.re_erased, *borrow_kind, self.parse_place(*arg)?)
             ),
-            ExprKind::AddressOf { mutability, arg } => Ok(
-                Rvalue::AddressOf(*mutability, self.parse_place(*arg)?)
+            ExprKind::RawBorrow { mutability, arg } => Ok(
+                Rvalue::RawPtr(*mutability, self.parse_place(*arg)?)
             ),
             ExprKind::Binary { op, lhs, rhs } =>  Ok(
                 Rvalue::BinaryOp(*op, Box::new((self.parse_operand(*lhs)?, self.parse_operand(*rhs)?)))
@@ -260,7 +288,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         )
     }
 
-    pub fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
+    pub(crate) fn parse_operand(&self, expr_id: ExprId) -> PResult<Operand<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "operand",
             @call(mir_move, args) => self.parse_place(args[0]).map(Operand::Move),
             @call(mir_static, args) => self.parse_static(args[0]),

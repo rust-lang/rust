@@ -1,12 +1,12 @@
-use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
+use std::assert_matches::assert_matches;
+
+use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
+use rustc_type_ir::outlives::{compute_alias_components_recursive, Component};
+use smallvec::smallvec;
+
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
 use crate::infer::{GenericKind, VerifyBound};
-use rustc_data_structures::sso::SsoHashSet;
-use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
-
-use smallvec::smallvec;
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
 /// obligation into a series of `'a: 'b` constraints and "verifys", as
@@ -99,12 +99,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
     }
 
-    #[instrument(level = "debug", skip(self, visited))]
-    pub fn alias_bound(
-        &self,
-        alias_ty: ty::AliasTy<'tcx>,
-        visited: &mut SsoHashSet<GenericArg<'tcx>>,
-    ) -> VerifyBound<'tcx> {
+    #[instrument(level = "debug", skip(self))]
+    pub fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
         let alias_ty_as_ty = alias_ty.to_ty(self.tcx);
 
         // Search the env for where clauses like `P: 'a`.
@@ -130,21 +126,17 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_alias_components_recursive(self.tcx, alias_ty_as_ty, &mut components, visited);
-            self.bound_from_components(&components, visited)
+            compute_alias_components_recursive(self.tcx, alias_ty_as_ty, &mut components);
+            self.bound_from_components(&components)
         };
 
         VerifyBound::AnyBound(env_bounds.chain(definition_bounds).collect()).or(recursive_bound)
     }
 
-    fn bound_from_components(
-        &self,
-        components: &[Component<'tcx>],
-        visited: &mut SsoHashSet<GenericArg<'tcx>>,
-    ) -> VerifyBound<'tcx> {
+    fn bound_from_components(&self, components: &[Component<TyCtxt<'tcx>>]) -> VerifyBound<'tcx> {
         let mut bounds = components
             .iter()
-            .map(|component| self.bound_from_single_component(component, visited))
+            .map(|component| self.bound_from_single_component(component))
             // Remove bounds that must hold, since they are not interesting.
             .filter(|bound| !bound.must_hold());
 
@@ -158,8 +150,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     fn bound_from_single_component(
         &self,
-        component: &Component<'tcx>,
-        visited: &mut SsoHashSet<GenericArg<'tcx>>,
+        component: &Component<TyCtxt<'tcx>>,
     ) -> VerifyBound<'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
@@ -167,10 +158,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             Component::Placeholder(placeholder_ty) => {
                 self.param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty))
             }
-            Component::Alias(alias_ty) => self.alias_bound(alias_ty, visited),
-            Component::EscapingAlias(ref components) => {
-                self.bound_from_components(components, visited)
-            }
+            Component::Alias(alias_ty) => self.alias_bound(alias_ty),
+            Component::EscapingAlias(ref components) => self.bound_from_components(components),
             Component::UnresolvedInferenceVariable(v) => {
                 // Ignore this, we presume it will yield an error later, since
                 // if a type variable is not resolved by this point it never
@@ -194,7 +183,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         generic_ty: Ty<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
-        assert!(matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_)));
+        assert_matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_));
         self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
 

@@ -183,6 +183,20 @@ fn main() {
     }
 
     #[test]
+    fn no_missing_unsafe_diagnostic_with_deprecated_safe_2024() {
+        check_diagnostics(
+            r#"
+#[rustc_deprecated_safe_2024]
+fn set_var() {}
+
+fn main() {
+    set_var();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn add_unsafe_block_when_dereferencing_a_raw_pointer() {
         check_fix(
             r#"
@@ -469,6 +483,30 @@ unsafe fn foo() -> u8 {
 
 fn main() {
     let x = format!("foo: {}", foo$0());
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn rustc_deprecated_safe_2024() {
+        check_diagnostics(
+            r#"
+//- /ed2021.rs crate:ed2021 edition:2021
+#[rustc_deprecated_safe_2024]
+unsafe fn safe() -> u8 {
+    0
+}
+//- /ed2024.rs crate:ed2024 edition:2024
+#[rustc_deprecated_safe_2024]
+unsafe fn not_safe() -> u8 {
+    0
+}
+//- /main.rs crate:main deps:ed2021,ed2024
+fn main() {
+    ed2021::safe();
+    ed2024::not_safe();
+  //^^^^^^^^^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
 }
             "#,
         )

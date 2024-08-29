@@ -10,6 +10,7 @@
 //! from previous invocations as appropriate.
 
 mod derived;
+mod derived_lru;
 mod durability;
 mod hash;
 mod input;
@@ -40,7 +41,7 @@ use std::panic::{self, UnwindSafe};
 
 pub use crate::durability::Durability;
 pub use crate::intern_id::InternId;
-pub use crate::interned::{InternKey, InternValue};
+pub use crate::interned::{InternKey, InternValue, InternValueTrivial};
 pub use crate::runtime::Runtime;
 pub use crate::runtime::RuntimeId;
 pub use crate::storage::Storage;
@@ -284,7 +285,7 @@ pub trait ParallelDatabase: Database + Send {
     /// series of queries in parallel and arranging the results. Using
     /// this method for that purpose ensures that those queries will
     /// see a consistent view of the database (it is also advisable
-    /// for those queries to use the [`Runtime::unwind_if_cancelled`]
+    /// for those queries to use the [`Database::unwind_if_cancelled`]
     /// method to check for cancellation).
     ///
     /// # Panics
@@ -513,6 +514,10 @@ where
     {
         self.storage.purge();
     }
+
+    pub fn storage(&self) -> &<Q as Query>::Storage {
+        self.storage
+    }
 }
 
 /// Return value from [the `query_mut` method] on `Database`.
@@ -573,7 +578,7 @@ where
     /// cost of potential extra recalculations of evicted values.
     ///
     /// If `cap` is zero, all values are preserved, this is the default.
-    pub fn set_lru_capacity(&self, cap: usize)
+    pub fn set_lru_capacity(&self, cap: u16)
     where
         Q::Storage: plumbing::LruQueryStorageOps,
     {

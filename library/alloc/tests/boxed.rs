@@ -59,6 +59,7 @@ fn box_deref_lval() {
     assert_eq!(x.get(), 1000);
 }
 
+#[allow(unused)]
 pub struct ConstAllocator;
 
 unsafe impl Allocator for ConstAllocator {
@@ -177,5 +178,42 @@ unsafe impl Allocator for ConstAllocator {
         Self: Sized,
     {
         self
+    }
+}
+
+#[allow(unused)]
+mod pin_coerce_unsized {
+    use alloc::boxed::Box;
+    use core::pin::Pin;
+
+    trait MyTrait {
+        fn action(&self) -> &str;
+    }
+    impl MyTrait for String {
+        fn action(&self) -> &str {
+            &*self
+        }
+    }
+    struct MyStruct;
+    impl MyTrait for MyStruct {
+        fn action(&self) -> &str {
+            "MyStruct"
+        }
+    }
+
+    // Pin coercion should work for Box
+    fn pin_box<T: MyTrait + 'static>(arg: Pin<Box<T>>) -> Pin<Box<dyn MyTrait>> {
+        arg
+    }
+
+    #[test]
+    fn pin_coerce_unsized_box() {
+        let my_string = "my string";
+        let a_string = Box::pin(String::from(my_string));
+        let pin_box_str = pin_box(a_string);
+        assert_eq!(pin_box_str.as_ref().action(), my_string);
+        let a_struct = Box::pin(MyStruct);
+        let pin_box_struct = pin_box(a_struct);
+        assert_eq!(pin_box_struct.as_ref().action(), "MyStruct");
     }
 }

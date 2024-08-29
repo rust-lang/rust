@@ -4,6 +4,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
+use std::thread::LocalKey;
 
 struct NamedStruct1Ignored {
     data: u8,
@@ -188,6 +189,23 @@ impl fmt::Debug for WithPD {
             .field("a", &self.a)
             .field("b", &self.b)
             .finish()
+    }
+}
+
+struct InClosure {
+    a: u8,
+    b: String,
+}
+
+impl fmt::Debug for InClosure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_struct("InClosure");
+        d.field("a", &self.a);
+        let mut c = || {
+            d.field("b", &self.b);
+        };
+        c();
+        d.finish()
     }
 }
 

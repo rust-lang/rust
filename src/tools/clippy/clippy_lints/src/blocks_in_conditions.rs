@@ -1,15 +1,11 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_block_with_applicability;
-use clippy_utils::ty::implements_trait;
-use clippy_utils::visitors::{for_each_expr, Descend};
-use clippy_utils::{get_parent_expr, higher, is_from_proc_macro};
-use core::ops::ControlFlow;
+use clippy_utils::{higher, is_from_proc_macro};
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -124,30 +120,6 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                     );
                 }
             }
-        } else {
-            let _: Option<!> = for_each_expr(cond, |e| {
-                if let ExprKind::Closure(closure) = e.kind {
-                    // do not lint if the closure is called using an iterator (see #1141)
-                    if let Some(parent) = get_parent_expr(cx, e)
-                        && let ExprKind::MethodCall(_, self_arg, _, _) = &parent.kind
-                        && let caller = cx.typeck_results().expr_ty(self_arg)
-                        && let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
-                        && implements_trait(cx, caller, iter_id, &[])
-                    {
-                        return ControlFlow::Continue(Descend::No);
-                    }
-
-                    let body = cx.tcx.hir().body(closure.body);
-                    let ex = &body.value;
-                    if let ExprKind::Block(block, _) = ex.kind {
-                        if !body.value.span.from_expansion() && !block.stmts.is_empty() {
-                            span_lint(cx, BLOCKS_IN_CONDITIONS, ex.span, complex_block_message.clone());
-                            return ControlFlow::Continue(Descend::No);
-                        }
-                    }
-                }
-                ControlFlow::Continue(Descend::Yes)
-            });
         }
     }
 }

@@ -3,12 +3,14 @@
 
 use crate::intrinsics::{self, const_eval_select};
 
-/// Check that the preconditions of an unsafe function are followed. The check is enabled at
-/// runtime if debug assertions are enabled when the caller is monomorphized. In const-eval/Miri
-/// checks implemented with this macro for language UB are always ignored.
+/// Checks that the preconditions of an unsafe function are followed.
+///
+/// The check is enabled at runtime if debug assertions are enabled when the
+/// caller is monomorphized. In const-eval/Miri checks implemented with this
+/// macro for language UB are always ignored.
 ///
 /// This macro should be called as
-/// `assert_unsafe_precondition!(check_{library,lang}_ub, "message", (ident: type = expr, ident: type = expr) => check_expr)`
+/// `assert_unsafe_precondition!(check_{library,language}_ub, "message", (ident: type = expr, ident: type = expr) => check_expr)`
 /// where each `expr` will be evaluated and passed in as function argument `ident: type`. Then all
 /// those arguments are passed to a function with the body `check_expr`.
 /// Pick `check_language_ub` when this is guarding a violation of language UB, i.e., immediate UB
@@ -79,7 +81,6 @@ macro_rules! assert_unsafe_precondition {
 }
 #[unstable(feature = "ub_checks", issue = "none")]
 pub use assert_unsafe_precondition;
-
 /// Checking library UB is always enabled when UB-checking is done
 /// (and we use a reexport so that there is no unnecessary wrapper function).
 #[unstable(feature = "ub_checks", issue = "none")]

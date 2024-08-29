@@ -4,10 +4,10 @@ pub fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {
-            description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            description: Some("64-bit Unikraft with musl 1.2.3".into()),
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         arch: "x86_64".into(),

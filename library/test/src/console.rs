@@ -5,19 +5,19 @@ use std::io;
 use std::io::prelude::Write;
 use std::time::Instant;
 
-use super::{
-    bench::fmt_bench_samples,
-    cli::TestOpts,
-    event::{CompletedTest, TestEvent},
-    filter_tests,
-    formatters::{JsonFormatter, JunitFormatter, OutputFormatter, PrettyFormatter, TerseFormatter},
-    helpers::{concurrency::get_concurrency, metrics::MetricMap},
-    options::{Options, OutputFormat},
-    run_tests, term,
-    test_result::TestResult,
-    time::{TestExecTime, TestSuiteExecTime},
-    types::{NamePadding, TestDesc, TestDescAndFn},
+use super::bench::fmt_bench_samples;
+use super::cli::TestOpts;
+use super::event::{CompletedTest, TestEvent};
+use super::formatters::{
+    JsonFormatter, JunitFormatter, OutputFormatter, PrettyFormatter, TerseFormatter,
 };
+use super::helpers::concurrency::get_concurrency;
+use super::helpers::metrics::MetricMap;
+use super::options::{Options, OutputFormat};
+use super::test_result::TestResult;
+use super::time::{TestExecTime, TestSuiteExecTime};
+use super::types::{NamePadding, TestDesc, TestDescAndFn};
+use super::{filter_tests, run_tests, term};
 
 /// Generic wrapper over stdout.
 pub enum OutputLocation<T> {

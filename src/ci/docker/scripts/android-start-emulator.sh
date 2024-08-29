@@ -10,7 +10,7 @@ export SHELL=/bin/bash
 # the emulator date is set to unix epoch (in armeabi-v7a-18 image). Using
 # classic engine the emulator starts with the current date and the tests run
 # fine. If another image is used, this need to be evaluated again.
-nohup nohup emulator @armeabi-v7a-18 \
+nohup nohup emulator @armeabi-v7a-21 \
     -engine classic -no-window -partition-size 2047 0<&- &>/dev/null &
 
 exec "$@"

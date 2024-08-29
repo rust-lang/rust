@@ -5,12 +5,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs::{self, Metadata, OpenOptions};
-use crate::io;
 use crate::path::Path;
 use crate::sealed::Sealed;
-use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
+use crate::{io, sys};
 
 /// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
@@ -471,6 +470,13 @@ pub trait MetadataExt {
     /// `fs::metadata` or `File::metadata`, then this will return `Some`.
     #[unstable(feature = "windows_by_handle", issue = "63010")]
     fn file_index(&self) -> Option<u64>;
+
+    /// Returns the change time, which is the last time file metadata was changed, such as
+    /// renames, attributes, etc
+    ///
+    /// This will return `None` if the `Metadata` instance was not created using the `FILE_BASIC_INFO` type.
+    #[unstable(feature = "windows_change_time", issue = "121478")]
+    fn change_time(&self) -> Option<u64>;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -498,6 +504,9 @@ impl MetadataExt for Metadata {
     }
     fn file_index(&self) -> Option<u64> {
         self.as_inner().file_index()
+    }
+    fn change_time(&self) -> Option<u64> {
+        self.as_inner().changed_u64()
     }
 }
 
@@ -621,7 +630,7 @@ pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
 }
 
-/// Create a junction point.
+/// Creates a junction point.
 ///
 /// The `link` path will be a directory junction pointing to the original path.
 /// If `link` is a relative path then it will be made absolute prior to creating the junction point.

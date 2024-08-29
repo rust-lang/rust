@@ -1,30 +1,24 @@
-# loongarch\*-unknown-linux-\*
+# `loongarch*-unknown-linux-*`
 
-**Tier: 2**
+**Tier: 2 (with Host Tools)**
 
-[LoongArch] is a new RISC ISA developed by Loongson Technology Corporation Limited.
+[LoongArch][la-docs] Linux targets.
+LoongArch is a RISC ISA developed by Loongson Technology Corporation Limited.
 
-[LoongArch]: https://loongson.github.io/LoongArch-Documentation/README-EN.html
+| Target | Description |
+|--------|-------------|
+| `loongarch64-unknown-linux-gnu` | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36) |
+| `loongarch64-unknown-linux-musl` | LoongArch64 Linux, LP64D ABI (kernel 5.19, musl 1.2.5) |
 
-The target name follow this format: `<machine>-<vendor>-<os><fabi_suffix>`, where `<machine>` specifies the CPU family/model, `<vendor>` specifies the vendor and `<os>` the operating system name.
-While the integer base ABI is implied by the machine field, the floating point base ABI type is encoded into the os field of the specifier using the string suffix `<fabi-suffix>`.
+These support both native and cross builds, and have full support for `std`.
 
-|    `<fabi-suffix>`     |                           `Description`                            |
-|------------------------|--------------------------------------------------------------------|
-|          f64           | The base ABI use 64-bits FPRs for parameter passing. (lp64d)|
-|          f32           | The base ABI uses 32-bit FPRs for parameter passing. (lp64f)|
-|          sf            | The base ABI uses no FPR for parameter passing. (lp64s)     |
+Reference material:
 
-<br>
+* [LoongArch ISA manuals][la-docs]
+* [Application Binary Interface for the LoongArch&trade; Architecture][la-abi-specs]
 
-|`ABI type(Base ABI/ABI extension)`| `C library` | `kernel` |          `target tuple`          |
-|----------------------------------|-------------|----------|----------------------------------|
-|           lp64d/base             |   glibc     |  linux   | loongarch64-unknown-linux-gnu |
-|           lp64f/base             |   glibc     |  linux   | loongarch64-unknown-linux-gnuf32 |
-|           lp64s/base             |   glibc     |  linux   | loongarch64-unknown-linux-gnusf  |
-|           lp64d/base             |  musl libc  |  linux   | loongarch64-unknown-linux-musl|
-|           lp64f/base             |  musl libc  |  linux   | loongarch64-unknown-linux-muslf32|
-|           lp64s/base             |  musl libc  |  linux   | loongarch64-unknown-linux-muslsf |
+[la-abi-specs]: https://github.com/loongson/la-abi-specs
+[la-docs]: https://loongson.github.io/LoongArch-Documentation/README-EN.html
 
 ## Target maintainers
 
@@ -35,23 +29,57 @@ While the integer base ABI is implied by the machine field, the floating po
 
 ## Requirements
 
-This target is cross-compiled.
-A GNU toolchain for LoongArch target is required.  It can be downloaded from https://github.com/loongson/build-tools/releases, or built from the source code of GCC (12.1.0 or later) and Binutils (2.40 or later).
+### OS Version
 
-## Building the target
+The minimum supported Linux version is 5.19.
 
-The target can be built by enabling it for a `rustc` build.
+Some Linux distributions, mostly commercial ones, may provide forked Linux
+kernels that has a version number less than 5.19 for their LoongArch ports.
+Such kernels may still get patched to be compatible with the upstream Linux
+5.19 UAPI, therefore supporting the targets described in this document, but
+this is not always the case. The `rustup` installer contains a check for this,
+and will abort if incompatibility is detected.
+
+### Host toolchain
+
+The targets require a reasonably up-to-date LoongArch toolchain on the host.
+Currently the following components are used by the Rust CI to build the target,
+and the versions can be seen as the minimum requirement:
+
+* GNU Binutils 2.40
+* GCC 13.x
+* glibc 2.36
+* linux-headers 5.19
+
+Of these, glibc and linux-headers are at their respective earliest versions with
+mainline LoongArch support, so it is impossible to use older versions of these.
+Older versions of Binutils and GCC will not work either, due to lack of support
+for newer LoongArch ELF relocation types, among other features.
+
+Recent LLVM/Clang toolchains may be able to build the targets, but are not
+currently being actively tested.
+
+## Building
+
+These targets are distributed through `rustup`, and otherwise require no
+special configuration.
+
+If you need to build your own Rust for some reason though, the targets can be
+simply enabled in `config.toml`. For example:
 
 ```toml
 [build]
 target = ["loongarch64-unknown-linux-gnu"]
 ```
 
-Make sure `loongarch64-unknown-linux-gnu-gcc` can be searched from the directories specified in`$PATH`. Alternatively, you can use GNU LoongArch Toolchain by adding the following to `config.toml`:
+Make sure the LoongArch toolchain binaries are reachable from `$PATH`.
+Alternatively, you can explicitly configure the paths in `config.toml`:
 
 ```toml
 [target.loongarch64-unknown-linux-gnu]
-# ADJUST THIS PATH TO POINT AT YOUR TOOLCHAIN
+# Adjust the paths to point at your toolchain
+# Suppose the toolchain is placed at /TOOLCHAIN_PATH, and the cross prefix is
+# "loongarch64-unknown-linux-gnu-":
 cc = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc"
 cxx = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-g++"
 ar = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-ar"
@@ -59,36 +87,51 @@ ranlib = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-ranlib"
 linker = "/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc"
 ```
 
-## Cross-compilation
+### Cross-compilation
 
-This target can be cross-compiled on a `x86_64-unknown-linux-gnu` host. Cross-compilation on other hosts may work but is not tested.
+This target can be cross-compiled on a `x86_64-unknown-linux-gnu` host.
+Other hosts are also likely to work, but not actively tested.
 
-## Testing
-To test a cross-compiled binary on your build system, install the qemu binary that supports the LoongArch architecture and execute the following commands.
-```text
-CC_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc \
-CXX_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-g++ \
-AR_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc-ar \
-CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_LINKER=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc \
-# SET TARGET SYSTEM LIBRARY PATH
-CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_RUNNER="qemu-loongarch64 -L /TOOLCHAIN_PATH/TARGET_LIBRARY_PATH" \
+You can test the cross build directly on the host, thanks to QEMU linux-user emulation.
+An example is given below:
+
+```sh
+# Suppose the cross toolchain is placed at $TOOLCHAIN_PATH, with a cross prefix
+# of "loongarch64-unknown-linux-gnu-".
+export CC_loongarch64_unknown_linux_gnu="$TOOLCHAIN_PATH"/bin/loongarch64-unknown-linux-gnu-gcc
+export CXX_loongarch64_unknown_linux_gnu="$TOOLCHAIN_PATH"/bin/loongarch64-unknown-linux-gnu-g++
+export AR_loongarch64_unknown_linux_gnu="$TOOLCHAIN_PATH"/bin/loongarch64-unknown-linux-gnu-gcc-ar
+export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_LINKER="$TOOLCHAIN_PATH"/bin/loongarch64-unknown-linux-gnu-gcc
+
+# Point qemu-loongarch64 to the LoongArch sysroot.
+# Suppose the sysroot is located at "sysroot" below the toolchain root:
+export CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-loongarch64 -L $TOOLCHAIN_PATH/sysroot"
+# Or alternatively, if binfmt_misc is set up for running LoongArch binaries
+# transparently:
+export QEMU_LD_PREFIX="$TOOLCHAIN_PATH"/sysroot
+
 cargo run --target loongarch64-unknown-linux-gnu --release
 ```
-Tested on x86 architecture, other architectures not tested.
+
+## Testing
+
+There are no special requirements for testing and running the targets.
+For testing cross builds on the host, please refer to the "Cross-compilation"
+section above.
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for this target, you will either need to build Rust with the target enabled (see "Building the target" above), or build your own copy of `std` by using `build-std` or similar.
+As the targets are available through `rustup`, it is very easy to build Rust
+programs for these targets: same as with other architectures.
+Note that you will need a LoongArch C/C++ toolchain for linking, or if you want
+to compile C code along with Rust (such as for Rust crates with C dependencies).
 
-If `rustc` has support for that target and the library artifacts are available, then Rust static libraries can be built for that target:
-
-```shell
-$ rustc --target loongarch64-unknown-linux-gnu your-code.rs --crate-type staticlib
-$ ls libyour_code.a
+```sh
+rustup target add loongarch64-unknown-linux-gnu
+cargo build --target loongarch64-unknown-linux-gnu
 ```
 
-On Rust Nightly it's possible to build without the target artifacts available:
+Availability of pre-built artifacts through `rustup` are as follows:
 
-```text
-cargo build -Z build-std --target loongarch64-unknown-linux-gnu
-```
+* `loongarch64-unknown-linux-gnu`: since Rust 1.71;
+* `loongarch64-unknown-linux-musl`: since Rust 1.81.

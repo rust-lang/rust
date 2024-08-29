@@ -48,7 +48,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 }
                 None => false,
             };
-            let expr = if need_to_add_ws { format!(" {}", expr) } else { expr.to_string() };
+            let expr = if need_to_add_ws { format!(" {expr}") } else { expr.to_string() };
 
             builder.replace(parens.syntax().text_range(), expr)
         },
@@ -238,5 +238,34 @@ mod tests {
         );
 
         check_assist_not_applicable(remove_parentheses, r#"fn f() { $0(return 2) + 2 }"#);
+    }
+
+    #[test]
+    fn remove_parens_indirect_calls() {
+        check_assist(
+            remove_parentheses,
+            r#"fn f(call: fn(usize), arg: usize) { $0(call)(arg); }"#,
+            r#"fn f(call: fn(usize), arg: usize) { call(arg); }"#,
+        );
+        check_assist(
+            remove_parentheses,
+            r#"fn f<F>(call: F, arg: usize) where F: Fn(usize) { $0(call)(arg); }"#,
+            r#"fn f<F>(call: F, arg: usize) where F: Fn(usize) { call(arg); }"#,
+        );
+
+        // Parentheses are necessary when calling a function-like pointer that is a member of a struct or union.
+        check_assist_not_applicable(
+            remove_parentheses,
+            r#"
+struct Foo<T> {
+    t: T,
+}
+
+impl Foo<fn(usize)> {
+    fn foo(&self, arg: usize) {
+        $0(self.t)(arg);
+    }
+}"#,
+        );
     }
 }

@@ -10,5 +10,6 @@ use test_macros::identity_attr;
 fn main() {
     let _x;
     let y = ();
-    (#[identity_attr] _x) = y;
+    #[identity_attr]
+    _x = y;
 }

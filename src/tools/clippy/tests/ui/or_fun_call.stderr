@@ -100,6 +100,12 @@ error: use of `unwrap_or` to construct default value
 LL |     let _ = stringy.unwrap_or(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
+error: use of `ok_or` followed by a function call
+  --> tests/ui/or_fun_call.rs:101:17
+   |
+LL |     let _ = opt.ok_or(format!("{} world.", hello));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ok_or_else(|| format!("{} world.", hello))`
+
 error: use of `unwrap_or` followed by a function call
   --> tests/ui/or_fun_call.rs:105:21
    |
@@ -190,5 +196,53 @@ error: use of `unwrap_or_else` to construct default value
 LL |         let _ = stringy.unwrap_or_else(String::new);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: aborting due to 31 previous errors
+error: use of `unwrap_or` followed by a function call
+  --> tests/ui/or_fun_call.rs:345:17
+   |
+LL |     let _ = opt.unwrap_or({ f() }); // suggest `.unwrap_or_else(f)`
+   |                 ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(f)`
+
+error: use of `unwrap_or` followed by a function call
+  --> tests/ui/or_fun_call.rs:348:17
+   |
+LL |     let _ = opt.unwrap_or(f() + 1); // suggest `.unwrap_or_else(|| f() + 1)`
+   |                 ^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| f() + 1)`
+
+error: use of `unwrap_or` followed by a function call
+  --> tests/ui/or_fun_call.rs:351:17
+   |
+LL |       let _ = opt.unwrap_or({
+   |  _________________^
+LL | |         let x = f();
+LL | |         x + 1
+LL | |     });
+   | |______^
+   |
+help: try
+   |
+LL ~     let _ = opt.unwrap_or_else(|| {
+LL +         let x = f();
+LL +         x + 1
+LL ~     });
+   |
+
+error: use of `map_or` followed by a function call
+  --> tests/ui/or_fun_call.rs:356:17
+   |
+LL |     let _ = opt.map_or(f() + 1, |v| v); // suggest `.map_or_else(|| f() + 1, |v| v)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `map_or_else(|| f() + 1, |v| v)`
+
+error: use of `unwrap_or` to construct default value
+  --> tests/ui/or_fun_call.rs:359:17
+   |
+LL |     let _ = opt.unwrap_or({ i32::default() });
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
+
+error: use of `unwrap_or` followed by a function call
+  --> tests/ui/or_fun_call.rs:365:21
+   |
+LL |     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| Foo { val: String::default() })`
+
+error: aborting due to 38 previous errors
 

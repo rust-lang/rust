@@ -50,7 +50,7 @@ fn main() {
     }
 
     let mut val = InStruct {
-        in_struct_field: 101,
+        in_struct_field: 101, //
     };
 
     val.default_trait_func();

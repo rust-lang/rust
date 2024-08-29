@@ -4,13 +4,13 @@ mod checksum;
 mod manifest;
 mod versions;
 
+use std::collections::{BTreeMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::{env, fs};
+
 use crate::checksum::Checksums;
 use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use std::collections::{BTreeMap, HashSet};
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 static HOSTS: &[&str] = &[
     "aarch64-apple-darwin",
@@ -25,6 +25,7 @@ static HOSTS: &[&str] = &[
     "i686-pc-windows-msvc",
     "i686-unknown-linux-gnu",
     "loongarch64-unknown-linux-gnu",
+    "loongarch64-unknown-linux-musl",
     "mips-unknown-linux-gnu",
     "mips64-unknown-linux-gnuabi64",
     "mips64el-unknown-linux-gnuabi64",
@@ -53,6 +54,7 @@ static TARGETS: &[&str] = &[
     "arm64e-apple-darwin",
     "aarch64-apple-ios",
     "arm64e-apple-ios",
+    "aarch64-apple-ios-macabi",
     "aarch64-apple-ios-sim",
     "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
@@ -71,6 +73,7 @@ static TARGETS: &[&str] = &[
     "arm-unknown-linux-gnueabihf",
     "arm-unknown-linux-musleabi",
     "arm-unknown-linux-musleabihf",
+    "arm64ec-pc-windows-msvc",
     "armv5te-unknown-linux-gnueabi",
     "armv5te-unknown-linux-musleabi",
     "armv7-linux-androideabi",
@@ -102,8 +105,10 @@ static TARGETS: &[&str] = &[
     "i686-unknown-freebsd",
     "i686-unknown-linux-gnu",
     "i686-unknown-linux-musl",
+    "i686-unknown-redox",
     "i686-unknown-uefi",
     "loongarch64-unknown-linux-gnu",
+    "loongarch64-unknown-linux-musl",
     "loongarch64-unknown-none",
     "loongarch64-unknown-none-softfloat",
     "m68k-unknown-linux-gnu",
@@ -137,6 +142,7 @@ static TARGETS: &[&str] = &[
     "riscv64gc-unknown-hermit",
     "riscv64gc-unknown-none-elf",
     "riscv64gc-unknown-linux-gnu",
+    "riscv64gc-unknown-linux-musl",
     "s390x-unknown-linux-gnu",
     "sparc64-unknown-linux-gnu",
     "sparcv9-sun-solaris",
@@ -153,8 +159,10 @@ static TARGETS: &[&str] = &[
     "wasm32-wasi",
     "wasm32-wasip1",
     "wasm32-wasip1-threads",
+    "wasm32-wasip2",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",
+    "x86_64-apple-ios-macabi",
     "x86_64-fortanix-unknown-sgx",
     "x86_64-unknown-fuchsia",
     "x86_64-linux-android",
@@ -494,7 +502,7 @@ impl Builder {
                 Some(p) => p,
                 None => return false,
             };
-            pkg.target.get(&c.target).is_some()
+            pkg.target.contains_key(&c.target)
         };
         extensions.retain(&has_component);
         components.retain(&has_component);

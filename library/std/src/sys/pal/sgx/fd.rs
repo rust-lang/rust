@@ -2,7 +2,7 @@ use fortanix_sgx_abi::Fd;
 
 use super::abi::usercalls;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::mem;
+use crate::mem::ManuallyDrop;
 use crate::sys::{AsInner, FromInner, IntoInner};
 
 #[derive(Debug)]
@@ -21,9 +21,7 @@ impl FileDesc {
 
     /// Extracts the actual file descriptor without closing it.
     pub fn into_raw(self) -> Fd {
-        let fd = self.fd;
-        mem::forget(self);
-        fd
+        ManuallyDrop::new(self).fd
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -70,9 +68,7 @@ impl AsInner<Fd> for FileDesc {
 
 impl IntoInner<Fd> for FileDesc {
     fn into_inner(self) -> Fd {
-        let fd = self.fd;
-        mem::forget(self);
-        fd
+        ManuallyDrop::new(self).fd
     }
 }
 

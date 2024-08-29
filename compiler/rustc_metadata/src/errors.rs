@@ -1,9 +1,8 @@
-use std::{
-    io::Error,
-    path::{Path, PathBuf},
-};
+use std::io::Error;
+use std::path::{Path, PathBuf};
 
-use rustc_errors::{codes::*, Diag, DiagCtxt, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{sym, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
@@ -39,6 +38,8 @@ pub struct CrateDepMultiple {
     pub crate_name: Symbol,
     #[subdiagnostic]
     pub non_static_deps: Vec<NonStaticCrateDep>,
+    #[subdiagnostic]
+    pub rustc_driver_help: Option<RustcDriverHelp>,
 }
 
 #[derive(Subdiagnostic)]
@@ -46,6 +47,10 @@ pub struct CrateDepMultiple {
 pub struct NonStaticCrateDep {
     pub crate_name: Symbol,
 }
+
+#[derive(Subdiagnostic)]
+#[help(metadata_crate_dep_rustc_driver)]
+pub struct RustcDriverHelp;
 
 #[derive(Diagnostic)]
 #[diag(metadata_two_panic_runtimes)]
@@ -503,7 +508,7 @@ pub(crate) struct MultipleCandidates {
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
-    fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::metadata_multiple_candidates);
         diag.arg("crate_name", self.crate_name);
         diag.arg("flavor", self.flavor);
@@ -602,7 +607,7 @@ pub struct InvalidMetadataFiles {
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for InvalidMetadataFiles {
     #[track_caller]
-    fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::metadata_invalid_meta_files);
         diag.arg("crate_name", self.crate_name);
         diag.arg("add_info", self.add_info);
@@ -631,7 +636,7 @@ pub struct CannotFindCrate {
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
     #[track_caller]
-    fn into_diag(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::metadata_cannot_find_crate);
         diag.arg("crate_name", self.crate_name);
         diag.arg("current_crate", self.current_crate);

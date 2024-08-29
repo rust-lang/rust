@@ -1,6 +1,4 @@
-//! lint on inherent implementations
-
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
@@ -14,7 +12,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for multiple inherent implementations of a struct
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Splitting the implementation of a type makes the code harder to navigate.
     ///
     /// ### Example
@@ -56,19 +54,18 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
         let Ok(impls) = cx.tcx.crate_inherent_impls(()) else {
             return;
         };
-        let inherent_impls = cx
-            .tcx
-            .with_stable_hashing_context(|hcx| impls.inherent_impls.to_sorted(&hcx, true));
 
-        for (_, impl_ids) in inherent_impls.into_iter().filter(|(&id, impls)| {
-            impls.len() > 1
+        for (&id, impl_ids) in &impls.inherent_impls {
+            if impl_ids.len() < 2
             // Check for `#[allow]` on the type definition
-            && !is_lint_allowed(
+            || is_lint_allowed(
                 cx,
                 MULTIPLE_INHERENT_IMPL,
                 cx.tcx.local_def_id_to_hir_id(id),
-            )
-        }) {
+            ) {
+                continue;
+            }
+
             for impl_id in impl_ids.iter().map(|id| id.expect_local()) {
                 let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity();
                 match type_map.entry(impl_ty) {
@@ -106,13 +103,14 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
         // `TyCtxt::crate_inherent_impls` doesn't have a defined order. Sort the lint output first.
         lint_spans.sort_by_key(|x| x.0.lo());
         for (span, first_span) in lint_spans {
-            span_lint_and_note(
+            span_lint_and_then(
                 cx,
                 MULTIPLE_INHERENT_IMPL,
                 span,
                 "multiple implementations of this structure",
-                Some(first_span),
-                "first implementation here",
+                |diag| {
+                    diag.span_note(first_span, "first implementation here");
+                },
             );
         }
     }

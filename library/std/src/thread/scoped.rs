@@ -1,10 +1,9 @@
 use super::{current, park, Builder, JoinInner, Result, Thread};
-use crate::fmt;
-use crate::io;
 use crate::marker::PhantomData;
 use crate::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::sync::Arc;
+use crate::{fmt, io};
 
 /// A scope to spawn scoped threads in.
 ///
@@ -67,7 +66,7 @@ impl ScopeData {
     }
 }
 
-/// Create a scope for spawning scoped threads.
+/// Creates a scope for spawning scoped threads.
 ///
 /// The function passed to `scope` will be provided a [`Scope`] object,
 /// through which scoped threads can be [spawned][`Scope::spawn`].

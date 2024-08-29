@@ -10,16 +10,14 @@ use super::{
 };
 use crate::*;
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
-    crate::MiriInterpCxExt<'mir, 'tcx>
-{
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_avx2_intrinsic(
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
-        dest: &MPlaceTy<'tcx, Provenance>,
+        args: &[OpTy<'tcx>],
+        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "avx2")?;
@@ -77,7 +75,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 assert_eq!(dest_len, mask_len);
 
                 let mask_item_size = mask.layout.field(this, 0).size;
-                let high_bit_offset = mask_item_size.bits().checked_sub(1).unwrap();
+                let high_bit_offset = mask_item_size.bits().strict_sub(1);
 
                 let scale = this.read_scalar(scale)?.to_i8()?;
                 if !matches!(scale, 1 | 2 | 4 | 8) {
@@ -95,8 +93,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                         let offset =
                             i64::try_from(this.read_scalar(&offset)?.to_int(offset.layout.size)?)
                                 .unwrap();
-                        let ptr = slice
-                            .wrapping_signed_offset(offset.checked_mul(scale).unwrap(), &this.tcx);
+                        let ptr = slice.wrapping_signed_offset(offset.strict_mul(scale), &this.tcx);
                         // Unaligned copy, which is what we want.
                         this.mem_copy(
                             ptr,
@@ -126,22 +123,22 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.checked_mul(2).unwrap(), left_len);
+                assert_eq!(dest_len.strict_mul(2), left_len);
 
                 for i in 0..dest_len {
-                    let j1 = i.checked_mul(2).unwrap();
+                    let j1 = i.strict_mul(2);
                     let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_i16()?;
                     let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i16()?;
 
-                    let j2 = j1.checked_add(1).unwrap();
+                    let j2 = j1.strict_add(1);
                     let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_i16()?;
                     let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i16()?;
 
                     let dest = this.project_index(&dest, i)?;
 
                     // Multiplications are i16*i16->i32, which will not overflow.
-                    let mul1 = i32::from(left1).checked_mul(right1.into()).unwrap();
-                    let mul2 = i32::from(left2).checked_mul(right2.into()).unwrap();
+                    let mul1 = i32::from(left1).strict_mul(right1.into());
+                    let mul2 = i32::from(left2).strict_mul(right2.into());
                     // However, this addition can overflow in the most extreme case
                     // (-0x8000)*(-0x8000)+(-0x8000)*(-0x8000) = 0x80000000
                     let res = mul1.wrapping_add(mul2);
@@ -163,22 +160,22 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.checked_mul(2).unwrap(), left_len);
+                assert_eq!(dest_len.strict_mul(2), left_len);
 
                 for i in 0..dest_len {
-                    let j1 = i.checked_mul(2).unwrap();
+                    let j1 = i.strict_mul(2);
                     let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_u8()?;
                     let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i8()?;
 
-                    let j2 = j1.checked_add(1).unwrap();
+                    let j2 = j1.strict_add(1);
                     let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_u8()?;
                     let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i8()?;
 
                     let dest = this.project_index(&dest, i)?;
 
                     // Multiplication of a u8 and an i8 into an i16 cannot overflow.
-                    let mul1 = i16::from(left1).checked_mul(right1.into()).unwrap();
-                    let mul2 = i16::from(left2).checked_mul(right2.into()).unwrap();
+                    let mul1 = i16::from(left1).strict_mul(right1.into());
+                    let mul2 = i16::from(left2).strict_mul(right2.into());
                     let res = mul1.saturating_add(mul2);
 
                     this.write_scalar(Scalar::from_i16(res), &dest)?;
@@ -311,7 +308,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 for i in 0..2 {
                     let dest = this.project_index(&dest, i)?;
-                    let src = match (imm >> i.checked_mul(4).unwrap()) & 0b11 {
+                    let src = match (imm >> i.strict_mul(4)) & 0b11 {
                         0 => this.project_index(&left, 0)?,
                         1 => this.project_index(&left, 1)?,
                         2 => this.project_index(&right, 0)?,
@@ -338,14 +335,14 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let (dest, dest_len) = this.mplace_to_simd(dest)?;
 
                 assert_eq!(left_len, right_len);
-                assert_eq!(left_len, dest_len.checked_mul(8).unwrap());
+                assert_eq!(left_len, dest_len.strict_mul(8));
 
                 for i in 0..dest_len {
                     let dest = this.project_index(&dest, i)?;
 
                     let mut acc: u16 = 0;
                     for j in 0..8 {
-                        let src_index = i.checked_mul(8).unwrap().checked_add(j).unwrap();
+                        let src_index = i.strict_mul(8).strict_add(j);
 
                         let left = this.project_index(&left, src_index)?;
                         let left = this.read_scalar(&left)?.to_u8()?;
@@ -353,7 +350,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                         let right = this.project_index(&right, src_index)?;
                         let right = this.read_scalar(&right)?.to_u8()?;
 
-                        acc = acc.checked_add(left.abs_diff(right).into()).unwrap();
+                        acc = acc.strict_add(left.abs_diff(right).into());
                     }
 
                     this.write_scalar(Scalar::from_u64(acc.into()), &dest)?;
@@ -379,7 +376,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                     let res = if right & 0x80 == 0 {
                         // Shuffle each 128-bit (16-byte) block independently.
-                        let j = u64::from(right % 16).checked_add(i & !15).unwrap();
+                        let j = u64::from(right % 16).strict_add(i & !15);
                         this.read_scalar(&this.project_index(&left, j)?)?
                     } else {
                         // If the highest bit in `right` is 1, write zero.

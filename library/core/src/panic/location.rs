@@ -2,9 +2,10 @@ use crate::fmt;
 
 /// A struct containing information about the location of a panic.
 ///
-/// This structure is created by [`PanicInfo::location()`].
+/// This structure is created by [`PanicHookInfo::location()`] and [`PanicInfo::location()`].
 ///
 /// [`PanicInfo::location()`]: crate::panic::PanicInfo::location
+/// [`PanicHookInfo::location()`]: ../../std/panic/struct.PanicHookInfo.html#method.location
 ///
 /// # Examples
 ///
@@ -43,7 +44,7 @@ impl<'a> Location<'a> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```standalone
     /// use std::panic::Location;
     ///
     /// /// Returns the [`Location`] at which it is called.
@@ -194,6 +195,7 @@ impl<'a> Location<'a> {
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for Location<'_> {
+    #[inline]
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
     }

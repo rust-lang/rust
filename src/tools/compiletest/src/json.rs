@@ -1,11 +1,12 @@
 //! These structs are a subset of the ones found in `rustc_errors::json`.
-//! They are only used for deserialization of JSON output provided by libtest.
+
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+
+use serde::Deserialize;
 
 use crate::errors::{Error, ErrorKind};
 use crate::runtest::ProcRes;
-use serde::Deserialize;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 #[derive(Deserialize)]
 struct Diagnostic {
@@ -125,11 +126,10 @@ pub fn extract_rendered(output: &str) -> String {
                     // Ignore the notification.
                     None
                 } else {
-                    print!(
-                        "failed to decode compiler output as json: line: {}\noutput: {}",
-                        line, output
-                    );
-                    panic!()
+                    // This function is called for both compiler and non-compiler output,
+                    // so if the line isn't recognized as JSON from the compiler then
+                    // just print it as-is.
+                    Some(format!("{line}\n"))
                 }
             } else {
                 // preserve non-JSON lines, such as ICEs

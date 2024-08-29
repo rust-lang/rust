@@ -26,7 +26,7 @@ LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
    |                                 ^^^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: cannot call non-const fn `<str as ToString>::to_string` in statics
@@ -36,7 +36,7 @@ LL |     field2: SafeEnum::Variant4("str".to_string()),
    |                                      ^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    |
 LL + #![feature(const_trait_impl)]
@@ -57,7 +57,7 @@ LL |     vec![MyOwned],
    |     ^^^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
@@ -75,7 +75,7 @@ LL |     vec![MyOwned],
    |     ^^^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
@@ -93,7 +93,7 @@ LL |     &vec![MyOwned],
    |      ^^^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
@@ -111,7 +111,7 @@ LL |     &vec![MyOwned],
    |      ^^^^^^^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
@@ -129,7 +129,7 @@ LL | static STATIC19: Vec<isize> = vec![3];
    |                               ^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0010]: allocations are not allowed in statics
@@ -147,7 +147,7 @@ LL |         static x: Vec<isize> = vec![3];
    |                                ^^^^^^^
    |
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
-   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
+   = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0507]: cannot move out of static item `x`

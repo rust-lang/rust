@@ -1,4 +1,5 @@
 use clippy_config::types::PubUnderscoreFieldsBehaviour;
+use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_path_lang_item;
@@ -42,9 +43,17 @@ declare_clippy_lint! {
 }
 
 pub struct PubUnderscoreFields {
-    pub behavior: PubUnderscoreFieldsBehaviour,
+    behavior: PubUnderscoreFieldsBehaviour,
 }
 impl_lint_pass!(PubUnderscoreFields => [PUB_UNDERSCORE_FIELDS]);
+
+impl PubUnderscoreFields {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            behavior: conf.pub_underscore_fields_behavior,
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {

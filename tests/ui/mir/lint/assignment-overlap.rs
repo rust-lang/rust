@@ -9,11 +9,11 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
 pub fn main() {
-    mir!(
+    mir! {
         let a: [u8; 1024];
         {
             a = a;
             Return()
         }
-    )
+    }
 }

@@ -1,14 +1,17 @@
-use crate::traits::specialization_graph;
-use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use crate::ty::{Ident, Ty, TyCtxt};
-use hir::def_id::LOCAL_CRATE;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable};
+use tracing::debug;
+
+use crate::query::LocalCrate;
+use crate::traits::specialization_graph;
+use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
+use crate::ty::{Ident, Ty, TyCtxt};
 
 /// A trait's definition with type information.
 #[derive(HashStable, Encodable, Decodable)]
@@ -16,6 +19,9 @@ pub struct TraitDef {
     pub def_id: DefId,
 
     pub safety: hir::Safety,
+
+    /// Whether this trait has been annotated with `#[const_trait]`.
+    pub constness: hir::Constness,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
@@ -30,7 +36,7 @@ pub struct TraitDef {
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
 
-    /// If `true`, then this trait has to `#[rustc_coinductive]` attribute or
+    /// If `true`, then this trait has the `#[rustc_coinductive]` attribute or
     /// is an auto trait. This indicates that trait solver cycles involving an
     /// `X: ThisTrait` goal are accepted.
     ///
@@ -38,6 +44,11 @@ pub struct TraitDef {
     /// formal understanding of what exactly that means and should probably
     /// also have already switched to the new trait solver.
     pub is_coinductive: bool,
+
+    /// If `true`, then this trait has the `#[fundamental]` attribute. This
+    /// affects how conherence computes whether a trait may have trait implementations
+    /// added in the future.
+    pub is_fundamental: bool,
 
     /// If `true`, then this trait has the `#[rustc_skip_during_method_dispatch(array)]`
     /// attribute, indicating that editions before 2021 should not consider this trait
@@ -205,7 +216,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
     // Traits defined in the current crate can't have impls in upstream
     // crates, so we don't bother querying the cstore.
     if !trait_id.is_local() {
-        for &cnum in tcx.used_crates(()).iter() {
+        for &cnum in tcx.crates(()).iter() {
             for &(impl_def_id, simplified_self_ty) in
                 tcx.implementations_of_trait((cnum, trait_id)).iter()
             {
@@ -247,7 +258,7 @@ pub(super) fn incoherent_impls_provider(
     let mut impls = Vec::new();
 
     let mut res = Ok(());
-    for cnum in iter::once(LOCAL_CRATE).chain(tcx.used_crates(()).iter().copied()) {
+    for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
         let incoherent_impls = match tcx.crate_incoherent_impls((cnum, simp)) {
             Ok(impls) => impls,
             Err(e) => {
@@ -264,4 +275,28 @@ pub(super) fn incoherent_impls_provider(
     res?;
 
     Ok(tcx.arena.alloc_slice(&impls))
+}
+
+pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
+    let mut traits = Vec::new();
+    for id in tcx.hir().items() {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
+            traits.push(id.owner_id.to_def_id())
+        }
+    }
+
+    tcx.arena.alloc_slice(&traits)
+}
+
+pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
+    let mut trait_impls = Vec::new();
+    for id in tcx.hir().items() {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
+            && tcx.impl_trait_ref(id.owner_id).is_some()
+        {
+            trait_impls.push(id.owner_id.to_def_id())
+        }
+    }
+
+    tcx.arena.alloc_slice(&trait_impls)
 }

@@ -1,4 +1,5 @@
 //@ test-mir-pass: DataflowConstProp
+//@ compile-flags: -Zdump-mir-exclude-alloc-bytes
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 #[derive(Copy, Clone)]
@@ -45,15 +46,15 @@ fn main() {
     const SMALL_VAL: SmallStruct = SmallStruct(4., Some(S(1)), &[]);
 
     // CHECK: [[a1]] = const 4f32;
-    // CHECK: [[b1]] = const Option::<S>::Some(S(1_i32));
-    // CHECK: [[c1]] = ({{_.*}}.2: &[f32]);
+    // CHECK: [[b1]] = copy ({{_.*}}.1: std::option::Option<S>);
+    // CHECK: [[c1]] = copy ({{_.*}}.2: &[f32]);
     let SmallStruct(a1, b1, c1) = SMALL_VAL;
 
     static SMALL_STAT: &SmallStruct = &SmallStruct(9., None, &[13.]);
 
     // CHECK: [[a2]] = const 9f32;
-    // CHECK: [[b2]] = ((*{{_.*}}).1: std::option::Option<S>);
-    // CHECK: [[c2]] = ((*{{_.*}}).2: &[f32]);
+    // CHECK: [[b2]] = copy ((*{{_.*}}).1: std::option::Option<S>);
+    // CHECK: [[c2]] = copy ((*{{_.*}}).2: &[f32]);
     let SmallStruct(a2, b2, c2) = *SMALL_STAT;
 
     // CHECK: [[ss]] = SmallStruct(const 9f32, move {{_.*}}, move {{_.*}});
@@ -62,18 +63,18 @@ fn main() {
     const BIG_VAL: BigStruct = BigStruct(25., None, &[]);
 
     // CHECK: [[a3]] = const 25f32;
-    // CHECK: [[b3]] = ({{_.*}}.1: std::option::Option<S>);
-    // CHECK: [[c3]] = ({{_.*}}.2: &[f32]);
+    // CHECK: [[b3]] = copy ({{_.*}}.1: std::option::Option<S>);
+    // CHECK: [[c3]] = copy ({{_.*}}.2: &[f32]);
     let BigStruct(a3, b3, c3) = BIG_VAL;
 
     static BIG_STAT: &BigStruct = &BigStruct(82., Some(S(35)), &[45., 72.]);
     // CHECK: [[a4]] = const 82f32;
-    // CHECK: [[b4]] = const Option::<S>::Some(S(35_i32));
-    // CHECK: [[c4]] = ((*{{_.*}}).2: &[f32]);
+    // CHECK: [[b4]] = copy ((*{{_.*}}).1: std::option::Option<S>);
+    // CHECK: [[c4]] = copy ((*{{_.*}}).2: &[f32]);
     let BigStruct(a4, b4, c4) = *BIG_STAT;
 
     // We arbitrarily limit the size of synthetized values to 4 pointers.
     // `BigStruct` can be read, but we will keep a MIR aggregate for this.
-    // CHECK: [[bs]] = BigStruct(const 82f32, const Option::<S>::Some(S(35_i32)), move {{_.*}});
+    // CHECK: [[bs]] = BigStruct(const 82f32, move {{.*}}, move {{_.*}});
     let bs = BigStruct(a4, b4, c4);
 }

@@ -105,7 +105,7 @@ help: the following enum variant is available
    |
 LL |     (E::TupleWithFields(/* fields */)).foo();
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: consider importing one of these items instead
+help: consider importing one of these constants instead
    |
 LL + use std::f128::consts::E;
    |

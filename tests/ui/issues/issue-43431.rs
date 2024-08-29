@@ -7,7 +7,7 @@ trait CallSingle<A, B> {
 impl<A, B, F: Fn(A) -> B> CallSingle<A, B> for F {
     fn call(&self, a: A) -> B {
         <Self as Fn(A) -> B>::call(self, (a,))
-        //~^ ERROR associated type bindings are not allowed here
+        //~^ ERROR associated item constraints are not allowed here
     }
 }
 

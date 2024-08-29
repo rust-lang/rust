@@ -23,12 +23,12 @@ impl MyTrait3 for MyType {
     fn method_trait_3() {}
 }
 
-// @hasraw 'type.impl/parent_crate_115718/struct.MyStruct.js' 'method_trait_1'
-// @hasraw 'type.impl/parent_crate_115718/struct.MyStruct.js' 'method_trait_2'
+//@ hasraw 'type.impl/parent_crate_115718/struct.MyStruct.js' 'method_trait_1'
+//@ hasraw 'type.impl/parent_crate_115718/struct.MyStruct.js' 'method_trait_2'
 // Avoid duplicating these docs.
-// @!hasraw 'foo/type.MyType.html' 'method_trait_1'
-// @!hasraw 'foo/type.MyType.html' 'method_trait_2'
+//@ !hasraw 'foo/type.MyType.html' 'method_trait_1'
+//@ !hasraw 'foo/type.MyType.html' 'method_trait_2'
 // The one made directly on the type alias should be attached to the HTML instead.
-// @!hasraw 'type.impl/parent_crate_115718/struct.MyStruct.js' 'method_trait_3'
-// @hasraw 'foo/type.MyType.html' 'method_trait_3'
+//@ !hasraw 'type.impl/parent_crate_115718/struct.MyStruct.js' 'method_trait_3'
+//@ hasraw 'foo/type.MyType.html' 'method_trait_3'
 pub type MyType = MyStruct<u16>;

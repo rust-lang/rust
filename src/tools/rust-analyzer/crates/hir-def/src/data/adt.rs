@@ -5,24 +5,20 @@ use bitflags::bitflags;
 use cfg::CfgOptions;
 use either::Either;
 
-use hir_expand::{
-    name::{AsName, Name},
-    HirFileId, InFile,
-};
-use intern::Interned;
+use hir_expand::name::Name;
+use intern::{sym, Interned};
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
-use syntax::ast::{self, HasName, HasVisibility};
 use triomphe::Arc;
 
 use crate::{
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
-    item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
+    item_tree::{
+        AttrOwner, Field, FieldParent, FieldsShape, ItemTree, ModItem, RawVisibilityId, TreeId,
+    },
     lang_item::LangItem,
-    lower::LowerCtx,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
-    trace::Trace,
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
@@ -95,7 +91,7 @@ fn repr_from_value(
     item_tree: &ItemTree,
     of: AttrOwner,
 ) -> Option<ReprOptions> {
-    item_tree.attrs(db, krate, of).by_key("repr").tt_values().find_map(parse_repr_tt)
+    item_tree.attrs(db, krate, of).by_key(&sym::repr).tt_values().find_map(parse_repr_tt)
 }
 
 fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
@@ -112,12 +108,12 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     let mut tts = tt.token_trees.iter().peekable();
     while let Some(tt) = tts.next() {
         if let TokenTree::Leaf(Leaf::Ident(ident)) = tt {
-            flags.insert(match &*ident.text {
-                "packed" => {
+            flags.insert(match &ident.sym {
+                s if *s == sym::packed => {
                     let pack = if let Some(TokenTree::Subtree(tt)) = tts.peek() {
                         tts.next();
                         if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
-                            lit.text.parse().unwrap_or_default()
+                            lit.symbol.as_str().parse().unwrap_or_default()
                         } else {
                             0
                         }
@@ -129,11 +125,11 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                         Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
                     ReprFlags::empty()
                 }
-                "align" => {
+                s if *s == sym::align => {
                     if let Some(TokenTree::Subtree(tt)) = tts.peek() {
                         tts.next();
                         if let Some(TokenTree::Leaf(Leaf::Literal(lit))) = tt.token_trees.first() {
-                            if let Ok(align) = lit.text.parse() {
+                            if let Ok(align) = lit.symbol.as_str().parse() {
                                 let align = Align::from_bytes(align).ok();
                                 max_align = max_align.max(align);
                             }
@@ -141,13 +137,13 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                     }
                     ReprFlags::empty()
                 }
-                "C" => ReprFlags::IS_C,
-                "transparent" => ReprFlags::IS_TRANSPARENT,
-                "simd" => ReprFlags::IS_SIMD,
+                s if *s == sym::C => ReprFlags::IS_C,
+                s if *s == sym::transparent => ReprFlags::IS_TRANSPARENT,
+                s if *s == sym::simd => ReprFlags::IS_SIMD,
                 repr => {
-                    if let Some(builtin) = BuiltinInt::from_suffix(repr)
+                    if let Some(builtin) = BuiltinInt::from_suffix_sym(repr)
                         .map(Either::Left)
-                        .or_else(|| BuiltinUint::from_suffix(repr).map(Either::Right))
+                        .or_else(|| BuiltinUint::from_suffix_sym(repr).map(Either::Right))
                     {
                         int = Some(match builtin {
                             Either::Left(bi) => match bi {
@@ -194,10 +190,10 @@ impl StructData {
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
 
         let mut flags = StructFlags::NO_FLAGS;
-        if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
         }
-        if attrs.by_key("fundamental").exists() {
+        if attrs.by_key(&sym::fundamental).exists() {
             flags |= StructFlags::IS_FUNDAMENTAL;
         }
         if let Some(lang) = attrs.lang_item() {
@@ -211,20 +207,25 @@ impl StructData {
         }
 
         let strukt = &item_tree[loc.id.value];
-        let (variant_data, diagnostics) = lower_fields(
+        let (data, diagnostics) = lower_fields(
             db,
             krate,
-            loc.id.file_id(),
             loc.container.local_id,
+            loc.id.tree_id(),
             &item_tree,
             &db.crate_graph()[krate].cfg_options,
+            FieldParent::Struct(loc.id.value),
             &strukt.fields,
             None,
         );
         (
             Arc::new(StructData {
                 name: strukt.name.clone(),
-                variant_data: Arc::new(variant_data),
+                variant_data: Arc::new(match strukt.shape {
+                    FieldsShape::Record => VariantData::Record(data),
+                    FieldsShape::Tuple => VariantData::Tuple(data),
+                    FieldsShape::Unit => VariantData::Unit,
+                }),
                 repr,
                 visibility: item_tree[strukt.visibility].clone(),
                 flags,
@@ -248,28 +249,29 @@ impl StructData {
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::NO_FLAGS;
-        if attrs.by_key("rustc_has_incoherent_inherent_impls").exists() {
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL;
         }
-        if attrs.by_key("fundamental").exists() {
+        if attrs.by_key(&sym::fundamental).exists() {
             flags |= StructFlags::IS_FUNDAMENTAL;
         }
 
         let union = &item_tree[loc.id.value];
-        let (variant_data, diagnostics) = lower_fields(
+        let (data, diagnostics) = lower_fields(
             db,
             krate,
-            loc.id.file_id(),
             loc.container.local_id,
+            loc.id.tree_id(),
             &item_tree,
             &db.crate_graph()[krate].cfg_options,
+            FieldParent::Union(loc.id.value),
             &union.fields,
             None,
         );
         (
             Arc::new(StructData {
                 name: union.name.clone(),
-                variant_data: Arc::new(variant_data),
+                variant_data: Arc::new(VariantData::Record(data)),
                 repr,
                 visibility: item_tree[union.visibility].clone(),
                 flags,
@@ -287,7 +289,7 @@ impl EnumData {
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let rustc_has_incoherent_inherent_impls = item_tree
             .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
-            .by_key("rustc_has_incoherent_inherent_impls")
+            .by_key(&sym::rustc_has_incoherent_inherent_impls)
             .exists();
 
         let enum_ = &item_tree[loc.id.value];
@@ -336,13 +338,14 @@ impl EnumVariantData {
         let item_tree = loc.id.item_tree(db);
         let variant = &item_tree[loc.id.value];
 
-        let (var_data, diagnostics) = lower_fields(
+        let (data, diagnostics) = lower_fields(
             db,
             krate,
-            loc.id.file_id(),
             container.local_id,
+            loc.id.tree_id(),
             &item_tree,
             &db.crate_graph()[krate].cfg_options,
+            FieldParent::Variant(loc.id.value),
             &variant.fields,
             Some(item_tree[loc.parent.lookup(db).id.value].visibility),
         );
@@ -350,7 +353,11 @@ impl EnumVariantData {
         (
             Arc::new(EnumVariantData {
                 name: variant.name.clone(),
-                variant_data: Arc::new(var_data),
+                variant_data: Arc::new(match variant.shape {
+                    FieldsShape::Record => VariantData::Record(data),
+                    FieldsShape::Tuple => VariantData::Tuple(data),
+                    FieldsShape::Unit => VariantData::Unit,
+                }),
             }),
             DefDiagnostics::new(diagnostics),
         )
@@ -396,123 +403,35 @@ pub enum StructKind {
     Unit,
 }
 
-pub(crate) fn lower_struct(
-    db: &dyn DefDatabase,
-    trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
-    ast: &InFile<ast::StructKind>,
-    krate: CrateId,
-    item_tree: &ItemTree,
-    fields: &Fields,
-) -> StructKind {
-    let ctx = LowerCtx::new(db, ast.file_id);
-
-    match (&ast.value, fields) {
-        (ast::StructKind::Tuple(fl), Fields::Tuple(fields)) => {
-            let cfg_options = &db.crate_graph()[krate].cfg_options;
-            for ((i, fd), item_tree_id) in fl.fields().enumerate().zip(fields.clone()) {
-                if !item_tree.attrs(db, krate, item_tree_id.into()).is_cfg_enabled(cfg_options) {
-                    continue;
-                }
-
-                trace.alloc(
-                    || Either::Left(fd.clone()),
-                    || FieldData {
-                        name: Name::new_tuple_field(i),
-                        type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
-                        visibility: RawVisibility::from_ast(db, fd.visibility(), &mut |range| {
-                            ctx.span_map().span_for_range(range).ctx
-                        }),
-                    },
-                );
-            }
-            StructKind::Tuple
-        }
-        (ast::StructKind::Record(fl), Fields::Record(fields)) => {
-            let cfg_options = &db.crate_graph()[krate].cfg_options;
-            for (fd, item_tree_id) in fl.fields().zip(fields.clone()) {
-                if !item_tree.attrs(db, krate, item_tree_id.into()).is_cfg_enabled(cfg_options) {
-                    continue;
-                }
-
-                trace.alloc(
-                    || Either::Right(fd.clone()),
-                    || FieldData {
-                        name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
-                        visibility: RawVisibility::from_ast(db, fd.visibility(), &mut |range| {
-                            ctx.span_map().span_for_range(range).ctx
-                        }),
-                    },
-                );
-            }
-            StructKind::Record
-        }
-        _ => StructKind::Unit,
-    }
-}
-
 fn lower_fields(
     db: &dyn DefDatabase,
     krate: CrateId,
-    current_file_id: HirFileId,
     container: LocalModuleId,
+    tree_id: TreeId,
     item_tree: &ItemTree,
     cfg_options: &CfgOptions,
-    fields: &Fields,
+    parent: FieldParent,
+    fields: &[Field],
     override_visibility: Option<RawVisibilityId>,
-) -> (VariantData, Vec<DefDiagnostic>) {
+) -> (Arena<FieldData>, Vec<DefDiagnostic>) {
     let mut diagnostics = Vec::new();
-    match fields {
-        Fields::Record(flds) => {
-            let mut arena = Arena::new();
-            for field_id in flds.clone() {
-                let attrs = item_tree.attrs(db, krate, field_id.into());
-                let field = &item_tree[field_id];
-                if attrs.is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, field, override_visibility));
-                } else {
-                    diagnostics.push(DefDiagnostic::unconfigured_code(
-                        container,
-                        InFile::new(
-                            current_file_id,
-                            match field.ast_id {
-                                FieldAstId::Record(it) => it.erase(),
-                                FieldAstId::Tuple(it) => it.erase(),
-                            },
-                        ),
-                        attrs.cfg().unwrap(),
-                        cfg_options.clone(),
-                    ))
-                }
-            }
-            (VariantData::Record(arena), diagnostics)
+    let mut arena = Arena::new();
+    for (idx, field) in fields.iter().enumerate() {
+        let attr_owner = AttrOwner::make_field_indexed(parent, idx);
+        let attrs = item_tree.attrs(db, krate, attr_owner);
+        if attrs.is_cfg_enabled(cfg_options) {
+            arena.alloc(lower_field(item_tree, field, override_visibility));
+        } else {
+            diagnostics.push(DefDiagnostic::unconfigured_code(
+                container,
+                tree_id,
+                attr_owner,
+                attrs.cfg().unwrap(),
+                cfg_options.clone(),
+            ))
         }
-        Fields::Tuple(flds) => {
-            let mut arena = Arena::new();
-            for field_id in flds.clone() {
-                let attrs = item_tree.attrs(db, krate, field_id.into());
-                let field = &item_tree[field_id];
-                if attrs.is_cfg_enabled(cfg_options) {
-                    arena.alloc(lower_field(item_tree, field, override_visibility));
-                } else {
-                    diagnostics.push(DefDiagnostic::unconfigured_code(
-                        container,
-                        InFile::new(
-                            current_file_id,
-                            match field.ast_id {
-                                FieldAstId::Record(it) => it.erase(),
-                                FieldAstId::Tuple(it) => it.erase(),
-                            },
-                        ),
-                        attrs.cfg().unwrap(),
-                        cfg_options.clone(),
-                    ))
-                }
-            }
-            (VariantData::Tuple(arena), diagnostics)
-        }
-        Fields::Unit => (VariantData::Unit, diagnostics),
     }
+    (arena, diagnostics)
 }
 
 fn lower_field(

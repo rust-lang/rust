@@ -11,7 +11,7 @@ pub mod quux {
 
     pub trait Foo {}
 
-    // @has issue_30109/quux/trait.Foo.html \
+    //@ has issue_30109/quux/trait.Foo.html \
     //          '//a/@href' '../issue_30109_1/struct.Bar.html'
     impl Foo for Bar {}
 }

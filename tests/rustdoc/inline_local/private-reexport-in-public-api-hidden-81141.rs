@@ -10,8 +10,8 @@ mod bar {
     pub struct Bar;
 }
 
-// @has 'foo/fn.bar.html'
-// @has - '//*[@class="rust item-decl"]/code' 'pub fn bar() -> Alias'
+//@ has 'foo/fn.bar.html'
+//@ has - '//*[@class="rust item-decl"]/code' 'pub fn bar() -> Alias'
 pub fn bar() -> Alias {
     Alias
 }
