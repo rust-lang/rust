@@ -82,6 +82,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
         self.visit_value(new_val)
     }
 
+    /// Traversal logic; should not be overloaded.
     fn walk_value(&mut self, v: &Self::V) -> InterpResult<'tcx> {
         let ty = v.layout().ty;
         trace!("walk_value: type: {ty}");
