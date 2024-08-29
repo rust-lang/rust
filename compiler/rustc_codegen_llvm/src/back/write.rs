@@ -571,6 +571,7 @@ pub(crate) unsafe fn llvm_optimize(
             cgcx.opts.cg.linker_plugin_lto.enabled(),
             config.no_prepopulate_passes,
             config.verify_llvm_ir,
+            config.lint_llvm_ir,
             using_thin_buffers,
             config.merge_functions,
             unroll_loops,
