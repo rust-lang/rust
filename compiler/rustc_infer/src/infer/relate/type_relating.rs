@@ -4,6 +4,7 @@ use rustc_middle::ty::relate::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TyVar};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use super::combine::CombineFields;
 use crate::infer::relate::{PredicateEmittingRelation, StructurallyRelateAliases};

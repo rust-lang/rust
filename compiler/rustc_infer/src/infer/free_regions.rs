@@ -5,6 +5,7 @@
 
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_middle::ty::{Region, TyCtxt};
+use tracing::debug;
 
 /// Combines a `FreeRegionMap` and a `TyCtxt`.
 ///
