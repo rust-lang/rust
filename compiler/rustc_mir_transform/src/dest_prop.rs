@@ -164,7 +164,8 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
-        let mut allocations = Allocations::default();
+        let mut candidates = FxIndexMap::default();
+        let mut candidates_reverse = FxIndexMap::default();
         let mut write_info = WriteInfo::default();
         trace!(func = ?tcx.def_path_str(def_id));
 
@@ -196,8 +197,8 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             let mut candidates = find_candidates(
                 body,
                 &borrowed,
-                &mut allocations.candidates,
-                &mut allocations.candidates_reverse,
+                &mut candidates,
+                &mut candidates_reverse,
             );
             trace!(?candidates);
             dest_prop_mir_dump(tcx, body, &points, &live, round_count);
@@ -253,17 +254,6 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 
         trace!(round_count);
     }
-}
-
-/// Container for the various allocations that we need.
-///
-/// We store these here and hand out `&mut` access to them, instead of dropping and recreating them
-/// frequently. Everything with a `&'alloc` lifetime points into here.
-#[derive(Default)]
-struct Allocations {
-    candidates: FxIndexMap<Local, Vec<Local>>,
-    candidates_reverse: FxIndexMap<Local, Vec<Local>>,
-    // PERF: Do this for `MaybeLiveLocals` allocations too.
 }
 
 #[derive(Debug)]
