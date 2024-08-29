@@ -111,6 +111,32 @@ impl<Prov: Provenance> Immediate<Prov> {
             Immediate::Uninit => bug!("Got uninit where a scalar or scalar pair was expected"),
         }
     }
+
+    /// Assert that this immediate is a valid value for the given ABI.
+    pub fn assert_matches_abi(self, abi: Abi, cx: &impl HasDataLayout) {
+        match (self, abi) {
+            (Immediate::Scalar(scalar), Abi::Scalar(s)) => {
+                assert_eq!(scalar.size(), s.size(cx));
+                if !matches!(s.primitive(), abi::Pointer(..)) {
+                    assert!(matches!(scalar, Scalar::Int(..)));
+                }
+            }
+            (Immediate::ScalarPair(a_val, b_val), Abi::ScalarPair(a, b)) => {
+                assert_eq!(a_val.size(), a.size(cx));
+                if !matches!(a.primitive(), abi::Pointer(..)) {
+                    assert!(matches!(a_val, Scalar::Int(..)));
+                }
+                assert_eq!(b_val.size(), b.size(cx));
+                if !matches!(b.primitive(), abi::Pointer(..)) {
+                    assert!(matches!(b_val, Scalar::Int(..)));
+                }
+            }
+            (Immediate::Uninit, _) => {}
+            _ => {
+                bug!("value {self:?} does not match ABI {abi:?})",)
+            }
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
