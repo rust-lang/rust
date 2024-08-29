@@ -507,12 +507,17 @@ mod tests {
                         close: span,
                         kind: tt::DelimiterKind::Brace,
                     },
-                    token_trees: Box::new([]),
+                    token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                        kind: tt::LitKind::Str,
+                        symbol: Symbol::intern("string"),
+                        suffix: None,
+                        span,
+                    }))]),
                 }),
             ],
         };
 
-        assert_eq!(s.to_string(), "struct T {}");
+        assert_eq!(s.to_string(), "struct T {\"string\"}");
     }
 
     #[test]
