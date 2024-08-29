@@ -302,6 +302,7 @@ declare_features! (
     // FIXME: Document these and merge with the list below.
 
     // Unstable `#[target_feature]` directives.
+    (unstable, aarch64_unstable_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     (unstable, aarch64_ver_target_feature, "1.27.0", Some(44839)),
     (unstable, arm_target_feature, "1.27.0", Some(44839)),
     (unstable, avx512_target_feature, "1.27.0", Some(44839)),
