@@ -222,13 +222,13 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         self.state.as_deref_mut()
     }
 
-    pub fn take_and_enter_probe(&mut self) -> ProofTreeBuilder<D> {
+    pub(crate) fn take_and_enter_probe(&mut self) -> ProofTreeBuilder<D> {
         let mut nested = ProofTreeBuilder { state: self.state.take(), _infcx: PhantomData };
         nested.enter_probe();
         nested
     }
 
-    pub fn finalize(self) -> Option<inspect::GoalEvaluation<I>> {
+    pub(crate) fn finalize(self) -> Option<inspect::GoalEvaluation<I>> {
         match *self.state? {
             DebugSolver::GoalEvaluation(wip_goal_evaluation) => {
                 Some(wip_goal_evaluation.finalize())
@@ -237,22 +237,22 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn new_maybe_root(generate_proof_tree: GenerateProofTree) -> ProofTreeBuilder<D> {
+    pub(crate) fn new_maybe_root(generate_proof_tree: GenerateProofTree) -> ProofTreeBuilder<D> {
         match generate_proof_tree {
             GenerateProofTree::No => ProofTreeBuilder::new_noop(),
             GenerateProofTree::Yes => ProofTreeBuilder::new_root(),
         }
     }
 
-    pub fn new_root() -> ProofTreeBuilder<D> {
+    fn new_root() -> ProofTreeBuilder<D> {
         ProofTreeBuilder::new(DebugSolver::Root)
     }
 
-    pub fn new_noop() -> ProofTreeBuilder<D> {
+    fn new_noop() -> ProofTreeBuilder<D> {
         ProofTreeBuilder { state: None, _infcx: PhantomData }
     }
 
-    pub fn is_noop(&self) -> bool {
+    pub(crate) fn is_noop(&self) -> bool {
         self.state.is_none()
     }
 
@@ -272,7 +272,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         })
     }
 
-    pub fn new_canonical_goal_evaluation(
+    pub(crate) fn new_canonical_goal_evaluation(
         &mut self,
         goal: CanonicalInput<I>,
     ) -> ProofTreeBuilder<D> {
@@ -284,7 +284,10 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         })
     }
 
-    pub fn canonical_goal_evaluation(&mut self, canonical_goal_evaluation: ProofTreeBuilder<D>) {
+    pub(crate) fn canonical_goal_evaluation(
+        &mut self,
+        canonical_goal_evaluation: ProofTreeBuilder<D>,
+    ) {
         if let Some(this) = self.as_mut() {
             match (this, *canonical_goal_evaluation.state.unwrap()) {
                 (
@@ -299,7 +302,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn canonical_goal_evaluation_overflow(&mut self) {
+    pub(crate) fn canonical_goal_evaluation_overflow(&mut self) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
@@ -310,7 +313,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<D>) {
+    pub(crate) fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<D>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::Root => *this = *goal_evaluation.state.unwrap(),
@@ -322,7 +325,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn new_goal_evaluation_step(
+    pub(crate) fn new_goal_evaluation_step(
         &mut self,
         var_values: ty::CanonicalVarValues<I>,
         instantiated_goal: QueryInput<I, I::Predicate>,
@@ -340,7 +343,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         })
     }
 
-    pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<D>) {
+    pub(crate) fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<D>) {
         if let Some(this) = self.as_mut() {
             match (this, *goal_evaluation_step.state.unwrap()) {
                 (
@@ -354,7 +357,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn add_var_value<T: Into<I::GenericArg>>(&mut self, arg: T) {
+    pub(crate) fn add_var_value<T: Into<I::GenericArg>>(&mut self, arg: T) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
@@ -364,7 +367,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn enter_probe(&mut self) {
+    fn enter_probe(&mut self) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
@@ -381,7 +384,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn probe_kind(&mut self, probe_kind: inspect::ProbeKind<I>) {
+    pub(crate) fn probe_kind(&mut self, probe_kind: inspect::ProbeKind<I>) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
@@ -392,7 +395,11 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn probe_final_state(&mut self, delegate: &D, max_input_universe: ty::UniverseIndex) {
+    pub(crate) fn probe_final_state(
+        &mut self,
+        delegate: &D,
+        max_input_universe: ty::UniverseIndex,
+    ) {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
@@ -409,7 +416,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn add_normalizes_to_goal(
+    pub(crate) fn add_normalizes_to_goal(
         &mut self,
         delegate: &D,
         max_input_universe: ty::UniverseIndex,
@@ -423,7 +430,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         );
     }
 
-    pub fn add_goal(
+    pub(crate) fn add_goal(
         &mut self,
         delegate: &D,
         max_input_universe: ty::UniverseIndex,
@@ -469,7 +476,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn make_canonical_response(&mut self, shallow_certainty: Certainty) {
+    pub(crate) fn make_canonical_response(&mut self, shallow_certainty: Certainty) {
         match self.as_mut() {
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
                 state
@@ -482,7 +489,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub fn finish_probe(mut self) -> ProofTreeBuilder<D> {
+    pub(crate) fn finish_probe(mut self) -> ProofTreeBuilder<D> {
         match self.as_mut() {
             None => {}
             Some(DebugSolver::CanonicalGoalEvaluationStep(state)) => {
@@ -497,7 +504,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         self
     }
 
-    pub fn query_result(&mut self, result: QueryResult<I>) {
+    pub(crate) fn query_result(&mut self, result: QueryResult<I>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
