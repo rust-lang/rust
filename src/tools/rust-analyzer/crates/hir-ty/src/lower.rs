@@ -58,7 +58,7 @@ use crate::{
     },
     db::HirDatabase,
     error_lifetime,
-    generics::{generics, Generics},
+    generics::{generics, trait_self_param_idx, Generics},
     make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
@@ -1747,21 +1747,7 @@ fn implicitly_sized_clauses<'a, 'subst: 'a>(
         .lang_item(resolver.krate(), LangItem::Sized)
         .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id))?;
 
-    let get_trait_self_idx = |container: ItemContainerId| {
-        if matches!(container, ItemContainerId::TraitId(_)) {
-            let generics = generics(db.upcast(), def);
-            Some(generics.len_self())
-        } else {
-            None
-        }
-    };
-    let trait_self_idx = match def {
-        GenericDefId::TraitId(_) => Some(0),
-        GenericDefId::FunctionId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
-        GenericDefId::ConstId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
-        GenericDefId::TypeAliasId(it) => get_trait_self_idx(it.lookup(db.upcast()).container),
-        _ => None,
-    };
+    let trait_self_idx = trait_self_param_idx(db.upcast(), def);
 
     Some(
         substitution

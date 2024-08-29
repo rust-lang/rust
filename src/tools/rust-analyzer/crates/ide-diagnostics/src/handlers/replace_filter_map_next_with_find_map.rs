@@ -84,7 +84,7 @@ fn foo() {
     fn replace_filter_map_next_dont_work_for_not_sized_issues_16596() {
         check_diagnostics(
             r#"
-//- minicore: iterators
+//- minicore: iterators, dispatch_from_dyn
 fn foo() {
     let mut j = [0].into_iter();
     let i: &mut dyn Iterator<Item = i32>  = &mut j;

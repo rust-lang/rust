@@ -66,7 +66,7 @@ use hir_ty::{
     diagnostics::BodyValidationDiagnostic,
     error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
-    method_resolution::{self},
+    method_resolution,
     mir::{interpret_mir, MutBorrowKind},
     primitive::UintTy,
     traits::FnTrait,
@@ -145,6 +145,7 @@ pub use {
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},
+        object_safety::{MethodViolationCode, ObjectSafetyViolation},
         FnAbi, PointerCast, Safety,
     },
     // FIXME: Properly encapsulate mir
@@ -2639,6 +2640,10 @@ impl Trait {
             .filter(|(_, ty)| !matches!(ty, TypeOrConstParamData::TypeParamData(ty) if ty.provenance != TypeParamProvenance::TypeParamList))
             .filter(|(_, ty)| !count_required_only || !ty.has_default())
             .count()
+    }
+
+    pub fn object_safety(&self, db: &dyn HirDatabase) -> Option<ObjectSafetyViolation> {
+        hir_ty::object_safety::object_safety(db, self.id)
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {

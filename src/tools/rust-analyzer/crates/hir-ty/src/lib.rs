@@ -42,6 +42,7 @@ pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
 pub mod mir;
+pub mod object_safety;
 pub mod primitive;
 pub mod traits;
 
