@@ -2279,7 +2279,7 @@ impl<T, A: Allocator + Clone> Rc<T, A> {
     /// and only afterwards completes the construction of the `Rc<T, A>` by placing
     /// the `T` returned from your closure into the allocation.
     ///
-    /// Since the new `Rc<T, A>` is not fully-constructed until `Rc<T, A>::new_cyclic`
+    /// Since the new `Rc<T, A>` is not fully-constructed until `Rc<T, A>::new_cyclic_in`
     /// returns, calling [`upgrade`] on the weak reference inside your closure will
     /// fail and result in a `None` value.
     ///
@@ -2289,6 +2289,7 @@ impl<T, A: Allocator + Clone> Rc<T, A> {
     /// temporary [`Weak<T, A>`] is dropped normally.
     ///
     /// # Examples
+    ///
     /// See [`new_cyclic`].
     ///
     /// [`new_cyclic`]: Rc::new_cyclic
