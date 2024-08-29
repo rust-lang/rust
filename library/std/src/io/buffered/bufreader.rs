@@ -94,7 +94,9 @@ impl<R: Read> BufReader<R> {
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         BufReader { inner, buf: Buffer::with_capacity(capacity) }
     }
+}
 
+impl<R: Read + ?Sized> BufReader<R> {
     /// Attempt to look ahead `n` bytes.
     ///
     /// `n` must be less than `capacity`.
