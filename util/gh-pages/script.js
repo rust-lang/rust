@@ -1,51 +1,3 @@
-function storeValue(settingName, value) {
-    try {
-        localStorage.setItem(`clippy-lint-list-${settingName}`, value);
-    } catch (e) { }
-}
-
-function loadValue(settingName) {
-    return localStorage.getItem(`clippy-lint-list-${settingName}`);
-}
-
-function setTheme(theme, store) {
-    let enableHighlight = false;
-    let enableNight = false;
-    let enableAyu = false;
-
-    switch(theme) {
-        case "ayu":
-            enableAyu = true;
-            break;
-        case "coal":
-        case "navy":
-            enableNight = true;
-            break;
-        case "rust":
-            enableHighlight = true;
-            break;
-        default:
-            enableHighlight = true;
-            theme = "light";
-            break;
-    }
-
-    document.getElementsByTagName("body")[0].className = theme;
-
-    document.getElementById("githubLightHighlight").disabled = enableNight || !enableHighlight;
-    document.getElementById("githubDarkHighlight").disabled = !enableNight && !enableAyu;
-
-    document.getElementById("styleHighlight").disabled = !enableHighlight;
-    document.getElementById("styleNight").disabled = !enableNight;
-    document.getElementById("styleAyu").disabled = !enableAyu;
-
-    if (store) {
-        storeValue("theme", theme);
-    } else {
-        document.getElementById(`theme-choice`).value = theme;
-    }
-}
-
 window.searchState = {
     timeout: null,
     inputElem: document.getElementById("search-input"),
@@ -194,6 +146,7 @@ function expandLintId(lintId) {
     const lintElem = document.getElementById(lintId);
     const isCollapsed = lintElem.classList.remove("collapsed");
     lintElem.querySelector(".label-doc-folding").innerText = "-";
+    onEachLazy(lintElem.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));
 }
 
 // Show details for one lint
@@ -207,6 +160,7 @@ function expandLint(lintId) {
     const lintElem = document.getElementById(lintId);
     const isCollapsed = lintElem.classList.toggle("collapsed");
     lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "-";
+    onEachLazy(lintElem.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));
 }
 
 function copyToClipboard(event) {
@@ -511,6 +465,7 @@ function setupDropdown(elementId) {
         child.onblur = event => handleBlur(event, elementId);
     };
     onEachLazy(elem.children, setBlur);
+    onEachLazy(elem.querySelectorAll("select"), setBlur);
     onEachLazy(elem.querySelectorAll("input"), setBlur);
     onEachLazy(elem.querySelectorAll("ul button"), setBlur);
 }
@@ -599,28 +554,15 @@ function parseURLFilters() {
     }
 }
 
-// loading the theme after the initial load
-const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-const theme = loadValue('theme');
-if (prefersDark.matches && !theme) {
-    setTheme("coal", false);
-} else {
-    setTheme(theme, false);
-}
-
+document.getElementById(`theme-choice`).value = loadValue("theme");
 let disableShortcuts = loadValue('disable-shortcuts') === "true";
-// To prevent having a "flash", we give back time to the web browser to finish rendering with
-// theme applied before finishing the rendering.
-setTimeout(() => {
-    document.getElementById("disable-shortcuts").checked = disableShortcuts;
+document.getElementById("disable-shortcuts").checked = disableShortcuts;
 
-    document.addEventListener("keypress", handleShortcut);
-    document.addEventListener("keydown", handleShortcut);
+document.addEventListener("keypress", handleShortcut);
+document.addEventListener("keydown", handleShortcut);
 
-    generateSettings();
-    generateSearch();
-    parseURLFilters();
-    scrollToLintByURL();
-    filters.filterLints();
-    onEachLazy(document.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));
-}, 0);
+generateSettings();
+generateSearch();
+parseURLFilters();
+scrollToLintByURL();
+filters.filterLints();
