@@ -19,7 +19,7 @@ use tracing::{debug, instrument};
 use crate::errors::UnusedGenericParamsHint;
 
 /// Provide implementations of queries relating to polymorphization analysis.
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.unused_generic_params = unused_generic_params;
 }
 
