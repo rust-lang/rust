@@ -15,7 +15,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
-#![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(trusted_len)]
 #![feature(try_reserve_kind)]
