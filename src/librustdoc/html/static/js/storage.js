@@ -277,11 +277,9 @@ class RustdocSearchElement extends HTMLElement {
                         Settings
                     </a>
                 </div>
-                <div id="search-focus-panel">
-                    example query goes here
-                </div>
             </form>
-        </nav>`;
+        </nav>
+       <div id="search-focus-panel">example query goes here</div>`;
     }
 }
 window.customElements.define("rustdoc-search", RustdocSearchElement);

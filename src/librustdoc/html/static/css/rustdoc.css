@@ -1669,6 +1669,28 @@ a.tooltip:hover::after {
 	font-weight: normal;
 }
 
+/* panel that only shows up during searches */
+#search-focus-panel {
+	position: absolute;
+	display: none;
+	background-color: var(--main-background-color);
+	border-width: 1px;
+	border-color: var(--border-color);
+	border-style: solid;
+	padding: 3px;
+	text-wrap: nowrap;
+	z-index: 1;
+	top: 0;
+}
+
+rustdoc-search {
+	position: relative;
+}
+
+rustdoc-search:focus-within #search-focus-panel {
+	display: block;
+}
+
 #src-sidebar {
 	width: 100%;
 	overflow: auto;
