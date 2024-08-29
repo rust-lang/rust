@@ -272,6 +272,9 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
   height: 18px;
   display: block;
   filter: invert(0.7);
+  position: absolute;
+  top: 4px;
+  left: 5px;
 }
 
 .settings-menu * {

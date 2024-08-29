@@ -140,19 +140,15 @@ function onEachLazy(lazyArray, func) {
 
 function highlightIfNeeded(elem) {
     onEachLazy(elem.querySelectorAll("pre > code.language-rust:not(.highlighted)"), el => {
-        hljs.highlightElement(el)
+        hljs.highlightElement(el.parentElement)
         el.classList.add("highlighted");
     });
 }
 
-function expandLintId(lintId) {
-    searchState.inputElem.value = lintId;
-    searchState.filterLints();
-
-    // Expand the lint.
+function expandLint(lintId) {
     const lintElem = document.getElementById(lintId);
-    const isCollapsed = lintElem.classList.remove("collapsed");
-    lintElem.querySelector(".label-doc-folding").innerText = "-";
+    const isCollapsed = lintElem.classList.toggle("collapsed");
+    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "−";
     highlightIfNeeded(lintElem);
 }
 
@@ -160,14 +156,7 @@ function expandLintId(lintId) {
 function openLint(event) {
     event.preventDefault();
     event.stopPropagation();
-    expandLintId(event.target.getAttribute("href").slice(1));
-}
-
-function expandLint(lintId) {
-    const lintElem = document.getElementById(lintId);
-    const isCollapsed = lintElem.classList.toggle("collapsed");
-    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "-";
-    highlightIfNeeded(lintElem);
+    expandLint(event.target.getAttribute("href").slice(1));
 }
 
 function copyToClipboard(event) {
@@ -526,7 +515,7 @@ function scrollToLint(lintId) {
         return;
     }
     target.scrollIntoView();
-    expandLintId(lintId);
+    expandLint(lintId);
 }
 
 // If the page we arrive on has link to a given lint, we scroll to it.

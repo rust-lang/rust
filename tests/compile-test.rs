@@ -394,7 +394,7 @@ struct Renderer<'a> {
     lints: &'a Vec<LintMetadata>,
 }
 
-impl<'a> Renderer<'a> {
+impl Renderer<'_> {
     fn markdown(input: &str) -> Safe<String> {
         let parser = Parser::new_ext(input, Options::all());
         let mut html_output = String::new();
