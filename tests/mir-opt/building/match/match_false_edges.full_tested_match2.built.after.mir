@@ -42,9 +42,9 @@ fn full_tested_match2() -> () {
 
     bb3: {
         StorageLive(_9);
-        _9 = ((_2 as Some).0: i32);
+        _9 = copy ((_2 as Some).0: i32);
         StorageLive(_10);
-        _10 = _9;
+        _10 = copy _9;
         _1 = (const 2_i32, move _10);
         StorageDead(_10);
         StorageDead(_9);
@@ -89,9 +89,9 @@ fn full_tested_match2() -> () {
         FakeRead(ForMatchGuard, _3);
         FakeRead(ForGuardBinding, _6);
         StorageLive(_5);
-        _5 = ((_2 as Some).0: i32);
+        _5 = copy ((_2 as Some).0: i32);
         StorageLive(_8);
-        _8 = _5;
+        _8 = copy _5;
         _1 = (const 1_i32, move _8);
         StorageDead(_8);
         StorageDead(_5);

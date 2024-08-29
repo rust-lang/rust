@@ -1,5 +1,3 @@
-//! lint on missing cargo common metadata
-
 use cargo_metadata::Metadata;
 use clippy_utils::diagnostics::span_lint;
 use rustc_lint::LateContext;

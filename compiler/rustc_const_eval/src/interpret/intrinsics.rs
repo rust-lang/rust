@@ -81,7 +81,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -684,19 +684,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         assert!(layout.is_sized());
 
         let get_bytes = |this: &InterpCx<'tcx, M>,
-                         op: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
-                         size|
+                         op: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>|
          -> InterpResult<'tcx, &[u8]> {
             let ptr = this.read_pointer(op)?;
-            let Some(alloc_ref) = self.get_ptr_alloc(ptr, size)? else {
+            this.check_ptr_align(ptr, layout.align.abi)?;
+            let Some(alloc_ref) = self.get_ptr_alloc(ptr, layout.size)? else {
                 // zero-sized access
                 return Ok(&[]);
             };
             alloc_ref.get_bytes_strip_provenance()
         };
 
-        let lhs_bytes = get_bytes(self, lhs, layout.size)?;
-        let rhs_bytes = get_bytes(self, rhs, layout.size)?;
+        let lhs_bytes = get_bytes(self, lhs)?;
+        let rhs_bytes = get_bytes(self, rhs)?;
         Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }

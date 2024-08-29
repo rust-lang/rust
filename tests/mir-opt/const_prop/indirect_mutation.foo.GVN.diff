@@ -24,7 +24,7 @@
           StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
-          _4 = (_1.0: i32);
+          _4 = copy (_1.0: i32);
           _3 = Eq(move _4, const 5_i32);
           StorageDead(_4);
           _0 = const ();

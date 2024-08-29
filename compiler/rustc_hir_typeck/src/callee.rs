@@ -29,7 +29,7 @@ use crate::errors;
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).
-pub fn check_legal_trait_for_method_call(
+pub(crate) fn check_legal_trait_for_method_call(
     tcx: TyCtxt<'_>,
     span: Span,
     receiver: Option<Span>,
@@ -62,7 +62,7 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_call(
+    pub(crate) fn check_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,
@@ -137,7 +137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the callee is a bare function or a closure, then we're all set.
         match *adjusted_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(_) => {
+            ty::FnDef(..) | ty::FnPtr(..) => {
                 let adjustments = self.adjust_steps(autoderef);
                 self.apply_adjustments(callee_expr, adjustments);
                 return Some(CallStep::Builtin(adjusted_ty));
@@ -467,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (fn_sig, Some(def_id))
             }
             // FIXME(effects): these arms should error because we can't enforce them
-            ty::FnPtr(sig) => (sig, None),
+            ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
             _ => {
                 for arg in arg_exprs {
                     self.check_expr(arg);
@@ -940,7 +940,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct DeferredCallResolution<'tcx> {
+pub(crate) struct DeferredCallResolution<'tcx> {
     call_expr: &'tcx hir::Expr<'tcx>,
     callee_expr: &'tcx hir::Expr<'tcx>,
     closure_ty: Ty<'tcx>,
@@ -949,7 +949,7 @@ pub struct DeferredCallResolution<'tcx> {
 }
 
 impl<'a, 'tcx> DeferredCallResolution<'tcx> {
-    pub fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) {
+    pub(crate) fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been

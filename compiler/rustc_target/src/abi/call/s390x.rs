@@ -3,6 +3,7 @@
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
 use crate::abi::{HasDataLayout, TyAbiInterface};
+use crate::spec::HasTargetSpec;
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
@@ -15,10 +16,20 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout,
+    C: HasDataLayout + HasTargetSpec,
 {
     if !arg.layout.is_sized() {
         // Not touching this...
+        return;
+    }
+    if arg.is_ignore() {
+        // s390x-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
+        if cx.target_spec().os == "linux"
+            && matches!(&*cx.target_spec().env, "gnu" | "musl" | "uclibc")
+            && arg.layout.is_zst()
+        {
+            arg.make_indirect_from_ignore();
+        }
         return;
     }
     if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
@@ -46,16 +57,13 @@ where
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout,
+    C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }
 
     for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            continue;
-        }
         classify_arg(cx, arg);
     }
 }

@@ -580,9 +580,9 @@ fn check_recursion_limit<'tcx>(
         let mut path = PathBuf::new();
         let was_written = if let Some(written_to_path) = written_to_path {
             path = written_to_path;
-            Some(())
+            true
         } else {
-            None
+            false
         };
         tcx.dcx().emit_fatal(RecursionLimit {
             span,
@@ -888,7 +888,9 @@ fn visit_instance_use<'tcx>(
             if tcx.should_codegen_locally(panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
-        } else if tcx.has_attr(def_id, sym::rustc_intrinsic) {
+        } else if tcx.has_attr(def_id, sym::rustc_intrinsic)
+            && !tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
+        {
             // Codegen the fallback body of intrinsics with fallback bodies
             let instance = ty::Instance::new(def_id, instance.args);
             if tcx.should_codegen_locally(instance) {
@@ -918,7 +920,6 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::ReifyShim(..)
         | ty::InstanceKind::ClosureOnceShim { .. }
         | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceKind::CoroutineKindShim { .. }
         | ty::InstanceKind::Item(..)
         | ty::InstanceKind::FnPtrShim(..)
         | ty::InstanceKind::CloneShim(..)
@@ -1033,9 +1034,9 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.kind(), &target_ty.kind()) {
+    match (source_ty.kind(), target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
-        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(*a, *b),
+        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(a, b),
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
         }

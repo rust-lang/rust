@@ -1,5 +1,3 @@
-//! lint when there is a large size difference between variants on an enum
-
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;

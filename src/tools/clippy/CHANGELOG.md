@@ -5914,6 +5914,7 @@ Released 2018-09-13
 [`to_string_in_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_format_args
 [`to_string_trait_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_trait_impl
 [`todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
+[`too_long_first_doc_paragraph`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_long_first_doc_paragraph
 [`too_many_arguments`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
 [`too_many_lines`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines
 [`toplevel_ref_arg`]: https://rust-lang.github.io/rust-clippy/master/index.html#toplevel_ref_arg

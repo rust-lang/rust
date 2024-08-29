@@ -441,7 +441,7 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                     ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe => {
                         self.is_unsafe = true;
                     },
-                    ty::FnPtr(sig) if sig.safety() == Safety::Unsafe => self.is_unsafe = true,
+                    ty::FnPtr(_, hdr) if hdr.safety == Safety::Unsafe => self.is_unsafe = true,
                     _ => walk_expr(self, e),
                 },
                 ExprKind::Path(ref p)

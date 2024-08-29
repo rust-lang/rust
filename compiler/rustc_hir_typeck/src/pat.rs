@@ -944,7 +944,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_dereferenceable(
+    fn check_dereferenceable(
         &self,
         span: Span,
         expected: Ty<'tcx>,
@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parentheses = match (&expected.kind(), fields, had_err) {
+        let missing_parentheses = match (expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.

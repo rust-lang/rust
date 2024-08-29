@@ -311,34 +311,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         Ok(())
     }
 
-    fn check_fn_target_features(&self, instance: ty::Instance<'tcx>) -> InterpResult<'tcx, ()> {
-        // Calling functions with `#[target_feature]` is not unsafe on WASM, see #84988
-        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-        if !self.tcx.sess.target.is_like_wasm
-            && attrs
-                .target_features
-                .iter()
-                .any(|feature| !self.tcx.sess.target_features.contains(&feature.name))
-        {
-            throw_ub_custom!(
-                fluent::const_eval_unavailable_target_features_for_fn,
-                unavailable_feats = attrs
-                    .target_features
-                    .iter()
-                    .filter(|&feature| !feature.implied
-                        && !self.tcx.sess.target_features.contains(&feature.name))
-                    .fold(String::new(), |mut s, feature| {
-                        if !s.is_empty() {
-                            s.push_str(", ");
-                        }
-                        s.push_str(feature.name.as_str());
-                        s
-                    }),
-            );
-        }
-        Ok(())
-    }
-
     /// The main entry point for creating a new stack frame: performs ABI checks and initializes
     /// arguments.
     #[instrument(skip(self), level = "trace")]
@@ -360,20 +332,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_unsup_format!("calling a c-variadic function is not supported");
         }
 
-        if M::enforce_abi(self) {
-            if caller_fn_abi.conv != callee_fn_abi.conv {
-                throw_ub_custom!(
-                    fluent::const_eval_incompatible_calling_conventions,
-                    callee_conv = format!("{:?}", callee_fn_abi.conv),
-                    caller_conv = format!("{:?}", caller_fn_abi.conv),
-                )
-            }
+        if caller_fn_abi.conv != callee_fn_abi.conv {
+            throw_ub_custom!(
+                fluent::const_eval_incompatible_calling_conventions,
+                callee_conv = format!("{:?}", callee_fn_abi.conv),
+                caller_conv = format!("{:?}", caller_fn_abi.conv),
+            )
         }
 
         // Check that all target features required by the callee (i.e., from
         // the attribute `#[target_feature(enable = ...)]`) are enabled at
         // compile time.
-        self.check_fn_target_features(instance)?;
+        M::check_fn_target_features(self, instance)?;
 
         if !callee_fn_abi.can_unwind {
             // The callee cannot unwind, so force the `Unreachable` unwind handling.
@@ -576,7 +546,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::ReifyShim(..)
             | ty::InstanceKind::ClosureOnceShim { .. }
             | ty::InstanceKind::ConstructCoroutineInClosureShim { .. }
-            | ty::InstanceKind::CoroutineKindShim { .. }
             | ty::InstanceKind::FnPtrShim(..)
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)

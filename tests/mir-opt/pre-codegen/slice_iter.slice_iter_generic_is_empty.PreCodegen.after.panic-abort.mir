@@ -43,27 +43,27 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
         StorageLive(_3);
         StorageLive(_2);
         _2 = &raw const ((*_1).1: *const T);
-        _3 = _2 as *const std::ptr::NonNull<T> (PtrToPtr);
+        _3 = copy _2 as *const std::ptr::NonNull<T> (PtrToPtr);
         StorageDead(_2);
-        _4 = (*_3);
+        _4 = copy (*_3);
         StorageDead(_3);
         StorageLive(_6);
         StorageLive(_7);
         StorageLive(_5);
-        _5 = ((*_1).0: std::ptr::NonNull<T>);
-        _6 = (_5.0: *const T);
+        _5 = copy ((*_1).0: std::ptr::NonNull<T>);
+        _6 = copy (_5.0: *const T);
         StorageDead(_5);
-        _7 = (_4.0: *const T);
-        _0 = Eq(_6, _7);
+        _7 = copy (_4.0: *const T);
+        _0 = Eq(copy _6, copy _7);
         StorageDead(_7);
         StorageDead(_6);
         goto -> bb3;
     }
 
     bb2: {
-        _8 = ((*_1).1: *const T);
-        _9 = _8 as usize (Transmute);
-        _0 = Eq(_9, const 0_usize);
+        _8 = copy ((*_1).1: *const T);
+        _9 = copy _8 as usize (Transmute);
+        _0 = Eq(copy _9, const 0_usize);
         goto -> bb3;
     }
 

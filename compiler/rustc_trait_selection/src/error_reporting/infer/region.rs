@@ -17,8 +17,8 @@ use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
 use rustc_type_ir::Upcast as _;
 
 use super::nice_region_error::find_anon_type;
-use super::{nice_region_error, ObligationCauseAsDiagArg};
-use crate::error_reporting::infer::ObligationCauseExt as _;
+use super::ObligationCauseAsDiagArg;
+use crate::error_reporting::infer::ObligationCauseExt;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     self, note_and_explain, FulfillReqLifetime, LfBoundNotSatisfied, OutlivesBound,
@@ -257,7 +257,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .add_to_diag(err);
                 }
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, _) => {
                 RegionOriginNote::Plain {
                     span,
                     msg: fluent::trait_selection_relate_region_param_bound,
@@ -410,7 +410,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note,
                 })
             }
-            infer::RelateRegionParamBound(span) => {
+            infer::RelateRegionParamBound(span, ty) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
@@ -419,11 +419,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     note_and_explain::PrefixKind::LfParamInstantiatedWith,
                     note_and_explain::SuffixKind::Empty,
                 );
+                let mut alt_span = None;
+                if let Some(ty) = ty
+                    && sub.is_static()
+                    && let ty::Dynamic(preds, _, ty::DynKind::Dyn) = ty.kind()
+                    && let Some(def_id) = preds.principal_def_id()
+                {
+                    for (clause, span) in
+                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                    {
+                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
+                            clause.kind().skip_binder()
+                            && let ty::Param(param) = a.kind()
+                            && param.name == kw::SelfUpper
+                            && b.is_static()
+                        {
+                            // Point at explicit `'static` bound on the trait (`trait T: 'static`).
+                            alt_span = Some(span);
+                        }
+                    }
+                }
                 let param_must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
                     generic_param_scope,
                     sub,
-                    None,
+                    alt_span,
                     note_and_explain::PrefixKind::LfParamMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
@@ -1079,16 +1099,8 @@ fn msg_span_from_named_region<'tcx>(
 ) -> (String, Option<Span>) {
     match *region {
         ty::ReEarlyParam(br) => {
-            let scope = tcx
-                .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
-                .expect_local();
-            let span = if let Some(param) =
-                tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
-            {
-                param.span
-            } else {
-                tcx.def_span(scope)
-            };
+            let param_def_id = tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id;
+            let span = tcx.def_span(param_def_id);
             let text = if br.has_name() {
                 format!("the lifetime `{}` as defined here", br.name)
             } else {
@@ -1104,16 +1116,8 @@ fn msg_span_from_named_region<'tcx>(
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
                 match fr.bound_region {
-                    ty::BoundRegionKind::BrNamed(_, name) => {
-                        let span = if let Some(param) = tcx
-                            .hir()
-                            .get_generics(generic_param_scope)
-                            .and_then(|generics| generics.get_named(name))
-                        {
-                            param.span
-                        } else {
-                            tcx.def_span(generic_param_scope)
-                        };
+                    ty::BoundRegionKind::BrNamed(param_def_id, name) => {
+                        let span = tcx.def_span(param_def_id);
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
                         } else {
@@ -1212,22 +1216,8 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
                 hidden_region,
                 "",
             );
-            if let Some(reg_info) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
-                if infcx.tcx.features().precise_capturing {
-                    suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
-                } else {
-                    let fn_returns = tcx.return_type_impl_or_dyn_traits(reg_info.def_id);
-                    nice_region_error::suggest_new_region_bound(
-                        tcx,
-                        &mut err,
-                        fn_returns,
-                        hidden_region.to_string(),
-                        None,
-                        format!("captures `{hidden_region}`"),
-                        None,
-                        Some(reg_info.def_id),
-                    )
-                }
+            if let Some(_) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
+                suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
             }
         }
         ty::RePlaceholder(_) => {

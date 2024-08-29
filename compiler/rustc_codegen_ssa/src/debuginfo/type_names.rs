@@ -85,7 +85,7 @@ fn push_debuginfo_type_name<'tcx>(
             let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
                 match tcx.layout_of(ParamEnv::reveal_all().and(t)) {
                     Ok(layout) => {
-                        if !wants_c_like_enum_debuginfo(layout) {
+                        if !wants_c_like_enum_debuginfo(tcx, layout) {
                             Some(layout)
                         } else {
                             // This is a C-like enum so we don't want to use the fallback encoding
@@ -106,6 +106,7 @@ fn push_debuginfo_type_name<'tcx>(
 
             if let Some(ty_and_layout) = layout_for_cpp_like_fallback {
                 msvc_enum_fallback(
+                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_item_name(tcx, def.did(), true, output);
@@ -331,7 +332,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(')');
             }
         }
-        ty::FnDef(..) | ty::FnPtr(_) => {
+        ty::FnDef(..) | ty::FnPtr(..) => {
             // We've encountered a weird 'recursive type'
             // Currently, the only way to generate such a type
             // is by using 'impl trait':
@@ -421,6 +422,7 @@ fn push_debuginfo_type_name<'tcx>(
             if cpp_like_debuginfo && t.is_coroutine() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
+                    tcx,
                     ty_and_layout,
                     &|output, visited| {
                         push_closure_or_coroutine_name(tcx, def_id, args, true, output, visited);
@@ -455,12 +457,13 @@ fn push_debuginfo_type_name<'tcx>(
     // debugger. For more information, look in
     // rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs.
     fn msvc_enum_fallback<'tcx>(
+        tcx: TyCtxt<'tcx>,
         ty_and_layout: TyAndLayout<'tcx>,
         push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
-        assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
+        assert!(!wants_c_like_enum_debuginfo(tcx, ty_and_layout));
         output.push_str("enum2$<");
         push_inner(output, visited);
         push_close_angle_bracket(true, output);

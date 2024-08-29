@@ -23,378 +23,25 @@ Otherwise, have a great day =^.^=
     <link id="styleHighlight" rel="stylesheet" href="https://rust-lang.github.io/mdBook/highlight.css">
     <link id="styleNight" rel="stylesheet" href="https://rust-lang.github.io/mdBook/tomorrow-night.css" disabled="true">
     <link id="styleAyu" rel="stylesheet" href="https://rust-lang.github.io/mdBook/ayu-highlight.css" disabled="true">
-    <style>
-        blockquote { font-size: 1em; }
-        [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
-
-        .dropdown-menu {
-            color: var(--fg);
-            background: var(--theme-popup-bg);
-            border: 1px solid var(--theme-popup-border);
-        }
-
-        .dropdown-menu .divider {
-            background-color: var(--theme-popup-border);
-        }
-
-        .dropdown-menu .checkbox {
-            display: block;
-            white-space: nowrap;
-            margin: 0;
-        }
-        .dropdown-menu .checkbox label {
-            padding: 3px 20px;
-            width: 100%;
-        }
-
-        .dropdown-menu .checkbox input {
-            position: relative;
-            margin: 0 0.5rem 0;
-            padding: 0;
-        }
-
-        .dropdown-menu .checkbox:hover {
-            background-color: var(--theme-hover);
-        }
-
-        div.panel div.panel-body button {
-            background: var(--searchbar-bg);
-            color: var(--searchbar-fg);
-            border-color: var(--theme-popup-border);
-        }
-
-        div.panel div.panel-body button:hover {
-            box-shadow: 0 0 3px var(--searchbar-shadow-color);
-        }
-
-        div.panel div.panel-body  button.open {
-            filter: brightness(90%);
-        }
-
-        .dropdown-toggle .badge {
-            background-color: #777;
-        }
-
-        .panel-heading { cursor: pointer; }
-
-        .panel-title { display: flex; flex-wrap: wrap;}
-        .panel-title .label { display: inline-block; }
-
-        .panel-title-name { flex: 1; min-width: 400px;}
-        .panel-title-name span { vertical-align: bottom; }
-
-        .panel .panel-title-name .anchor { display: none; }
-        .panel:hover .panel-title-name .anchor { display: inline;}
-
-        .search-control {
-            margin-top: 15px;
-        }
-
-        @media (min-width: 992px) {
-            .search-control {
-                margin-top: 0;
-            }
-        }
-
-        @media (min-width: 405px) {
-            #upper-filters {
-                display: flex;
-                flex-wrap: wrap;
-            }
-        }
-
-        @media (max-width: 430px) {
-            /* Turn the version filter list to the left */
-            #version-filter-selector {
-                right: 0;
-                left: auto;
-            }
-        }
-
-        @media (max-width: 412px) {
-            #upper-filters,
-            .panel-body .search-control  {
-                padding-right: 8px;
-                padding-left: 8px;
-            }
-        }
-
-        .label {
-            padding-top: 0.3em;
-            padding-bottom: 0.3em;
-        }
-
-        .label-lint-group {
-            min-width: 8em;
-        }
-        .label-lint-level {
-            min-width: 4em;
-        }
-
-        .label-lint-level-allow {
-            background-color: #5cb85c;
-        }
-        .label-lint-level-warn {
-            background-color: #f0ad4e;
-        }
-        .label-lint-level-deny {
-            background-color: #d9534f;
-        }
-        .label-lint-level-none {
-            background-color: #777777;
-            opacity: 0.5;
-        }
-
-        .label-group-deprecated {
-            opacity: 0.5;
-        }
-
-        .label-doc-folding {
-            color: #000;
-            background-color: #fff;
-            border: 1px solid var(--theme-popup-border);
-        }
-        .label-doc-folding:hover {
-            background-color: #e6e6e6;
-        }
-
-        .lint-doc-md > h3 {
-            border-top: 1px solid var(--theme-popup-border);
-            padding: 10px 15px;
-            margin: 0 -15px;
-            font-size: 18px;
-        }
-        .lint-doc-md > h3:first-child {
-            border-top: none;
-            padding-top: 0px;
-        }
-
-        @media (max-width:749px) {
-            .lint-additional-info-container {
-                display: flex;
-                flex-flow: column;
-            }
-            .lint-additional-info-item + .lint-additional-info-item {
-                border-top: 1px solid var(--theme-popup-border);
-            }
-        }
-        @media (min-width:750px) {
-            .lint-additional-info-container {
-                display: flex;
-                flex-flow: row;
-            }
-            .lint-additional-info-item + .lint-additional-info-item {
-                border-left: 1px solid var(--theme-popup-border);
-            }
-        }
-
-        .lint-additional-info-item {
-            display: inline-flex;
-            min-width: 200px;
-            flex-grow: 1;
-            padding: 9px 5px 5px 15px;
-        }
-
-        .label-applicability {
-            background-color: #777777;
-            margin: auto 5px;
-        }
-
-        .label-version {
-            background-color: #777777;
-            margin: auto 5px;
-            font-family: monospace;
-        }
-
-        details {
-            border-radius: 4px;
-            padding: .5em .5em 0;
-        }
-
-        code {
-            white-space: pre !important;
-        }
-
-        summary {
-            font-weight: bold;
-            margin: -.5em -.5em 0;
-            padding: .5em;
-            display: revert;
-        }
-
-        details[open] {
-            padding: .5em;
-        }
-    </style>
-    <style>
-        /* Expanding the mdBoom theme*/
-        .light {
-            --inline-code-bg: #f6f7f6;
-        }
-        .rust {
-            --inline-code-bg: #f6f7f6;
-        }
-        .coal {
-            --inline-code-bg: #1d1f21;
-        }
-        .navy {
-            --inline-code-bg: #1d1f21;
-        }
-        .ayu {
-            --inline-code-bg: #191f26;
-        }
-
-        .theme-dropdown {
-            position: absolute;
-            margin: 0.7em;
-            z-index: 10;
-        }
-
-        /* Applying the mdBook theme */
-        .theme-icon {
-            text-align: center;
-            width: 2em;
-            height: 2em;
-            line-height: 2em;
-            border: solid 1px var(--icons);
-            border-radius: 5px;
-            user-select: none;
-            cursor: pointer;
-        }
-        .theme-icon:hover {
-            background: var(--theme-hover);
-        }
-        .theme-choice {
-            display: none;
-            list-style: none;
-            border: 1px solid var(--theme-popup-border);
-            border-radius: 5px;
-            color: var(--fg);
-            background: var(--theme-popup-bg);
-            padding: 0 0;
-            overflow: hidden;
-        }
-
-        .theme-dropdown.open .theme-choice {
-            display: block;
-        }
-
-        .theme-choice > li {
-            padding: 5px 10px;
-            font-size: 0.8em;
-            user-select: none;
-            cursor: pointer;
-        }
-
-        .theme-choice > li:hover {
-            background: var(--theme-hover);
-        }
-
-        .alert {
-            color: var(--fg);
-            background: var(--theme-hover);
-            border: 1px solid var(--theme-popup-border);
-        }
-        .page-header {
-            border-color: var(--theme-popup-border);
-        }
-        .panel-default > .panel-heading {
-            background: var(--theme-hover);
-            color: var(--fg);
-            border: 1px solid var(--theme-popup-border);
-        }
-        .panel-default > .panel-heading:hover {
-            filter: brightness(90%);
-        }
-        .list-group-item {
-            background: 0%;
-            border: 1px solid var(--theme-popup-border);
-        }
-        .panel, pre, hr {
-            background: var(--bg);
-            border: 1px solid var(--theme-popup-border);
-        }
-
-        #version-filter-selector .checkbox {
-            display: flex;
-        }
-
-        #version-filter {
-            min-width: available;
-        }
-
-        #version-filter li label {
-            padding-right: 0;
-            width: 35%;
-        }
-
-        .version-filter-input {
-            height: 60%;
-            width: 30%;
-            text-align: center;
-            border: none;
-            border-bottom: 1px solid #000000;
-        }
-
-        #filter-label, .filter-clear {
-            background: var(--searchbar-bg);
-            color: var(--searchbar-fg);
-            border-color: var(--theme-popup-border);
-            filter: brightness(95%);
-        }
-        #filter-label:hover, .filter-clear:hover {
-            filter: brightness(90%);
-        }
-        .filter-input {
-            background: var(--searchbar-bg);
-            color: var(--searchbar-fg);
-            border-color: var(--theme-popup-border);
-        }
-
-        .filter-input::-webkit-input-placeholder,
-        .filter-input::-moz-placeholder {
-            color: var(--searchbar-fg);
-            opacity: 30%;
-        }
-
-        .expansion-group {
-            margin-top: 15px;
-            padding: 0px 8px;
-            display: flex;
-            flex-wrap: nowrap;
-        }
-
-        @media (min-width: 992px) {
-            .expansion-group {
-                margin-top: 0;
-                padding: 0px 15px;
-            }
-        }
-
-        .expansion-control {
-            width: 50%;
-        }
-
-        :not(pre) > code {
-            color: var(--inline-code-color);
-            background-color: var(--inline-code-bg);
-        }
-        html {
-            scrollbar-color: var(--scrollbar) var(--bg);
-        }
-        body {
-            background: var(--bg);
-            color: var(--fg);
-        }
-
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body ng-app="clippy" ng-controller="lintList">
-    <div theme-dropdown class="theme-dropdown">
-        <div id="theme-icon" class="theme-icon">&#128396;</div>
-        <ul id="theme-menu" class="theme-choice">
-            <li id="{{id}}" ng-repeat="(id, name) in themes" ng-click="selectTheme(id)">{{name}}</li>
-        </ul>
+    <div id="settings-dropdown">
+        <div class="settings-icon" tabindex="-1"></div>
+        <div class="settings-menu" tabindex="-1">
+            <div class="setting-radio-name">Theme</div>
+            <select id="theme-choice" onchange="setTheme(this.value, true)">
+                <option value="ayu">Ayu</option>
+                <option value="coal">Coal</option>
+                <option value="light">Light</option>
+                <option value="navy">Navy</option>
+                <option value="rust">Rust</option>
+            </select>
+            <label>
+                <input type="checkbox" id="disable-shortcuts" onchange="changeSetting(this)">
+                <span>Disable keyboard shortcuts</span>
+            </label>
+        </div>
     </div>
 
     <div class="container">
@@ -592,7 +239,7 @@ Otherwise, have a great day =^.^=
                         <!-- Applicability -->
                         <div class="lint-additional-info-item">
                             <span> Applicability: </span>
-                            <span class="label label-default label-applicability">{{lint.applicability.applicability}}</span>
+                            <span class="label label-default label-applicability">{{lint.applicability}}</span>
                             <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a>
                         </div>
                         <!-- Clippy version -->
@@ -605,8 +252,8 @@ Otherwise, have a great day =^.^=
                             <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>
                         </div>
                         <!-- Jump to source -->
-                        <div class="lint-additional-info-item" ng-if="lint.id_span">
-                            <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{lint.id_span.path}}#L{{lint.id_span.line}}">View Source</a>
+                        <div class="lint-additional-info-item" ng-if="lint.id_location">
+                            <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/{{lint.id_location}}">View Source</a>
                         </div>
                     </div>
                 </div>

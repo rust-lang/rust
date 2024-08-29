@@ -2,7 +2,7 @@ error: called `unwrap` on `x` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:46:9
    |
 LL |     if x.is_some() {
-   |     -------------- help: try: `if let Some(..) = x`
+   |     -------------- help: try: `if let Some(<item>) = x`
 LL |         // unnecessary
 LL |         x.unwrap();
    |         ^^^^^^^^^^
@@ -17,7 +17,7 @@ error: called `expect` on `x` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:49:9
    |
 LL |     if x.is_some() {
-   |     -------------- help: try: `if let Some(..) = x`
+   |     -------------- help: try: `if let Some(<item>) = x`
 ...
 LL |         x.expect("an error message");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ error: called `unwrap` on `x` after checking its variant with `is_none`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:65:9
    |
 LL |     if x.is_none() {
-   |     -------------- help: try: `if let Some(..) = x`
+   |     -------------- help: try: `if let Some(<item>) = x`
 ...
 LL |         x.unwrap();
    |         ^^^^^^^^^^
@@ -68,7 +68,7 @@ error: called `unwrap` on `x` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:13:13
    |
 LL |         if $a.is_some() {
-   |         --------------- help: try: `if let Some(..) = x`
+   |         --------------- help: try: `if let Some(<item>) = x`
 LL |             // unnecessary
 LL |             $a.unwrap();
    |             ^^^^^^^^^^^
@@ -82,7 +82,7 @@ error: called `unwrap` on `x` after checking its variant with `is_ok`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:78:9
    |
 LL |     if x.is_ok() {
-   |     ------------ help: try: `if let Ok(..) = x`
+   |     ------------ help: try: `if let Ok(<item>) = x`
 LL |         // unnecessary
 LL |         x.unwrap();
    |         ^^^^^^^^^^
@@ -91,7 +91,7 @@ error: called `expect` on `x` after checking its variant with `is_ok`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:81:9
    |
 LL |     if x.is_ok() {
-   |     ------------ help: try: `if let Ok(..) = x`
+   |     ------------ help: try: `if let Ok(<item>) = x`
 ...
 LL |         x.expect("an error message");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -127,7 +127,7 @@ error: called `unwrap_err` on `x` after checking its variant with `is_ok`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:94:9
    |
 LL |     if x.is_ok() {
-   |     ------------ help: try: `if let Err(..) = x`
+   |     ------------ help: try: `if let Err(<item>) = x`
 ...
 LL |         x.unwrap_err();
    |         ^^^^^^^^^^^^^^
@@ -145,7 +145,7 @@ error: called `unwrap_err` on `x` after checking its variant with `is_err`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:102:9
    |
 LL |     if x.is_err() {
-   |     ------------- help: try: `if let Err(..) = x`
+   |     ------------- help: try: `if let Err(<item>) = x`
 ...
 LL |         x.unwrap_err();
    |         ^^^^^^^^^^^^^^
@@ -154,7 +154,7 @@ error: called `unwrap` on `x` after checking its variant with `is_err`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:106:9
    |
 LL |     if x.is_err() {
-   |     ------------- help: try: `if let Ok(..) = x`
+   |     ------------- help: try: `if let Ok(<item>) = x`
 ...
 LL |         x.unwrap();
    |         ^^^^^^^^^^
@@ -172,7 +172,7 @@ error: called `unwrap` on `option` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:134:9
    |
 LL |     if option.is_some() {
-   |     ------------------- help: try: `if let Some(..) = &option`
+   |     ------------------- help: try: `if let Some(<item>) = &option`
 LL |         option.as_ref().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -189,7 +189,7 @@ error: called `unwrap` on `result` after checking its variant with `is_ok`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:144:9
    |
 LL |     if result.is_ok() {
-   |     ----------------- help: try: `if let Ok(..) = &result`
+   |     ----------------- help: try: `if let Ok(<item>) = &result`
 LL |         result.as_ref().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -206,7 +206,7 @@ error: called `unwrap` on `option` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:153:9
    |
 LL |     if option.is_some() {
-   |     ------------------- help: try: `if let Some(..) = &mut option`
+   |     ------------------- help: try: `if let Some(<item>) = &mut option`
 LL |         option.as_mut().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -223,7 +223,7 @@ error: called `unwrap` on `result` after checking its variant with `is_ok`
   --> tests/ui/checked_unwrap/simple_conditionals.rs:162:9
    |
 LL |     if result.is_ok() {
-   |     ----------------- help: try: `if let Ok(..) = &mut result`
+   |     ----------------- help: try: `if let Ok(<item>) = &mut result`
 LL |         result.as_mut().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 

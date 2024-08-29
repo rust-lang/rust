@@ -56,7 +56,6 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
             Some("by_ref")
         }
-        ty::InstanceKind::CoroutineKindShim { .. } => Some("by_move_body"),
 
         _ => None,
     };
@@ -427,7 +426,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 self.print_def_path(def_id, &[])?;
             }
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
                     if sig.safety == hir::Safety::Unsafe {

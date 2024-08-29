@@ -197,8 +197,78 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         for child in self.tcx.module_children(module.def_id()) {
             let parent_scope = ParentScope::module(module, self);
-            BuildReducedGraphVisitor { r: self, parent_scope }
-                .build_reduced_graph_for_external_crate_res(child);
+            self.build_reduced_graph_for_external_crate_res(child, parent_scope)
+        }
+    }
+
+    /// Builds the reduced graph for a single item in an external crate.
+    fn build_reduced_graph_for_external_crate_res(
+        &mut self,
+        child: &ModChild,
+        parent_scope: ParentScope<'a>,
+    ) {
+        let parent = parent_scope.module;
+        let ModChild { ident, res, vis, ref reexport_chain } = *child;
+        let span = self.def_span(
+            reexport_chain
+                .first()
+                .and_then(|reexport| reexport.id())
+                .unwrap_or_else(|| res.def_id()),
+        );
+        let res = res.expect_non_local();
+        let expansion = parent_scope.expansion;
+        // Record primary definitions.
+        match res {
+            Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, def_id) => {
+                let module = self.expect_module(def_id);
+                self.define(parent, ident, TypeNS, (module, vis, span, expansion));
+            }
+            Res::Def(
+                DefKind::Struct
+                | DefKind::Union
+                | DefKind::Variant
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::OpaqueTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy,
+                _,
+            )
+            | Res::PrimTy(..)
+            | Res::ToolMod => self.define(parent, ident, TypeNS, (res, vis, span, expansion)),
+            Res::Def(
+                DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Static { .. }
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::Ctor(..),
+                _,
+            ) => self.define(parent, ident, ValueNS, (res, vis, span, expansion)),
+            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
+                self.define(parent, ident, MacroNS, (res, vis, span, expansion))
+            }
+            Res::Def(
+                DefKind::TyParam
+                | DefKind::ConstParam
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody
+                | DefKind::Impl { .. },
+                _,
+            )
+            | Res::Local(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
+            | Res::SelfCtor(..)
+            | Res::Err => bug!("unexpected resolution: {:?}", res),
         }
     }
 }
@@ -896,7 +966,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
         if parent == self.r.graph_root {
-            if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
+            let ident = ident.normalize_to_macros_2_0();
+            if let Some(entry) = self.r.extern_prelude.get(&ident) {
                 if expansion != LocalExpnId::ROOT && orig_name.is_some() && !entry.is_import() {
                     self.r.dcx().emit_err(
                         errors::MacroExpandedExternCrateCannotShadowExternArguments {
@@ -913,13 +984,20 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let entry = self
                 .r
                 .extern_prelude
-                .entry(ident.normalize_to_macros_2_0())
+                .entry(ident)
                 .or_insert(ExternPreludeEntry { binding: None, introduced_by_item: true });
-            // Binding from `extern crate` item in source code can replace
-            // a binding from `--extern` on command line here.
-            entry.binding = Some(imported_binding);
             if orig_name.is_some() {
                 entry.introduced_by_item = true;
+            }
+            // Binding from `extern crate` item in source code can replace
+            // a binding from `--extern` on command line here.
+            if !entry.is_import() {
+                entry.binding = Some(imported_binding)
+            } else if ident.name != kw::Underscore {
+                self.r.dcx().span_delayed_bug(
+                    item.span,
+                    format!("it had been define the external module '{ident}' multiple times"),
+                );
             }
         }
         self.r.define(parent, ident, TypeNS, imported_binding);
@@ -956,72 +1034,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             );
             self.r.block_map.insert(block.id, module);
             self.parent_scope.module = module; // Descend into the block.
-        }
-    }
-
-    /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(&mut self, child: &ModChild) {
-        let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, ref reexport_chain } = *child;
-        let span = self.r.def_span(
-            reexport_chain
-                .first()
-                .and_then(|reexport| reexport.id())
-                .unwrap_or_else(|| res.def_id()),
-        );
-        let res = res.expect_non_local();
-        let expansion = self.parent_scope.expansion;
-        // Record primary definitions.
-        match res {
-            Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, def_id) => {
-                let module = self.r.expect_module(def_id);
-                self.r.define(parent, ident, TypeNS, (module, vis, span, expansion));
-            }
-            Res::Def(
-                DefKind::Struct
-                | DefKind::Union
-                | DefKind::Variant
-                | DefKind::TyAlias
-                | DefKind::ForeignTy
-                | DefKind::OpaqueTy
-                | DefKind::TraitAlias
-                | DefKind::AssocTy,
-                _,
-            )
-            | Res::PrimTy(..)
-            | Res::ToolMod => self.r.define(parent, ident, TypeNS, (res, vis, span, expansion)),
-            Res::Def(
-                DefKind::Fn
-                | DefKind::AssocFn
-                | DefKind::Static { .. }
-                | DefKind::Const
-                | DefKind::AssocConst
-                | DefKind::Ctor(..),
-                _,
-            ) => self.r.define(parent, ident, ValueNS, (res, vis, span, expansion)),
-            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
-            }
-            Res::Def(
-                DefKind::TyParam
-                | DefKind::ConstParam
-                | DefKind::ExternCrate
-                | DefKind::Use
-                | DefKind::ForeignMod
-                | DefKind::AnonConst
-                | DefKind::InlineConst
-                | DefKind::Field
-                | DefKind::LifetimeParam
-                | DefKind::GlobalAsm
-                | DefKind::Closure
-                | DefKind::Impl { .. },
-                _,
-            )
-            | Res::Local(..)
-            | Res::SelfTyParam { .. }
-            | Res::SelfTyAlias { .. }
-            | Res::SelfCtor(..)
-            | Res::Err => bug!("unexpected resolution: {:?}", res),
         }
     }
 
@@ -1150,7 +1162,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
-                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner).then_some(());
+                let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
                 self.r
                     .dcx()
                     .emit_warn(errors::MacroExternDeprecated { span: attr.span, inner_attribute });

@@ -18,11 +18,9 @@ struct EvilSend<T>(pub T);
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
-// We can't create static items because we need to run each test
-// multiple times
+// We can't create static items because we need to run each test multiple times.
 fn static_atomic(val: usize) -> &'static AtomicUsize {
-    let ret = Box::leak(Box::new(AtomicUsize::new(val)));
-    ret
+    Box::leak(Box::new(AtomicUsize::new(val)))
 }
 
 // Spins until it reads the given value
@@ -33,7 +31,7 @@ fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
     val
 }
 
-fn relaxed() -> bool {
+fn relaxed(initial_read: bool) -> bool {
     let x = static_atomic(0);
     let j1 = spawn(move || {
         x.store(1, Relaxed);
@@ -47,7 +45,9 @@ fn relaxed() -> bool {
     j1.join().unwrap();
     let r2 = j2.join().unwrap();
 
-    r2 == 1
+    // There are three possible values here: 0 (from the initial read), 1 (from the first relaxed
+    // read), and 2 (the last read). The last case is boring and we cover the other two.
+    r2 == if initial_read { 0 } else { 1 }
 }
 
 // https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf Figure 8
@@ -74,7 +74,6 @@ fn seq_cst() -> bool {
 
 fn initialization_write(add_fence: bool) -> bool {
     let x = static_atomic(11);
-    assert_eq!(x.load(Relaxed), 11); // work around https://github.com/rust-lang/miri/issues/2164
 
     let wait = static_atomic(0);
 
@@ -112,11 +111,8 @@ fn faa_replaced_by_load() -> bool {
     }
 
     let x = static_atomic(0);
-    assert_eq!(x.load(Relaxed), 0); // work around https://github.com/rust-lang/miri/issues/2164
     let y = static_atomic(0);
-    assert_eq!(y.load(Relaxed), 0); // work around https://github.com/rust-lang/miri/issues/2164
     let z = static_atomic(0);
-    assert_eq!(z.load(Relaxed), 0); // work around https://github.com/rust-lang/miri/issues/2164
 
     // Since each thread is so short, we need to make sure that they truely run at the same time
     // Otherwise t1 will finish before t2 even starts
@@ -146,7 +142,8 @@ fn assert_once(f: fn() -> bool) {
 }
 
 pub fn main() {
-    assert_once(relaxed);
+    assert_once(|| relaxed(false));
+    assert_once(|| relaxed(true));
     assert_once(seq_cst);
     assert_once(|| initialization_write(false));
     assert_once(|| initialization_write(true));

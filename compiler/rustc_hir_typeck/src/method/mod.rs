@@ -4,7 +4,7 @@
 
 mod confirm;
 mod prelude_edition_lints;
-pub mod probe;
+pub(crate) mod probe;
 mod suggest;
 
 use rustc_errors::{Applicability, Diag, SubdiagMessage};
@@ -24,15 +24,15 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
 
 use self::probe::{IsSuggestion, ProbeScope};
-pub use self::MethodError::*;
+pub(crate) use self::MethodError::*;
 use crate::FnCtxt;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     probe::provide(providers);
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct MethodCallee<'tcx> {
+pub(crate) struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
     pub def_id: DefId,
     pub args: GenericArgsRef<'tcx>,
@@ -44,7 +44,7 @@ pub struct MethodCallee<'tcx> {
 }
 
 #[derive(Debug)]
-pub enum MethodError<'tcx> {
+pub(crate) enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
 
@@ -70,7 +70,7 @@ pub enum MethodError<'tcx> {
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
 #[derive(Debug)]
-pub struct NoMatchData<'tcx> {
+pub(crate) struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates:
         Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
@@ -82,7 +82,7 @@ pub struct NoMatchData<'tcx> {
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum CandidateSource {
+pub(crate) enum CandidateSource {
     Impl(DefId),
     Trait(DefId /* trait id */),
 }
@@ -254,7 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(result.callee)
     }
 
-    pub fn lookup_method_for_diagnostic(
+    pub(crate) fn lookup_method_for_diagnostic(
         &self,
         self_ty: Ty<'tcx>,
         segment: &hir::PathSegment<'tcx>,
@@ -296,7 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(pick)
     }
 
-    pub fn lookup_probe_for_diagnostic(
+    pub(crate) fn lookup_probe_for_diagnostic(
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -569,7 +569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Finds item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    pub fn associated_value(&self, def_id: DefId, item_name: Ident) -> Option<ty::AssocItem> {
+    fn associated_value(&self, def_id: DefId, item_name: Ident) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
             .find_by_name_and_namespace(self.tcx, item_name, Namespace::ValueNS, def_id)

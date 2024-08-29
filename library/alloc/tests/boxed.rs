@@ -59,6 +59,7 @@ fn box_deref_lval() {
     assert_eq!(x.get(), 1000);
 }
 
+#[allow(unused)]
 pub struct ConstAllocator;
 
 unsafe impl Allocator for ConstAllocator {

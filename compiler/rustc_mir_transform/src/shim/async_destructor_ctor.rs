@@ -343,7 +343,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 .tcx
                 .mk_place_elems(&[PlaceElem::Deref, PlaceElem::Field(field, field_ty)]),
         };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::RawPtr(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of
@@ -363,7 +363,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
                 PlaceElem::Field(field, field_ty),
             ]),
         };
-        self.put_temp_rvalue(Rvalue::AddressOf(Mutability::Mut, place))
+        self.put_temp_rvalue(Rvalue::RawPtr(Mutability::Mut, place))
     }
 
     /// If given Self is an enum puts `to_drop: *mut FieldTy` on top of

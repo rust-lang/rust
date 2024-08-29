@@ -13,7 +13,7 @@ use ui_test::{
 };
 
 fn miri_path() -> PathBuf {
-    PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
+    PathBuf::from(env::var("MIRI").unwrap_or_else(|_| env!("CARGO_BIN_EXE_miri").into()))
 }
 
 fn get_host() -> String {
@@ -29,7 +29,7 @@ pub fn flagsplit(flags: &str) -> Vec<String> {
 
 // Build the shared object file for testing native function calls.
 fn build_native_lib() -> PathBuf {
-    let cc = option_env!("CC").unwrap_or("cc");
+    let cc = env::var("CC").unwrap_or_else(|_| "cc".into());
     // Target directory that we can write to.
     let so_target_dir =
         Path::new(&env::var_os("CARGO_TARGET_DIR").unwrap()).join("miri-native-lib");
@@ -84,9 +84,11 @@ fn miri_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     if with_dependencies {
         // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
         // (It's a separate crate, so we don't get an env var from cargo.)
-        let mut prog = miri_path();
-        prog.set_file_name("cargo-miri");
-        config.dependency_builder.program = prog;
+        config.dependency_builder.program = {
+            let mut prog = miri_path();
+            prog.set_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX));
+            prog
+        };
         let builder_args = ["miri", "run"]; // There is no `cargo miri build` so we just use `cargo miri run`.
         config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
         config.dependencies_crate_manifest_path =

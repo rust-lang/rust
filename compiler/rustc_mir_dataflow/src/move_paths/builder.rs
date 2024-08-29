@@ -158,7 +158,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     | ty::Pat(_, _)
                     | ty::Slice(_)
                     | ty::FnDef(_, _)
-                    | ty::FnPtr(_)
+                    | ty::FnPtr(..)
                     | ty::Dynamic(_, _, _)
                     | ty::Closure(..)
                     | ty::CoroutineClosure(..)
@@ -201,7 +201,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                     | ty::RawPtr(_, _)
                     | ty::Ref(_, _, _)
                     | ty::FnDef(_, _)
-                    | ty::FnPtr(_)
+                    | ty::FnPtr(..)
                     | ty::Dynamic(_, _, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
@@ -432,7 +432,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
             }
             Rvalue::CopyForDeref(..) => unreachable!(),
             Rvalue::Ref(..)
-            | Rvalue::AddressOf(..)
+            | Rvalue::RawPtr(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
             | Rvalue::NullaryOp(

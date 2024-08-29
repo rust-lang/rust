@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn maybe_get_coercion_reason(
+    pub(crate) fn maybe_get_coercion_reason(
         &self,
         hir_id: hir::HirId,
         sp: Span,
@@ -584,7 +584,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // (e.g. we're in the tail of a function body)
     //
     // Returns the `LocalDefId` of the RPIT, which is always identity-substituted.
-    pub fn return_position_impl_trait_from_match_expectation(
+    pub(crate) fn return_position_impl_trait_from_match_expectation(
         &self,
         expectation: Expectation<'tcx>,
     ) -> Option<LocalDefId> {

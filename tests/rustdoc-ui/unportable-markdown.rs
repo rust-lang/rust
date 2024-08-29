@@ -19,7 +19,6 @@ pub struct GfmFootnotes;
 /// <https://github.com/pulldown-cmark/pulldown-cmark/pull/773>
 ///
 /// test [^foo][^bar]
-//~^ ERROR unportable markdown
 ///
 /// [^foo]: test
 /// [^bar]: test2

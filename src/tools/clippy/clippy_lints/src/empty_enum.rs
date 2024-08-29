@@ -1,5 +1,3 @@
-//! lint when there is an enum with no variants
-
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};

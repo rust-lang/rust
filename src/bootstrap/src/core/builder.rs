@@ -1455,15 +1455,11 @@ impl<'a> Builder<'a> {
             assert_eq!(target, compiler.host);
         }
 
-        if self.config.rust_optimize.is_release() {
-            // FIXME: cargo bench/install do not accept `--release`
-            // and miri doesn't want it
-            match cmd_kind {
-                Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest => {}
-                _ => {
-                    cargo.arg("--release");
-                }
-            }
+        if self.config.rust_optimize.is_release() &&
+        // cargo bench/install do not accept `--release` and miri doesn't want it
+        !matches!(cmd_kind, Kind::Bench | Kind::Install | Kind::Miri | Kind::MiriSetup | Kind::MiriTest)
+        {
+            cargo.arg("--release");
         }
 
         // Remove make-related flags to ensure Cargo can correctly set things up
@@ -1616,7 +1612,6 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Csymbol-mangling-version=v0");
         } else {
             rustflags.arg("-Csymbol-mangling-version=legacy");
-            rustflags.arg("-Zunstable-options");
         }
 
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
@@ -1864,16 +1859,7 @@ impl<'a> Builder<'a> {
             },
         );
 
-        let split_debuginfo = self.config.split_debuginfo(target);
-        let split_debuginfo_is_stable = target.contains("linux")
-            || target.contains("apple")
-            || (target.is_msvc() && split_debuginfo == SplitDebuginfo::Packed)
-            || (target.is_windows() && split_debuginfo == SplitDebuginfo::Off);
-
-        if !split_debuginfo_is_stable {
-            rustflags.arg("-Zunstable-options");
-        }
-        match split_debuginfo {
+        match self.config.split_debuginfo(target) {
             SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
             SplitDebuginfo::Unpacked => rustflags.arg("-Csplit-debuginfo=unpacked"),
             SplitDebuginfo::Off => rustflags.arg("-Csplit-debuginfo=off"),
@@ -2050,7 +2036,6 @@ impl<'a> Builder<'a> {
         }
 
         if mode == Mode::Rustc {
-            rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.

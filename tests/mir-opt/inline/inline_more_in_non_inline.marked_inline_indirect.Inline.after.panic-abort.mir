@@ -12,7 +12,7 @@ fn marked_inline_indirect(_1: i32) -> () {
     bb0: {
         StorageLive(_2);
         StorageLive(_3);
-        _3 = _1;
+        _3 = copy _1;
         StorageLive(_4);
         _4 = call_twice(move _3) -> [return: bb1, unwind unreachable];
     }

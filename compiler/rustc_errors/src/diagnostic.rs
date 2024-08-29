@@ -204,7 +204,7 @@ pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub struct DiagLocation {
+pub(crate) struct DiagLocation {
     file: Cow<'static, str>,
     line: u32,
     col: u32,

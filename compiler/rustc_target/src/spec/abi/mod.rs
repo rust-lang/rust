@@ -53,6 +53,8 @@ pub enum Abi {
     },
     RustIntrinsic,
     RustCall,
+    /// *Not* a stable ABI, just directly use the Rust types to describe the ABI for LLVM. Even
+    /// normally ABI-compatible Rust types can become ABI-incompatible with this ABI!
     Unadjusted,
     /// For things unlikely to be called, where reducing register pressure in
     /// `extern "Rust"` callers is worth paying extra cost in the callee.

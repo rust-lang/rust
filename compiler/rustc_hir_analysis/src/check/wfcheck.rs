@@ -350,8 +350,8 @@ fn check_foreign_item<'tcx>(
     );
 
     match item.kind {
-        hir::ForeignItemKind::Fn(decl, ..) => {
-            check_item_fn(tcx, def_id, item.ident, item.span, decl)
+        hir::ForeignItemKind::Fn(sig, ..) => {
+            check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
         }
         hir::ForeignItemKind::Static(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::AllowIfForeignTail)
@@ -747,7 +747,7 @@ fn region_known_to_outlive<'tcx>(
     region_b: ty::Region<'tcx>,
 ) -> bool {
     test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP), region_b, region_a);
+        infcx.sub_regions(infer::RelateRegionParamBound(DUMMY_SP, None), region_b, region_a);
     })
 }
 
@@ -951,7 +951,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
             } else {
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
-                    ty::FnPtr(_) => tcx.dcx().struct_span_err(
+                    ty::FnPtr(..) => tcx.dcx().struct_span_err(
                         hir_ty.span,
                         "using function pointers as const generic parameters is forbidden",
                     ),
@@ -1972,8 +1972,7 @@ fn report_bivariance<'tcx>(
     }
 
     let const_param_help =
-        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds)
-            .then_some(());
+        matches!(param.kind, hir::GenericParamKind::Type { .. } if !has_explicit_bounds);
 
     let mut diag = tcx.dcx().create_err(errors::UnusedGenericParameter {
         span: param.span,
@@ -2175,7 +2174,8 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure => return,
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody => return,
     }
 
     // The ordering of this lifetime map is a bit subtle.

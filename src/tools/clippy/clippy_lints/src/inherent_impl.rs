@@ -1,5 +1,3 @@
-//! lint on inherent implementations
-
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use rustc_data_structures::fx::FxHashMap;

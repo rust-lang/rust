@@ -29,11 +29,11 @@
 +         _4 = move (_1.0: usize);
 +         _5 = move (_1.1: u8);
           StorageLive(_2);
--         _2 = (_1.0: usize);
-+         _2 = _4;
+-         _2 = copy (_1.0: usize);
++         _2 = copy _4;
           StorageLive(_3);
--         _3 = (_1.1: u8);
-+         _3 = _5;
+-         _3 = copy (_1.1: u8);
++         _3 = copy _5;
           _0 = const ();
           StorageDead(_3);
           StorageDead(_2);

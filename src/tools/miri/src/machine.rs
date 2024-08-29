@@ -455,6 +455,9 @@ pub struct MiriMachine<'tcx> {
     /// The table of directory descriptors.
     pub(crate) dirs: shims::DirTable,
 
+    /// The list of all EpollEventInterest.
+    pub(crate) epoll_interests: shims::EpollInterestTable,
+
     /// This machine's monotone clock.
     pub(crate) clock: Clock,
 
@@ -649,6 +652,7 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
+            epoll_interests: shims::EpollInterestTable::new(),
             dirs: Default::default(),
             layouts,
             threads,
@@ -787,6 +791,7 @@ impl VisitProvenance for MiriMachine<'_> {
             data_race,
             alloc_addresses,
             fds,
+            epoll_interests:_,
             tcx: _,
             isolated_op: _,
             validation: _,
@@ -942,13 +947,45 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_abi(_ecx: &MiriInterpCx<'tcx>) -> bool {
-        true
-    }
-
-    #[inline(always)]
     fn ignore_optional_overflow_checks(ecx: &MiriInterpCx<'tcx>) -> bool {
         !ecx.tcx.sess.overflow_checks()
+    }
+
+    fn check_fn_target_features(
+        ecx: &MiriInterpCx<'tcx>,
+        instance: ty::Instance<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let attrs = ecx.tcx.codegen_fn_attrs(instance.def_id());
+        if attrs
+            .target_features
+            .iter()
+            .any(|feature| !ecx.tcx.sess.target_features.contains(&feature.name))
+        {
+            let unavailable = attrs
+                .target_features
+                .iter()
+                .filter(|&feature| {
+                    !feature.implied && !ecx.tcx.sess.target_features.contains(&feature.name)
+                })
+                .fold(String::new(), |mut s, feature| {
+                    if !s.is_empty() {
+                        s.push_str(", ");
+                    }
+                    s.push_str(feature.name.as_str());
+                    s
+                });
+            let msg = format!(
+                "calling a function that requires unavailable target features: {unavailable}"
+            );
+            // On WASM, this is not UB, but instead gets rejected during validation of the module
+            // (see #84988).
+            if ecx.tcx.sess.target.is_like_wasm {
+                throw_machine_stop!(TerminationInfo::Abort(msg));
+            } else {
+                throw_ub_format!("{msg}");
+            }
+        }
+        Ok(())
     }
 
     #[inline(always)]
@@ -1053,6 +1090,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         inputs: &[F1],
     ) -> F2 {
         ecx.generate_nan(inputs)
+    }
+
+    fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
+        Ok(ecx.tcx.sess.ub_checks())
     }
 
     fn thread_local_static_pointer(
@@ -1370,7 +1411,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         let borrow_tracker = ecx.machine.borrow_tracker.as_ref();
 
         let extra = FrameExtra {
-            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame(&ecx.machine)),
+            borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame()),
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),

@@ -856,22 +856,10 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
-        let prefixes = if self.config.gdb_native_rust {
-            // GDB with Rust
-            static PREFIXES: &[&str] = &["gdb", "gdbr"];
-            println!("NOTE: compiletest thinks it is using GDB with native rust support");
-            PREFIXES
-        } else {
-            // Generic GDB
-            static PREFIXES: &[&str] = &["gdb", "gdbg"];
-            println!("NOTE: compiletest thinks it is using GDB without native rust support");
-            PREFIXES
-        };
-
         let dbg_cmds = DebuggerCommands::parse_from(
             &self.testpaths.file,
             self.config,
-            prefixes,
+            &["gdb"],
             self.revision,
         )
         .unwrap_or_else(|e| self.fatal(&e));
@@ -1053,9 +1041,7 @@ impl<'test> TestCx<'test> {
                 .push_str(&format!("file {}\n", exe_file.to_str().unwrap().replace(r"\", r"\\")));
 
             // Force GDB to print values in the Rust format.
-            if self.config.gdb_native_rust {
-                script_str.push_str("set language rust\n");
-            }
+            script_str.push_str("set language rust\n");
 
             // Add line breakpoints
             for line in &dbg_cmds.breakpoint_lines {
@@ -1140,21 +1126,11 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let prefixes = if self.config.lldb_native_rust {
-            static PREFIXES: &[&str] = &["lldb", "lldbr"];
-            println!("NOTE: compiletest thinks it is using LLDB with native rust support");
-            PREFIXES
-        } else {
-            static PREFIXES: &[&str] = &["lldb", "lldbg"];
-            println!("NOTE: compiletest thinks it is using LLDB without native rust support");
-            PREFIXES
-        };
-
         // Parse debugger commands etc from test files
         let dbg_cmds = DebuggerCommands::parse_from(
             &self.testpaths.file,
             self.config,
-            prefixes,
+            &["lldb"],
             self.revision,
         )
         .unwrap_or_else(|e| self.fatal(&e));

@@ -75,11 +75,15 @@ fn test_dlsym() {
     assert_eq!(errno, libc::EBADF);
 }
 
+fn test_getuid() {
+    let _val = unsafe { libc::getuid() };
+}
+
 fn main() {
     test_thread_local_errno();
     test_environ();
-
     test_dlsym();
+    test_getuid();
 
     #[cfg(target_os = "linux")]
     test_sigrt();

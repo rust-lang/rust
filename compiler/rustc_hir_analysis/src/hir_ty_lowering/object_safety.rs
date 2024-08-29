@@ -30,7 +30,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_id: hir::HirId,
         hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
         lifetime: &hir::Lifetime,
-        borrowed: bool,
         representation: DynKind,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -325,22 +324,32 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         v.dedup();
         let existential_predicates = tcx.mk_poly_existential_predicates(&v);
 
-        // Use explicitly-specified region bound.
+        // Use explicitly-specified region bound, unless the bound is missing.
         let region_bound = if !lifetime.is_elided() {
-            self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
+            self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
+                // Curiously, we prefer object lifetime default for `+ '_`...
                 if tcx.named_bound_var(lifetime.hir_id).is_some() {
-                    self.lower_lifetime(lifetime, RegionInferReason::ObjectLifetimeDefault)
+                    self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
                 } else {
-                    self.re_infer(
-                        span,
-                        if borrowed {
-                            RegionInferReason::ObjectLifetimeDefault
+                    let reason =
+                        if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lifetime.res {
+                            if let hir::Node::Ty(hir::Ty {
+                                kind: hir::TyKind::Ref(parent_lifetime, _),
+                                ..
+                            }) = tcx.parent_hir_node(hir_id)
+                                && tcx.named_bound_var(parent_lifetime.hir_id).is_none()
+                            {
+                                // Parent lifetime must have failed to resolve. Don't emit a redundant error.
+                                RegionInferReason::ExplicitObjectLifetime
+                            } else {
+                                RegionInferReason::ObjectLifetimeDefault
+                            }
                         } else {
-                            RegionInferReason::BorrowedObjectLifetimeDefault
-                        },
-                    )
+                            RegionInferReason::ExplicitObjectLifetime
+                        };
+                    self.re_infer(span, reason)
                 }
             })
         };

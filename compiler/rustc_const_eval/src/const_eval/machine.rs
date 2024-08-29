@@ -12,7 +12,6 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
@@ -40,7 +39,10 @@ const TINY_LINT_TERMINATOR_LIMIT: usize = 20;
 /// power of two of interpreted terminators.
 const PROGRESS_INDICATOR_START: usize = 4_000_000;
 
-/// Extra machine state for CTFE, and the Machine instance
+/// Extra machine state for CTFE, and the Machine instance.
+//
+// Should be public because out-of-tree rustc consumers need this
+// if they want to interact with constant values.
 pub struct CompileTimeMachine<'tcx> {
     /// The number of terminators that have been evaluated.
     ///
@@ -160,7 +162,7 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     }
 }
 
-pub(crate) type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
+pub type CompileTimeInterpCx<'tcx> = InterpCx<'tcx, CompileTimeMachine<'tcx>>;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind {
@@ -729,8 +731,8 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
     }
 
     fn before_memory_write(
-        tcx: TyCtxtAt<'tcx>,
-        machine: &mut Self,
+        _tcx: TyCtxtAt<'tcx>,
+        _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         (_alloc_id, immutable): (AllocId, bool),
         range: AllocRange,
@@ -741,9 +743,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         }
         // Reject writes through immutable pointers.
         if immutable {
-            super::lint(tcx, machine, WRITES_THROUGH_IMMUTABLE_POINTER, |frames| {
-                crate::errors::WriteThroughImmutablePointer { frames }
-            });
+            return Err(ConstEvalErrKind::WriteThroughImmutablePointer.into());
         }
         // Everything else is fine.
         Ok(())

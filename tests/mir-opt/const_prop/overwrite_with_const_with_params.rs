@@ -15,7 +15,7 @@ fn size_of<T>() -> usize {
     // CHECK-LABEL: fn size_of(
     // CHECK: _1 = const 0_usize;
     // CHECK-NEXT: _1 = const SizeOfConst::<T>::SIZE;
-    // CHECK-NEXT: _0 = _1;
+    // CHECK-NEXT: _0 = copy _1;
     let mut a = 0;
     a = SizeOfConst::<T>::SIZE;
     a

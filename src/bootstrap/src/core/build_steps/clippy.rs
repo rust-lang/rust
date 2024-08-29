@@ -313,7 +313,7 @@ lint_any!(
     RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
     Rls, "src/tools/rls", "rls";
     RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer";
-    Rustdoc, "src/tools/rustdoc", "clippy";
+    Rustdoc, "src/librustdoc", "clippy";
     Rustfmt, "src/tools/rustfmt", "rustfmt";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     Tidy, "src/tools/tidy", "tidy";

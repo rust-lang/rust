@@ -13,7 +13,7 @@ use rustc_target::abi::{self, AddressSpace, HasDataLayout, Pointer};
 use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
-pub use crate::context::CodegenCx;
+pub(crate) use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, OperandBundleDef, True};
 use crate::type_::Type;
 use crate::value::Value;
@@ -58,21 +58,21 @@ use crate::value::Value;
 /// When inside of a landing pad, each function call in LLVM IR needs to be
 /// annotated with which landing pad it's a part of. This is accomplished via
 /// the `OperandBundleDef` value created for MSVC landing pads.
-pub struct Funclet<'ll> {
+pub(crate) struct Funclet<'ll> {
     cleanuppad: &'ll Value,
     operand: OperandBundleDef<'ll>,
 }
 
 impl<'ll> Funclet<'ll> {
-    pub fn new(cleanuppad: &'ll Value) -> Self {
+    pub(crate) fn new(cleanuppad: &'ll Value) -> Self {
         Funclet { cleanuppad, operand: OperandBundleDef::new("funclet", &[cleanuppad]) }
     }
 
-    pub fn cleanuppad(&self) -> &'ll Value {
+    pub(crate) fn cleanuppad(&self) -> &'ll Value {
         self.cleanuppad
     }
 
-    pub fn bundle(&self) -> &OperandBundleDef<'ll> {
+    pub(crate) fn bundle(&self) -> &OperandBundleDef<'ll> {
         &self.operand
     }
 }
@@ -92,16 +92,16 @@ impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
 }
 
 impl<'ll> CodegenCx<'ll, '_> {
-    pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+    pub(crate) fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
         let len = u64::try_from(elts.len()).expect("LLVMConstArray2 elements len overflow");
         unsafe { llvm::LLVMConstArray2(ty, elts.as_ptr(), len) }
     }
 
-    pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+    pub(crate) fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
         bytes_in_context(self.llcx, bytes)
     }
 
-    pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
+    pub(crate) fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             let idx = c_uint::try_from(idx).expect("LLVMGetAggregateElement index overflow");
             let r = llvm::LLVMGetAggregateElement(v, idx).unwrap();
@@ -339,18 +339,18 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 }
 
 /// Get the [LLVM type][Type] of a [`Value`].
-pub fn val_ty(v: &Value) -> &Type {
+pub(crate) fn val_ty(v: &Value) -> &Type {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
-pub fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), True)
     }
 }
 
-pub fn struct_in_context<'ll>(
+fn struct_in_context<'ll>(
     llcx: &'ll llvm::Context,
     elts: &[&'ll Value],
     packed: bool,

@@ -14,9 +14,7 @@ LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
 LL |     // error for a `Try` type on a non-`Try` fn
 ...
 LL |     try_trait_generic::<()>();
-LL + 
 LL +     Ok(())
-LL + }
    |
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`

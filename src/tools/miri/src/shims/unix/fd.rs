@@ -2,13 +2,15 @@
 //! standard file descriptors (stdin/stdout/stderr).
 
 use std::any::Any;
-use std::cell::{Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::io::{self, ErrorKind, IsTerminal, Read, SeekFrom, Write};
+use std::ops::Deref;
 use std::rc::Rc;
+use std::rc::Weak;
 
 use rustc_target::abi::Size;
 
+use crate::shims::unix::linux::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -25,7 +27,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
 
     /// Reads as much as possible into the given buffer, and returns the number of bytes read.
     fn read<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         _bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
@@ -35,7 +38,8 @@ pub trait FileDescription: std::fmt::Debug + Any {
 
     /// Writes as much as possible from the given buffer, and returns the number of bytes written.
     fn write<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         _bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
@@ -46,7 +50,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     /// Reads as much as possible into the given buffer from a given offset,
     /// and returns the number of bytes read.
     fn pread<'tcx>(
-        &mut self,
+        &self,
         _communicate_allowed: bool,
         _bytes: &mut [u8],
         _offset: u64,
@@ -58,7 +62,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     /// Writes as much as possible from the given buffer starting at a given offset,
     /// and returns the number of bytes written.
     fn pwrite<'tcx>(
-        &mut self,
+        &self,
         _communicate_allowed: bool,
         _bytes: &[u8],
         _offset: u64,
@@ -70,7 +74,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     /// Seeks to the given offset (which can be relative to the beginning, end, or current position).
     /// Returns the new position from the start of the stream.
     fn seek<'tcx>(
-        &mut self,
+        &self,
         _communicate_allowed: bool,
         _offset: SeekFrom,
     ) -> InterpResult<'tcx, io::Result<u64>> {
@@ -80,6 +84,7 @@ pub trait FileDescription: std::fmt::Debug + Any {
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
         throw_unsup_format!("cannot close {}", self.name());
     }
@@ -97,17 +102,17 @@ pub trait FileDescription: std::fmt::Debug + Any {
         // so we use a default impl here.
         false
     }
+
+    /// Check the readiness of file description.
+    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+        throw_unsup_format!("{}: epoll does not support this file description", self.name());
+    }
 }
 
 impl dyn FileDescription {
     #[inline(always)]
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub fn downcast<T: Any>(&self) -> Option<&T> {
         (self as &dyn Any).downcast_ref()
-    }
-
-    #[inline(always)]
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        (self as &mut dyn Any).downcast_mut()
     }
 }
 
@@ -117,7 +122,8 @@ impl FileDescription for io::Stdin {
     }
 
     fn read<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         communicate_allowed: bool,
         bytes: &mut [u8],
         _ecx: &mut MiriInterpCx<'tcx>,
@@ -126,7 +132,7 @@ impl FileDescription for io::Stdin {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
             helpers::isolation_abort_error("`read` from stdin")?;
         }
-        Ok(Read::read(self, bytes))
+        Ok(Read::read(&mut { self }, bytes))
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -140,13 +146,14 @@ impl FileDescription for io::Stdout {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(self, bytes);
+        let result = Write::write(&mut { self }, bytes);
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -168,7 +175,8 @@ impl FileDescription for io::Stderr {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
@@ -193,7 +201,8 @@ impl FileDescription for NullOutput {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
+        _self_ref: &FileDescriptionRef,
         _communicate_allowed: bool,
         bytes: &[u8],
         _ecx: &mut MiriInterpCx<'tcx>,
@@ -203,36 +212,85 @@ impl FileDescription for NullOutput {
     }
 }
 
+/// Structure contains both the file description and its unique identifier.
 #[derive(Clone, Debug)]
-pub struct FileDescriptionRef(Rc<RefCell<Box<dyn FileDescription>>>);
+pub struct FileDescWithId<T: FileDescription + ?Sized> {
+    id: FdId,
+    file_description: Box<T>,
+}
+
+#[derive(Clone, Debug)]
+pub struct FileDescriptionRef(Rc<FileDescWithId<dyn FileDescription>>);
+
+impl Deref for FileDescriptionRef {
+    type Target = dyn FileDescription;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0.file_description
+    }
+}
 
 impl FileDescriptionRef {
-    fn new(fd: impl FileDescription) -> Self {
-        FileDescriptionRef(Rc::new(RefCell::new(Box::new(fd))))
+    fn new(fd: impl FileDescription, id: FdId) -> Self {
+        FileDescriptionRef(Rc::new(FileDescWithId { id, file_description: Box::new(fd) }))
     }
 
-    pub fn borrow(&self) -> Ref<'_, dyn FileDescription> {
-        Ref::map(self.0.borrow(), |fd| fd.as_ref())
-    }
-
-    pub fn borrow_mut(&self) -> RefMut<'_, dyn FileDescription> {
-        RefMut::map(self.0.borrow_mut(), |fd| fd.as_mut())
-    }
-
-    pub fn close<'ctx>(self, communicate_allowed: bool) -> InterpResult<'ctx, io::Result<()>> {
+    pub fn close<'tcx>(
+        self,
+        communicate_allowed: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
         // Destroy this `Rc` using `into_inner` so we can call `close` instead of
         // implicitly running the destructor of the file description.
+        let id = self.get_id();
         match Rc::into_inner(self.0) {
-            Some(fd) => RefCell::into_inner(fd).close(communicate_allowed),
+            Some(fd) => {
+                // Remove entry from the global epoll_event_interest table.
+                ecx.machine.epoll_interests.remove(id);
+
+                fd.file_description.close(communicate_allowed, ecx)
+            }
             None => Ok(Ok(())),
         }
     }
+
+    pub fn downgrade(&self) -> WeakFileDescriptionRef {
+        WeakFileDescriptionRef { weak_ref: Rc::downgrade(&self.0) }
+    }
+
+    pub fn get_id(&self) -> FdId {
+        self.0.id
+    }
 }
+
+/// Holds a weak reference to the actual file description.
+#[derive(Clone, Debug, Default)]
+pub struct WeakFileDescriptionRef {
+    weak_ref: Weak<FileDescWithId<dyn FileDescription>>,
+}
+
+impl WeakFileDescriptionRef {
+    pub fn upgrade(&self) -> Option<FileDescriptionRef> {
+        if let Some(file_desc_with_id) = self.weak_ref.upgrade() {
+            return Some(FileDescriptionRef(file_desc_with_id));
+        }
+        None
+    }
+}
+
+/// A unique id for file descriptions. While we could use the address, considering that
+/// is definitely unique, the address would expose interpreter internal state when used
+/// for sorting things. So instead we generate a unique id per file description that stays
+/// the same even if a file descriptor is duplicated and gets a new integer file descriptor.
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FdId(usize);
 
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    fds: BTreeMap<i32, FileDescriptionRef>,
+    pub fds: BTreeMap<i32, FileDescriptionRef>,
+    /// Unique identifier for file description, used to differentiate between various file description.
+    next_file_description_id: FdId,
 }
 
 impl VisitProvenance for FdTable {
@@ -243,7 +301,7 @@ impl VisitProvenance for FdTable {
 
 impl FdTable {
     fn new() -> Self {
-        FdTable { fds: BTreeMap::new() }
+        FdTable { fds: BTreeMap::new(), next_file_description_id: FdId(0) }
     }
     pub(crate) fn init(mute_stdout_stderr: bool) -> FdTable {
         let mut fds = FdTable::new();
@@ -258,10 +316,20 @@ impl FdTable {
         fds
     }
 
+    pub fn new_ref(&mut self, fd: impl FileDescription) -> FileDescriptionRef {
+        let file_handle = FileDescriptionRef::new(fd, self.next_file_description_id);
+        self.next_file_description_id = FdId(self.next_file_description_id.0.strict_add(1));
+        file_handle
+    }
+
     /// Insert a new file description to the FdTable.
     pub fn insert_new(&mut self, fd: impl FileDescription) -> i32 {
-        let file_handle = FileDescriptionRef::new(fd);
-        self.insert_ref_with_min_fd(file_handle, 0)
+        let fd_ref = self.new_ref(fd);
+        self.insert(fd_ref)
+    }
+
+    pub fn insert(&mut self, fd_ref: FileDescriptionRef) -> i32 {
+        self.insert_ref_with_min_fd(fd_ref, 0)
     }
 
     /// Insert a file description, giving it a file descriptor that is at least `min_fd`.
@@ -291,17 +359,7 @@ impl FdTable {
         new_fd
     }
 
-    pub fn get(&self, fd: i32) -> Option<Ref<'_, dyn FileDescription>> {
-        let fd = self.fds.get(&fd)?;
-        Some(fd.borrow())
-    }
-
-    pub fn get_mut(&self, fd: i32) -> Option<RefMut<'_, dyn FileDescription>> {
-        let fd = self.fds.get(&fd)?;
-        Some(fd.borrow_mut())
-    }
-
-    pub fn get_ref(&self, fd: i32) -> Option<FileDescriptionRef> {
+    pub fn get(&self, fd: i32) -> Option<FileDescriptionRef> {
         let fd = self.fds.get(&fd)?;
         Some(fd.clone())
     }
@@ -320,7 +378,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn dup(&mut self, old_fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.get_ref(old_fd) else {
+        let Some(dup_fd) = this.machine.fds.get(old_fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, 0)))
@@ -329,7 +387,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn dup2(&mut self, old_fd: i32, new_fd: i32) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let Some(dup_fd) = this.machine.fds.get_ref(old_fd) else {
+        let Some(dup_fd) = this.machine.fds.get(old_fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
         if new_fd != old_fd {
@@ -337,7 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
             if let Some(file_description) = this.machine.fds.fds.insert(new_fd, dup_fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                file_description.close(this.machine.communicate())?.ok();
+                file_description.close(this.machine.communicate(), this)?.ok();
             }
         }
         Ok(Scalar::from_i32(new_fd))
@@ -415,7 +473,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let start = this.read_scalar(&args[2])?.to_i32()?;
 
-            match this.machine.fds.get_ref(fd) {
+            match this.machine.fds.get(fd) {
                 Some(dup_fd) =>
                     Ok(Scalar::from_i32(this.machine.fds.insert_ref_with_min_fd(dup_fd, start))),
                 None => Ok(Scalar::from_i32(this.fd_not_found()?)),
@@ -442,7 +500,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(file_description) = this.machine.fds.remove(fd) else {
             return Ok(Scalar::from_i32(this.fd_not_found()?));
         };
-        let result = file_description.close(this.machine.communicate())?;
+        let result = file_description.close(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         Ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -488,7 +546,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let communicate = this.machine.communicate();
 
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.get_ref(fd) else {
+        let Some(fd) = this.machine.fds.get(fd) else {
             trace!("read: FD not found");
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
@@ -499,17 +557,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `usize::MAX` because it is bounded by the host's `isize`.
         let mut bytes = vec![0; usize::try_from(count).unwrap()];
         let result = match offset {
-            None => fd.borrow_mut().read(communicate, &mut bytes, this),
+            None => fd.read(&fd, communicate, &mut bytes, this),
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
                     this.set_last_error(einval)?;
                     return Ok(Scalar::from_target_isize(-1, this));
                 };
-                fd.borrow_mut().pread(communicate, &mut bytes, offset, this)
+                fd.pread(communicate, &mut bytes, offset, this)
             }
         };
-        drop(fd);
 
         // `File::read` never returns a value larger than `count`, so this cannot fail.
         match result?.map(|c| i64::try_from(c).unwrap()) {
@@ -553,22 +610,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let bytes = this.read_bytes_ptr_strip_provenance(buf, Size::from_bytes(count))?.to_owned();
         // We temporarily dup the FD to be able to retain mutable access to `this`.
-        let Some(fd) = this.machine.fds.get_ref(fd) else {
+        let Some(fd) = this.machine.fds.get(fd) else {
             return Ok(Scalar::from_target_isize(this.fd_not_found()?, this));
         };
 
         let result = match offset {
-            None => fd.borrow_mut().write(communicate, &bytes, this),
+            None => fd.write(&fd, communicate, &bytes, this),
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     let einval = this.eval_libc("EINVAL");
                     this.set_last_error(einval)?;
                     return Ok(Scalar::from_target_isize(-1, this));
                 };
-                fd.borrow_mut().pwrite(communicate, &bytes, offset, this)
+                fd.pwrite(communicate, &bytes, offset, this)
             }
         };
-        drop(fd);
 
         let result = result?.map(|c| i64::try_from(c).unwrap());
         Ok(Scalar::from_target_isize(this.try_unwrap_io_result(result)?, this))

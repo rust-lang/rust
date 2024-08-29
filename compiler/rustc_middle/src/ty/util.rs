@@ -296,7 +296,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
         loop {
-            match (&a.kind(), &b.kind()) {
+            match (a.kind(), b.kind()) {
                 (&ty::Adt(a_def, a_args), &ty::Adt(b_def, b_args))
                     if a_def == b_def && a_def.is_struct() =>
                 {
@@ -859,7 +859,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If `extern_crate` is `None`, then the crate was injected (e.g., by the allocator).
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
-            || self.extern_crate(key.as_def_id()).is_some_and(|e| e.is_direct())
+            || self.extern_crate(key).is_some_and(|e| e.is_direct())
     }
 
     /// Whether the item has a host effect param. This is different from `TyCtxt::is_const`,
@@ -1272,7 +1272,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::RawPtr(_, _)
             | ty::FnDef(..)
             | ty::Error(_)
-            | ty::FnPtr(_) => true,
+            | ty::FnPtr(..) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_freeze(),
             ty::Adt(..)
@@ -1312,7 +1312,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::RawPtr(_, _)
             | ty::FnDef(..)
             | ty::Error(_)
-            | ty::FnPtr(_) => true,
+            | ty::FnPtr(..) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
             ty::Adt(..)
@@ -1351,7 +1351,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(..)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => AsyncDropGlueMorphology::Noop,
 
@@ -1534,7 +1534,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Pat(..) | ty::Ref(..) | ty::Array(..) | ty::Slice(_) | ty::Tuple(..) => true,
 
             // Raw pointers use bitwise comparison.
-            ty::RawPtr(_, _) | ty::FnPtr(_) => true,
+            ty::RawPtr(_, _) | ty::FnPtr(..) => true,
 
             // Floating point numbers are not `Eq`.
             ty::Float(_) => false,
@@ -1665,7 +1665,7 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::Float(_)
         | ty::Never
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Char
         | ty::RawPtr(_, _)
         | ty::Ref(..)
@@ -1732,7 +1732,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         | ty::RawPtr(_, _)
         | ty::Ref(..)
         | ty::FnDef(..)
-        | ty::FnPtr(_)
+        | ty::FnPtr(..)
         | ty::Never
         | ty::Foreign(_) => true,
 

@@ -616,7 +616,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 self.check_safe_pointer(value, PointerKind::Ref(*mutbl))?;
                 Ok(true)
             }
-            ty::FnPtr(_sig) => {
+            ty::FnPtr(..) => {
                 let value = self.read_scalar(value, ExpectedKind::FnPtr)?;
 
                 // If we check references recursively, also check that this points to a function.

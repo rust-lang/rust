@@ -333,14 +333,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
             return Ok(constant);
         }
 
-        let constant = constant.try_super_fold_with(self)?;
-        debug!(?constant, ?self.param_env);
-        Ok(crate::traits::with_replaced_escaping_bound_vars(
+        let constant = crate::traits::with_replaced_escaping_bound_vars(
             self.infcx,
             &mut self.universes,
             constant,
             |constant| constant.normalize(self.infcx.tcx, self.param_env),
-        ))
+        );
+        debug!(?constant, ?self.param_env);
+        constant.try_super_fold_with(self)
     }
 
     #[inline]

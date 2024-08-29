@@ -20,7 +20,7 @@ use super::errors::{
     NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
 };
 use super::{
-    ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs, ResolverAstLoweringExt,
+    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
 use crate::errors::YieldInClosure;
 use crate::{fluent_generated, FnDeclKind, ImplTraitPosition};
@@ -107,7 +107,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         e.span,
                         seg,
                         ParamMode::Optional,
-                        ParenthesizedGenericArgs::Err,
+                        GenericArgsMode::Err,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         // Method calls can't have bound modifiers
                         None,
@@ -387,7 +387,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let node_id = self.next_node_id();
 
                 // HACK(min_generic_const_args): see lower_anon_const
-                if !arg.is_potential_trivial_const_arg() {
+                if !self.tcx.features().const_arg_path || !arg.is_potential_trivial_const_arg() {
                     // Add a definition for the in-band const def.
                     self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
                 }

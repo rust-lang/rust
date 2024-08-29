@@ -415,7 +415,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::Virtual(..)
                             | InstanceKind::ClosureOnceShim { .. }
                             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::CoroutineKindShim { .. }
                             | InstanceKind::DropGlue(..)
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)

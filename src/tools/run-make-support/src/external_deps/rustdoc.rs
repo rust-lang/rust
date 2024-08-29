@@ -71,14 +71,8 @@ impl Rustdoc {
         self
     }
 
-    /// Specify path to the output folder.
-    pub fn output<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
-        self.cmd.arg("-o");
-        self.cmd.arg(path.as_ref());
-        self
-    }
-
     /// Specify output directory.
+    #[doc(alias = "output")]
     pub fn out_dir<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
         self.cmd.arg("--out-dir").arg(path.as_ref());
         self

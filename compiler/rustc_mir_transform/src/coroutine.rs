@@ -53,7 +53,7 @@
 mod by_move_body;
 use std::{iter, ops};
 
-pub use by_move_body::ByMoveBody;
+pub use by_move_body::coroutine_by_move_body_def_id;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -931,7 +931,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     // Compute the storage conflicts for all eligible locals.
     let mut visitor = StorageConflictVisitor {
         body,
-        saved_locals: saved_locals,
+        saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
         eligible_storage_live: BitSet::new_empty(body.local_decls.len()),
     };

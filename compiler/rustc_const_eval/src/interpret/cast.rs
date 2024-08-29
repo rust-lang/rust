@@ -97,7 +97,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
                 let src = self.read_immediate(src)?;
                 match cast_ty.kind() {
-                    ty::FnPtr(_) => {
+                    ty::FnPtr(..) => {
                         // No change to value
                         self.write_immediate(*src, dest)?;
                     }
@@ -230,7 +230,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         src: &ImmTy<'tcx, M::Provenance>,
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_, _) | ty::FnPtr(_));
+        assert_matches!(src.layout.ty.kind(), ty::RawPtr(_, _) | ty::FnPtr(..));
         assert!(cast_to.ty.is_integral());
 
         let scalar = src.to_scalar();
@@ -388,7 +388,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let (src_pointee_ty, dest_pointee_ty) =
             self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.param_env);
 
-        match (&src_pointee_ty.kind(), &dest_pointee_ty.kind()) {
+        match (src_pointee_ty.kind(), dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_pointer(src)?;
                 let val = Immediate::new_slice(
@@ -478,9 +478,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {}", *src, src.layout.ty, cast_ty.ty);
-        match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
+        match (src.layout.ty.kind(), cast_ty.ty.kind()) {
             (&ty::Ref(_, s, _), &ty::Ref(_, c, _) | &ty::RawPtr(c, _))
-            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, *s, *c),
+            | (&ty::RawPtr(s, _), &ty::RawPtr(c, _)) => self.unsize_into_ptr(src, dest, s, c),
             (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                 assert_eq!(def_a, def_b); // implies same number of fields
 

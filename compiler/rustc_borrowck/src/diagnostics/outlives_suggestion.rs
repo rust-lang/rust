@@ -31,7 +31,7 @@ enum SuggestedConstraint {
 ///
 /// Adds a help note suggesting adding a where clause with the needed constraints.
 #[derive(Default)]
-pub struct OutlivesSuggestionBuilder {
+pub(crate) struct OutlivesSuggestionBuilder {
     /// The list of outlives constraints that need to be added. Specifically, we map each free
     /// region to all other regions that it must outlive. I will use the shorthand `fr:
     /// outlived_frs`. Not all of these regions will already have names necessarily. Some could be

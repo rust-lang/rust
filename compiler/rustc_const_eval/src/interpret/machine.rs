@@ -173,11 +173,6 @@ pub trait Machine<'tcx>: Sized {
         false
     }
 
-    /// Whether function calls should be [ABI](CallAbi)-checked.
-    fn enforce_abi(_ecx: &InterpCx<'tcx, Self>) -> bool {
-        true
-    }
-
     /// Whether Assert(OverflowNeg) and Assert(Overflow) MIR terminators should actually
     /// check for overflow.
     fn ignore_optional_overflow_checks(_ecx: &InterpCx<'tcx, Self>) -> bool;
@@ -238,6 +233,13 @@ pub trait Machine<'tcx>: Sized {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>>;
 
+    /// Check whether the given function may be executed on the current machine, in terms of the
+    /// target features is requires.
+    fn check_fn_target_features(
+        _ecx: &InterpCx<'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+    ) -> InterpResult<'tcx>;
+
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
     fn assert_panic(
         ecx: &mut InterpCx<'tcx, Self>,
@@ -279,6 +281,9 @@ pub trait Machine<'tcx>: Sized {
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
+
+    /// Determines the result of a `NullaryOp::UbChecks` invocation.
+    fn ub_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
 
     /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
     /// You can use this to detect long or endlessly running programs.
@@ -615,6 +620,16 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     }
 
     #[inline(always)]
+    fn check_fn_target_features(
+        _ecx: &InterpCx<$tcx, Self>,
+        _instance: ty::Instance<$tcx>,
+    ) -> InterpResult<$tcx> {
+        // For now we don't do any checking here. We can't use `tcx.sess` because that can differ
+        // between crates, and we need to ensure that const-eval always behaves the same.
+        Ok(())
+    }
+
+    #[inline(always)]
     fn call_extra_fn(
         _ecx: &mut InterpCx<$tcx, Self>,
         fn_val: !,
@@ -625,6 +640,13 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
         _unwind: mir::UnwindAction,
     ) -> InterpResult<$tcx> {
         match fn_val {}
+    }
+
+    #[inline(always)]
+    fn ub_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        Ok(true)
     }
 
     #[inline(always)]

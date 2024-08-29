@@ -13,13 +13,14 @@ fn main() {
     rustdoc()
         .arg("-Zunstable-options")
         .arg("--emit=invocation-specific")
-        .output("invocation-only")
+        .out_dir("invocation-only")
         .arg("--resource-suffix=-xxx")
         .args(&["--theme", "y.css"])
         .args(&["--extend-css", "z.css"])
         .input("x.rs")
         .run();
     assert!(Path::new("invocation-only/search-index-xxx.js").exists());
+    assert!(Path::new("invocation-only/crates-xxx.js").exists());
     assert!(Path::new("invocation-only/settings.html").exists());
     assert!(Path::new("invocation-only/x/all.html").exists());
     assert!(Path::new("invocation-only/x/index.html").exists());
@@ -34,7 +35,7 @@ fn main() {
     rustdoc()
         .arg("-Zunstable-options")
         .arg("--emit=toolchain-shared-resources")
-        .output("toolchain-only")
+        .out_dir("toolchain-only")
         .arg("--resource-suffix=-xxx")
         .args(&["--extend-css", "z.css"])
         .input("x.rs")
@@ -68,7 +69,7 @@ fn main() {
     rustdoc()
         .arg("-Zunstable-options")
         .arg("--emit=toolchain-shared-resources,unversioned-shared-resources")
-        .output("all-shared")
+        .out_dir("all-shared")
         .arg("--resource-suffix=-xxx")
         .args(&["--extend-css", "z.css"])
         .input("x.rs")

@@ -95,7 +95,7 @@ error: type `i128` cannot be used with this register class
 LL |         asm!("{}", in(reg) 0i128);
    |                            ^^^^^
    |
-   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+   = note: register class `reg` supports these types: i8, i16, i32, i64, f16, f32, f64
 
 error: type `float64x2_t` cannot be used with this register class
   --> $DIR/type-check-3.rs:75:28
@@ -103,7 +103,7 @@ error: type `float64x2_t` cannot be used with this register class
 LL |         asm!("{}", in(reg) f64x2);
    |                            ^^^^^
    |
-   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+   = note: register class `reg` supports these types: i8, i16, i32, i64, f16, f32, f64
 
 error: type `Simd256bit` cannot be used with this register class
   --> $DIR/type-check-3.rs:77:29
@@ -111,7 +111,7 @@ error: type `Simd256bit` cannot be used with this register class
 LL |         asm!("{}", in(vreg) f64x4);
    |                             ^^^^^
    |
-   = note: register class `vreg` supports these types: i8, i16, i32, i64, f32, f64, i8x8, i16x4, i32x2, i64x1, f32x2, f64x1, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
+   = note: register class `vreg` supports these types: i8, i16, i32, i64, f16, f32, f64, f128, i8x8, i16x4, i32x2, i64x1, f16x4, f32x2, f64x1, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
 
 error: incompatible types for asm inout argument
   --> $DIR/type-check-3.rs:88:33

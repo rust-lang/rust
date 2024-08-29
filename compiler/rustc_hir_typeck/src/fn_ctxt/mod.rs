@@ -117,7 +117,7 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn new(
+    pub(crate) fn new(
         root_ctxt: &'a TypeckRootCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
@@ -148,15 +148,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.root_ctxt.infcx.dcx()
     }
 
-    pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
+    pub(crate) fn cause(
+        &self,
+        span: Span,
+        code: ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx> {
         ObligationCause::new(span, self.body_id, code)
     }
 
-    pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
+    pub(crate) fn misc(&self, span: Span) -> ObligationCause<'tcx> {
         self.cause(span, ObligationCauseCode::Misc)
     }
 
-    pub fn sess(&self) -> &Session {
+    pub(crate) fn sess(&self) -> &Session {
         self.tcx.sess
     }
 
@@ -165,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Use [`InferCtxtErrorExt::err_ctxt`] to start one without a `TypeckResults`.
     ///
     /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
-    pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+    pub(crate) fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
         let mut sub_relations = SubRelations::default();
         sub_relations.add_constraints(
             self,
@@ -365,7 +369,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 /// This is a bridge between the interface of HIR ty lowering, which outputs a raw
 /// `Ty`, and the API in this module, which expect `Ty` to be fully normalized.
 #[derive(Clone, Copy, Debug)]
-pub struct LoweredTy<'tcx> {
+pub(crate) struct LoweredTy<'tcx> {
     /// The unnormalized type provided by the user.
     pub raw: Ty<'tcx>,
 
@@ -374,7 +378,7 @@ pub struct LoweredTy<'tcx> {
 }
 
 impl<'tcx> LoweredTy<'tcx> {
-    pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
+    fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
         // FIXME(-Znext-solver): We're still figuring out how to best handle
         // normalization and this doesn't feel too great. We should look at this
         // code again before stabilizing it.

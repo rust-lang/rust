@@ -1,6 +1,5 @@
 //! Ensure we catch UB due to writing through a shared reference.
 #![feature(const_mut_refs, const_refs_to_cell)]
-#![deny(writes_through_immutable_pointer)]
 #![allow(invalid_reference_casting)]
 
 use std::mem;
@@ -9,15 +8,15 @@ use std::cell::UnsafeCell;
 const WRITE_AFTER_CAST: () = unsafe {
     let mut x = 0;
     let ptr = &x as *const i32 as *mut i32;
-    *ptr = 0; //~ERROR: writes_through_immutable_pointer
-    //~^ previously accepted
+    *ptr = 0; //~ERROR: evaluation of constant value failed
+    //~| immutable
 };
 
 const WRITE_AFTER_TRANSMUTE: () = unsafe {
     let mut x = 0;
     let ptr: *mut i32 = mem::transmute(&x);
-    *ptr = 0; //~ERROR: writes_through_immutable_pointer
-    //~^ previously accepted
+    *ptr = 0; //~ERROR: evaluation of constant value failed
+    //~| immutable
 };
 
 // it's okay when there is interior mutability;

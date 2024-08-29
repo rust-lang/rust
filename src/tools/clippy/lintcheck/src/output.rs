@@ -51,7 +51,7 @@ impl RustcIce {
 /// A single warning that clippy issued while checking a `Crate`
 #[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ClippyWarning {
-    pub lint: String,
+    pub name: String,
     pub diag: Diagnostic,
     pub krate: String,
     /// The URL that points to the file and line of the lint emission
@@ -60,8 +60,8 @@ pub struct ClippyWarning {
 
 impl ClippyWarning {
     pub fn new(mut diag: Diagnostic, base_url: &str, krate: &str) -> Option<Self> {
-        let lint = diag.code.clone()?.code;
-        if !(lint.contains("clippy") || diag.message.contains("clippy"))
+        let name = diag.code.clone()?.code;
+        if !(name.contains("clippy") || diag.message.contains("clippy"))
             || diag.message.contains("could not read cargo metadata")
         {
             return None;
@@ -92,7 +92,7 @@ impl ClippyWarning {
         };
 
         Some(Self {
-            lint,
+            name,
             diag,
             url,
             krate: krate.to_string(),
@@ -108,7 +108,7 @@ impl ClippyWarning {
         let mut file = span.file_name.clone();
         let file_with_pos = format!("{file}:{}:{}", span.line_start, span.line_end);
         match format {
-            OutputFormat::Text => format!("{file_with_pos} {} \"{}\"\n", self.lint, self.diag.message),
+            OutputFormat::Text => format!("{file_with_pos} {} \"{}\"\n", self.name, self.diag.message),
             OutputFormat::Markdown => {
                 if file.starts_with("target") {
                     file.insert_str(0, "../");
@@ -116,7 +116,7 @@ impl ClippyWarning {
 
                 let mut output = String::from("| ");
                 write!(output, "[`{file_with_pos}`]({file}#L{})", span.line_start).unwrap();
-                write!(output, r#" | `{:<50}` | "{}" |"#, self.lint, self.diag.message).unwrap();
+                write!(output, r#" | `{:<50}` | "{}" |"#, self.name, self.diag.message).unwrap();
                 output.push('\n');
                 output
             },
@@ -164,7 +164,7 @@ fn gather_stats(warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>)
     let mut counter: HashMap<&String, usize> = HashMap::new();
     warnings
         .iter()
-        .for_each(|wrn| *counter.entry(&wrn.lint).or_insert(0) += 1);
+        .for_each(|wrn| *counter.entry(&wrn.name).or_insert(0) += 1);
 
     // collect into a tupled list for sorting
     let mut stats: Vec<(&&String, &usize)> = counter.iter().collect();

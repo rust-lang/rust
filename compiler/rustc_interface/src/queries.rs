@@ -98,7 +98,7 @@ impl<'tcx> Queries<'tcx> {
         self.parse.compute(|| passes::parse(&self.compiler.sess))
     }
 
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
+    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'tcx, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
             let krate = self.parse()?.steal();
 

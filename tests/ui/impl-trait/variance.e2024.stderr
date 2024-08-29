@@ -1,22 +1,22 @@
-error: [*, o]
+error: ['a: *, 'a: o]
   --> $DIR/variance.rs:14:36
    |
 LL | fn not_captured_early<'a: 'a>() -> impl Sized {}
    |                                    ^^^^^^^^^^
 
-error: [*, o]
+error: ['a: *, 'a: o]
   --> $DIR/variance.rs:19:32
    |
 LL | fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: [o]
+error: ['a: o]
   --> $DIR/variance.rs:21:40
    |
 LL | fn not_captured_late<'a>(_: &'a ()) -> impl Sized {}
    |                                        ^^^^^^^^^^
 
-error: [o]
+error: ['a: o]
   --> $DIR/variance.rs:26:36
    |
 LL | fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {}

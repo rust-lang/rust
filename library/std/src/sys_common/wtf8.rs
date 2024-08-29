@@ -19,12 +19,14 @@
 mod tests;
 
 use core::char::{encode_utf16_raw, encode_utf8_raw};
+use core::clone::CloneToUninit;
 use core::str::next_code_point;
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FusedIterator;
+use crate::ptr::addr_of_mut;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::AsInner;
@@ -1044,5 +1046,15 @@ impl Hash for Wtf8 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
+    }
+}
+
+#[unstable(feature = "clone_to_uninit", issue = "126799")]
+unsafe impl CloneToUninit for Wtf8 {
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_uninit(&self, dst: *mut Self) {
+        // SAFETY: we're just a wrapper around [u8]
+        unsafe { self.bytes.clone_to_uninit(addr_of_mut!((*dst).bytes)) }
     }
 }

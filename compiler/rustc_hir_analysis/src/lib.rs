@@ -72,6 +72,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[macro_use]
@@ -199,10 +200,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             _ => (),
         }
     });
-
-    // Freeze definitions as we don't add new ones at this point. This improves performance by
-    // allowing lock-free access to them.
-    tcx.untracked().definitions.freeze();
 
     // FIXME: Remove this when we implement creating `DefId`s
     // for anon constants during their parents' typeck.

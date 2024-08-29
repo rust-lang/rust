@@ -53,7 +53,7 @@ fn filter_assoc_items_by_name_and_namespace<'a>(
     assoc_items_of: DefId,
     ident: Ident,
     ns: Namespace,
-) -> impl Iterator<Item = &ty::AssocItem> + 'a {
+) -> impl Iterator<Item = &'a ty::AssocItem> + 'a {
     tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
         item.kind.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })
@@ -495,7 +495,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::RawPtr(_, _) => Res::Primitive(RawPointer),
             ty::Ref(..) => Res::Primitive(Reference),
             ty::FnDef(..) => panic!("type alias to a function definition"),
-            ty::FnPtr(_) => Res::Primitive(Fn),
+            ty::FnPtr(..) => Res::Primitive(Fn),
             ty::Never => Res::Primitive(Never),
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
                 Res::from_def_id(self.cx.tcx, did)
@@ -1950,7 +1950,9 @@ fn resolution_failure(
                             | TraitAlias
                             | TyParam
                             | Static { .. } => "associated item",
-                            Impl { .. } | GlobalAsm => unreachable!("not a path"),
+                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody => {
+                                unreachable!("not a path")
+                            }
                         }
                     } else {
                         "associated item"

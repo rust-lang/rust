@@ -10,7 +10,7 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "=1.7.1"
 ena = "0.14.3"
-indexmap = { version = "2.0.0" }
+indexmap = { version = "2.4.0" }
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "11"
 rustc-hash = "1.1.0"

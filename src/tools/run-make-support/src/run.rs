@@ -29,6 +29,7 @@ fn run_common(name: &str, args: Option<&[&str]>) -> Command {
         }
         env::join_paths(paths.iter()).unwrap()
     });
+    cmd.env("LC_ALL", "C"); // force english locale
 
     if is_windows() {
         let mut paths = vec![];
@@ -84,5 +85,6 @@ pub fn run_fail(name: &str) -> CompletedProcess {
 pub fn cmd<S: AsRef<OsStr>>(program: S) -> Command {
     let mut command = Command::new(program);
     set_host_rpath(&mut command);
+    command.env("LC_ALL", "C"); // force english locale
     command
 }

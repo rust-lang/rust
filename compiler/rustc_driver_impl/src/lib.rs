@@ -7,6 +7,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+#![cfg_attr(bootstrap, feature(unsafe_extern_blocks))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
@@ -15,6 +16,7 @@
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cmp::max;
@@ -391,13 +393,17 @@ fn run_compiler(
 
         let linker = compiler.enter(|queries| {
             let early_exit = || early_exit().map(|_| None);
+
+            // Parse the crate root source code (doesn't parse submodules yet)
+            // Everything else is parsed during macro expansion.
             queries.parse()?;
 
-            if let Some(ppm) = &sess.opts.pretty {
-                if ppm.needs_ast_map() {
+            // If pretty printing is requested: Figure out the representation, print it and exit
+            if let Some(pp_mode) = sess.opts.pretty {
+                if pp_mode.needs_ast_map() {
                     queries.global_ctxt()?.enter(|tcx| {
                         tcx.ensure().early_lint_checks(());
-                        pretty::print(sess, *ppm, pretty::PrintExtra::NeedsAstMap { tcx });
+                        pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
                         Ok(())
                     })?;
 
@@ -408,7 +414,7 @@ fn run_compiler(
                     let krate = queries.parse()?;
                     pretty::print(
                         sess,
-                        *ppm,
+                        pp_mode,
                         pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
                     );
                 }
@@ -463,12 +469,8 @@ fn run_compiler(
             linker.link(sess, codegen_backend)?
         }
 
-        if sess.opts.unstable_opts.print_fuel.is_some() {
-            eprintln!(
-                "Fuel used by {}: {}",
-                sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
-                sess.print_fuel.load(Ordering::SeqCst)
-            );
+        if let Some(fuel) = sess.opts.unstable_opts.print_fuel.as_deref() {
+            eprintln!("Fuel used by {}: {}", fuel, sess.print_fuel.load(Ordering::SeqCst));
         }
 
         Ok(())
@@ -485,36 +487,43 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileNa
     (odir, ofile)
 }
 
-// Extract input (string or file and optional path) from matches.
+/// Extract input (string or file and optional path) from matches.
+/// This handles reading from stdin if `-` is provided.
 fn make_input(
     early_dcx: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
-    let [ifile] = free_matches else { return Ok(None) };
-    if ifile == "-" {
-        let mut src = String::new();
-        if io::stdin().read_to_string(&mut src).is_err() {
-            // Immediately stop compilation if there was an issue reading
-            // the input (for example if the input stream is not UTF-8).
-            let reported =
-                early_dcx.early_err("couldn't read from stdin, as it did not contain valid UTF-8");
-            return Err(reported);
-        }
-        if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+    let [input_file] = free_matches else { return Ok(None) };
+
+    if input_file != "-" {
+        // Normal `Input::File`
+        return Ok(Some(Input::File(PathBuf::from(input_file))));
+    }
+
+    // read from stdin as `Input::Str`
+    let mut input = String::new();
+    if io::stdin().read_to_string(&mut input).is_err() {
+        // Immediately stop compilation if there was an issue reading
+        // the input (for example if the input stream is not UTF-8).
+        let reported =
+            early_dcx.early_err("couldn't read from stdin, as it did not contain valid UTF-8");
+        return Err(reported);
+    }
+
+    let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+        Ok(path) => {
             let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
                 "when UNSTABLE_RUSTDOC_TEST_PATH is set \
                                     UNSTABLE_RUSTDOC_TEST_LINE also needs to be set",
             );
             let line = isize::from_str_radix(&line, 10)
                 .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
-            let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
-            Ok(Some(Input::Str { name: file_name, input: src }))
-        } else {
-            Ok(Some(Input::Str { name: FileName::anon_source_code(&src), input: src }))
+            FileName::doc_test_source_code(PathBuf::from(path), line)
         }
-    } else {
-        Ok(Some(Input::File(PathBuf::from(ifile))))
-    }
+        Err(_) => FileName::anon_source_code(&input),
+    };
+
+    Ok(Some(Input::Str { name, input }))
 }
 
 /// Whether to stop or continue compilation.

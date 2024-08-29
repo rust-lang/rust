@@ -8,7 +8,7 @@
       bb0: {
           StorageLive(_1);
 -         _1 = const <T as MyTrait>::ASSOC_INT;
--         switchInt(_1) -> [7: bb3, 42: bb2, otherwise: bb1];
+-         switchInt(copy _1) -> [7: bb3, 42: bb2, otherwise: bb1];
 +         nop;
 +         switchInt(const <T as MyTrait>::ASSOC_INT) -> [7: bb3, 42: bb2, otherwise: bb1];
       }

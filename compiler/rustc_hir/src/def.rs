@@ -133,6 +133,9 @@ pub enum DefKind {
     /// we treat them all the same, and code which needs to distinguish them can match
     /// or `hir::ClosureKind` or `type_of`.
     Closure,
+    /// The definition of a synthetic coroutine body created by the lowering of a
+    /// coroutine-closure, such as an async closure.
+    SyntheticCoroutineBody,
 }
 
 impl DefKind {
@@ -177,6 +180,7 @@ impl DefKind {
             DefKind::Closure => "closure",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
+            DefKind::SyntheticCoroutineBody => "synthetic mir body",
         }
     }
 
@@ -236,7 +240,8 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::OpaqueTy => None,
+            | DefKind::OpaqueTy
+            | DefKind::SyntheticCoroutineBody => None,
         }
     }
 
@@ -276,6 +281,7 @@ impl DefKind {
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
+            DefKind::SyntheticCoroutineBody => DefPathData::Closure,
         }
     }
 
@@ -291,7 +297,8 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
-            | DefKind::Static { .. } => true,
+            | DefKind::Static { .. }
+            | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union
@@ -315,6 +322,41 @@ impl DefKind {
             | DefKind::LifetimeParam
             | DefKind::AnonConst
             | DefKind::InlineConst
+            | DefKind::GlobalAsm
+            | DefKind::ExternCrate => false,
+        }
+    }
+
+    /// Whether `query struct_target_features` should be used with this definition.
+    pub fn has_struct_target_features(self) -> bool {
+        match self {
+            DefKind::Struct | DefKind::Union | DefKind::Enum => true,
+            DefKind::Fn
+            | DefKind::AssocFn
+            | DefKind::Ctor(..)
+            | DefKind::Closure
+            | DefKind::Static { .. }
+            | DefKind::Mod
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::Const
+            | DefKind::AssocConst
+            | DefKind::Macro(..)
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::OpaqueTy
+            | DefKind::Impl { .. }
+            | DefKind::Field
+            | DefKind::TyParam
+            | DefKind::ConstParam
+            | DefKind::LifetimeParam
+            | DefKind::AnonConst
+            | DefKind::InlineConst
+            | DefKind::SyntheticCoroutineBody
             | DefKind::GlobalAsm
             | DefKind::ExternCrate => false,
         }

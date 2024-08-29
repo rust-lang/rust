@@ -9,6 +9,7 @@ use std::sync::OnceLock;
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
+use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::exec::{command, BootstrapCommand};
 use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
 use crate::{t, Config};
@@ -19,6 +20,24 @@ static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
     #[allow(deprecated)]
     config.try_run(cmd)
+}
+
+fn extract_curl_version(out: &[u8]) -> semver::Version {
+    let out = String::from_utf8_lossy(out);
+    // The output should look like this: "curl <major>.<minor>.<patch> ..."
+    out.lines()
+        .next()
+        .and_then(|line| line.split(" ").nth(1))
+        .and_then(|version| semver::Version::parse(version).ok())
+        .unwrap_or(semver::Version::new(1, 0, 0))
+}
+
+fn curl_version() -> semver::Version {
+    let mut curl = Command::new("curl");
+    curl.arg("-V");
+    let Ok(out) = curl.output() else { return semver::Version::new(1, 0, 0) };
+    let out = out.stdout;
+    extract_curl_version(&out)
 }
 
 /// Generic helpers that are useful anywhere in bootstrap.
@@ -55,7 +74,7 @@ impl Config {
     /// Returns false if do not execute at all, otherwise returns its
     /// `status.success()`.
     pub(crate) fn check_run(&self, cmd: &mut BootstrapCommand) -> bool {
-        if self.dry_run() {
+        if self.dry_run() && !cmd.run_always {
             return true;
         }
         self.verbose(|| println!("running: {cmd:?}"));
@@ -219,6 +238,8 @@ impl Config {
             "30", // timeout if cannot connect within 30 seconds
             "-o",
             tempfile.to_str().unwrap(),
+            "--continue-at",
+            "-",
             "--retry",
             "3",
             "-SRf",
@@ -228,6 +249,10 @@ impl Config {
             curl.arg("-s");
         } else {
             curl.arg("--progress-bar");
+        }
+        // --retry-all-errors was added in 7.71.0, don't use it if curl is old.
+        if curl_version() >= semver::Version::new(7, 71, 0) {
+            curl.arg("--retry-all-errors");
         }
         curl.arg(url);
         if !self.check_run(&mut curl) {
@@ -273,11 +298,12 @@ impl Config {
 
         let mut tar = tar::Archive::new(decompressor);
 
+        let is_ci_rustc = dst.ends_with("ci-rustc");
+
         // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
         // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
         // Cache the entries when we extract it so we only have to read it once.
-        let mut recorded_entries =
-            if dst.ends_with("ci-rustc") { recorded_entries(dst, pattern) } else { None };
+        let mut recorded_entries = if is_ci_rustc { recorded_entries(dst, pattern) } else { None };
 
         for member in t!(tar.entries()) {
             let mut member = t!(member);
@@ -287,10 +313,12 @@ impl Config {
                 continue;
             }
             let mut short_path = t!(original_path.strip_prefix(directory_prefix));
-            if !short_path.starts_with(pattern) {
+            let is_builder_config = short_path.to_str() == Some(BUILDER_CONFIG_FILENAME);
+
+            if !(short_path.starts_with(pattern) || (is_ci_rustc && is_builder_config)) {
                 continue;
             }
-            short_path = t!(short_path.strip_prefix(pattern));
+            short_path = short_path.strip_prefix(pattern).unwrap_or(short_path);
             let dst_path = dst.join(short_path);
             self.verbose(|| {
                 println!("extracting {} to {}", original_path.display(), dst.display())
@@ -519,7 +547,7 @@ impl Config {
         extra_components: &[&str],
         download_component: fn(&Config, String, &str, &str),
     ) {
-        let host = self.build;
+        let host = self.build.triple;
         let bin_root = self.out.join(host).join(sysroot);
         let rustc_stamp = bin_root.join(".rustc-stamp");
 
@@ -616,8 +644,6 @@ impl Config {
         };
 
         // For the beta compiler, put special effort into ensuring the checksums are valid.
-        // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
-        // this on each and every nightly ...
         let checksum = if should_verify {
             let error = format!(
                 "src/stage0 doesn't contain a checksum for {url}. \
@@ -703,9 +729,7 @@ download-rustc = false
             let file_times = fs::FileTimes::new().set_accessed(now).set_modified(now);
 
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            let llvm_config_file = t!(File::options().write(true).open(llvm_config));
-
-            t!(llvm_config_file.set_times(file_times));
+            t!(crate::utils::helpers::set_file_times(llvm_config, file_times));
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");

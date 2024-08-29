@@ -2,13 +2,13 @@ error: intrinsic safety mismatch between list of intrinsics within the compiler 
   --> $DIR/safe-intrinsic-mismatch.rs:11:5
    |
 LL |     fn size_of<T>() -> usize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `size_of`
   --> $DIR/safe-intrinsic-mismatch.rs:11:5
    |
 LL |     fn size_of<T>() -> usize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

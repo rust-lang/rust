@@ -402,9 +402,6 @@ const_eval_unallowed_mutable_refs =
 const_eval_unallowed_op_in_const_context =
     {$msg}
 
-const_eval_unavailable_target_features_for_fn =
-    calling a function that requires unavailable target features: {$unavailable_feats}
-
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
@@ -419,7 +416,7 @@ const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 const_eval_unstable_in_stable =
     const-stable function cannot use `#[feature({$gate})]`
     .unstable_sugg = if it is not part of the public API, make this function unstably const
-    .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+    .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (but requires team approval)
 
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation

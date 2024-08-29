@@ -547,8 +547,8 @@ fn write_function_coverage_info(
     for (id, expression) in expressions.iter_enumerated() {
         writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
     }
-    for coverage::Mapping { kind, code_region } in mappings {
-        writeln!(w, "{INDENT}coverage {kind:?} => {code_region:?};")?;
+    for coverage::Mapping { kind, source_region } in mappings {
+        writeln!(w, "{INDENT}coverage {kind:?} => {source_region:?};")?;
     }
     writeln!(w)?;
 
@@ -1038,7 +1038,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
             CopyForDeref(ref place) => write!(fmt, "deref_copy {place:#?}"),
 
-            AddressOf(mutability, ref place) => {
+            RawPtr(mutability, ref place) => {
                 write!(fmt, "&raw {mut_str} {place:?}", mut_str = mutability.ptr_str())
             }
 
@@ -1159,7 +1159,7 @@ impl<'tcx> Debug for Operand<'tcx> {
         use self::Operand::*;
         match *self {
             Constant(ref a) => write!(fmt, "{a:?}"),
-            Copy(ref place) => write!(fmt, "{place:?}"),
+            Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
         }
     }
@@ -1418,21 +1418,19 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
-    fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
+    fn alloc_id_from_const_val(val: ConstValue<'_>) -> Option<AllocId> {
         match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
-                Either::Left(std::iter::once(ptr.provenance.alloc_id()))
-            }
-            ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
-            ConstValue::ZeroSized => Either::Right(std::iter::empty()),
+            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
+            ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
+            ConstValue::ZeroSized => None,
             ConstValue::Slice { .. } => {
                 // `u8`/`str` slices, shouldn't contain pointers that we want to print.
-                Either::Right(std::iter::empty())
+                None
             }
             ConstValue::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
                 // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
-                Either::Left(std::iter::once(alloc_id))
+                Some(alloc_id)
             }
         }
     }
@@ -1443,7 +1441,9 @@ pub fn write_allocations<'tcx>(
             match c.const_ {
                 Const::Ty(_, _) | Const::Unevaluated(..) => {}
                 Const::Val(val, _) => {
-                    self.0.extend(alloc_ids_from_const_val(val));
+                    if let Some(id) = alloc_id_from_const_val(val) {
+                        self.0.insert(id);
+                    }
                 }
             }
         }

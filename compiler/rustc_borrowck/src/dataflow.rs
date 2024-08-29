@@ -14,7 +14,7 @@ use rustc_mir_dataflow::{Analysis, AnalysisDomain, GenKill, Results, ResultsVisi
 use crate::{places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext};
 
 /// The results of the dataflow analyses used by the borrow checker.
-pub struct BorrowckResults<'a, 'mir, 'tcx> {
+pub(crate) struct BorrowckResults<'a, 'mir, 'tcx> {
     pub(crate) borrows: Results<'tcx, Borrows<'a, 'mir, 'tcx>>,
     pub(crate) uninits: Results<'tcx, MaybeUninitializedPlaces<'a, 'mir, 'tcx>>,
     pub(crate) ever_inits: Results<'tcx, EverInitializedPlaces<'a, 'mir, 'tcx>>,
@@ -22,7 +22,7 @@ pub struct BorrowckResults<'a, 'mir, 'tcx> {
 
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Debug)]
-pub struct BorrowckFlowState<'a, 'mir, 'tcx> {
+pub(crate) struct BorrowckFlowState<'a, 'mir, 'tcx> {
     pub(crate) borrows: <Borrows<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
     pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
     pub(crate) ever_inits: <EverInitializedPlaces<'a, 'mir, 'tcx> as AnalysisDomain<'tcx>>::Domain,
