@@ -605,8 +605,9 @@ where
         if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(
-                &dest.to_op(self)?,
+                &dest.to_place(),
                 M::enforce_validity_recursively(self, dest.layout()),
+                /*reset_provenance*/ true,
             )?;
         }
 
@@ -636,7 +637,7 @@ where
     /// Write an immediate to a place.
     /// If you use this you are responsible for validating that things got copied at the
     /// right type.
-    fn write_immediate_no_validate(
+    pub(super) fn write_immediate_no_validate(
         &mut self,
         src: Immediate<M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
@@ -684,15 +685,7 @@ where
 
         match value {
             Immediate::Scalar(scalar) => {
-                let Abi::Scalar(s) = layout.abi else {
-                    span_bug!(
-                        self.cur_span(),
-                        "write_immediate_to_mplace: invalid Scalar layout: {layout:#?}",
-                    )
-                };
-                let size = s.size(&tcx);
-                assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                alloc.write_scalar(alloc_range(Size::ZERO, size), scalar)
+                alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
                 let Abi::ScalarPair(a, b) = layout.abi else {
@@ -702,16 +695,15 @@ where
                         layout
                     )
                 };
-                let (a_size, b_size) = (a.size(&tcx), b.size(&tcx));
-                let b_offset = a_size.align_to(b.align(&tcx).abi);
+                let b_offset = a.size(&tcx).align_to(b.align(&tcx).abi);
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
                 // fields do not match the `ScalarPair` components.
 
-                alloc.write_scalar(alloc_range(Size::ZERO, a_size), a_val)?;
-                alloc.write_scalar(alloc_range(b_offset, b_size), b_val)
+                alloc.write_scalar(alloc_range(Size::ZERO, a_val.size()), a_val)?;
+                alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)
             }
             Immediate::Uninit => alloc.write_uninit(),
         }
@@ -731,6 +723,26 @@ where
                     return Ok(());
                 };
                 alloc.write_uninit()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Remove all provenance in the given place.
+    pub fn clear_provenance(
+        &mut self,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        match self.as_mplace_or_mutable_local(&dest.to_place())? {
+            Right((local_val, _local_layout)) => {
+                local_val.clear_provenance()?;
+            }
+            Left(mplace) => {
+                let Some(mut alloc) = self.get_place_alloc_mut(&mplace)? else {
+                    // Zero-sized access
+                    return Ok(());
+                };
+                alloc.clear_provenance()?;
             }
         }
         Ok(())
@@ -789,23 +801,30 @@ where
         allow_transmute: bool,
         validate_dest: bool,
     ) -> InterpResult<'tcx> {
-        // Generally for transmutation, data must be valid both at the old and new type.
-        // But if the types are the same, the 2nd validation below suffices.
-        if src.layout().ty != dest.layout().ty && M::enforce_validity(self, src.layout()) {
-            self.validate_operand(
-                &src.to_op(self)?,
-                M::enforce_validity_recursively(self, src.layout()),
-            )?;
-        }
+        // These are technically *two* typed copies: `src` is a not-yet-loaded value,
+        // so we're going a typed copy at `src` type from there to some intermediate storage.
+        // And then we're doing a second typed copy from that intermediate storage to `dest`.
+        // But as an optimization, we only make a single direct copy here.
 
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
         if validate_dest && M::enforce_validity(self, dest.layout()) {
-            // Data got changed, better make sure it matches the type!
+            let dest = dest.to_place();
+            // Given that there were two typed copies, we have to ensure this is valid at both types,
+            // and we have to ensure this loses provenance and padding according to both types.
+            // But if the types are identical, we only do one pass.
+            if src.layout().ty != dest.layout().ty {
+                self.validate_operand(
+                    &dest.transmute(src.layout(), self)?,
+                    M::enforce_validity_recursively(self, src.layout()),
+                    /*reset_provenance*/ true,
+                )?;
+            }
             self.validate_operand(
-                &dest.to_op(self)?,
+                &dest,
                 M::enforce_validity_recursively(self, dest.layout()),
+                /*reset_provenance*/ true,
             )?;
         }
 

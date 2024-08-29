@@ -137,6 +137,20 @@ impl<Prov: Provenance> Immediate<Prov> {
             }
         }
     }
+
+    pub fn clear_provenance<'tcx>(&mut self) -> InterpResult<'tcx> {
+        match self {
+            Immediate::Scalar(s) => {
+                s.clear_provenance()?;
+            }
+            Immediate::ScalarPair(a, b) => {
+                a.clear_provenance()?;
+                b.clear_provenance()?;
+            }
+            Immediate::Uninit => {}
+        }
+        Ok(())
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together

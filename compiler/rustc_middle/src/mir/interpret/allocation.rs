@@ -644,6 +644,12 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         return Ok(());
     }
 
+    /// Remove all provenance in the given memory range.
+    pub fn clear_provenance(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
+        self.provenance.clear(range, cx)?;
+        return Ok(());
+    }
+
     /// Applies a previously prepared provenance copy.
     /// The affected range, as defined in the parameters to `provenance().prepare_copy` is expected
     /// to be clear of provenance.

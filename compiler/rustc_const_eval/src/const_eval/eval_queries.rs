@@ -94,7 +94,7 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     let intern_result = intern_const_alloc_recursive(ecx, intern_kind, &ret);
 
     // Since evaluation had no errors, validate the resulting constant.
-    const_validate_mplace(&ecx, &ret, cid)?;
+    const_validate_mplace(ecx, &ret, cid)?;
 
     // Only report this after validation, as validaiton produces much better diagnostics.
     // FIXME: ensure validation always reports this and stop making interning care about it.
@@ -391,7 +391,7 @@ fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(
 
 #[inline(always)]
 fn const_validate_mplace<'tcx>(
-    ecx: &InterpCx<'tcx, CompileTimeMachine<'tcx>>,
+    ecx: &mut InterpCx<'tcx, CompileTimeMachine<'tcx>>,
     mplace: &MPlaceTy<'tcx>,
     cid: GlobalId<'tcx>,
 ) -> Result<(), ErrorHandled> {
