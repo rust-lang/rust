@@ -163,13 +163,13 @@ impl GlobalFileTable {
         Self { raw_file_table }
     }
 
-    fn global_file_id_for_file_name(&self, file_name: Symbol) -> u32 {
+    fn global_file_id_for_file_name(&self, file_name: Symbol) -> GlobalFileId {
         let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
             bug!("file name not found in prepared global file table: {file_name}");
         });
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
-        (raw_id + 1) as u32
+        GlobalFileId::from_usize(raw_id + 1)
     }
 
     fn make_filenames_buffer(&self, tcx: TyCtxt<'_>) -> Vec<u8> {
@@ -198,6 +198,14 @@ impl GlobalFileTable {
 }
 
 rustc_index::newtype_index! {
+    /// An index into the CGU's overall list of file paths. The underlying paths
+    /// will be embedded in the `__llvm_covmap` linker section.
+    struct GlobalFileId {}
+}
+rustc_index::newtype_index! {
+    /// An index into a function's list of global file IDs. That underlying list
+    /// of local-to-global mappings will be embedded in the function's record in
+    /// the `__llvm_covfun` linker section.
     struct LocalFileId {}
 }
 
@@ -205,12 +213,12 @@ rustc_index::newtype_index! {
 /// file IDs.
 #[derive(Default)]
 struct VirtualFileMapping {
-    local_to_global: IndexVec<LocalFileId, u32>,
-    global_to_local: FxIndexMap<u32, LocalFileId>,
+    local_to_global: IndexVec<LocalFileId, GlobalFileId>,
+    global_to_local: FxIndexMap<GlobalFileId, LocalFileId>,
 }
 
 impl VirtualFileMapping {
-    fn local_id_for_global(&mut self, global_file_id: u32) -> LocalFileId {
+    fn local_id_for_global(&mut self, global_file_id: GlobalFileId) -> LocalFileId {
         *self
             .global_to_local
             .entry(global_file_id)
@@ -218,7 +226,9 @@ impl VirtualFileMapping {
     }
 
     fn into_vec(self) -> Vec<u32> {
-        self.local_to_global.raw
+        // This conversion should be optimized away to ~zero overhead.
+        // In any case, it's probably not hot enough to worry about.
+        self.local_to_global.into_iter().map(|global| global.as_u32()).collect()
     }
 }
 
@@ -256,7 +266,7 @@ fn encode_mappings_for_function(
 
         // Associate that global file ID with a local file ID for this function.
         let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
-        debug!("  file id: {local_file_id:?} => global {global_file_id} = '{file_name:?}'");
+        debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
 
         // For each counter/region pair in this function+file, convert it to a
         // form suitable for FFI.
