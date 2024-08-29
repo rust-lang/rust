@@ -147,8 +147,7 @@ pub trait Swizzle<const N: usize> {
 
     /// Create a new mask from the elements of `mask`.
     ///
-    /// Element `i` of the output is `concat[Self::INDEX[i]]`, where `concat` is the concatenation of
-    /// `first` and `second`.
+    /// Element `i` of the output is `mask[Self::INDEX[i]]`.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original inputs"]
     fn swizzle_mask<T, const M: usize>(mask: Mask<T, M>) -> Mask<T, N>
