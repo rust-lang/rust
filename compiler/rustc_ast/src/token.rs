@@ -486,6 +486,9 @@ impl Token {
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
+    ///
+    /// **NB**: Take care when modifying this function, since it will change
+    /// the stable set of tokens that are allowed to match an expr nonterminal.
     pub fn can_begin_expr(&self) -> bool {
         match self.uninterpolate().kind {
             Ident(name, is_raw)              =>
@@ -504,10 +507,13 @@ impl Token {
             PathSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
-                NtExpr(..)    |
-                NtBlock(..)   |
-                NtPath(..)),
+            Interpolated(ref nt) =>
+                matches!(&**nt,
+                    NtBlock(..)   |
+                    NtExpr(..)    |
+                    NtLiteral(..) |
+                    NtPath(..)
+                ),
             _ => false,
         }
     }
@@ -515,23 +521,32 @@ impl Token {
     /// Returns `true` if the token can appear at the start of a pattern.
     ///
     /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
-    pub fn can_begin_pattern(&self) -> bool {
-        match self.uninterpolate().kind {
-            Ident(name, is_raw)              =>
-                ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
-            | OpenDelim(Delimiter::Bracket | Delimiter::Parenthesis)  // tuple or array
-            | Literal(..)                        // literal
-            | BinOp(Minus)                       // unary minus
-            | BinOp(And)                         // reference
-            | AndAnd                             // double reference
-            // DotDotDot is no longer supported
-            | DotDot | DotDotDot | DotDotEq      // ranges
-            | Lt | BinOp(Shl)                    // associated path
-            | PathSep                    => true, // global path
-            Interpolated(ref nt) => matches!(&**nt, NtLiteral(..) |
-                NtPat(..)     |
-                NtBlock(..)   |
-                NtPath(..)),
+    pub fn can_begin_pattern(&self, pat_kind: NtPatKind) -> bool {
+        match &self.uninterpolate().kind {
+            // box, ref, mut, and other identifiers (can stricten)
+            Ident(..) | NtIdent(..) |
+            OpenDelim(Delimiter::Parenthesis) |  // tuple pattern
+            OpenDelim(Delimiter::Bracket) |      // slice pattern
+            BinOp(And) |                  // reference
+            BinOp(Minus) |                // negative literal
+            AndAnd |                      // double reference
+            Literal(_) |                  // literal
+            DotDot |                      // range pattern (future compat)
+            DotDotDot |                   // range pattern (future compat)
+            PathSep |                     // path
+            Lt |                          // path (UFCS constant)
+            BinOp(Shl) => true,           // path (double UFCS)
+            // leading vert `|` or-pattern
+            BinOp(Or) => matches!(pat_kind, PatWithOr),
+            Interpolated(nt) =>
+                matches!(&**nt,
+                    | NtExpr(..)
+                    | NtLiteral(..)
+                    | NtMeta(..)
+                    | NtPat(..)
+                    | NtPath(..)
+                    | NtTy(..)
+                ),
             _ => false,
         }
     }
