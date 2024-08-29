@@ -5,6 +5,7 @@ use hir_def::{
     body::Body,
     hir::{Expr, ExprId, UnaryOp},
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
+    type_ref::Rawness,
     DefWithBodyId,
 };
 
@@ -93,6 +94,13 @@ fn walk_unsafe(
                 }
             }
             resolver.reset_to_guard(g);
+        }
+        Expr::Ref { expr, rawness: Rawness::RawPtr, mutability: _ } => {
+            if let Expr::Path(_) = body.exprs[*expr] {
+                // Do not report unsafe for `addr_of[_mut]!(EXTERN_OR_MUT_STATIC)`,
+                // see https://github.com/rust-lang/rust/pull/125834.
+                return;
+            }
         }
         Expr::MethodCall { .. } => {
             if infer
