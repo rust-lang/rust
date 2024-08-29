@@ -178,7 +178,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     lsets.warn_about_unused_args(&body, entry_ln);
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_liveness, ..*providers };
 }
 
