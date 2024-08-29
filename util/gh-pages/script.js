@@ -138,6 +138,13 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
+function highlightIfNeeded(elem) {
+    onEachLazy(elem.querySelectorAll("pre > code.language-rust:not(.highlighted)"), el => {
+        hljs.highlightElement(el)
+        el.classList.add("highlighted");
+    });
+}
+
 function expandLintId(lintId) {
     searchState.inputElem.value = lintId;
     searchState.filterLints();
@@ -146,7 +153,7 @@ function expandLintId(lintId) {
     const lintElem = document.getElementById(lintId);
     const isCollapsed = lintElem.classList.remove("collapsed");
     lintElem.querySelector(".label-doc-folding").innerText = "-";
-    onEachLazy(lintElem.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));
+    highlightIfNeeded(lintElem);
 }
 
 // Show details for one lint
@@ -160,7 +167,7 @@ function expandLint(lintId) {
     const lintElem = document.getElementById(lintId);
     const isCollapsed = lintElem.classList.toggle("collapsed");
     lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "-";
-    onEachLazy(lintElem.querySelectorAll("pre > code.language-rust"), el => hljs.highlightElement(el));
+    highlightIfNeeded(lintElem);
 }
 
 function copyToClipboard(event) {
@@ -198,7 +205,10 @@ function handleBlur(event, elementId) {
 function toggleExpansion(expand) {
     onEachLazy(
         document.querySelectorAll("article"),
-        expand ? el => el.classList.remove("collapsed") : el => el.classList.add("collapsed"),
+        expand ? el => {
+            el.classList.remove("collapsed");
+            highlightIfNeeded(el);
+        } : el => el.classList.add("collapsed"),
     );
 }
 
