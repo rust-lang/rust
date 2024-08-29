@@ -41,7 +41,7 @@ Current stable, released 2024-09-05
   [rust#120924](https://github.com/rust-lang/rust/pull/120924)
 * Renamed `overflow_check_conditional` to [`panicking_overflow_checks`]
   [#12944](https://github.com/rust-lang/rust-clippy/pull/12944)
-* Moved [`panicking_overflow_checks`] to `correctness` (From `complexity` now warn-by-default)
+* Moved [`panicking_overflow_checks`] to `correctness` (From `complexity` now deny-by-default)
   [#12944](https://github.com/rust-lang/rust-clippy/pull/12944)
 * Renamed `thread_local_initializer_can_be_made_const` to [`missing_const_for_thread_local`]
   [#12974](https://github.com/rust-lang/rust-clippy/pull/12974)
