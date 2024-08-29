@@ -1898,6 +1898,7 @@ symbols! {
         three_way_compare,
         thumb2,
         thumb_mode: "thumb-mode",
+        time,
         tmm_reg,
         to_owned_method,
         to_string,
