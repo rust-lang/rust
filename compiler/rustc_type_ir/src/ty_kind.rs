@@ -254,13 +254,6 @@ pub enum TyKind<I: Interner> {
     Error(I::ErrorGuaranteed),
 }
 
-impl<I: Interner> TyKind<I> {
-    #[inline]
-    pub fn is_primitive(&self) -> bool {
-        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
-    }
-}
-
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
