@@ -578,12 +578,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, coroutines, experimental!(coroutines)
     ),
 
-    // `#[pointee]` attribute to designate the pointee type in SmartPointer derive-macro
-    gated!(
-        pointee, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, derive_smart_pointer, experimental!(pointee)
-    ),
-
     // RFC 3543
     // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     gated!(
@@ -643,9 +637,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         through unstable paths"
     ),
     rustc_attr!(
-        rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes,
+        rustc_deprecated_safe_2024, Normal, template!(List: r#"audit_that = "...""#),
+        ErrorFollowing, EncodeCrossCrate::Yes,
         "rustc_deprecated_safe_2024 is supposed to be used in libstd only",
+    ),
+    rustc_attr!(
+        rustc_pub_transparent, Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes,
+        "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation",
     ),
 
 

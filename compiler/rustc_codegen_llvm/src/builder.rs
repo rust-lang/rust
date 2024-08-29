@@ -36,7 +36,7 @@ use crate::{attributes, llvm_util};
 
 // All Builders must have an llfn associated with them
 #[must_use]
-pub struct Builder<'a, 'll, 'tcx> {
+pub(crate) struct Builder<'a, 'll, 'tcx> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
     pub cx: &'a CodegenCx<'ll, 'tcx>,
 }
@@ -1343,7 +1343,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         Builder { llbuilder, cx }
     }
 
-    pub fn llfn(&self) -> &'ll Value {
+    pub(crate) fn llfn(&self) -> &'ll Value {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
     }
 
@@ -1375,7 +1375,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn set_unpredictable(&mut self, inst: &'ll Value) {
+    pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
         unsafe {
             llvm::LLVMSetMetadata(
                 inst,
@@ -1385,15 +1385,15 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+    pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
     }
 
-    pub fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+    pub(crate) fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs) }
     }
 
-    pub fn insert_element(
+    pub(crate) fn insert_element(
         &mut self,
         vec: &'ll Value,
         elt: &'ll Value,
@@ -1402,7 +1402,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildInsertElement(self.llbuilder, vec, elt, idx, UNNAMED) }
     }
 
-    pub fn shuffle_vector(
+    pub(crate) fn shuffle_vector(
         &mut self,
         v1: &'ll Value,
         v2: &'ll Value,
@@ -1411,65 +1411,77 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildShuffleVector(self.llbuilder, v1, v2, mask, UNNAMED) }
     }
 
-    pub fn vector_reduce_fadd(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_fadd(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src) }
     }
-    pub fn vector_reduce_fmul(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_fmul(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src) }
     }
-    pub fn vector_reduce_fadd_reassoc(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_fadd_reassoc(
+        &mut self,
+        acc: &'ll Value,
+        src: &'ll Value,
+    ) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
             llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
     }
-    pub fn vector_reduce_fmul_reassoc(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_fmul_reassoc(
+        &mut self,
+        acc: &'ll Value,
+        src: &'ll Value,
+    ) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
             llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
     }
-    pub fn vector_reduce_add(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_add(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src) }
     }
-    pub fn vector_reduce_mul(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_mul(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src) }
     }
-    pub fn vector_reduce_and(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_and(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src) }
     }
-    pub fn vector_reduce_or(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_or(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src) }
     }
-    pub fn vector_reduce_xor(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_xor(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src) }
     }
-    pub fn vector_reduce_fmin(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_fmin(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
             llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false)
         }
     }
-    pub fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
+    pub(crate) fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
         unsafe {
             llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false)
         }
     }
-    pub fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
+    pub(crate) fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed) }
     }
-    pub fn vector_reduce_max(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
+    pub(crate) fn vector_reduce_max(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed) }
     }
 
-    pub fn add_clause(&mut self, landing_pad: &'ll Value, clause: &'ll Value) {
+    pub(crate) fn add_clause(&mut self, landing_pad: &'ll Value, clause: &'ll Value) {
         unsafe {
             llvm::LLVMAddClause(landing_pad, clause);
         }
     }
 
-    pub fn catch_ret(&mut self, funclet: &Funclet<'ll>, unwind: &'ll BasicBlock) -> &'ll Value {
+    pub(crate) fn catch_ret(
+        &mut self,
+        funclet: &Funclet<'ll>,
+        unwind: &'ll BasicBlock,
+    ) -> &'ll Value {
         let ret = unsafe { llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
         ret.expect("LLVM does not have support for catchret")
     }
@@ -1515,7 +1527,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         Cow::Owned(casted_args)
     }
 
-    pub fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    pub(crate) fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }
 

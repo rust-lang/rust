@@ -50,7 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Not all of these (e.g., unsafe fns) implement `FnOnce`,
             // so we look for these beforehand.
             // FIXME(async_closures): These don't impl `FnOnce` by default.
-            ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
+            ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(..) => true,
             // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {
                 let Some(fn_once) = tcx.lang_items().fn_once_trait() else {
@@ -415,7 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    pub fn suggest_use_shadowed_binding_with_method(
+    fn suggest_use_shadowed_binding_with_method(
         &self,
         self_source: SelfSource<'tcx>,
         method_name: Ident,
@@ -527,7 +527,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if self.check_and_add_sugg_binding(LetStmt {
                         ty_hir_id_opt: if let Some(ty) = ty { Some(ty.hir_id) } else { None },
-                        binding_id: binding_id,
+                        binding_id,
                         span: pat.span,
                         init_hir_id: init.hir_id,
                     }) {
@@ -1012,7 +1012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
                 let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
-                match &self_ty.kind() {
+                match self_ty.kind() {
                     // Point at the type that couldn't satisfy the bound.
                     ty::Adt(def, _) => {
                         bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
@@ -3448,6 +3448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_missing_method: bool,
     ) {
         let mut alt_rcvr_sugg = false;
+        let mut trait_in_other_version_found = false;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
             debug!(
                 "suggest_traits_to_import: span={:?}, item_name={:?}, rcvr_ty={:?}, rcvr={:?}",
@@ -3489,8 +3490,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // self types and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
                         let did = Some(pick.item.container_id(self.tcx));
-                        let skip = skippable.contains(&did);
-                        if pick.autoderefs == 0 && !skip {
+                        if skippable.contains(&did) {
+                            continue;
+                        }
+                        trait_in_other_version_found = self
+                            .detect_and_explain_multiple_crate_versions(
+                                err,
+                                pick.item.def_id,
+                                rcvr.hir_id,
+                                Some(*rcvr_ty),
+                            );
+                        if pick.autoderefs == 0 && !trait_in_other_version_found {
                             err.span_label(
                                 pick.item.ident(self.tcx).span,
                                 format!("the method is available for `{rcvr_ty}` here"),
@@ -3675,7 +3685,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true) {
+
+        if let SelfSource::QPath(ty) = source
+            && !valid_out_of_scope_traits.is_empty()
+            && let hir::TyKind::Path(path) = ty.kind
+            && let hir::QPath::Resolved(..) = path
+            && let Some(assoc) = self
+                .tcx
+                .associated_items(valid_out_of_scope_traits[0])
+                .filter_by_name_unhygienic(item_name.name)
+                .next()
+        {
+            // See if the `Type::function(val)` where `function` wasn't found corresponds to a
+            // `Trait` that is imported directly, but `Type` came from a different version of the
+            // same crate.
+
+            let rcvr_ty = self.node_ty_opt(ty.hir_id);
+            trait_in_other_version_found = self.detect_and_explain_multiple_crate_versions(
+                err,
+                assoc.def_id,
+                ty.hir_id,
+                rcvr_ty,
+            );
+        }
+        if !trait_in_other_version_found
+            && self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true)
+        {
             return;
         }
 
@@ -4040,6 +4075,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn detect_and_explain_multiple_crate_versions(
+        &self,
+        err: &mut Diag<'_>,
+        item_def_id: DefId,
+        hir_id: hir::HirId,
+        rcvr_ty: Option<Ty<'_>>,
+    ) -> bool {
+        let hir_id = self.tcx.parent_hir_id(hir_id);
+        let Some(traits) = self.tcx.in_scope_traits(hir_id) else { return false };
+        if traits.is_empty() {
+            return false;
+        }
+        let trait_def_id = self.tcx.parent(item_def_id);
+        let krate = self.tcx.crate_name(trait_def_id.krate);
+        let name = self.tcx.item_name(trait_def_id);
+        let candidates: Vec<_> = traits
+            .iter()
+            .filter(|c| {
+                c.def_id.krate != trait_def_id.krate
+                    && self.tcx.crate_name(c.def_id.krate) == krate
+                    && self.tcx.item_name(c.def_id) == name
+            })
+            .map(|c| (c.def_id, c.import_ids.get(0).cloned()))
+            .collect();
+        if candidates.is_empty() {
+            return false;
+        }
+        let item_span = self.tcx.def_span(item_def_id);
+        let msg = format!(
+            "there are multiple different versions of crate `{krate}` in the dependency graph",
+        );
+        let trait_span = self.tcx.def_span(trait_def_id);
+        let mut multi_span: MultiSpan = trait_span.into();
+        multi_span.push_span_label(trait_span, format!("this is the trait that is needed"));
+        let descr = self.tcx.associated_item(item_def_id).descr();
+        let rcvr_ty =
+            rcvr_ty.map(|t| format!("`{t}`")).unwrap_or_else(|| "the receiver".to_string());
+        multi_span
+            .push_span_label(item_span, format!("the {descr} is available for {rcvr_ty} here"));
+        for (def_id, import_def_id) in candidates {
+            if let Some(import_def_id) = import_def_id {
+                multi_span.push_span_label(
+                    self.tcx.def_span(import_def_id),
+                    format!(
+                        "`{name}` imported here doesn't correspond to the right version of crate \
+                         `{krate}`",
+                    ),
+                );
+            }
+            multi_span.push_span_label(
+                self.tcx.def_span(def_id),
+                format!("this is the trait that was imported"),
+            );
+        }
+        err.span_note(multi_span, msg);
+        true
+    }
+
     /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`
     /// FIXME: currently not working for suggesting `map_or_else`, see #102408
     pub(crate) fn suggest_else_fn_with_closure(
@@ -4130,19 +4223,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum SelfSource<'a> {
+enum SelfSource<'a> {
     QPath(&'a hir::Ty<'a>),
     MethodCall(&'a hir::Expr<'a> /* rcvr */),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub struct TraitInfo {
+pub(crate) struct TraitInfo {
     pub def_id: DefId,
 }
 
 /// Retrieves all traits in this crate and any dependent crates,
 /// and wraps them into `TraitInfo` for custom sorting.
-pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
+pub(crate) fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
     tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
 }
 

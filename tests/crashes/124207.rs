@@ -4,6 +4,6 @@
 trait OpaqueTrait {}
 type OpaqueType = impl OpaqueTrait;
 trait AnotherTrait {}
-impl<T: std::mem::BikeshedIntrinsicFrom<(), ()>> AnotherTrait for T {}
+impl<T: std::mem::TransmuteFrom<(), ()>> AnotherTrait for T {}
 impl AnotherTrait for OpaqueType {}
 pub fn main() {}

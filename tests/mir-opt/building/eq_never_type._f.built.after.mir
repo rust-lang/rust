@@ -16,7 +16,7 @@ fn _f(_1: !, _2: !) -> () {
         StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
-        _6 = _1;
+        _6 = copy _1;
         unreachable;
     }
 
@@ -25,7 +25,7 @@ fn _f(_1: !, _2: !) -> () {
         StorageLive(_7);
         StorageLive(_8);
         StorageLive(_9);
-        _9 = _2;
+        _9 = copy _2;
         unreachable;
     }
 

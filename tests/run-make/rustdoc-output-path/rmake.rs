@@ -6,6 +6,6 @@ use run_make_support::rustdoc;
 
 fn main() {
     let out_dir = Path::new("foo/bar/doc");
-    rustdoc().input("foo.rs").output(&out_dir).run();
+    rustdoc().input("foo.rs").out_dir(&out_dir).run();
     assert!(out_dir.exists());
 }

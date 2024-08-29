@@ -26,7 +26,6 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
-#![feature(new_uninit)]
 #![feature(read_buf)]
 #![feature(round_char_boundary)]
 #![feature(rustc_attrs)]

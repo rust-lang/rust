@@ -2113,7 +2113,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::RawPtr(..)
             | ty::Char
             | ty::Ref(..)
@@ -2170,7 +2170,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
         match *self_ty.kind() {
-            ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
+            ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => Where(ty::Binder::dummy(Vec::new())),
 
             ty::Uint(_)
             | ty::Int(_)
@@ -2332,7 +2332,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Bool
             | ty::Float(_)
             | ty::FnDef(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never

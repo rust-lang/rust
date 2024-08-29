@@ -83,6 +83,15 @@ pub struct AttrShouldBeAppliedToFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_should_be_applied_to_fn_or_unit_struct)]
+pub struct AttrShouldBeAppliedToFnOrUnitStruct {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_fn, code = E0739)]
 pub struct TrackedCallerWrongLocation {
     #[primary_span]
@@ -372,13 +381,6 @@ pub struct FfiConstInvalidTarget {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_must_use_async)]
-pub struct MustUseAsync {
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(passes_must_use_no_effect)]
 pub struct MustUseNoEffect {
     pub article: &'static str,
@@ -623,6 +625,15 @@ pub struct RustcStdInternalSymbol {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_pub_transparent)]
+pub struct RustcPubTransparent {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_link_ordinal)]
 pub struct LinkOrdinal {
     #[primary_span]
@@ -640,6 +651,15 @@ pub struct Confusables {
 #[diag(passes_coroutine_on_non_closure)]
 pub struct CoroutineOnNonClosure {
     #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_linkage)]
+pub struct Linkage {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
     pub span: Span,
 }
 
@@ -728,6 +748,13 @@ pub struct NonExportedMacroInvalidAttrs {
     pub attr_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_may_dangle)]
+pub struct InvalidMayDangle {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_unused_duplicate)]
 pub struct UnusedDuplicate {
@@ -736,7 +763,7 @@ pub struct UnusedDuplicate {
     #[note]
     pub other: Span,
     #[warning]
-    pub warning: Option<()>,
+    pub warning: bool,
 }
 
 #[derive(Diagnostic)]
@@ -895,7 +922,7 @@ pub struct DuplicateDiagnosticItemInCrate {
     #[note(passes_diagnostic_item_first_defined)]
     pub orig_span: Option<Span>,
     #[note]
-    pub different_crates: Option<()>,
+    pub different_crates: bool,
     pub crate_name: Symbol,
     pub orig_crate_name: Symbol,
     pub name: Symbol,

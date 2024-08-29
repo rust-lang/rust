@@ -37,7 +37,9 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{flags, DryRun, LldMode, LlvmLibunwind, Target, TargetSelection};
 use crate::utils::exec::{command, BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
+};
 
 mod core;
 mod utils;
@@ -471,117 +473,6 @@ impl Build {
         build
     }
 
-    /// Given a path to the directory of a submodule, update it.
-    ///
-    /// `relative_path` should be relative to the root of the git repository, not an absolute path.
-    ///
-    /// This *does not* update the submodule if `config.toml` explicitly says
-    /// not to, or if we're not in a git repository (like a plain source
-    /// tarball). Typically [`Build::require_submodule`] should be
-    /// used instead to provide a nice error to the user if the submodule is
-    /// missing.
-    fn update_submodule(&self, relative_path: &str) {
-        if !self.config.submodules() {
-            return;
-        }
-
-        let absolute_path = self.config.src.join(relative_path);
-
-        // NOTE: The check for the empty directory is here because when running x.py the first time,
-        // the submodule won't be checked out. Check it out now so we can build it.
-        if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
-            && !dir_is_empty(&absolute_path)
-        {
-            return;
-        }
-
-        // Submodule updating actually happens during in the dry run mode. We need to make sure that
-        // all the git commands below are actually executed, because some follow-up code
-        // in bootstrap might depend on the submodules being checked out. Furthermore, not all
-        // the command executions below work with an empty output (produced during dry run).
-        // Therefore, all commands below are marked with `run_always()`, so that they also run in
-        // dry run mode.
-        let submodule_git = || {
-            let mut cmd = helpers::git(Some(&absolute_path));
-            cmd.run_always();
-            cmd
-        };
-
-        // Determine commit checked out in submodule.
-        let checked_out_hash =
-            submodule_git().args(["rev-parse", "HEAD"]).run_capture_stdout(self).stdout();
-        let checked_out_hash = checked_out_hash.trim_end();
-        // Determine commit that the submodule *should* have.
-        let recorded = helpers::git(Some(&self.src))
-            .run_always()
-            .args(["ls-tree", "HEAD"])
-            .arg(relative_path)
-            .run_capture_stdout(self)
-            .stdout();
-        let actual_hash = recorded
-            .split_whitespace()
-            .nth(2)
-            .unwrap_or_else(|| panic!("unexpected output `{}`", recorded));
-
-        if actual_hash == checked_out_hash {
-            // already checked out
-            return;
-        }
-
-        println!("Updating submodule {relative_path}");
-        helpers::git(Some(&self.src))
-            .run_always()
-            .args(["submodule", "-q", "sync"])
-            .arg(relative_path)
-            .run(self);
-
-        // Try passing `--progress` to start, then run git again without if that fails.
-        let update = |progress: bool| {
-            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
-            // even though that has no relation to the upstream for the submodule.
-            let current_branch = helpers::git(Some(&self.src))
-                .allow_failure()
-                .run_always()
-                .args(["symbolic-ref", "--short", "HEAD"])
-                .run_capture_stdout(self)
-                .stdout_if_ok()
-                .map(|s| s.trim().to_owned());
-
-            let mut git = helpers::git(Some(&self.src)).allow_failure();
-            git.run_always();
-            if let Some(branch) = current_branch {
-                // If there is a tag named after the current branch, git will try to disambiguate by prepending `heads/` to the branch name.
-                // This syntax isn't accepted by `branch.{branch}`. Strip it.
-                let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
-                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
-            }
-            git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
-            if progress {
-                git.arg("--progress");
-            }
-            git.arg(relative_path);
-            git
-        };
-        if !update(true).run(self) {
-            update(false).run(self);
-        }
-
-        // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
-        // diff-index reports the modifications through the exit status
-        let has_local_modifications =
-            !submodule_git().allow_failure().args(["diff-index", "--quiet", "HEAD"]).run(self);
-        if has_local_modifications {
-            submodule_git().args(["stash", "push"]).run(self);
-        }
-
-        submodule_git().args(["reset", "-q", "--hard"]).run(self);
-        submodule_git().args(["clean", "-qdfx"]).run(self);
-
-        if has_local_modifications {
-            submodule_git().args(["stash", "pop"]).run(self);
-        }
-    }
-
     /// Updates a submodule, and exits with a failure if submodule management
     /// is disabled and the submodule does not exist.
     ///
@@ -596,7 +487,7 @@ impl Build {
         if cfg!(test) && !self.config.submodules() {
             return;
         }
-        self.update_submodule(submodule);
+        self.config.update_submodule(submodule);
         let absolute_path = self.config.src.join(submodule);
         if dir_is_empty(&absolute_path) {
             let maybe_enable = if !self.config.submodules()
@@ -644,7 +535,7 @@ impl Build {
             let path = Path::new(submodule);
             // Don't update the submodule unless it's already been cloned.
             if GitInfo::new(false, path).is_managed_git_subrepository() {
-                self.update_submodule(submodule);
+                self.config.update_submodule(submodule);
             }
         }
     }
@@ -657,7 +548,7 @@ impl Build {
         }
 
         if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
-            self.update_submodule(submodule);
+            self.config.update_submodule(submodule);
         }
     }
 
@@ -1056,11 +947,29 @@ Executed at: {executed_at}"#,
             }
         };
 
-        let fail = |message: &str| {
+        let fail = |message: &str, output: CommandOutput| -> ! {
             if self.is_verbose() {
                 println!("{message}");
             } else {
-                println!("Command has failed. Rerun with -v to see more details.");
+                let (stdout, stderr) = (output.stdout_if_present(), output.stderr_if_present());
+                // If the command captures output, the user would not see any indication that
+                // it has failed. In this case, print a more verbose error, since to provide more
+                // context.
+                if stdout.is_some() || stderr.is_some() {
+                    if let Some(stdout) =
+                        output.stdout_if_present().take_if(|s| !s.trim().is_empty())
+                    {
+                        println!("STDOUT:\n{stdout}\n");
+                    }
+                    if let Some(stderr) =
+                        output.stderr_if_present().take_if(|s| !s.trim().is_empty())
+                    {
+                        println!("STDERR:\n{stderr}\n");
+                    }
+                    println!("Command {command:?} has failed. Rerun with -v to see more details.");
+                } else {
+                    println!("Command has failed. Rerun with -v to see more details.");
+                }
             }
             exit!(1);
         };
@@ -1069,14 +978,14 @@ Executed at: {executed_at}"#,
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if self.fail_fast {
-                        fail(&message);
+                        fail(&message, output);
                     }
 
                     let mut failures = self.delayed_failures.borrow_mut();
                     failures.push(message);
                 }
                 BehaviorOnFailure::Exit => {
-                    fail(&message);
+                    fail(&message, output);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already
@@ -1774,21 +1683,20 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link
-            // (symlinks don't work on windows), but if that fails
-            // just fall back to a slow `copy` operation.
+            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
                 panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
             }
             t!(fs::set_permissions(dst, metadata.permissions()));
 
+            // Restore file times because changing permissions on e.g. Linux using `chmod` can cause
+            // file access time to change.
             let file_times = fs::FileTimes::new()
                 .set_accessed(t!(metadata.accessed()))
                 .set_modified(t!(metadata.modified()));
-
-            let dst_file = t!(fs::File::open(dst));
-            t!(dst_file.set_times(file_times));
+            t!(set_file_times(dst, file_times));
         }
     }
 

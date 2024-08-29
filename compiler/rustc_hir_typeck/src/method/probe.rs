@@ -38,14 +38,14 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use self::CandidateKind::*;
-pub use self::PickKind::*;
+pub(crate) use self::PickKind::*;
 use super::{suggest, CandidateSource, MethodError, NoMatchData};
 use crate::FnCtxt;
 
 /// Boolean flag used to indicate if this search is for a suggestion
 /// or not. If true, we can allow ambiguity and so forth.
 #[derive(Clone, Copy, Debug)]
-pub struct IsSuggestion(pub bool);
+pub(crate) struct IsSuggestion(pub bool);
 
 pub(crate) struct ProbeContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -134,7 +134,7 @@ enum ProbeResult {
 /// (at most) one of these. Either the receiver has type `T` and we convert it to `&T` (or with
 /// `mut`), or it has type `*mut T` and we convert it to `*const T`.
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum AutorefOrPtrAdjustment {
+pub(crate) enum AutorefOrPtrAdjustment {
     /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
     /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
     Autoref {
@@ -158,7 +158,7 @@ impl AutorefOrPtrAdjustment {
 }
 
 #[derive(Debug, Clone)]
-pub struct Pick<'tcx> {
+pub(crate) struct Pick<'tcx> {
     pub item: ty::AssocItem,
     pub kind: PickKind<'tcx>,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
@@ -179,7 +179,7 @@ pub struct Pick<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PickKind<'tcx> {
+pub(crate) enum PickKind<'tcx> {
     InherentImplPick,
     ObjectPick,
     TraitPick,
@@ -189,10 +189,10 @@ pub enum PickKind<'tcx> {
     ),
 }
 
-pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
+pub(crate) type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum Mode {
+pub(crate) enum Mode {
     // An expression of the form `receiver.method_name(...)`.
     // Autoderefs are performed on `receiver`, lookup is done based on the
     // `self` argument of the method, and static methods aren't considered.
@@ -204,7 +204,7 @@ pub enum Mode {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum ProbeScope {
+pub(crate) enum ProbeScope {
     // Single candidate coming from pre-resolved delegation method.
     Single(DefId),
 
@@ -507,7 +507,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
@@ -1288,7 +1288,7 @@ impl<'tcx> Pick<'tcx> {
     /// Checks whether two picks do not refer to the same trait item for the same `Self` type.
     /// Only useful for comparisons of picks in order to improve diagnostics.
     /// Do not use for type checking.
-    pub fn differs_from(&self, other: &Self) -> bool {
+    pub(crate) fn differs_from(&self, other: &Self) -> bool {
         let Self {
             item:
                 AssocItem {
@@ -1312,7 +1312,7 @@ impl<'tcx> Pick<'tcx> {
     }
 
     /// In case there were unstable name collisions, emit them as a lint.
-    pub fn maybe_emit_unstable_name_collision_hint(
+    pub(crate) fn maybe_emit_unstable_name_collision_hint(
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,

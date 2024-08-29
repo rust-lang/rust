@@ -116,7 +116,7 @@
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
--         _6 = _1;
+-         _6 = copy _1;
 -         _5 = move _6 as u8 (IntToInt);
 +         _6 = const 1_i64;
 +         _5 = const 1_u8;
@@ -131,7 +131,7 @@
           StorageLive(_7);
           StorageLive(_8);
           StorageLive(_9);
--         _9 = _1;
+-         _9 = copy _1;
 -         _8 = move _9 as u16 (IntToInt);
 +         _9 = const 1_i64;
 +         _8 = const 1_u16;
@@ -146,7 +146,7 @@
           StorageLive(_10);
           StorageLive(_11);
           StorageLive(_12);
--         _12 = _1;
+-         _12 = copy _1;
 -         _11 = move _12 as u32 (IntToInt);
 +         _12 = const 1_i64;
 +         _11 = const 1_u32;
@@ -161,7 +161,7 @@
           StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
--         _15 = _1;
+-         _15 = copy _1;
 -         _14 = move _15 as u64 (IntToInt);
 +         _15 = const 1_i64;
 +         _14 = const 1_u64;
@@ -176,7 +176,7 @@
           StorageLive(_16);
           StorageLive(_17);
           StorageLive(_18);
--         _18 = _1;
+-         _18 = copy _1;
 -         _17 = move _18 as i8 (IntToInt);
 +         _18 = const 1_i64;
 +         _17 = const 1_i8;
@@ -191,7 +191,7 @@
           StorageLive(_19);
           StorageLive(_20);
           StorageLive(_21);
--         _21 = _1;
+-         _21 = copy _1;
 -         _20 = move _21 as i16 (IntToInt);
 +         _21 = const 1_i64;
 +         _20 = const 1_i16;
@@ -206,7 +206,7 @@
           StorageLive(_22);
           StorageLive(_23);
           StorageLive(_24);
--         _24 = _1;
+-         _24 = copy _1;
 -         _23 = move _24 as i32 (IntToInt);
 +         _24 = const 1_i64;
 +         _23 = const 1_i32;
@@ -220,7 +220,7 @@
           StorageDead(_22);
           StorageLive(_25);
           StorageLive(_26);
--         _26 = _1;
+-         _26 = copy _1;
 -         _25 = opaque::<i64>(move _26) -> [return: bb8, unwind unreachable];
 +         _26 = const 1_i64;
 +         _25 = opaque::<i64>(const 1_i64) -> [return: bb8, unwind unreachable];
@@ -232,7 +232,7 @@
           StorageLive(_27);
           StorageLive(_28);
           StorageLive(_29);
--         _29 = _1;
+-         _29 = copy _1;
 -         _28 = move _29 as f32 (IntToFloat);
 +         _29 = const 1_i64;
 +         _28 = const 1f32;
@@ -247,7 +247,7 @@
           StorageLive(_30);
           StorageLive(_31);
           StorageLive(_32);
--         _32 = _1;
+-         _32 = copy _1;
 -         _31 = move _32 as f64 (IntToFloat);
 +         _32 = const 1_i64;
 +         _31 = const 1f64;
@@ -262,7 +262,7 @@
           StorageLive(_33);
           StorageLive(_34);
           StorageLive(_35);
--         _35 = _2;
+-         _35 = copy _2;
 -         _34 = move _35 as u8 (IntToInt);
 +         _35 = const 1_u64;
 +         _34 = const 1_u8;
@@ -277,7 +277,7 @@
           StorageLive(_36);
           StorageLive(_37);
           StorageLive(_38);
--         _38 = _2;
+-         _38 = copy _2;
 -         _37 = move _38 as u16 (IntToInt);
 +         _38 = const 1_u64;
 +         _37 = const 1_u16;
@@ -292,7 +292,7 @@
           StorageLive(_39);
           StorageLive(_40);
           StorageLive(_41);
--         _41 = _2;
+-         _41 = copy _2;
 -         _40 = move _41 as u32 (IntToInt);
 +         _41 = const 1_u64;
 +         _40 = const 1_u32;
@@ -306,7 +306,7 @@
           StorageDead(_39);
           StorageLive(_42);
           StorageLive(_43);
--         _43 = _2;
+-         _43 = copy _2;
 -         _42 = opaque::<u64>(move _43) -> [return: bb14, unwind unreachable];
 +         _43 = const 1_u64;
 +         _42 = opaque::<u64>(const 1_u64) -> [return: bb14, unwind unreachable];
@@ -318,7 +318,7 @@
           StorageLive(_44);
           StorageLive(_45);
           StorageLive(_46);
--         _46 = _2;
+-         _46 = copy _2;
 -         _45 = move _46 as i8 (IntToInt);
 +         _46 = const 1_u64;
 +         _45 = const 1_i8;
@@ -333,7 +333,7 @@
           StorageLive(_47);
           StorageLive(_48);
           StorageLive(_49);
--         _49 = _2;
+-         _49 = copy _2;
 -         _48 = move _49 as i16 (IntToInt);
 +         _49 = const 1_u64;
 +         _48 = const 1_i16;
@@ -348,7 +348,7 @@
           StorageLive(_50);
           StorageLive(_51);
           StorageLive(_52);
--         _52 = _2;
+-         _52 = copy _2;
 -         _51 = move _52 as i32 (IntToInt);
 +         _52 = const 1_u64;
 +         _51 = const 1_i32;
@@ -363,7 +363,7 @@
           StorageLive(_53);
           StorageLive(_54);
           StorageLive(_55);
--         _55 = _2;
+-         _55 = copy _2;
 -         _54 = move _55 as i64 (IntToInt);
 +         _55 = const 1_u64;
 +         _54 = const 1_i64;
@@ -378,7 +378,7 @@
           StorageLive(_56);
           StorageLive(_57);
           StorageLive(_58);
--         _58 = _2;
+-         _58 = copy _2;
 -         _57 = move _58 as f32 (IntToFloat);
 +         _58 = const 1_u64;
 +         _57 = const 1f32;
@@ -393,7 +393,7 @@
           StorageLive(_59);
           StorageLive(_60);
           StorageLive(_61);
--         _61 = _2;
+-         _61 = copy _2;
 -         _60 = move _61 as f64 (IntToFloat);
 +         _61 = const 1_u64;
 +         _60 = const 1f64;
@@ -408,7 +408,7 @@
           StorageLive(_62);
           StorageLive(_63);
           StorageLive(_64);
--         _64 = _3;
+-         _64 = copy _3;
 -         _63 = move _64 as u8 (FloatToInt);
 +         _64 = const 1f64;
 +         _63 = const 1_u8;
@@ -423,7 +423,7 @@
           StorageLive(_65);
           StorageLive(_66);
           StorageLive(_67);
--         _67 = _3;
+-         _67 = copy _3;
 -         _66 = move _67 as u16 (FloatToInt);
 +         _67 = const 1f64;
 +         _66 = const 1_u16;
@@ -438,7 +438,7 @@
           StorageLive(_68);
           StorageLive(_69);
           StorageLive(_70);
--         _70 = _3;
+-         _70 = copy _3;
 -         _69 = move _70 as u32 (FloatToInt);
 +         _70 = const 1f64;
 +         _69 = const 1_u32;
@@ -453,7 +453,7 @@
           StorageLive(_71);
           StorageLive(_72);
           StorageLive(_73);
--         _73 = _3;
+-         _73 = copy _3;
 -         _72 = move _73 as u64 (FloatToInt);
 +         _73 = const 1f64;
 +         _72 = const 1_u64;
@@ -468,7 +468,7 @@
           StorageLive(_74);
           StorageLive(_75);
           StorageLive(_76);
--         _76 = _3;
+-         _76 = copy _3;
 -         _75 = move _76 as i8 (FloatToInt);
 +         _76 = const 1f64;
 +         _75 = const 1_i8;
@@ -483,7 +483,7 @@
           StorageLive(_77);
           StorageLive(_78);
           StorageLive(_79);
--         _79 = _3;
+-         _79 = copy _3;
 -         _78 = move _79 as i16 (FloatToInt);
 +         _79 = const 1f64;
 +         _78 = const 1_i16;
@@ -498,7 +498,7 @@
           StorageLive(_80);
           StorageLive(_81);
           StorageLive(_82);
--         _82 = _3;
+-         _82 = copy _3;
 -         _81 = move _82 as i32 (FloatToInt);
 +         _82 = const 1f64;
 +         _81 = const 1_i32;
@@ -513,7 +513,7 @@
           StorageLive(_83);
           StorageLive(_84);
           StorageLive(_85);
--         _85 = _3;
+-         _85 = copy _3;
 -         _84 = move _85 as i64 (FloatToInt);
 +         _85 = const 1f64;
 +         _84 = const 1_i64;
@@ -528,7 +528,7 @@
           StorageLive(_86);
           StorageLive(_87);
           StorageLive(_88);
--         _88 = _3;
+-         _88 = copy _3;
 -         _87 = move _88 as f32 (FloatToFloat);
 +         _88 = const 1f64;
 +         _87 = const 1f32;
@@ -542,7 +542,7 @@
           StorageDead(_86);
           StorageLive(_89);
           StorageLive(_90);
--         _90 = _3;
+-         _90 = copy _3;
 -         _89 = opaque::<f64>(move _90) -> [return: bb30, unwind unreachable];
 +         _90 = const 1f64;
 +         _89 = opaque::<f64>(const 1f64) -> [return: bb30, unwind unreachable];

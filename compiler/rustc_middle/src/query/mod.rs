@@ -47,7 +47,7 @@ use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
@@ -65,10 +65,9 @@ use crate::query::plumbing::{
 };
 use crate::traits::query::{
     CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, DropckConstraint,
-    DropckOutlivesResult, MethodAutoderefStepsResult, NoSolution, NormalizationResult,
-    OutlivesBound,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal, DropckConstraint, DropckOutlivesResult,
+    MethodAutoderefStepsResult, NoSolution, NormalizationResult, OutlivesBound,
 };
 use crate::traits::{
     specialization_graph, CodegenObligationError, EvaluationResult, ImplSource,
@@ -313,20 +312,10 @@ rustc_queries! {
     /// predicates (where-clauses) that must be proven true in order
     /// to reference it. This is almost always the "predicates query"
     /// that you want.
-    ///
-    /// `predicates_of` builds on `predicates_defined_on` -- in fact,
-    /// it is almost always the same as that query, except for the
-    /// case of traits. For traits, `predicates_of` contains
-    /// an additional `Self: Trait<...>` predicate that users don't
-    /// actually write. This reflects the fact that to invoke the
-    /// trait (e.g., via `Default::default`) you must supply types
-    /// that actually implement the trait. (However, this extra
-    /// predicate gets in the way of some checks, which are intended
-    /// to operate over only the actual where-clauses written by the
-    /// user.)
     query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
+        feedable
     }
 
     query opaque_types_defined_by(
@@ -499,6 +488,7 @@ rustc_queries! {
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/construction.html
     query mir_built(key: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
         desc { |tcx| "building MIR for `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// Try to build an abstract representation of the given constant.
@@ -618,14 +608,6 @@ rustc_queries! {
         desc { "getting wasm import module map" }
     }
 
-    /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
-    /// predicates (where-clauses) directly defined on it. This is
-    /// equal to the `explicit_predicates_of` predicates plus the
-    /// `inferred_outlives_of` predicates.
-    query predicates_defined_on(key: DefId) -> ty::GenericPredicates<'tcx> {
-        desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
-    }
-
     /// Returns everything that looks like a predicate written explicitly
     /// by the user on a trait item.
     ///
@@ -743,6 +725,7 @@ rustc_queries! {
     query constness(key: DefId) -> hir::Constness {
         desc { |tcx| "checking if item is const: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
+        feedable
     }
 
     query asyncness(key: DefId) -> ty::Asyncness {
@@ -761,10 +744,22 @@ rustc_queries! {
         desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
     }
 
+    /// The body of the coroutine, modified to take its upvars by move rather than by ref.
+    ///
+    /// This is used by coroutine-closures, which must return a different flavor of coroutine
+    /// when called using `AsyncFnOnce::call_once`. It is produced by the `ByMoveBody` pass which
+    /// is run right after building the initial MIR, and will only be populated for coroutines
+    /// which come out of the async closure desugaring.
+    query coroutine_by_move_body_def_id(def_id: DefId) -> DefId {
+        desc { |tcx| "looking up the coroutine by-move body for `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     /// Returns `Some(coroutine_kind)` if the node pointed to by `def_id` is a coroutine.
     query coroutine_kind(def_id: DefId) -> Option<hir::CoroutineKind> {
         desc { |tcx| "looking up coroutine kind of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
+        feedable
     }
 
     query coroutine_for_closure(def_id: DefId) -> DefId {
@@ -1250,6 +1245,11 @@ rustc_queries! {
         feedable
     }
 
+    query struct_target_features(def_id: DefId) -> &'tcx [TargetFeature] {
+        separate_provide_extern
+        desc { |tcx| "computing target features for struct `{}`", tcx.def_path_str(def_id) }
+    }
+
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
@@ -1521,7 +1521,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query extern_crate(def_id: DefId) -> Option<&'tcx ExternCrate> {
+    query extern_crate(def_id: CrateNum) -> Option<&'tcx ExternCrate> {
         eval_always
         desc { "getting crate's ExternCrateData" }
         separate_provide_extern
@@ -2088,26 +2088,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal.value.value }
-    }
-
-    /// Do not call this query directly: part of the `Eq` type-op
-    query type_op_eq(
-        goal: CanonicalTypeOpEqGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-        NoSolution,
-    > {
-        desc { "evaluating `type_op_eq` `{:?}`", goal.value.value }
-    }
-
-    /// Do not call this query directly: part of the `Subtype` type-op
-    query type_op_subtype(
-        goal: CanonicalTypeOpSubtypeGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
-        NoSolution,
-    > {
-        desc { "evaluating `type_op_subtype` `{:?}`", goal.value.value }
     }
 
     /// Do not call this query directly: part of the `ProvePredicate` type-op

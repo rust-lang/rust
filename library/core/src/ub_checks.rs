@@ -10,7 +10,7 @@ use crate::intrinsics::{self, const_eval_select};
 /// macro for language UB are always ignored.
 ///
 /// This macro should be called as
-/// `assert_unsafe_precondition!(check_{library,lang}_ub, "message", (ident: type = expr, ident: type = expr) => check_expr)`
+/// `assert_unsafe_precondition!(check_{library,language}_ub, "message", (ident: type = expr, ident: type = expr) => check_expr)`
 /// where each `expr` will be evaluated and passed in as function argument `ident: type`. Then all
 /// those arguments are passed to a function with the body `check_expr`.
 /// Pick `check_language_ub` when this is guarding a violation of language UB, i.e., immediate UB

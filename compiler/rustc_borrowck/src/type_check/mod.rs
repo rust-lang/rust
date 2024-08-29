@@ -86,7 +86,7 @@ macro_rules! span_mirbug_and_err {
 
 mod canonical;
 mod constraint_conversion;
-pub mod free_region_relations;
+pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
 mod relate_tys;
@@ -756,7 +756,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             PlaceContext::MutatingUse(_) => ty::Invariant,
             PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
             PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | AddressOf
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
                 | Projection,
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
@@ -1364,7 +1364,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 debug!("func_ty.kind: {:?}", func_ty.kind());
 
                 let sig = match func_ty.kind() {
-                    ty::FnDef(..) | ty::FnPtr(_) => func_ty.fn_sig(tcx),
+                    ty::FnDef(..) | ty::FnPtr(..) => func_ty.fn_sig(tcx),
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
@@ -1989,9 +1989,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = Ty::new_fn_ptr(tcx, fn_sig);
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2014,9 +2014,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_fn_ptr_from =
                             Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, *safety));
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2043,9 +2043,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
-                        if let Err(terr) = self.eq_types(
-                            *ty,
+                        if let Err(terr) = self.sub_types(
                             ty_fn_ptr_from,
+                            *ty,
                             location.to_locations(),
                             ConstraintCategory::Cast { unsize_to: None },
                         ) {
@@ -2411,7 +2411,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let ty_left = left.ty(body, tcx);
                 match ty_left.kind() {
                     // Types with regions are comparable if they have a common super-type.
-                    ty::RawPtr(_, _) | ty::FnPtr(_) => {
+                    ty::RawPtr(_, _) | ty::FnPtr(..) => {
                         let ty_right = right.ty(body, tcx);
                         let common_ty = self.infcx.next_ty_var(body.source_info(location).span);
                         self.sub_types(
@@ -2468,7 +2468,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(right, location);
             }
 
-            Rvalue::AddressOf(..)
+            Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
             | Rvalue::Discriminant(..)
@@ -2485,7 +2485,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
-            | Rvalue::AddressOf(..)
+            | Rvalue::RawPtr(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)

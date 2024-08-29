@@ -30,7 +30,7 @@ fn equate_intrinsic_type<'tcx>(
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
         | hir::Node::ForeignItem(hir::ForeignItem {
-            kind: hir::ForeignItemKind::Fn(.., generics, _),
+            kind: hir::ForeignItemKind::Fn(_, _, generics),
             ..
         }) => (tcx.generics_of(def_id), generics.span),
         _ => {

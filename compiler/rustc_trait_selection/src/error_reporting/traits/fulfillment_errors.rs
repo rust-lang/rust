@@ -230,8 +230,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             post_message,
                         );
 
-                        let (err_msg, safe_transmute_explanation) = if Some(main_trait_ref.def_id())
-                            == self.tcx.lang_items().transmute_trait()
+                        let (err_msg, safe_transmute_explanation) = if self.tcx.is_lang_item(main_trait_ref.def_id(), LangItem::TransmuteTrait)
                         {
                             // Recompute the safe transmute reason and use that for the error reporting
                             match self.get_safe_transmute_error_and_reason(
@@ -375,7 +374,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let impl_candidates = self.find_similar_impl_candidates(leaf_trait_predicate);
                         suggested = if let &[cand] = &impl_candidates[..] {
                             let cand = cand.trait_ref;
-                            if let (ty::FnPtr(_), ty::FnDef(..)) =
+                            if let (ty::FnPtr(..), ty::FnDef(..)) =
                                 (cand.self_ty().kind(), main_trait_ref.self_ty().skip_binder().kind())
                             {
                                 err.span_suggestion(
@@ -439,6 +438,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *leaf_trait_ref.skip_binder().self_ty().kind()
                         {
+                            // FIXME(struct_target_features): should a function that inherits
+                            // target_features through arguments implement Fn traits?
                             !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                         } else {
                             false
@@ -790,8 +791,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // is unimplemented is because async closures don't implement `Fn`/`FnMut`
             // if they have captures.
             if let Some(by_ref_captures) = by_ref_captures
-                && let ty::FnPtr(sig) = by_ref_captures.kind()
-                && !sig.skip_binder().output().is_unit()
+                && let ty::FnPtr(sig_tys, _) = by_ref_captures.kind()
+                && !sig_tys.skip_binder().output().is_unit()
             {
                 let mut err = self.dcx().create_err(AsyncClosureNotFn {
                     span: self.tcx.def_span(closure_def_id),
@@ -1057,7 +1058,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "`{ty}` is forbidden as the type of a const generic parameter",
                 )
             }
-            ty::FnPtr(_) => {
+            ty::FnPtr(..) => {
                 struct_span_code_err!(
                     self.dcx(),
                     span,
@@ -1669,7 +1670,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let name = self.tcx.crate_name(trait_def_id.krate);
             let spans: Vec<_> = [trait_def_id, found_type]
                 .into_iter()
-                .filter_map(|def_id| self.tcx.extern_crate(def_id))
+                .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {
                         "direct dependency of the current crate".to_string()
@@ -1690,11 +1691,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             err.highlighted_span_help(
                 span,
                 vec![
-                    StringPart::normal("you have ".to_string()),
+                    StringPart::normal("there are ".to_string()),
                     StringPart::highlighted("multiple different versions".to_string()),
                     StringPart::normal(" of crate `".to_string()),
                     StringPart::highlighted(format!("{name}")),
-                    StringPart::normal("` in your dependency graph".to_string()),
+                    StringPart::normal("` in the dependency graph".to_string()),
                 ],
             );
             let candidates = if impl_candidates.is_empty() {
@@ -1836,10 +1837,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             if let &[cand] = &candidates[..] {
                 let (desc, mention_castable) =
                     match (cand.self_ty().kind(), trait_ref.self_ty().skip_binder().kind()) {
-                        (ty::FnPtr(_), ty::FnDef(..)) => {
+                        (ty::FnPtr(..), ty::FnDef(..)) => {
                             (" implemented for fn pointer `", ", cast using `as`")
                         }
-                        (ty::FnPtr(_), _) => (" implemented for fn pointer `", ""),
+                        (ty::FnPtr(..), _) => (" implemented for fn pointer `", ""),
                         _ => (" implemented for `", ""),
                     };
                 err.highlighted_help(vec![
@@ -2730,6 +2731,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref sig, _), .. })
             | Node::TraitItem(&hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..
+            })
+            | Node::ForeignItem(&hir::ForeignItem {
+                kind: hir::ForeignItemKind::Fn(ref sig, _, _),
+                ..
             }) => (
                 sig.span,
                 None,

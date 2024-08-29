@@ -6,13 +6,13 @@ use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_middle::ty::layout::LayoutOf;
-pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+pub(crate) use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
 use rustc_middle::{bug, ty};
 use rustc_session::config;
-pub use rustc_target::abi::call::*;
+pub(crate) use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int, Size};
-pub use rustc_target::spec::abi::Abi;
+pub(crate) use rustc_target::spec::abi::Abi;
 use rustc_target::spec::SanitizerSet;
 use smallvec::SmallVec;
 
@@ -25,7 +25,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use crate::{attributes, llvm_util};
 
-pub trait ArgAttributesExt {
+trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
     fn apply_attrs_to_callsite(
         &self,
@@ -111,7 +111,7 @@ impl ArgAttributesExt for ArgAttributes {
     }
 }
 
-pub trait LlvmType {
+pub(crate) trait LlvmType {
     fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
 }
 
@@ -171,7 +171,7 @@ impl LlvmType for CastTarget {
     }
 }
 
-pub trait ArgAbiExt<'ll, 'tcx> {
+trait ArgAbiExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn store(
         &self,
@@ -307,7 +307,7 @@ impl<'ll, 'tcx> ArgAbiMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-pub trait FnAbiLlvmExt<'ll, 'tcx> {
+pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;

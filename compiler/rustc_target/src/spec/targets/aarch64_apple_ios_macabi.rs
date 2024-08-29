@@ -10,7 +10,7 @@ pub fn target() -> Target {
         llvm_target: mac_catalyst_llvm_target(arch).into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Apple Catalyst on ARM64".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
         },

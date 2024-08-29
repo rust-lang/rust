@@ -1,5 +1,5 @@
-//@ min-lldb-version: 310
-//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+//@ min-lldb-version: 1800
+//@ min-gdb-version: 13.0
 
 //@ compile-flags:-g
 
@@ -9,8 +9,7 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdbg-check:$1 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, __0 = 117901063}}
-// gdbr-check:$1 = method_on_enum::Enum::Variant2(117901063)
+// gdb-check:$1 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$2 = -1
 // gdb-command:print arg2
@@ -19,8 +18,7 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdbg-check:$4 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, __0 = 117901063}}
-// gdbr-check:$4 = method_on_enum::Enum::Variant2(117901063)
+// gdb-check:$4 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$5 = -3
 // gdb-command:print arg2
@@ -29,8 +27,7 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdbg-check:$7 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
-// gdbr-check:$7 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
+// gdb-check:$7 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
 // gdb-command:print arg2
@@ -39,8 +36,7 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdbg-check:$10 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
-// gdbr-check:$10 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
+// gdb-check:$10 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
 // gdb-command:print arg2
@@ -49,8 +45,7 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdbg-check:$13 = {{RUST$ENUM$DISR = Variant1, x = 1799, y = 1799}, {RUST$ENUM$DISR = Variant1, [...]}}
-// gdbr-check:$13 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
+// gdb-check:$13 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$14 = -9
 // gdb-command:print arg2

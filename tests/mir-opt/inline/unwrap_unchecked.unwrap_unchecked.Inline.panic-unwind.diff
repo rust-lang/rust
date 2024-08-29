@@ -40,7 +40,7 @@
 +     bb2: {
 +         StorageLive(_4);
 +         _4 = UbChecks();
-+         assume(_4);
++         assume(copy _4);
 +         _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
 +     }
 + 

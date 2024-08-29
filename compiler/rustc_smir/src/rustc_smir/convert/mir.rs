@@ -174,7 +174,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             ThreadLocalRef(def_id) => {
                 stable_mir::mir::Rvalue::ThreadLocalRef(tables.crate_item(*def_id))
             }
-            AddressOf(mutability, place) => {
+            RawPtr(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
             Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),

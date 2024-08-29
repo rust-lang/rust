@@ -12,7 +12,7 @@
           StorageLive(_1);
           _1 = const 0_usize;
           _1 = const SizeOfConst::<T>::SIZE;
-          _0 = _1;
+          _0 = copy _1;
           StorageDead(_1);
           return;
       }

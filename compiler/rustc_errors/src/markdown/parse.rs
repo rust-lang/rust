@@ -74,13 +74,13 @@ enum ParseOpt {
 }
 
 /// Parse a buffer
-pub fn entrypoint(txt: &str) -> MdStream<'_> {
+pub(crate) fn entrypoint(txt: &str) -> MdStream<'_> {
     let ctx = Context { top_block: true, prev: Prev::Newline };
     normalize(parse_recursive(txt.trim().as_bytes(), ctx), &mut Vec::new())
 }
 
 /// Parse a buffer with specified context
-fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'_> {
+fn parse_recursive<'a>(buf: &'a [u8], ctx: Context) -> MdStream<'a> {
     use ParseOpt as Po;
     use Prev::{Escape, Newline, Whitespace};
 

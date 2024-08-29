@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::std_or_core;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -22,8 +22,8 @@ pub(super) fn check<'tcx>(
 
         if let Some(left_var) = expr_as_cast_to_raw_pointer(cx, left)
             && let Some(right_var) = expr_as_cast_to_raw_pointer(cx, right)
-            && let Some(left_snip) = snippet_opt(cx, left_var.span)
-            && let Some(right_snip) = snippet_opt(cx, right_var.span)
+            && let Some(left_snip) = left_var.span.get_source_text(cx)
+            && let Some(right_snip) = right_var.span.get_source_text(cx)
         {
             let Some(top_crate) = std_or_core(cx) else { return };
             span_lint_and_sugg(

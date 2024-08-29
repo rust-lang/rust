@@ -9,7 +9,7 @@ pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set}
 pub mod layout;
 mod maybe_transmutable;
 
-#[derive(Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Assume {
     pub alignment: bool,
     pub lifetimes: bool,

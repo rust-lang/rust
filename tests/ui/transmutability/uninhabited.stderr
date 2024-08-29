@@ -34,7 +34,7 @@ note: required by a bound in `is_maybe_transmutable`
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
@@ -56,7 +56,7 @@ note: required by a bound in `is_maybe_transmutable`
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
@@ -78,7 +78,7 @@ note: required by a bound in `is_maybe_transmutable`
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,
@@ -100,7 +100,7 @@ note: required by a bound in `is_maybe_transmutable`
 LL |       pub fn is_maybe_transmutable<Src, Dst>()
    |              --------------------- required by a bound in this function
 LL |       where
-LL |           Dst: BikeshedIntrinsicFrom<Src, {
+LL |           Dst: TransmuteFrom<Src, {
    |  ______________^
 LL | |             Assume {
 LL | |                 alignment: true,

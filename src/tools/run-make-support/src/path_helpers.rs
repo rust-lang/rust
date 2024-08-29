@@ -21,6 +21,7 @@ pub fn cwd() -> PathBuf {
 /// # Example
 ///
 /// ```rust
+/// # use run_make_support::path;
 /// let p = path("support_file.txt");
 /// ```
 pub fn path<P: AsRef<Path>>(p: P) -> PathBuf {
@@ -83,4 +84,19 @@ pub fn has_suffix<P: AsRef<Path>>(path: P, suffix: &str) -> bool {
 /// Returns true if the filename at `path` contains `needle`.
 pub fn filename_contains<P: AsRef<Path>>(path: P, needle: &str) -> bool {
     path.as_ref().file_name().is_some_and(|name| name.to_str().unwrap().contains(needle))
+}
+
+/// Helper for reading entries in a given directory and its children.
+pub fn read_dir_entries_recursive<P: AsRef<Path>, F: FnMut(&Path)>(dir: P, mut callback: F) {
+    fn read_dir_entries_recursive_inner<P: AsRef<Path>, F: FnMut(&Path)>(dir: P, callback: &mut F) {
+        for entry in rfs::read_dir(dir) {
+            let path = entry.unwrap().path();
+            callback(&path);
+            if path.is_dir() {
+                read_dir_entries_recursive_inner(path, callback);
+            }
+        }
+    }
+
+    read_dir_entries_recursive_inner(dir, &mut callback);
 }

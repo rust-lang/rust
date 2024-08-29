@@ -286,6 +286,9 @@ pub(crate) struct RenderOptions {
     pub(crate) no_emit_shared: bool,
     /// If `true`, HTML source code pages won't be generated.
     pub(crate) html_no_source: bool,
+    /// This field is only used for the JSON output. If it's set to true, no file will be created
+    /// and content will be displayed in stdout directly.
+    pub(crate) output_to_stdout: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -548,16 +551,17 @@ impl Options {
             dcx.fatal("the `--test` flag must be passed to enable `--no-run`");
         }
 
+        let mut output_to_stdout = false;
         let test_builder_wrappers =
             matches.opt_strs("test-builder-wrapper").iter().map(PathBuf::from).collect();
-        let out_dir = matches.opt_str("out-dir").map(|s| PathBuf::from(&s));
-        let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
-        let output = match (out_dir, output) {
+        let output = match (matches.opt_str("out-dir"), matches.opt_str("output")) {
             (Some(_), Some(_)) => {
                 dcx.fatal("cannot use both 'out-dir' and 'output' at once");
             }
-            (Some(out_dir), None) => out_dir,
-            (None, Some(output)) => output,
+            (Some(out_dir), None) | (None, Some(out_dir)) => {
+                output_to_stdout = out_dir == "-";
+                PathBuf::from(out_dir)
+            }
             (None, None) => PathBuf::from("doc"),
         };
 
@@ -733,9 +737,11 @@ impl Options {
         let html_no_source = matches.opt_present("html-no-source");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
-            dcx.fatal(
-                "--generate-link-to-definition option can only be used with HTML output format",
-            );
+            dcx.struct_warn(
+                "`--generate-link-to-definition` option can only be used with HTML output format",
+            )
+            .with_note("`--generate-link-to-definition` option will be ignored")
+            .emit();
         }
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
@@ -816,6 +822,7 @@ impl Options {
             call_locations,
             no_emit_shared: false,
             html_no_source,
+            output_to_stdout,
         };
         Some((options, render_options))
     }

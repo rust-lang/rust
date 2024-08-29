@@ -1,8 +1,7 @@
 //@ run-pass
-use std::collections::BTreeMap;
 use std::borrow::Cow;
-
-use std::borrow::Cow::{Owned as O, Borrowed as B};
+use std::borrow::Cow::{Borrowed as B, Owned as O};
+use std::collections::BTreeMap;
 
 type SendStr = Cow<'static, str>;
 
@@ -51,8 +50,8 @@ fn main() {
     assert_eq!(map.get(&O("def".to_string())), Some(&d));
 
     assert!(map.remove(&B("foo")).is_some());
-    assert_eq!(map.into_iter().map(|(k, v)| format!("{}{}", k, v))
-                              .collect::<Vec<String>>()
-                              .concat(),
-               "abc50bcd51cde52def53".to_string());
+    assert_eq!(
+        map.into_iter().map(|(k, v)| format!("{}{}", k, v)).collect::<Vec<String>>().concat(),
+        "abc50bcd51cde52def53".to_string()
+    );
 }

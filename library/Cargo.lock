@@ -58,9 +58,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.118"
+version = "0.1.123"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92afe7344b64cccf3662ca26d5d1c0828ab826f04206b97d856e3625e390e4b5"
+checksum = "b47fcbecb558bdad78c7d3a998523c60a50dd6cd046d5fe74163e309e878fff7"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -155,9 +155,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.155"
+version = "0.2.158"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
+checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -339,6 +339,7 @@ dependencies = [
  "std_detect",
  "unwind",
  "wasi",
+ "windows-targets 0.0.0",
 ]
 
 [[package]]
@@ -421,8 +422,12 @@ version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
 dependencies = [
- "windows-targets",
+ "windows-targets 0.52.5",
 ]
+
+[[package]]
+name = "windows-targets"
+version = "0.0.0"
 
 [[package]]
 name = "windows-targets"

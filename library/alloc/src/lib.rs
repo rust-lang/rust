@@ -93,7 +93,6 @@
 // tidy-alphabetical-start
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![cfg_attr(not(no_global_oom_handling), feature(const_btree_len))]
-#![cfg_attr(test, feature(new_uninit))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
@@ -131,7 +130,6 @@
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
-#![feature(iter_repeat_n)]
 #![feature(layout_for_ptr)]
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]

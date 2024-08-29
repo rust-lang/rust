@@ -1456,7 +1456,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let label_span = ident.span.shrink_to_hi();
             let mut spans = MultiSpan::from_span(label_span);
             spans.push_span_label(label_span, "put a macro name here");
-            err.subdiagnostic(MaybeMissingMacroRulesName { spans: spans });
+            err.subdiagnostic(MaybeMissingMacroRulesName { spans });
             return;
         }
 

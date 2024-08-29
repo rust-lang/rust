@@ -132,7 +132,7 @@ pub(super) fn allocation_filter<'tcx>(
         ));
     }
     Allocation {
-        bytes: bytes,
+        bytes,
         provenance: ProvenanceMap { ptrs },
         align: alloc.align.bytes(),
         mutability: alloc.mutability.stable(tables),

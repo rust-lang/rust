@@ -1,5 +1,3 @@
-#![feature(precise_capturing)]
-
 trait Tr {
     type Assoc;
 }

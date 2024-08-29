@@ -35,15 +35,15 @@
       }
   
       bb2: {
-          _5 = ((_1 as Err).0: usize);
-          _2 = ControlFlow::<usize, i32>::Break(_5);
+          _5 = copy ((_1 as Err).0: usize);
+          _2 = ControlFlow::<usize, i32>::Break(copy _5);
 -         goto -> bb4;
 +         goto -> bb8;
       }
   
       bb3: {
-          _4 = ((_1 as Ok).0: i32);
-          _2 = ControlFlow::<usize, i32>::Continue(_4);
+          _4 = copy ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<usize, i32>::Continue(copy _4);
           goto -> bb4;
       }
   
@@ -55,15 +55,15 @@
   
       bb5: {
           StorageLive(_8);
-          _8 = ((_2 as Break).0: usize);
+          _8 = copy ((_2 as Break).0: usize);
           _0 = const Option::<i32>::None;
           StorageDead(_8);
           goto -> bb7;
       }
   
       bb6: {
-          _7 = ((_2 as Continue).0: i32);
-          _0 = Option::<i32>::Some(_7);
+          _7 = copy ((_2 as Continue).0: i32);
+          _0 = Option::<i32>::Some(copy _7);
           goto -> bb7;
       }
   

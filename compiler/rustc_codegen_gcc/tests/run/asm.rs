@@ -3,12 +3,10 @@
 // Run-time:
 //   status: 0
 
-#![feature(asm_const)]
-
-#[cfg(target_arch="x86_64")]
+#[cfg(target_arch = "x86_64")]
 use std::arch::{asm, global_asm};
 
-#[cfg(target_arch="x86_64")]
+#[cfg(target_arch = "x86_64")]
 global_asm!(
     "
     .global add_asm
@@ -22,7 +20,7 @@ extern "C" {
     fn add_asm(a: i64, b: i64) -> i64;
 }
 
-#[cfg(target_arch="x86_64")]
+#[cfg(target_arch = "x86_64")]
 pub unsafe fn mem_cpy(dst: *mut u8, src: *const u8, len: usize) {
     asm!(
         "rep movsb",
@@ -33,7 +31,7 @@ pub unsafe fn mem_cpy(dst: *mut u8, src: *const u8, len: usize) {
     );
 }
 
-#[cfg(target_arch="x86_64")]
+#[cfg(target_arch = "x86_64")]
 fn asm() {
     unsafe {
         asm!("nop");
@@ -178,9 +176,8 @@ fn asm() {
     assert_eq!(array1, array2);
 }
 
-#[cfg(not(target_arch="x86_64"))]
-fn asm() {
-}
+#[cfg(not(target_arch = "x86_64"))]
+fn asm() {}
 
 fn main() {
     asm();

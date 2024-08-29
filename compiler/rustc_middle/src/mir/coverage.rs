@@ -163,7 +163,7 @@ impl Debug for CoverageKind {
 
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(TypeFoldable, TypeVisitable)]
-pub struct CodeRegion {
+pub struct SourceRegion {
     pub file_name: Symbol,
     pub start_line: u32,
     pub start_col: u32,
@@ -171,7 +171,7 @@ pub struct CodeRegion {
     pub end_col: u32,
 }
 
-impl Debug for CodeRegion {
+impl Debug for SourceRegion {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(
             fmt,
@@ -242,7 +242,7 @@ impl MappingKind {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Mapping {
     pub kind: MappingKind,
-    pub code_region: CodeRegion,
+    pub source_region: SourceRegion,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,

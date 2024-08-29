@@ -544,3 +544,15 @@ pub fn get_closest_merge_base_commit(
 
     Ok(output_result(git.as_command_mut())?.trim().to_owned())
 }
+
+/// Sets the file times for a given file at `path`.
+pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Result<()> {
+    // Windows requires file to be writable to modify file times. But on Linux CI the file does not
+    // need to be writable to modify file times and might be read-only.
+    let f = if cfg!(windows) {
+        fs::File::options().write(true).open(path)?
+    } else {
+        fs::File::open(path)?
+    };
+    f.set_times(times)
+}

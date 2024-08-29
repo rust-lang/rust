@@ -198,13 +198,12 @@ impl fmt::Debug for VarsOs {
 ///
 /// # Errors
 ///
-/// This function will return an error if the environment variable isn't set.
+/// Returns [`VarError::NotPresent`] if:
+/// - The variable is not set.
+/// - The variable's name contains an equal sign or NUL (`'='` or `'\0'`).
 ///
-/// This function may return an error if the environment variable's name contains
-/// the equal sign character (`=`) or the NUL character.
-///
-/// This function will return an error if the environment variable's value is
-/// not valid Unicode. If this is not desired, consider using [`var_os`].
+/// Returns [`VarError::NotUnicode`] if the variable's value is not valid
+/// Unicode. If this is not desired, consider using [`var_os`].
 ///
 /// # Examples
 ///
@@ -355,7 +354,13 @@ impl Error for VarError {
 /// }
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
-#[rustc_deprecated_safe_2024]
+#[cfg_attr(bootstrap, rustc_deprecated_safe_2024)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_deprecated_safe_2024(
+        audit_that = "the environment access only happens in single-threaded code"
+    )
+)]
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     let (key, value) = (key.as_ref(), value.as_ref());
@@ -419,7 +424,13 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 /// }
 /// assert!(env::var(key).is_err());
 /// ```
-#[rustc_deprecated_safe_2024]
+#[cfg_attr(bootstrap, rustc_deprecated_safe_2024)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_deprecated_safe_2024(
+        audit_that = "the environment access only happens in single-threaded code"
+    )
+)]
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn remove_var<K: AsRef<OsStr>>(key: K) {
     let key = key.as_ref();

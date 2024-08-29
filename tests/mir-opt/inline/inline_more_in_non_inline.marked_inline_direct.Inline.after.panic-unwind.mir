@@ -9,7 +9,7 @@ fn marked_inline_direct(_1: i32) -> () {
     bb0: {
         StorageLive(_2);
         StorageLive(_3);
-        _3 = _1;
+        _3 = copy _1;
         _2 = call_twice(move _3) -> [return: bb1, unwind continue];
     }
 

@@ -64,7 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Points out the method's return type as the reason for the expected type.
     /// - Possible missing semicolon.
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
-    pub fn suggest_mismatched_types_on_tail(
+    pub(crate) fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut Diag<'_>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
     }
 
-    pub fn suggest_two_fn_call(
+    pub(crate) fn suggest_two_fn_call(
         &self,
         err: &mut Diag<'_>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn suggest_remove_last_method_call(
+    pub(crate) fn suggest_remove_last_method_call(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -280,7 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    pub fn suggest_deref_ref_or_into(
+    pub(crate) fn suggest_deref_ref_or_into(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -604,7 +604,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        if let (ty::FnPtr(_), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
+        if let (ty::FnPtr(..), ty::Closure(def_id, _)) = (expected.kind(), found.kind()) {
             if let Some(upvars) = self.tcx.upvars_mentioned(*def_id) {
                 // Report upto four upvars being captured to reduce the amount error messages
                 // reported back to the user.
@@ -747,7 +747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// If the expression is the expression of a closure without block (`|| expr`), a
     /// block is needed to be added too (`|| { expr; }`). This is denoted by `needs_block`.
-    pub fn suggest_missing_semicolon(
+    pub(crate) fn suggest_missing_semicolon(
         &self,
         err: &mut Diag<'_>,
         expression: &'tcx hir::Expr<'tcx>,
@@ -2077,7 +2077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     // If the expr is a while or for loop and is the tail expr of its
     // enclosing body suggest returning a value right after it
-    pub fn suggest_returning_value_after_loop(
+    pub(crate) fn suggest_returning_value_after_loop(
         &self,
         err: &mut Diag<'_>,
         expr: &hir::Expr<'tcx>,
@@ -2975,7 +2975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut suffix_suggestion = sugg.clone();
         suffix_suggestion.push((
             if matches!(
-                (&expected_ty.kind(), &checked_ty.kind()),
+                (expected_ty.kind(), checked_ty.kind()),
                 (ty::Int(_) | ty::Uint(_), ty::Float(_))
             ) {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
@@ -3077,7 +3077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.multipart_suggestion_verbose(msg, suggestion, Applicability::MachineApplicable);
             };
 
-        match (&expected_ty.kind(), &checked_ty.kind()) {
+        match (expected_ty.kind(), checked_ty.kind()) {
             (ty::Int(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {

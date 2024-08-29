@@ -234,7 +234,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            AddressOf(_, place) => {
+            RawPtr(_, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
@@ -424,7 +424,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
 
         let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
-            ty::FnPtr(_sig) => {
+            ty::FnPtr(..) => {
                 let fn_ptr = self.read_pointer(&func)?;
                 let fn_val = self.get_ptr_fn(fn_ptr)?;
                 (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)

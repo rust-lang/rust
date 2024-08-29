@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{SourceText, SpanRangeExt};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
 use core::ops::ControlFlow;
@@ -236,7 +236,7 @@ fn first_usage<'tcx>(
         })
 }
 
-fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &LetStmt<'_>) -> Option<String> {
+fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &LetStmt<'_>) -> Option<SourceText> {
     let span = local.span.with_hi(match local.ty {
         // let <pat>: <ty>;
         // ~~~~~~~~~~~~~~~
@@ -246,7 +246,7 @@ fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &LetStmt<'_>) ->
         None => local.pat.span.hi(),
     });
 
-    snippet_opt(cx, span)
+    span.get_source_text(cx)
 }
 
 fn check<'tcx>(
@@ -275,7 +275,10 @@ fn check<'tcx>(
                 |diag| {
                     diag.multipart_suggestion(
                         format!("move the declaration `{binding_name}` here"),
-                        vec![(local_stmt.span, String::new()), (assign.lhs_span, let_snippet)],
+                        vec![
+                            (local_stmt.span, String::new()),
+                            (assign.lhs_span, let_snippet.to_owned()),
+                        ],
                         Applicability::MachineApplicable,
                     );
                 },

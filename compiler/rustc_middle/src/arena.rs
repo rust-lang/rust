@@ -35,7 +35,6 @@ macro_rules! arena_types {
             )>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
-            [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             // Required for the incremental on-disk cache
@@ -61,10 +60,6 @@ macro_rules! arena_types {
             [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
             [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
             [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
-            [] canonical_goal_evaluation:
-                rustc_type_ir::solve::inspect::CanonicalGoalEvaluationStep<
-                    rustc_middle::ty::TyCtxt<'tcx>
-                >,
             [] query_region_constraints: rustc_middle::infer::canonical::QueryRegionConstraints<'tcx>,
             [] type_op_subtype:
                 rustc_middle::infer::canonical::Canonical<'tcx,

@@ -13,11 +13,11 @@
 //! [`OsString`]: crate::ffi::OsString
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-pub mod alloc;
 pub mod args;
 pub mod env;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;
+pub mod helpers;
 #[path = "../unsupported/io.rs"]
 pub mod io;
 #[path = "../unsupported/net.rs"]
@@ -29,8 +29,6 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod time;
-
-mod helpers;
 
 #[cfg(test)]
 mod tests;

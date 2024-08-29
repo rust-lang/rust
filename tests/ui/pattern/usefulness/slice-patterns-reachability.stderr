@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:8:9
    |
 LL |         [true, ..] => {}
-   |         ---------- matches all the values already
+   |         ---------- matches all the relevant values
 LL |         [true, ..] => {}
-   |         ^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^ no value can reach this
    |
 note: the lint level is defined here
   --> $DIR/slice-patterns-reachability.rs:1:9
@@ -16,44 +16,44 @@ error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:9:9
    |
 LL |         [true, ..] => {}
-   |         ---------- matches all the values already
+   |         ---------- matches all the relevant values
 LL |         [true, ..] => {}
 LL |         [true] => {}
-   |         ^^^^^^ unreachable pattern
+   |         ^^^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:14:9
    |
 LL |         [.., true] => {}
-   |         ---------- matches all the values already
+   |         ---------- matches all the relevant values
 LL |         [.., true] => {}
-   |         ^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:15:9
    |
 LL |         [.., true] => {}
-   |         ---------- matches all the values already
+   |         ---------- matches all the relevant values
 LL |         [.., true] => {}
 LL |         [true] => {}
-   |         ^^^^^^ unreachable pattern
+   |         ^^^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:20:9
    |
 LL |         [false, .., true] => {}
-   |         ----------------- matches all the values already
+   |         ----------------- matches all the relevant values
 LL |         [false, .., true] => {}
-   |         ^^^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/slice-patterns-reachability.rs:21:9
    |
 LL |         [false, .., true] => {}
-   |         ----------------- matches all the values already
+   |         ----------------- matches all the relevant values
 LL |         [false, .., true] => {}
 LL |         [false, true] => {}
-   |         ^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^ no value can reach this
 
 error: aborting due to 6 previous errors
 

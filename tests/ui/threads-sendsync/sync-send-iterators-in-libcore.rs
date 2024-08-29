@@ -5,8 +5,16 @@
 
 use std::iter::{empty, once, repeat};
 
-fn is_sync<T>(_: T) where T: Sync {}
-fn is_send<T>(_: T) where T: Send {}
+fn is_sync<T>(_: T)
+where
+    T: Sync,
+{
+}
+fn is_send<T>(_: T)
+where
+    T: Send,
+{
+}
 
 macro_rules! all_sync_send {
     ($ctor:expr, $iter:ident) => ({
@@ -43,12 +51,12 @@ macro_rules! all_sync_send_mutable_ref {
 }
 
 macro_rules! is_sync_send {
-    ($ctor:expr) => ({
+    ($ctor:expr) => {{
         let x = $ctor;
         is_sync(x);
         let y = $ctor;
         is_send(y);
-    })
+    }};
 }
 
 fn main() {
@@ -63,24 +71,26 @@ fn main() {
 
     let a = [1];
     let b = [2];
-    all_sync_send!(a.iter(),
-                   cloned,
-                   cycle,
-                   chain([2].iter()),
-                   zip([2].iter()),
-                   map(|_| 1),
-                   filter(|_| true),
-                   filter_map(|_| Some(1)),
-                   enumerate,
-                   peekable,
-                   skip_while(|_| true),
-                   take_while(|_| true),
-                   skip(1),
-                   take(1),
-                   scan(1, |_, _| Some(1)),
-                   flat_map(|_| b.iter()),
-                   fuse,
-                   inspect(|_| ()));
+    all_sync_send!(
+        a.iter(),
+        cloned,
+        cycle,
+        chain([2].iter()),
+        zip([2].iter()),
+        map(|_| 1),
+        filter(|_| true),
+        filter_map(|_| Some(1)),
+        enumerate,
+        peekable,
+        skip_while(|_| true),
+        take_while(|_| true),
+        skip(1),
+        take(1),
+        scan(1, |_, _| Some(1)),
+        flat_map(|_| b.iter()),
+        fuse,
+        inspect(|_| ())
+    );
 
     is_sync_send!((1..).step_by(2));
     is_sync_send!((1..2).step_by(2));

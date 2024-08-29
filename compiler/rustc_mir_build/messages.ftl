@@ -30,7 +30,7 @@ mir_build_call_to_deprecated_safe_fn_requires_unsafe =
     call to deprecated safe function `{$function}` is unsafe and requires unsafe block
     .note = consult the function's documentation for information on how to avoid undefined behavior
     .label = call to unsafe function
-    .suggestion = you can wrap the call in an `unsafe` block if you can guarantee the code is only ever called from single-threaded code
+    .suggestion = you can wrap the call in an `unsafe` block if you can guarantee {$guarantee}
 
 mir_build_call_to_fn_with_requires_unsafe =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block
@@ -124,6 +124,17 @@ mir_build_initializing_type_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed 
     initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe function or block
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
+
+mir_build_initializing_type_with_target_feature_requires_unsafe =
+    initializing type with `target_feature` attr is unsafe and requires unsafe block
+    .note = this struct can only be constructed if the corresponding `target_feature`s are available
+    .label = initializing type with `target_feature` attr
+
+mir_build_initializing_type_with_target_feature_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    initializing type with `target_feature` attr is unsafe and requires unsafe function or block
+    .note = this struct can only be constructed if the corresponding `target_feature`s are available
+    .label = initializing type with `target_feature` attr
+
 
 mir_build_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block
@@ -327,14 +338,17 @@ mir_build_union_pattern = cannot use unions in constant patterns
 
 mir_build_unreachable_making_this_unreachable = collectively making this unreachable
 
+mir_build_unreachable_making_this_unreachable_n_more = ...and {$covered_by_many_n_more_count} other patterns collectively make this unreachable
+
 mir_build_unreachable_matches_same_values = matches some of the same values
 
 mir_build_unreachable_pattern = unreachable pattern
-    .label = unreachable pattern
-    .unreachable_matches_no_values = this pattern matches no values because `{$ty}` is uninhabited
+    .label = no value can reach this
+    .unreachable_matches_no_values = matches no values because `{$matches_no_values_ty}` is uninhabited
+    .unreachable_uninhabited_note = to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
     .unreachable_covered_by_catchall = matches any value
-    .unreachable_covered_by_one = matches all the values already
-    .unreachable_covered_by_many = these patterns collectively make the last one unreachable
+    .unreachable_covered_by_one = matches all the relevant values
+    .unreachable_covered_by_many = multiple earlier patterns match some of the same values
 
 mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items
@@ -383,6 +397,11 @@ mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_requires_unsafe =
     initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe block
     .note = initializing a layout restricted type's field with a value outside the valid range is undefined behavior
     .label = initializing type with `rustc_layout_scalar_valid_range` attr
+
+mir_build_unsafe_op_in_unsafe_fn_initializing_type_with_target_feature_requires_unsafe =
+    initializing type with `target_feature` attr is unsafe and requires unsafe block
+    .note = this struct can only be constructed if the corresponding `target_feature`s are available
+    .label = initializing type with `target_feature` attr
 
 mir_build_unsafe_op_in_unsafe_fn_inline_assembly_requires_unsafe =
     use of inline assembly is unsafe and requires unsafe block

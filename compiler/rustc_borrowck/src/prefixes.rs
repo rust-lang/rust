@@ -8,7 +8,7 @@ use rustc_middle::mir::{PlaceRef, ProjectionElem};
 
 use super::MirBorrowckCtxt;
 
-pub trait IsPrefixOf<'tcx> {
+pub(crate) trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool;
 }
 

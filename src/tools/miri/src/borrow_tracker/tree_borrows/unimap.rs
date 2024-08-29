@@ -12,7 +12,7 @@
 
 #![allow(dead_code)]
 
-use std::hash::Hash;
+use std::{hash::Hash, mem};
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -187,13 +187,16 @@ impl<V> UniValMap<V> {
         self.data.get_mut(idx.idx as usize).and_then(Option::as_mut)
     }
 
-    /// Delete any value associated with this index. Ok even if the index
-    /// has no associated value.
-    pub fn remove(&mut self, idx: UniIndex) {
+    /// Delete any value associated with this index.
+    /// Returns None if the value was not present, otherwise
+    /// returns the previously stored value.
+    pub fn remove(&mut self, idx: UniIndex) -> Option<V> {
         if idx.idx as usize >= self.data.len() {
-            return;
+            return None;
         }
-        self.data[idx.idx as usize] = None;
+        let mut res = None;
+        mem::swap(&mut res, &mut self.data[idx.idx as usize]);
+        res
     }
 }
 

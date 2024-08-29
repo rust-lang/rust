@@ -193,6 +193,8 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
+    /// Gating for a new desugaring of const arguments of usages of const parameters
+    (internal, const_arg_path, "1.81.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
@@ -300,6 +302,7 @@ declare_features! (
     // FIXME: Document these and merge with the list below.
 
     // Unstable `#[target_feature]` directives.
+    (unstable, aarch64_unstable_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
     (unstable, aarch64_ver_target_feature, "1.27.0", Some(44839)),
     (unstable, arm_target_feature, "1.27.0", Some(44839)),
     (unstable, avx512_target_feature, "1.27.0", Some(44839)),
@@ -348,8 +351,6 @@ declare_features! (
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
     /// Allows trait methods with arbitrary self types.
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
-    /// Allows using `const` operands in inline assembly.
-    (unstable, asm_const, "1.58.0", Some(93332)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Allows using `label` operands in inline assembly.
@@ -402,8 +403,6 @@ declare_features! (
     (incomplete, const_closures, "1.68.0", Some(106003)),
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (unstable, const_extern_fn, "1.40.0", Some(64926)),
-    /// Allows basic arithmetic on floating point types in a `const fn`.
-    (unstable, const_fn_floating_point_arithmetic, "1.48.0", Some(57241)),
     /// Allows `for _ in _` loops in const contexts.
     (unstable, const_for, "1.56.0", Some(87575)),
     /// Allows using `&mut` in constant functions.
@@ -563,12 +562,8 @@ declare_features! (
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
-    /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
-    (unstable, precise_capturing, "1.79.0", Some(123432)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
-    /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
-    (unstable, raw_ref_op, "1.41.0", Some(64490)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
@@ -600,6 +595,8 @@ declare_features! (
     (unstable, strict_provenance, "1.61.0", Some(95228)),
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
+    /// Allows structs to carry target_feature information.
+    (incomplete, struct_target_features, "CURRENT_RUSTC_VERSION", Some(129107)),
     /// Allows the use of `#[target_feature]` on safe functions.
     (unstable, target_feature_11, "1.45.0", Some(69098)),
     /// Allows using `#[thread_local]` on `static` items.
@@ -624,8 +621,6 @@ declare_features! (
     (unstable, type_changing_struct_update, "1.58.0", Some(86555)),
     /// Allows unnamed fields of struct and union type
     (incomplete, unnamed_fields, "1.74.0", Some(49804)),
-    /// Allows unsafe attributes.
-    (unstable, unsafe_attributes, "1.80.0", Some(123757)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
     (incomplete, unsized_const_params, "CURRENT_RUSTC_VERSION", Some(95174)),

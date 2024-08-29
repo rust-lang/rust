@@ -8,7 +8,7 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_transmutable<
         Src,
@@ -16,7 +16,7 @@ mod assert {
         const ASSUME: std::mem::Assume,
     >()
     where
-        Dst: BikeshedIntrinsicFrom<
+        Dst: TransmuteFrom<
             Src,
             ASSUME,
         >,

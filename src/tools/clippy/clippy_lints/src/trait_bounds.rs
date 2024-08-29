@@ -1,7 +1,7 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
 use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use itertools::Itertools;
@@ -206,8 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
 
                 let fixed_trait_snippet = unique_traits
                     .iter()
-                    .filter_map(|b| snippet_opt(cx, b.span))
-                    .collect::<Vec<_>>()
+                    .filter_map(|b| b.span.get_source_text(cx))
                     .join(" + ");
 
                 span_lint_and_sugg(
@@ -462,9 +461,8 @@ fn rollup_traits(
 
         let traits = comparable_bounds
             .iter()
-            .filter_map(|&(_, span)| snippet_opt(cx, span))
-            .collect::<Vec<_>>();
-        let traits = traits.join(" + ");
+            .filter_map(|&(_, span)| span.get_source_text(cx))
+            .join(" + ");
 
         span_lint_and_sugg(
             cx,

@@ -59,7 +59,7 @@ pub trait Translate {
         &'a self,
         message: &'a DiagMessage,
         args: &'a FluentArgs<'_>,
-    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
+    ) -> Result<Cow<'a, str>, TranslateError<'a>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagMessage::Str(msg) | DiagMessage::Translated(msg) => {

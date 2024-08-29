@@ -160,8 +160,10 @@ pub fn get_type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symb
 }
 
 /// Returns true if `ty` is a type on which calling `Clone` through a function instead of
-/// as a method, such as `Arc::clone()` is considered idiomatic. Lints should avoid suggesting to
-/// replace instances of `ty::Clone()` by `.clone()` for objects of those types.
+/// as a method, such as `Arc::clone()` is considered idiomatic.
+///
+/// Lints should avoid suggesting to replace instances of `ty::Clone()` by `.clone()` for objects
+/// of those types.
 pub fn should_call_clone_as_function(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     matches!(
         get_type_diagnostic_name(cx, ty),
@@ -398,8 +400,10 @@ fn is_normalizable_helper<'tcx>(
 }
 
 /// Returns `true` if the given type is a non aggregate primitive (a `bool` or `char`, any
-/// integer or floating-point number type). For checking aggregation of primitive types (e.g.
-/// tuples and slices of primitive type) see `is_recursively_primitive_type`
+/// integer or floating-point number type).
+///
+/// For checking aggregation of primitive types (e.g. tuples and slices of primitive type) see
+/// `is_recursively_primitive_type`
 pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
     matches!(ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_))
 }
@@ -455,11 +459,6 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) 
     }
 }
 
-/// Gets the diagnostic name of the type, if it has one
-pub fn type_diagnostic_name(cx: &LateContext<'_>, ty: Ty<'_>) -> Option<Symbol> {
-    ty.ty_adt_def().and_then(|adt| cx.tcx.get_diagnostic_name(adt.did()))
-}
-
 /// Return `true` if the passed `typ` is `isize` or `usize`.
 pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
@@ -476,9 +475,10 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
     }
 }
 
-/// Checks if the drop order for a type matters. Some std types implement drop solely to
-/// deallocate memory. For these types, and composites containing them, changing the drop order
-/// won't result in any observable side effects.
+/// Checks if the drop order for a type matters.
+///
+/// Some std types implement drop solely to deallocate memory. For these types, and composites
+/// containing them, changing the drop order won't result in any observable side effects.
 pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     fn needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
         if !seen.insert(ty) {
@@ -541,7 +541,7 @@ pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
 /// Returns `true` if the given type is an `unsafe` function.
 pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).safety() == Safety::Unsafe,
+        ty::FnDef(..) | ty::FnPtr(..) => ty.fn_sig(cx.tcx).safety() == Safety::Unsafe,
         _ => false,
     }
 }
@@ -721,7 +721,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             cx.tcx.item_super_predicates(def_id).iter_instantiated(cx.tcx, args),
             cx.tcx.opt_parent(def_id),
         ),
-        ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
+        ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
             match bounds.principal() {
@@ -1311,6 +1311,7 @@ pub fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl 
 }
 
 /// Checks if a Ty<'_> has some inherent method Symbol.
+///
 /// This does not look for impls in the type's `Deref::Target` type.
 /// If you need this, you should wrap this call in `clippy_utils::ty::deref_chain().any(...)`.
 pub fn get_adt_inherent_method<'a>(cx: &'a LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> Option<&'a AssocItem> {

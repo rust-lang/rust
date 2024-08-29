@@ -1500,7 +1500,7 @@ impl<'a> Linker for L4Bender<'a> {
 
 impl<'a> L4Bender<'a> {
     pub fn new(cmd: Command, sess: &'a Session) -> L4Bender<'a> {
-        L4Bender { cmd, sess: sess, hinted_static: false }
+        L4Bender { cmd, sess, hinted_static: false }
     }
 
     fn hint_static(&mut self) {
@@ -1520,7 +1520,7 @@ pub struct AixLinker<'a> {
 
 impl<'a> AixLinker<'a> {
     pub fn new(cmd: Command, sess: &'a Session) -> AixLinker<'a> {
-        AixLinker { cmd, sess: sess, hinted_static: None }
+        AixLinker { cmd, sess, hinted_static: None }
     }
 
     fn hint_static(&mut self) {

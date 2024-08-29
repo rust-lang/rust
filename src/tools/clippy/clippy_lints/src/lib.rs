@@ -66,8 +66,8 @@ extern crate declare_clippy_lint;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
-mod declared_lints;
-mod deprecated_lints;
+pub mod declared_lints;
+pub mod deprecated_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absolute_paths;
@@ -440,7 +440,7 @@ impl RegistrationGroups {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum LintCategory {
     Cargo,
     Complexity,
@@ -479,11 +479,39 @@ impl LintCategory {
     }
 }
 
-pub(crate) struct LintInfo {
+pub struct LintInfo {
     /// Double reference to maintain pointer equality
-    lint: &'static &'static Lint,
+    pub lint: &'static &'static Lint,
     category: LintCategory,
-    explanation: &'static str,
+    pub explanation: &'static str,
+    /// e.g. `clippy_lints/src/absolute_paths.rs#43`
+    pub location: &'static str,
+    pub version: Option<&'static str>,
+}
+
+impl LintInfo {
+    /// Returns the lint name in lowercase without the `clippy::` prefix
+    #[allow(clippy::missing_panics_doc)]
+    pub fn name_lower(&self) -> String {
+        self.lint.name.strip_prefix("clippy::").unwrap().to_ascii_lowercase()
+    }
+
+    /// Returns the name of the lint's category in lowercase (`style`, `pedantic`)
+    pub fn category_str(&self) -> &'static str {
+        match self.category {
+            Cargo => "cargo",
+            Complexity => "complexity",
+            Correctness => "correctness",
+            Nursery => "nursery",
+            Pedantic => "pedantic",
+            Perf => "perf",
+            Restriction => "restriction",
+            Style => "style",
+            Suspicious => "suspicious",
+            #[cfg(feature = "internal")]
+            Internal => "internal",
+        }
+    }
 }
 
 pub fn explain(name: &str) -> i32 {
@@ -536,14 +564,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     }
     for (name, reason) in deprecated_lints::DEPRECATED {
         store.register_removed(name, reason);
-    }
-
-    #[cfg(feature = "internal")]
-    {
-        if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
-            store.register_late_pass(|_| Box::new(utils::internal_lints::metadata_collector::MetadataCollector::new()));
-            return;
-        }
     }
 
     let format_args_storage = FormatArgsStorage::default();

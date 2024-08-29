@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/match-vec-unreachable.rs:8:9
    |
 LL |         [a, (2, 3), _] => (),
-   |         -------------- matches all the values already
+   |         -------------- matches all the relevant values
 LL |         [(1, 2), (2, 3), b] => (),
-   |         ^^^^^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^ no value can reach this
    |
 note: the lint level is defined here
   --> $DIR/match-vec-unreachable.rs:1:9
@@ -16,17 +16,17 @@ error: unreachable pattern
   --> $DIR/match-vec-unreachable.rs:18:9
    |
 LL |         [ref a, _, _, ..] => { println!("{}", a); }
-   |         ----------------- matches all the values already
+   |         ----------------- matches all the relevant values
 LL |         [_, _, _, _, _] => { }
-   |         ^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^ no value can reach this
 
 error: unreachable pattern
   --> $DIR/match-vec-unreachable.rs:26:9
    |
 LL |         ['a', 'b', 'c', ref _tail @ ..] => {}
-   |         ------------------------------- matches all the values already
+   |         ------------------------------- matches all the relevant values
 LL |         ['a', 'b', 'c'] => {}
-   |         ^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^ no value can reach this
 
 error: aborting due to 3 previous errors
 

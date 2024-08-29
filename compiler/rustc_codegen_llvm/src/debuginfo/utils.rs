@@ -11,7 +11,7 @@ use crate::common::CodegenCx;
 use crate::llvm;
 use crate::llvm::debuginfo::{DIArray, DIBuilder, DIDescriptor, DIScope};
 
-pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
+pub(crate) fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e., if it is *static* in the C-sense). The
     // *reachable* set should provide a good approximation of this, as it
@@ -24,7 +24,7 @@ pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
 }
 
 #[allow(non_snake_case)]
-pub fn create_DIArray<'ll>(
+pub(crate) fn create_DIArray<'ll>(
     builder: &DIBuilder<'ll>,
     arr: &[Option<&'ll DIDescriptor>],
 ) -> &'ll DIArray {
@@ -32,7 +32,7 @@ pub fn create_DIArray<'ll>(
 }
 
 #[inline]
-pub fn debug_context<'a, 'll, 'tcx>(
+pub(crate) fn debug_context<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
 ) -> &'a CodegenUnitDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
@@ -40,11 +40,11 @@ pub fn debug_context<'a, 'll, 'tcx>(
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
+pub(crate) fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
     cx.dbg_cx.as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub(crate) fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
     item_namespace(cx, cx.tcx.parent(def_id))
 }
 

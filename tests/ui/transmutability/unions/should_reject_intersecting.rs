@@ -6,11 +6,11 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>
+        Dst: TransmuteFrom<Src, { Assume::SAFETY }>
         // validity is NOT assumed -----^^^^^^^^^^^^^^^^^^
     {}
 }

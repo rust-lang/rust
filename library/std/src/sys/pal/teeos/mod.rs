@@ -8,7 +8,6 @@
 
 pub use self::rand::hashmap_random_keys;
 
-pub mod alloc;
 #[path = "../unsupported/args.rs"]
 pub mod args;
 #[path = "../unsupported/env.rs"]

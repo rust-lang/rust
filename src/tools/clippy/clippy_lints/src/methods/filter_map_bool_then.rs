@@ -1,7 +1,7 @@
 use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::paths::BOOL_THEN;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_from_proc_macro, is_trait_method, match_def_path, peel_blocks};
 use rustc_errors::Applicability;
@@ -42,9 +42,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             .iter()
             .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
             .count()
-        && let Some(param_snippet) = snippet_opt(cx, param.span)
-        && let Some(filter) = snippet_opt(cx, recv.span)
-        && let Some(map) = snippet_opt(cx, then_body.span)
+        && let Some(param_snippet) = param.span.get_source_text(cx)
+        && let Some(filter) = recv.span.get_source_text(cx)
+        && let Some(map) = then_body.span.get_source_text(cx)
     {
         span_lint_and_sugg(
             cx,

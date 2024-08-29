@@ -7,7 +7,9 @@
 #[cfg(target_feature = "simd128")]
 compile_error!("simd128 target feature should be disabled");
 
-// Calling functions with `#[target_feature]` is not unsound on WASM, see #84988
+// Calling functions with `#[target_feature]` is not unsound on WASM, see #84988.
+// (It can still lead to a runtime error though so we'd be in our right to abort execution,
+// just not to declare it UB.)
 const A: () = simd128_fn();
 
 #[target_feature(enable = "simd128")]

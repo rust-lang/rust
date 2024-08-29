@@ -1,6 +1,3 @@
-//! lint on if branches that could be swapped so no `!` operation is necessary
-//! on the condition
-
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_else_clause;

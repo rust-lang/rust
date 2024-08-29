@@ -11,14 +11,13 @@ use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
-use smallvec::{smallvec, SmallVec};
 use thin_vec::{thin_vec, ThinVec};
 
 macro_rules! path {
     ($span:expr, $($part:ident)::*) => { vec![$(Ident::new(sym::$part, $span),)*] }
 }
 
-pub fn expand_deriving_smart_ptr(
+pub(crate) fn expand_deriving_smart_ptr(
     cx: &ExtCtxt<'_>,
     span: Span,
     _mitem: &MetaItem,
@@ -68,43 +67,63 @@ pub fn expand_deriving_smart_ptr(
     };
 
     // Convert generic parameters (from the struct) into generic args.
-    let mut pointee_param = None;
-    let mut multiple_pointee_diag: SmallVec<[_; 2]> = smallvec![];
-    let self_params = generics
+    let self_params: Vec<_> = generics
+        .params
+        .iter()
+        .map(|p| match p.kind {
+            GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(p.span(), p.ident)),
+            GenericParamKind::Type { .. } => GenericArg::Type(cx.ty_ident(p.span(), p.ident)),
+            GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(p.span(), p.ident)),
+        })
+        .collect();
+    let type_params: Vec<_> = generics
         .params
         .iter()
         .enumerate()
-        .map(|(idx, p)| match p.kind {
-            GenericParamKind::Lifetime => GenericArg::Lifetime(cx.lifetime(p.span(), p.ident)),
-            GenericParamKind::Type { .. } => {
-                if p.attrs().iter().any(|attr| attr.has_name(sym::pointee)) {
-                    if pointee_param.is_some() {
-                        multiple_pointee_diag.push(cx.dcx().struct_span_err(
-                            p.span(),
-                            "`SmartPointer` can only admit one type as pointee",
-                        ));
-                    } else {
-                        pointee_param = Some(idx);
-                    }
-                }
-                GenericArg::Type(cx.ty_ident(p.span(), p.ident))
+        .filter_map(|(idx, p)| {
+            if let GenericParamKind::Type { .. } = p.kind {
+                Some((idx, p.span(), p.attrs().iter().any(|attr| attr.has_name(sym::pointee))))
+            } else {
+                None
             }
-            GenericParamKind::Const { .. } => GenericArg::Const(cx.const_ident(p.span(), p.ident)),
         })
-        .collect::<Vec<_>>();
-    let Some(pointee_param_idx) = pointee_param else {
+        .collect();
+
+    let pointee_param_idx = if type_params.is_empty() {
+        // `#[derive(SmartPointer)]` requires at least one generic type on the target `struct`
         cx.dcx().struct_span_err(
             span,
-            "At least one generic type should be designated as `#[pointee]` in order to derive `SmartPointer` traits",
+            "`SmartPointer` can only be derived on `struct`s that are generic over at least one type",
         ).emit();
         return;
-    };
-    if !multiple_pointee_diag.is_empty() {
-        for diag in multiple_pointee_diag {
-            diag.emit();
+    } else if type_params.len() == 1 {
+        // Regardless of the only type param being designed as `#[pointee]` or not, we can just use it as such
+        type_params[0].0
+    } else {
+        let mut pointees = type_params
+            .iter()
+            .filter_map(|&(idx, span, is_pointee)| is_pointee.then_some((idx, span)))
+            .fuse();
+        match (pointees.next(), pointees.next()) {
+            (Some((idx, _span)), None) => idx,
+            (None, _) => {
+                cx.dcx().struct_span_err(
+                    span,
+                    "exactly one generic type parameter must be marked as #[pointee] to derive SmartPointer traits",
+                ).emit();
+                return;
+            }
+            (Some((_, one)), Some((_, another))) => {
+                cx.dcx()
+                    .struct_span_err(
+                        vec![one, another],
+                        "only one type parameter can be marked as `#[pointee]` when deriving SmartPointer traits",
+                    )
+                    .emit();
+                return;
+            }
         }
-        return;
-    }
+    };
 
     // Create the type of `self`.
     let path = cx.path_all(span, false, vec![name_ident], self_params.clone());

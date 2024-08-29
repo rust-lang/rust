@@ -334,7 +334,7 @@ where
             | ty::Str
             | ty::FnDef(..)
             | ty::Pat(..)
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Array(..)
             | ty::Slice(..)
             | ty::RawPtr(..)

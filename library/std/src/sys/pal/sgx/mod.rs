@@ -9,7 +9,6 @@ use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
-pub mod alloc;
 pub mod args;
 pub mod env;
 pub mod fd;

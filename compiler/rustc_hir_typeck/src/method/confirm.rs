@@ -42,13 +42,13 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct ConfirmResult<'tcx> {
+pub(crate) struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
     pub illegal_sized_bound: Option<Span>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn confirm_method(
+    pub(crate) fn confirm_method(
         &self,
         span: Span,
         self_expr: &'tcx hir::Expr<'tcx>,
@@ -66,7 +66,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 
-    pub fn confirm_method_for_diagnostic(
+    pub(crate) fn confirm_method_for_diagnostic(
         &self,
         span: Span,
         self_expr: &'tcx hir::Expr<'tcx>,

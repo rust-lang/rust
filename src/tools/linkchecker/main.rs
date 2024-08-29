@@ -6,8 +6,10 @@
 //! script is to check all relative links in our documentation to make sure they
 //! actually point to a valid place.
 //!
-//! Currently this doesn't actually do any HTML parsing or anything fancy like
-//! that, it just has a simple "regex" to search for `href` and `id` tags.
+//! Currently uses a combination of HTML parsing to
+//! extract the `href` and `id` attributes,
+//! and regex search on the orignal markdown to handle intra-doc links.
+//!
 //! These values are then translated to file URLs if possible and then the
 //! destination is asserted to exist.
 //!

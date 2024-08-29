@@ -8,6 +8,7 @@ edition = "2021"
 bitflags = "2.4.1"
 derive-where = "1.2.7"
 indexmap = "2.0.0"
+rustc-hash = "1.1.0"
 rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
@@ -31,3 +32,6 @@ nightly = [
     "rustc_index/nightly",
     "rustc_ast_ir/nightly"
 ]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }

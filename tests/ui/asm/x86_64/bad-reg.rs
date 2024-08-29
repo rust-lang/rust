@@ -1,8 +1,6 @@
 //@ only-x86_64
 //@ compile-flags: -C target-feature=+avx2
 
-#![feature(asm_const)]
-
 use std::arch::asm;
 
 fn main() {

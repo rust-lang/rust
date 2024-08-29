@@ -19,7 +19,7 @@ use rustc_span::ErrorGuaranteed;
 use crate::errors;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls(
+pub(crate) fn crate_inherent_impls(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> Result<&'_ CrateInherentImpls, ErrorGuaranteed> {
@@ -32,7 +32,7 @@ pub fn crate_inherent_impls(
     Ok(tcx.arena.alloc(collect.impls_map))
 }
 
-pub fn crate_incoherent_impls(
+pub(crate) fn crate_incoherent_impls(
     tcx: TyCtxt<'_>,
     simp: SimplifiedType,
 ) -> Result<&[DefId], ErrorGuaranteed> {
@@ -43,7 +43,10 @@ pub fn crate_incoherent_impls(
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
-pub fn inherent_impls(tcx: TyCtxt<'_>, ty_def_id: LocalDefId) -> Result<&[DefId], ErrorGuaranteed> {
+pub(crate) fn inherent_impls(
+    tcx: TyCtxt<'_>,
+    ty_def_id: LocalDefId,
+) -> Result<&[DefId], ErrorGuaranteed> {
     let crate_map = tcx.crate_inherent_impls(())?;
     Ok(match crate_map.inherent_impls.get(&ty_def_id) {
         Some(v) => &v[..],
@@ -172,7 +175,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Never
-            | ty::FnPtr(_)
+            | ty::FnPtr(..)
             | ty::Tuple(..) => self.check_primitive_impl(id, self_ty),
             ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))

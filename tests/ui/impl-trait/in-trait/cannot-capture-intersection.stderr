@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Future<Output = i32>` captures lifetime that does not appear in bounds
-  --> $DIR/cannot-capture-intersection.rs:24:9
+  --> $DIR/cannot-capture-intersection.rs:22:9
    |
 LL |     fn foo<'a, 'b>(&'a self, x: &'b i32) -> impl Future<Output = i32> {
    |                                             ------------------------- opaque type defined here

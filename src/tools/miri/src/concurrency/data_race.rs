@@ -617,9 +617,10 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
         // Only metadata on the location itself is used.
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
-        this.buffered_atomic_read(place, atomic, scalar, || {
+        let buffered_scalar = this.buffered_atomic_read(place, atomic, scalar, || {
             this.validate_atomic_load(place, atomic)
-        })
+        })?;
+        Ok(buffered_scalar.ok_or_else(|| err_ub!(InvalidUninitBytes(None)))?)
     }
 
     /// Perform an atomic write operation at the memory location.
@@ -632,14 +633,14 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(dest, AtomicAccessType::Store)?;
 
+        // Read the previous value so we can put it in the store buffer later.
+        // The program didn't actually do a read, so suppress the memory access hooks.
+        // This is also a very special exception where we just ignore an error -- if this read
+        // was UB e.g. because the memory is uninitialized, we don't want to know!
+        let old_val = this.run_for_validation(|| this.read_scalar(dest)).ok();
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
-        // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
-        // side effects from a read the program did not perform. So we have to initialise
-        // the store buffer with the value currently being written
-        // ONCE this is fixed please remove the hack in buffered_atomic_write() in weak_memory.rs
-        // https://github.com/rust-lang/miri/issues/2164
-        this.buffered_atomic_write(val, dest, atomic, val)
+        this.buffered_atomic_write(val, dest, atomic, old_val)
     }
 
     /// Perform an atomic RMW operation on a memory location.
@@ -768,7 +769,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             // in the modification order.
             // Since `old` is only a value and not the store element, we need to separately
             // find it in our store buffer and perform load_impl on it.
-            this.perform_read_on_buffered_latest(place, fail, old.to_scalar())?;
+            this.perform_read_on_buffered_latest(place, fail)?;
         }
 
         // Return the old value.

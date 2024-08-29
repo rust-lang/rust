@@ -319,6 +319,7 @@
 // tidy-alphabetical-start
 #![feature(c_str_module)]
 #![feature(char_internals)]
+#![feature(clone_to_uninit)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(duration_constants)]
@@ -361,7 +362,7 @@
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
-#![feature(new_uninit)]
+#![feature(new_zeroed_alloc)]
 #![feature(slice_concat_trait)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]

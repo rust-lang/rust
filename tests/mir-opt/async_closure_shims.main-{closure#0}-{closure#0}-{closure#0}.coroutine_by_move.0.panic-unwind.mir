@@ -22,7 +22,7 @@ yields ()
 
     bb0: {
         StorageLive(_3);
-        _3 = (_1.0: i32);
+        _3 = copy (_1.0: i32);
         FakeRead(ForLet(None), _3);
         StorageLive(_4);
         _4 = &_3;

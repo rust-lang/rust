@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -11,11 +9,9 @@
 // gdb-command:print constant
 // gdb-check:$2 = 2
 // gdb-command:print a_struct
-// gdbg-check:$3 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$3 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$3 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *struct_ref
-// gdbg-check:$4 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$4 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$4 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *owned
 // gdb-check:$5 = 6
 
@@ -26,11 +22,9 @@
 // gdb-command:print constant
 // gdb-check:$7 = 2
 // gdb-command:print a_struct
-// gdbg-check:$8 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$8 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$8 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *struct_ref
-// gdbg-check:$9 = {a = -3, b = 4.5, c = 5}
-// gdbr-check:$9 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
+// gdb-check:$9 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
 // gdb-command:print *owned
 // gdb-check:$10 = 6
 
@@ -40,38 +34,28 @@
 // lldb-command:run
 
 // lldb-command:v variable
-// lldbg-check:[...] 1
-// lldbr-check:(isize) variable = 1
+// lldb-check:[...] 1
 // lldb-command:v constant
-// lldbg-check:[...] 2
-// lldbr-check:(isize) constant = 2
+// lldb-check:[...] 2
 // lldb-command:v a_struct
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) a_struct = { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *struct_ref
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) *struct_ref = { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *owned
-// lldbg-check:[...] 6
-// lldbr-check:(isize) *owned = 6
+// lldb-check:[...] 6
 
 // lldb-command:continue
 
 // lldb-command:v variable
-// lldbg-check:[...] 2
-// lldbr-check:(isize) variable = 2
+// lldb-check:[...] 2
 // lldb-command:v constant
-// lldbg-check:[...] 2
-// lldbr-check:(isize) constant = 2
+// lldb-check:[...] 2
 // lldb-command:v a_struct
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) a_struct = { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *struct_ref
-// lldbg-check:[...] { a = -3 b = 4.5 c = 5 }
-// lldbr-check:(var_captured_in_stack_closure::Struct) *struct_ref = { a = -3 b = 4.5 c = 5 }
+// lldb-check:[...] { a = -3 b = 4.5 c = 5 }
 // lldb-command:v *owned
-// lldbg-check:[...] 6
-// lldbr-check:(isize) *owned = 6
+// lldb-check:[...] 6
 
 
 // === CDB TESTS ===================================================================================

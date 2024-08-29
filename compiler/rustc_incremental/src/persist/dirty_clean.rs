@@ -133,7 +133,7 @@ struct Assertion {
     loaded_from_disk: Labels,
 }
 
-pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
+pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     if !tcx.sess.opts.unstable_opts.query_dep_graph {
         return;
     }
@@ -174,7 +174,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     })
 }
 
-pub struct DirtyCleanVisitor<'tcx> {
+struct DirtyCleanVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     checked_attrs: FxHashSet<ast::AttrId>,
 }
@@ -429,7 +429,7 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
 /// A visitor that collects all `#[rustc_clean]` attributes from
 /// the HIR. It is used to verify that we really ran checks for all annotated
 /// nodes.
-pub struct FindAllAttrs<'tcx> {
+struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
     found_attrs: Vec<&'tcx Attribute>,
 }

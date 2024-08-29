@@ -77,8 +77,11 @@ impl Thread {
 
     #[inline]
     pub fn sleep(dur: Duration) {
+        let micros = dur.as_micros() + if dur.subsec_nanos() % 1_000 > 0 { 1 } else { 0 };
+        let micros = u64::try_from(micros).unwrap_or(u64::MAX);
+
         unsafe {
-            hermit_abi::usleep(dur.as_micros() as u64);
+            hermit_abi::usleep(micros);
         }
     }
 

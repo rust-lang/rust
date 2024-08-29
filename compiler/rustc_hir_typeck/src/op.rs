@@ -25,7 +25,7 @@ use crate::Expectation;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
-    pub fn check_binop_assign(
+    pub(crate) fn check_binop_assign(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
@@ -84,7 +84,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Checks a potentially overloaded binary operator.
-    pub fn check_binop(
+    pub(crate) fn check_binop(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
@@ -770,7 +770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_user_unop(
+    pub(crate) fn check_user_unop(
         &self,
         ex: &'tcx hir::Expr<'tcx>,
         operand_ty: Ty<'tcx>,

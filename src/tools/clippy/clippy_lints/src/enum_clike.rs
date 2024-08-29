@@ -1,6 +1,3 @@
-//! lint on C-like enums that are `repr(isize/usize)` and have values that
-//! don't fit into an `i32`
-
 use clippy_utils::consts::{mir_to_const, Constant};
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Item, ItemKind};

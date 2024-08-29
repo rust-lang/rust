@@ -13,5 +13,13 @@ const RAW_EQ_PTR: bool = unsafe {
 //~| unable to turn pointer into integer
 };
 
+const RAW_EQ_NOT_ALIGNED: bool = unsafe {
+    let arr = [0u8; 4];
+    let aref = &*arr.as_ptr().cast::<i32>();
+    std::intrinsics::raw_eq(aref, aref)
+//~^ ERROR evaluation of constant value failed
+//~| alignment
+};
+
 pub fn main() {
 }

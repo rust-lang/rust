@@ -130,7 +130,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             if first_defined_span.is_none() {
                 orig_crate_name = self.tcx.crate_name(original_def_id.krate);
                 if let Some(ExternCrate { dependency_of: inner_dependency_of, .. }) =
-                    self.tcx.extern_crate(original_def_id)
+                    self.tcx.extern_crate(original_def_id.krate)
                 {
                     orig_dependency_of = self.tcx.crate_name(*inner_dependency_of);
                 }
@@ -139,7 +139,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             let duplicate = if item_span.is_some() {
                 Duplicate::Plain
             } else {
-                match self.tcx.extern_crate(item_def_id) {
+                match self.tcx.extern_crate(item_def_id.krate) {
                     Some(ExternCrate { dependency_of: inner_dependency_of, .. }) => {
                         dependency_of = self.tcx.crate_name(*inner_dependency_of);
                         Duplicate::CrateDepends

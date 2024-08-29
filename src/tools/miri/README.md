@@ -414,10 +414,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
   values, instead it appends its values to the list. Listing an id multiple times has no effect.
-* `-Zmiri-track-call-id=<id1>,<id2>,...` shows a backtrace when the given call ids are
-  assigned to a stack frame.  This helps in debugging UB related to Stacked
-  Borrows "protectors". Specifying this argument multiple times does not overwrite the previous
-  values, instead it appends its values to the list. Listing an id multiple times has no effect.
 * `-Zmiri-track-pointer-tag=<tag1>,<tag2>,...` shows a backtrace when a given pointer tag
   is created and when (if ever) it is popped from a borrow stack (which is where the tag becomes invalid
   and any future use of it will error).  This helps you in finding out why UB is

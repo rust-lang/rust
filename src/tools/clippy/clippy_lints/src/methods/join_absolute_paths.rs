@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::expr_or_init;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, recv: &'tcx Expr<'tcx>, join_a
             join_arg.span,
             "argument to `Path::join` starts with a path separator",
             |diag| {
-                let arg_str = snippet_opt(cx, spanned.span).unwrap_or_else(|| "..".to_string());
+                let arg_str = snippet(cx, spanned.span, "..");
 
                 let no_separator = if sym_str.starts_with('/') {
                     arg_str.replacen('/', "", 1)

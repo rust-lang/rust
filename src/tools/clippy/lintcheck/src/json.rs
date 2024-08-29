@@ -12,21 +12,21 @@ const TRUNCATION_TOTAL_TARGET: usize = 1000;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct LintJson {
-    lint: String,
-    krate: String,
-    file_name: String,
-    byte_pos: (u32, u32),
-    file_link: String,
+    /// The lint name e.g. `clippy::bytes_nth`
+    name: String,
+    /// The filename and line number e.g. `anyhow-1.0.86/src/error.rs:42`
+    file_line: String,
+    file_url: String,
     rendered: String,
 }
 
 impl LintJson {
     fn key(&self) -> impl Ord + '_ {
-        (self.lint.as_str(), self.file_name.as_str(), self.byte_pos)
+        (self.name.as_str(), self.file_line.as_str())
     }
 
     fn info_text(&self, action: &str) -> String {
-        format!("{action} `{}` in `{}` at {}", self.lint, self.krate, self.file_link)
+        format!("{action} `{}` at [`{}`]({})", self.name, self.file_line, self.file_url)
     }
 }
 
@@ -36,13 +36,16 @@ pub(crate) fn output(clippy_warnings: Vec<ClippyWarning>) -> String {
         .into_iter()
         .map(|warning| {
             let span = warning.span();
+            let file_name = span
+                .file_name
+                .strip_prefix("target/lintcheck/sources/")
+                .unwrap_or(&span.file_name);
+            let file_line = format!("{file_name}:{}", span.line_start);
             LintJson {
-                file_name: span.file_name.clone(),
-                byte_pos: (span.byte_start, span.byte_end),
-                krate: warning.krate,
-                file_link: warning.url,
-                lint: warning.lint,
-                rendered: warning.diag.rendered.unwrap(),
+                name: warning.name,
+                file_line,
+                file_url: warning.url,
+                rendered: warning.diag.rendered.unwrap().trim().to_string(),
             }
         })
         .collect();
@@ -63,7 +66,7 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path, truncate: bool) {
     let mut lint_warnings = vec![];
 
     for (name, changes) in &itertools::merge_join_by(old_warnings, new_warnings, |old, new| old.key().cmp(&new.key()))
-        .chunk_by(|change| change.as_ref().into_left().lint.to_string())
+        .chunk_by(|change| change.as_ref().into_left().name.clone())
     {
         let mut added = Vec::new();
         let mut removed = Vec::new();
@@ -162,7 +165,7 @@ fn print_warnings(title: &str, warnings: &[LintJson], truncate_after: usize) {
         return;
     }
 
-    print_h3(&warnings[0].lint, title);
+    print_h3(&warnings[0].name, title);
     println!();
 
     let warnings = truncate(warnings, truncate_after);
@@ -171,7 +174,7 @@ fn print_warnings(title: &str, warnings: &[LintJson], truncate_after: usize) {
         println!("{}", warning.info_text(title));
         println!();
         println!("```");
-        println!("{}", warning.rendered.trim_end());
+        println!("{}", warning.rendered);
         println!("```");
         println!();
     }
@@ -182,7 +185,7 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)], truncate_after: usize) {
         return;
     }
 
-    print_h3(&changed[0].0.lint, "Changed");
+    print_h3(&changed[0].0.name, "Changed");
     println!();
 
     let changed = truncate(changed, truncate_after);
@@ -191,7 +194,7 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)], truncate_after: usize) {
         println!("{}", new.info_text("Changed"));
         println!();
         println!("```diff");
-        for change in diff::lines(old.rendered.trim_end(), new.rendered.trim_end()) {
+        for change in diff::lines(&old.rendered, &new.rendered) {
             use diff::Result::{Both, Left, Right};
 
             match change {

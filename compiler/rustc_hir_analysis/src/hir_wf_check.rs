@@ -11,7 +11,7 @@ use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 use crate::collect::ItemCtxt;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
 }
 

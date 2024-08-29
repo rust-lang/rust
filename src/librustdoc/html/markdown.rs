@@ -40,7 +40,7 @@ use pulldown_cmark::{
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagMessage};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;
@@ -297,7 +297,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
+            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
@@ -737,7 +738,7 @@ impl MdRelLine {
     }
 }
 
-pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
+pub(crate) fn find_testable_code<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -747,7 +748,7 @@ pub(crate) fn find_testable_code<T: doctest::DoctestVisitor>(
     find_codes(doc, tests, error_codes, enable_per_target_ignores, extra_info, false)
 }
 
-pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
+pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -817,27 +818,25 @@ pub(crate) fn find_codes<T: doctest::DoctestVisitor>(
 }
 
 pub(crate) struct ExtraInfo<'tcx> {
-    def_id: DefId,
+    def_id: LocalDefId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> ExtraInfo<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: DefId, sp: Span) -> ExtraInfo<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, sp: Span) -> ExtraInfo<'tcx> {
         ExtraInfo { def_id, sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
-        if let Some(def_id) = self.def_id.as_local() {
-            self.tcx.node_span_lint(
-                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.local_def_id_to_hir_id(def_id),
-                self.sp,
-                |lint| {
-                    lint.primary_message(msg);
-                },
-            );
-        }
+        self.tcx.node_span_lint(
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+            self.tcx.local_def_id_to_hir_id(self.def_id),
+            self.sp,
+            |lint| {
+                lint.primary_message(msg);
+            },
+        );
     }
 
     fn error_invalid_codeblock_attr_with_help(
@@ -845,17 +844,15 @@ impl<'tcx> ExtraInfo<'tcx> {
         msg: impl Into<DiagMessage>,
         f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        if let Some(def_id) = self.def_id.as_local() {
-            self.tcx.node_span_lint(
-                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.local_def_id_to_hir_id(def_id),
-                self.sp,
-                |lint| {
-                    lint.primary_message(msg);
-                    f(lint);
-                },
-            );
-        }
+        self.tcx.node_span_lint(
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+            self.tcx.local_def_id_to_hir_id(self.def_id),
+            self.sp,
+            |lint| {
+                lint.primary_message(msg);
+                f(lint);
+            },
+        );
     }
 }
 
@@ -868,6 +865,7 @@ pub(crate) struct LangString {
     pub(crate) rust: bool,
     pub(crate) test_harness: bool,
     pub(crate) compile_fail: bool,
+    pub(crate) standalone: bool,
     pub(crate) error_codes: Vec<String>,
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
@@ -1190,6 +1188,7 @@ impl Default for LangString {
             rust: true,
             test_harness: false,
             compile_fail: false,
+            standalone: false,
             error_codes: Vec::new(),
             edition: None,
             added_classes: Vec::new(),
@@ -1258,6 +1257,10 @@ impl LangString {
                         data.compile_fail = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         data.no_run = true;
+                    }
+                    LangStringToken::LangToken("standalone") => {
+                        data.standalone = true;
+                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
                     LangStringToken::LangToken(x) if x.starts_with("edition") => {
                         data.edition = x[7..].parse::<Edition>().ok();

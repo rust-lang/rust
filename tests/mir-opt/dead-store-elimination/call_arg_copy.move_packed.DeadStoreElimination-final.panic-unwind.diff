@@ -5,7 +5,7 @@
       let mut _0: ();
   
       bb0: {
-          _0 = use_both(const 0_i32, (_1.1: i32)) -> [return: bb1, unwind continue];
+          _0 = use_both(const 0_i32, copy (_1.1: i32)) -> [return: bb1, unwind continue];
       }
   
       bb1: {

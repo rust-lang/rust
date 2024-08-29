@@ -55,7 +55,7 @@ use {rustc_ast as ast, rustc_graphviz as dot, rustc_hir as hir};
 use crate::errors;
 
 #[allow(missing_docs)]
-pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
+pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
             tcx.dep_graph.with_query(dump_graph);
@@ -261,7 +261,7 @@ fn dump_graph(query: &DepGraphQuery) {
 }
 
 #[allow(missing_docs)]
-pub struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
+struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
 
 impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph {
     type Node = DepKind;

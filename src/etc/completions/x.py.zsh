@@ -14,7 +14,7 @@ _x.py() {
     fi
 
     local context curcontext="$curcontext" state line
-    _arguments "${_arguments_options[@]}" \
+    _arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -65,7 +65,7 @@ _x.py() {
         curcontext="${curcontext%:*:*}:x.py-command-$line[3]:"
         case $line[3] in
             (build)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -108,7 +108,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (check)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -152,7 +152,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (clippy)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '*-A+[clippy lints to allow]:LINT: ' \
 '*-D+[clippy lints to deny]:LINT: ' \
 '*-W+[clippy lints to warn on]:LINT: ' \
@@ -202,7 +202,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (fix)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -245,7 +245,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (fmt)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -290,7 +290,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (doc)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -335,7 +335,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (test)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS: ' \
 '*--compiletest-rustc-args=[extra options to pass the compiler when running compiletest tests]:ARGS: ' \
 '--extra-checks=[comma-separated list of other files types to check (accepts py, py\:lint, py\:fmt, shell)]:EXTRA_CHECKS: ' \
@@ -391,7 +391,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (miri)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '*--test-args=[extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)]:ARGS: ' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
@@ -438,7 +438,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (bench)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '*--test-args=[]:TEST_ARGS: ' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
@@ -482,7 +482,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (clean)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--stage=[Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used]:N: ' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
@@ -526,7 +526,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (dist)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -569,7 +569,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (install)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -612,7 +612,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (run)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '*--args=[arguments for the tool]:ARGS: ' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
@@ -656,7 +656,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (setup)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -700,7 +700,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (suggest)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \
@@ -744,7 +744,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (vendor)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '*--sync=[Additional \`Cargo.toml\` to sync and vendor]:SYNC:_files' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
@@ -789,7 +789,7 @@ _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
 (perf)
-_arguments "${_arguments_options[@]}" \
+_arguments "${_arguments_options[@]}" : \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`config.toml\`]:DIR:_files -/' \
 '--build=[build target of the stage0 compiler]:BUILD:( )' \

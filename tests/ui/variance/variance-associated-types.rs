@@ -10,12 +10,12 @@ trait Trait<'a> {
 }
 
 #[rustc_variance]
-struct Foo<'a, T : Trait<'a>> { //~ ERROR [+, +]
+struct Foo<'a, T : Trait<'a>> { //~ ERROR ['a: +, T: +]
     field: (T, &'a ())
 }
 
 #[rustc_variance]
-struct Bar<'a, T : Trait<'a>> { //~ ERROR [o, o]
+struct Bar<'a, T : Trait<'a>> { //~ ERROR ['a: o, T: o]
     field: <T as Trait<'a>>::Type
 }
 

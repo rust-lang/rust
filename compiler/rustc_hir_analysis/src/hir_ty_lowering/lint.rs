@@ -15,11 +15,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// *Bare* trait object types are ones that aren't preceded by the keyword `dyn`.
     /// In edition 2021 and onward we emit a hard error for them.
-    pub(super) fn prohibit_or_lint_bare_trait_object_ty(
-        &self,
-        self_ty: &hir::Ty<'_>,
-        in_path: bool,
-    ) {
+    pub(super) fn prohibit_or_lint_bare_trait_object_ty(&self, self_ty: &hir::Ty<'_>) {
         let tcx = self.tcx();
 
         let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
@@ -28,6 +24,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return;
         };
 
+        let in_path = match tcx.parent_hir_node(self_ty.hir_id) {
+            hir::Node::Ty(hir::Ty {
+                kind: hir::TyKind::Path(hir::QPath::TypeRelative(qself, _)),
+                ..
+            })
+            | hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
+                ..
+            })
+            | hir::Node::Pat(hir::Pat {
+                kind: hir::PatKind::Path(hir::QPath::TypeRelative(qself, _)),
+                ..
+            }) if qself.hir_id == self_ty.hir_id => true,
+            _ => false,
+        };
         let needs_bracket = in_path
             && !tcx
                 .sess
