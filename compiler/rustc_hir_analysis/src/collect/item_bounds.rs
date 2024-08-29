@@ -8,6 +8,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 use rustc_type_ir::Upcast;
+use tracing::{debug, instrument};
 
 use super::ItemCtxt;
 use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};

@@ -42,6 +42,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;

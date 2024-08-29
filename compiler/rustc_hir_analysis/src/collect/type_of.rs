@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableEx
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::debug;
 
 use super::{bad_placeholder, ItemCtxt};
 use crate::errors::TypeofReservedKeywordUsed;
