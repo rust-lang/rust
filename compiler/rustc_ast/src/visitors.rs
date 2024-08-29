@@ -121,7 +121,7 @@ macro_rules! mutability_helpers {
             ($i: item) => {
                 #[derive(Copy, Clone)]
                 $i
-            }
+            };
         }
     };
     (mut) => {
@@ -158,11 +158,12 @@ macro_rules! mutability_helpers {
         macro_rules! derive_copy_clone {
             ($i: item) => {
                 $i
-            }
+            };
         }
     };
 }
 
+#[rustfmt::skip] // Rustfmt indents this code indefinitely
 macro_rules! lifetime_helpers {
     () => {
         macro_rules! fn_kind {
@@ -1820,10 +1821,10 @@ pub mod visit {
 
     pub use rustc_ast_ir::visit::VisitorResult;
     pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
+    use rustc_data_structures::stack::ensure_sufficient_stack;
     use rustc_span::Span;
     use rustc_span::source_map::Spanned;
     use rustc_span::symbol::Ident;
-    use rustc_data_structures::stack::ensure_sufficient_stack;
 
     use crate::ast::*;
     use crate::ptr::P;
@@ -1955,7 +1956,7 @@ pub mod mut_visit {
     use crate::ptr::P;
     use crate::token::{self, Token};
     use crate::tokenstream::*;
-    use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt, FnCtxt};
+    use crate::visit::{AssocCtxt, BoundKind, FnCtxt, LifetimeCtxt};
 
     pub trait ExpectOne<A: Array> {
         fn expect_one(self, err: &'static str) -> A::Item;
@@ -2247,7 +2248,7 @@ pub mod mut_visit {
     pub fn walk_flat_map_assoc_item(
         vis: &mut impl MutVisitor,
         mut item: P<Item<AssocItemKind>>,
-        ctxt: AssocCtxt
+        ctxt: AssocCtxt,
     ) -> SmallVec<[P<Item<AssocItemKind>>; 1]> {
         vis.visit_assoc_item(item.deref_mut(), ctxt);
         smallvec![item]
