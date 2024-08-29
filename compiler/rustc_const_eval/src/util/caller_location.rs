@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use rustc_hir::LangItem;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutOf;
@@ -57,6 +59,11 @@ pub(crate) fn const_caller_location_provider(
     col: u32,
 ) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
+    let mut cache = tcx.caller_location_cache.lock();
+    let entry = match cache.entry((file, line, col)) {
+        Entry::Occupied(oe) => return *oe.get(),
+        Entry::Vacant(ve) => ve,
+    };
     let mut ecx = mk_eval_cx_to_read_const_val(
         tcx.tcx,
         tcx.span,
@@ -68,5 +75,7 @@ pub(crate) fn const_caller_location_provider(
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }
-    mir::ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx))
+    let val = mir::ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr(), &tcx));
+    entry.insert(val);
+    val
 }
