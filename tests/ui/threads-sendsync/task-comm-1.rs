@@ -4,11 +4,15 @@
 
 use std::thread;
 
-pub fn main() { test00(); }
+pub fn main() {
+    test00();
+}
 
-fn start() { println!("Started / Finished task."); }
+fn start() {
+    println!("Started / Finished task.");
+}
 
 fn test00() {
-    thread::spawn(move|| start() ).join();
+    thread::spawn(move || start()).join();
     println!("Completing.");
 }
