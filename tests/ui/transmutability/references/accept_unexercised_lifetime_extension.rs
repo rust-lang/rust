@@ -4,11 +4,11 @@
 
 #![feature(transmutability, core_intrinsics)]
 
-use std::mem::{Assume, BikeshedIntrinsicFrom};
+use std::mem::{Assume, TransmuteFrom};
 
 unsafe fn transmute<Src, Dst>(src: Src) -> Dst
 where
-    Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>,
+    Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
 {
     core::intrinsics::transmute_unchecked(src)
 }

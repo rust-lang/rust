@@ -6,10 +6,10 @@ use crate::html::render::write_shared::*;
 fn hack_external_crate_names() {
     let path = tempfile::TempDir::new().unwrap();
     let path = path.path();
-    let crates = hack_get_external_crate_names(&path).unwrap();
+    let crates = hack_get_external_crate_names(&path, "").unwrap();
     assert!(crates.is_empty());
     fs::write(path.join("crates.js"), r#"window.ALL_CRATES = ["a","b","c"];"#).unwrap();
-    let crates = hack_get_external_crate_names(&path).unwrap();
+    let crates = hack_get_external_crate_names(&path, "").unwrap();
     assert_eq!(crates, ["a".to_string(), "b".to_string(), "c".to_string()]);
 }
 
@@ -60,7 +60,7 @@ fn all_crates_template() {
 
 #[test]
 fn all_crates_parts() {
-    let parts = AllCratesPart::get(OrderedJson::serialize("crate").unwrap()).unwrap();
+    let parts = AllCratesPart::get(OrderedJson::serialize("crate").unwrap(), "").unwrap();
     assert_eq!(&parts.parts[0].0, Path::new("crates.js"));
     assert_eq!(&parts.parts[0].1.to_string(), r#""crate""#);
 }

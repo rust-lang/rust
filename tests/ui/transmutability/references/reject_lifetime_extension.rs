@@ -4,11 +4,11 @@
 
 #![feature(transmutability, core_intrinsics)]
 
-use std::mem::{Assume, BikeshedIntrinsicFrom};
+use std::mem::{Assume, TransmuteFrom};
 
 unsafe fn transmute<Src, Dst>(src: Src) -> Dst
 where
-    Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY }>,
+    Dst: TransmuteFrom<Src, { Assume::SAFETY }>,
 {
     core::intrinsics::transmute_unchecked(src)
 }
@@ -82,7 +82,7 @@ mod hrtb {
 
     unsafe fn extend_hrtb<'a>(src: &'a u8) -> &'static u8
     where
-        for<'b> &'b u8: BikeshedIntrinsicFrom<&'a u8>,
+        for<'b> &'b u8: TransmuteFrom<&'a u8>,
     {
         core::intrinsics::transmute_unchecked(src)
     }

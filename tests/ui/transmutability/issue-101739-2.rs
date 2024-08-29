@@ -3,7 +3,7 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_transmutable<
         Src,
@@ -14,7 +14,7 @@ mod assert {
         const ASSUME_VISIBILITY: bool,
     >()
     where
-        Dst: BikeshedIntrinsicFrom<
+        Dst: TransmuteFrom<
                 //~^ ERROR trait takes at most 2 generic arguments but 5 generic arguments were supplied
                 Src,
                 ASSUME_ALIGNMENT, //~ ERROR: mismatched types

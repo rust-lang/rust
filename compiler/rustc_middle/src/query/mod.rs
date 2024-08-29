@@ -47,7 +47,7 @@ use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
@@ -312,17 +312,6 @@ rustc_queries! {
     /// predicates (where-clauses) that must be proven true in order
     /// to reference it. This is almost always the "predicates query"
     /// that you want.
-    ///
-    /// `predicates_of` builds on `predicates_defined_on` -- in fact,
-    /// it is almost always the same as that query, except for the
-    /// case of traits. For traits, `predicates_of` contains
-    /// an additional `Self: Trait<...>` predicate that users don't
-    /// actually write. This reflects the fact that to invoke the
-    /// trait (e.g., via `Default::default`) you must supply types
-    /// that actually implement the trait. (However, this extra
-    /// predicate gets in the way of some checks, which are intended
-    /// to operate over only the actual where-clauses written by the
-    /// user.)
     query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
         desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -617,14 +606,6 @@ rustc_queries! {
     query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
         arena_cache
         desc { "getting wasm import module map" }
-    }
-
-    /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
-    /// predicates (where-clauses) directly defined on it. This is
-    /// equal to the `explicit_predicates_of` predicates plus the
-    /// `inferred_outlives_of` predicates.
-    query predicates_defined_on(key: DefId) -> ty::GenericPredicates<'tcx> {
-        desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
     }
 
     /// Returns everything that looks like a predicate written explicitly
@@ -1262,6 +1243,11 @@ rustc_queries! {
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
         feedable
+    }
+
+    query struct_target_features(def_id: DefId) -> &'tcx [TargetFeature] {
+        separate_provide_extern
+        desc { |tcx| "computing target features for struct `{}`", tcx.def_path_str(def_id) }
     }
 
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {

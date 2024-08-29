@@ -517,6 +517,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::no_mangle,
             sym::naked,
             sym::instruction_set,
+            sym::repr,
             // code generation
             sym::cold,
             sym::target_feature,
@@ -746,12 +747,35 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::Field | Target::Arm | Target::MacroDef => {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "target_feature");
             }
+            Target::Struct if self.tcx.features().struct_target_features => {
+                let ty = self.tcx.hir_node(hir_id).expect_item();
+                match ty.kind {
+                    ItemKind::Struct(data, _) => {
+                        if data.fields().len() != 0 {
+                            self.dcx().emit_err(errors::AttrShouldBeAppliedToFnOrUnitStruct {
+                                attr_span: attr.span,
+                                defn_span: span,
+                            });
+                        }
+                    }
+                    _ => {
+                        panic!("Target::Struct for a non-struct");
+                    }
+                }
+            }
             _ => {
-                self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                    on_crate: hir_id == CRATE_HIR_ID,
-                });
+                if self.tcx.features().struct_target_features {
+                    self.dcx().emit_err(errors::AttrShouldBeAppliedToFnOrUnitStruct {
+                        attr_span: attr.span,
+                        defn_span: span,
+                    });
+                } else {
+                    self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
+                        attr_span: attr.span,
+                        defn_span: span,
+                        on_crate: hir_id == CRATE_HIR_ID,
+                    });
+                }
             }
         }
     }

@@ -1852,6 +1852,7 @@ symbols! {
         stringify,
         struct_field_attributes,
         struct_inherit,
+        struct_target_features,
         struct_variant,
         structural_match,
         structural_peq,
