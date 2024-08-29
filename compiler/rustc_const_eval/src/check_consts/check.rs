@@ -355,7 +355,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         {
             self.error_emitted = Some(guar);
         }
-        self.check_op_spanned(ops::StaticAccess, span)
     }
 
     fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {

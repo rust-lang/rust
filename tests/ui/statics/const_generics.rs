@@ -10,7 +10,6 @@
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
 
-#![feature(const_refs_to_static)]
 #![feature(adt_const_params, unsized_const_params)]
 #![allow(incomplete_features)]
 
