@@ -10,11 +10,11 @@ use rustc_errors::{registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
     CollapseMacroDebuginfo, CoverageLevel, CoverageOptions, DebugInfo, DumpMonoStatsFormat,
-    ErrorOutputType, ExternEntry, ExternLocation, Externs, FunctionReturn, InliningThreshold,
-    Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail,
-    LtoCli, NextSolverConfig, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey,
-    PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
-    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    ErrorOutputType, ExternEntry, ExternLocation, Externs, FmtDebug, FunctionReturn,
+    InliningThreshold, Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained,
+    LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, Options, OutFileName,
+    OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
+    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -780,6 +780,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
     tracked!(flatten_format_args, false);
+    tracked!(fmt_debug, FmtDebug::Shallow);
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_return, FunctionReturn::ThunkExtern);
@@ -794,6 +795,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_directives, false);
     tracked!(link_only, true);
+    tracked!(lint_llvm_ir, true);
     tracked!(llvm_module_flag, vec![("bar".to_string(), 123, "max".to_string())]);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });

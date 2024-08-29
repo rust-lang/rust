@@ -341,7 +341,7 @@ fn clean_region_outlives_constraints<'tcx>(
                 .map(|&region| {
                     let lifetime = early_bound_region_name(region)
                         .inspect(|name| assert!(region_params.contains(name)))
-                        .map(|name| Lifetime(name))
+                        .map(Lifetime)
                         .unwrap_or(Lifetime::statik());
                     clean::GenericBound::Outlives(lifetime)
                 })

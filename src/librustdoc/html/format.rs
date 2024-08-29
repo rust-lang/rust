@@ -633,7 +633,7 @@ fn generate_item_def_id_path(
     let module_fqp = to_module_fqp(shortty, &fqp);
     let mut is_remote = false;
 
-    let url_parts = url_parts(cx.cache(), def_id, &module_fqp, &cx.current, &mut is_remote)?;
+    let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
     let (url_parts, shortty, fqp) = make_href(root_path, shortty, url_parts, &fqp, is_remote)?;
     if def_id == original_def_id {
         return Ok((url_parts, shortty, fqp));
@@ -811,7 +811,7 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
         // primitives are documented in a crate, but not actually part of it
         &fqp[fqp.len() - 1..]
     } else {
-        &fqp
+        fqp
     };
     if let &Some(UrlFragment::Item(id)) = fragment {
         write!(buf, "{} ", cx.tcx().def_descr(id));
@@ -820,7 +820,7 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
         }
         write!(buf, "{}", cx.tcx().item_name(id));
     } else if !fqp.is_empty() {
-        let mut fqp_it = fqp.into_iter();
+        let mut fqp_it = fqp.iter();
         write!(buf, "{shortty} {}", fqp_it.next().unwrap());
         for component in fqp_it {
             write!(buf, "::{component}");
@@ -830,13 +830,13 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
 }
 
 /// Used to render a [`clean::Path`].
-fn resolved_path<'cx>(
+fn resolved_path(
     w: &mut fmt::Formatter<'_>,
     did: DefId,
     path: &clean::Path,
     print_all: bool,
     use_absolute: bool,
-    cx: &'cx Context<'_>,
+    cx: &Context<'_>,
 ) -> fmt::Result {
     let last = path.segments.last().unwrap();
 
@@ -996,11 +996,11 @@ pub(crate) fn anchor<'a, 'cx: 'a>(
     })
 }
 
-fn fmt_type<'cx>(
+fn fmt_type(
     t: &clean::Type,
     f: &mut fmt::Formatter<'_>,
     use_absolute: bool,
-    cx: &'cx Context<'_>,
+    cx: &Context<'_>,
 ) -> fmt::Result {
     trace!("fmt_type(t = {t:?})");
 
@@ -1493,9 +1493,8 @@ impl clean::FnDecl {
                     }
                     clean::BorrowedRef { lifetime, mutability, type_: box clean::SelfTy } => {
                         write!(f, "{amp}")?;
-                        match lifetime {
-                            Some(lt) => write!(f, "{lt} ", lt = lt.print())?,
-                            None => {}
+                        if let Some(lt) = lifetime {
+                            write!(f, "{lt} ", lt = lt.print())?;
                         }
                         write!(f, "{mutability}self", mutability = mutability.print_with_space())?;
                     }

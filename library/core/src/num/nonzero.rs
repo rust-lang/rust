@@ -7,7 +7,7 @@ use crate::marker::{Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::str::FromStr;
-use crate::{fmt, hint, intrinsics, ptr, ub_checks};
+use crate::{fmt, intrinsics, ptr, ub_checks};
 
 /// A marker trait for primitive types which can be zero.
 ///
@@ -1545,31 +1545,14 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            // The algorithm is based on the one presented in
-            // <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
-            // which cites as source the following C code:
-            // <https://web.archive.org/web/20120306040058/http://medialab.freaknet.org/martin/src/sqrt/sqrt.c>.
+            let result = self.get().isqrt();
 
-            let mut op = self.get();
-            let mut res = 0;
-            let mut one = 1 << (self.ilog2() & !1);
-
-            while one != 0 {
-                if op >= res + one {
-                    op -= res + one;
-                    res = (res >> 1) + one;
-                } else {
-                    res >>= 1;
-                }
-                one >>= 2;
-            }
-
-            // SAFETY: The result fits in an integer with half as many bits.
-            // Inform the optimizer about it.
-            unsafe { hint::assert_unchecked(res < 1 << (Self::BITS / 2)) };
-
-            // SAFETY: The square root of an integer >= 1 is always >= 1.
-            unsafe { Self::new_unchecked(res) }
+            // SAFETY: Integer square root is a monotonically nondecreasing
+            // function, which means that increasing the input will never cause
+            // the output to decrease. Thus, since the input for nonzero
+            // unsigned integers has a lower bound of 1, the lower bound of the
+            // results will be sqrt(1), which is 1, so a result can't be zero.
+            unsafe { Self::new_unchecked(result) }
         }
     };
 

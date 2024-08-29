@@ -510,7 +510,7 @@ impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
 
 // NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Effect {
+enum Effect {
     /// The "before" effect (e.g., `apply_before_statement_effect`) for a statement (or
     /// terminator).
     Before,
@@ -520,7 +520,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const fn at_index(self, statement_index: usize) -> EffectIndex {
+    const fn at_index(self, statement_index: usize) -> EffectIndex {
         EffectIndex { effect: self, statement_index }
     }
 }

@@ -8,7 +8,7 @@ use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_recursion_limit)]
-pub struct RecursionLimit {
+pub(crate) struct RecursionLimit {
     #[primary_span]
     pub span: Span,
     pub shrunk: String,
@@ -22,13 +22,13 @@ pub struct RecursionLimit {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_no_optimized_mir)]
-pub struct NoOptimizedMir {
+pub(crate) struct NoOptimizedMir {
     #[note]
     pub span: Span,
     pub crate_name: Symbol,
 }
 
-pub struct UnusedGenericParamsHint {
+pub(crate) struct UnusedGenericParamsHint {
     pub span: Span,
     pub param_spans: Vec<Span>,
     pub param_names: Vec<String>,
@@ -53,7 +53,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for UnusedGenericParamsHint {
 #[derive(LintDiagnostic)]
 #[diag(monomorphize_large_assignments)]
 #[note]
-pub struct LargeAssignmentsLint {
+pub(crate) struct LargeAssignmentsLint {
     #[label]
     pub span: Span,
     pub size: u64,
@@ -62,7 +62,7 @@ pub struct LargeAssignmentsLint {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_symbol_already_defined)]
-pub struct SymbolAlreadyDefined {
+pub(crate) struct SymbolAlreadyDefined {
     #[primary_span]
     pub span: Option<Span>,
     pub symbol: String,
@@ -70,13 +70,13 @@ pub struct SymbolAlreadyDefined {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_couldnt_dump_mono_stats)]
-pub struct CouldntDumpMonoStats {
+pub(crate) struct CouldntDumpMonoStats {
     pub error: String,
 }
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_encountered_error_while_instantiating)]
-pub struct EncounteredErrorWhileInstantiating {
+pub(crate) struct EncounteredErrorWhileInstantiating {
     #[primary_span]
     pub span: Span,
     pub formatted_item: String,
@@ -85,10 +85,10 @@ pub struct EncounteredErrorWhileInstantiating {
 #[derive(Diagnostic)]
 #[diag(monomorphize_start_not_found)]
 #[help]
-pub struct StartNotFound;
+pub(crate) struct StartNotFound;
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_unknown_cgu_collection_mode)]
-pub struct UnknownCguCollectionMode<'a> {
+pub(crate) struct UnknownCguCollectionMode<'a> {
     pub mode: &'a str,
 }

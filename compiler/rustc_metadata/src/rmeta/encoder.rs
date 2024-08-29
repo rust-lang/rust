@@ -2309,7 +2309,7 @@ fn encode_root_position(mut file: &File, pos: usize) -> Result<(), std::io::Erro
     Ok(())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         doc_link_resolutions: |tcx, def_id| {
             tcx.resolutions(())

@@ -272,7 +272,7 @@ pub(crate) fn run_tests(
         let mut tests_runner = runner::DocTestRunner::new();
 
         let rustdoc_test_options = IndividualTestOptions::new(
-            &rustdoc_options,
+            rustdoc_options,
             &Some(format!("merged_doctest_{edition}")),
             PathBuf::from(format!("doctest_{edition}.rs")),
         );
@@ -307,7 +307,7 @@ pub(crate) fn run_tests(
                 doctest,
                 scraped_test,
                 opts.clone(),
-                Arc::clone(&rustdoc_options),
+                Arc::clone(rustdoc_options),
                 unused_extern_reports.clone(),
             ));
         }
@@ -316,7 +316,7 @@ pub(crate) fn run_tests(
     // We need to call `test_main` even if there is no doctest to run to get the output
     // `running 0 tests...`.
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
-        standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+        standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
         test::test_main(&test_args, standalone_tests, None);
     }
     if nb_errors != 0 {
@@ -421,7 +421,7 @@ fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
 }
 
 fn wrapped_rustc_command(rustc_wrappers: &[PathBuf], rustc_binary: &Path) -> Command {
-    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary].into_iter());
+    let mut args = rustc_wrappers.iter().map(PathBuf::as_path).chain([rustc_binary]);
 
     let exe = args.next().expect("unable to create rustc command");
     let mut command = Command::new(exe);
@@ -452,7 +452,7 @@ pub(crate) struct RunnableDocTest {
 
 impl RunnableDocTest {
     fn path_for_merged_doctest(&self) -> PathBuf {
-        self.test_opts.outdir.path().join(&format!("doctest_{}.rs", self.edition))
+        self.test_opts.outdir.path().join(format!("doctest_{}.rs", self.edition))
     }
 }
 
@@ -477,13 +477,13 @@ fn run_test(
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
 
-    compiler.arg(&format!("@{}", doctest.global_opts.args_file.display()));
+    compiler.arg(format!("@{}", doctest.global_opts.args_file.display()));
 
     if let Some(sysroot) = &rustdoc_options.maybe_sysroot {
         compiler.arg(format!("--sysroot={}", sysroot.display()));
     }
 
-    compiler.arg("--edition").arg(&doctest.edition.to_string());
+    compiler.arg("--edition").arg(doctest.edition.to_string());
     if !doctest.is_multiple_tests {
         // Setting these environment variables is unneeded if this is a merged doctest.
         compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
@@ -692,7 +692,7 @@ impl IndividualTestOptions {
     fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id.as_deref().unwrap_or_else(|| "<doctest>"));
+            path.push(&test_id.as_deref().unwrap_or("<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");

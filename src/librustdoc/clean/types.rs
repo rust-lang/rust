@@ -368,11 +368,11 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 impl Item {
-    pub(crate) fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Stability> {
+    pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
         self.def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
-    pub(crate) fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<ConstStability> {
+    pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
         self.def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
@@ -945,9 +945,9 @@ pub(crate) trait AttributesExt {
     where
         Self: 'a;
 
-    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a>;
+    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_>;
 
-    fn iter<'a>(&'a self) -> Self::Attributes<'a>;
+    fn iter(&self) -> Self::Attributes<'_>;
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
@@ -1043,15 +1043,15 @@ impl AttributesExt for [ast::Attribute] {
     type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
     type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
 
-    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         self.iter()
             .filter(move |attr| attr.has_name(name))
             .filter_map(ast::Attribute::meta_item_list)
             .flatten()
     }
 
-    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
-        self.into_iter()
+    fn iter(&self) -> Self::Attributes<'_> {
+        self.iter()
     }
 }
 
@@ -1061,15 +1061,15 @@ impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
     type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a
         where Self: 'a;
 
-    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         AttributesExt::iter(self)
             .filter(move |attr| attr.has_name(name))
             .filter_map(ast::Attribute::meta_item_list)
             .flatten()
     }
 
-    fn iter<'a>(&'a self) -> Self::Attributes<'a> {
-        self.into_iter().map(move |(attr, _)| match attr {
+    fn iter(&self) -> Self::Attributes<'_> {
+        self.iter().map(move |(attr, _)| match attr {
             Cow::Borrowed(attr) => *attr,
             Cow::Owned(attr) => attr,
         })
@@ -1389,7 +1389,7 @@ pub(crate) struct FnDecl {
 
 impl FnDecl {
     pub(crate) fn receiver_type(&self) -> Option<&Type> {
-        self.inputs.values.get(0).and_then(|v| v.to_receiver())
+        self.inputs.values.first().and_then(|v| v.to_receiver())
     }
 }
 
@@ -1502,7 +1502,7 @@ impl Type {
     pub(crate) fn without_borrowed_ref(&self) -> &Type {
         let mut result = self;
         while let Type::BorrowedRef { type_, .. } = result {
-            result = &*type_;
+            result = type_;
         }
         result
     }
@@ -1631,10 +1631,7 @@ impl Type {
     }
 
     pub(crate) fn is_self_type(&self) -> bool {
-        match *self {
-            SelfTy => true,
-            _ => false,
-        }
+        matches!(*self, Type::SelfTy)
     }
 
     pub(crate) fn generic_args(&self) -> Option<&GenericArgs> {
@@ -1673,7 +1670,7 @@ impl Type {
     pub(crate) fn def_id(&self, cache: &Cache) -> Option<DefId> {
         let t: PrimitiveType = match *self {
             Type::Path { ref path } => return Some(path.def_id()),
-            DynTrait(ref bounds, _) => return bounds.get(0).map(|b| b.trait_.def_id()),
+            DynTrait(ref bounds, _) => return bounds.first().map(|b| b.trait_.def_id()),
             Primitive(p) => return cache.primitive_locations.get(&p).cloned(),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.def_id(cache),

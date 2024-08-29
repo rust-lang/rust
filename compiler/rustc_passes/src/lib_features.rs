@@ -16,7 +16,7 @@ use rustc_span::{sym, Span};
 
 use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
 
-pub struct LibFeatureCollector<'tcx> {
+struct LibFeatureCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     lib_features: LibFeatures,
 }
@@ -153,6 +153,6 @@ fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     collector.lib_features
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.lib_features = lib_features;
 }

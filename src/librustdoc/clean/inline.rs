@@ -54,7 +54,7 @@ pub(crate) fn try_inline(
     debug!("attrs={attrs:?}");
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
-        (attrs.into_iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
+        (attrs.iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
     });
     let attrs_without_docs =
         attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));
@@ -288,10 +288,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
 
-pub(crate) fn build_function<'tcx>(
-    cx: &mut DocContext<'tcx>,
-    def_id: DefId,
-) -> Box<clean::Function> {
+pub(crate) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
     let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
     // The generics need to be cleaned before the signature.
     let mut generics =
@@ -425,7 +422,7 @@ pub(crate) fn merge_attrs(
             both.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (Attributes::from_ast(&old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (Attributes::from_ast(old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
     }
 }
 
@@ -791,16 +788,15 @@ fn build_macro(
 /// implementation for `AssociatedType`
 fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean::Generics {
     for pred in &mut g.where_predicates {
-        match *pred {
-            clean::WherePredicate::BoundPredicate { ty: clean::SelfTy, ref mut bounds, .. } => {
-                bounds.retain(|bound| match bound {
-                    clean::GenericBound::TraitBound(clean::PolyTrait { trait_, .. }, _) => {
-                        trait_.def_id() != trait_did
-                    }
-                    _ => true,
-                });
-            }
-            _ => {}
+        if let clean::WherePredicate::BoundPredicate { ty: clean::SelfTy, ref mut bounds, .. } =
+            *pred
+        {
+            bounds.retain(|bound| match bound {
+                clean::GenericBound::TraitBound(clean::PolyTrait { trait_, .. }, _) => {
+                    trait_.def_id() != trait_did
+                }
+                _ => true,
+            });
         }
     }
 
