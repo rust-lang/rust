@@ -288,7 +288,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         lint_callback!(self, check_attribute, attr);
     }
 
-    fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
+    fn visit_macro_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
         lint_callback!(self, check_mac_def, mac);
         self.check_id(id);
     }

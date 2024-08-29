@@ -3,7 +3,7 @@ macro_rules! mutability_dependent {
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
             walk_stmt(self, s)
         }
-        fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
+        fn visit_macro_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
             Self::Result::output()
         }
     };
@@ -1782,7 +1782,7 @@ macro_rules! make_ast_visitor {
                         try_v!(visitor.visit_mac_call(mac))
                     }
                     ItemKind::MacroDef(ts) => {
-                        try_v!(if_mut_expr!(visitor.visit_macro_def(ts),visitor.visit_mac_def(ts, id)))
+                        try_v!(if_mut_expr!(visitor.visit_macro_def(ts),visitor.visit_macro_def(ts, id)))
                     }
                     ItemKind::Delegation(box Delegation {
                         id,
