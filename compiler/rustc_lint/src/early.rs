@@ -205,8 +205,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, ident: Ident) {
-        lint_callback!(self, check_ident, ident);
+    fn visit_ident(&mut self, ident: &Ident) {
+        // FIXME: Change check_ident so it receives a reference
+        lint_callback!(self, check_ident, *ident);
     }
 
     fn visit_local(&mut self, l: &'a ast::Local) {

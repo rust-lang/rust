@@ -298,6 +298,7 @@ macro_rules! make_ast_visitor {
             make_visit!{Item, visit_item, walk_item}
             make_visit!{ForeignItem, visit_foreign_item, walk_item}
             make_visit!{FnHeader, visit_fn_header, walk_fn_header}
+            make_visit!{Ident, visit_ident, walk_ident}
             make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
             // TODO: Remove P! on implementers
             make_visit!{P!(Pat), visit_pat, walk_pat}
@@ -330,11 +331,6 @@ macro_rules! make_ast_visitor {
 
             fn visit_variant_discr(&mut self, discr: ref_t!(AnonConst)) -> result!() {
                 self.visit_anon_const(discr)
-            }
-
-            // FIXME: for some reason the immutable version doesn't receive a reference
-            fn visit_ident(&mut self, ident: if_mut_ty!(ref_t!(Ident), Ident)) -> result!() {
-                walk_ident(self, ident)
             }
 
             /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
@@ -471,11 +467,7 @@ macro_rules! make_ast_visitor {
         // doesn't receives a reference
         macro_rules! visit_ident {
             ($vis: ident, $ident: ident) => {
-                if_mut_expr!(
-                    $vis.visit_ident($ident)
-                ,
-                    $vis.visit_ident(*$ident)
-                )
+                $vis.visit_ident($ident)
             }
         }
 
@@ -507,7 +499,7 @@ macro_rules! make_ast_visitor {
 
         pub fn walk_ident<$($lt,)? V: $trait$(<$lt>)?>(
             vis: &mut V,
-            ident: if_mut_ty!(ref_t!(Ident), Ident)
+            ident: ref_t!(Ident)
         ) -> result!(V) {
             let Ident { name: _, span } = ident;
             try_v!(visit_span!(vis, span));
@@ -838,7 +830,7 @@ macro_rules! make_ast_visitor {
             try_v!(visit_id!(visitor, id));
             visit_list!(visitor, visit_attribute, flat_map_attribute, attrs);
             try_v!(visitor.visit_vis(vis));
-            visit_o!(ident, |ident: &$($mut)? Ident| visit_ident!(visitor, ident));
+            visit_o!(ident, |ident| visit_ident!(visitor, ident));
             try_v!(visitor.visit_ty(ty));
             try_v!(visit_span!(visitor, span));
             return_result!(V)
@@ -1636,7 +1628,7 @@ macro_rules! make_ast_visitor {
                     try_v!(visit_id!(visitor, id));
                     try_v!(visitor.visit_qself(qself));
                     try_v!(visitor.visit_path(path, *id));
-                    visit_o!(rename, |rename: &$($mut)? Ident| visit_ident!(visitor, rename));
+                    visit_o!(rename, |rename| visit_ident!(visitor, rename));
                     visit_o!(body, |body| visitor.visit_block(body));
                 }
                 AssocItemKind::DelegationMac(box DelegationMac {
@@ -1650,7 +1642,7 @@ macro_rules! make_ast_visitor {
                     if let Some(suffixes) = suffixes {
                         for (ident, rename) in suffixes {
                             try_v!(visit_ident!(visitor, ident));
-                            visit_o!(rename, |rename: &$($mut)? Ident| visit_ident!(visitor, rename));
+                            visit_o!(rename, |rename| visit_ident!(visitor, rename));
                         }
                     }
                     visit_o!(body, |body| visitor.visit_block(body));
@@ -1802,7 +1794,7 @@ macro_rules! make_ast_visitor {
                         try_v!(visit_id!(visitor, id));
                         try_v!(visitor.visit_qself(qself));
                         try_v!(visitor.visit_path(path, *id));
-                        visit_o!(rename, |rename: &$($mut)? Ident| visit_ident!(visitor, rename));
+                        visit_o!(rename, |rename| visit_ident!(visitor, rename));
                         visit_o!(body, |body| visitor.visit_block(body));
                     }
                     ItemKind::DelegationMac(box DelegationMac { qself, prefix, suffixes, body }) => {
@@ -1811,7 +1803,7 @@ macro_rules! make_ast_visitor {
                         if let Some(suffixes) = suffixes {
                             for (ident, rename) in suffixes {
                                 try_v!(visit_ident!(visitor, ident));
-                                visit_o!(rename, |rename: &$($mut)? Ident| visit_ident!(visitor, rename));
+                                visit_o!(rename, |rename| visit_ident!(visitor, rename));
                             }
                         }
                         visit_o!(body, |body| visitor.visit_block(body));

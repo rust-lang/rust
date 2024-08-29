@@ -39,7 +39,7 @@ impl From<&Attribute> for IdentIter {
 struct IdentCollector(Vec<Ident>);
 
 impl Visitor<'_> for IdentCollector {
-    fn visit_ident(&mut self, ident: Ident) {
-        self.0.push(ident);
+    fn visit_ident(&mut self, ident: &Ident) {
+        self.0.push(*ident);
     }
 }
