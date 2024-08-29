@@ -5,6 +5,7 @@ use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{Ty, UserType};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::FnCtxt;
 

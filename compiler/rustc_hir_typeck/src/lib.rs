@@ -11,9 +11,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 mod _match;
 mod autoderef;
 mod callee;
@@ -60,6 +57,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;

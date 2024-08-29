@@ -7,6 +7,7 @@ use rustc_span::Span;
 use rustc_trait_selection::solve::inspect::{
     InspectConfig, InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor,
 };
+use tracing::{debug, instrument, trace};
 
 use crate::FnCtxt;
 
