@@ -386,82 +386,28 @@ macro_rules! make_ast_visitor {
             }
         }
 
-        macro_rules! visit_lazy_tts {
-            ($vis: expr, $tokens: expr) => {
-                if_mut_expr!(
-                    visit_lazy_tts($vis, $tokens)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$tokens); }
-                );
+        macro_rules! mut_only_visit {
+            ($name: ident) => {
+                macro_rules! $name {
+                    ($vis: expr, $arg: expr) => {
+                        if_mut_expr!(
+                            $name($vis, $arg)
+                        ,
+                            // assign to _ to prevent unused_variable warnings
+                            { let _ = (&$vis, &$arg); }
+                        );
+                    }
+                }
             }
         }
 
-        macro_rules! visit_safety {
-            ($vis: expr, $safety: expr) => {
-                if_mut_expr!(
-                    visit_safety($vis, $safety)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$safety); }
-                );
-            }
-        }
-
-        macro_rules! visit_defaultness {
-            ($vis: expr, $defaultness: expr) => {
-                if_mut_expr!(
-                    visit_defaultness($vis, $defaultness)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$defaultness); }
-                );
-            }
-        }
-
-        macro_rules! walk_ty_alias_where_clauses {
-            ($vis: expr, $wc: expr) => {
-                if_mut_expr!(
-                    walk_ty_alias_where_clauses($vis, $wc)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$wc); }
-                );
-            }
-        }
-
-        macro_rules! visit_constness {
-            ($vis: expr, $constness: expr) => {
-                if_mut_expr!(
-                    visit_constness($vis, $constness)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$constness); }
-                );
-            }
-        }
-
-        macro_rules! visit_polarity {
-            ($vis: expr, $polarity: expr) => {
-                if_mut_expr!(
-                    visit_polarity($vis, $polarity)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$polarity); }
-                );
-            }
-        }
-
-        macro_rules! visit_delim_args {
-            ($vis: expr, $args: expr) => {
-                if_mut_expr!(
-                    visit_delim_args($vis, $args)
-                ,
-                    // assign to _ to prevent unused_variable warnings
-                    { let _ = (&$vis, &$args); }
-                );
-            }
-        }
+        mut_only_visit!{visit_lazy_tts}
+        mut_only_visit!{visit_safety}
+        mut_only_visit!{visit_defaultness}
+        mut_only_visit!{walk_ty_alias_where_clauses}
+        mut_only_visit!{visit_constness}
+        mut_only_visit!{visit_polarity}
+        mut_only_visit!{visit_delim_args}
 
         macro_rules! return_result {
             ($V: ty) => { if_mut_expr!({}, {
