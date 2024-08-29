@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// # fn important_check() {}
     /// important_check();
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.81.0"]
     pub CFG_NOT_TEST,
     restriction,
     "enforce against excluding code from test builds"
