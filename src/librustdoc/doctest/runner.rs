@@ -98,8 +98,10 @@ impl DocTestRunner {
 
         code.push_str("extern crate test;\n");
 
-        let test_args =
-            test_args.iter().map(|arg| format!("{arg:?}.to_string(),")).collect::<String>();
+        let test_args = test_args.iter().fold(String::new(), |mut x, arg| {
+            write!(x, "{arg:?}.to_string(),").unwrap();
+            x
+        });
         write!(
             code,
             "\

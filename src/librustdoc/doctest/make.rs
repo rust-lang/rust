@@ -311,7 +311,7 @@ fn parse_source(
             }
             ast::ItemKind::ExternCrate(original) => {
                 if !info.found_extern_crate
-                    && let Some(ref crate_name) = crate_name
+                    && let Some(crate_name) = crate_name
                 {
                     info.found_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
