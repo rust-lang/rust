@@ -185,12 +185,11 @@ fn predicates_reference_self(
 ) -> SmallVec<[Span; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
-        tcx.explicit_super_predicates_of(trait_def_id)
+        tcx.explicit_super_predicates_of(trait_def_id).skip_binder()
     } else {
-        tcx.predicates_of(trait_def_id)
+        tcx.predicates_of(trait_def_id).predicates
     };
     predicates
-        .predicates
         .iter()
         .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, trait_ref), sp))
         .filter_map(|(clause, sp)| {
@@ -266,9 +265,8 @@ fn super_predicates_have_non_lifetime_binders(
         return SmallVec::new();
     }
     tcx.explicit_super_predicates_of(trait_def_id)
-        .predicates
-        .iter()
-        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(*span))
+        .iter_identity_copied()
+        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
         .collect()
 }
 

@@ -349,16 +349,14 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        ty::EarlyBinder::bind(self.explicit_super_predicates_of(def_id).instantiate_identity(self))
+        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn explicit_implied_predicates_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        ty::EarlyBinder::bind(
-            self.explicit_implied_predicates_of(def_id).instantiate_identity(self),
-        )
+        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn has_target_features(self, def_id: DefId) -> bool {
