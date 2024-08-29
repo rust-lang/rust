@@ -28,7 +28,6 @@
 #![feature(decl_macro)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
-#![feature(new_uninit)]
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]

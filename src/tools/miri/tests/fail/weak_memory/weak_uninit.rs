@@ -6,7 +6,6 @@
 // run multiple times until one try returns true.
 // Spurious failure is possible, if you are really unlucky with
 // the RNG and always read the latest value from the store buffer.
-#![feature(new_uninit)]
 
 use std::sync::atomic::*;
 use std::thread::spawn;
