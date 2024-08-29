@@ -10,6 +10,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
 use crate::traits;

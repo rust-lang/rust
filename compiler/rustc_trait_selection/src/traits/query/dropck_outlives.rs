@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use crate::traits::query::normalize::QueryNormalizeExt;
 use crate::traits::query::NoSolution;

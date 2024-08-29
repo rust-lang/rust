@@ -15,6 +15,7 @@ use rustc_middle::ty::{self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt
 use rustc_span::symbol::kw;
 use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
 use rustc_type_ir::Upcast as _;
+use tracing::{debug, instrument};
 
 use super::nice_region_error::find_anon_type;
 use super::ObligationCauseAsDiagArg;

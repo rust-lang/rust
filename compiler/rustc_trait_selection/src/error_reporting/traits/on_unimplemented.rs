@@ -14,6 +14,7 @@ use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use tracing::{debug, info};
 use {rustc_attr as attr, rustc_hir as hir};
 
 use super::{ObligationCauseCode, PredicateObligation};

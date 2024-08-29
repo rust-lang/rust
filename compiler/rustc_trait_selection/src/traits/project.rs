@@ -18,6 +18,7 @@ use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
 use super::{
     specialization_graph, translate_args, util, MismatchedProjectionTypes, Normalized,

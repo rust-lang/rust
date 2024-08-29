@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
+use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::errors::{
