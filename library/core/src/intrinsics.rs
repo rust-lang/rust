@@ -2949,7 +2949,7 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 /// sysroot which is built without ub_checks but with `#[rustc_preserve_ub_checks]`.
 /// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
 /// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(ub_checks)` means that
-/// assertions are enabled whenever the *user crate* has UB checks enabled. However if the
+/// assertions are enabled whenever the *user crate* has UB checks enabled. However, if the
 /// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
 /// primarily used by [`ub_checks::assert_unsafe_precondition`].
 #[rustc_const_unstable(feature = "const_ub_checks", issue = "none")]
@@ -2957,7 +2957,7 @@ pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn ub_checks() -> bool {
-    cfg!(debug_assertions)
+    cfg!(ub_checks)
 }
 
 /// Allocates a block of memory at compile time.

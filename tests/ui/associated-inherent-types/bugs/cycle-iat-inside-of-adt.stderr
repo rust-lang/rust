@@ -4,11 +4,6 @@ error[E0391]: cycle detected when computing predicates of `Foo`
 LL | struct Foo {
    | ^^^^^^^^^^
    |
-note: ...which requires computing predicates of `Foo`...
-  --> $DIR/cycle-iat-inside-of-adt.rs:7:1
-   |
-LL | struct Foo {
-   | ^^^^^^^^^^
 note: ...which requires computing inferred outlives predicates of `Foo`...
   --> $DIR/cycle-iat-inside-of-adt.rs:7:1
    |

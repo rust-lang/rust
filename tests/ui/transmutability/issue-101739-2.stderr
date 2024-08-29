@@ -1,8 +1,8 @@
 error[E0107]: trait takes at most 2 generic arguments but 5 generic arguments were supplied
   --> $DIR/issue-101739-2.rs:17:14
    |
-LL |           Dst: BikeshedIntrinsicFrom<
-   |                ^^^^^^^^^^^^^^^^^^^^^ expected at most 2 generic arguments
+LL |           Dst: TransmuteFrom<
+   |                ^^^^^^^^^^^^^ expected at most 2 generic arguments
 ...
 LL |                   ASSUME_ALIGNMENT,
    |  _________________________________-

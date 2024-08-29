@@ -75,11 +75,11 @@ pub(crate) fn write_shared(
     let crate_name = krate.name(cx.tcx());
     let crate_name = crate_name.as_str(); // rand
     let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
-    let external_crates = hack_get_external_crate_names(&cx.dst)?;
+    let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
         search_index_js: SearchIndexPart::get(index, &cx.shared.resource_suffix)?,
-        all_crates: AllCratesPart::get(crate_name_json.clone())?,
+        all_crates: AllCratesPart::get(crate_name_json.clone(), &cx.shared.resource_suffix)?,
         crates_index: CratesIndexPart::get(&crate_name, &external_crates)?,
         trait_impl: TraitAliasPart::get(cx, &crate_name_json)?,
         type_impl: TypeAliasPart::get(cx, krate, &crate_name_json)?,
@@ -291,10 +291,13 @@ impl AllCratesPart {
         SortedTemplate::from_before_after("window.ALL_CRATES = [", "];")
     }
 
-    fn get(crate_name_json: OrderedJson) -> Result<PartsAndLocations<Self>, Error> {
+    fn get(
+        crate_name_json: OrderedJson,
+        resource_suffix: &str,
+    ) -> Result<PartsAndLocations<Self>, Error> {
         // external hack_get_external_crate_names not needed here, because
         // there's no way that we write the search index but not crates.js
-        let path = PathBuf::from("crates.js");
+        let path = suffix_path("crates.js", resource_suffix);
         Ok(PartsAndLocations::with(path, crate_name_json))
     }
 }
@@ -305,8 +308,11 @@ impl AllCratesPart {
 ///
 /// This is to match the current behavior of rustdoc, which allows you to get all crates
 /// on the index page, even if --enable-index-page is only passed to the last crate.
-fn hack_get_external_crate_names(doc_root: &Path) -> Result<Vec<String>, Error> {
-    let path = doc_root.join("crates.js");
+fn hack_get_external_crate_names(
+    doc_root: &Path,
+    resource_suffix: &str,
+) -> Result<Vec<String>, Error> {
+    let path = doc_root.join(suffix_path("crates.js", resource_suffix));
     let Ok(content) = fs::read_to_string(&path) else {
         // they didn't emit invocation specific, so we just say there were no crates
         return Ok(Vec::default());

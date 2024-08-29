@@ -19,7 +19,7 @@ use rustc_macros::{
     Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
 use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::lib_features::FeatureStability;
@@ -427,6 +427,7 @@ define_tables! {
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::PolyFnSig<'static>>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
+    struct_target_features: Table<DefIndex, LazyArray<TargetFeature>>,
     impl_trait_header: Table<DefIndex, LazyValue<ty::ImplTraitHeader<'static>>>,
     const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, rustc_middle::ty::Const<'static>>>>,
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,

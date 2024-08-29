@@ -7,11 +7,11 @@
 #![allow(dead_code)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src>
+        Dst: TransmuteFrom<Src>
     {}
 }
 

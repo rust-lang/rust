@@ -5,11 +5,11 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, {
+        Dst: TransmuteFrom<Src, {
             Assume {
                 alignment: false,
                 lifetimes: false,
@@ -21,7 +21,7 @@ mod assert {
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, {
+        Dst: TransmuteFrom<Src, {
             Assume {
                 alignment: false,
                 lifetimes: false,

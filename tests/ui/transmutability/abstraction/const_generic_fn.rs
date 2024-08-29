@@ -6,12 +6,12 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn array_like<T, E, const N: usize>()
     where
-        T: BikeshedIntrinsicFrom<[E; N], { Assume::SAFETY }>,
-        [E; N]: BikeshedIntrinsicFrom<T, { Assume::SAFETY }>
+        T: TransmuteFrom<[E; N], { Assume::SAFETY }>,
+        [E; N]: TransmuteFrom<T, { Assume::SAFETY }>
     {}
 }
 

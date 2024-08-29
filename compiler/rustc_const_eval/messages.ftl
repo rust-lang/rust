@@ -402,9 +402,6 @@ const_eval_unallowed_mutable_refs =
 const_eval_unallowed_op_in_const_context =
     {$msg}
 
-const_eval_unavailable_target_features_for_fn =
-    calling a function that requires unavailable target features: {$unavailable_feats}
-
 const_eval_uninhabited_enum_variant_read =
     read discriminant of an uninhabited enum variant
 const_eval_uninhabited_enum_variant_written =
