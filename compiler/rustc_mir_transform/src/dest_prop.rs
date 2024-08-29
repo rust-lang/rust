@@ -165,6 +165,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
         let mut allocations = Allocations::default();
+        let mut write_info = WriteInfo::default();
         trace!(func = ?tcx.def_path_str(def_id));
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
@@ -205,7 +206,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 &mut candidates,
                 &points,
                 &live,
-                &mut allocations.write_info,
+                &mut write_info,
                 body,
             );
 
@@ -262,7 +263,6 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 struct Allocations {
     candidates: FxIndexMap<Local, Vec<Local>>,
     candidates_reverse: FxIndexMap<Local, Vec<Local>>,
-    write_info: WriteInfo,
     // PERF: Do this for `MaybeLiveLocals` allocations too.
 }
 
@@ -364,7 +364,7 @@ struct FilterInformation<'a, 'alloc, 'tcx> {
     points: &'a DenseLocationMap,
     live: &'a SparseIntervalMatrix<Local, PointIndex>,
     candidates: &'a mut Candidates<'alloc>,
-    write_info: &'alloc mut WriteInfo,
+    write_info: &'a mut WriteInfo,
     at: Location,
 }
 
@@ -468,7 +468,7 @@ impl<'a, 'alloc, 'tcx> FilterInformation<'a, 'alloc, 'tcx> {
         candidates: &mut Candidates<'alloc>,
         points: &DenseLocationMap,
         live: &SparseIntervalMatrix<Local, PointIndex>,
-        write_info: &'alloc mut WriteInfo,
+        write_info: &mut WriteInfo,
         body: &Body<'tcx>,
     ) {
         let mut this = FilterInformation {
