@@ -15,9 +15,9 @@ LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
    = note: inside `std::panicking::r#try::<i32, &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::panic::catch_unwind::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at RUSTLIB/std/src/panic.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
-   = note: inside `std::panicking::r#try::do_call::<{closure@std::rt::lang_start_internal::{closure#2}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panicking::r#try::<isize, {closure@std::rt::lang_start_internal::{closure#2}}>` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `std::panic::catch_unwind::<{closure@std::rt::lang_start_internal::{closure#2}}, isize>` at RUSTLIB/std/src/panic.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<{closure@std::rt::lang_start_internal::{closure#1}}, isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<isize, {closure@std::rt::lang_start_internal::{closure#1}}>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<{closure@std::rt::lang_start_internal::{closure#1}}, isize>` at RUSTLIB/std/src/panic.rs:LL:CC
    = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
 
