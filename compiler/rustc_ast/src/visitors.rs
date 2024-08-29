@@ -3,9 +3,6 @@ macro_rules! mutability_dependent {
         fn visit_stmt(&mut self, s: &'ast Stmt) -> Self::Result {
             walk_stmt(self, s)
         }
-        fn visit_macro_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) -> Self::Result {
-            Self::Result::output()
-        }
     };
     (mut $($lf: lifetime)?) => {
         /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
@@ -76,10 +73,6 @@ macro_rules! mutability_dependent {
 
         fn filter_map_expr(&mut self, e: P<Expr>) -> Option<P<Expr>> {
             noop_filter_map_expr(self, e)
-        }
-
-        fn visit_macro_def(&mut self, def: &mut MacroDef) {
-            walk_macro_def(self, def);
         }
 
         fn visit_id(&mut self, _id: &mut NodeId) {
@@ -363,6 +356,11 @@ macro_rules! make_ast_visitor {
             /// Id should be visited by the caller
             fn visit_path(&mut self, path: ref_t!(Path), _id: NodeId) -> result!() {
                 walk_path(self, path)
+            }
+
+            /// Id should be visited by the caller
+            fn visit_macro_def(&mut self, def: ref_t!(MacroDef), _id: NodeId) -> result!() {
+                walk_macro_def(self, def)
             }
 
             fn visit_lifetime(&mut self, lifetime: ref_t!(Lifetime), _: LifetimeCtxt) -> result!() {
@@ -1791,7 +1789,7 @@ macro_rules! make_ast_visitor {
                         try_v!(visitor.visit_mac_call(mac))
                     }
                     ItemKind::MacroDef(ts) => {
-                        try_v!(if_mut_expr!(visitor.visit_macro_def(ts),visitor.visit_macro_def(ts, id)))
+                        try_v!(visitor.visit_macro_def(ts, id));
                     }
                     ItemKind::Delegation(box Delegation {
                         id,
