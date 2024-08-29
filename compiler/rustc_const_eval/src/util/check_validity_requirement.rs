@@ -69,7 +69,7 @@ fn might_permit_raw_init_strict<'tcx>(
         .validate_operand(
             &allocated.into(),
             /*recursive*/ false,
-            /*reset_provenance*/ false,
+            /*reset_provenance_and_padding*/ false,
         )
         .is_ok())
 }
