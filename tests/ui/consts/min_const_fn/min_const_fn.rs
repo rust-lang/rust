@@ -74,8 +74,8 @@ const fn foo11_2<T: Send>(t: T) -> T { t }
 // not ok
 
 static BAR: u32 = 42;
-const fn foo25() -> u32 { BAR } //~ ERROR referencing statics in constant functions
-const fn foo26() -> &'static u32 { &BAR } //~ ERROR referencing statics in constant functions
+const fn foo25() -> u32 { BAR }
+const fn foo26() -> &'static u32 { &BAR }
 const fn foo30(x: *const u32) -> usize { x as usize }
 //~^ ERROR pointers cannot be cast to integers
 const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }

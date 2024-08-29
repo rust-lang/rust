@@ -151,6 +151,8 @@ declare_features! (
     (accepted, const_raw_ptr_deref, "1.58.0", Some(51911)),
     /// Allows references to types with interior mutability within constants
     (accepted, const_refs_to_cell, "CURRENT_RUSTC_VERSION", Some(80384)),
+    /// Allows creating pointers and references to `static` items in constants.
+    (accepted, const_refs_to_static, "CURRENT_RUSTC_VERSION", Some(119618)),
     /// Allows implementing `Copy` for closures where possible (RFC 2132).
     (accepted, copy_closures, "1.26.0", Some(44490)),
     /// Allows `crate` in paths.
