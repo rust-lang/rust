@@ -604,10 +604,11 @@ where
 
         if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
+            // Also needed to reset padding.
             self.validate_operand(
                 &dest.to_place(),
                 M::enforce_validity_recursively(self, dest.layout()),
-                /*reset_provenance*/ true,
+                /*reset_provenance_and_padding*/ true,
             )?;
         }
 
@@ -703,9 +704,11 @@ where
                 // fields do not match the `ScalarPair` components.
 
                 alloc.write_scalar(alloc_range(Size::ZERO, a_val.size()), a_val)?;
-                alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)
+                alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)?;
+                // We don't have to reset padding here, `write_immediate` will anyway do a validation run.
+                Ok(())
             }
-            Immediate::Uninit => alloc.write_uninit(),
+            Immediate::Uninit => alloc.write_uninit_full(),
         }
     }
 
@@ -722,7 +725,7 @@ where
                     // Zero-sized access
                     return Ok(());
                 };
-                alloc.write_uninit()?;
+                alloc.write_uninit_full()?;
             }
         }
         Ok(())
@@ -814,17 +817,17 @@ where
             // Given that there were two typed copies, we have to ensure this is valid at both types,
             // and we have to ensure this loses provenance and padding according to both types.
             // But if the types are identical, we only do one pass.
-            if src.layout().ty != dest.layout().ty {
+            if allow_transmute && src.layout().ty != dest.layout().ty {
                 self.validate_operand(
                     &dest.transmute(src.layout(), self)?,
                     M::enforce_validity_recursively(self, src.layout()),
-                    /*reset_provenance*/ true,
+                    /*reset_provenance_and_padding*/ true,
                 )?;
             }
             self.validate_operand(
                 &dest,
                 M::enforce_validity_recursively(self, dest.layout()),
-                /*reset_provenance*/ true,
+                /*reset_provenance_and_padding*/ true,
             )?;
         }
 
