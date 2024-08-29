@@ -8,6 +8,7 @@
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use field_offset::offset_of;

@@ -61,8 +61,9 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalModDefId, ModDefId, LO
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::{HirId, ItemLocalId, OwnerId};
 pub use rustc_query_system::dep_graph::dep_node::DepKind;
+pub use rustc_query_system::dep_graph::DepNode;
 use rustc_query_system::dep_graph::FingerprintStyle;
-pub use rustc_query_system::dep_graph::{DepContext, DepNode, DepNodeParams};
+pub(crate) use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 use rustc_span::symbol::Symbol;
 
 use crate::mir::mono::MonoItem;
@@ -101,7 +102,7 @@ macro_rules! define_dep_nodes {
 
         // This checks that the discriminants of the variants have been assigned consecutively
         // from 0 so that they can be used as a dense index.
-        pub const DEP_KIND_VARIANTS: u16 = {
+        pub(crate) const DEP_KIND_VARIANTS: u16 = {
             let deps = &[$(dep_kinds::$variant,)*];
             let mut i = 0;
             while i < deps.len() {

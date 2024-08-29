@@ -11,6 +11,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::path::Path;

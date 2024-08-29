@@ -56,13 +56,13 @@ impl std::ops::Deref for MetadataBlob {
 
 impl MetadataBlob {
     /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`MetadataBlob`].
-    pub fn new(slice: OwnedSlice) -> Result<Self, ()> {
+    pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
         if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
     }
 
     /// Since this has passed the validation of [`MetadataBlob::new`], this returns bytes which are
     /// known to pass the [`MemDecoder`] validation.
-    pub fn bytes(&self) -> &OwnedSlice {
+    pub(crate) fn bytes(&self) -> &OwnedSlice {
         &self.0
     }
 }
@@ -332,12 +332,12 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn blob(&self) -> &'a MetadataBlob {
+    pub(crate) fn blob(&self) -> &'a MetadataBlob {
         self.blob
     }
 
     #[inline]
-    pub fn cdata(&self) -> CrateMetadataRef<'a> {
+    fn cdata(&self) -> CrateMetadataRef<'a> {
         debug_assert!(self.cdata.is_some(), "missing CrateMetadata in DecodeContext");
         self.cdata.unwrap()
     }
@@ -377,7 +377,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
+    fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
         self.opaque.read_raw_bytes(len)
     }
 }
