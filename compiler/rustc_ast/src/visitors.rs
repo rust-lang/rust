@@ -1563,6 +1563,15 @@ macro_rules! make_ast_visitor {
             return_result!(V)
         }
 
+        pub fn walk_macro_def<$($lt,)? V: $trait$(<$lt>)?>(
+            vis: &mut V,
+            macro_def: ref_t!(MacroDef),
+        ) -> result!(V) {
+            let MacroDef { body, macro_rules: _ } = macro_def;
+            visit_delim_args!(vis, body);
+            return_result!(V)
+        }
+
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
             item: ref_t!(Item<impl WalkItemKind>),
@@ -2091,11 +2100,6 @@ pub mod mut_visit {
     pub fn visit_delim_span<T: MutVisitor>(vis: &mut T, DelimSpan { open, close }: &mut DelimSpan) {
         vis.visit_span(open);
         vis.visit_span(close);
-    }
-
-    fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
-        let MacroDef { body, macro_rules: _ } = macro_def;
-        visit_delim_args(vis, body);
     }
 
     fn walk_meta_list_item<T: MutVisitor>(vis: &mut T, li: &mut MetaItemInner) {
