@@ -408,6 +408,7 @@ mod desc {
     pub const parse_linker_plugin_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
     pub const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, or `column`";
+    pub const parse_fmt_debug: &str = "either `full`, `shallow`, or `none`";
     pub const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
     pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
@@ -587,6 +588,16 @@ mod parse {
             }
             None => false,
         }
+    }
+
+    pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
+        *opt = match v {
+            Some("full") => FmtDebug::Full,
+            Some("shallow") => FmtDebug::Shallow,
+            Some("none") => FmtDebug::None,
+            _ => return false,
+        };
+        true
     }
 
     pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>) -> bool {
@@ -1724,6 +1735,9 @@ options! {
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: yes)"),
+    fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED],
+        "how detailed `#[derive(Debug)]` should be. `full` prints types recursively, \
+        `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],

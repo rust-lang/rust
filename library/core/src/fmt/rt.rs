@@ -118,6 +118,10 @@ impl<'a> Argument<'a> {
         Self::new(x, Debug::fmt)
     }
     #[inline(always)]
+    pub fn new_debug_noop<'b, T: Debug>(x: &'b T) -> Argument<'_> {
+        Self::new(x, |_, _| Ok(()))
+    }
+    #[inline(always)]
     pub fn new_octal<'b, T: Octal>(x: &'b T) -> Argument<'_> {
         Self::new(x, Octal::fmt)
     }
