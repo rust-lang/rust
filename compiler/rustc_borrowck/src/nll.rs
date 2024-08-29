@@ -20,6 +20,7 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
