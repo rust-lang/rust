@@ -165,9 +165,10 @@ fn create_mappings(
     ));
 
     let mut term_for_sum_of_bcbs = |bcbs| {
-        coverage_counters
-            .term_for_sum_of_bcbs(bcbs)
-            .expect("all BCBs with spans were given counters")
+        // Some patterns may have folded conditions. E.g The first `true` in the second part of `(false, false) | (true, true)` is
+        // always matched if tested (If the first value of the tuple was `false`, this `true` is never tested).
+        // Such condition has no counter for one branch hence we treat it as folded.
+        coverage_counters.term_for_sum_of_bcbs(bcbs).unwrap_or(mir::coverage::CovTerm::Zero)
     };
 
     // MCDC branch mappings are appended with their decisions in case decisions were ignored.

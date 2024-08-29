@@ -1,0 +1,392 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ min-llvm-version: 19
+   LL|       |//@ compile-flags: -Zcoverage-options=mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
+   LL|       |
+   LL|       |#[derive(Clone, Copy)]
+   LL|       |enum Pat {
+   LL|       |    A(Option<i32>),
+   LL|       |    B(i32),
+   LL|       |    C(i32),
+   LL|       |}
+   LL|       |
+   LL|      2|fn single_nested_pattern(pat: Pat) {
+   LL|      1|    match pat {
+   LL|      1|        Pat::A(Some(_)) => say("matched A::Some"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  |  Branch (LL:16): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:24)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      0|        Pat::A(None) => say("matched A::None"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  |  Branch (LL:16): [True: 0, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:21)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:16)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      1|        Pat::B(_) => say("matched B"),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  ------------------
+   LL|      0|        Pat::C(_) => say("matched C"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|      2|fn simple_or_pattern(pat: Pat) {
+   LL|      2|    match pat {
+   LL|      1|        Pat::B(_) | Pat::C(_) => say("matched B or C"),
+  ------------------
+  |  Branch (LL:9): [True: 0, False: 2]
+  |  Branch (LL:21): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:30)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:21)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { F,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        _ => say("matched A"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|      3|fn simple_joint_pattern(pat: (Pat, Pat)) {
+   LL|      1|    match pat {
+   LL|      1|        (Pat::A(Some(_)), Pat::B(_)) => say("matched A::Some + B"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 1]
+  |  Branch (LL:17): [True: 1, False: 0]
+  |  Branch (LL:27): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:37)
+  |
+  |  Number of Conditions: 3
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:17)
+  |     Condition C3 --> (LL:27)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3    Result
+  |  1 { F,  -,  -  = F      }
+  |  2 { T,  -,  F  = F      }
+  |  3 { T,  T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: not covered
+  |  C3-Pair: covered: (2,3)
+  |  MC/DC Coverage for Decision: 66.67%
+  |
+  ------------------
+   LL|      0|        (Pat::B(_), Pat::C(_)) => say("matched B and C"),
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 2]
+  |  Branch (LL:21): [True: 0, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:31)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:21)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  F  = F      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 0.00%
+  |
+  ------------------
+   LL|      2|        _ => say("matched others"),
+   LL|       |    }
+   LL|      3|}
+   LL|       |
+   LL|      4|fn joint_pattern_with_or(pat: (Pat, Pat)) {
+   LL|      1|    match pat {
+   LL|      2|        (Pat::A(Some(_)) | Pat::C(_), Pat::B(_)) => say("matched A::Some | C + B"),
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 2]
+  |  Branch (LL:17): [True: 1, False: 0]
+  |  Branch (LL:28): [True: 1, False: 1]
+  |  Branch (LL:39): [True: 3, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:49)
+  |
+  |  Number of Conditions: 4
+  |     Condition C1 --> (LL:39)
+  |     Condition C2 --> (LL:10)
+  |     Condition C3 --> (LL:17)
+  |     Condition C4 --> (LL:28)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4    Result
+  |  1 { F,  -,  -,  -  = F      }
+  |  2 { T,  F,  -,  F  = F      }
+  |  3 { T,  F,  -,  T  = T      }
+  |  4 { T,  T,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (2,4)
+  |  C3-Pair: not covered
+  |  C4-Pair: covered: (2,3)
+  |  MC/DC Coverage for Decision: 75.00%
+  |
+  ------------------
+   LL|      1|        (Pat::B(_), Pat::C(_)) => say("matched B and C"),
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 0]
+  |  Branch (LL:21): [True: 1, False: 3]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:31)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:21)
+  |     Condition C2 --> (LL:10)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        _ => say("matched others"),
+   LL|       |    }
+   LL|      4|}
+   LL|       |
+   LL|      4|fn joint_or_patterns(pat: (Pat, Pat)) {
+   LL|      2|    match pat {
+   LL|      2|        (Pat::A(Some(_)) | Pat::C(_), Pat::B(_) | Pat::C(_)) => say("matched A::Some | C + B | C"),
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 3]
+  |  Branch (LL:17): [True: 1, False: 0]
+  |  Branch (LL:28): [True: 1, False: 2]
+  |  Branch (LL:39): [True: 2, False: 0]
+  |  Branch (LL:51): [True: 0, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:61)
+  |
+  |  Number of Conditions: 5
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:17)
+  |     Condition C3 --> (LL:28)
+  |     Condition C4 --> (LL:39)
+  |     Condition C5 --> (LL:51)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4, C5    Result
+  |  1 { F,  -,  F,  -,  -  = F      }
+  |  2 { F,  -,  T,  T,  -  = T      }
+  |  3 { T,  T,  -,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: not covered
+  |  C3-Pair: covered: (1,2)
+  |  C4-Pair: not covered
+  |  C5-Pair: not covered
+  |  MC/DC Coverage for Decision: 40.00%
+  |
+  ------------------
+   LL|      1|        (Pat::B(_), Pat::C(_)) => say("matched B and C"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 0]
+  |  Branch (LL:21): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:31)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:21)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { T,  F  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        _ => say("matched others"),
+   LL|       |    }
+   LL|       |
+   LL|       |    // Try to use the matched value
+   LL|      2|    match pat {
+   LL|      1|        (Pat::A(Some(a)) | Pat::C(a), Pat::B(b) | Pat::C(b)) => {
+                                                                       ^0
+  ------------------
+  |  Branch (LL:10): [True: 1, False: 3]
+  |  Branch (LL:17): [True: 1, False: 0]
+  |  Branch (LL:28): [True: 1, False: 2]
+  |  Branch (LL:39): [True: 2, False: 0]
+  |  Branch (LL:51): [True: 0, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:61)
+  |
+  |  Number of Conditions: 5
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:17)
+  |     Condition C3 --> (LL:28)
+  |     Condition C4 --> (LL:39)
+  |     Condition C5 --> (LL:51)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2, C3, C4, C5    Result
+  |  1 { F,  -,  F,  -,  -  = F      }
+  |  2 { F,  -,  T,  T,  -  = T      }
+  |  3 { T,  T,  -,  T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: not covered
+  |  C3-Pair: covered: (1,2)
+  |  C4-Pair: not covered
+  |  C5-Pair: not covered
+  |  MC/DC Coverage for Decision: 40.00%
+  |
+  ------------------
+   LL|      2|            say(&format!("matched A::Some | C ({a}) + B | C ({b})"))
+   LL|       |        }
+   LL|      1|        (Pat::B(_), Pat::C(_)) => say("matched B and C"),
+  ------------------
+  |  Branch (LL:10): [True: 2, False: 0]
+  |  Branch (LL:21): [True: 1, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:31)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:10)
+  |     Condition C2 --> (LL:21)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { T,  F  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: not covered
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        _ => say("matched others"),
+   LL|       |    }
+   LL|      4|}
+   LL|       |
+   LL|      2|fn partial_matched(arr: &[i32]) {
+   LL|      2|    match arr {
+   LL|      1|        [selected] | [_, selected] => say(&format!("match arm 1: {selected}")),
+                                       ^0
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 1]
+  |  Branch (LL:22): [True: 0, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:9) to (LL:35)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:9)
+  |     Condition C2 --> (LL:22)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      1|        [_, _, selected, ..] => say(&format!("match arm 2: {selected}")),
+  ------------------
+  |  Branch (LL:9): [True: 1, False: 0]
+  ------------------
+   LL|      0|        _ => say("matched others"),
+   LL|       |    }
+   LL|      2|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    single_nested_pattern(Pat::A(Some(5)));
+   LL|       |    single_nested_pattern(Pat::B(5));
+   LL|       |
+   LL|       |    simple_or_pattern(Pat::A(None));
+   LL|       |    simple_or_pattern(Pat::C(3));
+   LL|       |
+   LL|       |    simple_joint_pattern((Pat::A(Some(1)), Pat::B(2)));
+   LL|       |    simple_joint_pattern((Pat::A(Some(1)), Pat::C(2)));
+   LL|       |    simple_joint_pattern((Pat::B(1), Pat::B(2)));
+   LL|       |
+   LL|       |    joint_pattern_with_or((Pat::A(Some(1)), Pat::B(2)));
+   LL|       |    joint_pattern_with_or((Pat::B(1), Pat::C(2)));
+   LL|       |    joint_pattern_with_or((Pat::B(1), Pat::B(2)));
+   LL|       |    joint_pattern_with_or((Pat::C(1), Pat::B(2)));
+   LL|       |
+   LL|       |    joint_or_patterns((Pat::A(Some(1)), Pat::B(2)));
+   LL|       |    joint_or_patterns((Pat::B(1), Pat::C(2)));
+   LL|       |    joint_or_patterns((Pat::B(1), Pat::B(2)));
+   LL|       |    joint_or_patterns((Pat::C(1), Pat::B(2)));
+   LL|       |
+   LL|       |    partial_matched(&[1]);
+   LL|       |    partial_matched(&[1, 2, 3]);
+   LL|       |}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn say(message: &str) {
+   LL|       |    core::hint::black_box(message);
+   LL|       |}
+

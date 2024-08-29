@@ -276,7 +276,7 @@ pub struct BranchSpan {
     pub false_marker: BlockMarkerId,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct ConditionInfo {
     pub condition_id: ConditionId,
@@ -402,8 +402,10 @@ impl Default for CandidateCovId {
 }
 
 impl CandidateCovId {
-    pub fn is_valid(&self) -> bool {
-        *self != Self::default()
+    /// Return `true` is this `CandidateCovId` is assigned properly through coverage mechanism
+    /// and can be mapped as a decision.
+    pub fn is_valid(self) -> bool {
+        self != Self::default()
     }
 
     pub fn new_match_info(
