@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{read, File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
@@ -18,8 +18,8 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{copy_to_stdout, emit_wrapper_file, METADATA_FILENAME};
+use rustc_metadata::{find_native_static_library, walk_native_lib_search_dirs};
 use rustc_middle::bug;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -2110,50 +2110,19 @@ fn add_library_search_dirs(
         return;
     }
 
-    // Library search paths explicitly supplied by user (`-L` on the command line).
-    for search_path in sess.target_filesearch(PathKind::Native).cli_search_paths() {
-        cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir));
-    }
-    for search_path in sess.target_filesearch(PathKind::Framework).cli_search_paths() {
-        // Contrary to the `-L` docs only framework-specific paths are considered here.
-        if search_path.kind != PathKind::All {
-            cmd.framework_path(&search_path.dir);
-        }
-    }
-
-    // The toolchain ships some native library components and self-contained linking was enabled.
-    // Add the self-contained library directory to search paths.
-    if self_contained_components.intersects(
-        LinkSelfContainedComponents::LIBC
-            | LinkSelfContainedComponents::UNWIND
-            | LinkSelfContainedComponents::MINGW,
-    ) {
-        let lib_path = sess.target_tlib_path.dir.join("self-contained");
-        cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-    }
-
-    // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
-    // library directory instead of the self-contained directories.
-    // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
-    // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
-    // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
-    // and sanitizers to self-contained directory, and stop adding this search path.
-    if sess.target.vendor == "fortanix"
-        || sess.target.os == "linux"
-        || sess.target.os == "fuchsia"
-        || sess.target.is_like_osx && !sess.opts.unstable_opts.sanitizer.is_empty()
-    {
-        cmd.include_path(&fix_windows_verbatim_for_gcc(&sess.target_tlib_path.dir));
-    }
-
-    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
-    // we must have the support library stubs in the library search path (#121430).
-    if let Some(sdk_root) = apple_sdk_root
-        && sess.target.llvm_target.contains("macabi")
-    {
-        cmd.include_path(&sdk_root.join("System/iOSSupport/usr/lib"));
-        cmd.framework_path(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"));
-    }
+    walk_native_lib_search_dirs(
+        sess,
+        self_contained_components,
+        apple_sdk_root,
+        |dir, is_framework| {
+            if is_framework {
+                cmd.framework_path(dir);
+            } else {
+                cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
+            }
+            ControlFlow::<()>::Continue(())
+        },
+    );
 }
 
 /// Add options making relocation sections in the produced ELF files read-only
