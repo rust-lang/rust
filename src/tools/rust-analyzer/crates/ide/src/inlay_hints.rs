@@ -14,8 +14,8 @@ use smallvec::{smallvec, SmallVec};
 use span::{Edition, EditionedFileId};
 use stdx::never;
 use syntax::{
-    ast::{self, AstNode},
-    match_ast, NodeOrToken, SyntaxNode, TextRange, TextSize, WalkEvent,
+    ast::{self, AstNode, HasGenericParams},
+    format_smolstr, match_ast, NodeOrToken, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
 };
 use text_edit::TextEdit;
 
@@ -29,10 +29,10 @@ mod closing_brace;
 mod closure_captures;
 mod closure_ret;
 mod discriminant;
-mod fn_lifetime_fn;
 mod generic_param;
 mod implicit_drop;
 mod implicit_static;
+mod lifetime;
 mod param_name;
 mod range_exclusive;
 
@@ -94,8 +94,8 @@ pub(crate) fn inlay_hints(
     };
     let famous_defs = FamousDefs(&sema, scope.krate());
 
-    let parent_impl = &mut None;
-    let hints = |node| hints(&mut acc, parent_impl, &famous_defs, config, file_id, node);
+    let ctx = &mut InlayHintCtx::default();
+    let hints = |node| hints(&mut acc, ctx, &famous_defs, config, file_id, node);
     match range_limit {
         // FIXME: This can miss some hints that require the parent of the range to calculate
         Some(range) => match file.covering_element(range) {
@@ -109,6 +109,12 @@ pub(crate) fn inlay_hints(
     };
 
     acc
+}
+
+#[derive(Default)]
+struct InlayHintCtx {
+    lifetime_stacks: Vec<Vec<SmolStr>>,
+    is_param_list: bool,
 }
 
 pub(crate) fn inlay_hints_resolve(
@@ -131,8 +137,8 @@ pub(crate) fn inlay_hints_resolve(
     let famous_defs = FamousDefs(&sema, scope.krate());
     let mut acc = Vec::new();
 
-    let parent_impl = &mut None;
-    let hints = |node| hints(&mut acc, parent_impl, &famous_defs, config, file_id, node);
+    let ctx = &mut InlayHintCtx::default();
+    let hints = |node| hints(&mut acc, ctx, &famous_defs, config, file_id, node);
 
     let mut res = file.clone();
     let res = loop {
@@ -146,9 +152,11 @@ pub(crate) fn inlay_hints_resolve(
     acc.into_iter().find(|hint| hasher(hint) == hash)
 }
 
+// FIXME: At some point when our hir infra is fleshed out enough we should flip this and traverse the
+// HIR instead of the syntax tree.
 fn hints(
     hints: &mut Vec<InlayHint>,
-    parent_impl: &mut Option<ast::Impl>,
+    ctx: &mut InlayHintCtx,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
@@ -157,12 +165,30 @@ fn hints(
     let node = match node {
         WalkEvent::Enter(node) => node,
         WalkEvent::Leave(n) => {
-            if ast::Impl::can_cast(n.kind()) {
-                parent_impl.take();
+            if ast::AnyHasGenericParams::can_cast(n.kind()) {
+                ctx.lifetime_stacks.pop();
+                // pop
+            }
+            if ast::ParamList::can_cast(n.kind()) {
+                ctx.is_param_list = false;
+                // pop
             }
             return;
         }
     };
+
+    if let Some(node) = ast::AnyHasGenericParams::cast(node.clone()) {
+        let params = node
+            .generic_param_list()
+            .map(|it| {
+                it.lifetime_params()
+                    .filter_map(|it| it.lifetime().map(|it| format_smolstr!("{}", &it.text()[1..])))
+                    .collect()
+            })
+            .unwrap_or_default();
+        ctx.lifetime_stacks.push(params);
+    }
+
     closing_brace::hints(hints, sema, config, file_id, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
         generic_param::hints(hints, sema, config, any_has_generic_args);
@@ -183,7 +209,7 @@ fn hints(
                         closure_ret::hints(hints, famous_defs, config, file_id, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, file_id,  it),
-                    _ => None,
+                    _ => Some(()),
                 }
             },
             ast::Pat(it) => {
@@ -200,14 +226,9 @@ fn hints(
                 Some(())
             },
             ast::Item(it) => match it {
-                // FIXME: record impl lifetimes so they aren't being reused in assoc item lifetime inlay hints
-                ast::Item::Impl(impl_) => {
-                    *parent_impl = Some(impl_);
-                    None
-                },
                 ast::Item::Fn(it) => {
                     implicit_drop::hints(hints, famous_defs, config, file_id, &it);
-                    fn_lifetime_fn::hints(hints, famous_defs, config, file_id, it)
+                    lifetime::fn_hints(hints, ctx, famous_defs, config, file_id, it)
                 },
                 // static type elisions
                 ast::Item::Static(it) => implicit_static::hints(hints, famous_defs, config, file_id, Either::Left(it)),
@@ -215,9 +236,17 @@ fn hints(
                 ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, file_id, it),
                 _ => None,
             },
-            // FIXME: fn-ptr type, dyn fn type, and trait object type elisions
-            ast::Type(_) => None,
-            _ => None,
+            // FIXME: trait object type elisions
+            ast::Type(ty) => match ty {
+                ast::Type::FnPtrType(ptr) => lifetime::fn_ptr_hints(hints, ctx, famous_defs, config, file_id, ptr),
+                ast::Type::PathType(path) => lifetime::fn_path_hints(hints, ctx, famous_defs, config, file_id, path),
+                _ => Some(()),
+            },
+            ast::ParamList(_) => {
+                ctx.is_param_list = true;
+                Some(())
+            },
+            _ => Some(()),
         }
     };
 }
