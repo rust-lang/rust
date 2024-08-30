@@ -14,7 +14,7 @@ use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
-use crate::region_infer::TypeTest;
+use crate::region_infer::{TypeTest, TypeTestOrigin};
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
 use crate::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
@@ -219,7 +219,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-        TypeTest { generic_kind, lower_bound, span: self.span, verify_bound }
+        TypeTest {
+            generic_kind,
+            lower_bound,
+            source: TypeTestOrigin::Code(self.span),
+            verify_bound,
+        }
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {

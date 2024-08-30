@@ -184,6 +184,18 @@ pub enum VerifyBound<'tcx> {
     /// This is used when *some* bound in `B` is known to suffice, but
     /// we don't know which.
     AllBounds(Vec<VerifyBound<'tcx>>),
+
+    /// This bound holds if a given region `R` outlives `'static`.
+    /// This is a rewritten bound introduced during lowering of
+    /// higher-ranked constraints.
+    OutlivesStatic(Region<'tcx>),
+}
+
+impl<'tcx> VerifyBound<'tcx> {
+    /// Generate a new VerifyBound that never holds.
+    pub fn never_satisfied() -> Self {
+        VerifyBound::AnyBound(Vec::new())
+    }
 }
 
 /// This is a "conditional bound" that checks the result of inference
@@ -675,7 +687,7 @@ impl<'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(..) => false,
-            VerifyBound::OutlivedBy(re) => re.is_static(),
+            VerifyBound::OutlivedBy(re) | VerifyBound::OutlivesStatic(re) => re.is_static(),
             VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),
@@ -689,6 +701,7 @@ impl<'tcx> VerifyBound<'tcx> {
             VerifyBound::OutlivedBy(_) => false,
             VerifyBound::AnyBound(bs) => bs.iter().all(|b| b.cannot_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().any(|b| b.cannot_hold()),
+            VerifyBound::OutlivesStatic(_) => false,
         }
     }
 
