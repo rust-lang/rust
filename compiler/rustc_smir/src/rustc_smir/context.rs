@@ -784,7 +784,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     }
 }
 
-pub struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
+pub(crate) struct TablesWrapper<'tcx>(pub RefCell<Tables<'tcx>>);
 
 /// Implement error handling for extracting function ABI information.
 impl<'tcx> FnAbiOfHelpers<'tcx> for Tables<'tcx> {
