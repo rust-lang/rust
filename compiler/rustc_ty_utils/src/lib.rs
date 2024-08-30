@@ -16,6 +16,7 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_middle::query::Providers;
