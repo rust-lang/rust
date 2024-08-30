@@ -279,7 +279,7 @@ class RustdocSearchElement extends HTMLElement {
                 </div>
             </form>
         </nav>
-       <div id="search-focus-panel">example query goes here</div>`;
+       <div id="search-focus-panel">loading crate list...</div>`;
     }
 }
 window.customElements.define("rustdoc-search", RustdocSearchElement);
