@@ -1,7 +1,7 @@
 use super::Tree;
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
-pub enum Def {
+enum Def {
     NoSafetyInvariants,
     HasSafetyInvariants,
 }
