@@ -1,6 +1,6 @@
 use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     // In QNX, libc does not provide a compatible ABI between versions.
     // To distinguish between QNX versions, we needed a stable conditional compilation switch,
     // which is why we needed to implement different targets in the compiler.

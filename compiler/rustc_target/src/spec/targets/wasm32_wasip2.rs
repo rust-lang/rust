@@ -18,7 +18,7 @@
 
 use crate::spec::{base, crt_objects, LinkSelfContainedDefault, RelocModel, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();

@@ -7,7 +7,7 @@
 
 use crate::spec::{base, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);

@@ -1,6 +1,6 @@
 use crate::spec::{FramePointer, TargetOptions};
 
-pub fn opts(kernel: &str) -> TargetOptions {
+pub(crate) fn opts(kernel: &str) -> TargetOptions {
     TargetOptions {
         os: format!("solid_{kernel}").into(),
         vendor: "kmc".into(),

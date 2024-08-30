@@ -1,6 +1,6 @@
 use crate::spec::{base, SanitizerSet, StackProbeType, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".into(),
         metadata: crate::spec::TargetMetadata {

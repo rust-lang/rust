@@ -5,7 +5,7 @@ use crate::spec::{
     Lld, SplitDebuginfo, TargetOptions,
 };
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::No, Lld::No),
         &[

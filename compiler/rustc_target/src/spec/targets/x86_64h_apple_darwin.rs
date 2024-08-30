@@ -1,7 +1,7 @@
 use crate::spec::base::apple::{macos_llvm_target, opts, Arch, TargetAbi};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let arch = Arch::X86_64h;
     let mut base = opts("macos", arch, TargetAbi::Normal);
     base.max_atomic_width = Some(128);

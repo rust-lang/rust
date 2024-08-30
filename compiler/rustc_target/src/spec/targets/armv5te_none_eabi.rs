@@ -2,7 +2,7 @@
 
 use crate::spec::{base, cvs, FramePointer, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv5te-none-eabi".into(),
         metadata: crate::spec::TargetMetadata {
