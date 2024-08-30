@@ -1,12 +1,12 @@
 //@ run-pass
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::{channel, Receiver};
+use std::thread;
 
 fn periodical(n: isize) -> Receiver<bool> {
     let (chan, port) = channel();
-    thread::spawn(move|| {
+    thread::spawn(move || {
         loop {
             for _ in 1..n {
                 match chan.send(false) {
@@ -16,7 +16,7 @@ fn periodical(n: isize) -> Receiver<bool> {
             }
             match chan.send(true) {
                 Ok(()) => {}
-                Err(..) => break
+                Err(..) => break,
             }
         }
     });
@@ -25,7 +25,7 @@ fn periodical(n: isize) -> Receiver<bool> {
 
 fn integers() -> Receiver<isize> {
     let (chan, port) = channel();
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let mut i = 1;
         loop {
             match chan.send(i) {
@@ -47,7 +47,7 @@ fn main() {
             (_, true, true) => println!("FizzBuzz"),
             (_, true, false) => println!("Fizz"),
             (_, false, true) => println!("Buzz"),
-            (i, false, false) => println!("{}", i)
+            (i, false, false) => println!("{}", i),
         }
     }
 }

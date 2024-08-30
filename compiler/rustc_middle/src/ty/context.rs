@@ -2190,7 +2190,7 @@ macro_rules! sty_debug_print {
                 all_infer: usize,
             }
 
-            pub fn go(fmt: &mut std::fmt::Formatter<'_>, tcx: TyCtxt<'_>) -> std::fmt::Result {
+            pub(crate) fn go(fmt: &mut std::fmt::Formatter<'_>, tcx: TyCtxt<'_>) -> std::fmt::Result {
                 let mut total = DebugStat {
                     total: 0,
                     lt_infer: 0,

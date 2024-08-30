@@ -53,7 +53,6 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(new_uninit)]
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
@@ -63,6 +62,7 @@
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(test)]

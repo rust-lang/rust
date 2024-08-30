@@ -24,7 +24,7 @@ use crate::errors::{
 };
 use crate::framework::BitSetExt;
 
-pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
+type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint.
 #[derive(Clone)]

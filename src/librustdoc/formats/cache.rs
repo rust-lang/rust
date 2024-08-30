@@ -274,7 +274,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             None
         };
         if let Some(name) = search_name {
-            add_item_to_search_index(self.tcx, &mut self.cache, &item, name)
+            add_item_to_search_index(self.tcx, self.cache, &item, name)
         }
 
         // Keep track of the fully qualified path for this item.
@@ -452,7 +452,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // or if item is tuple struct/variant field (name is a number -> not useful for search).
             if cache.stripped_mod
                 || item.type_() == ItemType::StructField
-                    && name.as_str().chars().all(|c| c.is_digit(10))
+                    && name.as_str().chars().all(|c| c.is_ascii_digit())
             {
                 return;
             }
@@ -463,7 +463,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         }
         clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
-            let parent_did = match &*last {
+            let parent_did = match last {
                 // impl Trait for &T { fn method(self); }
                 //
                 // When generating a function index with the above shape, we want it
@@ -471,9 +471,9 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
                 // show up as `T::method`, rather than `reference::method`, in the search
                 // results page.
                 ParentStackItem::Impl { for_: clean::Type::BorrowedRef { type_, .. }, .. } => {
-                    type_.def_id(&cache)
+                    type_.def_id(cache)
                 }
-                ParentStackItem::Impl { for_, .. } => for_.def_id(&cache),
+                ParentStackItem::Impl { for_, .. } => for_.def_id(cache),
                 ParentStackItem::Type(item_id) => item_id.as_def_id(),
             };
             let Some(parent_did) = parent_did else { return };
@@ -538,7 +538,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         None
     };
     let search_type = get_function_type_for_search(
-        &item,
+        item,
         tcx,
         clean_impl_generics(cache.parent_stack.last()).as_ref(),
         parent_did,

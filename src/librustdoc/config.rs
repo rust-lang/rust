@@ -360,7 +360,7 @@ impl Options {
             return None;
         }
 
-        if rustc_driver::describe_flag_categories(early_dcx, &matches) {
+        if rustc_driver::describe_flag_categories(early_dcx, matches) {
             return None;
         }
 
@@ -374,7 +374,7 @@ impl Options {
         let codegen_options = CodegenOptions::build(early_dcx, matches);
         let unstable_opts = UnstableOptions::build(early_dcx, matches);
 
-        let remap_path_prefix = match parse_remap_path_prefix(&matches) {
+        let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
             Err(err) => {
                 early_dcx.early_fatal(err);
@@ -486,7 +486,7 @@ impl Options {
                 _ => dcx.fatal("too many file operands"),
             }
         };
-        let input = make_input(early_dcx, &input);
+        let input = make_input(early_dcx, input);
 
         let externs = parse_externs(early_dcx, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {

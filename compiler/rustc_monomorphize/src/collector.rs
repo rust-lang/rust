@@ -242,12 +242,12 @@ use tracing::{debug, instrument, trace};
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};
 
 #[derive(PartialEq)]
-pub enum MonoItemCollectionStrategy {
+pub(crate) enum MonoItemCollectionStrategy {
     Eager,
     Lazy,
 }
 
-pub struct UsageMap<'tcx> {
+pub(crate) struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
     used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
@@ -306,13 +306,17 @@ impl<'tcx> UsageMap<'tcx> {
         assert!(self.used_map.insert(user_item, used_items).is_none());
     }
 
-    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+    pub(crate) fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
         self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
     }
 
     /// Internally iterate over all inlined items used by `item`.
-    pub fn for_each_inlined_used_item<F>(&self, tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>, mut f: F)
-    where
+    pub(crate) fn for_each_inlined_used_item<F>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        item: MonoItem<'tcx>,
+        mut f: F,
+    ) where
         F: FnMut(MonoItem<'tcx>),
     {
         let used_items = self.used_map.get(&item).unwrap();
@@ -1615,6 +1619,6 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     (mono_items, state.usage_map.into_inner())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
 }
