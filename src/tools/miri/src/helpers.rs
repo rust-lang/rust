@@ -630,14 +630,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 self.ecx
             }
 
-            fn aggregate_field_order(memory_index: &IndexVec<FieldIdx, u32>, idx: usize) -> usize {
-                // We need to do an *inverse* lookup: find the field that has position `idx` in memory order.
-                for (src_field, &mem_pos) in memory_index.iter_enumerated() {
-                    if mem_pos as usize == idx {
-                        return src_field.as_usize();
-                    }
-                }
-                panic!("invalid `memory_index`, could not find {}-th field in memory order", idx);
+            fn aggregate_field_iter(
+                memory_index: &IndexVec<FieldIdx, u32>,
+            ) -> impl Iterator<Item = FieldIdx> + 'static {
+                let inverse_memory_index = memory_index.invert_bijective_mapping();
+                inverse_memory_index.into_iter()
             }
 
             // Hook to detect `UnsafeCell`.
