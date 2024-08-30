@@ -2815,7 +2815,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
         }
 
-		let crates = "";
+        let crates = "";
 
         let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
@@ -3879,9 +3879,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
     }
 
 
-	console.log(rawSearchIndex);
-	let crates = "";
-	if (rawSearchIndex.size > 1) {
+    console.log(rawSearchIndex);
+    let crates = "";
+    if (rawSearchIndex.size > 1) {
         crates = "<div id=\"crate-search-div\"><select id=\"crate-search\">" +
             "<option value=\"all crates\" selected>all crates</option>";
         for (const c of rawSearchIndex.keys()) {
@@ -3889,7 +3889,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         crates += "</select></div>";
     }
-	document.getElementById("search-focus-panel").innerHTML = crates;
+    document.getElementById("search-focus-panel").innerHTML = crates;
 }
 
 if (typeof window !== "undefined") {
