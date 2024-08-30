@@ -296,3 +296,21 @@ fn issue11365() {
 
     if let Some(A | B) = &Some(A) { println!() }
 }
+
+#[derive(Eq, PartialEq)]
+pub struct Data([u8; 4]);
+
+const DATA: Data = Data([1, 2, 3, 4]);
+const CONST_I32: i32 = 1;
+
+fn irrefutable_match() {
+    { println!() }
+
+    { println!() }
+
+    let i = 0;
+    {
+        let a = 1;
+        let b = 2;
+    }
+}

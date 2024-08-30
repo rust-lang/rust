@@ -360,3 +360,30 @@ fn issue11365() {
         None | Some(_) => {},
     }
 }
+
+#[derive(Eq, PartialEq)]
+pub struct Data([u8; 4]);
+
+const DATA: Data = Data([1, 2, 3, 4]);
+const CONST_I32: i32 = 1;
+
+fn irrefutable_match() {
+    match DATA {
+        DATA => println!(),
+        _ => {},
+    }
+
+    match CONST_I32 {
+        CONST_I32 => println!(),
+        _ => {},
+    }
+
+    let i = 0;
+    match i {
+        i => {
+            let a = 1;
+            let b = 2;
+        },
+        _ => {},
+    }
+}

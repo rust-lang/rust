@@ -91,6 +91,13 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
+    if snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
+        let msg = "this pattern is irrefutable, `match` is useless";
+        let sugg = expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app);
+        span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);
+        return;
+    }
+
     let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
     let (msg, sugg) = if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind
         && let (ty, ty_ref_count) = peel_middle_ty_refs(cx.typeck_results().expr_ty(ex))
