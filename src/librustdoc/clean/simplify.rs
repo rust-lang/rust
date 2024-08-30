@@ -14,7 +14,6 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty;
 use thin_vec::ThinVec;
 
 use crate::clean;
@@ -113,18 +112,9 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
         return true;
     }
     let predicates = cx.tcx.explicit_super_predicates_of(child);
-    debug_assert!(cx.tcx.generics_of(child).has_self);
-    let self_ty = cx.tcx.types.self_param;
     predicates
-        .predicates
-        .iter()
-        .filter_map(|(pred, _)| {
-            if let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder() {
-                if pred.trait_ref.self_ty() == self_ty { Some(pred.def_id()) } else { None }
-            } else {
-                None
-            }
-        })
+        .iter_identity_copied()
+        .filter_map(|(pred, _)| Some(pred.as_trait_clause()?.def_id()))
         .any(|did| trait_is_same_or_supertrait(cx, did, trait_))
 }
 
