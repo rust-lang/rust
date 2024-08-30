@@ -1235,26 +1235,27 @@ mod prim_f16 {}
 /// operations are guaranteed to exactly preserve the bit pattern of their input except for possibly
 /// changing the sign bit.
 ///
-/// The following rules apply when a NaN value is returned from an arithmetic operation: the result
-/// has a non-deterministic sign. The quiet bit and payload are non-deterministically chosen from
-/// the following set of options:
+/// The following rules apply when a NaN value is returned from an arithmetic operation:
+/// - The result has a non-deterministic sign.
+/// - The quiet bit and payload are non-deterministically chosen from
+///   the following set of options:
 ///
-/// - **Preferred NaN**: The quiet bit is set and the payload is all-zero.
-/// - **Quieting NaN propagation**: The quiet bit is set and the payload is copied from any input
-///   operand that is a NaN. If the inputs and outputs do not have the same payload size (i.e., for
-///   `as` casts), then
-///   - If the output is smaller than the input, low-order bits of the payload get dropped.
-///   - If the output is larger than the input, the payload gets filled up with 0s in the low-order
-///     bits.
-/// - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
-///   that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
-///   same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
-///   than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
-///   possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
-///   propagation cannot occur with some inputs.
-/// - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
-///   set of "extra" possible NaN payloads. The set can depend on the input operand values.
-///   See the table below for the concrete NaNs this set contains on various targets.
+///   - **Preferred NaN**: The quiet bit is set and the payload is all-zero.
+///   - **Quieting NaN propagation**: The quiet bit is set and the payload is copied from any input
+///     operand that is a NaN. If the inputs and outputs do not have the same payload size (i.e., for
+///     `as` casts), then
+///     - If the output is smaller than the input, low-order bits of the payload get dropped.
+///     - If the output is larger than the input, the payload gets filled up with 0s in the low-order
+///       bits.
+///   - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
+///     that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
+///     same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
+///     than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
+///     possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
+///     propagation cannot occur with some inputs.
+///   - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
+///     set of "extra" possible NaN payloads. The set can depend on the input operand values.
+///     See the table below for the concrete NaNs this set contains on various targets.
 ///
 /// In particular, if all input NaNs are quiet (or if there are no input NaNs), then the output NaN
 /// is definitely quiet. Signaling NaN outputs can only occur if they are provided as an input
