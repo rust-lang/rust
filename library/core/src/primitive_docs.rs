@@ -1127,7 +1127,7 @@ impl<T> (T,) {}
 
 #[rustc_doc_primitive = "f16"]
 #[doc(alias = "half")]
-/// A 16-bit floating point type (specifically, the "binary16" type defined in IEEE 754-2008).
+/// A 16-bit floating-point type (specifically, the "binary16" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] but has decreased precision because it uses half as many
 /// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on half-precision
@@ -1147,11 +1147,11 @@ mod prim_f16 {}
 
 #[rustc_doc_primitive = "f32"]
 #[doc(alias = "single")]
-/// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
+/// A 32-bit floating-point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
 /// `-113.75`, `0.0078125`, `34359738368`, `0`, `-1`. So unlike integer types
-/// (such as `i32`), floating point types can represent non-integer numbers,
+/// (such as `i32`), floating-point types can represent non-integer numbers,
 /// too.
 ///
 /// However, being able to represent this wide range of numbers comes at the
@@ -1165,8 +1165,8 @@ mod prim_f16 {}
 ///
 /// Additionally, `f32` can represent some special values:
 ///
-/// - −0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so −0.0 is a
-///   possible value. For comparison −0.0 = +0.0, but floating point operations can carry
+/// - −0.0: IEEE 754 floating-point numbers have a bit that indicates their sign, so −0.0 is a
+///   possible value. For comparison −0.0 = +0.0, but floating-point operations can carry
 ///   the sign bit through arithmetic operations. This means −0.0 × +0.0 produces −0.0 and
 ///   a negative number rounded to a value smaller than a float can represent also produces −0.0.
 /// - [∞](#associatedconstant.INFINITY) and
@@ -1211,7 +1211,7 @@ mod prim_f16 {}
 ///   both arguments were negative, then it is -0.0. Subtraction `a - b` is
 ///   regarded as a sum `a + (-b)`.
 ///
-/// For more information on floating point numbers, see [Wikipedia][wikipedia].
+/// For more information on floating-point numbers, see [Wikipedia][wikipedia].
 ///
 /// *[See also the `std::f32::consts` module](crate::f32::consts).*
 ///
@@ -1219,9 +1219,9 @@ mod prim_f16 {}
 ///
 /// # NaN bit patterns
 ///
-/// This section defines the possible NaN bit patterns returned by floating point operations.
+/// This section defines the possible NaN bit patterns returned by floating-point operations.
 ///
-/// The bit pattern of a floating point NaN value is defined by:
+/// The bit pattern of a floating-point NaN value is defined by:
 /// - a sign bit.
 /// - a quiet/signaling bit. Rust assumes that the quiet/signaling bit being set to `1` indicates a
 ///   quiet NaN (QNaN), and a value of `0` indicates a signaling NaN (SNaN). In the following we
@@ -1262,7 +1262,7 @@ mod prim_f16 {}
 /// does not have any "extra" NaN payloads, then the output NaN is guaranteed to be preferred.
 ///
 /// The non-deterministic choice happens when the operation is executed; i.e., the result of a
-/// NaN-producing floating point operation is a stable bit pattern (looking at these bits multiple
+/// NaN-producing floating-point operation is a stable bit pattern (looking at these bits multiple
 /// times will yield consistent results), but running the same operation twice with the same inputs
 /// can produce different results.
 ///
@@ -1276,7 +1276,7 @@ mod prim_f16 {}
 /// (e.g. `min`, `minimum`, `max`, `maximum`); other aspects of their semantics and which IEEE 754
 /// operation they correspond to are documented with the respective functions.
 ///
-/// When an arithmetic floating point operation is executed in `const` context, the same rules
+/// When an arithmetic floating-point operation is executed in `const` context, the same rules
 /// apply: no guarantee is made about which of the NaN bit patterns described above will be
 /// returned. The result does not have to match what happens when executing the same code at
 /// runtime, and the result can vary depending on factors such as compiler version and flags.
@@ -1297,7 +1297,7 @@ mod prim_f32 {}
 
 #[rustc_doc_primitive = "f64"]
 #[doc(alias = "double")]
-/// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
+/// A 64-bit floating-point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`], but has increased precision by using twice as many
 /// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on double-precision
@@ -1311,7 +1311,7 @@ mod prim_f64 {}
 
 #[rustc_doc_primitive = "f128"]
 #[doc(alias = "quad")]
-/// A 128-bit floating point type (specifically, the "binary128" type defined in IEEE 754-2008).
+/// A 128-bit floating-point type (specifically, the "binary128" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] and [`prim@f64`], but has increased precision by using twice
 /// as many bits as `f64`. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on
