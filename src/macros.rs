@@ -20,6 +20,7 @@ use rustc_span::{
     symbol::{self, kw},
     BytePos, Span, Symbol, DUMMY_SP,
 };
+use tracing::debug;
 
 use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
