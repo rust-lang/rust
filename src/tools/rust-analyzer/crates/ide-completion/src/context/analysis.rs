@@ -1132,10 +1132,18 @@ fn classify_name_ref(
             ast::PathType(it) => make_path_kind_type(it.into()),
             ast::PathExpr(it) => {
                 if let Some(p) = it.syntax().parent() {
-                    if ast::ExprStmt::can_cast(p.kind()) {
-                        if let Some(kind) = inbetween_body_and_decl_check(p) {
-                            return Some(make_res(NameRefKind::Keyword(kind)));
-                        }
+                    let p_kind = p.kind();
+                    // The syntax node of interest, for which we want to check whether
+                    // it is sandwiched between an item decl signature and its body.
+                    let probe = if ast::ExprStmt::can_cast(p_kind) {
+                        Some(p)
+                    } else if ast::StmtList::can_cast(p_kind) {
+                        Some(it.syntax().clone())
+                    } else {
+                        None
+                    };
+                    if let Some(kind) = probe.and_then(inbetween_body_and_decl_check) {
+                        return Some(make_res(NameRefKind::Keyword(kind)));
                     }
                 }
 
@@ -1199,7 +1207,13 @@ fn classify_name_ref(
                     }
                 }
             },
-            ast::RecordExpr(it) => make_path_kind_expr(it.into()),
+            ast::RecordExpr(it) => {
+                // A record expression in this position is usually a result of parsing recovery, so check that
+                if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
+                    return Some(make_res(NameRefKind::Keyword(kind)));
+                }
+                make_path_kind_expr(it.into())
+            },
             _ => return None,
         }
     };
