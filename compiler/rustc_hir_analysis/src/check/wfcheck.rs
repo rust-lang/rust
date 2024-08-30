@@ -1652,11 +1652,10 @@ fn check_fn_or_method<'tcx>(
 }
 
 /// The `arbitrary_self_types_pointers` feature implies `arbitrary_self_types`.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum ArbitrarySelfTypesLevel {
-    None,                       // neither arbitrary_self_types nor arbitrary_self_types_pointers
-    ArbitrarySelfTypes,         // just arbitrary_self_types
-    ArbitrarySelfTypesPointers, // both arbitrary_self_types and arbitrary_self_types_pointers
+    Basic,        // just arbitrary_self_types
+    WithPointers, // both arbitrary_self_types and arbitrary_self_types_pointers
 }
 
 #[instrument(level = "debug", skip(wfcx))]
@@ -1692,11 +1691,11 @@ fn check_method_receiver<'tcx>(
     }
 
     let arbitrary_self_types_level = if tcx.features().arbitrary_self_types_pointers {
-        ArbitrarySelfTypesLevel::ArbitrarySelfTypesPointers
+        Some(ArbitrarySelfTypesLevel::WithPointers)
     } else if tcx.features().arbitrary_self_types {
-        ArbitrarySelfTypesLevel::ArbitrarySelfTypes
+        Some(ArbitrarySelfTypesLevel::Basic)
     } else {
-        ArbitrarySelfTypesLevel::None
+        None
     };
 
     if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, arbitrary_self_types_level) {
@@ -1704,14 +1703,13 @@ fn check_method_receiver<'tcx>(
             // Wherever possible, emit a message advising folks that the features
             // `arbitrary_self_types` or `arbitrary_self_types_pointers` might
             // have helped.
-            ArbitrarySelfTypesLevel::None
-                if receiver_is_valid(
-                    wfcx,
-                    span,
-                    receiver_ty,
-                    self_ty,
-                    ArbitrarySelfTypesLevel::ArbitrarySelfTypes,
-                ) =>
+            None if receiver_is_valid(
+                wfcx,
+                span,
+                receiver_ty,
+                self_ty,
+                Some(ArbitrarySelfTypesLevel::Basic),
+            ) =>
             {
                 // Report error; would have worked with `arbitrary_self_types`.
                 feature_err(
@@ -1726,13 +1724,13 @@ fn check_method_receiver<'tcx>(
                 .with_help(fluent::hir_analysis_invalid_receiver_ty_help)
                 .emit()
             }
-            ArbitrarySelfTypesLevel::ArbitrarySelfTypes | ArbitrarySelfTypesLevel::None
+            None | Some(ArbitrarySelfTypesLevel::Basic)
                 if receiver_is_valid(
                     wfcx,
                     span,
                     receiver_ty,
                     self_ty,
-                    ArbitrarySelfTypesLevel::ArbitrarySelfTypesPointers,
+                    Some(ArbitrarySelfTypesLevel::WithPointers),
                 ) =>
             {
                 // Report error; would have worked with `arbitrary_self_types_pointers`.
@@ -1772,7 +1770,7 @@ fn receiver_is_valid<'tcx>(
     span: Span,
     receiver_ty: Ty<'tcx>,
     self_ty: Ty<'tcx>,
-    arbitrary_self_types_enabled: ArbitrarySelfTypesLevel,
+    arbitrary_self_types_enabled: Option<ArbitrarySelfTypesLevel>,
 ) -> bool {
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
@@ -1791,7 +1789,7 @@ fn receiver_is_valid<'tcx>(
     let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
 
     // The `arbitrary_self_types_pointers` feature allows raw pointer receivers like `self: *const Self`.
-    if matches!(arbitrary_self_types_enabled, ArbitrarySelfTypesLevel::ArbitrarySelfTypesPointers) {
+    if arbitrary_self_types_enabled == Some(ArbitrarySelfTypesLevel::WithPointers) {
         autoderef = autoderef.include_raw_pointers();
     }
 
@@ -1817,7 +1815,7 @@ fn receiver_is_valid<'tcx>(
 
         // Without `feature(arbitrary_self_types)`, we require that each step in the
         // deref chain implement `receiver`.
-        if matches!(arbitrary_self_types_enabled, ArbitrarySelfTypesLevel::None) {
+        if arbitrary_self_types_enabled.is_none() {
             if !receiver_is_implemented(
                 wfcx,
                 receiver_trait_def_id,
