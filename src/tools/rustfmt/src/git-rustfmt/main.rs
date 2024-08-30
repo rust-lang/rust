@@ -2,9 +2,6 @@
 // `rustc_driver`.
 #![feature(rustc_private)]
 
-#[macro_use]
-extern crate tracing;
-
 use std::env;
 use std::io::stdout;
 use std::path::{Path, PathBuf};
@@ -13,6 +10,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 use rustfmt_nightly as rustfmt;
+use tracing::debug;
 use tracing_subscriber::EnvFilter;
 
 use crate::rustfmt::{load_config, CliOptions, FormatReportFormatterBuilder, Input, Session};
