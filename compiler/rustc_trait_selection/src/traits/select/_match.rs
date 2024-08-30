@@ -21,12 +21,12 @@ use tracing::instrument;
 /// Like subtyping, matching is really a binary relation, so the only
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
-pub struct MatchAgainstFreshVars<'tcx> {
+pub(crate) struct MatchAgainstFreshVars<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> MatchAgainstFreshVars<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstFreshVars<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstFreshVars<'tcx> {
         MatchAgainstFreshVars { tcx }
     }
 }
