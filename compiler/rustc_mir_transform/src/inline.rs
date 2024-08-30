@@ -36,7 +36,7 @@ const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 // by custom rustc drivers, running all the steps by themselves. See #114628.
 pub struct Inline;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 struct CallSite<'tcx> {
     callee: Instance<'tcx>,
     fn_sig: ty::PolyFnSig<'tcx>,
