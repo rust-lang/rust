@@ -316,6 +316,7 @@ impl Config {
         let mut tar = tar::Archive::new(decompressor);
 
         let is_ci_rustc = dst.ends_with("ci-rustc");
+        let is_ci_llvm = dst.ends_with("ci-llvm");
 
         // `compile::Sysroot` needs to know the contents of the `rustc-dev` tarball to avoid adding
         // it to the sysroot unless it was explicitly requested. But parsing the 100 MB tarball is slow.
@@ -332,7 +333,9 @@ impl Config {
             let mut short_path = t!(original_path.strip_prefix(directory_prefix));
             let is_builder_config = short_path.to_str() == Some(BUILDER_CONFIG_FILENAME);
 
-            if !(short_path.starts_with(pattern) || (is_ci_rustc && is_builder_config)) {
+            if !(short_path.starts_with(pattern)
+                || ((is_ci_rustc || is_ci_llvm) && is_builder_config))
+            {
                 continue;
             }
             short_path = short_path.strip_prefix(pattern).unwrap_or(short_path);
@@ -717,17 +720,43 @@ download-rustc = false
 
     #[cfg(not(feature = "bootstrap-self-test"))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
+        use build_helper::exit;
+
         use crate::core::build_steps::llvm::detect_llvm_sha;
+        use crate::core::config::check_incompatible_options_for_ci_llvm;
 
         if !self.llvm_from_ci {
             return;
         }
+
         let llvm_root = self.ci_llvm_root();
         let llvm_stamp = llvm_root.join(".llvm-stamp");
         let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
         let key = format!("{}{}", llvm_sha, self.llvm_assertions);
         if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
+
+            if let Some(config_path) = &self.config {
+                let current_config_toml = Self::get_toml(config_path).unwrap();
+
+                match self.get_builder_toml("ci-llvm") {
+                    Ok(ci_config_toml) => {
+                        check_incompatible_options_for_ci_llvm(current_config_toml, ci_config_toml)
+                            .unwrap();
+                    }
+                    Err(e) if e.to_string().contains("unknown field") => {
+                        println!(
+                            "WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled."
+                        );
+                        println!("HELP: Consider rebasing to a newer commit if available.");
+                    }
+                    Err(e) => {
+                        eprintln!("ERROR: Failed to parse CI LLVM config.toml: {e}");
+                        exit!(2);
+                    }
+                };
+            };
+
             if self.should_fix_bins_and_dylibs() {
                 for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
                     self.fix_bin_or_dylib(&t!(entry).path());
