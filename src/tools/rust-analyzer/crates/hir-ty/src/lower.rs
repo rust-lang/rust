@@ -1700,6 +1700,28 @@ pub(crate) fn generic_predicates_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
 ) -> GenericPredicates {
+    generic_predicates_filtered_by(db, def, |_, _| true)
+}
+
+/// Resolve the where clause(s) of an item with generics,
+/// except the ones inherited from the parent
+pub(crate) fn generic_predicates_without_parent_query(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+) -> GenericPredicates {
+    generic_predicates_filtered_by(db, def, |_, d| *d == def)
+}
+
+/// Resolve the where clause(s) of an item with generics,
+/// except the ones inherited from the parent
+fn generic_predicates_filtered_by<F>(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    filter: F,
+) -> GenericPredicates
+where
+    F: Fn(&WherePredicate, &GenericDefId) -> bool,
+{
     let resolver = def.resolver(db.upcast());
     let (impl_trait_lowering, param_lowering) = match def {
         GenericDefId::FunctionId(_) => {
@@ -1714,6 +1736,7 @@ pub(crate) fn generic_predicates_query(
 
     let mut predicates = resolver
         .where_predicates_in_scope()
+        .filter(|(pred, def)| filter(pred, def))
         .flat_map(|(pred, def)| {
             ctx.lower_where_predicate(pred, def, false).map(|p| make_binders(db, &generics, p))
         })

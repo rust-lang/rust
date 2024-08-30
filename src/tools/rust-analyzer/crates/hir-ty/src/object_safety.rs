@@ -12,7 +12,7 @@ use hir_def::{
     lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId,
     TypeAliasId,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
 use crate::{
@@ -417,29 +417,10 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = &*db.generic_predicates(func.into());
-    let mut parent_predicates = (*db.generic_predicates(trait_.into()))
-        .iter()
-        .map(|b| b.skip_binders().skip_binders().clone())
-        .fold(FxHashMap::default(), |mut acc, item| {
-            acc.entry(item)
-                .and_modify(|cnt| {
-                    *cnt += 1;
-                })
-                .or_insert(1);
-            acc
-        });
+    let predicates = &*db.generic_predicates_without_parent(func.into());
     let trait_self_idx = trait_self_param_idx(db.upcast(), func.into());
     for pred in predicates {
         let pred = pred.skip_binders().skip_binders();
-
-        // Skip predicates from parent, i.e. the trait that contains this method
-        if let Some(cnt) = parent_predicates.get_mut(pred) {
-            if *cnt > 0 {
-                *cnt -= 1;
-                continue;
-            }
-        }
 
         if matches!(pred, WhereClause::TypeOutlives(_)) {
             continue;

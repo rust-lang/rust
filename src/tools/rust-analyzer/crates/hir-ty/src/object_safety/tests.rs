@@ -361,3 +361,20 @@ pub trait Trait {
         [("Trait", vec![])],
     );
 }
+
+#[test]
+fn std_error_is_object_safe() {
+    check_object_safety(
+        r#"
+//- minicore: fmt, dispatch_from_dyn
+trait Erased<'a>: 'a {}
+
+pub struct Request<'a>(dyn Erased<'a> + 'a);
+
+pub trait Error: core::fmt::Debug + core::fmt::Display {
+    fn provide<'a>(&'a self, request: &mut Request<'a>);
+}
+"#,
+        [("Error", vec![])],
+    );
+}
