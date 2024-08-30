@@ -9,6 +9,7 @@ use rustc_fs_util::link_or_copy;
 use rustc_session::config::OutputType;
 use rustc_span::fatal_error::FatalError;
 use rustc_target::spec::SplitDebuginfo;
+use tracing::debug;
 
 use crate::errors::CopyBitcode;
 use crate::{GccCodegenBackend, GccContext};

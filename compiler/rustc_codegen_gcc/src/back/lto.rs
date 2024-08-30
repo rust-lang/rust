@@ -36,6 +36,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::config::{CrateType, Lto};
 use tempfile::{tempdir, TempDir};
+use tracing::info;
 
 use crate::back::write::save_temp_bitcode;
 use crate::errors::{DynamicLinkingWithLTO, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib};
