@@ -1914,30 +1914,6 @@ impl Config {
                         "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                     );
                 }
-
-                // None of the LLVM options, except assertions, are supported
-                // when using downloaded LLVM. We could just ignore these but
-                // that's potentially confusing, so force them to not be
-                // explicitly set. The defaults and CI defaults don't
-                // necessarily match but forcing people to match (somewhat
-                // arbitrary) CI configuration locally seems bad/hard.
-                check_ci_llvm!(optimize_toml);
-                check_ci_llvm!(thin_lto);
-                check_ci_llvm!(release_debuginfo);
-                check_ci_llvm!(targets);
-                check_ci_llvm!(experimental_targets);
-                check_ci_llvm!(clang_cl);
-                check_ci_llvm!(version_suffix);
-                check_ci_llvm!(cflags);
-                check_ci_llvm!(cxxflags);
-                check_ci_llvm!(ldflags);
-                check_ci_llvm!(use_libcxx);
-                check_ci_llvm!(use_linker);
-                check_ci_llvm!(allow_old_toolchain);
-                check_ci_llvm!(polly);
-                check_ci_llvm!(clang);
-                check_ci_llvm!(build_config);
-                check_ci_llvm!(plugins);
             }
 
             // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
