@@ -14,7 +14,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
+    file_id: EditionedFileId,
     expr: &ast::Expr,
 ) -> Option<()> {
     if !config.chaining_hints {
@@ -58,7 +58,7 @@ pub(super) fn hints(
                     }
                 }
             }
-            let label = label_of_ty(famous_defs, config, &ty)?;
+            let label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
                 kind: InlayKind::Chaining,

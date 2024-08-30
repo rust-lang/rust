@@ -61,7 +61,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                                 .string_value_unescape()
                                 .is_none() =>
                     {
-                        format_to!(buf, "{}/", name.display(db))
+                        format_to!(buf, "{}/", name.unescaped().display(db))
                     }
                     _ => (),
                 }

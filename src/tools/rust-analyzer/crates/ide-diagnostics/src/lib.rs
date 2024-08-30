@@ -75,6 +75,8 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
+use std::sync::LazyLock;
+
 use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
@@ -86,11 +88,10 @@ use ide_db::{
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
-use once_cell::sync::Lazy;
 use stdx::never;
 use syntax::{
     ast::{self, AstNode},
-    AstPtr, SyntaxNode, SyntaxNodePtr, TextRange,
+    AstPtr, Edition, SyntaxNode, SyntaxNodePtr, TextRange,
 };
 
 // FIXME: Make this an enum
@@ -279,6 +280,7 @@ struct DiagnosticsContext<'a> {
     config: &'a DiagnosticsConfig,
     sema: Semantics<'a, RootDatabase>,
     resolve: &'a AssistResolveStrategy,
+    edition: Edition,
 }
 
 impl DiagnosticsContext<'_> {
@@ -359,12 +361,19 @@ pub fn semantic_diagnostics(
     for node in parse.syntax().descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
-        handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, config);
+        handlers::json_is_not_rust::json_in_items(
+            &sema,
+            &mut res,
+            file_id,
+            &node,
+            config,
+            file_id.edition(),
+        );
     }
 
     let module = sema.file_to_module_def(file_id);
 
-    let ctx = DiagnosticsContext { config, sema, resolve };
+    let ctx = DiagnosticsContext { config, sema, resolve, edition: file_id.edition() };
 
     let mut diags = Vec::new();
     match module {
@@ -490,6 +499,7 @@ pub fn semantic_diagnostics(
         &mut rustc_stack,
         &mut clippy_stack,
         &mut diagnostics_of_range,
+        ctx.edition,
     );
 
     res.retain(|d| d.severity != Severity::Allow);
@@ -512,11 +522,11 @@ pub fn full_diagnostics(
 
 // `__RA_EVERY_LINT` is a fake lint group to allow every lint in proc macros
 
-static RUSTC_LINT_GROUPS_DICT: Lazy<FxHashMap<&str, Vec<&str>>> =
-    Lazy::new(|| build_group_dict(DEFAULT_LINT_GROUPS, &["warnings", "__RA_EVERY_LINT"], ""));
+static RUSTC_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
+    LazyLock::new(|| build_group_dict(DEFAULT_LINT_GROUPS, &["warnings", "__RA_EVERY_LINT"], ""));
 
-static CLIPPY_LINT_GROUPS_DICT: Lazy<FxHashMap<&str, Vec<&str>>> =
-    Lazy::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
+static CLIPPY_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
+    LazyLock::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
 
 fn build_group_dict(
     lint_group: &'static [LintGroup],
@@ -544,6 +554,7 @@ fn handle_lint_attributes(
     rustc_stack: &mut FxHashMap<String, Vec<Severity>>,
     clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
+    edition: Edition,
 ) {
     let _g = tracing::info_span!("handle_lint_attributes").entered();
     let file_id = sema.hir_file_for(root);
@@ -552,9 +563,15 @@ fn handle_lint_attributes(
         match ev {
             syntax::WalkEvent::Enter(node) => {
                 for attr in node.children().filter_map(ast::Attr::cast) {
-                    parse_lint_attribute(attr, rustc_stack, clippy_stack, |stack, severity| {
-                        stack.push(severity);
-                    });
+                    parse_lint_attribute(
+                        attr,
+                        rustc_stack,
+                        clippy_stack,
+                        |stack, severity| {
+                            stack.push(severity);
+                        },
+                        edition,
+                    );
                 }
                 if let Some(it) =
                     diagnostics_of_range.get_mut(&InFile { file_id, value: node.clone() })
@@ -591,6 +608,7 @@ fn handle_lint_attributes(
                             rustc_stack,
                             clippy_stack,
                             diagnostics_of_range,
+                            edition,
                         );
                         for stack in [&mut *rustc_stack, &mut *clippy_stack] {
                             stack.entry("__RA_EVERY_LINT".to_owned()).or_default().pop();
@@ -605,17 +623,24 @@ fn handle_lint_attributes(
                             rustc_stack,
                             clippy_stack,
                             diagnostics_of_range,
+                            edition,
                         );
                     }
                 }
             }
             syntax::WalkEvent::Leave(node) => {
                 for attr in node.children().filter_map(ast::Attr::cast) {
-                    parse_lint_attribute(attr, rustc_stack, clippy_stack, |stack, severity| {
-                        if stack.pop() != Some(severity) {
-                            never!("Mismatched serevity in walking lint attributes");
-                        }
-                    });
+                    parse_lint_attribute(
+                        attr,
+                        rustc_stack,
+                        clippy_stack,
+                        |stack, severity| {
+                            if stack.pop() != Some(severity) {
+                                never!("Mismatched serevity in walking lint attributes");
+                            }
+                        },
+                        edition,
+                    );
                 }
             }
         }
@@ -627,6 +652,7 @@ fn parse_lint_attribute(
     rustc_stack: &mut FxHashMap<String, Vec<Severity>>,
     clippy_stack: &mut FxHashMap<String, Vec<Severity>>,
     job: impl Fn(&mut Vec<Severity>, Severity),
+    edition: Edition,
 ) {
     let Some((tag, args_tt)) = attr.as_simple_call() else {
         return;
@@ -637,7 +663,7 @@ fn parse_lint_attribute(
         "forbid" | "deny" => Severity::Error,
         _ => return,
     };
-    for lint in parse_tt_as_comma_sep_paths(args_tt).into_iter().flatten() {
+    for lint in parse_tt_as_comma_sep_paths(args_tt, edition).into_iter().flatten() {
         if let Some(lint) = lint.as_single_name_ref() {
             job(rustc_stack.entry(lint.to_string()).or_default(), severity);
         }

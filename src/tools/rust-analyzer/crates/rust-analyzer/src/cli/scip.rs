@@ -4,7 +4,7 @@ use std::{path::PathBuf, time::Instant};
 
 use ide::{
     AnalysisHost, LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
-    SymbolInformationKind, TextRange, TokenId,
+    SymbolInformationKind, TextRange, TokenId, VendoredLibrariesConfig,
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
@@ -37,7 +37,6 @@ impl flags::Scip {
             lsp_types::ClientCapabilities::default(),
             vec![],
             None,
-            None,
         );
 
         if let Some(p) = self.config_path {
@@ -63,7 +62,13 @@ impl flags::Scip {
         let db = host.raw_database();
         let analysis = host.analysis();
 
-        let si = StaticIndex::compute(&analysis, &root.clone().into());
+        let vendored_libs_config = if self.exclude_vendored_libraries {
+            VendoredLibrariesConfig::Excluded
+        } else {
+            VendoredLibrariesConfig::Included { workspace_root: &root.clone().into() }
+        };
+
+        let si = StaticIndex::compute(&analysis, vendored_libs_config);
 
         let metadata = scip_types::Metadata {
             version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
@@ -137,7 +142,9 @@ impl flags::Scip {
                 let mut symbol_roles = Default::default();
 
                 if let Some(def) = token.definition {
-                    if def.range == text_range {
+                    // if the the range of the def and the range of the token are the same, this must be the definition.
+                    // they also must be in the same file. See https://github.com/rust-lang/rust-analyzer/pull/17988
+                    if def.file_id == file_id && def.range == text_range {
                         symbol_roles |= scip_types::SymbolRole::Definition as i32;
                     }
 
@@ -352,8 +359,12 @@ mod test {
         let (host, position) = position(ra_fixture);
 
         let analysis = host.analysis();
-        let si =
-            StaticIndex::compute(&analysis, &VfsPath::new_virtual_path("/workspace".to_owned()));
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
 
         let FilePosition { file_id, offset } = position;
 
@@ -617,8 +628,12 @@ pub mod example_mod {
         host.raw_database_mut().apply_change(change_fixture.change);
 
         let analysis = host.analysis();
-        let si =
-            StaticIndex::compute(&analysis, &VfsPath::new_virtual_path("/workspace".to_owned()));
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
 
         let file = si.files.first().unwrap();
         let (_, token_id) = file.tokens.first().unwrap();

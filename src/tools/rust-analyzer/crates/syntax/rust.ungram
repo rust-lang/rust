@@ -9,8 +9,6 @@
 //   //          -- comment
 //   Name =      -- non-terminal definition
 //   'ident'     -- keyword or punct token (terminal)
-//   '?ident'    -- contextual keyword (terminal)
-//   too)
 //   '#ident'    -- generic token (terminal)
 //   '@ident'    -- literal token (terminal)
 //   A B         -- sequence
@@ -40,7 +38,11 @@ PathSegment =
   '::'? NameRef
 | NameRef GenericArgList?
 | NameRef ParamList RetType?
+| NameRef ReturnTypeSyntax
 | '<' Type ('as' PathType)? '>'
+
+ReturnTypeSyntax =
+  '(' '..' ')'
 
 
 //*************************//
@@ -61,7 +63,7 @@ TypeArg =
 
 AssocTypeArg =
   NameRef
-  (GenericArgList | ParamList RetType?)?
+  (GenericArgList | ParamList RetType? | ReturnTypeSyntax)?
   (':' TypeBoundList | ('=' Type | ConstArg))
 
 LifetimeArg =
@@ -152,7 +154,7 @@ Item =
 
 MacroRules =
   Attr* Visibility?
-  '?macro_rules' '!' Name
+  'macro_rules' '!' Name
   TokenTree
 
 MacroDef =
@@ -188,7 +190,7 @@ UseTreeList =
 
 Fn =
  Attr* Visibility?
- '?default'? 'const'? 'async'? 'unsafe'? Abi?
+ 'default'? 'const'? 'async'? 'gen'? 'unsafe'? Abi?
  'fn' Name GenericParamList? ParamList RetType? WhereClause?
  (body:BlockExpr | ';')
 
@@ -220,7 +222,7 @@ RetType =
 
 TypeAlias =
   Attr* Visibility?
-  '?default'?
+  'default'?
   'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
   ('=' Type)? ';'
 
@@ -263,7 +265,7 @@ Variant =
 
 Union =
   Attr* Visibility?
-  '?union' Name GenericParamList? WhereClause?
+  'union' Name GenericParamList? WhereClause?
   RecordFieldList
 
 // A Data Type.
@@ -276,7 +278,7 @@ Adt =
 
 Const =
   Attr* Visibility?
-  '?default'?
+  'default'?
   'const' (Name | '_') ':' Type
   ('=' body:Expr)? ';'
 
@@ -287,7 +289,7 @@ Static =
 
 Trait =
   Attr* Visibility?
-  'unsafe'? '?auto'?
+  'unsafe'? 'auto'?
   'trait' Name GenericParamList?
   (':' TypeBoundList?)? WhereClause? AssocItemList
 
@@ -306,7 +308,7 @@ AssocItem =
 
 Impl =
   Attr* Visibility?
-  '?default'? 'unsafe'?
+  'default'? 'unsafe'?
   'impl' GenericParamList? ('const'? '!'? trait:Type 'for')? self_ty:Type WhereClause?
   AssocItemList
 
@@ -387,13 +389,13 @@ Expr =
 | UnderscoreExpr
 
 OffsetOfExpr =
-  Attr* '?builtin' '#' '?offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
+  Attr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
 
 AsmExpr =
-  Attr* '?builtin' '#' '?asm' '(' Expr ')'
+  Attr* 'builtin' '#' 'asm' '(' Expr ')'
 
 FormatArgsExpr =
-  Attr* '?builtin' '#' '?format_args' '('
+  Attr* 'builtin' '#' 'format_args' '('
   template:Expr
   (',' args:(FormatArgsArg (',' FormatArgsArg)* ','?)? )?
   ')'
@@ -425,7 +427,7 @@ StmtList =
   '}'
 
 RefExpr =
-  Attr* '&' (('?raw' 'const'?)| ('?raw'? 'mut') ) Expr
+  Attr* '&' (('raw' 'const'?)| ('raw'? 'mut') ) Expr
 
 TryExpr =
   Attr* Expr '?'
@@ -550,7 +552,7 @@ YieldExpr =
   Attr* 'yield' Expr?
 
 YeetExpr =
-  Attr* 'do' '?yeet' Expr?
+  Attr* 'do' 'yeet' Expr?
 
 LetExpr =
   Attr* 'let' Pat '=' Expr

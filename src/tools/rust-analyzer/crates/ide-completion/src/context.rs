@@ -15,7 +15,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
-    AstNode, SmolStr,
+    AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
@@ -437,6 +437,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) module: hir::Module,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
     is_nightly: bool,
+    pub(crate) edition: Edition,
 
     /// The expected name of what we are completing.
     /// This is usually the parameter name of the function argument we are completing.
@@ -467,8 +468,9 @@ impl CompletionContext<'_> {
                 cov_mark::hit!(completes_if_lifetime_without_idents);
                 TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
             }
-            IDENT | LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
-            _ if kind.is_keyword() => self.original_token.text_range(),
+            LIFETIME_IDENT | UNDERSCORE | INT_NUMBER => self.original_token.text_range(),
+            // We want to consider all keywords in all editions.
+            _ if kind.is_any_identifier() => self.original_token.text_range(),
             _ => TextRange::empty(self.position.offset),
         }
     }
@@ -716,6 +718,7 @@ impl<'a> CompletionContext<'a> {
 
         let krate = scope.krate();
         let module = scope.module();
+        let edition = krate.edition(db);
 
         let toolchain = db.toolchain_channel(krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
@@ -742,6 +745,7 @@ impl<'a> CompletionContext<'a> {
             krate,
             module,
             is_nightly,
+            edition,
             expected_name,
             expected_type,
             qualifier_ctx,

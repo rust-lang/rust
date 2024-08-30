@@ -148,7 +148,6 @@ impl<T: ParseFromLine> CommandHandle<T> {
     }
 
     pub(crate) fn join(mut self) -> io::Result<()> {
-        let _ = self.child.0.kill();
         let exit_status = self.child.0.wait()?;
         let (read_at_least_one_message, error) = self.thread.join()?;
         if read_at_least_one_message || exit_status.success() {

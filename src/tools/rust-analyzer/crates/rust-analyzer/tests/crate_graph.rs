@@ -20,6 +20,7 @@ fn load_cargo_with_fake_sysroot(file: &str) -> ProjectWorkspace {
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
@@ -93,7 +94,7 @@ fn test_deduplicate_origin_dev() {
         }
     }
 
-    assert!(crates_named_p2.len() == 1);
+    assert_eq!(crates_named_p2.len(), 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
 }
@@ -119,7 +120,7 @@ fn test_deduplicate_origin_dev_rev() {
         }
     }
 
-    assert!(crates_named_p2.len() == 1);
+    assert_eq!(crates_named_p2.len(), 1);
     let p2 = crates_named_p2[0];
     assert!(p2.origin.is_local());
 }

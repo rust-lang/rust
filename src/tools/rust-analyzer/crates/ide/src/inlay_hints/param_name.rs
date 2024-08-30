@@ -121,7 +121,9 @@ fn should_hide_param_name_hint(
     }
 
     let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).display_no_db().to_smolstr()),
+        hir::CallableKind::Function(it) => {
+            Some(it.name(sema.db).unescaped().display_no_db().to_smolstr())
+        }
         _ => None,
     };
     let fn_name = fn_name.as_deref();

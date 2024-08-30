@@ -184,7 +184,7 @@ fn add_function_impl(
     let label = format_smolstr!(
         "{}fn {}({})",
         if is_async { "async " } else { "" },
-        fn_name.display(ctx.db),
+        fn_name.display(ctx.db, ctx.edition),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
 
@@ -194,11 +194,11 @@ fn add_function_impl(
         SymbolKind::Function
     });
 
-    let mut item = CompletionItem::new(completion_kind, replacement_range, label);
+    let mut item = CompletionItem::new(completion_kind, replacement_range, label, ctx.edition);
     item.lookup_by(format!(
         "{}fn {}",
         if is_async { "async " } else { "" },
-        fn_name.display(ctx.db)
+        fn_name.display(ctx.db, ctx.edition)
     ))
     .set_documentation(func.docs(ctx.db))
     .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
@@ -262,7 +262,8 @@ fn add_type_alias_impl(
 
     let label = format_smolstr!("type {alias_name} =");
 
-    let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
+    let mut item =
+        CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label, ctx.edition);
     item.lookup_by(format!("type {alias_name}"))
         .set_documentation(type_alias.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
@@ -320,7 +321,7 @@ fn add_const_impl(
     const_: hir::Const,
     impl_def: hir::Impl,
 ) {
-    let const_name = const_.name(ctx.db).map(|n| n.display_no_db().to_smolstr());
+    let const_name = const_.name(ctx.db).map(|n| n.display_no_db(ctx.edition).to_smolstr());
 
     if let Some(const_name) = const_name {
         if let Some(source) = ctx.sema.source(const_) {
@@ -334,7 +335,8 @@ fn add_const_impl(
                 let label = make_const_compl_syntax(&transformed_const, source.file_id.is_macro());
                 let replacement = format!("{label} ");
 
-                let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
+                let mut item =
+                    CompletionItem::new(SymbolKind::Const, replacement_range, label, ctx.edition);
                 item.lookup_by(format_smolstr!("const {const_name}"))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
