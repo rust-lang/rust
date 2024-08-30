@@ -122,7 +122,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         let ssa = SsaLocals::new(tcx, body, param_env);
-        // Clone dominators as we need them while mutating the body.
+        // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
 
         let mut state = VnState::new(tcx, body, param_env, &ssa, &dominators, &body.local_decls);
