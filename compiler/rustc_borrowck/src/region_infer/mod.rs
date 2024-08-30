@@ -116,6 +116,12 @@ impl RegionTracker {
         }
     }
 
+    /// If the representative is a placeholder, return it,
+    /// otherwise return None.
+    fn placeholder_representative(&self) -> Option<RegionVid> {
+        if self.representative_is_placeholder { Some(self.representative) } else { None }
+    }
+
     /// The smallest-indexed universe reachable from and/or in this SCC.
     fn min_universe(self) -> UniverseIndex {
         self.min_reachable_universe
@@ -429,8 +435,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sccs_info(infcx, &constraint_sccs);
         }
 
-        let mut scc_values =
-            RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
+        let mut scc_values = RegionValues::new(elements, universal_regions.len());
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
@@ -541,10 +546,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.scc_values.add_element(scc, variable);
                 }
 
-                NllRegionVariableOrigin::Placeholder(placeholder) => {
-                    self.scc_values.add_element(scc, placeholder);
+                NllRegionVariableOrigin::Placeholder { .. } => {
+                    // Placeholders are already handled by rewriting constraints.
                 }
-
                 NllRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
@@ -601,14 +605,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn region_value_str(&self, r: RegionVid) -> String {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.region_value_str(scc)
-    }
-
-    pub(crate) fn placeholders_contained_in<'a>(
-        &'a self,
-        r: RegionVid,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion> + 'a {
-        let scc = self.constraint_sccs.scc(r);
-        self.scc_values.placeholders_contained_in(scc)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
@@ -983,7 +979,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // It doesn't matter *what* universe because the promoted `T` will
         // always be in the root universe.
-        if let Some(p) = self.scc_values.placeholders_contained_in(r_scc).next() {
+
+        if let Some(p) = self.constraint_sccs.annotation(r_scc).placeholder_representative() {
             debug!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
             let static_r = self.universal_regions.fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
@@ -1649,14 +1646,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for error_element in self.scc_values.elements_contained_in(longer_fr_scc) {
             match error_element {
                 RegionElement::Location(_) | RegionElement::RootUniversalRegion(_) => {}
-                // If we have some bound universal region `'a`, then the only
-                // elements it can contain is itself -- we don't know anything
-                // else about it!
-                RegionElement::PlaceholderRegion(placeholder1) => {
-                    if placeholder == placeholder1 {
-                        continue;
-                    }
-                }
             }
 
             errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
@@ -1923,14 +1912,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match *element {
             RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
             RegionElement::RootUniversalRegion(r) => r,
-            RegionElement::PlaceholderRegion(error_placeholder) => self
-                .definitions
-                .iter_enumerated()
-                .find_map(|(r, definition)| match definition.origin {
-                    NllRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
-                    _ => None,
-                })
-                .unwrap(),
         }
     }
 

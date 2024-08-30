@@ -205,35 +205,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
         diag: &mut Diag<'_>,
-        lower_bound: RegionVid,
+        _lower_bound: RegionVid,
     ) {
         let mut suggestions = vec![];
         let hir = self.infcx.tcx.hir();
 
         // find generic associated types in the given region 'lower_bound'
-        let gat_id_and_generics = self
-            .regioncx
-            .placeholders_contained_in(lower_bound)
-            .map(|placeholder| {
-                if let Some(id) = placeholder.bound.kind.get_id()
-                    && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) = self
-                        .infcx
-                        .tcx
-                        .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
-                        .generics()
-                {
-                    Some((gat_hir_id, generics_impl))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
+        // FIXME: this should find one of the special-case blamable
+        // new constraints instead!
+        //let gat_id_and_generics = vec![];
+        //debug!(?gat_id_and_generics);
 
         // find higher-ranked trait bounds bounded to the generic associated types
-        let mut hrtb_bounds = vec![];
+        let hrtb_bounds = vec![];
+        /*
         gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
             for pred in generics.predicates {
                 let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) = pred
@@ -252,6 +237,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         });
         debug!(?hrtb_bounds);
+        */
 
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }, _) = bound else {

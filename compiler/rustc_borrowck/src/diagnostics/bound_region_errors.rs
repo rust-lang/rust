@@ -181,19 +181,7 @@ trait TypeOpInfo<'tcx> {
             bound: placeholder.bound,
         });
 
-        let error_region =
-            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
-                let adjusted_universe =
-                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-                adjusted_universe.map(|adjusted| {
-                    ty::Region::new_placeholder(tcx, ty::Placeholder {
-                        universe: adjusted.into(),
-                        bound: error_placeholder.bound,
-                    })
-                })
-            } else {
-                None
-            };
+        let error_region = None;
 
         debug!(?placeholder_region);
 

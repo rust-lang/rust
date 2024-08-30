@@ -213,14 +213,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Special handling of higher-ranked regions.
                 if !self.scc_universe(scc).is_root() {
-                    match self.scc_values.placeholders_contained_in(scc).enumerate().last() {
-                        // If the region contains a single placeholder then they're equal.
-                        Some((0, placeholder)) => {
-                            return ty::Region::new_placeholder(tcx, placeholder);
-                        }
-
+                    let annotation = self.constraint_sccs.annotation(scc);
+                    if annotation.representative_is_placeholder && vid == annotation.representative
+                    {
+                        // FIXME: somehow construct the right type out of the representative!
+                        return region;
+                    } else {
                         // Fallback: this will produce a cryptic error message.
-                        _ => return region,
+                        return region;
                     }
                 }
 
