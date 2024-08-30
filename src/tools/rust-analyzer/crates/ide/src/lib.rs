@@ -439,12 +439,12 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        position: TextSize,
+        resolve_range: TextRange,
         hash: u64,
         hasher: impl Fn(&InlayHint) -> u64 + Send + UnwindSafe,
     ) -> Cancellable<Option<InlayHint>> {
         self.with_db(|db| {
-            inlay_hints::inlay_hints_resolve(db, file_id, position, hash, config, hasher)
+            inlay_hints::inlay_hints_resolve(db, file_id, resolve_range, hash, config, hasher)
         })
     }
 

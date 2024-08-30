@@ -67,6 +67,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::After,
                 pad_left: true,
                 pad_right: false,
+                resolve_parent: Some(expr.syntax().text_range()),
             });
         }
     }

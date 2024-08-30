@@ -1602,14 +1602,14 @@ pub(crate) fn handle_inlay_hints_resolve(
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
+    let range = from_proto::text_range(&line_index, resolve_data.resolve_range)?;
 
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints_resolve(
         &forced_resolve_inlay_hints_config,
         file_id,
-        hint_position,
+        range,
         hash,
         |hint| {
             std::hash::BuildHasher::hash_one(

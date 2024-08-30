@@ -452,10 +452,13 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     mut inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let resolve_hash = inlay_hint.needs_resolve().then(|| {
-        std::hash::BuildHasher::hash_one(
-            &std::hash::BuildHasherDefault::<FxHasher>::default(),
-            &inlay_hint,
+    let resolve_range_and_hash = inlay_hint.needs_resolve().map(|range| {
+        (
+            range,
+            std::hash::BuildHasher::hash_one(
+                &std::hash::BuildHasherDefault::<FxHasher>::default(),
+                &inlay_hint,
+            ),
         )
     });
 
@@ -465,7 +468,7 @@ pub(crate) fn inlay_hint(
         .visual_studio_code_version()
         // https://github.com/microsoft/vscode/issues/193124
         .map_or(true, |version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
-        && resolve_hash.is_some()
+        && resolve_range_and_hash.is_some()
         && fields_to_resolve.resolve_text_edits
     {
         something_to_resolve |= inlay_hint.text_edit.is_some();
@@ -477,16 +480,17 @@ pub(crate) fn inlay_hint(
         snap,
         fields_to_resolve,
         &mut something_to_resolve,
-        resolve_hash.is_some(),
+        resolve_range_and_hash.is_some(),
         inlay_hint.label,
     )?;
 
-    let data = match resolve_hash {
-        Some(hash) if something_to_resolve => Some(
+    let data = match resolve_range_and_hash {
+        Some((resolve_range, hash)) if something_to_resolve => Some(
             to_value(lsp_ext::InlayHintResolveData {
                 file_id: file_id.index(),
                 hash: hash.to_string(),
                 version: snap.file_version(file_id),
+                resolve_range: range(line_index, resolve_range),
             })
             .unwrap(),
         ),
