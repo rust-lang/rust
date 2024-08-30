@@ -2,8 +2,9 @@
 //! ```no_run
 //! fn example/* <'0> */(a: &/* '0 */()) {}
 //! ```
-use ide_db::{syntax_helpers::node_ext::walk_ty, FxHashMap};
+use ide_db::{famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, FxHashMap};
 use itertools::Itertools;
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode, HasGenericParams, HasName},
     SyntaxToken,
@@ -14,7 +15,9 @@ use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeE
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
+    FamousDefs(_, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
+    _file_id: EditionedFileId,
     func: ast::Fn,
 ) -> Option<()> {
     if config.lifetime_elision_hints == LifetimeElisionHints::Never {
@@ -29,6 +32,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: true,
+        resolve_parent: None,
     };
 
     let param_list = func.param_list()?;
@@ -195,6 +199,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::After,
                 pad_left: false,
                 pad_right: true,
+                resolve_parent: None,
             });
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
@@ -205,6 +210,7 @@ pub(super) fn hints(
             position: InlayHintPosition::After,
             pad_left: false,
             pad_right: false,
+            resolve_parent: None,
         }),
     }
     Some(())

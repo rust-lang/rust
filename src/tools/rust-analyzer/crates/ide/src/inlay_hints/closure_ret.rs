@@ -72,6 +72,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,
+        resolve_parent: Some(closure.syntax().text_range()),
     });
     Some(())
 }

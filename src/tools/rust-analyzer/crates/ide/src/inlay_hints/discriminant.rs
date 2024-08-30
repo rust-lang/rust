@@ -35,7 +35,7 @@ pub(super) fn enum_hints(
         return None;
     }
     for variant in enum_.variant_list()?.variants() {
-        variant_hints(acc, sema, &variant);
+        variant_hints(acc, sema, &enum_, &variant);
     }
     Some(())
 }
@@ -43,6 +43,7 @@ pub(super) fn enum_hints(
 fn variant_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
+    enum_: &ast::Enum,
     variant: &ast::Variant,
 ) -> Option<()> {
     if variant.expr().is_some() {
@@ -90,6 +91,7 @@ fn variant_hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,
+        resolve_parent: Some(enum_.syntax().text_range()),
     });
 
     Some(())

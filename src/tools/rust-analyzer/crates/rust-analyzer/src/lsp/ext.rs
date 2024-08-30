@@ -819,6 +819,7 @@ pub struct InlayHintResolveData {
     pub file_id: u32,
     // This is a string instead of a u64 as javascript can't represent u64 fully
     pub hash: String,
+    pub resolve_range: lsp_types::Range,
     pub version: Option<i32>,
 }
 

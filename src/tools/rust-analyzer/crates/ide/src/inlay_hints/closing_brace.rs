@@ -18,12 +18,13 @@ pub(super) fn hints(
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    mut node: SyntaxNode,
+    original_node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
     let name = |it: ast::Name| it.syntax().text_range();
 
+    let mut node = original_node.clone();
     let mut closing_token;
     let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
@@ -145,6 +146,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: true,
         pad_right: false,
+        resolve_parent: Some(original_node.text_range()),
     });
 
     None

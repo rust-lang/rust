@@ -40,6 +40,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::After,
                 pad_left: false,
                 pad_right: false,
+                resolve_parent: Some(closure.syntax().text_range()),
             });
             range
         }
@@ -52,6 +53,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,
+        resolve_parent: None,
     });
     let last = captures.len() - 1;
     for (idx, capture) in captures.into_iter().enumerate() {
@@ -85,6 +87,7 @@ pub(super) fn hints(
             position: InlayHintPosition::After,
             pad_left: false,
             pad_right: false,
+            resolve_parent: Some(closure.syntax().text_range()),
         });
 
         if idx != last {
@@ -96,6 +99,7 @@ pub(super) fn hints(
                 position: InlayHintPosition::After,
                 pad_left: false,
                 pad_right: false,
+                resolve_parent: None,
             });
         }
     }
@@ -107,6 +111,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: true,
+        resolve_parent: None,
     });
 
     Some(())
