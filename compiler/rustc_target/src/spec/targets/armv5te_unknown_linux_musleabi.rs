@@ -1,6 +1,6 @@
 use crate::spec::{base, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         // FIXME: this comment below does not seem applicable?
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM

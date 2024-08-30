@@ -1,6 +1,6 @@
 use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "x86_64-pc-unknown".into(),
         metadata: crate::spec::TargetMetadata {

@@ -35,7 +35,7 @@ where
     *offset = offset.align_to(align) + size.align_to(align);
 }
 
-pub fn compute_abi_info<Ty, C>(cx: &C, fn_abi: &mut FnAbi<'_, Ty>)
+pub(crate) fn compute_abi_info<Ty, C>(cx: &C, fn_abi: &mut FnAbi<'_, Ty>)
 where
     C: HasDataLayout,
 {

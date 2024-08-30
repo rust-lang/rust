@@ -1,7 +1,7 @@
 use crate::abi::Endian;
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let options = TargetOptions {
         linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         linker: Some("sparc-elf-gcc".into()),

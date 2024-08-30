@@ -7,7 +7,7 @@
 
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         abi: "eabihf".into(),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

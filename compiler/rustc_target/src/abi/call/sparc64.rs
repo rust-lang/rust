@@ -7,7 +7,7 @@ use crate::abi::{self, HasDataLayout, Scalar, Size, TyAbiInterface, TyAndLayout}
 use crate::spec::HasTargetSpec;
 
 #[derive(Clone, Debug)]
-pub struct Sdata {
+struct Sdata {
     pub prefix: [Option<Reg>; 8],
     pub prefix_index: usize,
     pub last_offset: Size,
@@ -209,7 +209,7 @@ where
     arg.cast_to(Uniform::new(Reg::i64(), total));
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,

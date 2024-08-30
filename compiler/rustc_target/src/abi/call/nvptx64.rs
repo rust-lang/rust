@@ -71,7 +71,7 @@ where
     }
 }
 
-pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }
@@ -84,7 +84,7 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     }
 }
 
-pub fn compute_ptx_kernel_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_ptx_kernel_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
