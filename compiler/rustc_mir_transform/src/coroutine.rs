@@ -115,8 +115,14 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
 }
 
 struct SelfArgVisitor<'tcx> {
-    elem: ProjectionElem<Local, Ty<'tcx>>,
     tcx: TyCtxt<'tcx>,
+    new_base: Place<'tcx>,
+}
+
+impl<'tcx> SelfArgVisitor<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, elem: ProjectionElem<Local, Ty<'tcx>>) -> Self {
+        Self { tcx, new_base: Place { local: SELF_ARG, projection: tcx.mk_place_elems(&[elem]) } }
+    }
 }
 
 impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
@@ -130,11 +136,7 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         if place.local == SELF_ARG {
-            replace_base(
-                place,
-                Place { local: SELF_ARG, projection: self.tcx().mk_place_elems(&[self.elem]) },
-                self.tcx,
-            );
+            replace_base(place, self.new_base, self.tcx);
         } else {
             self.visit_local(&mut place.local, context, location);
 
@@ -475,7 +477,7 @@ fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
     body.local_decls.raw[1].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
-    SelfArgVisitor { tcx, elem: ProjectionElem::Deref }.visit_body(body);
+    SelfArgVisitor::new(tcx, ProjectionElem::Deref).visit_body(body);
 }
 
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -490,7 +492,7 @@ fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
 
     // Add the Pin field access to accesses of the coroutine state
-    SelfArgVisitor { tcx, elem: ProjectionElem::Field(FieldIdx::ZERO, ref_coroutine_ty) }
+    SelfArgVisitor::new(tcx, ProjectionElem::Field(FieldIdx::ZERO, ref_coroutine_ty))
         .visit_body(body);
 }
 
