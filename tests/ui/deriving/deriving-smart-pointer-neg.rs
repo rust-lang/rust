@@ -10,13 +10,6 @@ enum NotStruct<'a, T: ?Sized> {
 }
 
 #[derive(SmartPointer)]
-//~^ ERROR: At least one generic type should be designated as `#[pointee]` in order to derive `SmartPointer` traits
-#[repr(transparent)]
-struct NoPointee<'a, T: ?Sized> {
-    ptr: &'a T,
-}
-
-#[derive(SmartPointer)]
 //~^ ERROR: `SmartPointer` can only be derived on `struct`s with at least one field
 #[repr(transparent)]
 struct NoField<'a, #[pointee] T: ?Sized> {}
@@ -29,6 +22,23 @@ struct NoField<'a, #[pointee] T: ?Sized> {}
 struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
 //~^ ERROR: lifetime parameter `'a` is never used
 //~| ERROR: type parameter `T` is never used
+
+#[derive(SmartPointer)]
+//~^ ERROR: `SmartPointer` can only be derived on `struct`s that are generic over at least one type
+#[repr(transparent)]
+struct NoGeneric<'a>(&'a u8);
+
+#[derive(SmartPointer)]
+//~^ ERROR: exactly one generic type parameter must be marked as #[pointee] to derive SmartPointer traits
+#[repr(transparent)]
+struct AmbiguousPointee<'a, T1: ?Sized, T2: ?Sized> {
+    a: (&'a T1, &'a T2),
+}
+
+#[derive(SmartPointer)]
+#[repr(transparent)]
+struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
+//~^ ERROR: only one type parameter can be marked as `#[pointee]` when deriving SmartPointer traits
 
 #[derive(SmartPointer)]
 //~^ ERROR: `SmartPointer` can only be derived on `struct`s with `#[repr(transparent)]`

@@ -18,9 +18,9 @@ pub struct BasicBlocks<'tcx> {
 }
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
-pub type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
+type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 
-pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
+type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
 
 #[derive(Clone, Default, Debug)]
 struct Cache {

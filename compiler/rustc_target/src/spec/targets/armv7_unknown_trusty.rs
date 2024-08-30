@@ -8,7 +8,7 @@ pub fn target() -> Target {
         llvm_target: "armv7-unknown-unknown-gnueabi".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Armv7-A Trusty".into()),
-            tier: Some(2),
+            tier: Some(3),
             host_tools: Some(false),
             std: Some(false),
         },

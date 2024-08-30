@@ -37,6 +37,8 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::relocation_model, sym::cfg_relocation_model, cfg_fn!(cfg_relocation_model)),
     (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, cfg_fn!(cfg_sanitizer_cfi)),
+    // this is consistent with naming of the compiler flag it's for
+    (sym::fmt_debug, sym::fmt_debug, cfg_fn!(fmt_debug)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.

@@ -335,7 +335,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> f
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
-impl<T: ?Sized> fmt::Debug for Weak<T> {
+impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(Weak)")
     }
@@ -505,7 +505,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -521,7 +520,7 @@ impl<T> Arc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
@@ -543,7 +542,6 @@ impl<T> Arc<T> {
     ///
     /// ```
     /// #![feature(new_zeroed_alloc)]
-    /// #![feature(new_uninit)]
     ///
     /// use std::sync::Arc;
     ///
@@ -614,7 +612,7 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit, allocator_api)]
+    /// #![feature(allocator_api)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -650,7 +648,7 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit, allocator_api)]
+    /// #![feature( allocator_api)]
     ///
     /// use std::sync::Arc;
     ///
@@ -711,7 +709,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(get_mut_unchecked)]
     /// #![feature(allocator_api)]
     ///
@@ -755,7 +752,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(allocator_api)]
     ///
     /// use std::sync::Arc;
@@ -845,7 +841,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit, allocator_api)]
+    /// #![feature(allocator_api)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -889,7 +885,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit, allocator_api)]
+    /// #![feature(allocator_api)]
     ///
     /// use std::sync::Arc;
     /// use std::alloc::System;
@@ -1101,7 +1097,6 @@ impl<T> Arc<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -1120,7 +1115,7 @@ impl<T> Arc<[T]> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
@@ -1136,7 +1131,6 @@ impl<T> Arc<[T]> {
     ///
     /// ```
     /// #![feature(new_zeroed_alloc)]
-    /// #![feature(new_uninit)]
     ///
     /// use std::sync::Arc;
     ///
@@ -1172,7 +1166,6 @@ impl<T, A: Allocator> Arc<[T], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(get_mut_unchecked)]
     /// #![feature(allocator_api)]
     ///
@@ -1208,7 +1201,6 @@ impl<T, A: Allocator> Arc<[T], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(allocator_api)]
     ///
     /// use std::sync::Arc;
@@ -1257,7 +1249,6 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -1271,7 +1262,7 @@ impl<T, A: Allocator> Arc<mem::MaybeUninit<T>, A> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T, A> {
@@ -1296,7 +1287,6 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_uninit)]
     /// #![feature(get_mut_unchecked)]
     ///
     /// use std::sync::Arc;
@@ -1313,7 +1303,7 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[stable(feature = "new_uninit", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T], A> {

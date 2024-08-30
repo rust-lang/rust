@@ -2,12 +2,12 @@
 #![allow(unused_must_use)]
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::{channel, Sender};
+use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let t = thread::spawn(move || { child(&tx) });
+    let t = thread::spawn(move || child(&tx));
     let y = rx.recv().unwrap();
     println!("received");
     println!("{}", y);

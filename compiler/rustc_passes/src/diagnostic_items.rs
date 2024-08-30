@@ -90,7 +90,7 @@ fn all_diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
     items
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.diagnostic_items = diagnostic_items;
     providers.all_diagnostic_items = all_diagnostic_items;
 }

@@ -56,13 +56,13 @@ impl std::ops::Deref for MetadataBlob {
 
 impl MetadataBlob {
     /// Runs the [`MemDecoder`] validation and if it passes, constructs a new [`MetadataBlob`].
-    pub fn new(slice: OwnedSlice) -> Result<Self, ()> {
+    pub(crate) fn new(slice: OwnedSlice) -> Result<Self, ()> {
         if MemDecoder::new(&slice, 0).is_ok() { Ok(Self(slice)) } else { Err(()) }
     }
 
     /// Since this has passed the validation of [`MetadataBlob::new`], this returns bytes which are
     /// known to pass the [`MemDecoder`] validation.
-    pub fn bytes(&self) -> &OwnedSlice {
+    pub(crate) fn bytes(&self) -> &OwnedSlice {
         &self.0
     }
 }
@@ -332,12 +332,12 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn blob(&self) -> &'a MetadataBlob {
+    pub(crate) fn blob(&self) -> &'a MetadataBlob {
         self.blob
     }
 
     #[inline]
-    pub fn cdata(&self) -> CrateMetadataRef<'a> {
+    fn cdata(&self) -> CrateMetadataRef<'a> {
         debug_assert!(self.cdata.is_some(), "missing CrateMetadata in DecodeContext");
         self.cdata.unwrap()
     }
@@ -377,7 +377,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
+    fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
         self.opaque.read_raw_bytes(len)
     }
 }
@@ -962,7 +962,7 @@ impl CrateRoot {
     }
 }
 
-impl<'a, 'tcx> CrateMetadataRef<'a> {
+impl<'a> CrateMetadataRef<'a> {
     fn missing(self, descr: &str, id: DefIndex) -> ! {
         bug!("missing `{descr}` for {:?}", self.local_def_id(id))
     }
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn load_proc_macro(self, id: DefIndex, tcx: TyCtxt<'tcx>) -> SyntaxExtension {
+    fn load_proc_macro<'tcx>(self, id: DefIndex, tcx: TyCtxt<'tcx>) -> SyntaxExtension {
         let (name, kind, helper_attrs) = match *self.raw_proc_macro(id) {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
                 let helper_attrs =
@@ -1070,7 +1070,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_explicit_item_bounds(
+    fn get_explicit_item_bounds<'tcx>(
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
@@ -1084,7 +1084,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         ty::EarlyBinder::bind(&*output)
     }
 
-    fn get_explicit_item_super_predicates(
+    fn get_explicit_item_super_predicates<'tcx>(
         self,
         index: DefIndex,
         tcx: TyCtxt<'tcx>,
@@ -1141,7 +1141,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_adt_def(self, item_id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::AdtDef<'tcx> {
+    fn get_adt_def<'tcx>(self, item_id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::AdtDef<'tcx> {
         let kind = self.def_kind(item_id);
         let did = self.local_def_id(item_id);
 
@@ -1225,12 +1225,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute
     /// has an `implied_by` meta item, then the mapping from the implied feature to the actual
     /// feature is a stability implication).
-    fn get_stability_implications(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Symbol)] {
+    fn get_stability_implications<'tcx>(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Symbol)] {
         tcx.arena.alloc_from_iter(self.root.stability_implications.decode(self))
     }
 
     /// Iterates over the lang items in the given crate.
-    fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, LangItem)] {
+    fn get_lang_items<'tcx>(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, LangItem)] {
         tcx.arena.alloc_from_iter(
             self.root
                 .lang_items
@@ -1239,7 +1239,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_stripped_cfg_items(self, cnum: CrateNum, tcx: TyCtxt<'tcx>) -> &'tcx [StrippedCfgItem] {
+    fn get_stripped_cfg_items<'tcx>(
+        self,
+        cnum: CrateNum,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx [StrippedCfgItem] {
         let item_names = self
             .root
             .stripped_cfg_items
@@ -1412,7 +1416,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn get_inherent_implementations_for_type(
+    fn get_inherent_implementations_for_type<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
         id: DefIndex,
@@ -1439,7 +1443,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_incoherent_impls(self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
+    fn get_incoherent_impls<'tcx>(self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
         if let Some(impls) = self.cdata.incoherent_impls.get(&simp) {
             tcx.arena.alloc_from_iter(impls.decode(self).map(|idx| self.local_def_id(idx)))
         } else {
@@ -1447,7 +1451,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_implementations_of_trait(
+    fn get_implementations_of_trait<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
@@ -1491,7 +1495,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.foreign_modules.decode((self, sess))
     }
 
-    fn get_dylib_dependency_formats(
+    fn get_dylib_dependency_formats<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx [(CrateNum, LinkagePreference)] {
@@ -1503,11 +1507,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_missing_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [LangItem] {
+    fn get_missing_lang_items<'tcx>(self, tcx: TyCtxt<'tcx>) -> &'tcx [LangItem] {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
     }
 
-    fn exported_symbols(
+    fn exported_symbols<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {

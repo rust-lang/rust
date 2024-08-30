@@ -16,6 +16,7 @@
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_ub_checks)]
+#![feature(fmt_debug)]
 
 // This part makes sure that none of the well known names are
 // unexpected.
@@ -32,6 +33,8 @@
     doc = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     doctest = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
+    fmt_debug = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     miri = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value

@@ -521,13 +521,20 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
 
     let function_features = function_features
         .iter()
-        .flat_map(|feat| {
-            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{f}"))
-        })
+        // Convert to LLVMFeatures and filter out unavailable ones
+        .flat_map(|feat| llvm_util::to_llvm_features(cx.tcx.sess, feat))
+        // Convert LLVMFeatures & dependencies to +<feats>s
+        .flat_map(|feat| feat.into_iter().map(|f| format!("+{f}")))
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
+        // HACK: LLVM versions 19+ do not have the FPMR feature and treat it as always enabled
+        // It only exists as a feature in LLVM 18, cannot be passed down for any other version
+        .chain(match &*cx.tcx.sess.target.arch {
+            "aarch64" if llvm_util::get_version().0 == 18 => vec!["+fpmr".to_string()],
+            _ => vec![],
+        })
         .collect::<Vec<String>>();
 
     if cx.tcx.sess.target.is_like_wasm {
