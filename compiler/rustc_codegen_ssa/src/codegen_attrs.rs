@@ -13,7 +13,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::Ident;
@@ -619,89 +619,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     }
 
     if let Some(sig) = fn_sig_outer() {
-        // Collect target features from types reachable from arguments.
-        // We define a type as "reachable" if:
-        //  - it is a function argument
-        //  - it is a field of a reachable struct
-        //  - there is a reachable reference to it
-        // FIXME(struct_target_features): we may want to cache the result of this computation.
-        let mut visited_types = FxHashSet::default();
-        let mut reachable_types: Vec<_> = sig.skip_binder().inputs().skip_binder().to_owned();
-        let mut additional_tf = vec![];
-
-        while let Some(ty) = reachable_types.pop() {
-            if visited_types.contains(&ty) {
-                continue;
+        for ty in sig.skip_binder().inputs().skip_binder() {
+            let additional_tf =
+                tcx.struct_reachable_target_features(tcx.param_env(did.to_def_id()).and(*ty));
+            // FIXME(struct_target_features): is this really necessary?
+            if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
+                tcx.dcx().span_err(
+                    tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                    "cannot use a struct with target features in a function with non-Rust ABI",
+                );
             }
-            visited_types.insert(ty);
-            match ty.kind() {
-                ty::Alias(..) => {
-                    if let Ok(t) =
-                        tcx.try_normalize_erasing_regions(tcx.param_env(did.to_def_id()), ty)
-                    {
-                        reachable_types.push(t)
-                    }
-                }
-
-                ty::Ref(_, inner, _) => reachable_types.push(*inner),
-                ty::Tuple(tys) => reachable_types.extend(tys.iter()),
-                ty::Adt(adt_def, args) => {
-                    additional_tf.extend_from_slice(tcx.struct_target_features(adt_def.did()));
-                    // This only recurses into structs as i.e. an Option<TargetFeature> is an ADT
-                    // that doesn't actually always contain a TargetFeature.
-                    if adt_def.is_struct() {
-                        reachable_types.extend(
-                            adt_def
-                                .variant(VariantIdx::from_usize(0))
-                                .fields
-                                .iter()
-                                .map(|field| field.ty(tcx, args)),
-                        );
-                    }
-                }
-                ty::Bool
-                | ty::Char
-                | ty::Int(..)
-                | ty::Uint(..)
-                | ty::Float(..)
-                | ty::Foreign(..)
-                | ty::Str
-                | ty::Array(..)
-                | ty::Pat(..)
-                | ty::Slice(..)
-                | ty::RawPtr(..)
-                | ty::FnDef(..)
-                | ty::FnPtr(..)
-                | ty::Dynamic(..)
-                | ty::Closure(..)
-                | ty::CoroutineClosure(..)
-                | ty::Coroutine(..)
-                | ty::CoroutineWitness(..)
-                | ty::Never
-                | ty::Param(..)
-                | ty::Bound(..)
-                | ty::Placeholder(..)
-                | ty::Infer(..)
-                | ty::Error(..) => (),
+            if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+                tcx.dcx().span_err(
+                    tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
+                    "cannot use a struct with target features in a #[inline(always)] function",
+                );
             }
+            codegen_fn_attrs
+                .target_features
+                .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
         }
-
-        // FIXME(struct_target_features): is this really necessary?
-        if !additional_tf.is_empty() && sig.skip_binder().abi() != abi::Abi::Rust {
-            tcx.dcx().span_err(
-                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                "cannot use a struct with target features in a function with non-Rust ABI",
-            );
-        }
-        if !additional_tf.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
-            tcx.dcx().span_err(
-                tcx.hir().span(tcx.local_def_id_to_hir_id(did)),
-                "cannot use a struct with target features in a #[inline(always)] function",
-            );
-        }
-        codegen_fn_attrs
-            .target_features
-            .extend(additional_tf.iter().map(|tf| TargetFeature { implied: true, ..*tf }));
     }
 
     // If a function uses non-default target_features it can't be inlined into general
@@ -858,11 +795,82 @@ fn struct_target_features(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[TargetFeatur
     tcx.arena.alloc_slice(&features)
 }
 
+fn struct_reachable_target_features<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> &'tcx [TargetFeature] {
+    // Collect target features from types reachable from `env.value`.
+    // We define a type as "reachable" if:
+    //  - it is a function argument
+    //  - it is a field of a reachable struct
+    //  - there is a reachable reference to it
+    let mut visited_types = FxHashSet::default();
+    let mut reachable_types = vec![env.value];
+    let mut reachable_tf = vec![];
+
+    while let Some(ty) = reachable_types.pop() {
+        if visited_types.contains(&ty) {
+            continue;
+        }
+        visited_types.insert(ty);
+        match ty.kind() {
+            ty::Alias(..) => {
+                if let Ok(t) = tcx.try_normalize_erasing_regions(env.param_env, ty) {
+                    reachable_types.push(t)
+                }
+            }
+
+            ty::Ref(_, inner, _) => reachable_types.push(*inner),
+            ty::Tuple(tys) => reachable_types.extend(tys.iter()),
+            ty::Adt(adt_def, args) => {
+                reachable_tf.extend_from_slice(tcx.struct_target_features(adt_def.did()));
+                // This only recurses into structs as i.e. an Option<TargetFeature> is an ADT
+                // that doesn't actually always contain a TargetFeature.
+                if adt_def.is_struct() {
+                    reachable_types.extend(
+                        adt_def
+                            .variant(VariantIdx::from_usize(0))
+                            .fields
+                            .iter()
+                            .map(|field| field.ty(tcx, args)),
+                    );
+                }
+            }
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Foreign(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Pat(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Param(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..)
+            | ty::Error(..) => (),
+        }
+    }
+    tcx.arena.alloc_slice(&reachable_tf)
+}
+
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         codegen_fn_attrs,
         should_inherit_track_caller,
         struct_target_features,
+        struct_reachable_target_features,
         ..*providers
     };
 }
