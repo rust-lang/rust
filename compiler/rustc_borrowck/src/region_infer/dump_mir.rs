@@ -43,10 +43,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for region in self.regions() {
             writeln!(
                 out,
-                "| {r:rw$?} | {ui:4?} | {v}",
+                "| {r:rw$?} | {v}",
                 r = region,
                 rw = REGION_WIDTH,
-                ui = self.region_universe(region),
                 v = self.region_value_str(region),
             )?;
         }
