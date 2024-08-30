@@ -197,7 +197,7 @@ impl Step for Rustc {
             Kind::Clippy,
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler);
+        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also lint the tests/benches/examples for these crates, rather

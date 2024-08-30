@@ -228,7 +228,7 @@ impl Step for Rustc {
             self.override_build_kind.unwrap_or(builder.kind),
         );
 
-        rustc_cargo(builder, &mut cargo, target, &compiler);
+        rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
 
         // For ./x.py clippy, don't run with --all-targets because
         // linting tests and benchmarks can produce very noisy results

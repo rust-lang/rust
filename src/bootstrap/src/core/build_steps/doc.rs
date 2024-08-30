@@ -826,7 +826,7 @@ impl Step for Rustc {
         // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
         // cargo.rustdocflag("--generate-link-to-definition");
 
-        compile::rustc_cargo(builder, &mut cargo, target, &compiler);
+        compile::rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
