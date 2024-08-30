@@ -783,7 +783,7 @@ impl<'cx, 'cache> DocVisitor for TypeImplCollector<'cx, 'cache> {
     fn visit_item(&mut self, it: &Item) {
         self.visit_item_recur(it);
         let cache = self.cache;
-        let ItemKind::TypeAliasItem(ref t) = *it.kind else { return };
+        let ItemKind::TypeAliasItem(ref t) = it.kind else { return };
         let Some(self_did) = it.item_id.as_def_id() else { return };
         if !self.visited_aliases.insert(self_did) {
             return;
