@@ -1217,6 +1217,10 @@ impl Config {
     }
 
     pub(crate) fn get_builder_toml(&self, build_name: &str) -> Result<TomlConfig, toml::de::Error> {
+        if self.dry_run() {
+            return Ok(TomlConfig::default());
+        }
+
         let builder_config_path =
             self.out.join(self.build.triple).join(build_name).join(BUILDER_CONFIG_FILENAME);
         Self::get_toml(&builder_config_path)
