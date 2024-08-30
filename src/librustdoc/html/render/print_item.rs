@@ -178,7 +178,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
 
 pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     debug_assert!(!item.is_stripped());
-    let typ = match *item.kind {
+    let typ = match item.kind {
         clean::ModuleItem(_) => {
             if item.is_crate() {
                 "Crate "
@@ -252,7 +252,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
 
     item_vars.render_into(buf).unwrap();
 
-    match &*item.kind {
+    match &item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
         clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
             item_function(buf, cx, item, f)
@@ -411,7 +411,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             );
         }
 
-        match *myitem.kind {
+        match myitem.kind {
             clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
 
@@ -477,7 +477,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                     continue;
                 }
 
-                let unsafety_flag = match *myitem.kind {
+                let unsafety_flag = match myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
                         if myitem.fn_header(tcx).unwrap().safety == hir::Safety::Unsafe =>
                     {
@@ -1439,7 +1439,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             self.s
                 .fields
                 .iter()
-                .filter_map(|f| match *f.kind {
+                .filter_map(|f| match f.kind {
                     clean::StructFieldItem(ref ty) => Some((f, ty)),
                     _ => None,
                 })
@@ -1457,7 +1457,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     display_fn(|f| {
         if !s.is_empty()
             && s.iter().all(|field| {
-                matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+                matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
             })
         {
             return f.write_str("<span class=\"comment\">/* private fields */</span>");
@@ -1467,7 +1467,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
             if i > 0 {
                 f.write_str(", ")?;
             }
-            match *ty.kind {
+            match ty.kind {
                 clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_")?,
                 clean::StructFieldItem(ref ty) => write!(f, "{}", ty.print(cx))?,
                 _ => unreachable!(),
@@ -1521,7 +1521,7 @@ fn should_show_enum_discriminant(
 ) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
-        if let clean::VariantItem(ref var) = *variant.kind
+        if let clean::VariantItem(ref var) = variant.kind
             && matches!(var.kind, clean::VariantKind::CLike)
         {
             has_variants_with_value |= var.discriminant.is_some();
@@ -1592,7 +1592,7 @@ fn render_enum_fields(
                 continue;
             }
             w.write_str(TAB);
-            match *v.kind {
+            match v.kind {
                 clean::VariantItem(ref var) => match var.kind {
                     clean::VariantKind::CLike => display_c_like_variant(
                         w,
@@ -1659,7 +1659,7 @@ fn item_variants(
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");
-        if let clean::VariantItem(ref var) = *variant.kind
+        if let clean::VariantItem(ref var) = variant.kind
             && let clean::VariantKind::CLike = var.kind
         {
             display_c_like_variant(
@@ -1675,7 +1675,7 @@ fn item_variants(
             w.write_str(variant.name.unwrap().as_str());
         }
 
-        let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
+        let clean::VariantItem(variant_data) = &variant.kind else { unreachable!() };
 
         if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
             write!(w, "({})", print_tuple_struct_fields(cx, s));
@@ -1716,7 +1716,7 @@ fn item_variants(
                 document_non_exhaustive(variant)
             );
             for field in fields {
-                match *field.kind {
+                match field.kind {
                     clean::StrippedItem(box clean::StructFieldItem(_)) => {}
                     clean::StructFieldItem(ref ty) => {
                         let id = cx.derive_id(format!(
@@ -1886,7 +1886,7 @@ fn item_fields(
 ) {
     let mut fields = fields
         .iter()
-        .filter_map(|f| match *f.kind {
+        .filter_map(|f| match f.kind {
             clean::StructFieldItem(ref ty) => Some((f, ty)),
             _ => None,
         })
@@ -2196,14 +2196,14 @@ fn render_union<'a, 'cx: 'a>(
 
         write!(f, "{{\n")?;
         let count_fields =
-            fields.iter().filter(|field| matches!(*field.kind, clean::StructFieldItem(..))).count();
+            fields.iter().filter(|field| matches!(field.kind, clean::StructFieldItem(..))).count();
         let toggle = should_hide_fields(count_fields);
         if toggle {
             toggle_open(&mut f, format_args!("{count_fields} fields"));
         }
 
         for field in fields {
-            if let clean::StructFieldItem(ref ty) = *field.kind {
+            if let clean::StructFieldItem(ref ty) = field.kind {
                 write!(
                     f,
                     "    {}{}: {},\n",
@@ -2279,14 +2279,14 @@ fn render_struct_fields(
                 w.write_str("{");
             }
             let count_fields =
-                fields.iter().filter(|f| matches!(*f.kind, clean::StructFieldItem(..))).count();
+                fields.iter().filter(|f| matches!(f.kind, clean::StructFieldItem(..))).count();
             let has_visible_fields = count_fields > 0;
             let toggle = should_hide_fields(count_fields);
             if toggle {
                 toggle_open(&mut w, format_args!("{count_fields} fields"));
             }
             for field in fields {
-                if let clean::StructFieldItem(ref ty) = *field.kind {
+                if let clean::StructFieldItem(ref ty) = field.kind {
                     write!(
                         w,
                         "\n{tab}    {vis}{name}: {ty},",
@@ -2314,7 +2314,7 @@ fn render_struct_fields(
             w.write_str("(");
             if !fields.is_empty()
                 && fields.iter().all(|field| {
-                    matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+                    matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
                 })
             {
                 write!(w, "<span class=\"comment\">/* private fields */</span>");
@@ -2323,7 +2323,7 @@ fn render_struct_fields(
                     if i > 0 {
                         w.write_str(", ");
                     }
-                    match *field.kind {
+                    match field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(..)) => write!(w, "_"),
                         clean::StructFieldItem(ref ty) => {
                             write!(w, "{}{}", visibility_print_with_space(field, cx), ty.print(cx),)

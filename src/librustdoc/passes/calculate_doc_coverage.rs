@@ -195,7 +195,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
             return;
         }
 
-        match *i.kind {
+        match i.kind {
             clean::StrippedItem(..) => {
                 // don't count items in stripped modules
                 return;

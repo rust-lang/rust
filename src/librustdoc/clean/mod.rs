@@ -203,7 +203,7 @@ fn generate_item_with_correct_attrs(
     let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
-    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, Box::new(attrs), cfg);
+    let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
     item.inline_stmt_id = import_id;
     item
 }

@@ -620,7 +620,7 @@ fn document_full_inner<'a, 'cx: 'a>(
             }
         }
 
-        let kind = match &*item.kind {
+        let kind = match &item.kind {
             clean::ItemKind::StrippedItem(box kind) | kind => kind,
         };
 
@@ -1072,7 +1072,7 @@ fn render_assoc_item(
     cx: &mut Context<'_>,
     render_mode: RenderMode,
 ) {
-    match &*item.kind {
+    match &item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(m) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
@@ -1350,7 +1350,7 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .find_map(|item| match *item.kind {
+        .find_map(|item| match item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
                 clean::TypeAlias { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
@@ -1381,7 +1381,7 @@ fn render_deref_methods(
 }
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
-    let self_type_opt = match *item.kind {
+    let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
         clean::TyMethodItem(ref method) => method.decl.receiver_type(),
         _ => None,
@@ -1491,7 +1491,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
 
                 write!(&mut out, "<div class=\"where\">{}</div>", impl_.print(false, cx));
                 for it in &impl_.items {
-                    if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
+                    if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
                         out.push_str("<div class=\"where\">    ");
                         let empty_set = FxHashSet::default();
                         let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
@@ -1659,7 +1659,7 @@ fn render_impl(
             let method_toggle_class = if item_type.is_method() { " method-toggle" } else { "" };
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
-        match &*item.kind {
+        match &item.kind {
             clean::MethodItem(..) | clean::TyMethodItem(_) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
@@ -1690,7 +1690,7 @@ fn render_impl(
                     w.write_str("</h4></section>");
                 }
             }
-            clean::TyAssocConstItem(generics, ty) => {
+            clean::TyAssocConstItem(ref generics, ref ty) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1734,7 +1734,7 @@ fn render_impl(
                 );
                 w.write_str("</h4></section>");
             }
-            clean::TyAssocTypeItem(generics, bounds) => {
+            clean::TyAssocTypeItem(ref generics, ref bounds) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1808,7 +1808,7 @@ fn render_impl(
 
     if !impl_.is_negative_trait_impl() {
         for trait_item in &impl_.items {
-            match *trait_item.kind {
+            match trait_item.kind {
                 clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
                 clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                     assoc_types.push(trait_item)
@@ -2051,7 +2051,7 @@ pub(crate) fn render_impl_summary(
         write!(w, "{}", inner_impl.print(use_absolute, cx));
         if show_def_docs {
             for it in &inner_impl.items {
-                if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
+                if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
                     w.write_str("<div class=\"where\">  ");
                     assoc_type(
                         w,
@@ -2172,7 +2172,7 @@ fn get_id_for_impl<'tcx>(tcx: TyCtxt<'tcx>, impl_id: ItemId) -> String {
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
-    match *item.kind {
+    match item.kind {
         clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
             // Alternative format produces no URLs,
             // so this parameter does nothing.

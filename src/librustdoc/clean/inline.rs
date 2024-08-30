@@ -152,14 +152,8 @@ pub(crate) fn try_inline(
     };
 
     cx.inlined.insert(did.into());
-    let mut item = crate::clean::generate_item_with_correct_attrs(
-        cx,
-        kind,
-        did,
-        name,
-        import_def_id,
-        None,
-    );
+    let mut item =
+        crate::clean::generate_item_with_correct_attrs(cx, kind, did, name, import_def_id, None);
     // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
     item.inline_stmt_id = import_def_id;
     ret.push(item);
@@ -623,7 +617,7 @@ pub(crate) fn build_impl(
                 ImplKind::Normal
             },
         })),
-        Box::new(merged_attrs),
+        merged_attrs,
         cfg,
     ));
 }
@@ -673,27 +667,29 @@ fn build_module_items(
                 let prim_ty = clean::PrimitiveType::from(p);
                 items.push(clean::Item {
                     name: None,
-                    attrs: Box::default(),
                     // We can use the item's `DefId` directly since the only information ever used
                     // from it is `DefId.krate`.
                     item_id: ItemId::DefId(did),
-                    kind: Box::new(clean::ImportItem(clean::Import::new_simple(
-                        item.ident.name,
-                        clean::ImportSource {
-                            path: clean::Path {
-                                res,
-                                segments: thin_vec![clean::PathSegment {
-                                    name: prim_ty.as_sym(),
-                                    args: clean::GenericArgs::AngleBracketed {
-                                        args: Default::default(),
-                                        constraints: ThinVec::new(),
-                                    },
-                                }],
+                    inner: Box::new(clean::ItemInner {
+                        attrs: Default::default(),
+                        kind: clean::ImportItem(clean::Import::new_simple(
+                            item.ident.name,
+                            clean::ImportSource {
+                                path: clean::Path {
+                                    res,
+                                    segments: thin_vec![clean::PathSegment {
+                                        name: prim_ty.as_sym(),
+                                        args: clean::GenericArgs::AngleBracketed {
+                                            args: Default::default(),
+                                            constraints: ThinVec::new(),
+                                        },
+                                    }],
+                                },
+                                did: None,
                             },
-                            did: None,
-                        },
-                        true,
-                    ))),
+                            true,
+                        )),
+                    }),
                     cfg: None,
                     inline_stmt_id: None,
                 });
@@ -753,7 +749,8 @@ fn build_macro(
         LoadedMacro::MacroDef(item_def, _) => match macro_kind {
             MacroKind::Bang => {
                 if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                    let vis = cx.tcx.visibility(import_def_id.map(|d| d.to_def_id()).unwrap_or(def_id));
+                    let vis =
+                        cx.tcx.visibility(import_def_id.map(|d| d.to_def_id()).unwrap_or(def_id));
                     clean::MacroItem(clean::Macro {
                         source: utils::display_macro_source(
                             cx,

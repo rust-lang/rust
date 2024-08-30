@@ -23,7 +23,7 @@ struct AliasedNonLocalStripper<'tcx> {
 
 impl<'tcx> DocFolder for AliasedNonLocalStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        Some(match *i.kind {
+        Some(match i.kind {
             clean::TypeAliasItem(..) => {
                 let mut stripper = NonLocalStripper { tcx: self.tcx };
                 // don't call `fold_item` as that could strip the type-alias it-self
