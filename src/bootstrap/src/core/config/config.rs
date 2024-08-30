@@ -1916,8 +1916,7 @@ impl Config {
                 }
             }
 
-            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
-            if config.llvm_thin_lto && link_shared.is_none() {
+            if !config.llvm_from_ci && config.llvm_thin_lto && link_shared.is_none() {
                 // If we're building with ThinLTO on, by default we want to link
                 // to LLVM shared, to avoid re-doing ThinLTO (which happens in
                 // the link step) with each stage.
