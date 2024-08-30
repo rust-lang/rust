@@ -6,6 +6,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use thin_vec::ThinVec;
+use tracing::{debug, instrument, trace};
 
 use crate::clean;
 use crate::clean::{

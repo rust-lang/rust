@@ -7,6 +7,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
 use thin_vec::ThinVec;
+use tracing::{debug, instrument};
 
 use crate::clean::{
     self, clean_generic_param_def, clean_middle_ty, clean_predicate,

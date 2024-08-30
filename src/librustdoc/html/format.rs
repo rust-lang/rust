@@ -24,6 +24,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::url_parts_builder::{estimate_item_path_byte_length, UrlPartsBuilder};

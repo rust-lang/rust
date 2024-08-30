@@ -27,6 +27,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::BytePos;
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, info, instrument, trace};
 
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};

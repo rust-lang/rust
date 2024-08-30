@@ -11,6 +11,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use thin_vec::{thin_vec, ThinVec};
+use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::clean::auto_trait::synthesize_auto_trait_impls;

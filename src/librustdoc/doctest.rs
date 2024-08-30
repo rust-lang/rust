@@ -26,6 +26,7 @@ use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use rustc_target::spec::{Target, TargetTriple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
+use tracing::debug;
 
 use self::rust::HirCollector;
 use crate::config::Options as RustdocOptions;

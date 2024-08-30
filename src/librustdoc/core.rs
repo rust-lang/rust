@@ -25,6 +25,7 @@ pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{lint, Session};
 use rustc_span::symbol::sym;
 use rustc_span::{source_map, Span};
+use tracing::{debug, info};
 
 use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
