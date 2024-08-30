@@ -60,6 +60,7 @@ use std::cmp::min;
 
 use rustc_ast::{ast, ptr};
 use rustc_span::{symbol, BytePos, Span};
+use tracing::debug;
 
 use crate::comment::{rewrite_comment, CharClasses, FullCodeCharKind, RichChar};
 use crate::config::{IndentStyle, Version};
