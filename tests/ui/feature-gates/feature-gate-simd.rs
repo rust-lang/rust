@@ -2,10 +2,7 @@
 
 #[repr(simd)] //~ ERROR SIMD types are experimental
 struct RGBA {
-    r: f32,
-    g: f32,
-    b: f32,
-    a: f32
+    rgba: [f32; 4],
 }
 
 pub fn main() {}
