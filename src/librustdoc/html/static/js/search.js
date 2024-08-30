@@ -2815,15 +2815,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
         }
 
-        let crates = "";
-        if (rawSearchIndex.size > 1) {
-            crates = " in&nbsp;<div id=\"crate-search-div\"><select id=\"crate-search\">" +
-                "<option value=\"all crates\">all crates</option>";
-            for (const c of rawSearchIndex.keys()) {
-                crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
-            }
-            crates += "</select></div>";
-        }
+		let crates = "";
 
         let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
@@ -3885,6 +3877,19 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         exports.execQuery = execQuery;
         exports.parseQuery = parseQuery;
     }
+
+
+	console.log(rawSearchIndex);
+	let crates = "";
+	if (rawSearchIndex.size > 1) {
+        crates = "<div id=\"crate-search-div\"><select id=\"crate-search\">" +
+            "<option value=\"all crates\" selected>all crates</option>";
+        for (const c of rawSearchIndex.keys()) {
+            crates += `<option value="${c}">${c}</option>`;
+        }
+        crates += "</select></div>";
+    }
+	document.getElementById("search-focus-panel").innerHTML = crates;
 }
 
 if (typeof window !== "undefined") {
