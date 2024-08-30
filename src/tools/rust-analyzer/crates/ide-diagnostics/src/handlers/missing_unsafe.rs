@@ -164,6 +164,56 @@ fn main() {
     }
 
     #[test]
+    fn missing_unsafe_diagnostic_with_extern_static() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+
+extern "C" {
+    static EXTERN: i32;
+    static mut EXTERN_MUT: i32;
+}
+
+fn main() {
+    let _x = EXTERN;
+           //^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+    let _x = EXTERN_MUT;
+           //^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+    unsafe {
+        let _x = EXTERN;
+        let _x = EXTERN_MUT;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_unsafe_diagnostic_with_addr_of_static() {
+        check_diagnostics(
+            r#"
+//- minicore: copy, addr_of
+
+use core::ptr::{addr_of, addr_of_mut};
+
+extern "C" {
+    static EXTERN: i32;
+    static mut EXTERN_MUT: i32;
+}
+static mut STATIC_MUT: i32 = 0;
+
+fn main() {
+    let _x = addr_of!(EXTERN);
+    let _x = addr_of!(EXTERN_MUT);
+    let _x = addr_of!(STATIC_MUT);
+    let _x = addr_of_mut!(EXTERN_MUT);
+    let _x = addr_of_mut!(STATIC_MUT);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
         check_diagnostics(
             r#"

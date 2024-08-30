@@ -65,6 +65,7 @@
 //!     todo: panic
 //!     unimplemented: panic
 //!     column:
+//!     addr_of:
 
 #![rustc_coherence_is_core]
 
@@ -421,6 +422,17 @@ pub mod ptr {
     }
     // endregion:coerce_unsized
     // endregion:non_null
+
+    // region:addr_of
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro addr_of($place:expr) {
+        &raw const $place
+    }
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro addr_of_mut($place:expr) {
+        &raw mut $place
+    }
+    // endregion:addr_of
 }
 
 pub mod ops {

@@ -5,6 +5,7 @@ use hir_def::{
     body::Body,
     hir::{Expr, ExprId, UnaryOp},
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
+    type_ref::Rawness,
     DefWithBodyId,
 };
 
@@ -87,11 +88,19 @@ fn walk_unsafe(
             let g = resolver.update_to_inner_scope(db.upcast(), def, current);
             let value_or_partial = resolver.resolve_path_in_value_ns(db.upcast(), path);
             if let Some(ResolveValueResult::ValueNs(ValueNs::StaticId(id), _)) = value_or_partial {
-                if db.static_data(id).mutable {
+                let static_data = db.static_data(id);
+                if static_data.mutable || static_data.is_extern {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
             resolver.reset_to_guard(g);
+        }
+        Expr::Ref { expr, rawness: Rawness::RawPtr, mutability: _ } => {
+            if let Expr::Path(_) = body.exprs[*expr] {
+                // Do not report unsafe for `addr_of[_mut]!(EXTERN_OR_MUT_STATIC)`,
+                // see https://github.com/rust-lang/rust/pull/125834.
+                return;
+            }
         }
         Expr::MethodCall { .. } => {
             if infer
