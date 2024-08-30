@@ -253,6 +253,10 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
                 ty = &mut_ty.ty;
             }
 
+            ast::TyKind::UnsafeBinder(binder) => {
+                ty = &binder.inner_ty;
+            }
+
             ast::TyKind::BareFn(fn_ty) => match &fn_ty.decl.output {
                 ast::FnRetTy::Default(_) => break None,
                 ast::FnRetTy::Ty(ret) => ty = ret,

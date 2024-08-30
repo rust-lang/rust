@@ -1198,6 +1198,14 @@ impl<'a> State<'a> {
             ast::TyKind::BareFn(f) => {
                 self.print_ty_fn(f.ext, f.safety, &f.decl, None, &f.generic_params);
             }
+            ast::TyKind::UnsafeBinder(f) => {
+                self.ibox(INDENT_UNIT);
+                self.word("unsafe");
+                self.print_generic_params(&f.generic_params);
+                self.nbsp();
+                self.print_type(&f.inner_ty);
+                self.end();
+            }
             ast::TyKind::Path(None, path) => {
                 self.print_path(path, false, 0);
             }
