@@ -325,8 +325,10 @@ pub(crate) struct Item {
     /// E.g., struct vs enum vs function.
     pub(crate) kind: Box<ItemKind>,
     pub(crate) item_id: ItemId,
-    /// This is the `DefId` of the `use` statement if the item was inlined.
-    pub(crate) inline_stmt_id: Option<DefId>,
+    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
+    /// The crate metadata doesn't hold this information, so the `use` statement
+    /// always belongs to the current crate.
+    pub(crate) inline_stmt_id: Option<LocalDefId>,
     pub(crate) cfg: Option<Arc<Cfg>>,
 }
 
@@ -702,7 +704,7 @@ impl Item {
             _ => {}
         }
         let def_id = match self.inline_stmt_id {
-            Some(inlined) => inlined,
+            Some(inlined) => inlined.to_def_id(),
             None => def_id,
         };
         Some(tcx.visibility(def_id))
