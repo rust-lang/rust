@@ -2355,10 +2355,7 @@ impl Config {
                     self.download_ci_rustc(commit);
 
                     if let Some(config_path) = &self.config {
-                        let builder_config_path =
-                            self.out.join(self.build.triple).join("ci-rustc").join(BUILDER_CONFIG_FILENAME);
-
-                        let ci_config_toml = match Self::get_toml(&builder_config_path) {
+                        let ci_config_toml = match self.get_builder_toml("ci-rustc") {
                             Ok(ci_config_toml) => ci_config_toml,
                             Err(e) if e.to_string().contains("unknown field") => {
                                 println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
@@ -2366,7 +2363,7 @@ impl Config {
                                 return None;
                             },
                             Err(e) => {
-                                eprintln!("ERROR: Failed to parse CI rustc config at '{}': {e}", builder_config_path.display());
+                                eprintln!("ERROR: Failed to parse CI rustc config.toml: {e}");
                                 exit!(2);
                             },
                         };
@@ -2829,6 +2826,7 @@ impl Config {
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
 /// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.
+#[cfg(not(feature = "bootstrap-self-test"))]
 pub(crate) fn check_incompatible_options_for_ci_llvm(
     current_config_toml: TomlConfig,
     ci_config_toml: TomlConfig,
