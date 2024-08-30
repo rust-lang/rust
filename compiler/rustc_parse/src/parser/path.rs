@@ -378,7 +378,10 @@ impl<'a> Parser<'a> {
                     if self.may_recover()
                         && prev_token_before_parsing == token::PathSep
                         && (style == PathStyle::Expr && self.token.can_begin_expr()
-                            || style == PathStyle::Pat && self.token.can_begin_pattern())
+                            || style == PathStyle::Pat
+                                && self.token.can_begin_pattern(token::NtPatKind::PatParam {
+                                    inferred: false,
+                                }))
                     {
                         snapshot = Some(self.create_snapshot_for_diagnostic());
                     }
