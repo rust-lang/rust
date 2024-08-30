@@ -2,11 +2,11 @@ use std::hash::Hash;
 use std::ops::Index;
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
@@ -45,6 +45,12 @@ pub(crate) struct MemberConstraint<'tcx> {
 
     /// The region `R0`.
     pub(crate) member_region_vid: ty::RegionVid,
+
+    /// Set to `true` if this constraint should be skipped by `apply()`,
+    /// but must be checked.
+    pub(crate) should_be_applied: bool,
+
+    bad_choice_regions: FxIndexSet<ty::RegionVid>,
 
     /// Index of `R1` in `choice_regions` vector from `MemberConstraintSet`.
     start_index: usize,
@@ -95,6 +101,8 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
             key,
             start_index,
             end_index,
+            should_be_applied: true, // All constraints should be applied until otherwise noted.
+            bad_choice_regions: FxIndexSet::default(),
         });
         self.first_constraints.insert(member_region_vid, constraint_index);
     }
@@ -112,6 +120,8 @@ where
     pub(crate) fn into_mapped<R2>(
         self,
         mut map_fn: impl FnMut(R1) -> R2,
+        should_apply: impl Fn(ty::RegionVid) -> bool,
+        bad_choice: impl Fn(ty::RegionVid, ty::RegionVid) -> bool,
     ) -> MemberConstraintSet<'tcx, R2>
     where
         R2: Copy + Hash + Eq,
@@ -137,6 +147,22 @@ where
                 append_list(&mut constraints, start1, start2);
             }
             first_constraints2.insert(r2, start1);
+        }
+
+        for constraint in constraints.iter_mut() {
+            let MemberConstraint {
+                member_region_vid,
+                start_index,
+                end_index,
+                bad_choice_regions,
+                ..
+            } = constraint;
+            constraint.should_be_applied = should_apply(*member_region_vid);
+            bad_choice_regions.extend(
+                choice_regions[*start_index..*end_index]
+                    .iter()
+                    .filter(|&&choice_r| bad_choice(*member_region_vid, choice_r)),
+            );
         }
 
         MemberConstraintSet { first_constraints: first_constraints2, constraints, choice_regions }
@@ -177,9 +203,32 @@ where
     /// ```text
     /// R0 member of [R1..Rn]
     /// ```
-    pub(crate) fn choice_regions(&self, pci: NllMemberConstraintIndex) -> &[ty::RegionVid] {
-        let MemberConstraint { start_index, end_index, .. } = &self.constraints[pci];
-        &self.choice_regions[*start_index..*end_index]
+    pub(crate) fn choice_regions(
+        &self,
+        pci: NllMemberConstraintIndex,
+    ) -> impl Iterator<Item = ty::RegionVid> + use<'_, R> {
+        let MemberConstraint { start_index, end_index, bad_choice_regions, .. } =
+            &self.constraints[pci];
+        self.choice_regions[*start_index..*end_index]
+            .iter()
+            .filter_map(|r| if bad_choice_regions.contains(r) { None } else { Some(*r) })
+    }
+
+    /// Apply member constraints (unless they are flagged for non-application)
+    pub(crate) fn apply(
+        &self,
+        idx: R,
+        mut do_apply: impl FnMut(NllMemberConstraintIndex, &[ty::RegionVid]),
+    ) {
+        for pci in self.indices(idx) {
+            let MemberConstraint { start_index, end_index, should_be_applied, .. } =
+                &self.constraints[pci];
+            if *should_be_applied {
+                do_apply(pci, &self.choice_regions[*start_index..*end_index]);
+            } else {
+                debug!("Skipping member constraint with index {pci:?}; marked for ignoring");
+            }
+        }
     }
 }
 

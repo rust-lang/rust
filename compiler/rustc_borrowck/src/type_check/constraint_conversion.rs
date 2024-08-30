@@ -225,7 +225,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         verify_bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
-        TypeTest { generic_kind, lower_bound, span: self.span, verify_bound }
+        TypeTest { generic_kind, lower_bound, span: self.span, verify_bound, original: None }
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {

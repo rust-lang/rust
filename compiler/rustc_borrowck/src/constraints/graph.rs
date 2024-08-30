@@ -106,15 +106,17 @@ impl<D: ConstraintGraphDirection> ConstraintGraph<D> {
     }
 
     /// Given a region `R`, iterate over all constraints `R: R1`.
+    /// if `static_region` is `None`, do not yield implicit
+    /// `'static -> a` edges.
     pub(crate) fn outgoing_edges<'a, 'tcx>(
         &'a self,
         region_sup: RegionVid,
         constraints: &'a OutlivesConstraintSet<'tcx>,
-        static_region: RegionVid,
+        static_region: Option<RegionVid>,
     ) -> Edges<'a, 'tcx, D> {
         //if this is the `'static` region and the graph's direction is normal,
         //then setup the Edges iterator to return all regions #53178
-        if region_sup == static_region && D::is_normal() {
+        if Some(region_sup) == static_region && D::is_normal() {
             Edges {
                 graph: self,
                 constraints,
@@ -135,7 +137,7 @@ pub(crate) struct Edges<'a, 'tcx, D: ConstraintGraphDirection> {
     constraints: &'a OutlivesConstraintSet<'tcx>,
     pointer: Option<OutlivesConstraintIndex>,
     next_static_idx: Option<usize>,
-    static_region: RegionVid,
+    static_region: Option<RegionVid>,
 }
 
 impl<'a, 'tcx, D: ConstraintGraphDirection> Iterator for Edges<'a, 'tcx, D> {
@@ -153,8 +155,12 @@ impl<'a, 'tcx, D: ConstraintGraphDirection> Iterator for Edges<'a, 'tcx, D> {
                 Some(next_static_idx + 1)
             };
 
+            let Some(static_region) = self.static_region else {
+                return None;
+            };
+
             Some(OutlivesConstraint {
-                sup: self.static_region,
+                sup: static_region,
                 sub: next_static_idx.into(),
                 locations: Locations::All(DUMMY_SP),
                 span: DUMMY_SP,
@@ -194,7 +200,11 @@ impl<'a, 'tcx, D: ConstraintGraphDirection> RegionGraph<'a, 'tcx, D> {
     /// there exists a constraint `R: R1`.
     pub(crate) fn outgoing_regions(&self, region_sup: RegionVid) -> Successors<'a, 'tcx, D> {
         Successors {
-            edges: self.constraint_graph.outgoing_edges(region_sup, self.set, self.static_region),
+            edges: self.constraint_graph.outgoing_edges(
+                region_sup,
+                self.set,
+                Some(self.static_region),
+            ),
         }
     }
 }

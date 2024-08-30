@@ -33,10 +33,10 @@ LL | }
    | - `local` dropped here while still borrowed
    |
 note: due to current limitations in the borrow checker, this implies a `'static` lifetime
-  --> $DIR/local-outlives-static-via-hrtb.rs:19:20
+  --> $DIR/local-outlives-static-via-hrtb.rs:19:30
    |
 LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
