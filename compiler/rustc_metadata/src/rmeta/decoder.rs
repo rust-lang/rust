@@ -1070,34 +1070,6 @@ impl<'a> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_explicit_item_bounds<'tcx>(
-        self,
-        index: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        let lazy = self.root.tables.explicit_item_bounds.get(self, index);
-        let output = if lazy.is_default() {
-            &mut []
-        } else {
-            tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
-        };
-        ty::EarlyBinder::bind(&*output)
-    }
-
-    fn get_explicit_item_super_predicates<'tcx>(
-        self,
-        index: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        let lazy = self.root.tables.explicit_item_super_predicates.get(self, index);
-        let output = if lazy.is_default() {
-            &mut []
-        } else {
-            tcx.arena.alloc_from_iter(lazy.decode((self, tcx)))
-        };
-        ty::EarlyBinder::bind(&*output)
-    }
-
     fn get_variant(
         self,
         kind: DefKind,
@@ -1321,10 +1293,6 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn is_item_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.optimized_mir.get(self, id).is_some()
-    }
-
-    fn cross_crate_inlinable(self, id: DefIndex) -> bool {
-        self.root.tables.cross_crate_inlinable.get(self, id)
     }
 
     fn get_fn_has_self_parameter(self, id: DefIndex, sess: &'a Session) -> bool {
