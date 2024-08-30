@@ -14,13 +14,14 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
-use stdx::panic_context;
+use span::Edition;
+use stdx::{never, panic_context};
 use triomphe::Arc;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, utils::UnevaluatedConstEvaluatorFolder, AliasEq,
     AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment, Interner, ProjectionTy,
-    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, WhereClause,
+    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
@@ -90,6 +91,16 @@ pub(crate) fn normalize_projection_query(
     projection: ProjectionTy,
     env: Arc<TraitEnvironment>,
 ) -> Ty {
+    if projection.substitution.iter(Interner).any(|arg| {
+        arg.ty(Interner)
+            .is_some_and(|ty| ty.data(Interner).flags.intersects(TypeFlags::HAS_TY_INFER))
+    }) {
+        never!(
+            "Invoking `normalize_projection_query` with a projection type containing inference var"
+        );
+        return TyKind::Error.intern(Interner);
+    }
+
     let mut table = InferenceTable::new(db, env);
     let ty = table.normalize_projection_ty(projection);
     table.resolve_completely(ty)
@@ -104,7 +115,7 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let detail = match &goal.value.goal.data(Interner) {
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
-            db.trait_data(it.hir_trait_id()).name.display(db.upcast()).to_string()
+            db.trait_data(it.hir_trait_id()).name.display(db.upcast(), Edition::LATEST).to_string()
         }
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
         _ => "??".to_owned(),

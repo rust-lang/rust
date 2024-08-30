@@ -8,6 +8,7 @@ use lsp_types::{
 };
 use paths::Utf8PathBuf;
 
+use rust_analyzer::config::Config;
 use rust_analyzer::lsp::ext::{InternalTestingFetchConfig, InternalTestingFetchConfigParams};
 use serde_json::json;
 use test_utils::skip_slow_tests;
@@ -17,14 +18,13 @@ enum QueryType {
     /// A query whose config key is a part of the global configs, so that
     /// testing for changes to this config means testing if global changes
     /// take affect.
-    Global,
+    Workspace,
 }
 
 struct RatomlTest {
     urls: Vec<Url>,
     server: Server,
     tmp_path: Utf8PathBuf,
-    user_config_dir: Utf8PathBuf,
 }
 
 impl RatomlTest {
@@ -41,11 +41,7 @@ impl RatomlTest {
 
         let full_fixture = fixtures.join("\n");
 
-        let user_cnf_dir = TestDir::new();
-        let user_config_dir = user_cnf_dir.path().to_owned();
-
-        let mut project =
-            Project::with_fixture(&full_fixture).tmp_dir(tmp_dir).user_config_dir(user_cnf_dir);
+        let mut project = Project::with_fixture(&full_fixture).tmp_dir(tmp_dir);
 
         for root in roots {
             project = project.root(root);
@@ -57,7 +53,7 @@ impl RatomlTest {
 
         let server = project.server().wait_until_workspace_is_loaded();
 
-        let mut case = Self { urls: vec![], server, tmp_path, user_config_dir };
+        let mut case = Self { urls: vec![], server, tmp_path };
         let urls = fixtures.iter().map(|fixture| case.fixture_path(fixture)).collect::<Vec<_>>();
         case.urls = urls;
         case
@@ -81,7 +77,7 @@ impl RatomlTest {
         let mut spl = spl.into_iter();
         if let Some(first) = spl.next() {
             if first == "$$CONFIG_DIR$$" {
-                path = self.user_config_dir.clone();
+                path = Config::user_config_path().unwrap().to_path_buf().into();
             } else {
                 path = path.join(first);
             }
@@ -165,7 +161,7 @@ impl RatomlTest {
     fn query(&self, query: QueryType, source_file_idx: usize) -> bool {
         let config = match query {
             QueryType::Local => "local".to_owned(),
-            QueryType::Global => "global".to_owned(),
+            QueryType::Workspace => "workspace".to_owned(),
         };
         let res = self.server.send_request::<InternalTestingFetchConfig>(
             InternalTestingFetchConfigParams {
@@ -823,10 +819,8 @@ fn ratoml_multiple_ratoml_in_single_source_root() {
 //         assert!(!server.query(QueryType::AssistEmitMustUse, 5));
 //     }
 
-/// Having a ratoml file at the root of a project enables
-/// configuring global level configurations as well.
 #[test]
-fn ratoml_in_root_is_global() {
+fn ratoml_in_root_is_workspace() {
     if skip_slow_tests() {
         return;
     }
@@ -854,7 +848,7 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Global, 2));
+    assert!(server.query(QueryType::Workspace, 2));
 }
 
 #[test]
@@ -886,9 +880,9 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Global, 2));
+    assert!(server.query(QueryType::Workspace, 2));
     server.edit(1, "rustfmt.rangeFormatting.enable = false".to_owned());
-    assert!(!server.query(QueryType::Global, 2));
+    assert!(!server.query(QueryType::Workspace, 2));
 }
 
 #[test]
@@ -920,7 +914,7 @@ fn main() {
         None,
     );
 
-    assert!(server.query(QueryType::Global, 2));
+    assert!(server.query(QueryType::Workspace, 2));
     server.delete(1);
-    assert!(!server.query(QueryType::Global, 2));
+    assert!(!server.query(QueryType::Workspace, 2));
 }

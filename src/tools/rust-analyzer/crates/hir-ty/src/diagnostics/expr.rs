@@ -4,6 +4,7 @@
 
 use std::fmt;
 
+use base_db::CrateId;
 use chalk_solve::rust_ir::AdtKind;
 use either::Either;
 use hir_def::{
@@ -15,6 +16,7 @@ use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
+use span::Edition;
 use syntax::{
     ast::{self, UnaryOp},
     AstNode,
@@ -258,7 +260,13 @@ impl ExprValidator {
         if !witnesses.is_empty() {
             self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms {
                 match_expr,
-                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, m_arms.is_empty()),
+                uncovered_patterns: missing_match_arms(
+                    &cx,
+                    scrut_ty,
+                    witnesses,
+                    m_arms.is_empty(),
+                    self.owner.krate(db.upcast()),
+                ),
             });
         }
     }
@@ -345,7 +353,13 @@ impl ExprValidator {
             if !witnesses.is_empty() {
                 self.diagnostics.push(BodyValidationDiagnostic::NonExhaustiveLet {
                     pat,
-                    uncovered_patterns: missing_match_arms(&cx, ty, witnesses, false),
+                    uncovered_patterns: missing_match_arms(
+                        &cx,
+                        ty,
+                        witnesses,
+                        false,
+                        self.owner.krate(db.upcast()),
+                    ),
                 });
             }
         }
@@ -616,24 +630,26 @@ fn missing_match_arms<'p>(
     scrut_ty: &Ty,
     witnesses: Vec<WitnessPat<'p>>,
     arms_is_empty: bool,
+    krate: CrateId,
 ) -> String {
-    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>);
+    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>, Edition);
     impl fmt::Display for DisplayWitness<'_, '_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let DisplayWitness(witness, cx) = *self;
+            let DisplayWitness(witness, cx, edition) = *self;
             let pat = cx.hoist_witness_pat(witness);
-            write!(f, "{}", pat.display(cx.db))
+            write!(f, "{}", pat.display(cx.db, edition))
         }
     }
 
+    let edition = cx.db.crate_graph()[krate].edition;
     let non_empty_enum = match scrut_ty.as_adt() {
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
     };
     if arms_is_empty && !non_empty_enum {
-        format!("type `{}` is non-empty", scrut_ty.display(cx.db))
+        format!("type `{}` is non-empty", scrut_ty.display(cx.db, edition))
     } else {
-        let pat_display = |witness| DisplayWitness(witness, cx);
+        let pat_display = |witness| DisplayWitness(witness, cx, edition);
         const LIMIT: usize = 3;
         match &*witnesses {
             [witness] => format!("`{}` not covered", pat_display(witness)),

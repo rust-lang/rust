@@ -328,11 +328,9 @@ fn doc_modpath_from_str(link: &str) -> Option<ModPath> {
         };
         let parts = first_segment.into_iter().chain(parts).map(|segment| match segment.parse() {
             Ok(idx) => Name::new_tuple_field(idx),
-            Err(_) => Name::new(
-                segment.split_once('<').map_or(segment, |it| it.0),
-                tt::IdentIsRaw::No,
-                SyntaxContextId::ROOT,
-            ),
+            Err(_) => {
+                Name::new(segment.split_once('<').map_or(segment, |it| it.0), SyntaxContextId::ROOT)
+            }
         });
         Some(ModPath::from_segments(kind, parts))
     };

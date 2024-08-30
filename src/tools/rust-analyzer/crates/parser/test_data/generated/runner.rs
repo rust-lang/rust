@@ -37,10 +37,6 @@ mod ok {
     #[test]
     fn assoc_type_eq() { run_and_expect_no_errors("test_data/parser/inline/ok/assoc_type_eq.rs"); }
     #[test]
-    fn associated_return_type_bounds() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/associated_return_type_bounds.rs");
-    }
-    #[test]
     fn associated_type_bounds() {
         run_and_expect_no_errors("test_data/parser/inline/ok/associated_type_bounds.rs");
     }
@@ -518,6 +514,16 @@ mod ok {
     }
     #[test]
     fn return_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/return_expr.rs"); }
+    #[test]
+    fn return_type_syntax_assoc_type_bound() {
+        run_and_expect_no_errors(
+            "test_data/parser/inline/ok/return_type_syntax_assoc_type_bound.rs",
+        );
+    }
+    #[test]
+    fn return_type_syntax_in_path() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/return_type_syntax_in_path.rs");
+    }
     #[test]
     fn self_param() { run_and_expect_no_errors("test_data/parser/inline/ok/self_param.rs"); }
     #[test]

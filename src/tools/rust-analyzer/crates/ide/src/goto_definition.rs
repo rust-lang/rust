@@ -5,10 +5,7 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{
-    AsAssocItem, AssocItem, DescendPreference, FileRange, InFile, MacroFileIdExt, ModuleDef,
-    Semantics,
-};
+use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
@@ -17,7 +14,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 
-use span::FileId;
+use span::{Edition, FileId};
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode, AstToken,
@@ -44,6 +41,8 @@ pub(crate) fn goto_definition(
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = &Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
+    let edition =
+        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
         | INT_NUMBER
@@ -55,7 +54,7 @@ pub(crate) fn goto_definition(
         | COMMENT => 4,
         // index and prefix ops
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
-        kind if kind.is_keyword() => 2,
+        kind if kind.is_keyword(edition) => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
@@ -84,7 +83,7 @@ pub(crate) fn goto_definition(
     }
 
     let navs = sema
-        .descend_into_macros(DescendPreference::None, original_token.clone())
+        .descend_into_macros(original_token.clone())
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
@@ -249,10 +248,7 @@ pub(crate) fn find_fn_or_blocks(
         None
     };
 
-    sema.descend_into_macros(DescendPreference::None, token.clone())
-        .into_iter()
-        .filter_map(find_ancestors)
-        .collect_vec()
+    sema.descend_into_macros(token.clone()).into_iter().filter_map(find_ancestors).collect_vec()
 }
 
 fn nav_for_exit_points(
@@ -367,7 +363,7 @@ pub(crate) fn find_loops(
         None
     };
 
-    sema.descend_into_macros(DescendPreference::None, token.clone())
+    sema.descend_into_macros(token.clone())
         .into_iter()
         .filter_map(find_ancestors)
         .collect_vec()
@@ -2734,5 +2730,24 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn shadow_builtin_macro() {
+        check(
+            r#"
+//- minicore: column
+//- /a.rs crate:a
+#[macro_export]
+macro_rules! column { () => {} }
+          // ^^^^^^
+
+//- /b.rs crate:b deps:a
+use a::column;
+fn foo() {
+    $0column!();
+}
+        "#,
+        );
     }
 }

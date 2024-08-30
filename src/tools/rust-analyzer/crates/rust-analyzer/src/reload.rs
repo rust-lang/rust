@@ -61,6 +61,10 @@ pub(crate) enum ProcMacroProgress {
 }
 
 impl GlobalState {
+    /// Is the server quiescent?
+    ///
+    /// This indicates that we've fully loaded the projects and
+    /// are ready to do semantic work.
     pub(crate) fn is_quiescent(&self) -> bool {
         self.vfs_done
             && self.last_reported_status.is_some()
@@ -69,6 +73,15 @@ impl GlobalState {
             && !self.fetch_proc_macros_queue.op_in_progress()
             && !self.discover_workspace_queue.op_in_progress()
             && self.vfs_progress_config_version >= self.vfs_config_version
+    }
+
+    /// Is the server ready to respond to analysis dependent LSP requests?
+    ///
+    /// Unlike `is_quiescent`, this returns false when we're indexing
+    /// the project, because we're holding the salsa lock and cannot
+    /// respond to LSP requests that depend on salsa data.
+    fn is_fully_ready(&self) -> bool {
+        self.is_quiescent() && !self.prime_caches_queue.op_in_progress()
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
@@ -102,13 +115,15 @@ impl GlobalState {
     }
 
     pub(crate) fn current_status(&self) -> lsp_ext::ServerStatusParams {
-        let quiescent = self.is_quiescent();
-        let mut status =
-            lsp_ext::ServerStatusParams { health: lsp_ext::Health::Ok, quiescent, message: None };
+        let mut status = lsp_ext::ServerStatusParams {
+            health: lsp_ext::Health::Ok,
+            quiescent: self.is_fully_ready(),
+            message: None,
+        };
         let mut message = String::new();
 
-        if !self.config.cargo_autoreload(None)
-            && quiescent
+        if !self.config.cargo_autoreload()
+            && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
             && self.config.discover_workspace_config().is_none()
         {
@@ -165,6 +180,19 @@ impl GlobalState {
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
             for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
+                if let ProjectWorkspaceKind::Cargo { error: Some(error), .. }
+                | ProjectWorkspaceKind::DetachedFile {
+                    cargo: Some((_, _, Some(error))), ..
+                } = &ws.kind
+                {
+                    status.health |= lsp_ext::Health::Warning;
+                    format_to!(
+                        message,
+                        "Failed to read Cargo metadata with dependencies for `{}`: {:#}\n\n",
+                        ws.manifest_or_root(),
+                        error
+                    );
+                }
                 if let Some(err) = ws.sysroot.error() {
                     status.health |= lsp_ext::Health::Warning;
                     format_to!(
@@ -537,8 +565,25 @@ impl GlobalState {
                         .collect()
                 };
 
+            // Also explicitly watch any build files configured in JSON project files.
+            for ws in self.workspaces.iter() {
+                if let ProjectWorkspaceKind::Json(project_json) = &ws.kind {
+                    for (_, krate) in project_json.crates() {
+                        let Some(build) = &krate.build else {
+                            continue;
+                        };
+                        watchers.push(lsp_types::FileSystemWatcher {
+                            glob_pattern: lsp_types::GlobPattern::String(
+                                build.build_file.to_string(),
+                            ),
+                            kind: None,
+                        });
+                    }
+                }
+            }
+
             watchers.extend(
-                iter::once(self.config.user_config_path().as_path())
+                iter::once(Config::user_config_path())
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
@@ -752,18 +797,22 @@ impl GlobalState {
             FlycheckConfig::CargoCommand { .. } => {
                 crate::flycheck::InvocationStrategy::PerWorkspace
             }
-            FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
+            FlycheckConfig::CustomCommand { ref invocation_strategy, .. } => {
+                invocation_strategy.clone()
+            }
         };
 
         self.flycheck = match invocation_strategy {
-            crate::flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
-                0,
-                sender,
-                config,
-                None,
-                self.config.root_path().clone(),
-                None,
-            )],
+            crate::flycheck::InvocationStrategy::Once => {
+                vec![FlycheckHandle::spawn(
+                    0,
+                    sender,
+                    config,
+                    None,
+                    self.config.root_path().clone(),
+                    None,
+                )]
+            }
             crate::flycheck::InvocationStrategy::PerWorkspace => {
                 self.workspaces
                     .iter()
@@ -774,7 +823,7 @@ impl GlobalState {
                             match &ws.kind {
                                 ProjectWorkspaceKind::Cargo { cargo, .. }
                                 | ProjectWorkspaceKind::DetachedFile {
-                                    cargo: Some((cargo, _)),
+                                    cargo: Some((cargo, _, _)),
                                     ..
                                 } => (cargo.workspace_root(), Some(cargo.manifest_path())),
                                 ProjectWorkspaceKind::Json(project) => {

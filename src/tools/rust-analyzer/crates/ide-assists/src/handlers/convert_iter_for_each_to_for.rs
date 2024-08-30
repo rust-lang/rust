@@ -114,12 +114,16 @@ pub(crate) fn convert_for_loop_with_for_each(
         |builder| {
             let mut buf = String::new();
 
-            if let Some((expr_behind_ref, method)) =
+            if let Some((expr_behind_ref, method, krate)) =
                 is_ref_and_impls_iter_method(&ctx.sema, &iterable)
             {
                 // We have either "for x in &col" and col implements a method called iter
                 //             or "for x in &mut col" and col implements a method called iter_mut
-                format_to!(buf, "{expr_behind_ref}.{}()", method.display(ctx.db()));
+                format_to!(
+                    buf,
+                    "{expr_behind_ref}.{}()",
+                    method.display(ctx.db(), krate.edition(ctx.db()))
+                );
             } else if let ast::Expr::RangeExpr(..) = iterable {
                 // range expressions need to be parenthesized for the syntax to be correct
                 format_to!(buf, "({iterable})");
@@ -144,7 +148,7 @@ pub(crate) fn convert_for_loop_with_for_each(
 fn is_ref_and_impls_iter_method(
     sema: &hir::Semantics<'_, ide_db::RootDatabase>,
     iterable: &ast::Expr,
-) -> Option<(ast::Expr, hir::Name)> {
+) -> Option<(ast::Expr, hir::Name, hir::Crate)> {
     let ref_expr = match iterable {
         ast::Expr::RefExpr(r) => r,
         _ => return None,
@@ -172,7 +176,7 @@ fn is_ref_and_impls_iter_method(
         return None;
     }
 
-    Some((expr_behind_ref, wanted_method))
+    Some((expr_behind_ref, wanted_method, krate))
 }
 
 /// Whether iterable implements core::Iterator

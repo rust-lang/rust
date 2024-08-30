@@ -11,7 +11,7 @@ use hir::{
 use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
-use span::EditionedFileId;
+use span::{Edition, EditionedFileId};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode},
@@ -372,6 +372,7 @@ fn label_of_ty(
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     ty: &hir::Type,
+    edition: Edition,
 ) -> Option<InlayHintLabel> {
     fn rec(
         sema: &Semantics<'_, RootDatabase>,
@@ -380,6 +381,7 @@ fn label_of_ty(
         ty: &hir::Type,
         label_builder: &mut InlayHintLabelBuilder<'_>,
         config: &InlayHintsConfig,
+        edition: Edition,
     ) -> Result<(), HirDisplayError> {
         let iter_item_type = hint_iterator(sema, famous_defs, ty);
         match iter_item_type {
@@ -410,12 +412,12 @@ fn label_of_ty(
                 label_builder.write_str(LABEL_ITEM)?;
                 label_builder.end_location_link();
                 label_builder.write_str(LABEL_MIDDLE2)?;
-                rec(sema, famous_defs, max_length, &ty, label_builder, config)?;
+                rec(sema, famous_defs, max_length, &ty, label_builder, config, edition)?;
                 label_builder.write_str(LABEL_END)?;
                 Ok(())
             }
             None => ty
-                .display_truncated(sema.db, max_length)
+                .display_truncated(sema.db, max_length, edition)
                 .with_closure_style(config.closure_style)
                 .write_to(label_builder),
         }
@@ -427,7 +429,7 @@ fn label_of_ty(
         location: None,
         result: InlayHintLabel::default(),
     };
-    let _ = rec(sema, famous_defs, config.max_length, ty, &mut label_builder, config);
+    let _ = rec(sema, famous_defs, config.max_length, ty, &mut label_builder, config, edition);
     let r = label_builder.finish();
     Some(r)
 }
@@ -569,7 +571,7 @@ fn hints(
         match node {
             ast::Expr(expr) => {
                 chaining::hints(hints, famous_defs, config, file_id, &expr);
-                adjustment::hints(hints, sema, config, &expr);
+                adjustment::hints(hints, sema, config, file_id, &expr);
                 match expr {
                     ast::Expr::CallExpr(it) => param_name::hints(hints, sema, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
@@ -600,7 +602,7 @@ fn hints(
                 // FIXME: record impl lifetimes so they aren't being reused in assoc item lifetime inlay hints
                 ast::Item::Impl(_) => None,
                 ast::Item::Fn(it) => {
-                    implicit_drop::hints(hints, sema, config, &it);
+                    implicit_drop::hints(hints, sema, config, file_id, &it);
                     fn_lifetime_fn::hints(hints, config, it)
                 },
                 // static type elisions

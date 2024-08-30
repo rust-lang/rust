@@ -29,6 +29,7 @@ pub(crate) fn complete_dot(
             CompletionItemKind::Keyword,
             ctx.source_range(),
             SmolStr::new_static("await"),
+            ctx.edition,
         );
         item.detail("expr.await");
         item.add_to(acc, ctx.db);

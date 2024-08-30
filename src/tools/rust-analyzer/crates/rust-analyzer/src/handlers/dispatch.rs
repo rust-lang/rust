@@ -139,16 +139,26 @@ impl RequestDispatcher<'_> {
         self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::Worker, f)
     }
 
-    /// Dispatches a latency-sensitive request onto the thread pool.
+    /// Dispatches a latency-sensitive request onto the thread pool. When the VFS is marked not
+    /// ready this will return a default constructed [`R::Result`].
     pub(crate) fn on_latency_sensitive<const ALLOW_RETRYING: bool, R>(
         &mut self,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
     ) -> &mut Self
     where
-        R: lsp_types::request::Request + 'static,
-        R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
-        R::Result: Serialize,
+        R: lsp_types::request::Request<
+                Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
+                Result: Serialize + Default,
+            > + 'static,
     {
+        if !self.global_state.vfs_done {
+            if let Some(lsp_server::Request { id, .. }) =
+                self.req.take_if(|it| it.method == R::METHOD)
+            {
+                self.global_state.respond(lsp_server::Response::new_ok(id, R::Result::default()));
+            }
+            return self;
+        }
         self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(ThreadIntent::LatencySensitive, f)
     }
 

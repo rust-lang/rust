@@ -339,6 +339,7 @@ fn augment_references_with_imports(
 
     let cfg = ctx.config.import_path_config();
 
+    let edition = target_module.krate().edition(ctx.db());
     references
         .into_iter()
         .filter_map(|FileReference { range, name, .. }| {
@@ -361,7 +362,10 @@ fn augment_references_with_imports(
                         cfg,
                     )
                     .map(|mod_path| {
-                        make::path_concat(mod_path_to_ast(&mod_path), make::path_from_text("Bool"))
+                        make::path_concat(
+                            mod_path_to_ast(&mod_path, edition),
+                            make::path_from_text("Bool"),
+                        )
                     });
 
                 import_scope.zip(path)

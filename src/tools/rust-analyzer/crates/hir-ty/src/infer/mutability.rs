@@ -28,7 +28,7 @@ impl InferenceContext<'_> {
                     Adjust::NeverToAny | Adjust::Deref(None) | Adjust::Pointer(_) => (),
                     Adjust::Deref(Some(d)) => *d = OverloadedDeref(Some(mutability)),
                     Adjust::Borrow(b) => match b {
-                        AutoBorrow::Ref(m) | AutoBorrow::RawPtr(m) => mutability = *m,
+                        AutoBorrow::Ref(_, m) | AutoBorrow::RawPtr(m) => mutability = *m,
                     },
                 }
             }
@@ -125,7 +125,7 @@ impl InferenceContext<'_> {
                                     .get_mut(&base)
                                     .and_then(|it| it.last_mut());
                                 if let Some(Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(mutability)),
+                                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
                                     target,
                                 }) = base_adjustments
                                 {

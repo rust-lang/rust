@@ -3,8 +3,8 @@
 use std::collections::VecDeque;
 
 use base_db::SourceRootDatabase;
-use hir::{Crate, DescendPreference, ItemInNs, ModuleDef, Name, Semantics};
-use span::FileId;
+use hir::{Crate, ItemInNs, ModuleDef, Name, Semantics};
+use span::{Edition, FileId};
 use syntax::{
     ast::{self, make},
     AstToken, SyntaxKind, SyntaxToken, ToSmolStr, TokenAtOffset,
@@ -35,7 +35,7 @@ pub fn pick_token<T: AstToken>(mut tokens: TokenAtOffset<SyntaxToken>) -> Option
 }
 
 /// Converts the mod path struct into its ast representation.
-pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
+pub fn mod_path_to_ast(path: &hir::ModPath, edition: Edition) -> ast::Path {
     let _p = tracing::info_span!("mod_path_to_ast").entered();
 
     let mut segments = Vec::new();
@@ -50,11 +50,9 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
         hir::PathKind::Abs => is_abs = true,
     }
 
-    segments.extend(
-        path.segments().iter().map(|segment| {
-            make::path_segment(make::name_ref(&segment.display_no_db().to_smolstr()))
-        }),
-    );
+    segments.extend(path.segments().iter().map(|segment| {
+        make::path_segment(make::name_ref(&segment.display_no_db(edition).to_smolstr()))
+    }));
     make::path_from_segments(segments, is_abs)
 }
 
@@ -114,11 +112,12 @@ pub fn is_editable_crate(krate: Crate, db: &RootDatabase) -> bool {
     !db.source_root(source_root_id).is_library
 }
 
+// FIXME: This is a weird function
 pub fn get_definition(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
 ) -> Option<Definition> {
-    for token in sema.descend_into_macros(DescendPreference::None, token) {
+    for token in sema.descend_into_macros_exact(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
         if let Some(&[x]) = def.as_deref() {
             return Some(x);

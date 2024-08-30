@@ -142,7 +142,13 @@ impl server::TokenStream for RaSpanServer {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        Self::TokenStream::from_str(src, self.call_site).expect("cannot parse string")
+        Self::TokenStream::from_str(src, self.call_site).unwrap_or_else(|e| {
+            Self::TokenStream::from_str(
+                &format!("compile_error!(\"failed to parse str to token stream: {e}\")"),
+                self.call_site,
+            )
+            .unwrap()
+        })
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
@@ -501,12 +507,17 @@ mod tests {
                         close: span,
                         kind: tt::DelimiterKind::Brace,
                     },
-                    token_trees: Box::new([]),
+                    token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                        kind: tt::LitKind::Str,
+                        symbol: Symbol::intern("string"),
+                        suffix: None,
+                        span,
+                    }))]),
                 }),
             ],
         };
 
-        assert_eq!(s.to_string(), "struct T {}");
+        assert_eq!(s.to_string(), "struct T {\"string\"}");
     }
 
     #[test]

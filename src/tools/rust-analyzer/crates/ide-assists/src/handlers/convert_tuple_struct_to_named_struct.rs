@@ -1,8 +1,8 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasVisibility},
-    match_ast, SyntaxKind, SyntaxNode,
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
+    match_ast, ted, SyntaxKind, SyntaxNode,
 };
 
 use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -83,10 +83,14 @@ fn edit_struct_def(
     tuple_fields: ast::TupleFieldList,
     names: Vec<ast::Name>,
 ) {
-    let record_fields = tuple_fields
-        .fields()
-        .zip(names)
-        .filter_map(|(f, name)| Some(ast::make::record_field(f.visibility(), name, f.ty()?)));
+    let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
+        let field = ast::make::record_field(f.visibility(), name, f.ty()?).clone_for_update();
+        ted::insert_all(
+            ted::Position::first_child_of(field.syntax()),
+            f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
+        );
+        Some(field)
+    });
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
 
@@ -904,6 +908,19 @@ where
     T: Foo,
 { pub field1: T }
 
+"#,
+        );
+    }
+
+    #[test]
+    fn fields_with_attrs() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+pub struct $0Foo(#[my_custom_attr] u32);
+"#,
+            r#"
+pub struct Foo { #[my_custom_attr] field1: u32 }
 "#,
         );
     }
