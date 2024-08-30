@@ -126,31 +126,27 @@ impl fmt::Display for Location {
     }
 }
 
-fn rustfmt_executable(sh: &Shell) -> &str {
-    // First try explicitly requesting the stable channel via rustup in case nightly is being used by default,
-    // then plain rustfmt in case rustup isn't being used to manage the compiler (e.g. when using Nix).
-    for executable in ["rustup run stable rustfmt", "rustfmt"] {
-        let version = cmd!(sh, "{executable} --version").read().unwrap_or_default();
-        if version.contains("stable") {
-            return executable;
-        }
-    }
-
-    panic!(
-        "Failed to run rustfmt from toolchain 'stable'. \
+fn ensure_rustfmt(sh: &Shell) {
+    let version = cmd!(sh, "rustup run stable rustfmt --version").read().unwrap_or_default();
+    if !version.contains("stable") {
+        panic!(
+            "Failed to run rustfmt from toolchain 'stable'. \
                  Please run `rustup component add rustfmt --toolchain stable` to install it.",
-    );
+        );
+    }
 }
 
 fn reformat(text: String) -> String {
     let sh = Shell::new().unwrap();
-    let rustfmt_exe = rustfmt_executable(&sh);
+    ensure_rustfmt(&sh);
     let rustfmt_toml = project_root().join("rustfmt.toml");
-    let mut stdout =
-        cmd!(sh, "{rustfmt_exe} --config-path {rustfmt_toml} --config fn_single_line=true")
-            .stdin(text)
-            .read()
-            .unwrap();
+    let mut stdout = cmd!(
+        sh,
+        "rustup run stable rustfmt --config-path {rustfmt_toml} --config fn_single_line=true"
+    )
+    .stdin(text)
+    .read()
+    .unwrap();
     if !stdout.ends_with('\n') {
         stdout.push('\n');
     }
