@@ -1036,7 +1036,7 @@ table,
 }
 /* pseudo-element for holding the dropdown-arrow image; needs to be a separate thing
 so that we can apply CSS-filters to change the arrow color in themes */
-#crate-search-div::after {
+#crate-search::after {
 	/* lets clicks through! */
 	pointer-events: none;
 	/* completely covers the underlying div */
