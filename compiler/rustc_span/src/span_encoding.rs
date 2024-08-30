@@ -424,7 +424,7 @@ impl Span {
 }
 
 #[derive(Default)]
-pub struct SpanInterner {
+pub(crate) struct SpanInterner {
     spans: FxIndexSet<SpanData>,
 }
 
