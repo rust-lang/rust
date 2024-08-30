@@ -1,4 +1,3 @@
-use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
@@ -9,7 +8,7 @@ pub(super) struct Subtyper;
 struct SubTypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     patcher: MirPatch<'tcx>,
-    local_decls: &'a IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &'a LocalDecls<'tcx>,
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for SubTypeChecker<'a, 'tcx> {
