@@ -1,4 +1,3 @@
-use rustc_index::IndexVec;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
@@ -10,7 +9,7 @@ pub(super) struct Derefer;
 struct DerefChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     patcher: MirPatch<'tcx>,
-    local_decls: &'a IndexVec<Local, LocalDecl<'tcx>>,
+    local_decls: &'a LocalDecls<'tcx>,
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
