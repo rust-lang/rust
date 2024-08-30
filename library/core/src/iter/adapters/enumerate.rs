@@ -23,6 +23,11 @@ impl<I> Enumerate<I> {
     pub(in crate::iter) fn new(iter: I) -> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
+
+    #[inline]
+    pub fn position(&self) -> usize {
+        self.count
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
