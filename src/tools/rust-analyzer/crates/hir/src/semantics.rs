@@ -14,6 +14,7 @@ use hir_def::{
     hir::Expr,
     lower::LowerCtx,
     nameres::MacroSubNs,
+    path::ModPath,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
@@ -46,9 +47,9 @@ use crate::{
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
     ConstParam, Crate, DeriveHelper, Enum, Field, Function, HasSource, HirFileId, Impl, InFile,
-    Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef,
-    Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union,
-    Variant, VariantDef,
+    ItemInNs, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, OverloadedDeref, Path,
+    ScopeDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias,
+    TypeParam, Union, Variant, VariantDef,
 };
 
 const CONTINUE_NO_BREAKS: ControlFlow<Infallible, ()> = ControlFlow::Continue(());
@@ -1382,6 +1383,16 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
+    }
+
+    pub fn resolve_mod_path(
+        &self,
+        scope: &SyntaxNode,
+        path: &ModPath,
+    ) -> Option<impl Iterator<Item = ItemInNs>> {
+        let analyze = self.analyze(scope)?;
+        let items = analyze.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        Some(items.iter_items().map(|(item, _)| item.into()))
     }
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
