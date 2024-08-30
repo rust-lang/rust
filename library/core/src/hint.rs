@@ -1,6 +1,7 @@
 #![stable(feature = "core_hint", since = "1.27.0")]
 
 //! Hints to compiler that affects how code should be emitted or optimized.
+//!
 //! Hints may be compile time or runtime.
 
 use crate::{intrinsics, ub_checks};
