@@ -28,8 +28,8 @@ use smallvec::SmallVec;
 use super::elaborate;
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{util, Obligation, ObligationCause};
-pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
+pub use crate::traits::ObjectSafetyViolation;
+use crate::traits::{util, MethodViolationCode, Obligation, ObligationCause};
 
 /// Returns the object safety violations that affect HIR ty lowering.
 ///
@@ -513,7 +513,7 @@ fn virtual_call_violations_for_method<'tcx>(
 ///
 /// This check is outlined from the object safety check to avoid cycles with
 /// layout computation, which relies on knowing whether methods are object safe.
-pub fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
+fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
     if !is_vtable_safe_method(tcx, trait_def_id, method) {
         return;
     }
@@ -907,7 +907,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEscapingBoundRegions<'tcx> {
     }
 }
 
-pub fn contains_illegal_impl_trait_in_trait<'tcx>(
+fn contains_illegal_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
@@ -931,7 +931,7 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         object_safety_violations,
         is_object_safe,

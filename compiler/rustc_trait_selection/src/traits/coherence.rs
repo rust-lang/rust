@@ -53,7 +53,7 @@ pub fn add_placeholder_note<G: EmissionGuarantee>(err: &mut Diag<'_, G>) {
     );
 }
 
-pub fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
+pub(crate) fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_, G>,
     overflowing_predicates: &[ty::Predicate<'tcx>],
