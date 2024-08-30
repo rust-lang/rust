@@ -61,13 +61,13 @@ pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
 
 impl<Prov: Provenance> MemPlace<Prov> {
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
+    fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
         MemPlace { ptr: self.ptr.map_provenance(|p| p.map(f)), ..self }
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
     #[inline]
-    pub fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
+    fn to_ref(self, cx: &impl HasDataLayout) -> Immediate<Prov> {
         Immediate::new_pointer_with_meta(self.ptr, self.meta, cx)
     }
 
