@@ -24,8 +24,7 @@
             const line = Math.max(0, loc[0] - 1);
             scrollOffset = lines.children[line].offsetTop;
         } else {
-            const wrapper = elt.querySelector(".code-wrapper");
-            const halfHeight = wrapper.offsetHeight / 2;
+            const halfHeight = elt.offsetHeight / 2;
             const offsetTop = lines.children[loc[0]].offsetTop;
             const lastLine = lines.children[loc[1]];
             const offsetBot = lastLine.offsetTop + lastLine.offsetHeight;
