@@ -736,27 +736,6 @@ download-rustc = false
         if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
 
-            if let Some(config_path) = &self.config {
-                let current_config_toml = Self::get_toml(config_path).unwrap();
-
-                match self.get_builder_toml("ci-llvm") {
-                    Ok(ci_config_toml) => {
-                        check_incompatible_options_for_ci_llvm(current_config_toml, ci_config_toml)
-                            .unwrap();
-                    }
-                    Err(e) if e.to_string().contains("unknown field") => {
-                        println!(
-                            "WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled."
-                        );
-                        println!("HELP: Consider rebasing to a newer commit if available.");
-                    }
-                    Err(e) => {
-                        eprintln!("ERROR: Failed to parse CI LLVM config.toml: {e}");
-                        exit!(2);
-                    }
-                };
-            };
-
             if self.should_fix_bins_and_dylibs() {
                 for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
                     self.fix_bin_or_dylib(&t!(entry).path());
@@ -789,6 +768,26 @@ download-rustc = false
 
             t!(fs::write(llvm_stamp, key));
         }
+
+        if let Some(config_path) = &self.config {
+            let current_config_toml = Self::get_toml(config_path).unwrap();
+
+            match self.get_builder_toml("ci-llvm") {
+                Ok(ci_config_toml) => {
+                    t!(check_incompatible_options_for_ci_llvm(current_config_toml, ci_config_toml));
+                }
+                Err(e) if e.to_string().contains("unknown field") => {
+                    println!(
+                        "WARNING: CI LLVM has some fields that are no longer supported in bootstrap; download-ci-llvm will be disabled."
+                    );
+                    println!("HELP: Consider rebasing to a newer commit if available.");
+                }
+                Err(e) => {
+                    eprintln!("ERROR: Failed to parse CI LLVM config.toml: {e}");
+                    exit!(2);
+                }
+            };
+        };
     }
 
     #[cfg(not(feature = "bootstrap-self-test"))]
