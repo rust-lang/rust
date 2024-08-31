@@ -1000,7 +1000,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_primitive(self) -> bool {
-        self.kind().is_primitive()
+        matches!(self.kind(), Bool | Char | Int(_) | Uint(_) | Float(_))
     }
 
     #[inline]
