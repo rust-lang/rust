@@ -14,6 +14,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Symbol};
 use thin_vec::{thin_vec, ThinVec};
+use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::Item;

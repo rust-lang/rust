@@ -14,6 +14,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
+use tracing::debug;
 
 use super::GlobalTestOptions;
 use crate::html::markdown::LangString;

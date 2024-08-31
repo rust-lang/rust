@@ -1,4 +1,5 @@
 use rustc_middle::ty::TyCtxt;
+use tracing::debug;
 
 use crate::clean;
 use crate::config::RenderOptions;
