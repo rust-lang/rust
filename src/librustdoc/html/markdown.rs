@@ -925,6 +925,7 @@ pub(crate) struct TagIterator<'a, 'tcx> {
     data: &'a str,
     is_in_attribute_block: bool,
     extra: Option<&'a ExtraInfo<'tcx>>,
+    is_error: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -951,13 +952,20 @@ struct Indices {
 
 impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     pub(crate) fn new(data: &'a str, extra: Option<&'a ExtraInfo<'tcx>>) -> Self {
-        Self { inner: data.char_indices().peekable(), data, is_in_attribute_block: false, extra }
+        Self {
+            inner: data.char_indices().peekable(),
+            data,
+            is_in_attribute_block: false,
+            extra,
+            is_error: false,
+        }
     }
 
-    fn emit_error(&self, err: impl Into<DiagMessage>) {
+    fn emit_error(&mut self, err: impl Into<DiagMessage>) {
         if let Some(extra) = self.extra {
             extra.error_invalid_codeblock_attr(err);
         }
+        self.is_error = true;
     }
 
     fn skip_separators(&mut self) -> Option<usize> {
@@ -1155,6 +1163,9 @@ impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
     type Item = LangStringToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.is_error {
+            return None;
+        }
         let Some(start) = self.skip_separators() else {
             if self.is_in_attribute_block {
                 self.emit_error("unclosed attribute block (`{}`): missing `}` at the end");
@@ -1343,14 +1354,15 @@ impl LangString {
             }
         };
 
-        call(&mut TagIterator::new(string, extra));
+        let mut tag_iter = TagIterator::new(string, extra);
+        call(&mut tag_iter);
 
         // ignore-foo overrides ignore
         if !ignores.is_empty() {
             data.ignore = Ignore::Some(ignores);
         }
 
-        data.rust &= !seen_custom_tag && (!seen_other_tags || seen_rust_tags);
+        data.rust &= !seen_custom_tag && (!seen_other_tags || seen_rust_tags) && !tag_iter.is_error;
 
         data
     }

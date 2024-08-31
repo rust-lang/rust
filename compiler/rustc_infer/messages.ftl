@@ -388,6 +388,8 @@ infer_type_annotations_needed = {$source_kind ->
 }
     .label = type must be known at this point
 
+infer_type_annotations_needed_error_time = this is an inference error on crate `time` caused by an API change in Rust 1.80.0; update `time` to version `>=0.3.35` by calling `cargo update`
+
 infer_types_declared_different = these two types are declared with different lifetimes...
 
 infer_warn_removing_apit_params = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
