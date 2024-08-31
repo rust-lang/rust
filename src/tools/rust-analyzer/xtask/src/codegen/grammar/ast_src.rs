@@ -1,5 +1,7 @@
 //! Defines input for code generation process.
 
+use quote::ToTokens;
+
 use crate::codegen::grammar::to_upper_snake_case;
 
 #[derive(Copy, Clone, Debug)]
@@ -10,6 +12,35 @@ pub(crate) struct KindsSrc {
     pub(crate) literals: &'static [&'static str],
     pub(crate) tokens: &'static [&'static str],
     pub(crate) nodes: &'static [&'static str],
+    pub(crate) edition_dependent_keywords: &'static [(&'static str, Edition)],
+}
+
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) enum Edition {
+    Edition2015,
+    Edition2018,
+    Edition2021,
+    Edition2024,
+}
+
+impl ToTokens for Edition {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            Edition::Edition2015 => {
+                tokens.extend(quote::quote! { Edition::Edition2015 });
+            }
+            Edition::Edition2018 => {
+                tokens.extend(quote::quote! { Edition::Edition2018 });
+            }
+            Edition::Edition2021 => {
+                tokens.extend(quote::quote! { Edition::Edition2021 });
+            }
+            Edition::Edition2024 => {
+                tokens.extend(quote::quote! { Edition::Edition2024 });
+            }
+        }
+    }
 }
 
 /// The punctuations of the language.
@@ -75,17 +106,32 @@ const EOF: &str = "EOF";
 
 const RESERVED: &[&str] = &[
     "abstract", "become", "box", "do", "final", "macro", "override", "priv", "typeof", "unsized",
-    "virtual", "yield", "try",
+    "virtual", "yield",
 ];
-const CONTEXTUAL_RESERVED: &[&str] = &[];
+// keywords that are keywords only in specific parse contexts
+#[doc(alias = "WEAK_KEYWORDS")]
+const CONTEXTUAL_KEYWORDS: &[&str] =
+    &["macro_rules", "union", "default", "raw", "dyn", "auto", "yeet"];
+// keywords we use for special macro expansions
+const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &["builtin", "offset_of", "format_args", "asm"];
+// keywords that are keywords depending on the edition
+const EDITION_DEPENDENT_KEYWORDS: &[(&str, Edition)] = &[
+    ("try", Edition::Edition2018),
+    ("dyn", Edition::Edition2018),
+    ("async", Edition::Edition2018),
+    ("await", Edition::Edition2018),
+    ("gen", Edition::Edition2024),
+];
 
 pub(crate) fn generate_kind_src(
     nodes: &[AstNodeSrc],
     enums: &[AstEnumSrc],
     grammar: &ungrammar::Grammar,
 ) -> KindsSrc {
+    let mut contextual_keywords: Vec<&_> =
+        CONTEXTUAL_KEYWORDS.iter().chain(CONTEXTUAL_BUILTIN_KEYWORDS).copied().collect();
+
     let mut keywords: Vec<&_> = Vec::new();
-    let mut contextual_keywords: Vec<&_> = Vec::new();
     let mut tokens: Vec<&_> = TOKENS.to_vec();
     let mut literals: Vec<&_> = Vec::new();
     let mut used_puncts = vec![false; PUNCT.len()];
@@ -103,9 +149,7 @@ pub(crate) fn generate_kind_src(
             ("#", token) if !token.is_empty() => {
                 tokens.push(String::leak(to_upper_snake_case(token)));
             }
-            ("?", kw) if !kw.is_empty() => {
-                contextual_keywords.push(String::leak(kw.to_owned()));
-            }
+            _ if contextual_keywords.contains(&name) => {}
             _ if name.chars().all(char::is_alphabetic) => {
                 keywords.push(String::leak(name.to_owned()));
             }
@@ -124,9 +168,14 @@ pub(crate) fn generate_kind_src(
     keywords.extend(RESERVED.iter().copied());
     keywords.sort();
     keywords.dedup();
-    contextual_keywords.extend(CONTEXTUAL_RESERVED.iter().copied());
     contextual_keywords.sort();
     contextual_keywords.dedup();
+    let mut edition_dependent_keywords: Vec<(&_, _)> = EDITION_DEPENDENT_KEYWORDS.to_vec();
+    edition_dependent_keywords.sort();
+    edition_dependent_keywords.dedup();
+
+    keywords.retain(|&it| !contextual_keywords.contains(&it));
+    keywords.retain(|&it| !edition_dependent_keywords.iter().any(|&(kw, _)| kw == it));
 
     // we leak things here for simplicity, that way we don't have to deal with lifetimes
     // The execution is a one shot job so thats fine
@@ -142,12 +191,21 @@ pub(crate) fn generate_kind_src(
     nodes.sort();
     let keywords = Vec::leak(keywords);
     let contextual_keywords = Vec::leak(contextual_keywords);
+    let edition_dependent_keywords = Vec::leak(edition_dependent_keywords);
     let literals = Vec::leak(literals);
     literals.sort();
     let tokens = Vec::leak(tokens);
     tokens.sort();
 
-    KindsSrc { punct: PUNCT, nodes, keywords, contextual_keywords, literals, tokens }
+    KindsSrc {
+        punct: PUNCT,
+        nodes,
+        keywords,
+        contextual_keywords,
+        edition_dependent_keywords,
+        literals,
+        tokens,
+    }
 }
 
 #[derive(Default, Debug)]

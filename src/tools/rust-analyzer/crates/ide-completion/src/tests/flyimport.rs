@@ -1633,3 +1633,39 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn trait_impl_on_slice_method_on_deref_slice_type() {
+    check(
+        r#"
+//- minicore: deref, sized
+struct SliceDeref;
+impl core::ops::Deref for SliceDeref {
+    type Target = [()];
+
+    fn deref(&self) -> &Self::Target {
+        &[]
+    }
+}
+fn main() {
+    SliceDeref.choose$0();
+}
+mod module {
+    pub(super) trait SliceRandom {
+        type Item;
+
+        fn choose(&self);
+    }
+
+    impl<T> SliceRandom for [T] {
+        type Item = T;
+
+        fn choose(&self) {}
+    }
+}
+"#,
+        expect![[r#"
+            me choose (use module::SliceRandom) fn(&self)
+        "#]],
+    );
+}

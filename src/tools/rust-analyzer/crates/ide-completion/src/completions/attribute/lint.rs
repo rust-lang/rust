@@ -54,7 +54,8 @@ pub(super) fn complete_lint(
             Some(qual) if !is_qualified => format!("{qual}::{name}"),
             _ => name.to_owned(),
         };
-        let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
+        let mut item =
+            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label, ctx.edition);
         item.documentation(Documentation::new(description.to_owned()));
         item.add_to(acc, ctx.db)
     }

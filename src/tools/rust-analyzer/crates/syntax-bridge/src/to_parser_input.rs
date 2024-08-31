@@ -64,14 +64,12 @@ pub fn to_parser_input<S: Copy + fmt::Debug>(
                         "_" => res.push(T![_]),
                         i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
                         _ if ident.is_raw.yes() => res.push(IDENT),
-                        "gen" if !edition.at_least_2024() => res.push(IDENT),
-                        "dyn" if !edition.at_least_2018() => res.push_ident(DYN_KW),
-                        "async" | "await" | "try" if !edition.at_least_2018() => res.push(IDENT),
-                        text => match SyntaxKind::from_keyword(text) {
+                        text => match SyntaxKind::from_keyword(text, edition) {
                             Some(kind) => res.push(kind),
                             None => {
-                                let contextual_keyword = SyntaxKind::from_contextual_keyword(text)
-                                    .unwrap_or(SyntaxKind::IDENT);
+                                let contextual_keyword =
+                                    SyntaxKind::from_contextual_keyword(text, edition)
+                                        .unwrap_or(SyntaxKind::IDENT);
                                 res.push_ident(contextual_keyword);
                             }
                         },

@@ -102,6 +102,11 @@ impl CargoTestHandle {
         }
         cmd.args(["-Z", "unstable-options"]);
         cmd.arg("--format=json");
+
+        for extra_arg in options.extra_test_bin_args {
+            cmd.arg(extra_arg);
+        }
+
         Ok(Self { _handle: CommandHandle::spawn(cmd, sender)? })
     }
 }

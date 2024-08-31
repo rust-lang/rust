@@ -34,6 +34,7 @@ fn load_cargo_with_overrides(
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         cfg_overrides,
         sysroot: Sysroot::empty(),
@@ -58,6 +59,7 @@ fn load_cargo_with_fake_sysroot(
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot: get_fake_sysroot(),
         rustc_cfg: Vec::new(),
@@ -234,6 +236,12 @@ fn rust_project_hello_world_project_model() {
 }
 
 #[test]
+fn rust_project_cfg_groups() {
+    let (crate_graph, _proc_macros) = load_rust_project("cfg-groups.json");
+    check_crate_graph(crate_graph, expect_file!["../test_data/output/rust_project_cfg_groups.txt"]);
+}
+
+#[test]
 fn rust_project_is_proc_macro_has_proc_macro_dep() {
     let (crate_graph, _proc_macros) = load_rust_project("is-proc-macro-project.json");
     // Since the project only defines one crate (outside the sysroot crates),
@@ -294,6 +302,7 @@ fn smoke_test_real_sysroot_cargo() {
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
             cargo_config_extra_env: Default::default(),
+            error: None,
         },
         sysroot,
         rustc_cfg: Vec::new(),

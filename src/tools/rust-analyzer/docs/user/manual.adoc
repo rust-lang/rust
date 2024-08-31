@@ -705,6 +705,12 @@ interface JsonProject {
     /// several different "sysroots" in one graph of
     /// crates.
     sysroot_src?: string;
+    /// List of groups of common cfg values, to allow
+    /// sharing them between crates.
+    ///
+    /// Maps from group name to its cfgs. Cfg follow
+    /// the same format as `Crate.cfg`.
+    cfg_groups?: { [key: string]: string[]; };
     /// The set of crates comprising the current
     /// project. Must include all transitive
     /// dependencies as well as sysroot crate (libstd,
@@ -754,6 +760,12 @@ interface Crate {
         include_dirs: string[],
         exclude_dirs: string[],
     },
+    /// List of cfg groups this crate inherits.
+    ///
+    /// All cfg in these groups will be concatenated to
+    /// `cfg`. It is impossible to replace a value from
+    /// the groups.
+    cfg_groups?: string[];
     /// The set of cfgs activated for a given crate, like
     /// `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
     cfg: string[];

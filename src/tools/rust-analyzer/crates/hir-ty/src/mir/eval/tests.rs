@@ -1,5 +1,5 @@
 use hir_def::db::DefDatabase;
-use span::EditionedFileId;
+use span::{Edition, EditionedFileId};
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
@@ -15,7 +15,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::FunctionId(x) => {
-                if db.function_data(x).name.display(db).to_string() == "main" {
+                if db.function_data(x).name.display(db, Edition::CURRENT).to_string() == "main" {
                     Some(x)
                 } else {
                     None
@@ -63,7 +63,7 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
             let span_formatter = |file, range: TextRange| {
                 format!("{:?} {:?}..{:?}", file, line_index(range.start()), line_index(range.end()))
             };
-            e.pretty_print(&mut err, &db, span_formatter).unwrap();
+            e.pretty_print(&mut err, &db, span_formatter, Edition::CURRENT).unwrap();
             panic!("Error in interpreting: {err}");
         }
         Ok((stdout, stderr)) => {

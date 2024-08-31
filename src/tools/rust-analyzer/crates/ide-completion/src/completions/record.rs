@@ -73,6 +73,7 @@ pub(crate) fn complete_record_expr_fields(
                     CompletionItemKind::Snippet,
                     ctx.source_range(),
                     SmolStr::new_static(".."),
+                    ctx.edition,
                 );
                 item.insert_text(".");
                 item.add_to(acc, ctx.db);
@@ -101,6 +102,7 @@ pub(crate) fn add_default_update(
             SymbolKind::Field,
             ctx.source_range(),
             SmolStr::new_static(completion_text),
+            ctx.edition,
         );
         let completion_text =
             completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);

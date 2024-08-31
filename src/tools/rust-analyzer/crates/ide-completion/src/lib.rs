@@ -245,6 +245,7 @@ pub fn resolve_completion_edits(
 
     let current_module = sema.scope(position_for_import)?.module();
     let current_crate = current_module.krate();
+    let current_edition = current_crate.edition(db);
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
@@ -261,9 +262,13 @@ pub fn resolve_completion_edits(
             .filter_map(|candidate| {
                 current_module.find_use_path(db, candidate, config.insert_use.prefix_kind, cfg)
             })
-            .find(|mod_path| mod_path.display(db).to_string() == full_import_path);
+            .find(|mod_path| mod_path.display(db, current_edition).to_string() == full_import_path);
         if let Some(import_path) = import {
-            insert_use::insert_use(&new_ast, mod_path_to_ast(&import_path), &config.insert_use);
+            insert_use::insert_use(
+                &new_ast,
+                mod_path_to_ast(&import_path, current_edition),
+                &config.insert_use,
+            );
         }
     });
 

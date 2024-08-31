@@ -138,6 +138,9 @@ xflags::xflags! {
 
         cmd lsif {
             required path: PathBuf
+
+            /// Exclude code from vendored libraries from the resulting index.
+            optional --exclude-vendored-libraries
         }
 
         cmd scip {
@@ -148,6 +151,9 @@ xflags::xflags! {
 
             /// A path to an json configuration file that can be used to customize cargo behavior.
             optional --config-path config_path: PathBuf
+
+            /// Exclude code from vendored libraries from the resulting index.
+            optional --exclude-vendored-libraries
         }
     }
 }
@@ -259,6 +265,8 @@ pub struct Search {
 #[derive(Debug)]
 pub struct Lsif {
     pub path: PathBuf,
+
+    pub exclude_vendored_libraries: bool,
 }
 
 #[derive(Debug)]
@@ -267,6 +275,7 @@ pub struct Scip {
 
     pub output: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
+    pub exclude_vendored_libraries: bool,
 }
 
 impl RustAnalyzer {

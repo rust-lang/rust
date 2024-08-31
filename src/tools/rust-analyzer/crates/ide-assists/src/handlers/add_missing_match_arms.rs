@@ -445,7 +445,8 @@ fn build_pat(
 ) -> Option<ast::Pat> {
     match var {
         ExtendedVariant::Variant(var) => {
-            let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?);
+            let edition = module.krate().edition(db);
+            let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?, edition);
             // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
             Some(match var.source(db)?.value.kind() {
                 ast::StructKind::Tuple(field_list) => {

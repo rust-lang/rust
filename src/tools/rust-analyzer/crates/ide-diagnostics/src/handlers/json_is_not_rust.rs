@@ -12,7 +12,7 @@ use itertools::Itertools;
 use stdx::{format_to, never};
 use syntax::{
     ast::{self, make},
-    SyntaxKind, SyntaxNode,
+    Edition, SyntaxKind, SyntaxNode,
 };
 use text_edit::TextEdit;
 
@@ -104,6 +104,7 @@ pub(crate) fn json_in_items(
     file_id: EditionedFileId,
     node: &SyntaxNode,
     config: &DiagnosticsConfig,
+    edition: Edition,
 ) {
     (|| {
         if node.kind() == SyntaxKind::ERROR
@@ -156,7 +157,11 @@ pub(crate) fn json_in_items(
                                     config.insert_use.prefix_kind,
                                     cfg,
                                 ) {
-                                    insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
+                                    insert_use(
+                                        &scope,
+                                        mod_path_to_ast(&it, edition),
+                                        &config.insert_use,
+                                    );
                                 }
                             }
                         }
@@ -168,7 +173,11 @@ pub(crate) fn json_in_items(
                                     config.insert_use.prefix_kind,
                                     cfg,
                                 ) {
-                                    insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
+                                    insert_use(
+                                        &scope,
+                                        mod_path_to_ast(&it, edition),
+                                        &config.insert_use,
+                                    );
                                 }
                             }
                         }

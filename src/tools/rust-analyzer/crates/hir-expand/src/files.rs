@@ -461,3 +461,12 @@ impl<N: AstNode> InFile<N> {
         Some(InRealFile::new(file_id, value))
     }
 }
+
+impl<T> InFile<T> {
+    pub fn into_real_file(self) -> Result<InRealFile<T>, InFile<T>> {
+        match self.file_id.repr() {
+            HirFileIdRepr::FileId(file_id) => Ok(InRealFile { file_id, value: self.value }),
+            HirFileIdRepr::MacroFile(_) => Err(self),
+        }
+    }
+}

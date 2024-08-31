@@ -9,7 +9,7 @@ use itertools::{EitherOrBoth, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make, HasName},
-    AstNode, SmolStr, SyntaxNode, ToSmolStr,
+    AstNode, SmolStr, SyntaxNode,
 };
 
 use crate::{
@@ -459,7 +459,7 @@ fn find_import_for_segment(
     unresolved_first_segment: &str,
 ) -> Option<ItemInNs> {
     let segment_is_name = item_name(db, original_item)
-        .map(|name| name.display_no_db().to_smolstr() == unresolved_first_segment)
+        .map(|name| name.eq_ident(unresolved_first_segment))
         .unwrap_or(false);
 
     Some(if segment_is_name {
@@ -483,7 +483,7 @@ fn module_with_segment_name(
     };
     while let Some(module) = current_module {
         if let Some(module_name) = module.name(db) {
-            if module_name.display_no_db().to_smolstr() == segment_name {
+            if module_name.eq_ident(segment_name) {
                 return Some(module);
             }
         }
@@ -531,40 +531,61 @@ fn trait_applicable_items(
     })
     .collect();
 
-    trait_candidates.retain(|&candidate_trait_id| {
-        // we care about the following cases:
-        // 1. Trait's definition crate
-        // 2. Definition crates for all trait's generic arguments
-        //     a. This is recursive for fundamental types: `Into<Box<A>> for ()`` is OK, but
-        //        `Into<Vec<A>> for ()`` is *not*.
-        // 3. Receiver type definition crate
-        //    a. This is recursive for fundamental types
-        let defining_crate_for_trait = Trait::from(candidate_trait_id).krate(db);
-        let Some(receiver) = trait_candidate.receiver_ty.fingerprint_for_trait_impl() else {
-            return false;
-        };
-
-        // in order to handle implied bounds through an associated type, keep any
-        // method receiver that matches `TyFingerprint::Unnameable`. this receiver
-        // won't be in `TraitImpls` anyways, as `TraitImpls` only contains actual
-        // implementations.
-        if matches!(receiver, TyFingerprint::Unnameable) {
-            return true;
+    let autoderef_method_receiver = {
+        let mut deref_chain = trait_candidate.receiver_ty.autoderef(db).collect::<Vec<_>>();
+        // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
+        if let Some((ty, _len)) = deref_chain.last().and_then(|ty| ty.as_array(db)) {
+            let slice = Type::new_slice(ty);
+            deref_chain.push(slice);
         }
+        deref_chain
+            .into_iter()
+            .filter_map(|ty| Some((ty.krate(db).into(), ty.fingerprint_for_trait_impl()?)))
+            .sorted()
+            .unique()
+            .collect::<Vec<_>>()
+    };
 
-        let definitions_exist_in_trait_crate = db
-            .trait_impls_in_crate(defining_crate_for_trait.into())
-            .has_impls_for_trait_and_self_ty(candidate_trait_id, receiver);
+    // can be empty if the entire deref chain is has no valid trait impl fingerprints
+    if autoderef_method_receiver.is_empty() {
+        return Default::default();
+    }
 
-        // this is a closure for laziness: if `definitions_exist_in_trait_crate` is true,
-        // we can avoid a second db lookup.
-        let definitions_exist_in_receiver_crate = || {
-            db.trait_impls_in_crate(trait_candidate.receiver_ty.krate(db).into())
-                .has_impls_for_trait_and_self_ty(candidate_trait_id, receiver)
-        };
+    // in order to handle implied bounds through an associated type, keep all traits if any
+    // type in the deref chain matches `TyFingerprint::Unnameable`. This fingerprint
+    // won't be in `TraitImpls` anyways, as `TraitImpls` only contains actual implementations.
+    if !autoderef_method_receiver
+        .iter()
+        .any(|(_, fingerprint)| matches!(fingerprint, TyFingerprint::Unnameable))
+    {
+        trait_candidates.retain(|&candidate_trait_id| {
+            // we care about the following cases:
+            // 1. Trait's definition crate
+            // 2. Definition crates for all trait's generic arguments
+            //     a. This is recursive for fundamental types: `Into<Box<A>> for ()`` is OK, but
+            //        `Into<Vec<A>> for ()`` is *not*.
+            // 3. Receiver type definition crate
+            //    a. This is recursive for fundamental types
+            let defining_crate_for_trait = Trait::from(candidate_trait_id).krate(db);
 
-        definitions_exist_in_trait_crate || definitions_exist_in_receiver_crate()
-    });
+            let trait_impls_in_crate = db.trait_impls_in_crate(defining_crate_for_trait.into());
+            let definitions_exist_in_trait_crate =
+                autoderef_method_receiver.iter().any(|&(_, fingerprint)| {
+                    trait_impls_in_crate
+                        .has_impls_for_trait_and_self_ty(candidate_trait_id, fingerprint)
+                });
+            // this is a closure for laziness: if `definitions_exist_in_trait_crate` is true,
+            // we can avoid a second db lookup.
+            let definitions_exist_in_receiver_crate = || {
+                autoderef_method_receiver.iter().any(|&(krate, fingerprint)| {
+                    db.trait_impls_in_crate(krate)
+                        .has_impls_for_trait_and_self_ty(candidate_trait_id, fingerprint)
+                })
+            };
+
+            definitions_exist_in_trait_crate || definitions_exist_in_receiver_crate()
+        });
+    }
 
     let mut located_imports = FxIndexSet::default();
     let mut trait_import_paths = FxHashMap::default();

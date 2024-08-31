@@ -17,17 +17,18 @@ use std::fmt;
 
 use hir_def::{
     data::adt::VariantData, db::DefDatabase, hir::Pat, src::HasSource, AdtId, AttrDefId, ConstId,
-    EnumId, EnumVariantId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId, StaticId,
-    StructId, TraitId, TypeAliasId,
+    EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, ModuleDefId, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId,
 };
 use hir_expand::{
     name::{AsName, Name},
-    HirFileId, MacroFileIdExt,
+    HirFileId, HirFileIdExt, MacroFileIdExt,
 };
 use intern::sym;
 use stdx::{always, never};
 use syntax::{
     ast::{self, HasName},
+    utils::is_raw_identifier,
     AstNode, AstPtr, ToSmolStr,
 };
 
@@ -318,17 +319,21 @@ impl<'a> DeclValidator<'a> {
     /// This includes function parameters except for trait implementation associated functions.
     fn validate_func_body(&mut self, func: FunctionId) {
         let body = self.db.body(func.into());
+        let edition = self.edition(func);
         let mut pats_replacements = body
             .pats
             .iter()
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
                     let bind_name = &body.bindings[*id].name;
+                    let mut suggested_text =
+                        to_lower_snake_case(&bind_name.unescaped().display_no_db().to_smolstr())?;
+                    if is_raw_identifier(&suggested_text, edition) {
+                        suggested_text.insert_str(0, "r#");
+                    }
                     let replacement = Replacement {
                         current_name: bind_name.clone(),
-                        suggested_text: to_lower_snake_case(
-                            &bind_name.display_no_db().to_smolstr(),
-                        )?,
+                        suggested_text,
                         expected_case: CaseType::LowerSnakeCase,
                     };
                     Some((pat_id, replacement))
@@ -377,6 +382,11 @@ impl<'a> DeclValidator<'a> {
         }
     }
 
+    fn edition(&self, id: impl HasModule) -> span::Edition {
+        let krate = id.krate(self.db.upcast());
+        self.db.crate_graph()[krate].edition
+    }
+
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
         let non_camel_case_allowed =
@@ -405,16 +415,17 @@ impl<'a> DeclValidator<'a> {
         let VariantData::Record(fields) = data.variant_data.as_ref() else {
             return;
         };
+        let edition = self.edition(struct_id);
         let mut struct_fields_replacements = fields
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.display_no_db().to_smolstr()).map(|new_name| {
-                    Replacement {
+                to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
+                    |new_name| Replacement {
                         current_name: field.name.clone(),
                         suggested_text: new_name,
                         expected_case: CaseType::LowerSnakeCase,
-                    }
-                })
+                    },
+                )
             })
             .peekable();
 
@@ -498,14 +509,17 @@ impl<'a> DeclValidator<'a> {
             self.validate_enum_variant_fields(*variant_id);
         }
 
+        let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
             .iter()
             .filter_map(|(_, name)| {
-                to_camel_case(&name.display_no_db().to_smolstr()).map(|new_name| Replacement {
-                    current_name: name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::UpperCamelCase,
+                to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
+                    Replacement {
+                        current_name: name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::UpperCamelCase,
+                    }
                 })
             })
             .peekable();
@@ -566,16 +580,17 @@ impl<'a> DeclValidator<'a> {
         let VariantData::Record(fields) = variant_data.variant_data.as_ref() else {
             return;
         };
+        let edition = self.edition(variant_id);
         let mut variant_field_replacements = fields
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.display_no_db().to_smolstr()).map(|new_name| {
-                    Replacement {
+                to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
+                    |new_name| Replacement {
                         current_name: field.name.clone(),
                         suggested_text: new_name,
                         expected_case: CaseType::LowerSnakeCase,
-                    }
-                })
+                    },
+                )
             })
             .peekable();
 
@@ -704,18 +719,22 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database<'a> = dyn DefDatabase + 'a>,
+        L: Lookup<Data = S, Database<'a> = dyn DefDatabase + 'a> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,
             CaseType::UpperSnakeCase => to_upper_snake_case,
             CaseType::UpperCamelCase => to_camel_case,
         };
-        let Some(replacement) =
-            to_expected_case_type(&name.display(self.db.upcast()).to_smolstr()).map(|new_name| {
-                Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
-            })
-        else {
+        let edition = self.edition(item_id);
+        let Some(replacement) = to_expected_case_type(
+            &name.display(self.db.upcast(), edition).to_smolstr(),
+        )
+        .map(|new_name| Replacement {
+            current_name: name.clone(),
+            suggested_text: new_name,
+            expected_case,
+        }) else {
             return;
         };
 
@@ -748,12 +767,13 @@ impl<'a> DeclValidator<'a> {
             return;
         };
 
+        let edition = file_id.original_file(self.db.upcast()).edition();
         let diagnostic = IncorrectCase {
             file: file_id,
             ident_type,
             ident: AstPtr::new(&name_ast),
             expected_case: replacement.expected_case,
-            ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
+            ident_text: replacement.current_name.display(self.db.upcast(), edition).to_string(),
             suggested_text: replacement.suggested_text,
         };
 

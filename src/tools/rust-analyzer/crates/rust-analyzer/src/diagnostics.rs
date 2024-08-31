@@ -75,7 +75,7 @@ impl DiagnosticCollection {
         flycheck_id: usize,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
-        fix: Option<Fix>,
+        fix: Option<Box<Fix>>,
     ) {
         let diagnostics = self.check.entry(flycheck_id).or_default().entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
@@ -84,8 +84,10 @@ impl DiagnosticCollection {
             }
         }
 
-        let check_fixes = Arc::make_mut(&mut self.check_fixes);
-        check_fixes.entry(flycheck_id).or_default().entry(file_id).or_default().extend(fix);
+        if let Some(fix) = fix {
+            let check_fixes = Arc::make_mut(&mut self.check_fixes);
+            check_fixes.entry(flycheck_id).or_default().entry(file_id).or_default().push(*fix);
+        }
         diagnostics.push(diagnostic);
         self.changes.insert(file_id);
     }
