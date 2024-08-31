@@ -10,6 +10,9 @@ fn main() {
     let y = u64::from(n.get());
     //~^ ERROR: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
     some_fn_that_only_takes_u64(y);
+
+    let m = NonZeroU32::try_from(1).unwrap();
+    let _z: NonZeroU64 = m.into();
 }
 
 fn return_non_zero(x: u64, y: NonZeroU32) -> u64 {
