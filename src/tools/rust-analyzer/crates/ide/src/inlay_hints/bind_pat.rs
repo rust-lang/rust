@@ -22,7 +22,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
+    file_id: EditionedFileId,
     pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
@@ -67,7 +67,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let mut label = label_of_ty(famous_defs, config, &ty)?;
+    let mut label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()
@@ -342,7 +342,7 @@ fn f<'a>() {
     let x = S::<'static>;
       //^ S<'static>
     let y = S::<'_>;
-      //^ S
+      //^ S<'_>
     let z = S::<'a>;
       //^ S<'a>
 

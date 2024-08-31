@@ -25,7 +25,7 @@ use hir_expand::{
     InFile, MacroFileId, MacroFileIdExt,
 };
 use intern::Symbol;
-use span::Span;
+use span::{Edition, Span};
 use stdx::{format_to, format_to_acc};
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -257,21 +257,25 @@ fn pretty_print_macro_expansion(
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
             (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
-            _ if prev_kind.is_keyword() && curr_kind.is_keyword() => " ",
-            (IDENT, _) if curr_kind.is_keyword() => " ",
-            (_, IDENT) if prev_kind.is_keyword() => " ",
+            _ if prev_kind.is_keyword(Edition::CURRENT)
+                && curr_kind.is_keyword(Edition::CURRENT) =>
+            {
+                " "
+            }
+            (IDENT, _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
+            (_, IDENT) if prev_kind.is_keyword(Edition::CURRENT) => " ",
             (T![>], IDENT) => " ",
-            (T![>], _) if curr_kind.is_keyword() => " ",
+            (T![>], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![->], _) | (_, T![->]) => " ",
             (T![&&], _) | (_, T![&&]) => " ",
             (T![,], _) => " ",
             (T![:], IDENT | T!['(']) => " ",
-            (T![:], _) if curr_kind.is_keyword() => " ",
+            (T![:], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![fn], T!['(']) => "",
-            (T![']'], _) if curr_kind.is_keyword() => " ",
+            (T![']'], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![']'], T![#]) => "\n",
             (T![Self], T![::]) => "",
-            _ if prev_kind.is_keyword() => " ",
+            _ if prev_kind.is_keyword(Edition::CURRENT) => " ",
             _ => "",
         };
 

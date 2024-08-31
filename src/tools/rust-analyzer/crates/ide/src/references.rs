@@ -9,7 +9,7 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-use hir::{DescendPreference, PathResolution, Semantics};
+use hir::{PathResolution, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
@@ -17,6 +17,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use span::Edition;
 use syntax::{
     ast::{self, HasName},
     match_ast, AstNode,
@@ -148,7 +149,7 @@ pub(crate) fn find_defs<'a>(
     }
 
     Some(
-        sema.descend_into_macros(DescendPreference::SameText, token)
+        sema.descend_into_macros_exact(token)
             .into_iter()
             .filter_map(|it| ast::NameLike::cast(it.parent()?))
             .filter_map(move |name_like| {
@@ -305,7 +306,9 @@ fn handle_control_flow_keywords(
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = sema.parse_guess_edition(file_id);
-    let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword())?;
+    let edition =
+        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+    let token = file.syntax().token_at_offset(offset).find(|t| t.kind().is_keyword(edition))?;
 
     let references = match token.kind() {
         T![fn] | T![return] | T![try] => highlight_related::highlight_exit_points(sema, token),
@@ -2506,5 +2509,245 @@ fn main() {
                 FileId(1) 6..12
             "#]],
         )
+    }
+
+    // The following are tests for short_associated_function_fast_search() in crates/ide-db/src/search.rs, because find all references
+    // use `FindUsages` and I found it easy to test it here.
+
+    #[test]
+    fn goto_ref_on_short_associated_function() {
+        cov_mark::check!(short_associated_function_fast_search);
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn new$0() {}
+}
+
+fn bar() {
+    Foo::new();
+}
+fn baz() {
+    Foo::new;
+}
+        "#,
+            expect![[r#"
+                new Function FileId(0) 27..38 30..33
+
+                FileId(0) 62..65
+                FileId(0) 91..94
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_short_associated_function_with_aliases() {
+        cov_mark::check!(short_associated_function_fast_search);
+        cov_mark::check!(container_use_rename);
+        cov_mark::check!(container_type_alias);
+        check(
+            r#"
+//- /lib.rs
+mod a;
+mod b;
+
+struct Foo;
+impl Foo {
+    fn new$0() {}
+}
+
+fn bar() {
+    b::c::Baz::new();
+}
+
+//- /a.rs
+use crate::Foo as Bar;
+
+fn baz() { Bar::new(); }
+fn quux() { <super::b::Other as super::b::Trait>::Assoc::new(); }
+
+//- /b.rs
+pub(crate) mod c;
+
+pub(crate) struct Other;
+pub(crate) trait Trait {
+    type Assoc;
+}
+impl Trait for Other {
+    type Assoc = super::Foo;
+}
+
+//- /b/c.rs
+type Itself<T> = T;
+pub(in super::super) type Baz = Itself<crate::Foo>;
+        "#,
+            expect![[r#"
+                new Function FileId(0) 42..53 45..48
+
+                FileId(0) 83..86
+                FileId(1) 40..43
+                FileId(1) 106..109
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_short_associated_function_self_works() {
+        cov_mark::check!(short_associated_function_fast_search);
+        cov_mark::check!(self_type_alias);
+        check(
+            r#"
+//- /lib.rs
+mod module;
+
+struct Foo;
+impl Foo {
+    fn new$0() {}
+    fn bar() { Self::new(); }
+}
+trait Trait {
+    type Assoc;
+    fn baz();
+}
+impl Trait for Foo {
+    type Assoc = Self;
+    fn baz() { Self::new(); }
+}
+
+//- /module.rs
+impl super::Foo {
+    fn quux() { Self::new(); }
+}
+fn foo() { <super::Foo as super::Trait>::Assoc::new(); }
+                "#,
+            expect![[r#"
+                new Function FileId(0) 40..51 43..46
+
+                FileId(0) 73..76
+                FileId(0) 195..198
+                FileId(1) 40..43
+                FileId(1) 99..102
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_short_associated_function_overlapping_self_ranges() {
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn new$0() {}
+    fn bar() {
+        Self::new();
+        impl Foo {
+            fn baz() { Self::new(); }
+        }
+    }
+}
+            "#,
+            expect![[r#"
+                new Function FileId(0) 27..38 30..33
+
+                FileId(0) 68..71
+                FileId(0) 123..126
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_short_associated_function_no_direct_self_but_path_contains_self() {
+        cov_mark::check!(short_associated_function_fast_search);
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn new$0() {}
+}
+trait Trait {
+    type Assoc;
+}
+impl<A, B> Trait for (A, B) {
+    type Assoc = B;
+}
+impl Foo {
+    fn bar() {
+        <((), Foo) as Trait>::Assoc::new();
+        <((), Self) as Trait>::Assoc::new();
+    }
+}
+            "#,
+            expect![[r#"
+                new Function FileId(0) 27..38 30..33
+
+                FileId(0) 188..191
+                FileId(0) 233..236
+            "#]],
+        );
+    }
+
+    // Checks that we can circumvent our fast path logic using complicated type level functions.
+    // This mainly exists as a documentation. I don't believe it is fixable.
+    // Usages search is not 100% accurate anyway; we miss macros.
+    #[test]
+    fn goto_ref_on_short_associated_function_complicated_type_magic_can_confuse_our_logic() {
+        cov_mark::check!(short_associated_function_fast_search);
+        cov_mark::check!(same_name_different_def_type_alias);
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn new$0() {}
+}
+
+struct ChoiceA;
+struct ChoiceB;
+trait Choice {
+    type Choose<A, B>;
+}
+impl Choice for ChoiceA {
+    type Choose<A, B> = A;
+}
+impl Choice for ChoiceB {
+    type Choose<A, B> = B;
+}
+type Choose<A, C> = <C as Choice>::Choose<A, Foo>;
+
+fn bar() {
+    Choose::<(), ChoiceB>::new();
+}
+                "#,
+            expect![[r#"
+                new Function FileId(0) 27..38 30..33
+
+                (no references)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn goto_ref_on_short_associated_function_same_path_mention_alias_and_self() {
+        cov_mark::check!(short_associated_function_fast_search);
+        check(
+            r#"
+struct Foo;
+impl Foo {
+    fn new$0() {}
+}
+
+type IgnoreFirst<A, B> = B;
+
+impl Foo {
+    fn bar() {
+        <IgnoreFirst<Foo, Self>>::new();
+    }
+}
+                "#,
+            expect![[r#"
+                new Function FileId(0) 27..38 30..33
+
+                FileId(0) 131..134
+            "#]],
+        );
     }
 }

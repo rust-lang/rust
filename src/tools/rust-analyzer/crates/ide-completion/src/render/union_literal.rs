@@ -22,21 +22,29 @@ pub(crate) fn render_union_literal(
     let name = local_name.unwrap_or_else(|| un.name(ctx.db()));
 
     let (qualified_name, escaped_qualified_name) = match path {
-        Some(p) => (p.unescaped().display(ctx.db()).to_string(), p.display(ctx.db()).to_string()),
-        None => {
-            (name.unescaped().display(ctx.db()).to_string(), name.display(ctx.db()).to_string())
-        }
+        Some(p) => (
+            p.unescaped().display(ctx.db()).to_string(),
+            p.display(ctx.db(), ctx.completion.edition).to_string(),
+        ),
+        None => (
+            name.unescaped().display(ctx.db()).to_string(),
+            name.display(ctx.db(), ctx.completion.edition).to_string(),
+        ),
     };
     let label = format_literal_label(
-        &name.display_no_db().to_smolstr(),
+        &name.display_no_db(ctx.completion.edition).to_smolstr(),
         StructKind::Record,
         ctx.snippet_cap(),
     );
-    let lookup = format_literal_lookup(&name.display_no_db().to_smolstr(), StructKind::Record);
+    let lookup = format_literal_lookup(
+        &name.display_no_db(ctx.completion.edition).to_smolstr(),
+        StructKind::Record,
+    );
     let mut item = CompletionItem::new(
         CompletionItemKind::SymbolKind(SymbolKind::Union),
         ctx.source_range(),
         label,
+        ctx.completion.edition,
     );
 
     item.lookup_by(lookup);
@@ -54,7 +62,10 @@ pub(crate) fn render_union_literal(
             escaped_qualified_name,
             fields
                 .iter()
-                .map(|field| field.name(ctx.db()).display_no_db().to_smolstr())
+                .map(|field| field
+                    .name(ctx.db())
+                    .display_no_db(ctx.completion.edition)
+                    .to_smolstr())
                 .format(",")
         )
     } else {
@@ -62,7 +73,10 @@ pub(crate) fn render_union_literal(
             "{} {{ {} }}",
             escaped_qualified_name,
             fields.iter().format_with(", ", |field, f| {
-                f(&format_args!("{}: ()", field.name(ctx.db()).display(ctx.db())))
+                f(&format_args!(
+                    "{}: ()",
+                    field.name(ctx.db()).display(ctx.db(), ctx.completion.edition)
+                ))
             })
         )
     };
@@ -73,8 +87,8 @@ pub(crate) fn render_union_literal(
         fields.iter().format_with(", ", |field, f| {
             f(&format_args!(
                 "{}: {}",
-                field.name(ctx.db()).display(ctx.db()),
-                field.ty(ctx.db()).display(ctx.db())
+                field.name(ctx.db()).display(ctx.db(), ctx.completion.edition),
+                field.ty(ctx.db()).display(ctx.db(), ctx.completion.edition)
             ))
         }),
         if fields_omitted { ", .." } else { "" }

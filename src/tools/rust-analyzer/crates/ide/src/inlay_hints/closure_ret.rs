@@ -14,7 +14,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
+    file_id: EditionedFileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if config.closure_return_type_hints == ClosureReturnTypeHints::Never {
@@ -43,7 +43,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let mut label = label_of_ty(famous_defs, config, &ty)?;
+    let mut label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
 
     if arrow.is_none() {
         label.prepend_str(" -> ");

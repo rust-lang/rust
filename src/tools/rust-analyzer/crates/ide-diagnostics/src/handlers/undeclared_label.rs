@@ -9,7 +9,7 @@ pub(crate) fn undeclared_label(
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("undeclared-label"),
-        format!("use of undeclared label `{}`", name.display(ctx.sema.db)),
+        format!("use of undeclared label `{}`", name.display(ctx.sema.db, ctx.edition)),
         d.node.map(|it| it.into()),
     )
 }

@@ -14,7 +14,7 @@ use crate::{
 use base_db::CrateId;
 use intern::sym;
 use smallvec::SmallVec;
-use span::SyntaxContextId;
+use span::{Edition, SyntaxContextId};
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -140,8 +140,12 @@ impl ModPath {
         UnescapedModPath(self)
     }
 
-    pub fn display<'a>(&'a self, db: &'a dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
-        Display { db, path: self }
+    pub fn display<'a>(
+        &'a self,
+        db: &'a dyn crate::db::ExpandDatabase,
+        edition: Edition,
+    ) -> impl fmt::Display + 'a {
+        Display { db, path: self, edition }
     }
 }
 
@@ -154,11 +158,12 @@ impl Extend<Name> for ModPath {
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
+    edition: Edition,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path, f, true)
+        display_fmt_path(self.db, self.path, f, Escape::IfNeeded(self.edition))
     }
 }
 
@@ -169,7 +174,7 @@ struct UnescapedDisplay<'a> {
 
 impl fmt::Display for UnescapedDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path.0, f, false)
+        display_fmt_path(self.db, self.path.0, f, Escape::No)
     }
 }
 
@@ -178,11 +183,17 @@ impl From<Name> for ModPath {
         ModPath::from_segments(PathKind::Plain, iter::once(name))
     }
 }
+
+enum Escape {
+    No,
+    IfNeeded(Edition),
+}
+
 fn display_fmt_path(
     db: &dyn ExpandDatabase,
     path: &ModPath,
     f: &mut fmt::Formatter<'_>,
-    escaped: bool,
+    escaped: Escape,
 ) -> fmt::Result {
     let mut first_segment = true;
     let mut add_segment = |s| -> fmt::Result {
@@ -210,10 +221,9 @@ fn display_fmt_path(
             f.write_str("::")?;
         }
         first_segment = false;
-        if escaped {
-            segment.display(db).fmt(f)?;
-        } else {
-            segment.unescaped().display(db).fmt(f)?;
+        match escaped {
+            Escape::IfNeeded(edition) => segment.display(db, edition).fmt(f)?,
+            Escape::No => segment.unescaped().display(db).fmt(f)?,
         }
     }
     Ok(())
@@ -322,9 +332,11 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
         tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::self_ => PathKind::SELF,
         tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::super_ => {
             let mut deg = 1;
-            while let Some(tt::Leaf::Ident(tt::Ident { sym: text, span, is_raw })) = leaves.next() {
+            while let Some(tt::Leaf::Ident(tt::Ident { sym: text, span, is_raw: _ })) =
+                leaves.next()
+            {
                 if *text != sym::super_ {
-                    segments.push(Name::new_symbol_maybe_raw(text.clone(), *is_raw, span.ctx));
+                    segments.push(Name::new_symbol(text.clone(), span.ctx));
                     break;
                 }
                 deg += 1;
@@ -333,19 +345,13 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModP
         }
         tt::Leaf::Ident(tt::Ident { sym: text, .. }) if *text == sym::crate_ => PathKind::Crate,
         tt::Leaf::Ident(ident) => {
-            segments.push(Name::new_symbol_maybe_raw(
-                ident.sym.clone(),
-                ident.is_raw,
-                ident.span.ctx,
-            ));
+            segments.push(Name::new_symbol(ident.sym.clone(), ident.span.ctx));
             PathKind::Plain
         }
         _ => return None,
     };
     segments.extend(leaves.filter_map(|leaf| match leaf {
-        ::tt::Leaf::Ident(ident) => {
-            Some(Name::new_symbol_maybe_raw(ident.sym.clone(), ident.is_raw, ident.span.ctx))
-        }
+        ::tt::Leaf::Ident(ident) => Some(Name::new_symbol(ident.sym.clone(), ident.span.ctx)),
         _ => None,
     }));
     Some(ModPath { kind, segments })

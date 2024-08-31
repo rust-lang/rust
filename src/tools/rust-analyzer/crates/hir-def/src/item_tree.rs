@@ -40,6 +40,7 @@ use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
     ops::{Index, Range},
+    sync::OnceLock,
 };
 
 use ast::{AstNode, StructKind};
@@ -48,10 +49,9 @@ use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::{Interned, Symbol};
 use la_arena::{Arena, Idx, RawIdx};
-use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{AstIdNode, FileAstId, SyntaxContextId};
+use span::{AstIdNode, Edition, FileAstId, SyntaxContextId};
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 use triomphe::Arc;
@@ -101,7 +101,7 @@ pub struct ItemTree {
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
-        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
+        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
         let syntax = db.parse_or_expand(file_id);
 
@@ -152,7 +152,7 @@ impl ItemTree {
 
     pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
         let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
-        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
+        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
         let loc = block.lookup(db);
         let block = loc.ast_id.to_node(db.upcast());
@@ -199,8 +199,8 @@ impl ItemTree {
         Attrs::filter(db, krate, self.raw_attrs(of).clone())
     }
 
-    pub fn pretty_print(&self, db: &dyn DefDatabase) -> String {
-        pretty::print_item_tree(db, self)
+    pub fn pretty_print(&self, db: &dyn DefDatabase, edition: Edition) -> String {
+        pretty::print_item_tree(db, self, edition)
     }
 
     fn data(&self) -> &ItemTreeData {
@@ -626,9 +626,9 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         static VIS_PUB: RawVisibility = RawVisibility::Public;
-        static VIS_PRIV_IMPLICIT: OnceCell<RawVisibility> = OnceCell::new();
-        static VIS_PRIV_EXPLICIT: OnceCell<RawVisibility> = OnceCell::new();
-        static VIS_PUB_CRATE: OnceCell<RawVisibility> = OnceCell::new();
+        static VIS_PRIV_IMPLICIT: OnceLock<RawVisibility> = OnceLock::new();
+        static VIS_PRIV_EXPLICIT: OnceLock<RawVisibility> = OnceLock::new();
+        static VIS_PUB_CRATE: OnceLock<RawVisibility> = OnceLock::new();
 
         match index {
             RawVisibilityId::PRIV_IMPLICIT => VIS_PRIV_IMPLICIT.get_or_init(|| {

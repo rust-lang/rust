@@ -36,8 +36,8 @@ pub(crate) fn unresolved_field(
         DiagnosticCode::RustcHardError("E0559"),
         format!(
             "no field `{}` on type `{}`{method_suffix}",
-            d.name.display(ctx.sema.db),
-            d.receiver.display(ctx.sema.db)
+            d.name.display(ctx.sema.db, ctx.edition),
+            d.receiver.display(ctx.sema.db, ctx.edition)
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(

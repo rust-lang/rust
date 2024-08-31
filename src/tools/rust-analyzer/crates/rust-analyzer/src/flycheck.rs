@@ -15,18 +15,11 @@ use toolchain::Tool;
 
 use crate::command::{CommandHandle, ParseFromLine};
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum InvocationStrategy {
     Once,
     #[default]
     PerWorkspace,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) enum InvocationLocation {
-    Root(AbsPathBuf),
-    #[default]
-    Workspace,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -37,8 +30,17 @@ pub(crate) struct CargoOptions {
     pub(crate) all_features: bool,
     pub(crate) features: Vec<String>,
     pub(crate) extra_args: Vec<String>,
+    pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, String>,
     pub(crate) target_dir: Option<Utf8PathBuf>,
+}
+
+#[derive(Clone)]
+pub(crate) enum Target {
+    Bin(String),
+    Example(String),
+    Benchmark(String),
+    Test(String),
 }
 
 impl CargoOptions {
@@ -79,7 +81,6 @@ pub(crate) enum FlycheckConfig {
         args: Vec<String>,
         extra_env: FxHashMap<String, String>,
         invocation_strategy: InvocationStrategy,
-        invocation_location: InvocationLocation,
     },
 }
 
@@ -127,13 +128,13 @@ impl FlycheckHandle {
 
     /// Schedule a re-start of the cargo check worker to do a workspace wide check.
     pub(crate) fn restart_workspace(&self, saved_file: Option<AbsPathBuf>) {
-        self.sender.send(StateChange::Restart { package: None, saved_file }).unwrap();
+        self.sender.send(StateChange::Restart { package: None, saved_file, target: None }).unwrap();
     }
 
     /// Schedule a re-start of the cargo check worker to do a package wide check.
-    pub(crate) fn restart_for_package(&self, package: String) {
+    pub(crate) fn restart_for_package(&self, package: String, target: Option<Target>) {
         self.sender
-            .send(StateChange::Restart { package: Some(package), saved_file: None })
+            .send(StateChange::Restart { package: Some(package), saved_file: None, target })
             .unwrap();
     }
 
@@ -191,7 +192,7 @@ pub(crate) enum Progress {
 }
 
 enum StateChange {
-    Restart { package: Option<String>, saved_file: Option<AbsPathBuf> },
+    Restart { package: Option<String>, saved_file: Option<AbsPathBuf>, target: Option<Target> },
     Cancel,
 }
 
@@ -218,6 +219,7 @@ struct FlycheckActor {
     status: FlycheckStatus,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum Event {
     RequestStateChange(StateChange),
     CheckEvent(Option<CargoCheckMessage>),
@@ -278,7 +280,7 @@ impl FlycheckActor {
                     tracing::debug!(flycheck_id = self.id, "flycheck cancelled");
                     self.cancel_check_process();
                 }
-                Event::RequestStateChange(StateChange::Restart { package, saved_file }) => {
+                Event::RequestStateChange(StateChange::Restart { package, saved_file, target }) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
                     while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
@@ -288,11 +290,12 @@ impl FlycheckActor {
                         }
                     }
 
-                    let command =
-                        match self.check_command(package.as_deref(), saved_file.as_deref()) {
-                            Some(c) => c,
-                            None => continue,
-                        };
+                    let Some(command) =
+                        self.check_command(package.as_deref(), saved_file.as_deref(), target)
+                    else {
+                        continue;
+                    };
+
                     let formatted_command = format!("{command:?}");
 
                     tracing::debug!(?command, "will restart flycheck");
@@ -388,6 +391,7 @@ impl FlycheckActor {
         &self,
         package: Option<&str>,
         saved_file: Option<&AbsPath>,
+        target: Option<Target>,
     ) -> Option<Command> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
@@ -402,6 +406,15 @@ impl FlycheckActor {
                     Some(pkg) => cmd.arg("-p").arg(pkg),
                     None => cmd.arg("--workspace"),
                 };
+
+                if let Some(tgt) = target {
+                    match tgt {
+                        Target::Bin(tgt) => cmd.arg("--bin").arg(tgt),
+                        Target::Example(tgt) => cmd.arg("--example").arg(tgt),
+                        Target::Test(tgt) => cmd.arg("--test").arg(tgt),
+                        Target::Benchmark(tgt) => cmd.arg("--bench").arg(tgt),
+                    };
+                }
 
                 cmd.arg(if *ansi_color_output {
                     "--message-format=json-diagnostic-rendered-ansi"
@@ -423,30 +436,17 @@ impl FlycheckActor {
                 cmd.args(&options.extra_args);
                 Some(cmd)
             }
-            FlycheckConfig::CustomCommand {
-                command,
-                args,
-                extra_env,
-                invocation_strategy,
-                invocation_location,
-            } => {
+            FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
                 let mut cmd = Command::new(command);
                 cmd.envs(extra_env);
 
-                match invocation_location {
-                    InvocationLocation::Workspace => {
-                        match invocation_strategy {
-                            InvocationStrategy::Once => {
-                                cmd.current_dir(&self.root);
-                            }
-                            InvocationStrategy::PerWorkspace => {
-                                // FIXME: cmd.current_dir(&affected_workspace);
-                                cmd.current_dir(&self.root);
-                            }
-                        }
+                match invocation_strategy {
+                    InvocationStrategy::Once => {
+                        cmd.current_dir(&self.root);
                     }
-                    InvocationLocation::Root(root) => {
-                        cmd.current_dir(root);
+                    InvocationStrategy::PerWorkspace => {
+                        // FIXME: cmd.current_dir(&affected_workspace);
+                        cmd.current_dir(&self.root);
                     }
                 }
 

@@ -29,6 +29,7 @@ use span::{Edition, EditionedFileId, FileId, SyntaxContextId};
 use stdx::{never, TupleExt};
 use syntax::{
     ast::{self, HasName},
+    utils::is_raw_identifier,
     AstNode, SyntaxKind, TextRange, T,
 };
 use text_edit::{TextEdit, TextEditBuilder};
@@ -72,6 +73,9 @@ impl Definition {
         sema: &Semantics<'_, RootDatabase>,
         new_name: &str,
     ) -> Result<SourceChange> {
+        // We append `r#` if needed.
+        let new_name = new_name.trim_start_matches("r#");
+
         // self.krate() returns None if
         // self is a built-in attr, built-in type or tool module.
         // it is not allowed for these defs to be renamed.
@@ -227,8 +231,7 @@ fn rename_mod(
     module: hir::Module,
     new_name: &str,
 ) -> Result<SourceChange> {
-    if IdentifierKind::classify(module.krate().edition(sema.db), new_name)? != IdentifierKind::Ident
-    {
+    if IdentifierKind::classify(new_name)? != IdentifierKind::Ident {
         bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
     }
 
@@ -240,7 +243,6 @@ fn rename_mod(
 
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
-        let new_name = new_name.trim_start_matches("r#");
         let anchor = file_id.original_file(sema.db).file_id();
 
         let is_mod_rs = module.is_mod_rs(sema.db);
@@ -289,9 +291,14 @@ fn rename_mod(
                     .original_file_range_opt(sema.db)
                     .map(TupleExt::head)
                 {
+                    let new_name = if is_raw_identifier(new_name, file_id.edition()) {
+                        format!("r#{new_name}")
+                    } else {
+                        new_name.to_owned()
+                    };
                     source_change.insert_source_edit(
                         file_id.file_id(),
-                        TextEdit::replace(file_range.range, new_name.to_owned()),
+                        TextEdit::replace(file_range.range, new_name),
                     )
                 };
             }
@@ -302,7 +309,10 @@ fn rename_mod(
     let def = Definition::Module(module);
     let usages = def.usages(sema).all();
     let ref_edits = usages.iter().map(|(file_id, references)| {
-        (EditionedFileId::file_id(file_id), source_edit_from_references(references, def, new_name))
+        (
+            EditionedFileId::file_id(file_id),
+            source_edit_from_references(references, def, new_name, file_id.edition()),
+        )
     });
     source_change.extend(ref_edits);
 
@@ -314,12 +324,7 @@ fn rename_reference(
     def: Definition,
     new_name: &str,
 ) -> Result<SourceChange> {
-    let ident_kind = IdentifierKind::classify(
-        def.krate(sema.db)
-            .ok_or_else(|| RenameError("definition has no krate?".into()))?
-            .edition(sema.db),
-        new_name,
-    )?;
+    let ident_kind = IdentifierKind::classify(new_name)?;
 
     if matches!(
         def,
@@ -351,7 +356,10 @@ fn rename_reference(
     }
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(file_id, references)| {
-        (EditionedFileId::file_id(file_id), source_edit_from_references(references, def, new_name))
+        (
+            EditionedFileId::file_id(file_id),
+            source_edit_from_references(references, def, new_name, file_id.edition()),
+        )
     }));
 
     let mut insert_def_edit = |def| {
@@ -367,7 +375,13 @@ pub fn source_edit_from_references(
     references: &[FileReference],
     def: Definition,
     new_name: &str,
+    edition: Edition,
 ) -> TextEdit {
+    let new_name = if is_raw_identifier(new_name, edition) {
+        format!("r#{new_name}")
+    } else {
+        new_name.to_owned()
+    };
     let mut edit = TextEdit::builder();
     // macros can cause multiple refs to occur for the same text range, so keep track of what we have edited so far
     let mut edited_ranges = Vec::new();
@@ -383,10 +397,10 @@ pub fn source_edit_from_references(
             // to make special rewrites like shorthand syntax and such, so just rename the node in
             // the macro input
             FileReferenceNode::NameRef(name_ref) if name_range == range => {
-                source_edit_from_name_ref(&mut edit, name_ref, new_name, def)
+                source_edit_from_name_ref(&mut edit, name_ref, &new_name, def)
             }
             FileReferenceNode::Name(name) if name_range == range => {
-                source_edit_from_name(&mut edit, name, new_name)
+                source_edit_from_name(&mut edit, name, &new_name)
             }
             _ => false,
         };
@@ -394,7 +408,7 @@ pub fn source_edit_from_references(
             let (range, new_name) = match name {
                 FileReferenceNode::Lifetime(_) => (
                     TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
-                    new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
+                    new_name.strip_prefix('\'').unwrap_or(&new_name).to_owned(),
                 ),
                 _ => (range, new_name.to_owned()),
             };
@@ -522,6 +536,13 @@ fn source_edit_from_def(
     def: Definition,
     new_name: &str,
 ) -> Result<(FileId, TextEdit)> {
+    let new_name_edition_aware = |new_name: &str, file_id: EditionedFileId| {
+        if is_raw_identifier(new_name, file_id.edition()) {
+            format!("r#{new_name}")
+        } else {
+            new_name.to_owned()
+        }
+    };
     let mut edit = TextEdit::builder();
     if let Definition::Local(local) = def {
         let mut file_id = None;
@@ -536,7 +557,7 @@ fn source_edit_from_def(
                 {
                     Some(FileRange { file_id: file_id2, range }) => {
                         file_id = Some(file_id2);
-                        edit.replace(range, new_name.to_owned());
+                        edit.replace(range, new_name_edition_aware(new_name, file_id2));
                         continue;
                     }
                     None => {
@@ -550,7 +571,9 @@ fn source_edit_from_def(
                 // special cases required for renaming fields/locals in Record patterns
                 if let Some(pat_field) = pat.syntax().parent().and_then(ast::RecordPatField::cast) {
                     if let Some(name_ref) = pat_field.name_ref() {
-                        if new_name == name_ref.text() && pat.at_token().is_none() {
+                        if new_name == name_ref.text().as_str().trim_start_matches("r#")
+                            && pat.at_token().is_none()
+                        {
                             // Foo { field: ref mut local } -> Foo { ref mut field }
                             //       ^^^^^^ delete this
                             //                      ^^^^^ replace this with `field`
@@ -566,7 +589,10 @@ fn source_edit_from_def(
                             // Foo { field: ref mut local @ local 2} -> Foo { field: ref mut new_name @ local2 }
                             // Foo { field: ref mut local } -> Foo { field: ref mut new_name }
                             //                      ^^^^^ replace this with `new_name`
-                            edit.replace(name_range, new_name.to_owned());
+                            edit.replace(
+                                name_range,
+                                new_name_edition_aware(new_name, source.file_id),
+                            );
                         }
                     } else {
                         // Foo { ref mut field } -> Foo { field: ref mut new_name }
@@ -576,10 +602,10 @@ fn source_edit_from_def(
                             pat.syntax().text_range().start(),
                             format!("{}: ", pat_field.field_name().unwrap()),
                         );
-                        edit.replace(name_range, new_name.to_owned());
+                        edit.replace(name_range, new_name_edition_aware(new_name, source.file_id));
                     }
                 } else {
-                    edit.replace(name_range, new_name.to_owned());
+                    edit.replace(name_range, new_name_edition_aware(new_name, source.file_id));
                 }
             }
         }
@@ -599,7 +625,7 @@ fn source_edit_from_def(
         }
         _ => (range, new_name.to_owned()),
     };
-    edit.replace(range, new_name);
+    edit.replace(range, new_name_edition_aware(&new_name, file_id));
     Ok((file_id.file_id(), edit.finish()))
 }
 
@@ -611,8 +637,9 @@ pub enum IdentifierKind {
 }
 
 impl IdentifierKind {
-    pub fn classify(edition: Edition, new_name: &str) -> Result<IdentifierKind> {
-        match parser::LexedStr::single_token(edition, new_name) {
+    pub fn classify(new_name: &str) -> Result<IdentifierKind> {
+        let new_name = new_name.trim_start_matches("r#");
+        match parser::LexedStr::single_token(Edition::LATEST, new_name) {
             Some(res) => match res {
                 (SyntaxKind::IDENT, _) => {
                     if let Some(inner) = new_name.strip_prefix("r#") {
@@ -626,6 +653,7 @@ impl IdentifierKind {
                 (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
                     Ok(IdentifierKind::Lifetime)
                 }
+                _ if is_raw_identifier(new_name, Edition::LATEST) => Ok(IdentifierKind::Ident),
                 (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
                 (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
             },

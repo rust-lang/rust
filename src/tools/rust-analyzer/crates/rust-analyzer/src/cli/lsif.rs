@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use ide::{
     Analysis, AnalysisHost, FileId, FileRange, MonikerKind, PackageInformation, RootDatabase,
-    StaticIndex, StaticIndexedFile, TokenId, TokenStaticData,
+    StaticIndex, StaticIndexedFile, TokenId, TokenStaticData, VendoredLibrariesConfig,
 };
 use ide_db::{line_index::WideEncoding, LineIndexDatabase};
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -296,7 +296,13 @@ impl flags::Lsif {
         let db = host.raw_database();
         let analysis = host.analysis();
 
-        let si = StaticIndex::compute(&analysis, &path.clone().into());
+        let vendored_libs_config = if self.exclude_vendored_libraries {
+            VendoredLibrariesConfig::Excluded
+        } else {
+            VendoredLibrariesConfig::Included { workspace_root: &path.clone().into() }
+        };
+
+        let si = StaticIndex::compute(&analysis, vendored_libs_config);
 
         let mut lsif = LsifManager::new(&analysis, db, &vfs);
         lsif.add_vertex(lsif::Vertex::MetaData(lsif::MetaData {
