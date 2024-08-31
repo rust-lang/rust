@@ -35,6 +35,7 @@
     clippy::box_default,
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
+    clippy::too_long_first_doc_paragraph,
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,

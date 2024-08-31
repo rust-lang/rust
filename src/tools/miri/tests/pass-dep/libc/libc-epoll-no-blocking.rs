@@ -21,6 +21,8 @@ fn main() {
     test_socketpair_epollerr();
     test_epoll_lost_events();
     test_ready_list_fetching_logic();
+    test_epoll_ctl_epfd_equal_fd();
+    test_epoll_ctl_notification();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -629,4 +631,55 @@ fn test_ready_list_fetching_logic() {
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value1 = fd1 as u64;
     check_epoll_wait::<1>(epfd, &[(expected_event1, expected_value1)]);
+}
+
+// In epoll_ctl, if the value of epfd equals to fd, EINVAL should be returned.
+fn test_epoll_ctl_epfd_equal_fd() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    let array_ptr = std::ptr::without_provenance_mut::<libc::epoll_event>(0x100);
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, epfd, array_ptr) };
+    let e = std::io::Error::last_os_error();
+    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
+    assert_eq!(res, -1);
+}
+
+// We previously used check_and_update_readiness the moment a file description is registered in an
+// epoll instance. But this has an unfortunate side effect of returning notification to another
+// epfd that shouldn't receive notification.
+fn test_epoll_ctl_notification() {
+    // Create an epoll instance.
+    let epfd0 = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd0, -1);
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Register one side of the socketpair with epoll.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
+    assert_eq!(res, 0);
+
+    // epoll_wait to clear notification for epfd0.
+    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
+    let expected_value = fds[0] as u64;
+    check_epoll_wait::<1>(epfd0, &[(expected_event, expected_value)]);
+
+    // Create another epoll instance.
+    let epfd1 = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd1, -1);
+
+    // Register the same file description for epfd1.
+    let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fds[0] as u64 };
+    let res = unsafe { libc::epoll_ctl(epfd1, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
+    assert_eq!(res, 0);
+    check_epoll_wait::<1>(epfd1, &[(expected_event, expected_value)]);
+
+    // Previously this epoll_wait will receive a notification, but we shouldn't return notification
+    // for this epfd, because there is no I/O event between the two epoll_wait.
+    check_epoll_wait::<1>(epfd0, &[]);
 }
