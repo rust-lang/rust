@@ -1287,7 +1287,7 @@ pub struct SplitAsciiWhitespace<'a> {
 }
 
 /// An iterator over the substrings of a string,
-/// terminated by a substring matching to a predicate function
+/// terminated by a substring matching to a predicate function.
 /// Unlike `Split`, it contains the matched part as a terminator
 /// of the subslice.
 ///
