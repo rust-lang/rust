@@ -8,7 +8,7 @@ use ide_db::{
         insert_use::{insert_use, insert_use_as_alias, ImportScope},
     },
 };
-use syntax::{ast, AstNode, NodeOrToken, SyntaxElement};
+use syntax::{ast, AstNode, Edition, NodeOrToken, SyntaxElement};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
@@ -120,13 +120,14 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     // prioritize more relevant imports
     proposed_imports
         .sort_by_key(|import| Reverse(relevance_score(ctx, import, current_module.as_ref())));
+    let edition = current_module.map(|it| it.krate().edition(ctx.db())).unwrap_or(Edition::CURRENT);
 
     let group_label = group_label(import_assets.import_candidate());
     for import in proposed_imports {
         let import_path = import.import_path;
 
         let (assist_id, import_name) =
-            (AssistId("auto_import", AssistKind::QuickFix), import_path.display(ctx.db()));
+            (AssistId("auto_import", AssistKind::QuickFix), import_path.display(ctx.db(), edition));
         acc.add_group(
             &group_label,
             assist_id,
@@ -138,7 +139,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                     ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                     ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
                 };
-                insert_use(&scope, mod_path_to_ast(&import_path), &ctx.config.insert_use);
+                insert_use(&scope, mod_path_to_ast(&import_path, edition), &ctx.config.insert_use);
             },
         );
 
@@ -165,7 +166,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                         };
                         insert_use_as_alias(
                             &scope,
-                            mod_path_to_ast(&import_path),
+                            mod_path_to_ast(&import_path, edition),
                             &ctx.config.insert_use,
                         );
                     },

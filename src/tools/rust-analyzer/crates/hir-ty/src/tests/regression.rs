@@ -2141,3 +2141,90 @@ fn test() {
 }"#,
     );
 }
+
+#[test]
+fn issue_17866() {
+    check_infer(
+        r#"
+trait T {
+    type A;
+}
+
+type Foo = <S as T>::A;
+
+fn main() {
+    Foo {};
+}
+"#,
+        expect![[r#"
+            60..75 '{     Foo {}; }': ()
+            66..72 'Foo {}': {unknown}
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17711() {
+    check_infer(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+struct Struct<'a, T>(&'a T);
+
+trait Trait {}
+
+impl<'a, T: Deref<Target = impl Trait>> Struct<'a, T> {
+    fn foo(&self) -> &Self { self }
+
+    fn bar(&self) {
+        let _ = self.foo();
+    }
+
+}
+"#,
+        expect![[r#"
+            137..141 'self': &'? Struct<'a, T>
+            152..160 '{ self }': &'? Struct<'a, T>
+            154..158 'self': &'? Struct<'a, T>
+            174..178 'self': &'? Struct<'a, T>
+            180..215 '{     ...     }': ()
+            194..195 '_': &'? Struct<'?, T>
+            198..202 'self': &'? Struct<'a, T>
+            198..208 'self.foo()': &'? Struct<'?, T>
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17767() {
+    check_infer(
+        r#"
+extern "C" {
+    type Foo<T>;
+}
+
+fn f() -> Foo {}
+"#,
+        expect![[r#"
+            47..49 '{}': Foo
+        "#]],
+    );
+}
+
+#[test]
+fn issue_17921() {
+    check_infer(
+        r#"
+//- minicore: future
+trait Foo {}
+type Bar = impl Foo;
+
+async fn f<A, B, C>() -> Bar {}
+"#,
+        expect![[r#"
+            64..66 '{}': ()
+            64..66 '{}': impl Future<Output = ()>
+        "#]],
+    );
+}

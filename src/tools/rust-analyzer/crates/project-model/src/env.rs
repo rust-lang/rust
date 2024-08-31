@@ -3,7 +3,7 @@ use base_db::Env;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, ManifestPath, PackageData, Sysroot, TargetKind};
+use crate::{utf8_stdout, CargoWorkspace, ManifestPath, PackageData, Sysroot, TargetKind};
 
 /// Recreates the compile-time environment variables that Cargo sets.
 ///
@@ -50,13 +50,23 @@ pub(crate) fn inject_cargo_env(env: &mut Env) {
     env.set("CARGO", Tool::Cargo.path().to_string());
 }
 
-pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: TargetKind) {
+pub(crate) fn inject_rustc_tool_env(
+    env: &mut Env,
+    cargo: &CargoWorkspace,
+    cargo_name: &str,
+    kind: TargetKind,
+) {
     _ = kind;
     // FIXME
     // if kind.is_executable() {
     //     env.set("CARGO_BIN_NAME", cargo_name);
     // }
     env.set("CARGO_CRATE_NAME", cargo_name.replace('-', "_"));
+    // NOTE: Technically we should set this for all crates, but that will worsen the deduplication
+    // logic so for now just keeping it proc-macros ought to be fine.
+    if kind.is_proc_macro() {
+        env.set("CARGO_RUSTC_CURRENT_DIR", cargo.manifest_path().parent().to_string());
+    }
 }
 
 pub(crate) fn cargo_config_env(

@@ -3,10 +3,13 @@
 //! Of particular interest is the `feature_flags` hash map: while other fields
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
-use std::{fmt, iter, ops::Not, sync::OnceLock};
+use std::{
+    env, fmt, iter,
+    ops::Not,
+    sync::{LazyLock, OnceLock},
+};
 
 use cfg::{CfgAtom, CfgDiff};
-use dirs::config_dir;
 use hir::Symbol;
 use ide::{
     AssistConfig, CallableSnippets, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode,
@@ -80,16 +83,11 @@ config_data! {
         pub(crate) cargo_autoreload: bool           = true,
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = true,
-        /// Specifies the working directory for running build scripts.
-        /// - "workspace": run build scripts for a workspace in the workspace's root directory.
-        ///   This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
-        /// - "root": run build scripts in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        cargo_buildScripts_invocationLocation: InvocationLocation = InvocationLocation::Workspace,
         /// Specifies the invocation strategy to use when running the build scripts command.
-        /// If `per_workspace` is set, the command will be executed for each workspace.
-        /// If `once` is set, the command will be executed once.
+        /// If `per_workspace` is set, the command will be executed for each Rust workspace with the
+        /// workspace as the working directory.
+        /// If `once` is set, the command will be executed once with the opened project as the
+        /// working directory.
         /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
         /// is set.
         cargo_buildScripts_invocationStrategy: InvocationStrategy = InvocationStrategy::PerWorkspace,
@@ -101,8 +99,7 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and
-        /// `#rust-analyzer.cargo.buildScripts.invocationLocation#`.
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#`.
         ///
         /// By default, a cargo invocation will be constructed for the configured
         /// targets and features, with the following base command line:
@@ -182,14 +179,6 @@ config_data! {
         ///
         /// For example for `cargo check`: `dead_code`, `unused_imports`, `unused_variables`,...
         check_ignore: FxHashSet<String> = FxHashSet::default(),
-        /// Specifies the working directory for running checks.
-        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-        // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
-        /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
-        /// is set.
-        check_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = InvocationLocation::Workspace,
         /// Specifies the invocation strategy to use when running the check command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
@@ -212,8 +201,7 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.check.invocationStrategy#` and
-        /// `#rust-analyzer.check.invocationLocation#`.
+        /// by changing `#rust-analyzer.check.invocationStrategy#`.
         ///
         /// If `$saved_file` is part of the command, rust-analyzer will pass
         /// the absolute path of the saved file to the provided command. This is
@@ -309,18 +297,6 @@ config_data! {
         /// This option does not take effect until rust-analyzer is restarted.
         rustc_source: Option<String> = None,
 
-        /// Additional arguments to `rustfmt`.
-        rustfmt_extraArgs: Vec<String>               = vec![],
-        /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting. This should be the equivalent of `rustfmt` here, and
-        /// not that of `cargo fmt`. The file contents will be passed on the
-        /// standard input and the formatted result will be read from the
-        /// standard output.
-        rustfmt_overrideCommand: Option<Vec<String>> = None,
-        /// Enables the use of rustfmt's unstable range formatting command for the
-        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
-        /// available on a nightly build.
-        rustfmt_rangeFormatting_enable: bool = false,
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
         ///
@@ -448,6 +424,25 @@ config_data! {
         imports_prefix: ImportPrefixDef               = ImportPrefixDef::Plain,
         /// Whether to prefix external (including std, core) crate imports with `::`. e.g. "use ::std::io::Read;".
         imports_prefixExternPrelude: bool = false,
+    }
+}
+
+config_data! {
+    workspace: struct WorkspaceDefaultConfigData <- WorkspaceConfigInput -> {
+
+        /// Additional arguments to `rustfmt`.
+        rustfmt_extraArgs: Vec<String>               = vec![],
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
+        rustfmt_overrideCommand: Option<Vec<String>> = None,
+        /// Enables the use of rustfmt's unstable range formatting command for the
+        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
+        /// available on a nightly build.
+        rustfmt_rangeFormatting_enable: bool = false,
+
     }
 }
 
@@ -750,10 +745,9 @@ pub enum RatomlFileKind {
 }
 
 #[derive(Debug, Clone)]
-// FIXME @alibektas : Seems like a clippy warning of this sort should tell that combining different ConfigInputs into one enum was not a good idea.
 #[allow(clippy::large_enum_variant)]
 enum RatomlFile {
-    Workspace(GlobalLocalConfigInput),
+    Workspace(WorkspaceLocalConfigInput),
     Crate(LocalConfigInput),
 }
 
@@ -772,18 +766,8 @@ pub struct Config {
     /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
     client_config: (FullConfigInput, ConfigErrors),
 
-    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
-    /// If not specified by init of a `Config` object this value defaults to :
-    ///
-    /// |Platform | Value                                 | Example                                  |
-    /// | ------- | ------------------------------------- | ---------------------------------------- |
-    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
-    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
-    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
-    user_config_path: VfsPath,
-
     /// Config node whose values apply to **every** Rust project.
-    user_config: Option<(GlobalLocalConfigInput, ConfigErrors)>,
+    user_config: Option<(GlobalWorkspaceLocalConfigInput, ConfigErrors)>,
 
     ratoml_file: FxHashMap<SourceRootId, (RatomlFile, ConfigErrors)>,
 
@@ -809,8 +793,25 @@ impl std::ops::Deref for Config {
 }
 
 impl Config {
-    pub fn user_config_path(&self) -> &VfsPath {
-        &self.user_config_path
+    /// Path to the root configuration file. This can be seen as a generic way to define what would be `$XDG_CONFIG_HOME/rust-analyzer/rust-analyzer.toml` in Linux.
+    /// This path is equal to:
+    ///
+    /// |Platform | Value                                 | Example                                  |
+    /// | ------- | ------------------------------------- | ---------------------------------------- |
+    /// | Linux   | `$XDG_CONFIG_HOME` or `$HOME`/.config | /home/alice/.config                      |
+    /// | macOS   | `$HOME`/Library/Application Support   | /Users/Alice/Library/Application Support |
+    /// | Windows | `{FOLDERID_RoamingAppData}`           | C:\Users\Alice\AppData\Roaming           |
+    pub fn user_config_path() -> Option<&'static AbsPath> {
+        static USER_CONFIG_PATH: LazyLock<Option<AbsPathBuf>> = LazyLock::new(|| {
+            let user_config_path = if let Some(path) = env::var_os("__TEST_RA_USER_CONFIG_DIR") {
+                std::path::PathBuf::from(path)
+            } else {
+                dirs::config_dir()?.join("rust-analyzer")
+            }
+            .join("rust-analyzer.toml");
+            Some(AbsPathBuf::assert_utf8(user_config_path))
+        });
+        USER_CONFIG_PATH.as_deref()
     }
 
     pub fn same_source_root_parent_map(
@@ -833,13 +834,13 @@ impl Config {
             if let Ok(table) = toml::from_str(&change) {
                 let mut toml_errors = vec![];
                 validate_toml_table(
-                    GlobalLocalConfigInput::FIELDS,
+                    GlobalWorkspaceLocalConfigInput::FIELDS,
                     &table,
                     &mut String::new(),
                     &mut toml_errors,
                 );
                 config.user_config = Some((
-                    GlobalLocalConfigInput::from_toml(table, &mut toml_errors),
+                    GlobalWorkspaceLocalConfigInput::from_toml(table, &mut toml_errors),
                     ConfigErrors(
                         toml_errors
                             .into_iter()
@@ -968,7 +969,7 @@ impl Config {
                             match toml::from_str(&text) {
                                 Ok(table) => {
                                     validate_toml_table(
-                                        GlobalLocalConfigInput::FIELDS,
+                                        WorkspaceLocalConfigInput::FIELDS,
                                         &table,
                                         &mut String::new(),
                                         &mut toml_errors,
@@ -977,7 +978,7 @@ impl Config {
                                         source_root_id,
                                         (
                                             RatomlFile::Workspace(
-                                                GlobalLocalConfigInput::from_toml(
+                                                WorkspaceLocalConfigInput::from_toml(
                                                     table,
                                                     &mut toml_errors,
                                                 ),
@@ -1015,7 +1016,7 @@ impl Config {
             config.source_root_parent_map = source_root_map;
         }
 
-        if config.check_command(None).is_empty() {
+        if config.check_command().is_empty() {
             config.validation_errors.0.push(Arc::new(ConfigErrorInner::Json {
                 config_key: "/check/command".to_owned(),
                 error: serde_json::Error::custom("expected a non-empty string"),
@@ -1330,24 +1331,8 @@ impl Config {
         caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
         visual_studio_code_version: Option<Version>,
-        user_config_path: Option<Utf8PathBuf>,
     ) -> Self {
         static DEFAULT_CONFIG_DATA: OnceLock<&'static DefaultConfigData> = OnceLock::new();
-        let user_config_path = if let Some(user_config_path) = user_config_path {
-            user_config_path.join("rust-analyzer").join("rust-analyzer.toml")
-        } else {
-            let p = config_dir()
-                .expect("A config dir is expected to existed on all platforms ra supports.")
-                .join("rust-analyzer")
-                .join("rust-analyzer.toml");
-            Utf8PathBuf::from_path_buf(p).expect("Config dir expected to be abs.")
-        };
-
-        // A user config cannot be a virtual path as rust-analyzer cannot support watching changes in virtual paths.
-        // See `GlobalState::process_changes` to get more info.
-        // FIXME @alibektas : Temporary solution. I don't think this is right as at some point we may allow users to specify
-        // custom USER_CONFIG_PATHs which may also be relative.
-        let user_config_path = VfsPath::from(AbsPathBuf::assert(user_config_path));
 
         Config {
             caps: ClientCapabilities::new(caps),
@@ -1360,7 +1345,6 @@ impl Config {
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
             user_config: None,
-            user_config_path,
             detached_files: Default::default(),
             validation_errors: Default::default(),
             ratoml_file: Default::default(),
@@ -1459,11 +1443,11 @@ impl Config {
 
     pub fn diagnostics(&self, source_root: Option<SourceRootId>) -> DiagnosticsConfig {
         DiagnosticsConfig {
-            enabled: *self.diagnostics_enable(source_root),
+            enabled: *self.diagnostics_enable(),
             proc_attr_macros_enabled: self.expand_proc_attr_macros(),
             proc_macros_enabled: *self.procMacro_enable(),
-            disable_experimental: !self.diagnostics_experimental_enable(source_root),
-            disabled: self.diagnostics_disabled(source_root).clone(),
+            disable_experimental: !self.diagnostics_experimental_enable(),
+            disabled: self.diagnostics_disabled().clone(),
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
@@ -1473,7 +1457,7 @@ impl Config {
             prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
             prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
-            style_lints: self.diagnostics_styleLints_enable(source_root).to_owned(),
+            style_lints: self.diagnostics_styleLints_enable().to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
         }
@@ -1666,11 +1650,11 @@ impl Config {
     }
 
     pub fn has_linked_projects(&self) -> bool {
-        !self.linkedProjects(None).is_empty()
+        !self.linkedProjects().is_empty()
     }
 
     pub fn linked_manifests(&self) -> impl Iterator<Item = &Utf8Path> + '_ {
-        self.linkedProjects(None).iter().filter_map(|it| match it {
+        self.linkedProjects().iter().filter_map(|it| match it {
             ManifestOrProjectJson::Manifest(p) => Some(&**p),
             // despite having a buildfile, using this variant as a manifest
             // will fail.
@@ -1680,20 +1664,20 @@ impl Config {
     }
 
     pub fn has_linked_project_jsons(&self) -> bool {
-        self.linkedProjects(None)
+        self.linkedProjects()
             .iter()
             .any(|it| matches!(it, ManifestOrProjectJson::ProjectJson { .. }))
     }
 
     pub fn discover_workspace_config(&self) -> Option<&DiscoverWorkspaceConfig> {
-        self.workspace_discoverConfig(None).as_ref()
+        self.workspace_discoverConfig().as_ref()
     }
 
     pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
-        match self.linkedProjects(None).as_slice() {
+        match self.linkedProjects().as_slice() {
             [] => {
                 let exclude_dirs: Vec<_> =
-                    self.files_excludeDirs(None).iter().map(|p| self.root_path.join(p)).collect();
+                    self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
                 self.discovered_projects
                     .iter()
                     .filter(|project| {
@@ -1728,48 +1712,48 @@ impl Config {
     }
 
     pub fn prefill_caches(&self) -> bool {
-        self.cachePriming_enable(None).to_owned()
+        self.cachePriming_enable().to_owned()
     }
 
     pub fn publish_diagnostics(&self) -> bool {
-        self.diagnostics_enable(None).to_owned()
+        self.diagnostics_enable().to_owned()
     }
 
     pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
-            remap_prefix: self.diagnostics_remapPrefix(None).clone(),
-            warnings_as_info: self.diagnostics_warningsAsInfo(None).clone(),
-            warnings_as_hint: self.diagnostics_warningsAsHint(None).clone(),
-            check_ignore: self.check_ignore(None).clone(),
+            remap_prefix: self.diagnostics_remapPrefix().clone(),
+            warnings_as_info: self.diagnostics_warningsAsInfo().clone(),
+            warnings_as_hint: self.diagnostics_warningsAsHint().clone(),
+            check_ignore: self.check_ignore().clone(),
         }
     }
 
     pub fn extra_args(&self) -> &Vec<String> {
-        self.cargo_extraArgs(None)
+        self.cargo_extraArgs()
     }
 
     pub fn extra_env(&self) -> &FxHashMap<String, String> {
-        self.cargo_extraEnv(None)
+        self.cargo_extraEnv()
     }
 
     pub fn check_extra_args(&self) -> Vec<String> {
         let mut extra_args = self.extra_args().clone();
-        extra_args.extend_from_slice(self.check_extraArgs(None));
+        extra_args.extend_from_slice(self.check_extraArgs());
         extra_args
     }
 
     pub fn check_extra_env(&self) -> FxHashMap<String, String> {
-        let mut extra_env = self.cargo_extraEnv(None).clone();
-        extra_env.extend(self.check_extraEnv(None).clone());
+        let mut extra_env = self.cargo_extraEnv().clone();
+        extra_env.extend(self.check_extraEnv().clone());
         extra_env
     }
 
     pub fn lru_parse_query_capacity(&self) -> Option<u16> {
-        self.lru_capacity(None).to_owned()
+        self.lru_capacity().to_owned()
     }
 
     pub fn lru_query_capacities_config(&self) -> Option<&FxHashMap<Box<str>, u16>> {
-        self.lru_query_capacities(None).is_empty().not().then(|| self.lru_query_capacities(None))
+        self.lru_query_capacities().is_empty().not().then(|| self.lru_query_capacities())
     }
 
     pub fn proc_macro_srv(&self) -> Option<AbsPathBuf> {
@@ -1778,7 +1762,7 @@ impl Config {
     }
 
     pub fn ignored_proc_macros(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
-        self.procMacro_ignored(None)
+        self.procMacro_ignored()
     }
 
     pub fn expand_proc_macros(&self) -> bool {
@@ -1793,11 +1777,7 @@ impl Config {
                 }
                 _ => FilesWatcher::Server,
             },
-            exclude: self
-                .files_excludeDirs(None)
-                .iter()
-                .map(|it| self.root_path.join(it))
-                .collect(),
+            exclude: self.files_excludeDirs().iter().map(|it| self.root_path.join(it)).collect(),
         }
     }
 
@@ -1808,22 +1788,22 @@ impl Config {
     }
 
     pub fn cargo_autoreload_config(&self) -> bool {
-        self.cargo_autoreload(None).to_owned()
+        self.cargo_autoreload().to_owned()
     }
 
     pub fn run_build_scripts(&self) -> bool {
-        self.cargo_buildScripts_enable(None).to_owned() || self.procMacro_enable().to_owned()
+        self.cargo_buildScripts_enable().to_owned() || self.procMacro_enable().to_owned()
     }
 
     pub fn cargo(&self) -> CargoConfig {
-        let rustc_source = self.rustc_source(None).as_ref().map(|rustc_src| {
+        let rustc_source = self.rustc_source().as_ref().map(|rustc_src| {
             if rustc_src == "discover" {
                 RustLibSource::Discover
             } else {
                 RustLibSource::Path(self.root_path.join(rustc_src))
             }
         });
-        let sysroot = self.cargo_sysroot(None).as_ref().map(|sysroot| {
+        let sysroot = self.cargo_sysroot().as_ref().map(|sysroot| {
             if sysroot == "discover" {
                 RustLibSource::Discover
             } else {
@@ -1831,24 +1811,24 @@ impl Config {
             }
         });
         let sysroot_src =
-            self.cargo_sysrootSrc(None).as_ref().map(|sysroot| self.root_path.join(sysroot));
+            self.cargo_sysrootSrc().as_ref().map(|sysroot| self.root_path.join(sysroot));
 
         CargoConfig {
-            all_targets: *self.cargo_allTargets(None),
-            features: match &self.cargo_features(None) {
+            all_targets: *self.cargo_allTargets(),
+            features: match &self.cargo_features() {
                 CargoFeaturesDef::All => CargoFeatures::All,
                 CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
                     features: features.clone(),
-                    no_default_features: self.cargo_noDefaultFeatures(None).to_owned(),
+                    no_default_features: self.cargo_noDefaultFeatures().to_owned(),
                 },
             },
-            target: self.cargo_target(None).clone(),
+            target: self.cargo_target().clone(),
             sysroot,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
                 global: CfgDiff::new(
-                    self.cargo_cfgs(None)
+                    self.cargo_cfgs()
                         .iter()
                         .map(|(key, val)| match val {
                             Some(val) => CfgAtom::KeyValue {
@@ -1863,20 +1843,14 @@ impl Config {
                 .unwrap(),
                 selective: Default::default(),
             },
-            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(None),
-            invocation_strategy: match self.cargo_buildScripts_invocationStrategy(None) {
+            wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(),
+            invocation_strategy: match self.cargo_buildScripts_invocationStrategy() {
                 InvocationStrategy::Once => project_model::InvocationStrategy::Once,
                 InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
             },
-            invocation_location: match self.cargo_buildScripts_invocationLocation(None) {
-                InvocationLocation::Root => {
-                    project_model::InvocationLocation::Root(self.root_path.clone())
-                }
-                InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
-            },
-            run_build_script_command: self.cargo_buildScripts_overrideCommand(None).clone(),
-            extra_args: self.cargo_extraArgs(None).clone(),
-            extra_env: self.cargo_extraEnv(None).clone(),
+            run_build_script_command: self.cargo_buildScripts_overrideCommand().clone(),
+            extra_args: self.cargo_extraArgs().clone(),
+            extra_env: self.cargo_extraEnv().clone(),
             target_dir: self.target_dir_from_config(),
         }
     }
@@ -1896,27 +1870,28 @@ impl Config {
     }
 
     pub fn flycheck_workspace(&self) -> bool {
-        *self.check_workspace(None)
+        *self.check_workspace()
     }
 
     pub(crate) fn cargo_test_options(&self) -> CargoOptions {
         CargoOptions {
-            target_triples: self.cargo_target(None).clone().into_iter().collect(),
+            target_triples: self.cargo_target().clone().into_iter().collect(),
             all_targets: false,
-            no_default_features: *self.cargo_noDefaultFeatures(None),
-            all_features: matches!(self.cargo_features(None), CargoFeaturesDef::All),
-            features: match self.cargo_features(None).clone() {
+            no_default_features: *self.cargo_noDefaultFeatures(),
+            all_features: matches!(self.cargo_features(), CargoFeaturesDef::All),
+            features: match self.cargo_features().clone() {
                 CargoFeaturesDef::All => vec![],
                 CargoFeaturesDef::Selected(it) => it,
             },
             extra_args: self.extra_args().clone(),
+            extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
             extra_env: self.extra_env().clone(),
             target_dir: self.target_dir_from_config(),
         }
     }
 
     pub(crate) fn flycheck(&self) -> FlycheckConfig {
-        match &self.check_overrideCommand(None) {
+        match &self.check_overrideCommand() {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
@@ -1924,52 +1899,43 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_extra_env(),
-                    invocation_strategy: match self.check_invocationStrategy(None) {
+                    invocation_strategy: match self.check_invocationStrategy() {
                         InvocationStrategy::Once => crate::flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
                             crate::flycheck::InvocationStrategy::PerWorkspace
                         }
                     },
-                    invocation_location: match self.check_invocationLocation(None) {
-                        InvocationLocation::Root => {
-                            crate::flycheck::InvocationLocation::Root(self.root_path.clone())
-                        }
-                        InvocationLocation::Workspace => {
-                            crate::flycheck::InvocationLocation::Workspace
-                        }
-                    },
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.check_command(None).clone(),
+                command: self.check_command().clone(),
                 options: CargoOptions {
                     target_triples: self
-                        .check_targets(None)
+                        .check_targets()
                         .clone()
                         .and_then(|targets| match &targets.0[..] {
                             [] => None,
                             targets => Some(targets.into()),
                         })
-                        .unwrap_or_else(|| self.cargo_target(None).clone().into_iter().collect()),
-                    all_targets: self
-                        .check_allTargets(None)
-                        .unwrap_or(*self.cargo_allTargets(None)),
+                        .unwrap_or_else(|| self.cargo_target().clone().into_iter().collect()),
+                    all_targets: self.check_allTargets().unwrap_or(*self.cargo_allTargets()),
                     no_default_features: self
-                        .check_noDefaultFeatures(None)
-                        .unwrap_or(*self.cargo_noDefaultFeatures(None)),
+                        .check_noDefaultFeatures()
+                        .unwrap_or(*self.cargo_noDefaultFeatures()),
                     all_features: matches!(
-                        self.check_features(None).as_ref().unwrap_or(self.cargo_features(None)),
+                        self.check_features().as_ref().unwrap_or(self.cargo_features()),
                         CargoFeaturesDef::All
                     ),
                     features: match self
-                        .check_features(None)
+                        .check_features()
                         .clone()
-                        .unwrap_or_else(|| self.cargo_features(None).clone())
+                        .unwrap_or_else(|| self.cargo_features().clone())
                     {
                         CargoFeaturesDef::All => vec![],
                         CargoFeaturesDef::Selected(it) => it,
                     },
                     extra_args: self.check_extra_args(),
+                    extra_test_bin_args: self.runnables_extraTestBinaryArgs().clone(),
                     extra_env: self.check_extra_env(),
                     target_dir: self.target_dir_from_config(),
                 },
@@ -1979,7 +1945,7 @@ impl Config {
     }
 
     fn target_dir_from_config(&self) -> Option<Utf8PathBuf> {
-        self.cargo_targetDir(None).as_ref().and_then(|target_dir| match target_dir {
+        self.cargo_targetDir().as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(true) => {
                 Some(Utf8PathBuf::from("target/rust-analyzer"))
             }
@@ -1990,18 +1956,18 @@ impl Config {
     }
 
     pub fn check_on_save(&self) -> bool {
-        *self.checkOnSave(None)
+        *self.checkOnSave()
     }
 
     pub fn script_rebuild_on_save(&self) -> bool {
-        *self.cargo_buildScripts_rebuildOnSave(None)
+        *self.cargo_buildScripts_rebuildOnSave()
     }
 
     pub fn runnables(&self) -> RunnablesConfig {
         RunnablesConfig {
-            override_cargo: self.runnables_command(None).clone(),
-            cargo_extra_args: self.runnables_extraArgs(None).clone(),
-            extra_test_binary_args: self.runnables_extraTestBinaryArgs(None).clone(),
+            override_cargo: self.runnables_command().clone(),
+            cargo_extra_args: self.runnables_extraArgs().clone(),
+            extra_test_binary_args: self.runnables_extraTestBinaryArgs().clone(),
         }
     }
 
@@ -2072,7 +2038,7 @@ impl Config {
     }
 
     pub fn prime_caches_num_threads(&self) -> usize {
-        match self.cachePriming_numThreads(None) {
+        match self.cachePriming_numThreads() {
             NumThreads::Concrete(0) | NumThreads::Physical => num_cpus::get_physical(),
             &NumThreads::Concrete(n) => n,
             NumThreads::Logical => num_cpus::get(),
@@ -2350,13 +2316,6 @@ struct CheckOnSaveTargets(#[serde(with = "single_or_array")] Vec<String>);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-enum InvocationLocation {
-    Root,
-    Workspace,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
 enum LifetimeElisionDef {
     SkipTrivial,
     #[serde(with = "true_or_always")]
@@ -2578,6 +2537,41 @@ macro_rules! _impl_for_config_data {
             )*
         }
     };
+    (workspace, $(
+            $(#[doc=$doc:literal])*
+            $vis:vis $field:ident : $ty:ty = $default:expr,
+        )*
+    ) => {
+        impl Config {
+            $(
+                $($doc)*
+                #[allow(non_snake_case)]
+                $vis fn $field(&self, source_root: Option<SourceRootId>) -> &$ty {
+                    let mut source_root = source_root.as_ref();
+                    while let Some(sr) = source_root {
+                        if let Some((RatomlFile::Workspace(config), _)) = self.ratoml_file.get(&sr) {
+                            if let Some(v) = config.workspace.$field.as_ref() {
+                                return &v;
+                            }
+                        }
+                        source_root = self.source_root_parent_map.get(&sr);
+                    }
+
+                    if let Some(v) = self.client_config.0.workspace.$field.as_ref() {
+                        return &v;
+                    }
+
+                    if let Some((user_config, _)) = self.user_config.as_ref() {
+                        if let Some(v) = user_config.workspace.$field.as_ref() {
+                            return &v;
+                        }
+                    }
+
+                    &self.default_config.workspace.$field
+                }
+            )*
+        }
+    };
     (global, $(
             $(#[doc=$doc:literal])*
             $vis:vis $field:ident : $ty:ty = $default:expr,
@@ -2587,18 +2581,7 @@ macro_rules! _impl_for_config_data {
             $(
                 $($doc)*
                 #[allow(non_snake_case)]
-                $vis fn $field(&self, source_root : Option<SourceRootId>) -> &$ty {
-                    let mut source_root = source_root.as_ref();
-                    while let Some(sr) = source_root {
-                        if let Some((RatomlFile::Workspace(config), _)) = self.ratoml_file.get(&sr) {
-                            if let Some(v) = config.global.$field.as_ref() {
-                                return &v;
-                            }
-                        }
-
-                        source_root = self.source_root_parent_map.get(&sr);
-                    }
-
+                $vis fn $field(&self) -> &$ty {
                     if let Some(v) = self.client_config.0.global.$field.as_ref() {
                         return &v;
                     }
@@ -2736,6 +2719,7 @@ use _config_data as config_data;
 #[derive(Default, Debug, Clone)]
 struct DefaultConfigData {
     global: GlobalDefaultConfigData,
+    workspace: WorkspaceDefaultConfigData,
     local: LocalDefaultConfigData,
     client: ClientDefaultConfigData,
 }
@@ -2746,6 +2730,7 @@ struct DefaultConfigData {
 #[derive(Debug, Clone, Default)]
 struct FullConfigInput {
     global: GlobalConfigInput,
+    workspace: WorkspaceConfigInput,
     local: LocalConfigInput,
     client: ClientConfigInput,
 }
@@ -2759,6 +2744,7 @@ impl FullConfigInput {
             global: GlobalConfigInput::from_json(&mut json, error_sink),
             local: LocalConfigInput::from_json(&mut json, error_sink),
             client: ClientConfigInput::from_json(&mut json, error_sink),
+            workspace: WorkspaceConfigInput::from_json(&mut json, error_sink),
         }
     }
 
@@ -2767,6 +2753,7 @@ impl FullConfigInput {
         GlobalConfigInput::schema_fields(&mut fields);
         LocalConfigInput::schema_fields(&mut fields);
         ClientConfigInput::schema_fields(&mut fields);
+        WorkspaceConfigInput::schema_fields(&mut fields);
         fields.sort_by_key(|&(x, ..)| x);
         fields
             .iter()
@@ -2789,20 +2776,44 @@ impl FullConfigInput {
 /// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
 /// all fields being None.
 #[derive(Debug, Clone, Default)]
-struct GlobalLocalConfigInput {
+struct GlobalWorkspaceLocalConfigInput {
     global: GlobalConfigInput,
     local: LocalConfigInput,
+    workspace: WorkspaceConfigInput,
 }
 
-impl GlobalLocalConfigInput {
+impl GlobalWorkspaceLocalConfigInput {
     const FIELDS: &'static [&'static [&'static str]] =
         &[GlobalConfigInput::FIELDS, LocalConfigInput::FIELDS];
     fn from_toml(
         toml: toml::Table,
         error_sink: &mut Vec<(String, toml::de::Error)>,
-    ) -> GlobalLocalConfigInput {
-        GlobalLocalConfigInput {
+    ) -> GlobalWorkspaceLocalConfigInput {
+        GlobalWorkspaceLocalConfigInput {
             global: GlobalConfigInput::from_toml(&toml, error_sink),
+            local: LocalConfigInput::from_toml(&toml, error_sink),
+            workspace: WorkspaceConfigInput::from_toml(&toml, error_sink),
+        }
+    }
+}
+
+/// Workspace and local config levels, all fields `Option<T>`, to describe fields that are actually set by
+/// some rust-analyzer.toml file or JSON blob. An empty rust-analyzer.toml corresponds to
+/// all fields being None.
+#[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
+struct WorkspaceLocalConfigInput {
+    workspace: WorkspaceConfigInput,
+    local: LocalConfigInput,
+}
+
+impl WorkspaceLocalConfigInput {
+    #[allow(dead_code)]
+    const FIELDS: &'static [&'static [&'static str]] =
+        &[WorkspaceConfigInput::FIELDS, LocalConfigInput::FIELDS];
+    fn from_toml(toml: toml::Table, error_sink: &mut Vec<(String, toml::de::Error)>) -> Self {
+        Self {
+            workspace: WorkspaceConfigInput::from_toml(&toml, error_sink),
             local: LocalConfigInput::from_toml(&toml, error_sink),
         }
     }
@@ -3192,16 +3203,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "string",
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
-                "The command will be executed for each workspace.",
-                "The command will be executed once."
-            ],
-        },
-        "InvocationLocation" => set! {
-            "type": "string",
-            "enum": ["workspace", "root"],
-            "enumDescriptions": [
-                "The command will be executed in the corresponding workspace root.",
-                "The command will be executed in the project root."
+                "The command will be executed for each Rust workspace with the workspace as the working directory.",
+                "The command will be executed once with the opened project as the working directory."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {
@@ -3461,7 +3464,7 @@ mod tests {
     #[test]
     fn proc_macro_srv_null() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3476,7 +3479,7 @@ mod tests {
     #[test]
     fn proc_macro_srv_abs() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
         "procMacro" : {
@@ -3490,7 +3493,7 @@ mod tests {
     #[test]
     fn proc_macro_srv_rel() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
@@ -3510,7 +3513,7 @@ mod tests {
     #[test]
     fn cargo_target_dir_unset() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 
@@ -3519,7 +3522,7 @@ mod tests {
         }));
 
         (config, _, _) = config.apply_change(change);
-        assert_eq!(config.cargo_targetDir(None), &None);
+        assert_eq!(config.cargo_targetDir(), &None);
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
         );
@@ -3528,7 +3531,7 @@ mod tests {
     #[test]
     fn cargo_target_dir_subdir() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3537,7 +3540,7 @@ mod tests {
 
         (config, _, _) = config.apply_change(change);
 
-        assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
+        assert_eq!(config.cargo_targetDir(), &Some(TargetDirectory::UseSubdirectory(true)));
         assert!(
             matches!(config.flycheck(), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
         );
@@ -3546,7 +3549,7 @@ mod tests {
     #[test]
     fn cargo_target_dir_relative_dir() {
         let mut config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
         change.change_client_config(serde_json::json!({
@@ -3556,7 +3559,7 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(
-            config.cargo_targetDir(None),
+            config.cargo_targetDir(),
             &Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
         assert!(
@@ -3567,7 +3570,7 @@ mod tests {
     #[test]
     fn toml_unknown_key() {
         let config =
-            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None, None);
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
 
         let mut change = ConfigChange::default();
 

@@ -651,6 +651,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use hir_expand::db::ExpandDatabase;
     use itertools::Itertools;
+    use span::Edition;
     use stdx::format_to;
     use syntax::ast::AstNode;
     use test_fixture::WithFixture;
@@ -717,8 +718,10 @@ mod tests {
                 "{:7}(imports {}): {}\n",
                 format!("{:?}", prefix),
                 if ignore_local_imports { '✖' } else { '✔' },
-                found_path
-                    .map_or_else(|| "<unresolvable>".to_owned(), |it| it.display(&db).to_string()),
+                found_path.map_or_else(
+                    || "<unresolvable>".to_owned(),
+                    |it| it.display(&db, Edition::CURRENT).to_string()
+                ),
             );
         }
         expect.assert_eq(&res);

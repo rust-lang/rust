@@ -36,8 +36,12 @@ pub(super) fn hints(
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
                     let hint_text = match trait_ {
-                        Some(tr) => format!("impl {} for {}", tr.name(sema.db).display(sema.db), ty.display_truncated(sema.db, config.max_length)),
-                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
+                        Some(tr) => format!(
+                            "impl {} for {}",
+                            tr.name(sema.db).display(sema.db, file_id.edition()),
+                            ty.display_truncated(sema.db, config.max_length, file_id.edition(),
+                        )),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, file_id.edition())),
                     };
                     (hint_text, None)
                 },

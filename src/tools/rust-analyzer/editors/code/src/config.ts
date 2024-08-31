@@ -252,10 +252,6 @@ export class Config {
         await this.cfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
     }
 
-    get discoverProjectRunner(): string | undefined {
-        return this.get<string | undefined>("discoverProjectRunner");
-    }
-
     get problemMatcher(): string[] {
         return this.get<string[]>("runnables.problemMatcher") || [];
     }

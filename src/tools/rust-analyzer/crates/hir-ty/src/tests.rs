@@ -1,3 +1,4 @@
+mod closure_captures;
 mod coercion;
 mod diagnostics;
 mod display_source_code;
@@ -12,6 +13,7 @@ mod traits;
 mod type_alias_impl_traits;
 
 use std::env;
+use std::sync::LazyLock;
 
 use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
@@ -25,7 +27,7 @@ use hir_def::{
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::ExpandDatabase, FileRange, InFile};
-use once_cell::race::OnceBool;
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{
@@ -50,8 +52,8 @@ use crate::{
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
 
 fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
-    static ENABLE: OnceBool = OnceBool::new();
-    if !ENABLE.get_or_init(|| env::var("CHALK_DEBUG").is_ok()) {
+    static ENABLE: LazyLock<bool> = LazyLock::new(|| env::var("CHALK_DEBUG").is_ok());
+    if !*ENABLE {
         return None;
     }
 
@@ -94,7 +96,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
     let mut had_annotations = false;
     let mut mismatches = FxHashMap::default();
     let mut types = FxHashMap::default();
-    let mut adjustments = FxHashMap::<_, Vec<_>>::default();
+    let mut adjustments = FxHashMap::default();
     for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let file_range = FileRange { file_id, range };
@@ -107,13 +109,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             } else if expected.starts_with("adjustments:") {
                 adjustments.insert(
                     file_range,
-                    expected
-                        .trim_start_matches("adjustments:")
-                        .trim()
-                        .split(',')
-                        .map(|it| it.trim().to_owned())
-                        .filter(|it| !it.is_empty())
-                        .collect(),
+                    expected.trim_start_matches("adjustments:").trim().to_owned(),
                 );
             } else {
                 panic!("unexpected annotation: {expected}");
@@ -200,7 +196,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                     adjustments
                         .iter()
                         .map(|Adjustment { kind, .. }| format!("{kind:?}"))
-                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
             }
         }

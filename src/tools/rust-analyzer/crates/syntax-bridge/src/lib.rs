@@ -301,13 +301,11 @@ where
                         };
                     }
                     let leaf: tt::Leaf<_> = match kind {
-                        T![true] | T![false] => make_ident!(),
-                        IDENT => {
+                        k if k.is_any_identifier() => {
                             let text = token.to_text(conv);
                             tt::Ident::new(&text, conv.span_for(abs_range)).into()
                         }
                         UNDERSCORE => make_ident!(),
-                        k if k.is_keyword() => make_ident!(),
                         k if k.is_literal() => {
                             let text = token.to_text(conv);
                             let span = conv.span_for(abs_range);

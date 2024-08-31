@@ -18,11 +18,11 @@ pub(crate) fn trait_impl_redundant_assoc_item(
 ) -> Diagnostic {
     let db = ctx.sema.db;
     let name = d.assoc_item.0.clone();
-    let redundant_assoc_item_name = name.display(db);
+    let redundant_assoc_item_name = name.display(db, ctx.edition);
     let assoc_item = d.assoc_item.1;
 
     let default_range = d.impl_.syntax_node_ptr().text_range();
-    let trait_name = d.trait_.name(db).display_no_db().to_smolstr();
+    let trait_name = d.trait_.name(db).display_no_db(ctx.edition).to_smolstr();
 
     let (redundant_item_name, diagnostic_range, redundant_item_def) = match assoc_item {
         hir::AssocItem::Function(id) => {
@@ -30,7 +30,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`fn {redundant_assoc_item_name}`"),
                 function.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!("\n    {};", function.display(db)),
+                format!("\n    {};", function.display(db, ctx.edition)),
             )
         }
         hir::AssocItem::Const(id) => {
@@ -38,7 +38,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
             (
                 format!("`const {redundant_assoc_item_name}`"),
                 constant.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
-                format!("\n    {};", constant.display(db)),
+                format!("\n    {};", constant.display(db, ctx.edition)),
             )
         }
         hir::AssocItem::TypeAlias(id) => {
@@ -48,7 +48,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
                 type_alias.source(db).map(|it| it.syntax().text_range()).unwrap_or(default_range),
                 format!(
                     "\n    type {};",
-                    type_alias.name(ctx.sema.db).display_no_db().to_smolstr()
+                    type_alias.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr()
                 ),
             )
         }

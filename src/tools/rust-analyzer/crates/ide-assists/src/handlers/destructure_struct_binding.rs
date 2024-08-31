@@ -7,7 +7,7 @@ use ide_db::{
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode, ToSmolStr};
+use syntax::{ast, ted, AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr};
 use text_edit::TextRange;
 
 use crate::{
@@ -81,6 +81,7 @@ struct StructEditData {
     has_private_members: bool,
     is_nested: bool,
     is_ref: bool,
+    edition: Edition,
 }
 
 fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<StructEditData> {
@@ -145,6 +146,7 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
         names_in_scope,
         is_nested,
         is_ref,
+        edition: module.krate().edition(ctx.db()),
     })
 }
 
@@ -180,7 +182,7 @@ fn build_assignment_edit(
 ) -> AssignmentEdit {
     let ident_pat = builder.make_mut(data.ident_pat.clone());
 
-    let struct_path = mod_path_to_ast(&data.struct_def_path);
+    let struct_path = mod_path_to_ast(&data.struct_def_path, data.edition);
     let is_ref = ident_pat.ref_token().is_some();
     let is_mut = ident_pat.mut_token().is_some();
 
@@ -247,7 +249,7 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .visible_fields
             .iter()
             .map(|field| {
-                let field_name = field.name(ctx.db()).display_no_db().to_smolstr();
+                let field_name = field.name(ctx.db()).display_no_db(data.edition).to_smolstr();
                 let new_name = new_field_name(field_name.clone(), &data.names_in_scope);
                 (field_name, new_name)
             })

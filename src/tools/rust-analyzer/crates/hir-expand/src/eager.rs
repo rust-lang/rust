@@ -176,9 +176,10 @@ fn eager_macro_recur(
             Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
+                    let edition = db.crate_graph()[krate].edition;
                     error = Some(ExpandError::other(
                         span_map.span_at(call.syntax().text_range().start()),
-                        format!("unresolved macro {}", path.display(db)),
+                        format!("unresolved macro {}", path.display(db, edition)),
                     ));
                     offset += call.syntax().text_range().len();
                     continue;

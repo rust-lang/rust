@@ -380,7 +380,7 @@ impl GlobalState {
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
             let config_change = {
-                let user_config_path = self.config.user_config_path();
+                let user_config_path = Config::user_config_path();
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
 
@@ -399,7 +399,7 @@ impl GlobalState {
                     .collect_vec();
 
                 for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
-                    if vfs_path == *user_config_path {
+                    if vfs_path.as_path() == user_config_path {
                         change.change_user_config(Some(db.file_text(file_id)));
                         continue;
                     }
@@ -667,7 +667,7 @@ impl GlobalStateSnapshot {
         for workspace in self.workspaces.iter() {
             match &workspace.kind {
                 ProjectWorkspaceKind::Cargo { cargo, .. }
-                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
                     let Some(target_idx) = cargo.target_by_root(path) else {
                         continue;
                     };
@@ -696,6 +696,7 @@ impl GlobalStateSnapshot {
                     };
 
                     return Some(TargetSpec::ProjectJson(ProjectJsonTargetSpec {
+                        crate_id,
                         label: build.label,
                         target_kind: build.target_kind,
                         shell_runnables: project.runnables().to_owned(),
