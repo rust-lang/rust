@@ -132,7 +132,7 @@ pub extern "C" fn test_Nested2(_: Nested2) -> Nested2 {
 }
 
 #[repr(simd)]
-struct f32x4(f32, f32, f32, f32);
+struct f32x4([f32; 4]);
 
 #[repr(transparent)]
 pub struct Vector(f32x4);

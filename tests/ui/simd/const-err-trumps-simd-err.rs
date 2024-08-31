@@ -10,7 +10,7 @@ use std::intrinsics::simd::*;
 
 #[repr(simd)]
 #[allow(non_camel_case_types)]
-struct int8x4_t(u8,u8,u8,u8);
+struct int8x4_t([u8; 4]);
 
 fn get_elem<const LANE: u32>(a: int8x4_t) -> u8 {
     const { assert!(LANE < 4); } // the error should be here...
@@ -20,5 +20,5 @@ fn get_elem<const LANE: u32>(a: int8x4_t) -> u8 {
 }
 
 fn main() {
-    get_elem::<4>(int8x4_t(0,0,0,0));
+    get_elem::<4>(int8x4_t([0, 0, 0, 0]));
 }

@@ -10,7 +10,7 @@ struct SExtern(f64, f64);
 struct SPacked(f64, f64);
 
 #[repr(simd)]
-struct SSimd(f64, f64);
+struct SSimd([f64; 2]);
 
 #[repr(i8)] //~ ERROR: attribute should be applied to an enum
 struct SInt(f64, f64);

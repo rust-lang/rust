@@ -8,7 +8,7 @@ use std::arch::{asm, global_asm};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-struct Simd256bit(f64, f64, f64, f64);
+struct Simd256bit([f64; 4]);
 
 fn main() {}
 

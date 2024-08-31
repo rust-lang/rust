@@ -1,7 +1,7 @@
 #![feature(repr_simd)]
 
 #[repr(simd)]
-struct Bad(String); //~ ERROR E0077
+struct Bad([String; 2]); //~ ERROR E0077
 
 fn main() {
 }
