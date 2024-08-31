@@ -62,12 +62,10 @@ mod patch_old_style;
 // To deprecate an option by replacing it with another name use `new_name | `old_name` so that we keep
 // parsing the old name.
 config_data! {
-    /// Configs that apply on a workspace-wide scope. There are 3 levels on which a global configuration can be configured
-    // FIXME: 1. and 3. should be split, some configs do not make sense per project
+    /// Configs that apply on a workspace-wide scope. There are 2 levels on which a global configuration can be configured
     ///
-    /// 1. `rust-analyzer.toml` file under user's config directory (e.g ~/.config/rust-analyzer.toml)
+    /// 1. `rust-analyzer.toml` file under user's config directory (e.g ~/.config/rust-analyzer/rust-analyzer.toml)
     /// 2. Client's own configurations (e.g `settings.json` on VS Code)
-    /// 3. `rust-analyzer.toml` file located at the workspace root
     ///
     /// A config is searched for by traversing a "config tree" in a bottom up fashion. It is chosen by the nearest first principle.
     global: struct GlobalDefaultConfigData <- GlobalConfigInput -> {
@@ -532,7 +530,7 @@ config_data! {
         cargo_allTargets: bool           = true,
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` or `.cargo/config.toml` changes.
-        pub(crate) cargo_autoreload: bool           = true,
+        cargo_autoreload: bool           = true,
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = true,
         /// Specifies the invocation strategy to use when running the build scripts command.
