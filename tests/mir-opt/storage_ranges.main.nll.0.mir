@@ -17,6 +17,9 @@
 | '?3 live at {bb0[11]}
 | '?2: '?3 due to Assignment at Single(bb0[10]) ($DIR/storage_ranges.rs:7:17: 7:25 (#0)
 |
+| Borrows
+| bw0: issued at bb0[10] in '?2
+|
 fn main() -> () {
     let mut _0: ();
     let _1: i32;

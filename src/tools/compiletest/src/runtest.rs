@@ -2175,6 +2175,7 @@ impl<'test> TestCx<'test> {
                     "-Zvalidate-mir",
                     "-Zlint-mir",
                     "-Zdump-mir-exclude-pass-number",
+                    "-Zmir-include-spans=false", // remove span comments from NLL MIR dumps
                     "--crate-type=rlib",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {

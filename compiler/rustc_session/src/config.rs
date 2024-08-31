@@ -3369,3 +3369,25 @@ pub enum FunctionReturn {
     /// Replace returns with jumps to thunk, without emitting the thunk.
     ThunkExtern,
 }
+
+/// Whether extra span comments are included when dumping MIR, via the `-Z mir-include-spans` flag.
+/// By default, only enabled in the NLL MIR dumps, and disabled in all other passes.
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
+pub enum MirIncludeSpans {
+    Off,
+    On,
+    /// Default: include extra comments in NLL MIR dumps only. Can be ignored and considered as
+    /// `Off` in all other cases.
+    #[default]
+    Nll,
+}
+
+impl MirIncludeSpans {
+    /// Unless opting into extra comments for all passes, they can be considered disabled.
+    /// The cases where a distinction between on/off and a per-pass value can exist will be handled
+    /// in the passes themselves: i.e. the `Nll` value is considered off for all intents and
+    /// purposes, except for the NLL MIR dump pass.
+    pub fn is_enabled(self) -> bool {
+        self == MirIncludeSpans::On
+    }
+}
