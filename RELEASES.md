@@ -86,13 +86,6 @@ Cargo
 - [Disallow passing `--release`/`--debug` flag along with the `--profile` flag.](https://github.com/rust-lang/cargo/pull/13971/)
 - [Remove `lib.plugin` key support in `Cargo.toml`. Rust plugin support has been deprecated for four years and was removed in 1.75.0.](https://github.com/rust-lang/cargo/pull/13902/)
 
-<a id="1.81.0-Rustdoc"></a>
-
-Rustdoc
-----
-
-- [Add support for `--remap-path-prefix`.](https://github.com/rust-lang/rust/pull/107099/)
-
 <a id="1.81.0-Compatibility-Notes"></a>
 
 Compatibility Notes
