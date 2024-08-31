@@ -1,7 +1,7 @@
         .text
-        .global fast2_dadd_asm
-        .type fast2_dadd_asm, @function
-fast2_dadd_asm:
+        .global __hexagon_fast2_dadd_asm
+        .type __hexagon_fast2_dadd_asm, @function
+__hexagon_fast2_dadd_asm:
         .falign
       {
         R7:6 = VABSDIFFH(R1:0, R3:2)
@@ -49,9 +49,9 @@ fast2_dadd_asm:
         jumpr r31
       }
         .text
-        .global fast2_dsub_asm
-        .type fast2_dsub_asm, @function
-fast2_dsub_asm:
+        .global __hexagon_fast2_dsub_asm
+        .type __hexagon_fast2_dsub_asm, @function
+__hexagon_fast2_dsub_asm:
         .falign
       {
         R7:6 = VABSDIFFH(R1:0, R3:2)
@@ -99,9 +99,9 @@ fast2_dsub_asm:
         jumpr r31
       }
         .text
-        .global fast2_dmpy_asm
-        .type fast2_dmpy_asm, @function
-fast2_dmpy_asm:
+        .global __hexagon_fast2_dmpy_asm
+        .type __hexagon_fast2_dmpy_asm, @function
+__hexagon_fast2_dmpy_asm:
         .falign
       {
         R13= lsr(R2, #16)
@@ -167,9 +167,9 @@ fast2_dmpy_asm:
         jumpr r31
       }
         .text
-        .global fast2_qd2f_asm
-        .type fast2_qd2f_asm, @function
-fast2_qd2f_asm:
+        .global __hexagon_fast2_qd2f_asm
+        .type __hexagon_fast2_qd2f_asm, @function
+__hexagon_fast2_qd2f_asm:
       .falign
      {
        R3 = abs(R1):sat
@@ -225,9 +225,9 @@ fast2_qd2f_asm:
        jumpr r31
      }
         .text
-        .global fast2_f2qd_asm
-        .type fast2_f2qd_asm, @function
-fast2_f2qd_asm:
+        .global __hexagon_fast2_f2qd_asm
+        .type __hexagon_fast2_f2qd_asm, @function
+__hexagon_fast2_f2qd_asm:
 
 
 

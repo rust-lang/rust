@@ -1,7 +1,7 @@
         .text
-        .global fast2_ldadd_asm
-        .type fast2_ldadd_asm, @function
-fast2_ldadd_asm:
+        .global __hexagon_fast2ldadd_asm
+        .type __hexagon_fast2ldadd_asm, @function
+__hexagon_fast2ldadd_asm:
         .falign
       {
         R4 = memw(r29+#8)
@@ -54,9 +54,9 @@ fast2_ldadd_asm:
         jumpr r31
       }
         .text
-        .global fast2_ldsub_asm
-        .type fast2_ldsub_asm, @function
-fast2_ldsub_asm:
+        .global __hexagon_fast2ldsub_asm
+        .type __hexagon_fast2ldsub_asm, @function
+__hexagon_fast2ldsub_asm:
         .falign
       {
         R4 = memw(r29+#8)
@@ -109,9 +109,9 @@ fast2_ldsub_asm:
         jumpr r31
       }
         .text
-        .global fast2_ldmpy_asm
-        .type fast2_ldmpy_asm, @function
-fast2_ldmpy_asm:
+        .global __hexagon_fast2ldmpy_asm
+        .type __hexagon_fast2ldmpy_asm, @function
+__hexagon_fast2ldmpy_asm:
         .falign
       {
         R15:14 = memd(r29+#0)

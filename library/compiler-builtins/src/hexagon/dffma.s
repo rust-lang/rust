@@ -3,8 +3,6 @@
         .type __hexagon_fmadf4,@function
  .global __hexagon_fmadf5
         .type __hexagon_fmadf5,@function
- .global fma
- .type fma,@function
  .global __qdsp_fmadf5 ; .set __qdsp_fmadf5, __hexagon_fmadf5
  .p2align 5
 __hexagon_fmadf4:
