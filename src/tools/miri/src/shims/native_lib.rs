@@ -194,6 +194,8 @@ enum CArg {
     UInt64(u64),
     /// usize.
     USize(usize),
+    /// Raw pointer, stored as C's `void*`.
+    RawPtr(*mut std::ffi::c_void),
 }
 
 impl<'a> CArg {
@@ -210,6 +212,7 @@ impl<'a> CArg {
             CArg::UInt32(i) => ffi::arg(i),
             CArg::UInt64(i) => ffi::arg(i),
             CArg::USize(i) => ffi::arg(i),
+            CArg::RawPtr(i) => ffi::arg(i),
         }
     }
 }
@@ -234,6 +237,16 @@ fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'t
         ty::Uint(UintTy::U64) => CArg::UInt64(v.to_scalar().to_u64()?),
         ty::Uint(UintTy::Usize) =>
             CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
+        ty::RawPtr(_, mutability) => {
+            // Arbitrary mutable pointer accesses are not currently supported in Miri.
+            if mutability.is_mut() {
+                throw_unsup_format!("unsupported mutable pointer type for native call: {}", v.layout.ty);
+            } else {
+                let s = v.to_scalar().to_pointer(cx)?.addr();
+                // This relies on the `expose_provenance` in `addr_from_alloc_id`.
+                CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
+            }
+        },
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),
     })
 }

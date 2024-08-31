@@ -362,17 +362,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &InterpCx<'tcx, Self>,
         id: AllocId,
         alloc: &'b Allocation,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
-    {
-        // The default implementation does a copy; CTFE machines have a more efficient implementation
-        // based on their particular choice for `Provenance`, `AllocExtra`, and `Bytes`.
-        let kind = Self::GLOBAL_KIND
-            .expect("if GLOBAL_KIND is None, adjust_global_allocation must be overwritten");
-        let alloc = alloc.adjust_from_tcx(&ecx.tcx, |ptr| ecx.global_root_pointer(ptr))?;
-        let extra =
-            Self::init_alloc_extra(ecx, id, MemoryKind::Machine(kind), alloc.size(), alloc.align)?;
-        Ok(Cow::Owned(alloc.with_extra(extra)))
-    }
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>;
 
     /// Initialize the extra state of an allocation.
     ///
