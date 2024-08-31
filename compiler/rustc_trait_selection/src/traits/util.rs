@@ -168,7 +168,7 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
 /// Instantiate all bound parameters of the impl subject with the given args,
 /// returning the resulting subject and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_subject_and_oblig<'a, 'tcx>(
+pub(crate) fn impl_subject_and_oblig<'a, 'tcx>(
     selcx: &SelectionContext<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
@@ -208,7 +208,7 @@ pub fn upcast_choices<'tcx>(
     supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
 }
 
-pub fn closure_trait_ref_and_return_type<'tcx>(
+pub(crate) fn closure_trait_ref_and_return_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -237,7 +237,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
-pub fn coroutine_trait_ref_and_outputs<'tcx>(
+pub(crate) fn coroutine_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -248,7 +248,7 @@ pub fn coroutine_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.yield_ty, sig.return_ty)
 }
 
-pub fn future_trait_ref_and_outputs<'tcx>(
+pub(crate) fn future_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -259,7 +259,7 @@ pub fn future_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.return_ty)
 }
 
-pub fn iterator_trait_ref_and_outputs<'tcx>(
+pub(crate) fn iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -270,7 +270,7 @@ pub fn iterator_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.yield_ty)
 }
 
-pub fn async_iterator_trait_ref_and_outputs<'tcx>(
+pub(crate) fn async_iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     async_iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -286,7 +286,7 @@ pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
         && tcx.defaultness(assoc_item.container_id(tcx)).is_final()
 }
 
-pub enum TupleArgumentsFlag {
+pub(crate) enum TupleArgumentsFlag {
     Yes,
     No,
 }

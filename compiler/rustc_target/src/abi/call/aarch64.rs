@@ -6,7 +6,7 @@ use crate::abi::{HasDataLayout, TyAbiInterface};
 ///
 /// Corresponds to Clang's `AArch64ABIInfo::ABIKind`.
 #[derive(Copy, Clone, PartialEq)]
-pub enum AbiKind {
+pub(crate) enum AbiKind {
     AAPCS,
     DarwinPCS,
     Win64,
@@ -109,7 +109,7 @@ where
     arg.make_indirect();
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, kind: AbiKind)
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, kind: AbiKind)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,

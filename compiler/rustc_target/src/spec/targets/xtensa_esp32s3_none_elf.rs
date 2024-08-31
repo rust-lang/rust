@@ -1,7 +1,7 @@
 use crate::spec::base::xtensa;
 use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "xtensa-none-elf".into(),
         pointer_width: 32,

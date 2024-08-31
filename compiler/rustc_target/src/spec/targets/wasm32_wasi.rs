@@ -6,6 +6,6 @@
 
 use crate::spec::Target;
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     super::wasm32_wasip1::target()
 }

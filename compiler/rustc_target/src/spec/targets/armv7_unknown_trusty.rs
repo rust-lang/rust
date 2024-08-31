@@ -1,6 +1,6 @@
 use crate::spec::{LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
         // to determine the calling convention and float ABI, and it doesn't

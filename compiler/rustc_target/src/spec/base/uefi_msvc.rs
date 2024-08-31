@@ -11,7 +11,7 @@
 
 use crate::spec::{base, LinkerFlavor, Lld, PanicStrategy, StackProbeType, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut base = base::msvc::opts();
 
     base.add_pre_link_args(

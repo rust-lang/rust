@@ -3,7 +3,7 @@
 
 use crate::spec::{base, LinkerFlavor, Lld, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
 
     base.max_atomic_width = Some(128);

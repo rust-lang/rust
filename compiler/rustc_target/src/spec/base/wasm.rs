@@ -3,7 +3,7 @@ use crate::spec::{
     TargetOptions, TlsModel,
 };
 
-pub fn options() -> TargetOptions {
+pub(crate) fn options() -> TargetOptions {
     macro_rules! args {
         ($prefix:literal) => {
             &[

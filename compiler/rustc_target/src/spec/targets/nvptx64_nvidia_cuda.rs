@@ -2,7 +2,7 @@ use crate::spec::{
     LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions,
 };
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         arch: "nvptx64".into(),
         data_layout: "e-i64:64-i128:128-v16:16-v32:32-n16:32:64".into(),
