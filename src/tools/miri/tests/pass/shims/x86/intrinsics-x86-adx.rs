@@ -6,7 +6,7 @@
 //@ignore-target-avr
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
-//@ignore-target-wasm32
+//@ignore-target-wasm
 //@compile-flags: -C target-feature=+adx
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

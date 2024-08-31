@@ -278,6 +278,14 @@ impl WeakFileDescriptionRef {
     }
 }
 
+impl VisitProvenance for WeakFileDescriptionRef {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // A weak reference can never be the only reference to some pointer or place.
+        // Since the actual file description is tracked by strong ref somewhere,
+        // it is ok to make this a NOP operation.
+    }
+}
+
 /// A unique id for file descriptions. While we could use the address, considering that
 /// is definitely unique, the address would expose interpreter internal state when used
 /// for sorting things. So instead we generate a unique id per file description that stays
