@@ -169,23 +169,31 @@ pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: CrateId) ->
 }
 
 pub fn try_const_usize(db: &dyn HirDatabase, c: &Const) -> Option<u128> {
-    try_const_usize_sign_extend(db, c, false)
-}
-
-pub fn try_const_usize_sign_extend(
-    db: &dyn HirDatabase,
-    c: &Const,
-    is_signed: bool,
-) -> Option<u128> {
     match &c.data(Interner).value {
         chalk_ir::ConstValue::BoundVar(_) => None,
         chalk_ir::ConstValue::InferenceVar(_) => None,
         chalk_ir::ConstValue::Placeholder(_) => None,
         chalk_ir::ConstValue::Concrete(c) => match &c.interned {
-            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(it, is_signed))),
+            ConstScalar::Bytes(it, _) => Some(u128::from_le_bytes(pad16(it, false))),
             ConstScalar::UnevaluatedConst(c, subst) => {
                 let ec = db.const_eval(*c, subst.clone(), None).ok()?;
-                try_const_usize_sign_extend(db, &ec, is_signed)
+                try_const_usize(db, &ec)
+            }
+            _ => None,
+        },
+    }
+}
+
+pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
+    match &c.data(Interner).value {
+        chalk_ir::ConstValue::BoundVar(_) => None,
+        chalk_ir::ConstValue::InferenceVar(_) => None,
+        chalk_ir::ConstValue::Placeholder(_) => None,
+        chalk_ir::ConstValue::Concrete(c) => match &c.interned {
+            ConstScalar::Bytes(it, _) => Some(i128::from_le_bytes(pad16(it, true))),
+            ConstScalar::UnevaluatedConst(c, subst) => {
+                let ec = db.const_eval(*c, subst.clone(), None).ok()?;
+                try_const_isize(db, &ec)
             }
             _ => None,
         },
@@ -287,7 +295,11 @@ pub(crate) fn const_eval_discriminant_variant(
         db.trait_environment_for_body(def),
     )?;
     let c = interpret_mir(db, mir_body, false, None).0?;
-    let c = try_const_usize_sign_extend(db, &c, is_signed).unwrap() as i128;
+    let c = if is_signed {
+        try_const_isize(db, &c).unwrap()
+    } else {
+        try_const_usize(db, &c).unwrap() as i128
+    };
     Ok(c)
 }
 
