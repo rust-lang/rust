@@ -130,7 +130,7 @@ mod transition {
             Active =>
                 if protected {
                     // We wrote, someone else reads -- that's bad.
-                    // (If this is initialized, this move-to-protected will mean insta-UB.)
+                    // (Since Active is always initialized, this move-to-protected will mean insta-UB.)
                     Disabled
                 } else {
                     // We don't want to disable here to allow read-read reordering: it is crucial
@@ -266,6 +266,44 @@ impl Permission {
         let old_state = old_perm.inner;
         transition::perform_access(kind, rel_pos, old_state, protected)
             .map(|new_state| PermTransition { from: old_state, to: new_state })
+    }
+
+    /// During a provenance GC, we want to compact the tree.
+    /// For this, we want to merge nodes upwards if they have a singleton parent.
+    /// But we need to be careful: If the parent is Frozen, and the child is Reserved,
+    /// we can not do such a merge. In general, such a merge is possible if the parent
+    /// allows similar accesses, and in particular if the parent never causes UB on its
+    /// own. This is enforced by a test, namely `tree_compacting_is_sound`. See that
+    /// test for more information.
+    /// This method is only sound if the parent is not protected. We never attempt to
+    /// remove protected parents.
+    pub fn can_be_replaced_by_child(self, child: Self) -> bool {
+        match (self.inner, child.inner) {
+            // ReservedIM can be replaced by anything, as it allows all
+            // transitions.
+            (ReservedIM, _) => true,
+            // Reserved (as parent, where conflictedness does not matter)
+            // can be replaced by all but ReservedIM,
+            // since ReservedIM alone would survive foreign writes
+            (ReservedFrz { .. }, ReservedIM) => false,
+            (ReservedFrz { .. }, _) => true,
+            // Active can not be replaced by something surviving
+            // foreign reads and then remaining writable.
+            (Active, ReservedIM) => false,
+            (Active, ReservedFrz { .. }) => false,
+            // Replacing a state by itself is always okay, even if the child state is protected.
+            (Active, Active) => true,
+            // Active can be replaced by Frozen, since it is not protected.
+            (Active, Frozen) => true,
+            (Active, Disabled) => true,
+            // Frozen can only be replaced by Disabled (and itself).
+            (Frozen, Frozen) => true,
+            (Frozen, Disabled) => true,
+            (Frozen, _) => false,
+            // Disabled can not be replaced by anything else.
+            (Disabled, Disabled) => true,
+            (Disabled, _) => false,
+        }
     }
 }
 

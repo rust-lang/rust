@@ -26,6 +26,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::{debug, trace};
 use ty::BorrowKind::ImmBorrow;
 
 use crate::fn_ctxt::FnCtxt;

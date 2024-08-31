@@ -7,6 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_target::abi::{Pointer, VariantIdx};
+use tracing::trace;
 
 use super::FnCtxt;
 

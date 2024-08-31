@@ -22,6 +22,7 @@ use rustdoc_json_types as types;
 // the one from rustc_data_structures, as they're different types due to sysroots.
 // See #110051 and #127456 for details
 use rustdoc_json_types::FxHashMap;
+use tracing::{debug, trace};
 
 use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::clean::ItemKind;

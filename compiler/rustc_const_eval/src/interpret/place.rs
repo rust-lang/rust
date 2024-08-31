@@ -438,13 +438,15 @@ where
         &self,
         src: &impl Readable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        if src.layout().ty.is_box() {
+            // Derefer should have removed all Box derefs.
+            // Some `Box` are not immediates (if they have a custom allocator)
+            // so the code below would fail.
+            bug!("dereferencing {}", src.layout().ty);
+        }
+
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-
-        if val.layout.ty.is_box() {
-            // Derefer should have removed all Box derefs
-            bug!("dereferencing {}", val.layout.ty);
-        }
 
         let mplace = self.ref_to_mplace(&val)?;
         Ok(mplace)

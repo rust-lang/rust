@@ -34,6 +34,7 @@ use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use smallvec::SmallVec;
+use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::coercion::{CoerceMany, DynamicCoerceMany};

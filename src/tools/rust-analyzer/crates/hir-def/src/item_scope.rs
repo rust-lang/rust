@@ -1,14 +1,16 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
+use std::sync::LazyLock;
+
 use base_db::CrateId;
 use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCallId};
 use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
-use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use span::Edition;
 use stdx::format_to;
 use syntax::ast;
 
@@ -129,7 +131,7 @@ struct DeriveMacroInvocation {
     derive_call_ids: SmallVec<[Option<MacroCallId>; 1]>,
 }
 
-pub(crate) static BUILTIN_SCOPE: Lazy<FxIndexMap<Name, PerNs>> = Lazy::new(|| {
+pub(crate) static BUILTIN_SCOPE: LazyLock<FxIndexMap<Name, PerNs>> = LazyLock::new(|| {
     BuiltinType::all_builtin_types()
         .iter()
         .map(|(name, ty)| (name.clone(), PerNs::types((*ty).into(), Visibility::Public, None)))
@@ -706,7 +708,7 @@ impl ItemScope {
             format_to!(
                 buf,
                 "{}:",
-                name.map_or("_".to_owned(), |name| name.display(db).to_string())
+                name.map_or("_".to_owned(), |name| name.display(db, Edition::LATEST).to_string())
             );
 
             if let Some((.., i)) = def.types {

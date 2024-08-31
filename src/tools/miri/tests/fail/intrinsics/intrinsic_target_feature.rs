@@ -7,7 +7,7 @@
 //@ignore-target-avr
 //@ignore-target-s390x
 //@ignore-target-thumbv7em
-//@ignore-target-wasm32
+//@ignore-target-wasm
 // Explicitly disable SSE4.1 because it is enabled by default on macOS
 //@compile-flags: -C target-feature=-sse4.1
 

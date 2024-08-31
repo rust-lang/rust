@@ -52,6 +52,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::ExpnKind;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use thin_vec::ThinVec;
+use tracing::{debug, instrument};
 use utils::*;
 use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
 

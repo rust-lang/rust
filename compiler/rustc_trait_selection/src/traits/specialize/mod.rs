@@ -10,6 +10,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, EmissionGuarantee};
@@ -22,6 +23,7 @@ use rustc_middle::ty::{self, GenericArgsRef, ImplSubject, Ty, TyCtxt, TypeVisita
 use rustc_session::lint::builtin::{COHERENCE_LEAK_CHECK, ORDER_DEPENDENT_TRAIT_OBJECTS};
 use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
 use specialization_graph::GraphExt;
+use tracing::{debug, instrument};
 
 use super::{util, SelectionContext};
 use crate::error_reporting::traits::to_pretty_impl_header;

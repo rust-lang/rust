@@ -43,8 +43,23 @@ pub enum PassWhere {
     AfterTerminator(BasicBlock),
 }
 
-/// If the session is properly configured, dumps a human-readable
-/// representation of the mir into:
+/// Cosmetic options for pretty-printing the MIR contents, gathered from the CLI. Each pass can
+/// override these when dumping its own specific MIR information with [`dump_mir_with_options`].
+#[derive(Copy, Clone)]
+pub struct PrettyPrintMirOptions {
+    /// Whether to include extra comments, like span info. From `-Z mir-include-spans`.
+    pub include_extra_comments: bool,
+}
+
+impl PrettyPrintMirOptions {
+    /// Create the default set of MIR pretty-printing options from the CLI flags.
+    pub fn from_cli(tcx: TyCtxt<'_>) -> Self {
+        Self { include_extra_comments: tcx.sess.opts.unstable_opts.mir_include_spans.is_enabled() }
+    }
+}
+
+/// If the session is properly configured, dumps a human-readable representation of the MIR (with
+/// default pretty-printing options) into:
 ///
 /// ```text
 /// rustc.node<node_id>.<pass_num>.<pass_name>.<disambiguator>
@@ -78,11 +93,39 @@ pub fn dump_mir<'tcx, F>(
 ) where
     F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
+    dump_mir_with_options(
+        tcx,
+        pass_num,
+        pass_name,
+        disambiguator,
+        body,
+        extra_data,
+        PrettyPrintMirOptions::from_cli(tcx),
+    );
+}
+
+/// If the session is properly configured, dumps a human-readable representation of the MIR, with
+/// the given [pretty-printing options][PrettyPrintMirOptions].
+///
+/// See [`dump_mir`] for more details.
+///
+#[inline]
+pub fn dump_mir_with_options<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    pass_num: bool,
+    pass_name: &str,
+    disambiguator: &dyn Display,
+    body: &Body<'tcx>,
+    extra_data: F,
+    options: PrettyPrintMirOptions,
+) where
+    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+{
     if !dump_enabled(tcx, pass_name, body.source.def_id()) {
         return;
     }
 
-    dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data);
+    dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data, options);
 }
 
 pub fn dump_enabled(tcx: TyCtxt<'_>, pass_name: &str, def_id: DefId) -> bool {
@@ -112,6 +155,7 @@ fn dump_matched_mir_node<'tcx, F>(
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
     mut extra_data: F,
+    options: PrettyPrintMirOptions,
 ) where
     F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
@@ -133,7 +177,7 @@ fn dump_matched_mir_node<'tcx, F>(
         writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
         write_user_type_annotations(tcx, body, &mut file)?;
-        write_mir_fn(tcx, body, &mut extra_data, &mut file)?;
+        write_mir_fn(tcx, body, &mut extra_data, &mut file, options)?;
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
 
@@ -243,12 +287,15 @@ pub fn create_dump_file<'tcx>(
 ///////////////////////////////////////////////////////////////////////////
 // Whole MIR bodies
 
-/// Write out a human-readable textual representation for the given MIR.
+/// Write out a human-readable textual representation for the given MIR, with the default
+/// [PrettyPrintMirOptions].
 pub fn write_mir_pretty<'tcx>(
     tcx: TyCtxt<'tcx>,
     single: Option<DefId>,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
+    let options = PrettyPrintMirOptions::from_cli(tcx);
+
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
 
@@ -262,11 +309,11 @@ pub fn write_mir_pretty<'tcx>(
         }
 
         let render_body = |w: &mut dyn io::Write, body| -> io::Result<()> {
-            write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+            write_mir_fn(tcx, body, &mut |_, _| Ok(()), w, options)?;
 
             for body in tcx.promoted_mir(def_id) {
                 writeln!(w)?;
-                write_mir_fn(tcx, body, &mut |_, _| Ok(()), w)?;
+                write_mir_fn(tcx, body, &mut |_, _| Ok(()), w, options)?;
             }
             Ok(())
         };
@@ -278,7 +325,7 @@ pub fn write_mir_pretty<'tcx>(
             writeln!(w, "// MIR FOR CTFE")?;
             // Do not use `render_body`, as that would render the promoteds again, but these
             // are shared between mir_for_ctfe and optimized_mir
-            write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
+            write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w, options)?;
         } else {
             let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
             render_body(w, instance_mir)?;
@@ -293,14 +340,15 @@ pub fn write_mir_fn<'tcx, F>(
     body: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn io::Write,
+    options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
     F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
-    write_mir_intro(tcx, body, w)?;
+    write_mir_intro(tcx, body, w, options)?;
     for block in body.basic_blocks.indices() {
         extra_data(PassWhere::BeforeBlock(block), w)?;
-        write_basic_block(tcx, block, body, extra_data, w)?;
+        write_basic_block(tcx, block, body, extra_data, w, options)?;
         if block.index() + 1 != body.basic_blocks.len() {
             writeln!(w)?;
         }
@@ -321,6 +369,7 @@ fn write_scope_tree(
     w: &mut dyn io::Write,
     parent: SourceScope,
     depth: usize,
+    options: PrettyPrintMirOptions,
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
 
@@ -333,7 +382,7 @@ fn write_scope_tree(
 
         let indented_debug_info = format!("{0:1$}debug {2:?};", INDENT, indent, var_debug_info);
 
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if options.include_extra_comments {
             writeln!(
                 w,
                 "{0:1$} // in {2}",
@@ -373,7 +422,7 @@ fn write_scope_tree(
 
         let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if options.include_extra_comments {
             writeln!(
                 w,
                 "{0:1$} //{2} in {3}",
@@ -410,7 +459,7 @@ fn write_scope_tree(
 
         let indented_header = format!("{0:1$}scope {2}{3} {{", "", indent, child.index(), special);
 
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if options.include_extra_comments {
             if let Some(span) = span {
                 writeln!(
                     w,
@@ -426,7 +475,7 @@ fn write_scope_tree(
             writeln!(w, "{indented_header}")?;
         }
 
-        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1)?;
+        write_scope_tree(tcx, body, scope_tree, w, child, depth + 1, options)?;
         writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }
 
@@ -449,10 +498,11 @@ impl Debug for VarDebugInfo<'_> {
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-pub fn write_mir_intro<'tcx>(
+fn write_mir_intro<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'_>,
     w: &mut dyn io::Write,
+    options: PrettyPrintMirOptions,
 ) -> io::Result<()> {
     write_mir_sig(tcx, body, w)?;
     writeln!(w, "{{")?;
@@ -468,7 +518,7 @@ pub fn write_mir_intro<'tcx>(
         }
     }
 
-    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
+    write_scope_tree(tcx, body, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1, options)?;
 
     // Add an empty line before the first block is printed.
     writeln!(w)?;
@@ -651,12 +701,13 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
 // Basic blocks and their parts (statements, terminators, ...)
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block<'tcx, F>(
+fn write_basic_block<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     block: BasicBlock,
     body: &Body<'tcx>,
     extra_data: &mut F,
     w: &mut dyn io::Write,
+    options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
     F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
@@ -672,7 +723,7 @@ where
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{INDENT}{INDENT}{statement:?};");
-        if tcx.sess.opts.unstable_opts.mir_include_spans {
+        if options.include_extra_comments {
             writeln!(
                 w,
                 "{:A$} // {}{}",
@@ -689,9 +740,14 @@ where
             writeln!(w, "{indented_body}")?;
         }
 
-        write_extra(tcx, w, |visitor| {
-            visitor.visit_statement(statement, current_location);
-        })?;
+        write_extra(
+            tcx,
+            w,
+            |visitor| {
+                visitor.visit_statement(statement, current_location);
+            },
+            options,
+        )?;
 
         extra_data(PassWhere::AfterLocation(current_location), w)?;
 
@@ -701,7 +757,7 @@ where
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
-    if tcx.sess.opts.unstable_opts.mir_include_spans {
+    if options.include_extra_comments {
         writeln!(
             w,
             "{:A$} // {}{}",
@@ -718,9 +774,14 @@ where
         writeln!(w, "{indented_terminator}")?;
     }
 
-    write_extra(tcx, w, |visitor| {
-        visitor.visit_terminator(data.terminator(), current_location);
-    })?;
+    write_extra(
+        tcx,
+        w,
+        |visitor| {
+            visitor.visit_terminator(data.terminator(), current_location);
+        },
+        options,
+    )?;
 
     extra_data(PassWhere::AfterLocation(current_location), w)?;
     extra_data(PassWhere::AfterTerminator(block), w)?;
@@ -1271,11 +1332,12 @@ fn write_extra<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     write: &mut dyn io::Write,
     mut visit_op: F,
+    options: PrettyPrintMirOptions,
 ) -> io::Result<()>
 where
     F: FnMut(&mut ExtraComments<'tcx>),
 {
-    if tcx.sess.opts.unstable_opts.mir_include_spans {
+    if options.include_extra_comments {
         let mut extra_comments = ExtraComments { tcx, comments: vec![] };
         visit_op(&mut extra_comments);
         for comment in extra_comments.comments {
@@ -1890,7 +1952,7 @@ pub(crate) fn pretty_print_const_value<'tcx>(
 ///////////////////////////////////////////////////////////////////////////
 // Miscellaneous
 
-/// Calc converted u64 decimal into hex and return it's length in chars
+/// Calc converted u64 decimal into hex and return its length in chars.
 ///
 /// ```ignore (cannot-test-private-function)
 /// assert_eq!(1, hex_number_length(0));

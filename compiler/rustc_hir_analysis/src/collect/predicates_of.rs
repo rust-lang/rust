@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, GenericPredicates, ImplTraitInTraitData, Ty, TyCtxt
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use tracing::{debug, instrument, trace};
 
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;

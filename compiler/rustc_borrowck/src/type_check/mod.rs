@@ -45,6 +45,7 @@ use rustc_trait_selection::traits::query::type_op::custom::{
 };
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::PredicateObligation;
+use tracing::{debug, instrument, trace};
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};

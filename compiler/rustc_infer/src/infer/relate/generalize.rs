@@ -11,6 +11,7 @@ use rustc_middle::ty::{
     self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt,
 };
 use rustc_span::Span;
+use tracing::{debug, instrument, warn};
 
 use super::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,

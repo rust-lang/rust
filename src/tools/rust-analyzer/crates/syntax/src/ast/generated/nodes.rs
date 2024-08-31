@@ -114,6 +114,8 @@ impl AssocTypeArg {
     #[inline]
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     #[inline]
+    pub fn return_type_syntax(&self) -> Option<ReturnTypeSyntax> { support::child(&self.syntax) }
+    #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
@@ -483,6 +485,8 @@ impl Fn {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     #[inline]
     pub fn fn_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![fn]) }
+    #[inline]
+    pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
@@ -1221,6 +1225,8 @@ impl PathSegment {
     #[inline]
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     #[inline]
+    pub fn return_type_syntax(&self) -> Option<ReturnTypeSyntax> { support::child(&self.syntax) }
+    #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
     pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
@@ -1483,6 +1489,19 @@ impl ReturnExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     #[inline]
     pub fn return_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![return]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ReturnTypeSyntax {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ReturnTypeSyntax {
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3686,6 +3705,20 @@ impl AstNode for RetType {
 impl AstNode for ReturnExpr {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_EXPR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ReturnTypeSyntax {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_TYPE_SYNTAX }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -6605,6 +6638,11 @@ impl std::fmt::Display for RetType {
     }
 }
 impl std::fmt::Display for ReturnExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ReturnTypeSyntax {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

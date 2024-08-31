@@ -13,6 +13,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
+use tracing::instrument;
 
 use super::method::probe;
 use crate::FnCtxt;

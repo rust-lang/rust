@@ -22,6 +22,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, NormalizeExt};
+use tracing::{debug, instrument};
 
 use self::probe::{IsSuggestion, ProbeScope};
 pub(crate) use self::MethodError::*;

@@ -856,7 +856,11 @@ impl Evaluator<'_> {
                     Ok(ty_name) => ty_name,
                     // Fallback to human readable display in case of `Err`. Ideally we want to use `display_source_code` to
                     // render full paths.
-                    Err(_) => ty.display(self.db).to_string(),
+                    Err(_) => {
+                        let krate = locals.body.owner.krate(self.db.upcast());
+                        let edition = self.db.crate_graph()[krate].edition;
+                        ty.display(self.db, edition).to_string()
+                    }
                 };
                 let len = ty_name.len();
                 let addr = self.heap_allocate(len, 1)?;

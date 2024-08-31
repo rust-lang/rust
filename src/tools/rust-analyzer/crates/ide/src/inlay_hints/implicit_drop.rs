@@ -12,6 +12,7 @@ use hir::{
 };
 use ide_db::{FileRange, RootDatabase};
 
+use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode},
     match_ast, ToSmolStr,
@@ -23,6 +24,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
+    file_id: EditionedFileId,
     def: &ast::Fn,
 ) -> Option<()> {
     if !config.implicit_drop_hints {
@@ -100,7 +102,7 @@ pub(super) fn hints(
                     })
                 });
             let binding = &hir.bindings[*binding];
-            let name = binding.name.display_no_db().to_smolstr();
+            let name = binding.name.display_no_db(file_id.edition()).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }

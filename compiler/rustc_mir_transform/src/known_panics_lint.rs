@@ -22,6 +22,7 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayo
 use rustc_middle::ty::{self, ConstInt, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
+use tracing::{debug, instrument, trace};
 
 use crate::errors::{AssertLint, AssertLintKind};
 use crate::MirLint;

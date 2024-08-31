@@ -227,7 +227,7 @@ fn run_server() -> anyhow::Result<()> {
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
     let mut config =
-        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version, None);
+        Config::new(root_path, capabilities, workspace_roots, visual_studio_code_version);
     if let Some(json) = initialization_options {
         let mut change = ConfigChange::default();
         change.change_client_config(json);

@@ -12,9 +12,10 @@ use rustc_session::config::{
     CollapseMacroDebuginfo, CoverageLevel, CoverageOptions, DebugInfo, DumpMonoStatsFormat,
     ErrorOutputType, ExternEntry, ExternLocation, Externs, FmtDebug, FunctionReturn,
     InliningThreshold, Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained,
-    LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, Options, OutFileName,
-    OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
-    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
+    LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, OomStrategy,
+    Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
+    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -705,7 +706,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(ls, vec!["all".to_owned()]);
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
-    untracked!(mir_include_spans, true);
+    untracked!(mir_include_spans, MirIncludeSpans::On);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);

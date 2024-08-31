@@ -13,6 +13,7 @@ use rustc_middle::ty::{
     self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
 };
 use smallvec::SmallVec;
+use tracing::debug;
 
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,

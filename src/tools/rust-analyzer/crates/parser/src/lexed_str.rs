@@ -178,19 +178,8 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Whitespace => WHITESPACE,
 
                 rustc_lexer::TokenKind::Ident if token_text == "_" => UNDERSCORE,
-                rustc_lexer::TokenKind::Ident
-                    if ["async", "await", "dyn", "try"].contains(&token_text)
-                        && !self.edition.at_least_2018() =>
-                {
-                    IDENT
-                }
-                rustc_lexer::TokenKind::Ident
-                    if token_text == "gen" && !self.edition.at_least_2024() =>
-                {
-                    IDENT
-                }
                 rustc_lexer::TokenKind::Ident => {
-                    SyntaxKind::from_keyword(token_text).unwrap_or(IDENT)
+                    SyntaxKind::from_keyword(token_text, self.edition).unwrap_or(IDENT)
                 }
                 rustc_lexer::TokenKind::InvalidPrefix | rustc_lexer::TokenKind::InvalidIdent => {
                     err = "Ident contains invalid characters";

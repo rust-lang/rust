@@ -396,24 +396,66 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
     let punctuation =
         grammar.punct.iter().map(|(_token, name)| format_ident!("{}", name)).collect::<Vec<_>>();
 
-    let x = |&name| match name {
+    let fmt_kw_as_variant = |&name| match name {
         "Self" => format_ident!("SELF_TYPE_KW"),
         name => format_ident!("{}_KW", to_upper_snake_case(name)),
     };
-    let full_keywords_values = grammar.keywords;
-    let full_keywords = full_keywords_values.iter().map(x);
+    let strict_keywords = grammar.keywords;
+    let strict_keywords_variants =
+        strict_keywords.iter().map(fmt_kw_as_variant).collect::<Vec<_>>();
+    let strict_keywords_tokens = strict_keywords.iter().map(|it| format_ident!("{it}"));
 
-    let contextual_keywords_values = &grammar.contextual_keywords;
-    let contextual_keywords = contextual_keywords_values.iter().map(x);
-
-    let all_keywords_values = grammar
-        .keywords
+    let edition_dependent_keywords_variants_match_arm = grammar
+        .edition_dependent_keywords
         .iter()
-        .chain(grammar.contextual_keywords.iter())
-        .copied()
+        .map(|(kw, ed)| {
+            let kw = fmt_kw_as_variant(kw);
+            quote! { #kw if #ed <= edition }
+        })
         .collect::<Vec<_>>();
-    let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
-    let all_keywords = all_keywords_values.iter().map(x).collect::<Vec<_>>();
+    let edition_dependent_keywords_str_match_arm = grammar
+        .edition_dependent_keywords
+        .iter()
+        .map(|(kw, ed)| {
+            quote! { #kw if #ed <= edition }
+        })
+        .collect::<Vec<_>>();
+    let edition_dependent_keywords_variants = grammar
+        .edition_dependent_keywords
+        .iter()
+        .map(|(kw, _)| fmt_kw_as_variant(kw))
+        .collect::<Vec<_>>();
+    let edition_dependent_keywords_tokens =
+        grammar.edition_dependent_keywords.iter().map(|(it, _)| format_ident!("{it}"));
+
+    let contextual_keywords = grammar.contextual_keywords;
+    let contextual_keywords_variants =
+        contextual_keywords.iter().map(fmt_kw_as_variant).collect::<Vec<_>>();
+    let contextual_keywords_tokens = contextual_keywords.iter().map(|it| format_ident!("{it}"));
+    let contextual_keywords_str_match_arm = grammar.contextual_keywords.iter().map(|kw| {
+        match grammar.edition_dependent_keywords.iter().find(|(ed_kw, _)| ed_kw == kw) {
+            Some((_, ed)) => quote! { #kw if edition < #ed },
+            None => quote! { #kw },
+        }
+    });
+    let contextual_keywords_variants_match_arm = grammar
+        .contextual_keywords
+        .iter()
+        .map(|kw_s| {
+            let kw = fmt_kw_as_variant(kw_s);
+            match grammar.edition_dependent_keywords.iter().find(|(ed_kw, _)| ed_kw == kw_s) {
+                Some((_, ed)) => quote! { #kw if edition < #ed },
+                None => quote! { #kw },
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let non_strict_keyword_variants = contextual_keywords_variants
+        .iter()
+        .chain(edition_dependent_keywords_variants.iter())
+        .sorted()
+        .dedup()
+        .collect::<Vec<_>>();
 
     let literals =
         grammar.literals.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
@@ -424,6 +466,8 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
     let ast = quote! {
         #![allow(bad_style, missing_docs, unreachable_pub)]
+        use crate::Edition;
+
         /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT`.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         #[repr(u16)]
@@ -435,7 +479,8 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             #[doc(hidden)]
             EOF,
             #(#punctuation,)*
-            #(#all_keywords,)*
+            #(#strict_keywords_variants,)*
+            #(#non_strict_keyword_variants,)*
             #(#literals,)*
             #(#tokens,)*
             #(#nodes,)*
@@ -447,31 +492,55 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         use self::SyntaxKind::*;
 
         impl SyntaxKind {
-            pub fn is_keyword(self) -> bool {
-                matches!(self, #(#all_keywords)|*)
+            /// Checks whether this syntax kind is a strict keyword for the given edition.
+            /// Strict keywords are identifiers that are always considered keywords.
+            pub fn is_strict_keyword(self, edition: Edition) -> bool {
+                matches!(self, #(#strict_keywords_variants)|*)
+                || match self {
+                    #(#edition_dependent_keywords_variants_match_arm => true,)*
+                    _ => false,
+                }
+            }
+
+            /// Checks whether this syntax kind is a weak keyword for the given edition.
+            /// Weak keywords are identifiers that are considered keywords only in certain contexts.
+            pub fn is_contextual_keyword(self, edition: Edition) -> bool {
+                match self {
+                    #(#contextual_keywords_variants_match_arm => true,)*
+                    _ => false,
+                }
+            }
+
+            /// Checks whether this syntax kind is a strict or weak keyword for the given edition.
+            pub fn is_keyword(self, edition: Edition) -> bool {
+                matches!(self, #(#strict_keywords_variants)|*)
+                || match self {
+                    #(#edition_dependent_keywords_variants_match_arm => true,)*
+                    #(#contextual_keywords_variants_match_arm => true,)*
+                    _ => false,
+                }
             }
 
             pub fn is_punct(self) -> bool {
-
                 matches!(self, #(#punctuation)|*)
-
             }
 
             pub fn is_literal(self) -> bool {
                 matches!(self, #(#literals)|*)
             }
 
-            pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
+            pub fn from_keyword(ident: &str, edition: Edition) -> Option<SyntaxKind> {
                 let kw = match ident {
-                    #(#full_keywords_values => #full_keywords,)*
+                    #(#strict_keywords => #strict_keywords_variants,)*
+                    #(#edition_dependent_keywords_str_match_arm => #edition_dependent_keywords_variants,)*
                     _ => return None,
                 };
                 Some(kw)
             }
 
-            pub fn from_contextual_keyword(ident: &str) -> Option<SyntaxKind> {
+            pub fn from_contextual_keyword(ident: &str, edition: Edition) -> Option<SyntaxKind> {
                 let kw = match ident {
-                    #(#contextual_keywords_values => #contextual_keywords,)*
+                    #(#contextual_keywords_str_match_arm => #contextual_keywords_variants,)*
                     _ => return None,
                 };
                 Some(kw)
@@ -489,7 +558,9 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         #[macro_export]
         macro_rules! T {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
-            #([#all_keywords_idents] => { $crate::SyntaxKind::#all_keywords };)*
+            #([#strict_keywords_tokens] => { $crate::SyntaxKind::#strict_keywords_variants };)*
+            #([#contextual_keywords_tokens] => { $crate::SyntaxKind::#contextual_keywords_variants };)*
+            #([#edition_dependent_keywords_tokens] => { $crate::SyntaxKind::#edition_dependent_keywords_variants };)*
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
             [int_number] => { $crate::SyntaxKind::INT_NUMBER };
             [ident] => { $crate::SyntaxKind::IDENT };

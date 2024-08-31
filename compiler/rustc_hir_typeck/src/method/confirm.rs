@@ -22,6 +22,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits;
+use tracing::debug;
 
 use super::{probe, MethodCallee};
 use crate::{callee, FnCtxt};

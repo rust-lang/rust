@@ -140,11 +140,24 @@ fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
             if p.at(T![::]) && p.nth_at(2, T!['(']) {
                 p.bump(T![::]);
             }
-            // test path_fn_trait_args
-            // type F = Box<Fn(i32) -> ()>;
             if p.at(T!['(']) {
-                params::param_list_fn_trait(p);
-                opt_ret_type(p);
+                if p.nth_at(1, T![..]) {
+                    // test return_type_syntax_in_path
+                    // fn foo<T>()
+                    // where
+                    //     T::method(..): Send,
+                    // {}
+                    let rtn = p.start();
+                    p.bump(T!['(']);
+                    p.bump(T![..]);
+                    p.expect(T![')']);
+                    rtn.complete(p, RETURN_TYPE_SYNTAX);
+                } else {
+                    // test path_fn_trait_args
+                    // type F = Box<Fn(i32) -> ()>;
+                    params::param_list_fn_trait(p);
+                    opt_ret_type(p);
+                }
             } else {
                 generic_args::opt_generic_arg_list(p, false);
             }

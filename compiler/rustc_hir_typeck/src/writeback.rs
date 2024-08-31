@@ -19,6 +19,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
+use tracing::{debug, instrument};
 
 use crate::FnCtxt;
 

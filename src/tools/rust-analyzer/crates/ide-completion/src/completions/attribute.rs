@@ -2,6 +2,8 @@
 //!
 //! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
+use std::sync::LazyLock;
+
 use ide_db::{
     generated::lints::{
         Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
@@ -10,10 +12,9 @@ use ide_db::{
     FxHashMap, SymbolKind,
 };
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use syntax::{
     ast::{self, AttrKind},
-    AstNode, SyntaxKind, T,
+    AstNode, Edition, SyntaxKind, T,
 };
 
 use crate::{
@@ -48,11 +49,15 @@ pub(crate) fn complete_known_attribute_input(
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
-        "feature" => {
-            lint::complete_lint(acc, ctx, colon_prefix, &parse_tt_as_comma_sep_paths(tt)?, FEATURES)
-        }
+        "feature" => lint::complete_lint(
+            acc,
+            ctx,
+            colon_prefix,
+            &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
+            FEATURES,
+        ),
         "allow" | "warn" | "deny" | "forbid" => {
-            let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
+            let existing_lints = parse_tt_as_comma_sep_paths(tt, ctx.edition)?;
 
             let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
                 .iter()
@@ -66,9 +71,12 @@ pub(crate) fn complete_known_attribute_input(
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
         "cfg" => cfg::complete_cfg(acc, ctx),
-        "macro_use" => {
-            macro_use::complete_macro_use(acc, ctx, extern_crate, &parse_tt_as_comma_sep_paths(tt)?)
-        }
+        "macro_use" => macro_use::complete_macro_use(
+            acc,
+            ctx,
+            extern_crate,
+            &parse_tt_as_comma_sep_paths(tt, ctx.edition)?,
+        ),
         _ => (),
     }
     Some(())
@@ -130,8 +138,12 @@ pub(crate) fn complete_attribute_path(
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        let mut item =
-            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), attr_completion.label);
+        let mut item = CompletionItem::new(
+            SymbolKind::Attribute,
+            ctx.source_range(),
+            attr_completion.label,
+            ctx.edition,
+        );
 
         if let Some(lookup) = attr_completion.lookup {
             item.lookup_by(lookup);
@@ -215,7 +227,7 @@ macro_rules! attrs {
 }
 
 #[rustfmt::skip]
-static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
+static KIND_TO_ATTRIBUTES: LazyLock<FxHashMap<SyntaxKind, &[&str]>> = LazyLock::new(|| {
     use SyntaxKind::*;
     [
         (
@@ -361,7 +373,9 @@ fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
         input_expressions
             .into_iter()
             .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
-            .filter_map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
+            .filter_map(|mut tokens| {
+                syntax::hacks::parse_expr_from_str(&tokens.join(""), Edition::CURRENT)
+            })
             .collect::<Vec<ast::Expr>>(),
     )
 }

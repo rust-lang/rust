@@ -6,6 +6,7 @@ use itertools::Itertools;
 use rustc_ast::token::Delimiter;
 use rustc_ast::{ast, ptr};
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::closures;
 use crate::config::Version;

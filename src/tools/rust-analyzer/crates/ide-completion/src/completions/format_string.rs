@@ -35,7 +35,8 @@ pub(crate) fn format_string(
         CompletionItem::new(
             CompletionItemKind::Binding,
             source_range,
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         )
         .add_to(acc, ctx.db);
     });
@@ -50,7 +51,8 @@ pub(crate) fn format_string(
             CompletionItem::new(
                 CompletionItemKind::SymbolKind(symbol_kind),
                 source_range,
-                name.display_no_db().to_smolstr(),
+                name.display_no_db(ctx.edition).to_smolstr(),
+                ctx.edition,
             )
             .add_to(acc, ctx.db);
         }

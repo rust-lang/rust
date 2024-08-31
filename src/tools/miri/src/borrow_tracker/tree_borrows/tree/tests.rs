@@ -64,6 +64,71 @@ fn all_read_accesses_commute() {
     }
 }
 
+fn as_foreign_or_child(related: AccessRelatedness) -> &'static str {
+    if related.is_foreign() { "foreign" } else { "child" }
+}
+
+fn as_protected(b: bool) -> &'static str {
+    if b { " (protected)" } else { "" }
+}
+
+fn as_lazy_or_init(b: bool) -> &'static str {
+    if b { "initialized" } else { "lazy" }
+}
+
+/// Test that tree compacting (as performed by the GC) is sound.
+/// Specifically, the GC will replace a parent by a child if the parent is not
+/// protected, and if `can_be_replaced_by_child(parent, child)` is true.
+/// To check that this is sound, the function must be a simulation, i.e.
+/// if both are accessed, the results must still be in simulation, and also
+/// if an access is UB, it must also be UB if done only at the child.
+#[test]
+fn tree_compacting_is_sound() {
+    // The parent is unprotected
+    let parent_protected = false;
+    for ([parent, child], child_protected) in <([LocationState; 2], bool)>::exhaustive() {
+        if child_protected {
+            precondition!(child.compatible_with_protector())
+        }
+        precondition!(parent.permission().can_be_replaced_by_child(child.permission()));
+        for (kind, rel) in <(AccessKind, AccessRelatedness)>::exhaustive() {
+            let new_parent = parent.perform_access_no_fluff(kind, rel, parent_protected);
+            let new_child = child.perform_access_no_fluff(kind, rel, child_protected);
+            match (new_parent, new_child) {
+                (Some(np), Some(nc)) => {
+                    assert!(
+                        np.permission().can_be_replaced_by_child(nc.permission()),
+                        "`can_be_replaced_by_child` is not a simulation: on a {} {} to a {} parent and a {} {}{} child, the parent becomes {}, the child becomes {}, and these are not in simulation!",
+                        as_foreign_or_child(rel),
+                        kind,
+                        parent.permission(),
+                        as_lazy_or_init(child.is_initialized()),
+                        child.permission(),
+                        as_protected(child_protected),
+                        np.permission(),
+                        nc.permission()
+                    )
+                }
+                (_, None) => {
+                    // the child produced UB, this is fine no matter what the parent does
+                }
+                (None, Some(nc)) => {
+                    panic!(
+                        "`can_be_replaced_by_child` does not have the UB property: on a {} {} to a(n) {} parent and a(n) {} {}{} child, only the parent causes UB, while the child becomes {}, and it is not allowed for only the parent to cause UB!",
+                        as_foreign_or_child(rel),
+                        kind,
+                        parent.permission(),
+                        as_lazy_or_init(child.is_initialized()),
+                        child.permission(),
+                        as_protected(child_protected),
+                        nc.permission()
+                    )
+                }
+            }
+        }
+    }
+}
+
 #[test]
 #[rustfmt::skip]
 // Ensure that of 2 accesses happen, one foreign and one a child, and we are protected, that we
