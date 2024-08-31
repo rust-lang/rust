@@ -227,6 +227,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "rustfix-only-machine-applicable",
     "should-fail",
     "should-ice",
+    "single-thread",
     "stderr-per-bitwidth",
     "test-mir-pass",
     "unique-doc-out-dir",

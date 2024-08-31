@@ -5,7 +5,7 @@
 use std::mem::size_of;
 
 //@ compile-flags: -Z fuel=foo=0
-
+//@ single-thread
 #[allow(dead_code)]
 struct S1(u8, u16, u8);
 #[allow(dead_code)]

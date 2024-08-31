@@ -137,6 +137,8 @@ pub struct TestProps {
     pub dont_check_compiler_stdout: bool,
     // For UI tests, allows compiler to generate arbitrary output to stderr
     pub dont_check_compiler_stderr: bool,
+    // Use single thread for the rustc front end.
+    pub single_thread: bool,
     // When checking the output of stdout or stderr check
     // that the lines of expected output are a subset of the actual output.
     pub compare_output_lines_by_subset: bool,
@@ -259,6 +261,7 @@ mod directives {
     pub const KNOWN_BUG: &'static str = "known-bug";
     pub const TEST_MIR_PASS: &'static str = "test-mir-pass";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
+    pub const SINGLE_THREAD: &'static str = "single-thread";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
@@ -291,6 +294,7 @@ impl TestProps {
             build_aux_docs: false,
             unique_doc_out_dir: false,
             force_host: false,
+            single_thread: false,
             check_stdout: false,
             check_run_results: false,
             dont_check_compiler_stdout: false,
@@ -582,6 +586,7 @@ impl TestProps {
                         |s| s.trim().to_string(),
                     );
                     config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
+                    config.set_name_directive(ln, SINGLE_THREAD, &mut self.single_thread);
                     config.set_name_directive(
                         ln,
                         COMPARE_OUTPUT_LINES_BY_SUBSET,
