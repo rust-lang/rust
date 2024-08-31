@@ -7,7 +7,7 @@ use std::{env, iter, mem, str};
 
 use cc::windows_registry;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::find_native_static_library;
+use rustc_metadata::{find_native_static_library, try_find_native_static_library};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols;
@@ -891,9 +891,15 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
-        let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-        let suffix = if verbatim { "" } else { ".lib" };
-        self.link_arg(format!("{prefix}{name}{suffix}"));
+        // On MSVC-like targets rustc supports static libraries using alternative naming
+        // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
+        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+            self.link_staticlib_by_path(&path, whole_archive);
+        } else {
+            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let suffix = if verbatim { "" } else { ".lib" };
+            self.link_arg(format!("{prefix}{name}{suffix}"));
+        }
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
