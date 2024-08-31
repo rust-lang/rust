@@ -51,14 +51,6 @@ macro_rules! mutability_dependent {
             walk_meta_item(self, meta_item);
         }
 
-        fn flat_map_foreign_item(&mut self, ni: P<ForeignItem>) -> SmallVec<[P<ForeignItem>; 1]> {
-            walk_flat_map_foreign_item(self, ni)
-        }
-
-        fn flat_map_item(&mut self, i: P<Item>) -> SmallVec<[P<Item>; 1]> {
-            walk_flat_map_item(self, i)
-        }
-
         fn flat_map_assoc_item(
             &mut self,
             i: P<AssocItem>,
@@ -296,8 +288,6 @@ macro_rules! make_ast_visitor {
             make_visit!{PreciseCapturingArg, visit_precise_capturing_arg, walk_precise_capturing_arg}
             make_visit!{Block, visit_block, walk_block}
             make_visit!{CoroutineKind, visit_coroutine_kind, walk_coroutine_kind}
-            make_visit!{Item, visit_item, walk_item}
-            make_visit!{ForeignItem, visit_foreign_item, walk_item}
             make_visit!{FnHeader, visit_fn_header, walk_fn_header}
             make_visit!{Ident, visit_ident, walk_ident}
             make_visit!{Option<P<QSelf>>, visit_qself, walk_qself}
@@ -316,6 +306,8 @@ macro_rules! make_ast_visitor {
             make_visit!{PatField, visit_pat_field, walk_pat_field, flat_map_pat_field, walk_flat_map_pat_field}
             make_visit!{Variant, visit_variant, walk_variant, flat_map_variant, walk_flat_map_variant}
             make_visit!{WherePredicate, visit_where_predicate, walk_where_predicate, flat_map_where_predicate, walk_flat_map_where_predicate}
+            make_visit!{P!(Item), visit_item, walk_item, flat_map_item, walk_flat_map_item}
+            make_visit!{P!(ForeignItem), visit_foreign_item, walk_item, flat_map_foreign_item, walk_flat_map_foreign_item}
 
             /// `MutVisitor`: `Span` and `NodeId` are mutated at the caller site.
             fn visit_fn(&mut self, fk: fn_kind!(), _: Span, _: NodeId) -> result!(){
@@ -1500,9 +1492,9 @@ macro_rules! make_ast_visitor {
 
         pub fn walk_item<$($lt,)? V: $trait$(<$lt>)?>(
             visitor: &mut V,
-            item: ref_t!(Item<impl WalkItemKind>),
+            item: ref_t!(P!(Item<impl WalkItemKind>)),
         ) -> result!(V) {
-            let Item { id, span, ident, vis, attrs, kind, tokens } = item;
+            let Item { id, span, ident, vis, attrs, kind, tokens } = deref_P!(item);
             try_v!(visit_id!(visitor, id));
             visit_list!(visitor, visit_attribute, flat_map_attribute, attrs);
             try_v!(visitor.visit_vis(vis));
@@ -1800,6 +1792,8 @@ macro_rules! make_ast_visitor {
         make_walk_flat_map!{PatField, walk_flat_map_pat_field, visit_pat_field}
         make_walk_flat_map!{Variant, walk_flat_map_variant, visit_variant}
         make_walk_flat_map!{WherePredicate, walk_flat_map_where_predicate, visit_where_predicate}
+        make_walk_flat_map!{P!(Item), walk_flat_map_item, visit_item}
+        make_walk_flat_map!{P!(ForeignItem), walk_flat_map_foreign_item, visit_foreign_item}
     }
 }
 
@@ -2227,22 +2221,6 @@ pub mod mut_visit {
         let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
         vis.visit_span(span_before);
         vis.visit_span(span_after);
-    }
-
-    pub fn walk_flat_map_item(
-        vis: &mut impl MutVisitor,
-        mut item: P<Item>,
-    ) -> SmallVec<[P<Item>; 1]> {
-        vis.visit_item(item.deref_mut());
-        smallvec![item]
-    }
-
-    pub fn walk_flat_map_foreign_item(
-        vis: &mut impl MutVisitor,
-        mut item: P<ForeignItem>,
-    ) -> SmallVec<[P<ForeignItem>; 1]> {
-        vis.visit_foreign_item(item.deref_mut());
-        smallvec![item]
     }
 
     pub fn walk_flat_map_assoc_item(
