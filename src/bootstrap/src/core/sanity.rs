@@ -8,9 +8,7 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashMap;
-#[cfg(not(feature = "bootstrap-self-test"))]
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 use std::{env, fs};
@@ -34,7 +32,6 @@ pub struct Finder {
 // it might not yet be included in stage0. In such cases, we handle the targets missing from stage0 in this list.
 //
 // Targets can be removed from this list once they are present in the stage0 compiler (usually by updating the beta compiler of the bootstrap).
-#[cfg(not(feature = "bootstrap-self-test"))]
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
 ];
@@ -205,7 +202,6 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("reuse"));
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
     let stage0_supported_target_list: HashSet<String> = crate::utils::helpers::output(
         command(&build.config.initial_rustc).args(["--print", "target-list"]).as_command_mut(),
     )
@@ -234,8 +230,7 @@ than building it.
         }
 
         // Ignore fake targets that are only used for unit tests in bootstrap.
-        #[cfg(not(feature = "bootstrap-self-test"))]
-        {
+        if cfg!(not(feature = "bootstrap-self-test")) && !skip_target_sanity {
             let mut has_target = false;
             let target_str = target.to_string();
 

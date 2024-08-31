@@ -415,8 +415,8 @@ const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
 
 const_eval_unstable_in_stable =
     const-stable function cannot use `#[feature({$gate})]`
-    .unstable_sugg = if it is not part of the public API, make this function unstably const
-    .bypass_sugg = otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (but requires team approval)
+    .unstable_sugg = if the function is not (yet) meant to be stable, make this function unstably const
+    .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (but requires team approval)
 
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation
