@@ -534,8 +534,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             let dest_place = self.allocate_dyn(layout, MemoryKind::Stack, meta)?;
             Operand::Indirect(*dest_place.mplace())
         } else {
-            assert!(!meta.has_meta()); // we're dropping the metadata
             // Just make this an efficient immediate.
+            assert!(!meta.has_meta()); // we're dropping the metadata
+            // Make sure the machine knows this "write" is happening. (This is important so that
+            // races involving local variable allocation can be detected by Miri.)
+            M::after_local_write(self, local, /*storage_live*/ true)?;
             // Note that not calling `layout_of` here does have one real consequence:
             // if the type is too big, we'll only notice this when the local is actually initialized,
             // which is a bit too late -- we should ideally notice this already here, when the memory

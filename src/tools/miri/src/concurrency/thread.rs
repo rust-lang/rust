@@ -530,7 +530,9 @@ impl<'tcx> ThreadManager<'tcx> {
     }
 
     /// Mutably borrow the stack of the active thread.
-    fn active_thread_stack_mut(&mut self) -> &mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
+    pub fn active_thread_stack_mut(
+        &mut self,
+    ) -> &mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
     pub fn all_stacks(

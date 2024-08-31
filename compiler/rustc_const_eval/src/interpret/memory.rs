@@ -1030,6 +1030,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         );
         res
     }
+
+    pub(super) fn validation_in_progress(&self) -> bool {
+        self.memory.validation_in_progress
+    }
 }
 
 #[doc(hidden)]
