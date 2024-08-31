@@ -8,6 +8,7 @@
 use rustc_hir as hir;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
+use tracing::debug;
 
 use super::Pass;
 use crate::clean;
