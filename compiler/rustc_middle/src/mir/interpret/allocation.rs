@@ -358,10 +358,11 @@ impl Allocation {
     pub fn adjust_from_tcx<Prov: Provenance, Bytes: AllocBytes, Err>(
         &self,
         cx: &impl HasDataLayout,
+        mut alloc_bytes: impl FnMut(&[u8], Align) -> Result<Bytes, Err>,
         mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> Result<Pointer<Prov>, Err>,
     ) -> Result<Allocation<Prov, (), Bytes>, Err> {
         // Copy the data.
-        let mut bytes = Bytes::from_bytes(Cow::Borrowed(&*self.bytes), self.align);
+        let mut bytes = alloc_bytes(&*self.bytes, self.align)?;
         // Adjust provenance of pointers stored in this allocation.
         let mut new_provenance = Vec::with_capacity(self.provenance.ptrs().len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();

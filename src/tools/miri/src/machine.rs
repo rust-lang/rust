@@ -1,6 +1,7 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
@@ -1259,6 +1260,30 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             };
             (alloc_id, size, tag)
         })
+    }
+
+    /// Called to adjust global allocations to the Provenance and AllocExtra of this machine.
+    ///
+    /// If `alloc` contains pointers, then they are all pointing to globals.
+    ///
+    /// This should avoid copying if no work has to be done! If this returns an owned
+    /// allocation (because a copy had to be done to adjust things), machine memory will
+    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
+    fn adjust_global_allocation<'b>(
+        ecx: &InterpCx<'tcx, Self>,
+        id: AllocId,
+        alloc: &'b Allocation,
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
+    {
+        let kind = Self::GLOBAL_KIND.unwrap().into();
+        let alloc = alloc.adjust_from_tcx(&ecx.tcx,
+            |bytes, align| ecx.get_global_alloc_bytes(id, kind, bytes, align),
+            |ptr| ecx.global_root_pointer(ptr),
+        )?;
+        let extra =
+            Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
+        Ok(Cow::Owned(alloc.with_extra(extra)))
     }
 
     #[inline(always)]
