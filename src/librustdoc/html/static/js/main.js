@@ -1878,9 +1878,15 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         if (elem === null) {
             return;
         }
-        const buttons = elem.querySelector(".button-holder");
+        let buttons = elem.querySelector(".button-holder");
         if (buttons === null) {
-            return;
+            // On mobile, you can't hover an element so buttons need to be created on click
+            // if they're not already there.
+            addCopyButton(event);
+            buttons = elem.querySelector(".button-holder");
+            if (buttons === null) {
+                return;
+            }
         }
         buttons.classList.toggle("keep-visible");
     }
