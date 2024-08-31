@@ -55,7 +55,7 @@ then
   echo "# CI artifacts" >> "${GITHUB_STEP_SUMMARY}"
 
   for filename in "${upload_dir}"/*.xz; do
-    filename=`basename "${filename}"`
+    filename=$(basename "${filename}")
     echo "- [${filename}](${access_url}/${filename})" >> "${GITHUB_STEP_SUMMARY}"
   done
 fi
