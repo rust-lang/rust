@@ -662,10 +662,7 @@ impl f32 {
         // hardware flushes subnormals to zero. These are platforms bugs, and Rust will misbehave on
         // such hardware, but we can at least try to make things seem as sane as possible by being
         // careful here.
-        //
-        // FIXME(jubilee): Using x87 operations is never necessary in order to function
-        // on x86 processors for Rust-to-Rust calls, so this issue should not happen.
-        // Code generation should be adjusted to use non-C calling conventions, avoiding this.
+        // see also https://github.com/rust-lang/rust/issues/114479
         if self.is_infinite() {
             // A value may compare unequal to infinity, despite having a "full" exponent mask.
             FpCategory::Infinite
