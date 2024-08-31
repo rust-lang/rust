@@ -15,7 +15,7 @@ use span::{Edition, EditionedFileId};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasGenericParams},
-    format_smolstr, match_ast, NodeOrToken, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
+    format_smolstr, match_ast, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
 };
 use text_edit::TextEdit;
 
@@ -95,26 +95,27 @@ pub(crate) fn inlay_hints(
     let famous_defs = FamousDefs(&sema, scope.krate());
 
     let ctx = &mut InlayHintCtx::default();
-    let hints = |node| hints(&mut acc, ctx, &famous_defs, config, file_id, node);
-    match range_limit {
-        // FIXME: This can miss some hints that require the parent of the range to calculate
-        Some(range) => match file.covering_element(range) {
-            NodeOrToken::Token(_) => return acc,
-            NodeOrToken::Node(n) => n
-                .preorder()
-                .filter(|event| matches!(event, WalkEvent::Enter(node) if range.intersect(node.text_range()).is_some()))
-                .for_each(hints),
-        },
-        None => file.preorder().for_each(hints),
+    let mut hints = |event| {
+        if let Some(node) = handle_event(ctx, event) {
+            hints(&mut acc, ctx, &famous_defs, config, file_id, node);
+        }
     };
-
+    let mut preorder = file.preorder();
+    while let Some(event) = preorder.next() {
+        // FIXME: This can miss some hints that require the parent of the range to calculate
+        if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
+        {
+            preorder.skip_subtree();
+            continue;
+        }
+        hints(event);
+    }
     acc
 }
 
 #[derive(Default)]
 struct InlayHintCtx {
     lifetime_stacks: Vec<Vec<SmolStr>>,
-    is_param_list: bool,
 }
 
 pub(crate) fn inlay_hints_resolve(
@@ -138,18 +139,50 @@ pub(crate) fn inlay_hints_resolve(
     let mut acc = Vec::new();
 
     let ctx = &mut InlayHintCtx::default();
-    let hints = |node| hints(&mut acc, ctx, &famous_defs, config, file_id, node);
-
-    let mut res = file.clone();
-    let res = loop {
-        res = match res.child_or_token_at_range(resolve_range) {
-            Some(NodeOrToken::Node(n)) if n.text_range() == resolve_range => break n,
-            Some(NodeOrToken::Node(n)) => n,
-            _ => break res,
-        };
+    let mut hints = |event| {
+        if let Some(node) = handle_event(ctx, event) {
+            hints(&mut acc, ctx, &famous_defs, config, file_id, node);
+        }
     };
-    res.preorder().for_each(hints);
+
+    let mut preorder = file.preorder();
+    while let Some(event) = preorder.next() {
+        // FIXME: This can miss some hints that require the parent of the range to calculate
+        if matches!(&event, WalkEvent::Enter(node) if resolve_range.intersect(node.text_range()).is_none())
+        {
+            preorder.skip_subtree();
+            continue;
+        }
+        hints(event);
+    }
     acc.into_iter().find(|hint| hasher(hint) == hash)
+}
+
+fn handle_event(ctx: &mut InlayHintCtx, node: WalkEvent<SyntaxNode>) -> Option<SyntaxNode> {
+    match node {
+        WalkEvent::Enter(node) => {
+            if let Some(node) = ast::AnyHasGenericParams::cast(node.clone()) {
+                let params = node
+                    .generic_param_list()
+                    .map(|it| {
+                        it.lifetime_params()
+                            .filter_map(|it| {
+                                it.lifetime().map(|it| format_smolstr!("{}", &it.text()[1..]))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                ctx.lifetime_stacks.push(params);
+            }
+            Some(node)
+        }
+        WalkEvent::Leave(n) => {
+            if ast::AnyHasGenericParams::can_cast(n.kind()) {
+                ctx.lifetime_stacks.pop();
+            }
+            None
+        }
+    }
 }
 
 // FIXME: At some point when our hir infra is fleshed out enough we should flip this and traverse the
@@ -160,35 +193,8 @@ fn hints(
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    node: WalkEvent<SyntaxNode>,
+    node: SyntaxNode,
 ) {
-    let node = match node {
-        WalkEvent::Enter(node) => node,
-        WalkEvent::Leave(n) => {
-            if ast::AnyHasGenericParams::can_cast(n.kind()) {
-                ctx.lifetime_stacks.pop();
-                // pop
-            }
-            if ast::ParamList::can_cast(n.kind()) {
-                ctx.is_param_list = false;
-                // pop
-            }
-            return;
-        }
-    };
-
-    if let Some(node) = ast::AnyHasGenericParams::cast(node.clone()) {
-        let params = node
-            .generic_param_list()
-            .map(|it| {
-                it.lifetime_params()
-                    .filter_map(|it| it.lifetime().map(|it| format_smolstr!("{}", &it.text()[1..])))
-                    .collect()
-            })
-            .unwrap_or_default();
-        ctx.lifetime_stacks.push(params);
-    }
-
     closing_brace::hints(hints, sema, config, file_id, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
         generic_param::hints(hints, sema, config, any_has_generic_args);
@@ -241,10 +247,6 @@ fn hints(
                 ast::Type::FnPtrType(ptr) => lifetime::fn_ptr_hints(hints, ctx, famous_defs, config, file_id, ptr),
                 ast::Type::PathType(path) => lifetime::fn_path_hints(hints, ctx, famous_defs, config, file_id, path),
                 _ => Some(()),
-            },
-            ast::ParamList(_) => {
-                ctx.is_param_list = true;
-                Some(())
             },
             _ => Some(()),
         }
