@@ -4771,7 +4771,7 @@ declare_lint! {
     /// version of Rust this will be fixed and therefore dependencies relying
     /// on the non-spec-compliant C ABI will stop functioning.
     pub WASM_C_ABI,
-    Warn,
+    Deny,
     "detects dependencies that are incompatible with the Wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
