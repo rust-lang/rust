@@ -6,6 +6,7 @@ fn main() {
     test_pipe();
     test_pipe_threaded();
     test_race();
+    test_pipe_array();
 }
 
 fn test_pipe() {
@@ -96,4 +97,14 @@ fn test_race() {
     assert_eq!(res, 1);
     thread::yield_now();
     thread1.join().unwrap();
+}
+
+fn test_pipe_array() {
+    // Declare `pipe` to take an array rather than a `*mut i32`.
+    extern "C" {
+        fn pipe(pipefd: &mut [i32; 2]) -> i32;
+    }
+
+    let mut fds: [i32; 2] = [0; 2];
+    assert_eq!(unsafe { pipe(&mut fds) }, 0);
 }
