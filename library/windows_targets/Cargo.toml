@@ -5,6 +5,5 @@ version = "0.0.0"
 edition = "2021"
 
 [features]
-# Enable using raw-dylib for Windows imports.
-# This will eventually be the default.
-windows_raw_dylib = []
+# Enable using Windows import libraries instead of raw-dylib.
+windows_use_import_libs = []

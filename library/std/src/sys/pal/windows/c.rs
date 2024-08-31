@@ -108,15 +108,14 @@ if #[cfg(not(target_vendor = "uwp"))] {
 }
 }
 
-// Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
-#[cfg(not(target_vendor = "win7"))]
-#[cfg_attr(
-    target_arch = "x86",
-    link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")
-)]
-#[cfg_attr(not(target_arch = "x86"), link(name = "bcryptprimitives", kind = "raw-dylib"))]
-extern "system" {
-    pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+// When not using raw-dylib, there isn't a reliable import library for ProcessPrng
+// so we lazily load it instead.
+#[cfg(all(feature = "windows_use_import_libs", not(target_vendor = "win7")))]
+compat_fn_with_fallback! {
+    pub static BCRYPTPRIMITIVES: &CStr = c"bcryptprimitives";
+    pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL {
+        panic!("ProcessPrng is not available");
+    }
 }
 
 // Functions that aren't available on every version of Windows that we support,
@@ -148,31 +147,6 @@ compat_fn_with_fallback! {
     pub fn GetTempPath2W(bufferlength: u32, buffer: PWSTR) -> u32 {
         unsafe {  GetTempPathW(bufferlength, buffer) }
     }
-}
-
-#[cfg(not(target_vendor = "win7"))]
-// Use raw-dylib to import synchronization functions to workaround issues with the older mingw import library.
-#[cfg_attr(
-    target_arch = "x86",
-    link(
-        name = "api-ms-win-core-synch-l1-2-0",
-        kind = "raw-dylib",
-        import_name_type = "undecorated"
-    )
-)]
-#[cfg_attr(
-    not(target_arch = "x86"),
-    link(name = "api-ms-win-core-synch-l1-2-0", kind = "raw-dylib")
-)]
-extern "system" {
-    pub fn WaitOnAddress(
-        address: *const c_void,
-        compareaddress: *const c_void,
-        addresssize: usize,
-        dwmilliseconds: u32,
-    ) -> BOOL;
-    pub fn WakeByAddressSingle(address: *const c_void);
-    pub fn WakeByAddressAll(address: *const c_void);
 }
 
 #[cfg(target_vendor = "win7")]
