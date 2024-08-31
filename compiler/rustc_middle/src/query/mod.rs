@@ -651,7 +651,7 @@ rustc_queries! {
     /// is a subset of the full list of predicates. We store these in a separate map
     /// because we must evaluate them even during type conversion, often before the full
     /// predicates are available (note that super-predicates must not be cyclic).
-    query explicit_super_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
+    query explicit_super_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the super predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -662,7 +662,7 @@ rustc_queries! {
     /// of the trait. For regular traits, this includes all super-predicates and their
     /// associated type bounds. For trait aliases, currently, this includes all of the
     /// predicates of the trait alias.
-    query explicit_implied_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
+    query explicit_implied_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the implied predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
@@ -671,7 +671,9 @@ rustc_queries! {
     /// The Ident is the name of an associated type.The query returns only the subset
     /// of supertraits that define the given associated type. This is used to avoid
     /// cycles in resolving type-dependent associated item paths like `T::Item`.
-    query explicit_supertraits_containing_assoc_item(key: (DefId, rustc_span::symbol::Ident)) -> ty::GenericPredicates<'tcx> {
+    query explicit_supertraits_containing_assoc_item(
+        key: (DefId, rustc_span::symbol::Ident)
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the super traits of `{}` with associated type name `{}`",
             tcx.def_path_str(key.0),
             key.1
@@ -680,7 +682,9 @@ rustc_queries! {
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
-    query type_param_predicates(key: (LocalDefId, LocalDefId, rustc_span::symbol::Ident)) -> ty::GenericPredicates<'tcx> {
+    query type_param_predicates(
+        key: (LocalDefId, LocalDefId, rustc_span::symbol::Ident)
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
     }
 
