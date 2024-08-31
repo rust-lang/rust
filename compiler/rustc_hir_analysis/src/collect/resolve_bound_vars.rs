@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 break Some((bound_vars.into_iter().collect(), assoc_item));
             }
             let predicates = tcx.explicit_supertraits_containing_assoc_item((def_id, assoc_name));
-            let obligations = predicates.predicates.iter().filter_map(|&(pred, _)| {
+            let obligations = predicates.iter_identity_copied().filter_map(|(pred, _)| {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::ClauseKind::Trait(data) => {
