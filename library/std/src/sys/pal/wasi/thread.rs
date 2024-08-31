@@ -136,36 +136,37 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        let nanos = dur.as_nanos();
-        assert!(nanos <= u64::MAX as u128);
+        let mut nanos = dur.as_nanos();
+        while nanos > 0 {
+            const USERDATA: wasi::Userdata = 0x0123_45678;
 
-        const USERDATA: wasi::Userdata = 0x0123_45678;
+            let clock = wasi::SubscriptionClock {
+                id: wasi::CLOCKID_MONOTONIC,
+                timeout: u64::try_from(nanos).unwrap_or(u64::MAX),
+                precision: 0,
+                flags: 0,
+            };
+            nanos -= u128::from(clock.timeout);
 
-        let clock = wasi::SubscriptionClock {
-            id: wasi::CLOCKID_MONOTONIC,
-            timeout: nanos as u64,
-            precision: 0,
-            flags: 0,
-        };
-
-        let in_ = wasi::Subscription {
-            userdata: USERDATA,
-            u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
-        };
-        unsafe {
-            let mut event: wasi::Event = mem::zeroed();
-            let res = wasi::poll_oneoff(&in_, &mut event, 1);
-            match (res, event) {
-                (
-                    Ok(1),
-                    wasi::Event {
-                        userdata: USERDATA,
-                        error: wasi::ERRNO_SUCCESS,
-                        type_: wasi::EVENTTYPE_CLOCK,
-                        ..
-                    },
-                ) => {}
-                _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
+            let in_ = wasi::Subscription {
+                userdata: USERDATA,
+                u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
+            };
+            unsafe {
+                let mut event: wasi::Event = mem::zeroed();
+                let res = wasi::poll_oneoff(&in_, &mut event, 1);
+                match (res, event) {
+                    (
+                        Ok(1),
+                        wasi::Event {
+                            userdata: USERDATA,
+                            error: wasi::ERRNO_SUCCESS,
+                            type_: wasi::EVENTTYPE_CLOCK,
+                            ..
+                        },
+                    ) => {}
+                    _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
+                }
             }
         }
     }
