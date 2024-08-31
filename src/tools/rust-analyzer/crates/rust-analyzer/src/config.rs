@@ -429,6 +429,8 @@ config_data! {
         completion_callable_snippets: CallableCompletionDef  = CallableCompletionDef::FillArguments,
         /// Whether to show full function/method signatures in completion docs.
         completion_fullFunctionSignatures_enable: bool = false,
+        /// Whether to omit deprecated items from autocompletion. By default they are marked as deprecated but not hidden.
+        completion_hideDeprecated: bool = false,
         /// Maximum number of completions to return. If `None`, the limit is infinite.
         completion_limit: Option<usize> = None,
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
@@ -1441,6 +1443,10 @@ impl Config {
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
         }
+    }
+
+    pub fn completion_hide_deprecated(&self) -> bool {
+        *self.completion_hideDeprecated(None)
     }
 
     pub fn detached_files(&self) -> &Vec<AbsPathBuf> {

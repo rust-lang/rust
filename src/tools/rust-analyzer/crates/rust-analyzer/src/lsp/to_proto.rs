@@ -228,8 +228,12 @@ pub(crate) fn completion_items(
     line_index: &LineIndex,
     version: Option<i32>,
     tdpp: lsp_types::TextDocumentPositionParams,
-    items: Vec<CompletionItem>,
+    mut items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
+    if config.completion_hide_deprecated() {
+        items.retain(|item| !item.deprecated);
+    }
+
     let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
