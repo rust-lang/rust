@@ -5,7 +5,7 @@ use stdx::{format_to, to_lower_snake_case};
 use syntax::{
     algo::skip_whitespace_token,
     ast::{self, edit::IndentLevel, HasDocComments, HasGenericArgs, HasName},
-    match_ast, AstNode, AstToken,
+    match_ast, AstNode, AstToken, Edition,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -139,7 +139,8 @@ fn make_example_for_fn(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<St
 
     let mut example = String::new();
 
-    let use_path = build_path(ast_func, ctx)?;
+    let edition = ctx.sema.scope(ast_func.syntax())?.krate().edition(ctx.db());
+    let use_path = build_path(ast_func, ctx, edition)?;
     let is_unsafe = ast_func.unsafe_token().is_some();
     let param_list = ast_func.param_list()?;
     let ref_mut_params = ref_mut_params(&param_list);
@@ -472,13 +473,13 @@ fn string_vec_from(string_array: &[&str]) -> Vec<String> {
 }
 
 /// Helper function to build the path of the module in the which is the node
-fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> Option<String> {
+fn build_path(ast_func: &ast::Fn, ctx: &AssistContext<'_>, edition: Edition) -> Option<String> {
     let crate_name = crate_name(ast_func, ctx)?;
     let leaf = self_partial_type(ast_func)
         .or_else(|| ast_func.name().map(|n| n.to_string()))
         .unwrap_or_else(|| "*".into());
     let module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
-    match module_def.canonical_path(ctx.db()) {
+    match module_def.canonical_path(ctx.db(), edition) {
         Some(path) => Some(format!("{crate_name}::{path}::{leaf}")),
         None => Some(format!("{crate_name}::{leaf}")),
     }

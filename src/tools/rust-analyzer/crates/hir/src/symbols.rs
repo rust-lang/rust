@@ -9,6 +9,7 @@ use hir_def::{
 };
 use hir_expand::HirFileId;
 use hir_ty::{db::HirDatabase, display::HirDisplay};
+use span::Edition;
 use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr};
 
 use crate::{Module, ModuleDef, Semantics};
@@ -54,6 +55,7 @@ pub struct SymbolCollector<'a> {
     symbols: Vec<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
     current_container_name: Option<SmolStr>,
+    edition: Edition,
 }
 
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
@@ -65,10 +67,13 @@ impl<'a> SymbolCollector<'a> {
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
+            edition: Edition::Edition2015,
         }
     }
 
     pub fn collect(&mut self, module: Module) {
+        self.edition = module.krate().edition(self.db);
+
         // The initial work is the root module we're collecting, additional work will
         // be populated as we traverse the module's definitions.
         self.work.push(SymbolCollectorWork { module_id: module.into(), parent: None });
@@ -209,7 +214,8 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_impl(&mut self, impl_id: ImplId) {
         let impl_data = self.db.impl_data(impl_id);
-        let impl_name = Some(SmolStr::new(impl_data.self_ty.display(self.db).to_string()));
+        let impl_name =
+            Some(SmolStr::new(impl_data.self_ty.display(self.db, self.edition).to_string()));
         self.with_container_name(impl_name, |s| {
             for &assoc_item_id in impl_data.items.iter() {
                 s.push_assoc_item(assoc_item_id)
@@ -239,16 +245,16 @@ impl<'a> SymbolCollector<'a> {
     fn def_with_body_id_name(&self, body_id: DefWithBodyId) -> Option<SmolStr> {
         match body_id {
             DefWithBodyId::FunctionId(id) => {
-                Some(self.db.function_data(id).name.display_no_db().to_smolstr())
+                Some(self.db.function_data(id).name.display_no_db(self.edition).to_smolstr())
             }
             DefWithBodyId::StaticId(id) => {
-                Some(self.db.static_data(id).name.display_no_db().to_smolstr())
+                Some(self.db.static_data(id).name.display_no_db(self.edition).to_smolstr())
             }
             DefWithBodyId::ConstId(id) => {
-                Some(self.db.const_data(id).name.as_ref()?.display_no_db().to_smolstr())
+                Some(self.db.const_data(id).name.as_ref()?.display_no_db(self.edition).to_smolstr())
             }
             DefWithBodyId::VariantId(id) => {
-                Some(self.db.enum_variant_data(id).name.display_no_db().to_smolstr())
+                Some(self.db.enum_variant_data(id).name.display_no_db(self.edition).to_smolstr())
             }
             DefWithBodyId::InTypeConstId(_) => Some("in type const".into()),
         }

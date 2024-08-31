@@ -85,6 +85,7 @@ impl Completions {
             CompletionItemKind::Keyword,
             ctx.source_range(),
             SmolStr::new_static(keyword),
+            ctx.edition,
         );
         item.add_to(self, ctx.db);
     }
@@ -124,7 +125,8 @@ impl Completions {
         kw: &str,
         snippet: &str,
     ) {
-        let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw, ctx.edition);
 
         match ctx.config.snippet_cap {
             Some(cap) => {
@@ -149,7 +151,8 @@ impl Completions {
         kw: &str,
         snippet: &str,
     ) {
-        let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
+        let mut item =
+            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw, ctx.edition);
 
         match ctx.config.snippet_cap {
             Some(cap) => item.insert_snippet(cap, snippet),
@@ -544,7 +547,8 @@ impl Completions {
         CompletionItem::new(
             SymbolKind::LifetimeParam,
             ctx.source_range(),
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         )
         .add_to(self, ctx.db)
     }
@@ -553,7 +557,8 @@ impl Completions {
         CompletionItem::new(
             SymbolKind::Label,
             ctx.source_range(),
-            name.display_no_db().to_smolstr(),
+            name.display_no_db(ctx.edition).to_smolstr(),
+            ctx.edition,
         )
         .add_to(self, ctx.db)
     }

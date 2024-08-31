@@ -5,7 +5,7 @@ use ide_db::{
     source_change::SourceChange,
     FileRange, RootDatabase,
 };
-use syntax::TextRange;
+use syntax::{Edition, TextRange};
 use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -23,7 +23,7 @@ pub(crate) fn unused_variables(
         return None;
     }
     let diagnostic_range = ctx.sema.diagnostics_display_range(ast);
-    // The range for the Actual Name. We don't want to replace the entire declarition. Using the diagnostic range causes issues within in Array Destructuring.
+    // The range for the Actual Name. We don't want to replace the entire declaration. Using the diagnostic range causes issues within in Array Destructuring.
     let name_range = d
         .local
         .primary_source(ctx.sema.db)
@@ -42,7 +42,14 @@ pub(crate) fn unused_variables(
             ast,
         )
         .with_fixes(name_range.and_then(|it| {
-            fixes(ctx.sema.db, var_name, it.range, diagnostic_range.into(), ast.file_id.is_macro())
+            fixes(
+                ctx.sema.db,
+                var_name,
+                it.range,
+                diagnostic_range.into(),
+                ast.file_id.is_macro(),
+                ctx.edition,
+            )
         }))
         .experimental(),
     )
@@ -54,6 +61,7 @@ fn fixes(
     name_range: TextRange,
     diagnostic_range: FileRange,
     is_in_marco: bool,
+    edition: Edition,
 ) -> Option<Vec<Assist>> {
     if is_in_marco {
         return None;
@@ -63,14 +71,14 @@ fn fixes(
         id: AssistId("unscore_unused_variable_name", AssistKind::QuickFix),
         label: Label::new(format!(
             "Rename unused {} to _{}",
-            var_name.display(db),
-            var_name.display(db)
+            var_name.display(db, edition),
+            var_name.display(db, edition)
         )),
         group: None,
         target: diagnostic_range.range,
         source_change: Some(SourceChange::from_text_edit(
             diagnostic_range.file_id,
-            TextEdit::replace(name_range, format!("_{}", var_name.display(db))),
+            TextEdit::replace(name_range, format!("_{}", var_name.display(db, edition))),
         )),
         command: None,
     }])

@@ -1186,11 +1186,11 @@ fn test() {
             89..109 '{     ...     }': bool
             99..103 'true': bool
             123..167 '{     ...o(); }': ()
-            133..134 's': &'? S
+            133..134 's': &'static S
             137..151 'unsafe { f() }': &'static S
             146..147 'f': fn f() -> &'static S
             146..149 'f()': &'static S
-            157..158 's': &'? S
+            157..158 's': &'static S
             157..164 's.foo()': bool
         "#]],
     );
@@ -1847,9 +1847,9 @@ impl Foo {
 }
 fn test() {
     Foo.foo();
-  //^^^ adjustments: Borrow(Ref(Not))
+  //^^^ adjustments: Borrow(Ref('?1, Not))
     (&Foo).foo();
-  // ^^^^ adjustments: Deref(None), Borrow(Ref(Not))
+  // ^^^^ adjustments: Deref(None), Borrow(Ref('?3, Not))
 }
 "#,
     );
@@ -1863,7 +1863,7 @@ fn receiver_adjustment_unsize_array() {
 fn test() {
     let a = [1, 2, 3];
     a.len();
-} //^ adjustments: Borrow(Ref(Not)), Pointer(Unsize)
+} //^ adjustments: Borrow(Ref('?7, Not)), Pointer(Unsize)
 "#,
     );
 }
@@ -2076,7 +2076,7 @@ impl Foo {
 }
 fn test() {
     Box::new(Foo).foo();
-  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref(Not))
+  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref('?3, Not))
 }
 "#,
     );
@@ -2094,7 +2094,7 @@ impl Foo {
 use core::mem::ManuallyDrop;
 fn test() {
     ManuallyDrop::new(Foo).foo();
-  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('?4, Not))
 }
 "#,
     );

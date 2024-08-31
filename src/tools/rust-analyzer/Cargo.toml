@@ -19,9 +19,10 @@ rowan.opt-level = 3
 rustc-hash.opt-level = 3
 smol_str.opt-level = 3
 text-size.opt-level = 3
+serde.opt-level = 3
+salsa.opt-level = 3
 # This speeds up `cargo xtask dist`.
 miniz_oxide.opt-level = 3
-salsa.opt-level = 3
 
 [profile.release]
 incremental = true
@@ -184,6 +185,8 @@ style = { level = "warn", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 
 ## allow following lints
+# subjective
+single_match = "allow"
 # () makes a fine error in most cases
 result_unit_err = "allow"
 # We don't expose public APIs that matter like this

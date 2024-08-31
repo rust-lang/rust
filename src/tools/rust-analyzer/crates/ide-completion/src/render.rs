@@ -17,7 +17,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr};
+use syntax::{ast, format_smolstr, AstNode, Edition, SmolStr, SyntaxKind, TextRange, ToSmolStr};
 use text_edit::TextEdit;
 
 use crate::{
@@ -133,19 +133,22 @@ pub(crate) fn render_field(
     let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(db);
-    let (name, escaped_name) =
-        (name.unescaped().display(db).to_smolstr(), name.display_no_db().to_smolstr());
+    let (name, escaped_name) = (
+        name.unescaped().display(db).to_smolstr(),
+        name.display_no_db(ctx.completion.edition).to_smolstr(),
+    );
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(db, receiver.as_ref(), &name),
+        field_with_receiver(db, receiver.as_ref(), &name, ctx.completion.edition),
+        ctx.completion.edition,
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
         exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
         ..CompletionRelevance::default()
     });
-    item.detail(ty.display(db).to_string())
+    item.detail(ty.display(db, ctx.completion.edition).to_string())
         .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
@@ -159,7 +162,8 @@ pub(crate) fn render_field(
 
         builder.replace(
             ctx.source_range(),
-            field_with_receiver(db, receiver.as_ref(), &escaped_name).into(),
+            field_with_receiver(db, receiver.as_ref(), &escaped_name, ctx.completion.edition)
+                .into(),
         );
 
         let expected_fn_type =
@@ -183,7 +187,12 @@ pub(crate) fn render_field(
 
         item.text_edit(builder.finish());
     } else {
-        item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
+        item.insert_text(field_with_receiver(
+            db,
+            receiver.as_ref(),
+            &escaped_name,
+            ctx.completion.edition,
+        ));
     }
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
@@ -200,10 +209,11 @@ fn field_with_receiver(
     db: &RootDatabase,
     receiver: Option<&hir::Name>,
     field_name: &str,
+    edition: Edition,
 ) -> SmolStr {
     receiver.map_or_else(
         || field_name.into(),
-        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db)),
+        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db, edition)),
     )
 }
 
@@ -216,9 +226,16 @@ pub(crate) fn render_tuple_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        field_with_receiver(ctx.db(), receiver.as_ref(), &field.to_string()),
+        field_with_receiver(
+            ctx.db(),
+            receiver.as_ref(),
+            &field.to_string(),
+            ctx.completion.edition,
+        ),
+        ctx.completion.edition,
     );
-    item.detail(ty.display(ctx.db()).to_string()).lookup_by(field.to_string());
+    item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())
+        .lookup_by(field.to_string());
     item.build(ctx.db())
 }
 
@@ -226,8 +243,12 @@ pub(crate) fn render_type_inference(
     ty_string: String,
     ctx: &CompletionContext<'_>,
 ) -> CompletionItem {
-    let mut builder =
-        CompletionItem::new(CompletionItemKind::InferredType, ctx.source_range(), ty_string);
+    let mut builder = CompletionItem::new(
+        CompletionItemKind::InferredType,
+        ctx.source_range(),
+        ty_string,
+        ctx.edition,
+    );
     builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });
     builder.build(ctx.db)
 }
@@ -296,7 +317,7 @@ pub(crate) fn render_expr(
 
     let cfg = ctx.config.import_path_config();
 
-    let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg).ok()?;
+    let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.edition).ok()?;
 
     let source_range = match ctx.original_token.parent() {
         Some(node) => match node.ancestors().find_map(ast::Path::cast) {
@@ -306,10 +327,13 @@ pub(crate) fn render_expr(
         None => ctx.source_range(),
     };
 
-    let mut item = CompletionItem::new(CompletionItemKind::Expression, source_range, label);
+    let mut item =
+        CompletionItem::new(CompletionItemKind::Expression, source_range, label, ctx.edition);
 
-    let snippet =
-        format!("{}$0", expr.gen_source_code(&ctx.scope, &mut snippet_formatter, cfg).ok()?);
+    let snippet = format!(
+        "{}$0",
+        expr.gen_source_code(&ctx.scope, &mut snippet_formatter, cfg, ctx.edition).ok()?
+    );
     let edit = TextEdit::replace(source_range, snippet);
     item.snippet_edit(ctx.config.snippet_cap?, edit);
     item.documentation(Documentation::new(String::from("Autogenerated expression by term search")));
@@ -396,10 +420,10 @@ fn render_resolution_path(
     let config = completion.config;
     let requires_import = import_to_add.is_some();
 
-    let name = local_name.display_no_db().to_smolstr();
+    let name = local_name.display_no_db(ctx.completion.edition).to_smolstr();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
-    if local_name.is_escaped() {
-        item.insert_text(local_name.display_no_db().to_smolstr());
+    if local_name.is_escaped(completion.edition) {
+        item.insert_text(local_name.display_no_db(completion.edition).to_smolstr());
     }
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
@@ -421,14 +445,17 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{}<$0>", local_name.display(db)));
+                    .insert_snippet(
+                        cap,
+                        format!("{}<$0>", local_name.display(db, completion.edition)),
+                    );
             }
         }
     }
 
     let mut set_item_relevance = |ty: Type| {
         if !ty.is_unknown() {
-            item.detail(ty.display(db).to_string());
+            item.detail(ty.display(db, completion.edition).to_string());
         }
 
         item.set_relevance(CompletionRelevance {
@@ -485,6 +512,7 @@ fn render_resolution_simple_(
         kind,
         ctx.source_range(),
         local_name.unescaped().display(db).to_smolstr(),
+        ctx.completion.edition,
     );
     item.set_relevance(ctx.completion_relevance())
         .set_documentation(scope_def_docs(db, resolution))

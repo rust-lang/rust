@@ -1,6 +1,7 @@
 use expect_test::expect;
 
 use itertools::Itertools;
+use span::Edition;
 
 use super::*;
 
@@ -1100,7 +1101,7 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
     assert_eq!(def_map.data.exported_derives.len(), 1);
     match def_map.data.exported_derives.values().next() {
         Some(helpers) => match &**helpers {
-            [attr] => assert_eq!(attr.display(&db).to_string(), "helper_attr"),
+            [attr] => assert_eq!(attr.display(&db, Edition::CURRENT).to_string(), "helper_attr"),
             _ => unreachable!(),
         },
         _ => unreachable!(),
@@ -1456,7 +1457,7 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     let actual = def_map
         .macro_use_prelude
         .keys()
-        .map(|name| name.display(&db).to_string())
+        .map(|name| name.display(&db, Edition::CURRENT).to_string())
         .sorted()
         .join("\n");
 

@@ -41,7 +41,7 @@ pub(crate) fn complete_lifetime(
         if matches!(
             res,
             ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_))
-                 if param_lifetime != Some(&*name.display_no_db().to_smolstr())
+                 if param_lifetime != Some(&*name.display_no_db(ctx.edition).to_smolstr())
         ) {
             acc.add_lifetime(ctx, name);
         }

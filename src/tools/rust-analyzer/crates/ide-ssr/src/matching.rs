@@ -8,6 +8,7 @@ use crate::{
 };
 use hir::{FileRange, ImportPathConfig, Semantics};
 use ide_db::FxHashMap;
+use parser::Edition;
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
     ast::{self, AstNode, AstToken, HasGenericArgs},
@@ -626,6 +627,11 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
             })?
             .original;
+        let edition = self
+            .sema
+            .scope(expr.syntax())
+            .map(|it| it.krate().edition(self.sema.db))
+            .unwrap_or(Edition::CURRENT);
         // Temporary needed to make the borrow checker happy.
         let res = code_type
             .autoderef(self.sema.db)
@@ -635,8 +641,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             .ok_or_else(|| {
                 match_error!(
                     "Pattern type `{}` didn't match code type `{}`",
-                    pattern_type.display(self.sema.db),
-                    code_type.display(self.sema.db)
+                    pattern_type.display(self.sema.db, edition),
+                    code_type.display(self.sema.db, edition)
                 )
             });
         res

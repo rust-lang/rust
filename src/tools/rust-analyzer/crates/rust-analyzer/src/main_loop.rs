@@ -689,7 +689,7 @@ impl GlobalState {
                         self.fetch_workspaces_queue
                             .op_completed(Some((workspaces, force_reload_crate_graph)));
                         if let Err(e) = self.fetch_workspace_error() {
-                            error!("FetchWorkspaceError:\n{e}");
+                            error!("FetchWorkspaceError: {e}");
                         }
                         self.wants_to_switch = Some("fetched workspace".to_owned());
                         (Progress::End, None)
@@ -729,7 +729,7 @@ impl GlobalState {
                     BuildDataProgress::End(build_data_result) => {
                         self.fetch_build_data_queue.op_completed(build_data_result);
                         if let Err(e) = self.fetch_build_data_error() {
-                            error!("FetchBuildDataError:\n{e}");
+                            error!("FetchBuildDataError: {e}");
                         }
 
                         if self.wants_to_switch.is_none() {

@@ -116,6 +116,7 @@ mod handlers {
     mod bool_to_enum;
     mod change_visibility;
     mod convert_bool_then;
+    mod convert_closure_to_fn;
     mod convert_comment_block;
     mod convert_comment_from_or_to_doc;
     mod convert_from_to_tryfrom;
@@ -213,6 +214,7 @@ mod handlers {
     mod term_search;
     mod toggle_async_sugar;
     mod toggle_ignore;
+    mod toggle_macro_delimiter;
     mod unmerge_match_arm;
     mod unmerge_use;
     mod unnecessary_async;
@@ -245,6 +247,7 @@ mod handlers {
             toggle_async_sugar::sugar_impl_future_into_async,
             convert_comment_block::convert_comment_block,
             convert_comment_from_or_to_doc::convert_comment_from_or_to_doc,
+            convert_closure_to_fn::convert_closure_to_fn,
             convert_from_to_tryfrom::convert_from_to_tryfrom,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
@@ -343,6 +346,7 @@ mod handlers {
             split_import::split_import,
             term_search::term_search,
             toggle_ignore::toggle_ignore,
+            toggle_macro_delimiter::toggle_macro_delimiter,
             unmerge_match_arm::unmerge_match_arm,
             unmerge_use::unmerge_use,
             unnecessary_async::unnecessary_async,

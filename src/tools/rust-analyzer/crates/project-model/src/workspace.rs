@@ -69,6 +69,8 @@ pub enum ProjectWorkspaceKind {
     Cargo {
         /// The workspace as returned by `cargo metadata`.
         cargo: CargoWorkspace,
+        /// Additional `cargo metadata` error. (only populated if retried fetching via `--no-deps` succeeded).
+        error: Option<Arc<anyhow::Error>>,
         /// The build script results for the workspace.
         build_scripts: WorkspaceBuildScripts,
         /// The rustc workspace loaded for this workspace. An `Err(None)` means loading has been
@@ -93,7 +95,7 @@ pub enum ProjectWorkspaceKind {
         /// The file in question.
         file: ManifestPath,
         /// Is this file a cargo script file?
-        cargo: Option<(CargoWorkspace, WorkspaceBuildScripts)>,
+        cargo: Option<(CargoWorkspace, WorkspaceBuildScripts, Option<Arc<anyhow::Error>>)>,
         /// Environment variables set in the `.cargo/config` file.
         cargo_config_extra_env: FxHashMap<String, String>,
     },
@@ -106,6 +108,7 @@ impl fmt::Debug for ProjectWorkspace {
         match kind {
             ProjectWorkspaceKind::Cargo {
                 cargo,
+                error: _,
                 build_scripts: _,
                 rustc,
                 cargo_config_extra_env,
@@ -256,7 +259,7 @@ impl ProjectWorkspace {
                         false,
                         progress,
                     ) {
-                        Ok(meta) => {
+                        Ok((meta, _error)) => {
                             let workspace = CargoWorkspace::new(meta, cargo_toml.clone());
                             let buildscripts = WorkspaceBuildScripts::rustc_crates(
                                 &workspace,
@@ -301,7 +304,7 @@ impl ProjectWorkspace {
                     tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace");
                 }
 
-                let meta = CargoWorkspace::fetch_metadata(
+                let (meta, error) = CargoWorkspace::fetch_metadata(
                     cargo_toml,
                     cargo_toml.parent(),
                     config,
@@ -324,6 +327,7 @@ impl ProjectWorkspace {
                         build_scripts: WorkspaceBuildScripts::default(),
                         rustc,
                         cargo_config_extra_env,
+                        error: error.map(Arc::new),
                     },
                     sysroot,
                     rustc_cfg,
@@ -404,10 +408,11 @@ impl ProjectWorkspace {
         let cargo_script =
             CargoWorkspace::fetch_metadata(detached_file, dir, config, &sysroot, false, &|_| ())
                 .ok()
-                .map(|ws| {
+                .map(|(ws, error)| {
                     (
                         CargoWorkspace::new(ws, detached_file.clone()),
                         WorkspaceBuildScripts::default(),
+                        error.map(Arc::new),
                     )
                 });
 
@@ -440,15 +445,14 @@ impl ProjectWorkspace {
         progress: &dyn Fn(String),
     ) -> anyhow::Result<WorkspaceBuildScripts> {
         match &self.kind {
-            ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. }
-            | ProjectWorkspaceKind::Cargo { cargo, .. } => {
+            ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, None)), .. }
+            | ProjectWorkspaceKind::Cargo { cargo, error: None, .. } => {
                 WorkspaceBuildScripts::run_for_workspace(config, cargo, progress, &self.sysroot)
                     .with_context(|| {
                         format!("Failed to run build scripts for {}", cargo.workspace_root())
                     })
             }
-            ProjectWorkspaceKind::DetachedFile { cargo: None, .. }
-            | ProjectWorkspaceKind::Json { .. } => Ok(WorkspaceBuildScripts::default()),
+            _ => Ok(WorkspaceBuildScripts::default()),
         }
     }
 
@@ -458,7 +462,7 @@ impl ProjectWorkspace {
         workspaces: &[ProjectWorkspace],
         config: &CargoConfig,
         progress: &dyn Fn(String),
-        workspace_root: &AbsPathBuf,
+        working_directory: &AbsPathBuf,
     ) -> Vec<anyhow::Result<WorkspaceBuildScripts>> {
         if matches!(config.invocation_strategy, InvocationStrategy::PerWorkspace)
             || config.run_build_script_command.is_none()
@@ -473,13 +477,16 @@ impl ProjectWorkspace {
                 _ => None,
             })
             .collect();
-        let outputs =
-            &mut match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress, workspace_root)
-            {
-                Ok(it) => Ok(it.into_iter()),
-                // io::Error is not Clone?
-                Err(e) => Err(sync::Arc::new(e)),
-            };
+        let outputs = &mut match WorkspaceBuildScripts::run_once(
+            config,
+            &cargo_ws,
+            progress,
+            working_directory,
+        ) {
+            Ok(it) => Ok(it.into_iter()),
+            // io::Error is not Clone?
+            Err(e) => Err(sync::Arc::new(e)),
+        };
 
         workspaces
             .iter()
@@ -498,7 +505,7 @@ impl ProjectWorkspace {
     pub fn set_build_scripts(&mut self, bs: WorkspaceBuildScripts) {
         match &mut self.kind {
             ProjectWorkspaceKind::Cargo { build_scripts, .. }
-            | ProjectWorkspaceKind::DetachedFile { cargo: Some((_, build_scripts)), .. } => {
+            | ProjectWorkspaceKind::DetachedFile { cargo: Some((_, build_scripts, _)), .. } => {
                 *build_scripts = bs
             }
             _ => assert_eq!(bs, WorkspaceBuildScripts::default()),
@@ -589,6 +596,7 @@ impl ProjectWorkspace {
                 rustc,
                 build_scripts,
                 cargo_config_extra_env: _,
+                error: _,
             } => {
                 cargo
                     .packages()
@@ -644,7 +652,7 @@ impl ProjectWorkspace {
                     include: vec![file.to_path_buf()],
                     exclude: Vec::new(),
                 })
-                .chain(cargo_script.iter().flat_map(|(cargo, build_scripts)| {
+                .chain(cargo_script.iter().flat_map(|(cargo, build_scripts, _)| {
                     cargo.packages().map(|pkg| {
                         let is_local = cargo[pkg].is_local;
                         let pkg_root = cargo[pkg].manifest.parent().to_path_buf();
@@ -699,7 +707,7 @@ impl ProjectWorkspace {
             }
             ProjectWorkspaceKind::DetachedFile { cargo: cargo_script, .. } => {
                 sysroot_package_len
-                    + cargo_script.as_ref().map_or(1, |(cargo, _)| cargo.packages().len())
+                    + cargo_script.as_ref().map_or(1, |(cargo, _, _)| cargo.packages().len())
             }
         }
     }
@@ -729,6 +737,7 @@ impl ProjectWorkspace {
                 rustc,
                 build_scripts,
                 cargo_config_extra_env: _,
+                error: _,
             } => (
                 cargo_to_crate_graph(
                     load,
@@ -742,7 +751,7 @@ impl ProjectWorkspace {
                 sysroot,
             ),
             ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, .. } => (
-                if let Some((cargo, build_scripts)) = cargo_script {
+                if let Some((cargo, build_scripts, _)) = cargo_script {
                     cargo_to_crate_graph(
                         &mut |path| load(path),
                         None,
@@ -791,12 +800,14 @@ impl ProjectWorkspace {
                     rustc,
                     cargo_config_extra_env,
                     build_scripts: _,
+                    error: _,
                 },
                 ProjectWorkspaceKind::Cargo {
                     cargo: o_cargo,
                     rustc: o_rustc,
                     cargo_config_extra_env: o_cargo_config_extra_env,
                     build_scripts: _,
+                    error: _,
                 },
             ) => {
                 cargo == o_cargo
@@ -809,12 +820,12 @@ impl ProjectWorkspace {
             (
                 ProjectWorkspaceKind::DetachedFile {
                     file,
-                    cargo: Some((cargo_script, _)),
+                    cargo: Some((cargo_script, _, _)),
                     cargo_config_extra_env,
                 },
                 ProjectWorkspaceKind::DetachedFile {
                     file: o_file,
-                    cargo: Some((o_cargo_script, _)),
+                    cargo: Some((o_cargo_script, _, _)),
                     cargo_config_extra_env: o_cargo_config_extra_env,
                 },
             ) => {
@@ -1016,6 +1027,7 @@ fn cargo_to_crate_graph(
             let crate_id = add_target_crate_root(
                 crate_graph,
                 proc_macros,
+                cargo,
                 pkg_data,
                 build_data,
                 cfg_options.clone(),
@@ -1235,6 +1247,7 @@ fn handle_rustc_crates(
                     let crate_id = add_target_crate_root(
                         crate_graph,
                         proc_macros,
+                        rustc_workspace,
                         &rustc_workspace[pkg],
                         build_scripts.get_output(pkg),
                         cfg_options.clone(),
@@ -1294,6 +1307,7 @@ fn handle_rustc_crates(
 fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
     proc_macros: &mut ProcMacroPaths,
+    cargo: &CargoWorkspace,
     pkg: &PackageData,
     build_data: Option<&BuildScriptOutput>,
     cfg_options: CfgOptions,
@@ -1327,7 +1341,7 @@ fn add_target_crate_root(
     let mut env = Env::default();
     inject_cargo_package_env(&mut env, pkg);
     inject_cargo_env(&mut env);
-    inject_rustc_tool_env(&mut env, cargo_name, kind);
+    inject_rustc_tool_env(&mut env, cargo, cargo_name, kind);
 
     if let Some(envs) = build_data.map(|it| &it.envs) {
         for (k, v) in envs {

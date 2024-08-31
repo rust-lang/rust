@@ -23,7 +23,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::FileId;
+use span::{Edition, FileId};
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -358,6 +358,7 @@ impl MirEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
+        edition: Edition,
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
@@ -370,7 +371,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast()),
+                            function_name.name.display(db.upcast(), edition),
                             func
                         )?;
                     }
@@ -415,7 +416,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db).with_closure_style(ClosureStyle::ClosureWithId)
+                    ty.display(db, edition).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -423,16 +424,17 @@ impl MirEvalError {
                 writeln!(
                     f,
                     "MIR lowering for function `{}` ({:?}) failed due:",
-                    function_name.name.display(db.upcast()),
+                    function_name.name.display(db.upcast(), edition),
                     func
                 )?;
-                err.pretty_print(f, db, span_formatter)?;
+                err.pretty_print(f, db, span_formatter, edition)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
                 MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
+                    edition,
                 )?;
             }
             MirEvalError::UndefinedBehavior(_)
@@ -1516,9 +1518,97 @@ impl Evaluator<'_> {
                         self.size_of_sized(target_ty, locals, "destination of int to int cast")?;
                     Owned(current[0..dest_size].to_vec())
                 }
-                CastKind::FloatToInt => not_supported!("float to int cast"),
-                CastKind::FloatToFloat => not_supported!("float to float cast"),
-                CastKind::IntToFloat => not_supported!("float to int cast"),
+                CastKind::FloatToInt => {
+                    let ty = self.operand_ty(operand, locals)?;
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(ty)) = ty.kind(Interner) else {
+                        not_supported!("invalid float to int cast");
+                    };
+                    let value = self.eval_operand(operand, locals)?.get(self)?;
+                    let value = match ty {
+                        chalk_ir::FloatTy::F32 => {
+                            let value = value.try_into().unwrap();
+                            f32::from_le_bytes(value) as f64
+                        }
+                        chalk_ir::FloatTy::F64 => {
+                            let value = value.try_into().unwrap();
+                            f64::from_le_bytes(value)
+                        }
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    };
+                    let is_signed = matches!(
+                        target_ty.kind(Interner),
+                        TyKind::Scalar(chalk_ir::Scalar::Int(_))
+                    );
+                    let dest_size =
+                        self.size_of_sized(target_ty, locals, "destination of float to int cast")?;
+                    let dest_bits = dest_size * 8;
+                    let (max, min) = if dest_bits == 128 {
+                        (i128::MAX, i128::MIN)
+                    } else if is_signed {
+                        let max = 1i128 << (dest_bits - 1);
+                        (max - 1, -max)
+                    } else {
+                        (1i128 << dest_bits, 0)
+                    };
+                    let value = (value as i128).min(max).max(min);
+                    let result = value.to_le_bytes();
+                    Owned(result[0..dest_size].to_vec())
+                }
+                CastKind::FloatToFloat => {
+                    let ty = self.operand_ty(operand, locals)?;
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(ty)) = ty.kind(Interner) else {
+                        not_supported!("invalid float to int cast");
+                    };
+                    let value = self.eval_operand(operand, locals)?.get(self)?;
+                    let value = match ty {
+                        chalk_ir::FloatTy::F32 => {
+                            let value = value.try_into().unwrap();
+                            f32::from_le_bytes(value) as f64
+                        }
+                        chalk_ir::FloatTy::F64 => {
+                            let value = value.try_into().unwrap();
+                            f64::from_le_bytes(value)
+                        }
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    };
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(target_ty)) =
+                        target_ty.kind(Interner)
+                    else {
+                        not_supported!("invalid float to float cast");
+                    };
+                    match target_ty {
+                        chalk_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    }
+                }
+                CastKind::IntToFloat => {
+                    let current_ty = self.operand_ty(operand, locals)?;
+                    let is_signed = matches!(
+                        current_ty.kind(Interner),
+                        TyKind::Scalar(chalk_ir::Scalar::Int(_))
+                    );
+                    let value = pad16(self.eval_operand(operand, locals)?.get(self)?, is_signed);
+                    let value = i128::from_le_bytes(value);
+                    let TyKind::Scalar(chalk_ir::Scalar::Float(target_ty)) =
+                        target_ty.kind(Interner)
+                    else {
+                        not_supported!("invalid int to float cast");
+                    };
+                    match target_ty {
+                        chalk_ir::FloatTy::F32 => Owned((value as f32).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F64 => Owned((value as f64).to_le_bytes().to_vec()),
+                        chalk_ir::FloatTy::F16 | chalk_ir::FloatTy::F128 => {
+                            not_supported!("unstable floating point type f16 and f128");
+                        }
+                    }
+                }
                 CastKind::FnPtrToPtr => not_supported!("fn ptr to ptr cast"),
             },
         })
@@ -2675,10 +2765,11 @@ impl Evaluator<'_> {
                 let db = self.db.upcast();
                 let loc = variant.lookup(db);
                 let enum_loc = loc.parent.lookup(db);
+                let edition = self.db.crate_graph()[self.crate_id].edition;
                 let name = format!(
                     "{}::{}",
-                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast()),
-                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast()),
+                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),
+                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast(), edition),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }

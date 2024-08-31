@@ -40,8 +40,12 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         DiagnosticCode::RustcHardError("E0308"),
         format!(
             "expected {}, found {}",
-            d.expected.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
-            d.actual.display(ctx.sema.db).with_closure_style(ClosureStyle::ClosureWithId),
+            d.expected
+                .display(ctx.sema.db, ctx.edition)
+                .with_closure_style(ClosureStyle::ClosureWithId),
+            d.actual
+                .display(ctx.sema.db, ctx.edition)
+                .with_closure_style(ClosureStyle::ClosureWithId),
         ),
         display_range,
     )
@@ -199,8 +203,8 @@ fn str_ref_to_owned(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let expected = d.expected.display(ctx.sema.db);
-    let actual = d.actual.display(ctx.sema.db);
+    let expected = d.expected.display(ctx.sema.db, ctx.edition);
+    let actual = d.actual.display(ctx.sema.db, ctx.edition);
 
     // FIXME do this properly
     if expected.to_string() != "String" || actual.to_string() != "&str" {
