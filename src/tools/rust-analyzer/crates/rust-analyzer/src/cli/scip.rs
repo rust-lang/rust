@@ -51,7 +51,7 @@ impl flags::Scip {
             // FIXME @alibektas : What happens to errors without logging?
             error!(?error_sink, "Config Error(s)");
         }
-        let cargo_config = config.cargo();
+        let cargo_config = config.cargo(None);
         let (db, vfs, _) = load_workspace_at(
             root.as_path().as_ref(),
             &cargo_config,
