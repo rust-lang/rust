@@ -25,6 +25,7 @@ use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_reg
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
+use tracing::{debug, instrument, trace};
 
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;

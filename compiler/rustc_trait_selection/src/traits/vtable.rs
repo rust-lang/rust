@@ -10,6 +10,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{sym, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 use crate::errors::DumpVTableEntries;
 use crate::traits::{impossible_predicates, is_vtable_safe_method};

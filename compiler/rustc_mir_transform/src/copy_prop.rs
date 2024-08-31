@@ -3,6 +3,7 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use tracing::{debug, instrument};
 
 use crate::ssa::SsaLocals;
 

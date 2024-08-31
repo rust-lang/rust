@@ -12,6 +12,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
 

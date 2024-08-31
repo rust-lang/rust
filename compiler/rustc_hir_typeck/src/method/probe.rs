@@ -36,6 +36,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, instrument};
 
 use self::CandidateKind::*;
 pub(crate) use self::PickKind::*;

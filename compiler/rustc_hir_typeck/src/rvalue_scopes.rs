@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::middle::region::{RvalueCandidateType, Scope, ScopeTree};
 use rustc_middle::ty::RvalueScopes;
+use tracing::debug;
 
 use super::FnCtxt;
 

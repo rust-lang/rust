@@ -7,6 +7,7 @@
 
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty;
+use tracing::debug;
 
 use super::constraints::*;
 use super::terms::VarianceTerm::*;

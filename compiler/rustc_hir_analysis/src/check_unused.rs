@@ -4,6 +4,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
+use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_unused_traits, ..*providers };

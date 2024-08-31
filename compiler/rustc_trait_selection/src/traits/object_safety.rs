@@ -24,6 +24,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::abi::Abi;
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use super::elaborate;
 use crate::infer::TyCtxtInferExt;

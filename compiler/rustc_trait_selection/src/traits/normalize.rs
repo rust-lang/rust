@@ -11,6 +11,7 @@ use rustc_middle::traits::{ObligationCause, ObligationCauseCode, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt,
 };
+use tracing::{debug, instrument};
 
 use super::{
     project, with_replaced_escaping_bound_vars, BoundVarReplacer, PlaceholderReplacer,

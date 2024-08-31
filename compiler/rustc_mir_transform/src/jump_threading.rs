@@ -51,6 +51,7 @@ use rustc_mir_dataflow::lattice::HasBottom;
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{TagEncoding, Variants};
+use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;
 

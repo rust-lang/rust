@@ -44,6 +44,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::{errors, type_error_struct};

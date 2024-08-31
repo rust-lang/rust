@@ -13,6 +13,7 @@ use rustc_middle::infer::unify_key::{RegionVariableValue, RegionVidKey};
 use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use self::CombineMapType::*;
 use self::UndoLog::*;

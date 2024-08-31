@@ -20,6 +20,7 @@ use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
+use tracing::debug;
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::util::FindAssignments;

@@ -19,6 +19,7 @@ use rustc_span::source_map::respan;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 use super::{local_decls_for_sig, new_body};
 

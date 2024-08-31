@@ -38,6 +38,7 @@ use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotatio
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
+use tracing::{debug, instrument};
 
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};

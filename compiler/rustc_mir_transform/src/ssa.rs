@@ -14,6 +14,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
+use tracing::{debug, instrument, trace};
 
 pub struct SsaLocals {
     /// Assignments to each local. This defines whether the local is SSA.

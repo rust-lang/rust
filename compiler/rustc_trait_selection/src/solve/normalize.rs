@@ -11,6 +11,7 @@ use rustc_middle::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt, UniverseIndex,
 };
+use tracing::instrument;
 
 use super::{FulfillmentCtxt, NextSolverError};
 use crate::error_reporting::traits::OverflowCause;

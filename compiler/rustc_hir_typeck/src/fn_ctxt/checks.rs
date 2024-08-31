@@ -26,6 +26,7 @@ use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
+use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::coercion::CoerceMany;
