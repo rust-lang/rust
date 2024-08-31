@@ -1,7 +1,7 @@
 use crate::abi::Endian;
 use crate::spec::{base, SanitizerSet, StackProbeType, Target};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.endian = Endian::Big;
     // z10 is the oldest CPU supported by LLVM

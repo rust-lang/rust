@@ -23,16 +23,16 @@ use crate::cfi::typeid::itanium_cxx_abi::encode::EncodeTyOptions;
 use crate::cfi::typeid::TypeIdOptions;
 
 /// Options for transform_ty.
-pub type TransformTyOptions = TypeIdOptions;
+pub(crate) type TransformTyOptions = TypeIdOptions;
 
-pub struct TransformTy<'tcx> {
+pub(crate) struct TransformTy<'tcx> {
     tcx: TyCtxt<'tcx>,
     options: TransformTyOptions,
     parents: Vec<Ty<'tcx>>,
 }
 
 impl<'tcx> TransformTy<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, options: TransformTyOptions) -> Self {
         TransformTy { tcx, options, parents: Vec::new() }
     }
 }

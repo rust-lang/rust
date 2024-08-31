@@ -12,7 +12,7 @@ mod tests;
 use Arch::*;
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, PartialEq)]
-pub enum Arch {
+pub(crate) enum Arch {
     Armv7k,
     Armv7s,
     Arm64,
@@ -25,7 +25,7 @@ pub enum Arch {
 }
 
 impl Arch {
-    pub fn target_name(self) -> &'static str {
+    fn target_name(self) -> &'static str {
         match self {
             Armv7k => "armv7k",
             Armv7s => "armv7s",
@@ -39,7 +39,7 @@ impl Arch {
         }
     }
 
-    pub fn target_arch(self) -> Cow<'static, str> {
+    pub(crate) fn target_arch(self) -> Cow<'static, str> {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
             Arm64 | Arm64e | Arm64_32 => "aarch64",
@@ -80,7 +80,7 @@ impl Arch {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum TargetAbi {
+pub(crate) enum TargetAbi {
     Normal,
     Simulator,
     MacCatalyst,
@@ -142,7 +142,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: TargetAbi) -> LinkArgs {
     args
 }
 
-pub fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
+pub(crate) fn opts(os: &'static str, arch: Arch, abi: TargetAbi) -> TargetOptions {
     TargetOptions {
         abi: abi.target_abi().into(),
         os: os.into(),
@@ -279,7 +279,7 @@ fn macos_deployment_target(arch: Arch) -> (u32, u32) {
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
-pub fn macos_llvm_target(arch: Arch) -> String {
+pub(crate) fn macos_llvm_target(arch: Arch) -> String {
     let (major, minor) = macos_deployment_target(arch);
     format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
 }
@@ -333,7 +333,7 @@ fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
     from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
 }
 
-pub fn ios_llvm_target(arch: Arch) -> String {
+pub(crate) fn ios_llvm_target(arch: Arch) -> String {
     // Modern iOS tooling extracts information about deployment target
     // from LC_BUILD_VERSION. This load command will only be emitted when
     // we build with a version specific `llvm_target`, with the version
@@ -344,12 +344,12 @@ pub fn ios_llvm_target(arch: Arch) -> String {
     format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
 }
 
-pub fn mac_catalyst_llvm_target(arch: Arch) -> String {
+pub(crate) fn mac_catalyst_llvm_target(arch: Arch) -> String {
     let (major, minor) = ios_deployment_target(arch, "macabi");
     format!("{}-apple-ios{}.{}.0-macabi", arch.target_name(), major, minor)
 }
 
-pub fn ios_sim_llvm_target(arch: Arch) -> String {
+pub(crate) fn ios_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = ios_deployment_target(arch, "sim");
     format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
 }
@@ -360,12 +360,12 @@ fn tvos_deployment_target() -> (u32, u32) {
     from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
 }
 
-pub fn tvos_llvm_target(arch: Arch) -> String {
+pub(crate) fn tvos_llvm_target(arch: Arch) -> String {
     let (major, minor) = tvos_deployment_target();
     format!("{}-apple-tvos{}.{}.0", arch.target_name(), major, minor)
 }
 
-pub fn tvos_sim_llvm_target(arch: Arch) -> String {
+pub(crate) fn tvos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = tvos_deployment_target();
     format!("{}-apple-tvos{}.{}.0-simulator", arch.target_name(), major, minor)
 }
@@ -376,12 +376,12 @@ fn watchos_deployment_target() -> (u32, u32) {
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 
-pub fn watchos_llvm_target(arch: Arch) -> String {
+pub(crate) fn watchos_llvm_target(arch: Arch) -> String {
     let (major, minor) = watchos_deployment_target();
     format!("{}-apple-watchos{}.{}.0", arch.target_name(), major, minor)
 }
 
-pub fn watchos_sim_llvm_target(arch: Arch) -> String {
+pub(crate) fn watchos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = watchos_deployment_target();
     format!("{}-apple-watchos{}.{}.0-simulator", arch.target_name(), major, minor)
 }
@@ -392,12 +392,12 @@ fn visionos_deployment_target() -> (u32, u32) {
     from_set_deployment_target("XROS_DEPLOYMENT_TARGET").unwrap_or((1, 0))
 }
 
-pub fn visionos_llvm_target(arch: Arch) -> String {
+pub(crate) fn visionos_llvm_target(arch: Arch) -> String {
     let (major, minor) = visionos_deployment_target();
     format!("{}-apple-visionos{}.{}.0", arch.target_name(), major, minor)
 }
 
-pub fn visionos_sim_llvm_target(arch: Arch) -> String {
+pub(crate) fn visionos_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = visionos_deployment_target();
     format!("{}-apple-visionos{}.{}.0-simulator", arch.target_name(), major, minor)
 }

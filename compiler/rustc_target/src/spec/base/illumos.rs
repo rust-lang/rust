@@ -1,6 +1,6 @@
 use crate::spec::{cvs, Cc, FramePointer, LinkerFlavor, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let late_link_args = TargetOptions::link_args(
         LinkerFlavor::Unix(Cc::Yes),
         &[

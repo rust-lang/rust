@@ -366,13 +366,13 @@ where
     }
 }
 
-pub enum Quantifier {
+enum Quantifier {
     ThereExists,
     ForAll,
 }
 
 impl Quantifier {
-    pub fn apply<R, I>(&self, iter: I) -> Answer<R>
+    fn apply<R, I>(&self, iter: I) -> Answer<R>
     where
         R: layout::Ref,
         I: IntoIterator<Item = Answer<R>>,

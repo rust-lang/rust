@@ -1,6 +1,6 @@
 use crate::spec::{PanicStrategy, Target, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "hexagon-unknown-none-elf".into(),
         metadata: crate::spec::TargetMetadata {
