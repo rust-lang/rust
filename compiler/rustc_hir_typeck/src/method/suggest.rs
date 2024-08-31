@@ -37,6 +37,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::{
     supertraits, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
 };
+use tracing::{debug, info, instrument};
 
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};

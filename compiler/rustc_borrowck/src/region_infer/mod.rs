@@ -21,6 +21,7 @@ use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
+use tracing::{debug, instrument, trace};
 
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};

@@ -28,6 +28,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
+use tracing::{debug, instrument};
 
 use super::potentially_plural_count;
 use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};

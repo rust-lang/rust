@@ -13,6 +13,7 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::ScrubbedTraitError;
+use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;
 use crate::region_infer::TypeTest;

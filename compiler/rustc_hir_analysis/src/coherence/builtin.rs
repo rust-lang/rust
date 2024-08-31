@@ -23,6 +23,7 @@ use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use tracing::debug;
 
 use crate::errors;
 

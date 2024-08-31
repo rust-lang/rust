@@ -13,6 +13,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Binder, Const, GenericArgsRef, TypeVisitableExt};
+use tracing::{debug, debug_span, instrument};
 
 use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;

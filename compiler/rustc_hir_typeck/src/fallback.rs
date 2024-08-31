@@ -14,6 +14,7 @@ use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
+use tracing::debug;
 
 use crate::{errors, FnCtxt, TypeckRootCtxt};
 

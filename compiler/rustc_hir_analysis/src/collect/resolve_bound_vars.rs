@@ -24,6 +24,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use tracing::{debug, debug_span, instrument};
 
 use crate::errors;
 

@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_type_ir::Upcast;
+use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
 

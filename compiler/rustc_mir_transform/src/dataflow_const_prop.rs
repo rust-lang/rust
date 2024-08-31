@@ -19,6 +19,7 @@ use rustc_mir_dataflow::value_analysis::{
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
+use tracing::{debug, debug_span, instrument};
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).

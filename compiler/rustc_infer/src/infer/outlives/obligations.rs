@@ -70,6 +70,7 @@ use rustc_middle::ty::{
 use rustc_span::DUMMY_SP;
 use rustc_type_ir::outlives::{push_outlives_components, Component};
 use smallvec::smallvec;
+use tracing::{debug, instrument};
 
 use super::env::OutlivesEnvironment;
 use crate::infer::outlives::env::RegionBoundPairs;

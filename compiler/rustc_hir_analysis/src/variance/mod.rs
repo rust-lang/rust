@@ -12,6 +12,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
 };
+use tracing::{debug, instrument};
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.

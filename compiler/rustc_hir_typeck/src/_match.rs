@@ -8,6 +8,7 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
+use tracing::{debug, instrument};
 
 use crate::coercion::{AsCoercionSite, CoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, Needs};

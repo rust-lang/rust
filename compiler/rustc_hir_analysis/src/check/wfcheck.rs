@@ -36,6 +36,7 @@ use rustc_trait_selection::traits::{
 };
 use rustc_type_ir::solve::NoSolution;
 use rustc_type_ir::TypeFlags;
+use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::autoderef::Autoderef;

@@ -12,6 +12,7 @@ use rustc_span::symbol::kw::{Empty, Underscore};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::debug;
 
 use crate::method::probe::{self, Pick};
 use crate::FnCtxt;

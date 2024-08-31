@@ -144,6 +144,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
 use rustc_mir_dataflow::points::{save_as_intervals, DenseLocationMap, PointIndex};
 use rustc_mir_dataflow::Analysis;
+use tracing::{debug, trace};
 
 use crate::MirPass;
 

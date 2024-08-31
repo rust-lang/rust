@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{ErrorGuaranteed, Symbol};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
+use tracing::debug;
 
 pub(crate) fn crate_inherent_impls_overlap_check(
     tcx: TyCtxt<'_>,

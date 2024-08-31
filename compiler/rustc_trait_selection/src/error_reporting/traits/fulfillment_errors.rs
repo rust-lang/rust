@@ -28,6 +28,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;

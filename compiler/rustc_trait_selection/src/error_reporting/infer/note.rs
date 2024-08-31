@@ -4,6 +4,7 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
 use rustc_span::symbol::kw;
+use tracing::debug;
 
 use super::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::{note_and_explain_region, TypeErrCtxt};

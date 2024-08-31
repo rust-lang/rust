@@ -18,6 +18,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::print::{with_no_trimmed_paths, PrintTraitRefExt as _};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
+use tracing::{info, instrument};
 
 pub use self::overflow::*;
 use crate::error_reporting::TypeErrCtxt;

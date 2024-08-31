@@ -10,6 +10,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
+use tracing::debug;
 
 /// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
 /// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s.

@@ -6,6 +6,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::FFI_UNWIND_CALLS;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 use crate::errors;
 
