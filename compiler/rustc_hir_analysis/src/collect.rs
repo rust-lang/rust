@@ -420,7 +420,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         span: Span,
         def_id: LocalDefId,
         assoc_name: Ident,
-    ) -> ty::GenericPredicates<'tcx> {
+    ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
     }
 
