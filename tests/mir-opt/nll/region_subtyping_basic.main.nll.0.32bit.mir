@@ -20,6 +20,9 @@
 | '?2: '?3 due to Assignment at Single(bb1[0]) ($DIR/region_subtyping_basic.rs:19:13: 19:18 (#0)
 | '?3: '?4 due to Assignment at Single(bb1[3]) ($DIR/region_subtyping_basic.rs:20:13: 20:14 (#0)
 |
+| Borrows
+| bw0: issued at bb1[0] in '?2
+|
 fn main() -> () {
     let mut _0: ();
     let mut _1: [usize; ValTree(Leaf(0x00000003): usize)];
