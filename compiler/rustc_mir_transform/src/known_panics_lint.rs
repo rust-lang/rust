@@ -469,12 +469,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         msg: &AssertKind<Operand<'tcx>>,
         cond: &Operand<'tcx>,
         location: Location,
-    ) -> Option<!> {
-        let value = &self.eval_operand(cond)?;
+    ) {
+        let Some(value) = &self.eval_operand(cond) else { return };
         trace!("assertion on {:?} should be {:?}", value, expected);
 
         let expected = Scalar::from_bool(expected);
-        let value_const = self.use_ecx(|this| this.ecx.read_scalar(value))?;
+        let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value)) else { return };
 
         if expected != value_const {
             // Poison all places this operand references so that further code
@@ -516,14 +516,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     AssertKind::BoundsCheck { len, index }
                 }
                 // Remaining overflow errors are already covered by checks on the binary operators.
-                AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => return None,
+                AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => return,
                 // Need proper const propagator for these.
-                _ => return None,
+                _ => return,
             };
             self.report_assert_as_lint(location, AssertLintKind::UnconditionalPanic, msg);
         }
-
-        None
     }
 
     fn ensure_not_propagated(&self, local: Local) {

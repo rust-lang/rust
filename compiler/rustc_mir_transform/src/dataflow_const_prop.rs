@@ -382,7 +382,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         place: PlaceIndex,
         mut operand: OpTy<'tcx>,
         projection: &[PlaceElem<'tcx>],
-    ) -> Option<!> {
+    ) {
         for &(mut proj_elem) in projection {
             if let PlaceElem::Index(index) = proj_elem {
                 if let FlatSet::Elem(index) = state.get(index.into(), &self.map)
@@ -391,10 +391,14 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 {
                     proj_elem = PlaceElem::ConstantIndex { offset, min_length, from_end: false };
                 } else {
-                    return None;
+                    return;
                 }
             }
-            operand = self.ecx.project(&operand, proj_elem).ok()?;
+            operand = if let Ok(operand) = self.ecx.project(&operand, proj_elem) {
+                operand
+            } else {
+                return;
+            }
         }
 
         self.map.for_each_projection_value(
@@ -426,8 +430,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             },
         );
-
-        None
     }
 
     fn binary_op(
