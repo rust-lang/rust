@@ -745,8 +745,24 @@ ul.block, .block li {
 	margin-bottom: 10px;
 }
 
-.rustdoc .example-wrap > pre {
+.rustdoc .example-wrap > pre,
+.rustdoc .scraped-example .src-line-numbers {
 	border-radius: 6px;
+}
+
+/*
+If the code example line numbers are displayed, there will be a weird radius in the middle from
+both the code example and the line numbers, so we need to remove the radius in this case.
+*/
+.rustdoc .example-wrap > .example-line-numbers,
+.rustdoc .scraped-example .src-line-numbers {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.rustdoc .example-wrap > .example-line-numbers + pre,
+.rustdoc .scraped-example .rust {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 /* For the last child of a div, the margin will be taken care of
