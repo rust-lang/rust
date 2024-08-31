@@ -207,6 +207,7 @@ mod manual_div_ceil;
 mod manual_float_methods;
 mod manual_hash_one;
 mod manual_is_ascii_check;
+mod manual_is_power_of_two;
 mod manual_let_else;
 mod manual_main_separator_str;
 mod manual_non_exhaustive;
@@ -938,5 +939,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(zombie_processes::ZombieProcesses));
     store.register_late_pass(|_| Box::new(pointers_in_nomem_asm_block::PointersInNomemAsmBlock));
     store.register_late_pass(move |_| Box::new(manual_div_ceil::ManualDivCeil::new(conf)));
+    store.register_late_pass(|_| Box::new(manual_is_power_of_two::ManualIsPowerOfTwo));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
