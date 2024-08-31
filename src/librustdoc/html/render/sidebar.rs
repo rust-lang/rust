@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefIdSet;
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::debug;
 
 use super::{item_ty_to_section, Context, ItemSection};
 use crate::clean;

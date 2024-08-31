@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_middle::ty;
 use rustc_span::symbol::sym;
+use tracing::debug;
 
 use super::Pass;
 use crate::clean::*;

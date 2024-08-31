@@ -15,6 +15,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::VariantIdx;
+use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
 use super::{
