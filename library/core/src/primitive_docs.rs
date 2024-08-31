@@ -1127,7 +1127,7 @@ impl<T> (T,) {}
 
 #[rustc_doc_primitive = "f16"]
 #[doc(alias = "half")]
-/// A 16-bit floating point type (specifically, the "binary16" type defined in IEEE 754-2008).
+/// A 16-bit floating-point type (specifically, the "binary16" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] but has decreased precision because it uses half as many
 /// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on half-precision
@@ -1147,11 +1147,11 @@ mod prim_f16 {}
 
 #[rustc_doc_primitive = "f32"]
 #[doc(alias = "single")]
-/// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
+/// A 32-bit floating-point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
 /// `-113.75`, `0.0078125`, `34359738368`, `0`, `-1`. So unlike integer types
-/// (such as `i32`), floating point types can represent non-integer numbers,
+/// (such as `i32`), floating-point types can represent non-integer numbers,
 /// too.
 ///
 /// However, being able to represent this wide range of numbers comes at the
@@ -1165,8 +1165,8 @@ mod prim_f16 {}
 ///
 /// Additionally, `f32` can represent some special values:
 ///
-/// - −0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so −0.0 is a
-///   possible value. For comparison −0.0 = +0.0, but floating point operations can carry
+/// - −0.0: IEEE 754 floating-point numbers have a bit that indicates their sign, so −0.0 is a
+///   possible value. For comparison −0.0 = +0.0, but floating-point operations can carry
 ///   the sign bit through arithmetic operations. This means −0.0 × +0.0 produces −0.0 and
 ///   a negative number rounded to a value smaller than a float can represent also produces −0.0.
 /// - [∞](#associatedconstant.INFINITY) and
@@ -1211,7 +1211,7 @@ mod prim_f16 {}
 ///   both arguments were negative, then it is -0.0. Subtraction `a - b` is
 ///   regarded as a sum `a + (-b)`.
 ///
-/// For more information on floating point numbers, see [Wikipedia][wikipedia].
+/// For more information on floating-point numbers, see [Wikipedia][wikipedia].
 ///
 /// *[See also the `std::f32::consts` module](crate::f32::consts).*
 ///
@@ -1219,39 +1219,43 @@ mod prim_f16 {}
 ///
 /// # NaN bit patterns
 ///
-/// This section defines the possible NaN bit patterns returned by non-"bitwise" floating point
-/// operations. The bitwise operations are unary `-`, `abs`, `copysign`; those are guaranteed to
-/// exactly preserve the bit pattern of their input except for possibly changing the sign bit.
+/// This section defines the possible NaN bit patterns returned by floating-point operations.
 ///
-/// A floating-point NaN value consists of:
-/// - a sign bit
-/// - a quiet/signaling bit
+/// The bit pattern of a floating-point NaN value is defined by:
+/// - a sign bit.
+/// - a quiet/signaling bit. Rust assumes that the quiet/signaling bit being set to `1` indicates a
+///   quiet NaN (QNaN), and a value of `0` indicates a signaling NaN (SNaN). In the following we
+///   will hence just call it the "quiet bit".
 /// - a payload, which makes up the rest of the significand (i.e., the mantissa) except for the
-///   quiet/signaling bit.
+///   quiet bit.
 ///
-/// Rust assumes that the quiet/signaling bit being set to `1` indicates a quiet NaN (QNaN), and a
-/// value of `0` indicates a signaling NaN (SNaN). In the following we will hence just call it the
-/// "quiet bit".
+/// The rules for NaN values differ between *arithmetic* and *non-arithmetic* (or "bitwise")
+/// operations. The non-arithmetic operations are unary `-`, `abs`, `copysign`, `signum`,
+/// `{to,from}_bits`, `{to,from}_{be,le,ne}_bytes` and `is_sign_{positive,negative}`. These
+/// operations are guaranteed to exactly preserve the bit pattern of their input except for possibly
+/// changing the sign bit.
 ///
-/// The following rules apply when a NaN value is returned: the result has a non-deterministic sign.
-/// The quiet bit and payload are non-deterministically chosen from the following set of options:
+/// The following rules apply when a NaN value is returned from an arithmetic operation:
+/// - The result has a non-deterministic sign.
+/// - The quiet bit and payload are non-deterministically chosen from
+///   the following set of options:
 ///
-/// - **Preferred NaN**: The quiet bit is set and the payload is all-zero.
-/// - **Quieting NaN propagation**: The quiet bit is set and the payload is copied from any input
-///   operand that is a NaN. If the inputs and outputs do not have the same payload size (i.e., for
-///   `as` casts), then
-///   - If the output is smaller than the input, low-order bits of the payload get dropped.
-///   - If the output is larger than the input, the payload gets filled up with 0s in the low-order
-///     bits.
-/// - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
-///   that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
-///   same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
-///   than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
-///   possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
-///   propagation cannot occur with some inputs.
-/// - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
-///   set of "extra" possible NaN payloads. The set can depend on the input operand values.
-///   See the table below for the concrete NaNs this set contains on various targets.
+///   - **Preferred NaN**: The quiet bit is set and the payload is all-zero.
+///   - **Quieting NaN propagation**: The quiet bit is set and the payload is copied from any input
+///     operand that is a NaN. If the inputs and outputs do not have the same payload size (i.e., for
+///     `as` casts), then
+///     - If the output is smaller than the input, low-order bits of the payload get dropped.
+///     - If the output is larger than the input, the payload gets filled up with 0s in the low-order
+///       bits.
+///   - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
+///     that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
+///     same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
+///     than the input, droppig the low-order bits may result in a payload of 0; a payload of 0 is not
+///     possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
+///     propagation cannot occur with some inputs.
+///   - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
+///     set of "extra" possible NaN payloads. The set can depend on the input operand values.
+///     See the table below for the concrete NaNs this set contains on various targets.
 ///
 /// In particular, if all input NaNs are quiet (or if there are no input NaNs), then the output NaN
 /// is definitely quiet. Signaling NaN outputs can only occur if they are provided as an input
@@ -1259,7 +1263,7 @@ mod prim_f16 {}
 /// does not have any "extra" NaN payloads, then the output NaN is guaranteed to be preferred.
 ///
 /// The non-deterministic choice happens when the operation is executed; i.e., the result of a
-/// NaN-producing floating point operation is a stable bit pattern (looking at these bits multiple
+/// NaN-producing floating-point operation is a stable bit pattern (looking at these bits multiple
 /// times will yield consistent results), but running the same operation twice with the same inputs
 /// can produce different results.
 ///
@@ -1273,10 +1277,10 @@ mod prim_f16 {}
 /// (e.g. `min`, `minimum`, `max`, `maximum`); other aspects of their semantics and which IEEE 754
 /// operation they correspond to are documented with the respective functions.
 ///
-/// When a floating-point operation is executed in `const` context, the same rules apply: no
-/// guarantee is made about which of the NaN bit patterns described above will be returned. The
-/// result does not have to match what happens when executing the same code at runtime, and the
-/// result can vary depending on factors such as compiler version and flags.
+/// When an arithmetic floating-point operation is executed in `const` context, the same rules
+/// apply: no guarantee is made about which of the NaN bit patterns described above will be
+/// returned. The result does not have to match what happens when executing the same code at
+/// runtime, and the result can vary depending on factors such as compiler version and flags.
 ///
 /// ### Target-specific "extra" NaN values
 // FIXME: Is there a better place to put this?
@@ -1294,7 +1298,7 @@ mod prim_f32 {}
 
 #[rustc_doc_primitive = "f64"]
 #[doc(alias = "double")]
-/// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
+/// A 64-bit floating-point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`], but has increased precision by using twice as many
 /// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on double-precision
@@ -1308,7 +1312,7 @@ mod prim_f64 {}
 
 #[rustc_doc_primitive = "f128"]
 #[doc(alias = "quad")]
-/// A 128-bit floating point type (specifically, the "binary128" type defined in IEEE 754-2008).
+/// A 128-bit floating-point type (specifically, the "binary128" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] and [`prim@f64`], but has increased precision by using twice
 /// as many bits as `f64`. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on
