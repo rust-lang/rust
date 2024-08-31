@@ -23,6 +23,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
+use tracing::{debug, debug_span, instrument, trace};
 
 use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
 use crate::coverage::graph::CoverageGraph;

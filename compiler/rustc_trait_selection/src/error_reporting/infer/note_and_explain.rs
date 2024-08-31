@@ -9,6 +9,7 @@ use rustc_middle::ty::print::{FmtPrinter, Printer};
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::def_id::DefId;
 use rustc_span::{sym, BytePos, Span, Symbol};
+use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::InferCtxtExt;

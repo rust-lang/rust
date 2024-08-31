@@ -18,6 +18,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
+use tracing::debug;
 
 use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
 

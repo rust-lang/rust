@@ -15,6 +15,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, PredicateObligation, TraitEngine, TraitEngineExt as _,
 };
+use tracing::{debug, instrument};
 
 use super::callee::DeferredCallResolution;
 

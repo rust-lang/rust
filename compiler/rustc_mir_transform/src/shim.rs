@@ -17,6 +17,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
+use tracing::{debug, instrument};
 
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,

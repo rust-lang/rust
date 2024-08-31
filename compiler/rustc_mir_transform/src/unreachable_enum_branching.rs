@@ -10,6 +10,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_target::abi::{Abi, Variants};
+use tracing::trace;
 
 use crate::MirPass;
 

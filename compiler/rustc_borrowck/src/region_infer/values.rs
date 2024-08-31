@@ -8,6 +8,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::{BasicBlock, Location};
 use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use tracing::debug;
 
 use crate::BorrowIndex;
 

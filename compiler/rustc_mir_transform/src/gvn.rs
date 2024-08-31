@@ -105,6 +105,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
+use tracing::{debug, instrument, trace};
 
 use crate::ssa::{AssignedValue, SsaLocals};
 

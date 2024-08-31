@@ -15,6 +15,7 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable as _, TypeVisitableExt as _};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use tracing::{debug, instrument};
 
 use crate::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use crate::error_reporting::traits::{to_pretty_impl_header, FindExprBySpan};

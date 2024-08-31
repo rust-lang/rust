@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use tracing::debug;
 
 use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;

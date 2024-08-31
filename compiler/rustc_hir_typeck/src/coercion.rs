@@ -66,6 +66,7 @@ use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use smallvec::{smallvec, SmallVec};
+use tracing::{debug, instrument};
 
 use crate::errors::SuggestBoxingForReturnImplTrait;
 use crate::FnCtxt;

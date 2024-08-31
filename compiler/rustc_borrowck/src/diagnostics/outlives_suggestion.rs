@@ -10,6 +10,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diag;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
+use tracing::debug;
 
 use super::{ErrorConstraintInfo, RegionName, RegionNameSource};
 use crate::MirBorrowckCtxt;

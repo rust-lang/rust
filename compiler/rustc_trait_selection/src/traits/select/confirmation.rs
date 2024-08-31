@@ -21,6 +21,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
+use tracing::{debug, instrument};
 
 use super::SelectionCandidate::{self, *};
 use super::{BuiltinImplConditions, SelectionContext};

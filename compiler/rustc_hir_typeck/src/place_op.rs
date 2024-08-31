@@ -9,6 +9,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::method::MethodCallee;

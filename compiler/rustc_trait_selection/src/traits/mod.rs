@@ -37,6 +37,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 pub use self::coherence::{
     add_placeholder_note, orphan_check_trait_ref, overlapping_impls, InCrate, IsFirstInputType,

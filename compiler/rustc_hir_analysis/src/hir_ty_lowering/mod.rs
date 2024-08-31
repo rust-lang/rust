@@ -50,6 +50,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
+use tracing::{debug, debug_span, instrument};
 
 use crate::bounds::Bounds;
 use crate::errors::{AmbiguousLifetimeBound, WildPatTy};

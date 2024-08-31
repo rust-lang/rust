@@ -19,6 +19,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
+use tracing::{debug, instrument, warn};
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{

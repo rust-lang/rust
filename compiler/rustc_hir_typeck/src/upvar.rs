@@ -52,6 +52,7 @@ use rustc_session::lint;
 use rustc_span::{sym, BytePos, Pos, Span, Symbol};
 use rustc_target::abi::FIRST_VARIANT;
 use rustc_trait_selection::infer::InferCtxtExt;
+use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::expr_use_visitor as euv;

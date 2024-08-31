@@ -15,6 +15,7 @@ use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
+use tracing::{debug, instrument};
 
 use super::{Locations, TypeChecker};
 use crate::renumber::RegionCtxt;

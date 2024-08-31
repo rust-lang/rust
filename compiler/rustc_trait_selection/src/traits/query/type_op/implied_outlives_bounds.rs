@@ -9,6 +9,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::DUMMY_SP;
 use rustc_type_ir::outlives::{push_outlives_components, Component};
 use smallvec::{smallvec, SmallVec};
+use tracing::debug;
 
 use crate::traits::query::NoSolution;
 use crate::traits::{wf, ObligationCtxt};

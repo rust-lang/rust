@@ -10,6 +10,7 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOpOutput};
 use rustc_trait_selection::traits::ObligationCause;
+use tracing::{debug, instrument};
 
 use super::{Locations, NormalizeLocation, TypeChecker};
 use crate::diagnostics::ToUniverseInfo;

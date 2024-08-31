@@ -27,6 +27,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
     type_known_to_meet_bound_modulo_regions, FulfillmentErrorCode,
 };
+use tracing::debug;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;

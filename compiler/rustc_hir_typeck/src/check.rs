@@ -12,6 +12,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use tracing::{debug, instrument};
 
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;

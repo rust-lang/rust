@@ -34,6 +34,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ErrorGuaranteed, Symbol};
+use tracing::{debug, instrument};
 
 use crate::renumber::RegionCtxt;
 use crate::BorrowckInferCtxt;

@@ -75,9 +75,6 @@ This API is completely unstable and subject to change.
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 // These are used by Clippy.
 pub mod check;
 

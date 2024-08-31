@@ -33,6 +33,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
+use tracing::{debug, trace};
 
 pub enum SimplifyCfg {
     Initial,

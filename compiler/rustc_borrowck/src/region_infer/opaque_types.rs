@@ -13,6 +13,7 @@ use rustc_middle::ty::{
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::{debug, instrument};
 
 use super::RegionInferenceContext;
 use crate::session_diagnostics::{LifetimeMismatchOpaqueParam, NonGenericOpaqueTypeParam};

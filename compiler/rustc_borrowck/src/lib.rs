@@ -15,9 +15,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-#[macro_use]
-extern crate tracing;
-
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
@@ -51,6 +48,7 @@ use rustc_session::lint::builtin::UNUSED_MUT;
 use rustc_span::{Span, Symbol};
 use rustc_target::abi::FieldIdx;
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
 use self::location::LocationTable;

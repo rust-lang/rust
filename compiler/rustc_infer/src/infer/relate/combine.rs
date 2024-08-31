@@ -24,6 +24,7 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, InferConst, IntType, Ty, TyCtxt, TypeVisitableExt, UintType, Upcast};
 pub use rustc_next_trait_solver::relate::combine::*;
+use tracing::debug;
 
 use super::glb::Glb;
 use super::lub::Lub;
