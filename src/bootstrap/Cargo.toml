@@ -6,6 +6,7 @@ build = "build.rs"
 default-run = "bootstrap"
 
 [features]
+default = ["sysinfo"]
 build-metrics = ["sysinfo"]
 bootstrap-self-test = [] # enabled in the bootstrap unit tests
 
@@ -41,7 +42,7 @@ cc = "=1.0.97"
 cmake = "=0.1.48"
 
 build_helper = { path = "../tools/build_helper" }
-clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap = { version = "4.4", default-features = false, features = ["derive", "error-context", "help", "std", "usage"] }
 clap_complete = "4.4"
 fd-lock = "4.0"
 home = "0.5"
@@ -62,6 +63,9 @@ toml = "0.5"
 walkdir = "2.4"
 xz2 = "0.1"
 
+# EXPERIMENTAL
+anyhow = "1"
+
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.31.2", default-features = false, optional = true, features = ["system"] }
 
@@ -71,13 +75,19 @@ version = "1.0.0"
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.52"
 features = [
+    "Wdk_Foundation",
+    "Wdk_Storage_FileSystem",
+    "Wdk_System_SystemServices",
     "Win32_Foundation",
     "Win32_Security",
+    "Win32_Storage_FileSystem",
     "Win32_System_Diagnostics_Debug",
+    "Win32_System_IO",
     "Win32_System_JobObjects",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",
     "Win32_System_Time",
+    "Win32_System_WindowsProgramming",
 ]
 
 [dev-dependencies]

@@ -43,6 +43,8 @@ use crate::utils::helpers::{
 
 mod core;
 mod utils;
+#[cfg(windows)]
+mod windows_hacks;
 
 pub use core::builder::PathSet;
 pub use core::config::flags::{Flags, Subcommand};
@@ -1663,12 +1665,68 @@ Executed at: {executed_at}"#,
         if src == dst {
             return;
         }
+
         if let Err(e) = fs::remove_file(dst) {
             if cfg!(windows) && e.kind() != io::ErrorKind::NotFound {
                 // workaround for https://github.com/rust-lang/rust/issues/127126
                 // if removing the file fails, attempt to rename it instead.
                 let now = t!(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH));
                 let _ = fs::rename(dst, format!("{}-{}", dst.display(), now.as_nanos()));
+
+                #[cfg(windows)]
+                {
+                    eprintln!(
+                        "[DEBUG]: copy_link_internal: `fs::remove_file` failed on dst=`{}`: {e}",
+                        dst.display()
+                    );
+                    eprintln!("[DEBUG]: copy_link_internal: after `fs::remove_file` failed");
+                    // HACK(jieyouxu): let's see what's holding up. Note that this is not robost to TOCTOU
+                    // races where the process was holding on to the file when calling `remove_file` but
+                    // released immediately after before gathering process IDs holding the file.
+                    let mut process_ids = windows_hacks::process_ids_using_file(dst).unwrap();
+                    process_ids.dedup();
+                    process_ids.sort();
+
+                    if !process_ids.is_empty() {
+                        eprintln!(
+                            "[DEBUG] copy_link_internal: pids holding dst=`{}`: {:?}",
+                            dst.display(),
+                            process_ids
+                        );
+                    }
+
+                    use sysinfo::{ProcessRefreshKind, RefreshKind, System};
+
+                    let sys = System::new_with_specifics(
+                        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+                    );
+
+                    let mut holdups = vec![];
+                    for (pid, process) in sys.processes() {
+                        if process_ids.contains(&(pid.as_u32() as usize)) {
+                            holdups.push((pid.as_u32(), process.exe().unwrap_or(Path::new(""))));
+                        }
+                    }
+
+                    if holdups.is_empty() {
+                        eprintln!(
+                            "[DEBUG] copy_link_internal: did not find any process holding up dst=`{}`, so how did we fail?",
+                            dst.display(),
+                        );
+                    } else {
+                        eprintln!(
+                            "[DEBUG] copy_link_internal: printing process names (where available) holding dst=`{}`",
+                            dst.display()
+                        );
+                        for (pid, process_exe) in holdups {
+                            eprintln!(
+                                "[DEBUG] copy_link_internal: process holding dst=`{}`: pid={pid}, process_name={:?}",
+                                dst.display(),
+                                process_exe
+                            );
+                        }
+                    }
+                }
             }
         }
         let metadata = t!(src.symlink_metadata(), format!("src = {}", src.display()));
