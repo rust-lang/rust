@@ -1,6 +1,7 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -714,7 +715,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             // since we may be in the process of computing this MIR in the
                             // first place.
                             let layout = if def_id == self.caller_body.source.def_id() {
-                                // FIXME: This is not right for async closures.
+                                self.caller_body.coroutine_layout_raw()
+                            } else if let Some(hir::CoroutineKind::Desugared(
+                                _,
+                                hir::CoroutineSource::Closure,
+                            )) = self.tcx.coroutine_kind(def_id)
+                                && let ty::ClosureKind::FnOnce =
+                                    args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap()
+                                && self.caller_body.source.def_id()
+                                    == self.tcx.coroutine_by_move_body_def_id(def_id)
+                            {
+                                // Same if this is the by-move body of a coroutine-closure.
                                 self.caller_body.coroutine_layout_raw()
                             } else {
                                 self.tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty())
