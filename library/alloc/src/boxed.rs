@@ -64,8 +64,9 @@
 //!
 //! For zero-sized values, the `Box` pointer has to be non-null and sufficiently aligned. The
 //! recommended way to build a Box to a ZST if `Box::new` cannot be used is to use
-//! [`ptr::NonNull::dangling`]. Even for zero-sized types, the pointee type must be inhabited
-//! to ensure that the Box points to a valid value of the given type.
+//! [`ptr::NonNull::dangling`].
+//!
+//! On top of these basic layout requirements, a `Box<T>` must point to a valid value of `T`.
 //!
 //! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented
 //! as a single pointer and is also ABI-compatible with C pointers
