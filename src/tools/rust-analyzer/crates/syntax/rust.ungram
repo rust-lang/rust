@@ -411,13 +411,11 @@ AsmClobberAbi = 'clobber_abi' '(' ('@string' (',' '@string')* ','?) ')'
 AsmOption = 'pure' | 'nomem' | 'readonly' | 'preserves_flags' | 'noreturn' | 'nostack' | 'att_syntax' | 'raw' | 'may_unwind'
 // options := "options(" option *("," option) [","] ")"
 AsmOptions = 'options' '(' AsmOption *(',' AsmOption) ','? ')'
-// operand := reg_operand / clobber_abi / options
-AsmOperand = AsmRegOperand | AsmClobberAbi | AsmOptions | AsmLabel
 AsmLabel = 'label' BlockExpr
-AsmSym = 'sym' Expr
+AsmSym = 'sym' Path
 AsmConst = 'const' Expr
-
-
+// operand := reg_operand / clobber_abi / options
+AsmOperand = AsmRegOperand | AsmClobberAbi | AsmOptions | AsmLabel | AsmSym | AsmConst
 
 FormatArgsExpr =
   Attr* 'builtin' '#' 'format_args' '('

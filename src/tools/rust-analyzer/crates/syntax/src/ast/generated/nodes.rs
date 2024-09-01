@@ -250,7 +250,7 @@ pub struct AsmSym {
 }
 impl AsmSym {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     #[inline]
     pub fn sym_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![sym]) }
 }
@@ -2225,9 +2225,11 @@ impl ast::HasVisibility for Adt {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AsmOperand {
     AsmClobberAbi(AsmClobberAbi),
+    AsmConst(AsmConst),
     AsmLabel(AsmLabel),
     AsmOptions(AsmOptions),
     AsmRegOperand(AsmRegOperand),
+    AsmSym(AsmSym),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4591,6 +4593,10 @@ impl From<AsmClobberAbi> for AsmOperand {
     #[inline]
     fn from(node: AsmClobberAbi) -> AsmOperand { AsmOperand::AsmClobberAbi(node) }
 }
+impl From<AsmConst> for AsmOperand {
+    #[inline]
+    fn from(node: AsmConst) -> AsmOperand { AsmOperand::AsmConst(node) }
+}
 impl From<AsmLabel> for AsmOperand {
     #[inline]
     fn from(node: AsmLabel) -> AsmOperand { AsmOperand::AsmLabel(node) }
@@ -4603,18 +4609,27 @@ impl From<AsmRegOperand> for AsmOperand {
     #[inline]
     fn from(node: AsmRegOperand) -> AsmOperand { AsmOperand::AsmRegOperand(node) }
 }
+impl From<AsmSym> for AsmOperand {
+    #[inline]
+    fn from(node: AsmSym) -> AsmOperand { AsmOperand::AsmSym(node) }
+}
 impl AstNode for AsmOperand {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, ASM_CLOBBER_ABI | ASM_LABEL | ASM_OPTIONS | ASM_REG_OPERAND)
+        matches!(
+            kind,
+            ASM_CLOBBER_ABI | ASM_CONST | ASM_LABEL | ASM_OPTIONS | ASM_REG_OPERAND | ASM_SYM
+        )
     }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             ASM_CLOBBER_ABI => AsmOperand::AsmClobberAbi(AsmClobberAbi { syntax }),
+            ASM_CONST => AsmOperand::AsmConst(AsmConst { syntax }),
             ASM_LABEL => AsmOperand::AsmLabel(AsmLabel { syntax }),
             ASM_OPTIONS => AsmOperand::AsmOptions(AsmOptions { syntax }),
             ASM_REG_OPERAND => AsmOperand::AsmRegOperand(AsmRegOperand { syntax }),
+            ASM_SYM => AsmOperand::AsmSym(AsmSym { syntax }),
             _ => return None,
         };
         Some(res)
@@ -4623,9 +4638,11 @@ impl AstNode for AsmOperand {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             AsmOperand::AsmClobberAbi(it) => &it.syntax,
+            AsmOperand::AsmConst(it) => &it.syntax,
             AsmOperand::AsmLabel(it) => &it.syntax,
             AsmOperand::AsmOptions(it) => &it.syntax,
             AsmOperand::AsmRegOperand(it) => &it.syntax,
+            AsmOperand::AsmSym(it) => &it.syntax,
         }
     }
 }

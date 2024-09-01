@@ -368,7 +368,6 @@ impl<'db> SemanticsImpl<'db> {
                     | BuiltinFnLikeExpander::File
                     | BuiltinFnLikeExpander::ModulePath
                     | BuiltinFnLikeExpander::Asm
-                    | BuiltinFnLikeExpander::LlvmAsm
                     | BuiltinFnLikeExpander::GlobalAsm
                     | BuiltinFnLikeExpander::LogSyntax
                     | BuiltinFnLikeExpander::TraceMacros

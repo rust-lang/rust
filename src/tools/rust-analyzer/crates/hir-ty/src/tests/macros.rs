@@ -1,7 +1,7 @@
 use expect_test::expect;
 use test_utils::{bench, bench_fixture, skip_slow_tests};
 
-use crate::tests::check_infer_with_mismatches;
+use crate::tests::{check_infer_with_mismatches, check_no_mismatches};
 
 use super::{check_infer, check_types};
 
@@ -1405,4 +1405,101 @@ fn foo(t: Tensor) {
 }
 "#,
     );
+}
+
+#[test]
+fn asm_unit() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+fn unit() {
+    asm!("")
+}
+"#,
+    );
+}
+
+#[test]
+fn asm_no_return() {
+    check_no_mismatches(
+        r#"
+//- minicore: asm
+fn unit() -> ! {
+    asm!("", options(noreturn))
+}
+"#,
+    );
+}
+
+#[test]
+fn asm_things() {
+    check_infer(
+        r#"
+//- minicore: asm, concat
+fn main() {
+    unsafe {
+        let foo = 1;
+        let mut o = 0;
+        asm!(
+            "%input = OpLoad _ {0}",
+            concat!("%result = ", bar, " _ %input"),
+            "OpStore {1} %result",
+            in(reg) &foo,
+            in(reg) &mut o,
+        );
+        o
+
+        let thread_id: usize;
+        asm!("
+            mov {0}, gs:[0x30]
+            mov {0}, [{0}+0x48]
+        ", out(reg) thread_id, options(pure, readonly, nostack));
+
+        static UNMAP_BASE: usize;
+        const MEM_RELEASE: usize;
+        static VirtualFree: usize;
+        const OffPtr: usize;
+        const OffFn: usize;
+        asm!("
+            push {free_type}
+            push {free_size}
+            push {base}
+
+            mov eax, fs:[30h]
+            mov eax, [eax+8h]
+            add eax, {off_fn}
+            mov [eax-{off_fn}+{off_ptr}], eax
+
+            push eax
+
+            jmp {virtual_free}
+            ",
+            off_ptr = const OffPtr,
+            off_fn  = const OffFn,
+
+            free_size = const 0,
+            free_type = const MEM_RELEASE,
+
+            virtual_free = sym VirtualFree,
+
+            base = sym UNMAP_BASE,
+            options(noreturn),
+        );
+    }
+}
+"#,
+        expect![[r#"
+            !0..122 'builti...muto,)': ()
+            !0..190 'builti...tack))': ()
+            !0..449 'builti...urn),)': !
+            10..1254 '{     ...   } }': ()
+            16..1252 'unsafe...     }': ()
+            37..40 'foo': i32
+            43..44 '1': i32
+            58..63 'mut o': i32
+            66..67 '0': i32
+            281..282 'o': i32
+            296..305 'thread_id': usize
+        "#]],
+    )
 }

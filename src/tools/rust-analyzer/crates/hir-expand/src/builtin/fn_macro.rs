@@ -119,9 +119,8 @@ register_builtin! {
     (module_path, ModulePath) => module_path_expand,
     (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
-    (llvm_asm, LlvmAsm) => asm_expand,
     (asm, Asm) => asm_expand,
-    (global_asm, GlobalAsm) => global_asm_expand,
+    (global_asm, GlobalAsm) => asm_expand,
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
@@ -324,38 +323,13 @@ fn asm_expand(
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    // We expand all assembly snippets to `format_args!` invocations to get format syntax
-    // highlighting for them.
-    let mut literals = Vec::new();
-    for tt in tt.token_trees.chunks(2) {
-        match tt {
-            [tt::TokenTree::Leaf(tt::Leaf::Literal(lit))]
-            | [tt::TokenTree::Leaf(tt::Leaf::Literal(lit)), tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', span: _, spacing: _ }))] =>
-            {
-                let dollar_krate = dollar_crate(span);
-                literals.push(quote!(span=>#dollar_krate::format_args!(#lit);));
-            }
-            _ => break,
-        }
-    }
-
+    let mut tt = tt.clone();
+    tt.delimiter.kind = tt::DelimiterKind::Parenthesis;
     let pound = mk_pound(span);
     let expanded = quote! {span =>
-        builtin #pound asm (
-            {##literals}
-        )
+        builtin #pound asm #tt
     };
     ExpandResult::ok(expanded)
-}
-
-fn global_asm_expand(
-    _db: &dyn ExpandDatabase,
-    _id: MacroCallId,
-    _tt: &tt::Subtree,
-    span: Span,
-) -> ExpandResult<tt::Subtree> {
-    // Expand to nothing (at item-level)
-    ExpandResult::ok(quote! {span =>})
 }
 
 fn cfg_expand(

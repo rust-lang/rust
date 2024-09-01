@@ -1,6 +1,8 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
+mod asm;
+
 use std::mem;
 
 use base_db::CrateId;
@@ -35,8 +37,8 @@ use crate::{
             FormatPlaceholder, FormatSign, FormatTrait,
         },
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
-        Expr, ExprId, InlineAsm, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
-        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        Expr, ExprId, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability, OffsetOf, Pat,
+        PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -693,13 +695,7 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Expr::UnderscoreExpr(_) => self.alloc_expr(Expr::Underscore, syntax_ptr),
-            ast::Expr::AsmExpr(e) => {
-                let template = e.template().map(|it| self.collect_expr(it)).collect();
-                self.alloc_expr(
-                    Expr::InlineAsm(InlineAsm { template, operands: Box::default() }),
-                    syntax_ptr,
-                )
-            }
+            ast::Expr::AsmExpr(e) => self.lower_inline_asm(e, syntax_ptr),
             ast::Expr::OffsetOfExpr(e) => {
                 let container = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
                 let fields = e.fields().map(|it| it.as_name()).collect();
@@ -2064,6 +2060,7 @@ impl ExprCollector<'_> {
             is_assignee_expr: false,
         })
     }
+
     // endregion: format
 
     fn lang_path(&self, lang: LangItem) -> Option<Path> {
