@@ -93,7 +93,8 @@ pub trait ValueAnalysis<'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
-            | StatementKind::AscribeUserType(..) => (),
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::AscribeUserType(..) => {}
         }
     }
 

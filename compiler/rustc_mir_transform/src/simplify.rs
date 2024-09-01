@@ -523,7 +523,8 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             }
 
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
-            | StatementKind::Deinit(ref place) => {
+            | StatementKind::Deinit(ref place)
+            | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ } => {
                 self.visit_lhs(place, location);
             }
         }
@@ -560,6 +561,7 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
                     StatementKind::SetDiscriminant { ref place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ }
                     | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
                     StatementKind::Nop => false,
                     _ => true,
