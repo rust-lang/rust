@@ -40,7 +40,10 @@ use crate::{
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
-        ext::InternalTestingFetchConfigParams,
+        ext::{
+            InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
+            InternalTestingFetchConfigResponse,
+        },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
         LspError,
@@ -2292,7 +2295,7 @@ pub(crate) fn fetch_dependency_list(
 pub(crate) fn internal_testing_fetch_config(
     state: GlobalStateSnapshot,
     params: InternalTestingFetchConfigParams,
-) -> anyhow::Result<serde_json::Value> {
+) -> anyhow::Result<Option<InternalTestingFetchConfigResponse>> {
     let source_root = params
         .text_document
         .map(|it| {
@@ -2302,15 +2305,18 @@ pub(crate) fn internal_testing_fetch_config(
                 .map_err(anyhow::Error::from)
         })
         .transpose()?;
-    serde_json::to_value(match &*params.config {
-        "local" => state.config.assist(source_root).assist_emit_must_use,
-        "workspace" => matches!(
-            state.config.rustfmt(source_root),
-            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. }
-        ),
-        _ => return Err(anyhow::anyhow!("Unknown test config key: {}", params.config)),
-    })
-    .map_err(Into::into)
+    Ok(Some(match params.config {
+        InternalTestingFetchConfigOption::AssistEmitMustUse => {
+            InternalTestingFetchConfigResponse::AssistEmitMustUse(
+                state.config.assist(source_root).assist_emit_must_use,
+            )
+        }
+        InternalTestingFetchConfigOption::CheckWorkspace => {
+            InternalTestingFetchConfigResponse::CheckWorkspace(
+                state.config.flycheck_workspace(source_root),
+            )
+        }
+    }))
 }
 
 /// Searches for the directory of a Rust crate given this crate's root file path.

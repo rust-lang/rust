@@ -75,6 +75,8 @@ config_data! {
         /// How many worker threads to handle priming caches. The default `0` means to pick automatically.
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
+        /// Custom completion snippets.
+        completion_snippets_custom: FxHashMap<String, SnippetDef> = Config::completion_snippets_default(),
 
 
         /// These directories will be ignored by rust-analyzer. They are
@@ -438,48 +440,6 @@ config_data! {
         completion_postfix_enable: bool         = true,
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
         completion_privateEditable_enable: bool = false,
-        /// Custom completion snippets.
-        completion_snippets_custom: FxHashMap<String, SnippetDef> = serde_json::from_str(r#"{
-            "Arc::new": {
-                "postfix": "arc",
-                "body": "Arc::new(${receiver})",
-                "requires": "std::sync::Arc",
-                "description": "Put the expression into an `Arc`",
-                "scope": "expr"
-            },
-            "Rc::new": {
-                "postfix": "rc",
-                "body": "Rc::new(${receiver})",
-                "requires": "std::rc::Rc",
-                "description": "Put the expression into an `Rc`",
-                "scope": "expr"
-            },
-            "Box::pin": {
-                "postfix": "pinbox",
-                "body": "Box::pin(${receiver})",
-                "requires": "std::boxed::Box",
-                "description": "Put the expression into a pinned `Box`",
-                "scope": "expr"
-            },
-            "Ok": {
-                "postfix": "ok",
-                "body": "Ok(${receiver})",
-                "description": "Wrap the expression in a `Result::Ok`",
-                "scope": "expr"
-            },
-            "Err": {
-                "postfix": "err",
-                "body": "Err(${receiver})",
-                "description": "Wrap the expression in a `Result::Err`",
-                "scope": "expr"
-            },
-            "Some": {
-                "postfix": "some",
-                "body": "Some(${receiver})",
-                "description": "Wrap the expression in an `Option::Some`",
-                "scope": "expr"
-            }
-        }"#).unwrap(),
         /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
         completion_termSearch_enable: bool = false,
         /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
@@ -889,7 +849,7 @@ impl Config {
                 // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
                 config.snippets.clear();
 
-                let snips = self.completion_snippets_custom(None).to_owned();
+                let snips = self.completion_snippets_custom().to_owned();
 
                 for (name, def) in snips.iter() {
                     if def.prefix.is_empty() && def.postfix.is_empty() {
@@ -1266,7 +1226,7 @@ pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum RustfmtConfig {
     Rustfmt { extra_args: Vec<String>, enable_range_formatting: bool },
     CustomCommand { command: String, args: Vec<String> },
@@ -1895,6 +1855,53 @@ impl Config {
             extra_env: self.cargo_extraEnv(source_root).clone(),
             target_dir: self.target_dir_from_config(source_root),
         }
+    }
+
+    pub(crate) fn completion_snippets_default() -> FxHashMap<String, SnippetDef> {
+        serde_json::from_str(
+            r#"{
+            "Arc::new": {
+                "postfix": "arc",
+                "body": "Arc::new(${receiver})",
+                "requires": "std::sync::Arc",
+                "description": "Put the expression into an `Arc`",
+                "scope": "expr"
+            },
+            "Rc::new": {
+                "postfix": "rc",
+                "body": "Rc::new(${receiver})",
+                "requires": "std::rc::Rc",
+                "description": "Put the expression into an `Rc`",
+                "scope": "expr"
+            },
+            "Box::pin": {
+                "postfix": "pinbox",
+                "body": "Box::pin(${receiver})",
+                "requires": "std::boxed::Box",
+                "description": "Put the expression into a pinned `Box`",
+                "scope": "expr"
+            },
+            "Ok": {
+                "postfix": "ok",
+                "body": "Ok(${receiver})",
+                "description": "Wrap the expression in a `Result::Ok`",
+                "scope": "expr"
+            },
+            "Err": {
+                "postfix": "err",
+                "body": "Err(${receiver})",
+                "description": "Wrap the expression in a `Result::Err`",
+                "scope": "expr"
+            },
+            "Some": {
+                "postfix": "some",
+                "body": "Some(${receiver})",
+                "description": "Wrap the expression in an `Option::Some`",
+                "scope": "expr"
+            }
+        }"#,
+        )
+        .unwrap()
     }
 
     pub fn rustfmt(&self, source_root_id: Option<SourceRootId>) -> RustfmtConfig {
