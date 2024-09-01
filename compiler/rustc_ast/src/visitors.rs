@@ -263,25 +263,18 @@ macro_rules! make_ast_visitor {
 
         macro_rules! mutability_dependent {
             () => {
-                fn visit_stmt(&mut self, s: ref_t!(Stmt)) -> result!() {
-                    walk_stmt(self, s)
-                }
+                make_visit!{Stmt; visit_stmt, walk_stmt}
             };
             (mut) => {
+                make_visit!{MetaItemInner; visit_meta_list_item, walk_meta_list_item}
+                make_visit!{MetaItem; visit_meta_item, walk_meta_item}
+
                 fn visit_id(&mut self, _id: ref_t!(NodeId)) -> result!() {
                     // Do nothing.
                 }
 
                 fn visit_span(&mut self, _sp: ref_t!(Span)) -> result!() {
                     // Do nothing.
-                }
-
-                fn visit_meta_list_item(&mut self, list_item: ref_t!(MetaItemInner)) -> result!() {
-                    walk_meta_list_item(self, list_item)
-                }
-
-                fn visit_meta_item(&mut self, meta_item: ref_t!(MetaItem)) -> result!() {
-                    walk_meta_item(self, meta_item);
                 }
 
                 fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
