@@ -151,6 +151,12 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
             mir::StatementKind::ConstEvalCounter => {
                 stable_mir::mir::StatementKind::ConstEvalCounter
             }
+            mir::StatementKind::BackwardIncompatibleDropHint { place, reason } => {
+                stable_mir::mir::StatementKind::BackwardIncompatibleDropHint {
+                    place: place.stable(tables),
+                    reason: reason.stable(tables),
+                }
+            }
             mir::StatementKind::Nop => stable_mir::mir::StatementKind::Nop,
         }
     }
@@ -440,6 +446,18 @@ impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
                     dst: copy_non_overlapping.dst.stable(tables),
                     count: copy_non_overlapping.count.stable(tables),
                 })
+            }
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::BackwardIncompatibleDropReason {
+    type T = stable_mir::mir::BackwardIncompatibleDropReason;
+
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
+        match self {
+            mir::BackwardIncompatibleDropReason::Edition2024 => {
+                stable_mir::mir::BackwardIncompatibleDropReason::Edition2024
             }
         }
     }

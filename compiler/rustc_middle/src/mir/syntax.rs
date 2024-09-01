@@ -440,6 +440,14 @@ pub enum StatementKind<'tcx> {
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
+
+    /// Marker statement for backward-incompatible drops in incoming future editions
+    BackwardIncompatibleDropHint {
+        /// Place to drop
+        place: Box<Place<'tcx>>,
+        /// Reason for backward incompatibility
+        reason: BackwardIncompatibleDropReason,
+    },
 }
 
 impl StatementKind<'_> {
@@ -460,6 +468,7 @@ impl StatementKind<'_> {
             StatementKind::Intrinsic(..) => "Intrinsic",
             StatementKind::ConstEvalCounter => "ConstEvalCounter",
             StatementKind::Nop => "Nop",
+            StatementKind::BackwardIncompatibleDropHint { .. } => "BackwardIncompatibleDropHint",
         }
     }
 }
@@ -881,6 +890,21 @@ pub enum TerminatorKind<'tcx> {
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.
         unwind: UnwindAction,
     },
+}
+
+#[derive(
+    Clone,
+    Debug,
+    TyEncodable,
+    TyDecodable,
+    Hash,
+    HashStable,
+    PartialEq,
+    TypeFoldable,
+    TypeVisitable
+)]
+pub enum BackwardIncompatibleDropReason {
+    Edition2024,
 }
 
 impl TerminatorKind<'_> {
